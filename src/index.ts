@@ -1,6 +1,7 @@
 import { Ship } from './Ship';
 import { Asteroid } from './Asteroid';
 import { AsteroidRenderer } from './AsteroidRenderer';
+import { ShipRenderer } from './ShipRenderer';
 
 class Game {
     private canvas: HTMLCanvasElement;
@@ -13,6 +14,7 @@ class Game {
     private lastTime: number;
     private asteroids: Asteroid[];
     private asteroidRenderer: AsteroidRenderer;
+    private shipRenderer: ShipRenderer;
 
     constructor() {
         this.canvas = document.getElementById('gameCanvas') as HTMLCanvasElement;
@@ -32,6 +34,7 @@ class Game {
             new Asteroid(100, 0, 180, 15) // Flying towards each other
         ];
         this.asteroidRenderer = new AsteroidRenderer();
+        this.shipRenderer = new ShipRenderer();
 
         this.initializeEventListeners();
         this.gameLoop();
@@ -142,8 +145,13 @@ class Game {
             asteroid.updatePosition(deltaTime);
         });
 
-        // Draw the spaceship
-        this.ship.draw(this.ctx, this.canvas.width / 2, this.canvas.height / 2);
+        // Draw the spaceship using the renderer
+        this.shipRenderer.drawShip(
+            this.ctx,
+            this.canvas.width / 2,
+            this.canvas.height / 2,
+            this.ship
+        );
 
         // Draw the asteroids using the renderer
         this.asteroidRenderer.drawAsteroids(
