@@ -18,6 +18,8 @@ class Game {
     private asteroidRenderer: AsteroidRenderer;
     private shipRenderer: ShipRenderer;
     private radarRenderer: RadarRenderer;
+    private mouseX: number;
+    private mouseY: number;
 
     constructor() {
         this.canvas = document.getElementById('gameCanvas') as HTMLCanvasElement;
@@ -28,6 +30,8 @@ class Game {
         this.speedElement = document.getElementById('speed')!;
         this.coordinatesElement = document.getElementById('coordinates')!;
         this.lastTime = performance.now();
+        this.mouseX = 0;
+        this.mouseY = 0;
         
         // Initialize space objects
         this.spaceObjects = [
@@ -62,12 +66,30 @@ class Game {
             const dy = mouseY - centerY;
             this.ship.setAngle(Math.atan2(dy, dx));
         });
+
+        // Add mouse move listener for hover detection
+        this.canvas.addEventListener('mousemove', (event) => {
+            const rect = this.canvas.getBoundingClientRect();
+            this.mouseX = event.clientX - rect.left;
+            this.mouseY = event.clientY - rect.top;
+        });
     }
 
     private updateHUD(): void {
         this.clickCounterElement.textContent = this.clickCounter.toString();
         this.speedElement.textContent = this.ship.getSpeed().toString();
         this.coordinatesElement.textContent = `(${Math.round(this.ship.getX())}, ${Math.round(this.ship.getY())})`;
+    }
+
+    private updateHoverState(): void {
+        // Convert mouse coordinates to world coordinates
+        const worldMouseX = this.mouseX - this.canvas.width / 2 + this.ship.getX();
+        const worldMouseY = this.mouseY - this.canvas.height / 2 + this.ship.getY();
+
+        // Update hover state for all space objects
+        this.spaceObjects.forEach(obj => {
+            obj.setHovered(obj.isPointInHoverRadius(worldMouseX, worldMouseY));
+        });
     }
 
     private gameLoop(): void {
@@ -92,6 +114,9 @@ class Game {
 
         // Update all space objects
         this.spaceObjects.forEach(obj => obj.updatePosition(deltaTime));
+
+        // Update hover states
+        this.updateHoverState();
 
         // Draw the spaceship using the renderer
         this.shipRenderer.drawShip(

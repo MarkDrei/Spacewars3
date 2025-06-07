@@ -1,7 +1,23 @@
 import { Ship } from './Ship';
+import { SpaceObject } from './SpaceObject';
 
 export class ShipRenderer {
-    drawShip(ctx: CanvasRenderingContext2D, centerX: number, centerY: number, ship: Ship): void {
+    drawShip(
+        ctx: CanvasRenderingContext2D,
+        centerX: number,
+        centerY: number,
+        ship: Ship
+    ): void {
+        // Draw hover effect if ship is hovered
+        if (ship.isHoveredState()) {
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, SpaceObject.HOVER_RADIUS, 0, Math.PI * 2);
+            ctx.strokeStyle = '#808080';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+        }
+
+        // Draw the ship
         ctx.save();
         ctx.translate(centerX, centerY);
         ctx.rotate(ship.getAngle());

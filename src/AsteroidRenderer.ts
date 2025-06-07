@@ -1,4 +1,5 @@
 import { Asteroid } from './Asteroid';
+import { SpaceObject } from './SpaceObject';
 
 export class AsteroidRenderer {
     drawAsteroids(ctx: CanvasRenderingContext2D, centerX: number, centerY: number, shipX: number, shipY: number, asteroids: Asteroid[]): void {
@@ -8,6 +9,15 @@ export class AsteroidRenderer {
             ctx.save();
             ctx.translate(asteroidScreenX, asteroidScreenY);
             ctx.rotate(asteroid.getAngle() + Math.PI/2);
+
+            // Draw hover effect if asteroid is hovered
+            if (asteroid.isHoveredState()) {
+                ctx.beginPath();
+                ctx.arc(0, 0, SpaceObject.HOVER_RADIUS, 0, Math.PI * 2);
+                ctx.strokeStyle = '#808080';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+            }
 
             // Draw the main asteroid body
             ctx.beginPath();
