@@ -11,7 +11,7 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            background-color: #f0f0f0;
+            background-color: #121212; /* dark gray background */
             font-family: Arial, sans-serif;
         }
         #gameCanvas {
@@ -31,7 +31,9 @@
 <body>
     <canvas id="gameCanvas" width="800" height="600"></canvas>
     <div id="hud">
-        Clicks: <span id="clickCounter">0</span>
+        Clicks: <span id="clickCounter">0</span><br>
+        Speed: <span id="speed">0</span><br>
+        Coordinates: <span id="coordinates">(0, 0)</span>
     </div>
 </body>
 </html> 
