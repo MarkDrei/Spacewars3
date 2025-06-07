@@ -8,7 +8,7 @@ export class RadarRenderer {
         for (let radius = maxRadius / 4; radius <= maxRadius; radius += maxRadius / 4) {
             ctx.beginPath();
             ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
-            ctx.strokeStyle = '#4caf50';
+            ctx.strokeStyle = '#8b0000';  // Dark red for rings
             ctx.lineWidth = 1;
             ctx.stroke();
         }
@@ -18,7 +18,7 @@ export class RadarRenderer {
             ctx.beginPath();
             ctx.moveTo(centerX, centerY);
             ctx.lineTo(centerX + maxRadius * Math.cos(angle), centerY + maxRadius * Math.sin(angle));
-            ctx.strokeStyle = '#4caf50';
+            ctx.strokeStyle = '#8b0000';  // Dark red for lines
             ctx.lineWidth = 1;
             ctx.stroke();
         }
@@ -35,7 +35,7 @@ export class RadarRenderer {
         const maxY = Math.ceil((shipY + coordinateDistance) / 50) * 50;
 
         ctx.font = '12px Arial';
-        ctx.fillStyle = '#4caf50';
+        ctx.fillStyle = '#ff0000';  // Bright red for numbers
 
         // Draw X coordinates
         ctx.textAlign = 'center';

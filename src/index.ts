@@ -3,6 +3,7 @@ import { Asteroid } from './Asteroid';
 import { AsteroidRenderer } from './AsteroidRenderer';
 import { ShipRenderer } from './ShipRenderer';
 import { RadarRenderer } from './RadarRenderer';
+import { SpaceObject } from './SpaceObject';
 
 class Game {
     private canvas: HTMLCanvasElement;
@@ -13,7 +14,7 @@ class Game {
     private speedElement: HTMLElement;
     private coordinatesElement: HTMLElement;
     private lastTime: number;
-    private asteroids: Asteroid[];
+    private spaceObjects: SpaceObject[];
     private asteroidRenderer: AsteroidRenderer;
     private shipRenderer: ShipRenderer;
     private radarRenderer: RadarRenderer;
@@ -27,7 +28,10 @@ class Game {
         this.speedElement = document.getElementById('speed')!;
         this.coordinatesElement = document.getElementById('coordinates')!;
         this.lastTime = performance.now();
-        this.asteroids = [
+        
+        // Initialize space objects
+        this.spaceObjects = [
+            this.ship,
             new Asteroid(-100, -100, 0, 10), // 0 degrees
             new Asteroid(-100, -100, 180, 10), // 180 degrees
             // new Asteroid(100, 100, 45), // 45 degrees
@@ -35,6 +39,7 @@ class Game {
             new Asteroid(0, 0, 0, 15), // Flying towards each other
             new Asteroid(100, 0, 180, 15) // Flying towards each other
         ];
+
         this.asteroidRenderer = new AsteroidRenderer();
         this.shipRenderer = new ShipRenderer();
         this.radarRenderer = new RadarRenderer();
@@ -85,13 +90,8 @@ class Game {
             this.ship
         );
 
-        // Update ship position
-        this.ship.updatePosition(deltaTime);
-
-        // Update asteroid positions
-        this.asteroids.forEach(asteroid => {
-            asteroid.updatePosition(deltaTime);
-        });
+        // Update all space objects
+        this.spaceObjects.forEach(obj => obj.updatePosition(deltaTime));
 
         // Draw the spaceship using the renderer
         this.shipRenderer.drawShip(
@@ -108,7 +108,7 @@ class Game {
             this.canvas.height / 2,
             this.ship.getX(),
             this.ship.getY(),
-            this.asteroids
+            this.spaceObjects.filter(obj => obj instanceof Asteroid) as Asteroid[]
         );
 
         // Update HUD
