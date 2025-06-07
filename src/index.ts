@@ -1,5 +1,6 @@
 import { Ship } from './Ship';
 import { Asteroid } from './Asteroid';
+import { AsteroidRenderer } from './AsteroidRenderer';
 
 class Game {
     private canvas: HTMLCanvasElement;
@@ -11,6 +12,7 @@ class Game {
     private coordinatesElement: HTMLElement;
     private lastTime: number;
     private asteroids: Asteroid[];
+    private asteroidRenderer: AsteroidRenderer;
 
     constructor() {
         this.canvas = document.getElementById('gameCanvas') as HTMLCanvasElement;
@@ -29,6 +31,7 @@ class Game {
             new Asteroid(0, 0, 0, 15), // Flying towards each other
             new Asteroid(100, 0, 180, 15) // Flying towards each other
         ];
+        this.asteroidRenderer = new AsteroidRenderer();
 
         this.initializeEventListeners();
         this.gameLoop();
@@ -80,14 +83,40 @@ class Game {
             ctx.lineWidth = 1;
             ctx.stroke();
         }
-    }
 
-    private drawAsteroids(): void {
-        const centerX = this.canvas.width / 2;
-        const centerY = this.canvas.height / 2;
-        this.asteroids.forEach(asteroid => {
-            asteroid.draw(this.ctx, centerX, centerY, this.ship.getX(), this.ship.getY());
-        });
+        // Draw coordinates
+        const shipX = this.ship.getX();
+        const shipY = this.ship.getY();
+        const coordinateDistance = 200; // Only show coordinates within 200 units
+
+        // Calculate the range of coordinates to show
+        const minX = Math.floor((shipX - coordinateDistance) / 50) * 50;
+        const maxX = Math.ceil((shipX + coordinateDistance) / 50) * 50;
+        const minY = Math.floor((shipY - coordinateDistance) / 50) * 50;
+        const maxY = Math.ceil((shipY + coordinateDistance) / 50) * 50;
+
+        ctx.font = '12px Arial';
+        ctx.fillStyle = '#4caf50';
+
+        // Draw X coordinates
+        ctx.textAlign = 'center';
+        for (let x = minX; x <= maxX; x += 50) {
+            if (x % 50 === 0) { // Only draw coordinates divisible by 50
+                const screenX = centerX + (x - shipX);
+                const screenY = centerY + 15; // Position below the center
+                ctx.fillText(x.toString(), screenX, screenY);
+            }
+        }
+
+        // Draw Y coordinates
+        ctx.textAlign = 'right';
+        for (let y = minY; y <= maxY; y += 50) {
+            if (y % 50 === 0) { // Only draw coordinates divisible by 50
+                const screenX = centerX - 15; // Position to the left of the center
+                const screenY = centerY + (y - shipY);
+                ctx.fillText(y.toString(), screenX, screenY);
+            }
+        }
     }
 
     private gameLoop(): void {
@@ -116,8 +145,15 @@ class Game {
         // Draw the spaceship
         this.ship.draw(this.ctx, this.canvas.width / 2, this.canvas.height / 2);
 
-        // Draw the asteroids
-        this.drawAsteroids();
+        // Draw the asteroids using the renderer
+        this.asteroidRenderer.drawAsteroids(
+            this.ctx,
+            this.canvas.width / 2,
+            this.canvas.height / 2,
+            this.ship.getX(),
+            this.ship.getY(),
+            this.asteroids
+        );
 
         // Update HUD
         this.updateHUD();

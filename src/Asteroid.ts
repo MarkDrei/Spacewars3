@@ -20,6 +20,10 @@ export class Asteroid {
         return this.y;
     }
 
+    getAngle(): number {
+        return this.angle;
+    }
+
     updatePosition(deltaTime: number): void {
         if (this.speed === 0) return; // Don't update position if speed is 0
         this.x += this.speed * Math.cos(this.angle) * deltaTime;
