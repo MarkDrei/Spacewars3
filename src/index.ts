@@ -1,33 +1,33 @@
+import { Ship } from './Ship';
+import { Asteroid } from './Asteroid';
+
 class Game {
     private canvas: HTMLCanvasElement;
     private ctx: CanvasRenderingContext2D;
     private clickCounter: number;
     private clickCounterElement: HTMLElement;
-    private shipAngle: number; // in radians
-    private shipX: number;
-    private shipY: number;
-    private shipSpeed: number;
+    private ship: Ship;
     private speedElement: HTMLElement;
     private coordinatesElement: HTMLElement;
     private lastTime: number;
-    private dots: { x: number; y: number }[];
+    private asteroids: Asteroid[];
 
     constructor() {
         this.canvas = document.getElementById('gameCanvas') as HTMLCanvasElement;
         this.ctx = this.canvas.getContext('2d')!;
         this.clickCounter = 0;
         this.clickCounterElement = document.getElementById('clickCounter')!;
-        this.shipAngle = 0; // facing right
-        this.shipX = 0; // start at (0, 0)
-        this.shipY = 0; // start at (0, 0)
-        this.shipSpeed = 200; // increased speed
+        this.ship = new Ship();
         this.speedElement = document.getElementById('speed')!;
         this.coordinatesElement = document.getElementById('coordinates')!;
         this.lastTime = performance.now();
-        this.dots = [
-            { x: 100, y: 100 },
-            { x: 200, y: 200 },
-            { x: 100, y: -80 }
+        this.asteroids = [
+            new Asteroid(-100, -100, 0, 10), // 0 degrees
+            new Asteroid(-100, -100, 180, 10), // 180 degrees
+            // new Asteroid(100, 100, 45), // 45 degrees
+            // new Asteroid(200, 200, 90), // 90 degrees
+            new Asteroid(0, 0, 0, 15), // Flying towards each other
+            new Asteroid(100, 0, 180, 15) // Flying towards each other
         ];
 
         this.initializeEventListeners();
@@ -46,14 +46,14 @@ class Game {
             const mouseY = event.clientY - rect.top;
             const dx = mouseX - centerX;
             const dy = mouseY - centerY;
-            this.shipAngle = Math.atan2(dy, dx);
+            this.ship.setAngle(Math.atan2(dy, dx));
         });
     }
 
     private updateHUD(): void {
         this.clickCounterElement.textContent = this.clickCounter.toString();
-        this.speedElement.textContent = this.shipSpeed.toString();
-        this.coordinatesElement.textContent = `(${Math.round(this.shipX)}, ${Math.round(this.shipY)})`;
+        this.speedElement.textContent = this.ship.getSpeed().toString();
+        this.coordinatesElement.textContent = `(${Math.round(this.ship.getX())}, ${Math.round(this.ship.getY())})`;
     }
 
     private drawRadar(): void {
@@ -82,39 +82,11 @@ class Game {
         }
     }
 
-    private drawSpaceship(): void {
-        const ctx = this.ctx;
+    private drawAsteroids(): void {
         const centerX = this.canvas.width / 2;
         const centerY = this.canvas.height / 2;
-        ctx.save();
-        ctx.translate(centerX, centerY);
-        ctx.rotate(this.shipAngle);
-        // Draw a simple triangle spaceship
-        ctx.beginPath();
-        ctx.moveTo(30, 0);    // nose
-        ctx.lineTo(-15, 12);  // left wing
-        ctx.lineTo(-10, 0);   // tail
-        ctx.lineTo(-15, -12); // right wing
-        ctx.closePath();
-        ctx.fillStyle = '#4caf50'; // greenish fill
-        ctx.fill();
-        ctx.strokeStyle = '#2e7d32'; // darker green stroke
-        ctx.lineWidth = 2;
-        ctx.stroke();
-        ctx.restore();
-    }
-
-    private drawDots(): void {
-        const ctx = this.ctx;
-        const centerX = this.canvas.width / 2;
-        const centerY = this.canvas.height / 2;
-        this.dots.forEach(dot => {
-            const dotScreenX = centerX + dot.x - this.shipX;
-            const dotScreenY = centerY + dot.y - this.shipY;
-            ctx.beginPath();
-            ctx.arc(dotScreenX, dotScreenY, 5, 0, Math.PI * 2);
-            ctx.fillStyle = '#ff5722'; // orange dot
-            ctx.fill();
+        this.asteroids.forEach(asteroid => {
+            asteroid.draw(this.ctx, centerX, centerY, this.ship.getX(), this.ship.getY());
         });
     }
 
@@ -133,17 +105,19 @@ class Game {
         // Draw radar
         this.drawRadar();
 
-        // Update ship position based on speed and angle
-        const speedInPointsPerSecond = 10;
-        const speedInPointsPerFrame = speedInPointsPerSecond * deltaTime;
-        this.shipX += speedInPointsPerFrame * Math.cos(this.shipAngle);
-        this.shipY += speedInPointsPerFrame * Math.sin(this.shipAngle);
+        // Update ship position
+        this.ship.updatePosition(deltaTime);
+
+        // Update asteroid positions
+        this.asteroids.forEach(asteroid => {
+            asteroid.updatePosition(deltaTime);
+        });
 
         // Draw the spaceship
-        this.drawSpaceship();
+        this.ship.draw(this.ctx, this.canvas.width / 2, this.canvas.height / 2);
 
-        // Draw the dots
-        this.drawDots();
+        // Draw the asteroids
+        this.drawAsteroids();
 
         // Update HUD
         this.updateHUD();
