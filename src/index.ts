@@ -92,6 +92,82 @@ class Game {
         });
     }
 
+    private calculateDistanceToShip(object: SpaceObject): number {
+        if (object === this.ship) return 0;
+        
+        const dx = object.getX() - this.ship.getX();
+        const dy = object.getY() - this.ship.getY();
+        return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    private drawTooltip(): void {
+        // Find the first hovered object
+        const hoveredObject = this.spaceObjects.find(obj => obj.isHoveredState());
+        
+        if (!hoveredObject) return;
+        
+        // Calculate screen position for the tooltip
+        let screenX: number;
+        let screenY: number;
+        
+        if (hoveredObject === this.ship) {
+            screenX = this.canvas.width / 2;
+            screenY = this.canvas.height / 2;
+        } else {
+            screenX = this.canvas.width / 2 + hoveredObject.getX() - this.ship.getX();
+            screenY = this.canvas.height / 2 + hoveredObject.getY() - this.ship.getY();
+        }
+        
+        // Get object type
+        const objectType = hoveredObject === this.ship ? "Ship" : "Asteroid";
+        
+        // Calculate distance to ship
+        const distance = this.calculateDistanceToShip(hoveredObject);
+        
+        // Format angle in degrees (0-360)
+        const angleDegrees = Math.round((hoveredObject.getAngle() * 180 / Math.PI + 360) % 360);
+        
+        // Prepare tooltip text
+        const tooltipText = [
+            `Type: ${objectType}`,
+            `Speed: ${hoveredObject.getSpeed()}`,
+            `Angle: ${angleDegrees}°`,
+            `Distance: ${Math.round(distance)}`
+        ];
+        
+        // Draw tooltip background
+        const padding = 5;
+        const lineHeight = 20;
+        const tooltipWidth = 150;
+        const tooltipHeight = tooltipText.length * lineHeight + padding * 2;
+        
+        // Position tooltip to avoid going off-screen
+        const tooltipX = Math.min(screenX + 30, this.canvas.width - tooltipWidth - 5);
+        const tooltipY = Math.min(screenY - tooltipHeight - 10, this.canvas.height - tooltipHeight - 5);
+        
+        // Draw tooltip background
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        this.ctx.fillRect(tooltipX, tooltipY, tooltipWidth, tooltipHeight);
+        
+        // Draw tooltip border
+        this.ctx.strokeStyle = '#ffffff';
+        this.ctx.lineWidth = 1;
+        this.ctx.strokeRect(tooltipX, tooltipY, tooltipWidth, tooltipHeight);
+        
+        // Draw tooltip text
+        this.ctx.fillStyle = '#ffffff';
+        this.ctx.font = '14px Arial';
+        this.ctx.textAlign = 'left';
+        
+        tooltipText.forEach((line, index) => {
+            this.ctx.fillText(
+                line, 
+                tooltipX + padding, 
+                tooltipY + padding + (index + 1) * lineHeight - 5
+            );
+        });
+    }
+
     private gameLoop(): void {
         const currentTime = performance.now();
         const deltaTime = (currentTime - this.lastTime) / 1000; // Convert to seconds
@@ -135,6 +211,9 @@ class Game {
             this.ship.getY(),
             this.spaceObjects.filter(obj => obj instanceof Asteroid) as Asteroid[]
         );
+
+        // Draw tooltip for hovered object
+        this.drawTooltip();
 
         // Update HUD
         this.updateHUD();
