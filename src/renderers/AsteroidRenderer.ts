@@ -1,4 +1,4 @@
-import { SpaceObject } from './SpaceObject';
+import { SpaceObject } from '../SpaceObject';
 
 export class AsteroidRenderer {
     drawAsteroids(ctx: CanvasRenderingContext2D, centerX: number, centerY: number, shipX: number, shipY: number, objects: SpaceObject[]): void {

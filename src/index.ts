@@ -1,4 +1,4 @@
-import { GameRenderer } from './GameRenderer';
+import { GameRenderer } from './renderers/GameRenderer';
 import { World } from './World';
 import { WorldInitializer } from './WorldInitializer';
 

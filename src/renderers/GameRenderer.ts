@@ -1,5 +1,5 @@
-import { Ship } from './Ship';
-import { SpaceObject } from './SpaceObject';
+import { Ship } from '../Ship';
+import { SpaceObject } from '../SpaceObject';
 import { AsteroidRenderer } from './AsteroidRenderer';
 import { ShipRenderer } from './ShipRenderer';
 import { RadarRenderer } from './RadarRenderer';

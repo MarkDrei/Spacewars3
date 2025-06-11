@@ -1,5 +1,5 @@
-import { Ship } from './Ship';
-import { SpaceObject } from './SpaceObject';
+import { Ship } from '../Ship';
+import { SpaceObject } from '../SpaceObject';
 
 export class ShipRenderer {
     drawShip(

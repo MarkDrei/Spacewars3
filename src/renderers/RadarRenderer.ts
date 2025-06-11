@@ -1,4 +1,4 @@
-import { Ship } from './Ship';
+import { Ship } from '../Ship';
 
 export class RadarRenderer {
     drawRadar(ctx: CanvasRenderingContext2D, centerX: number, centerY: number, ship: Ship): void {
