@@ -4,6 +4,8 @@ import { Asteroid } from './Asteroid';
 import { InterceptCalculator } from './InterceptCalculator';
 import { Collectible } from './Collectible';
 import { Player, InventoryItem } from './Player';
+import { Shipwreck, SalvageType } from './Shipwreck';
+import { EscapePod } from './EscapePod';
 
 export interface InterceptionData {
     targetObject: SpaceObject;
@@ -327,6 +329,9 @@ export class World {
             obj => obj instanceof Collectible && !((obj as Collectible).isCollectedState())
         ) as Collectible[];
         
+        // Track if we've collected anything to spawn a new object
+        let hasCollectedObject = false;
+        
         // Check each collectible for collision with ship
         collectibles.forEach(collectible => {
             // Calculate minimum distance (considering wrapping)
@@ -339,11 +344,17 @@ export class World {
             if (minDistance <= collectionRadius) {
                 // Apply collectible effect and update player stats
                 this.player.collectItem(collectible);
+                hasCollectedObject = true;
             }
         });
         
         // Remove collected objects from the world
         this.removeCollectedObjects();
+        
+        // Spawn a new random object if something was collected
+        if (hasCollectedObject) {
+            this.spawnRandomObject();
+        }
     }
 
     /**
@@ -396,5 +407,102 @@ export class World {
         
         // Create a new player with the ship
         this.player = new Player(ship);
+    }
+
+    /**
+     * Spawn a random object at a random position in the world
+     */
+    private spawnRandomObject(): void {
+        // Get a random position that's not too close to the ship
+        const position = this.getRandomSpawnPosition();
+        
+        // Random angle in radians
+        const randomAngle = Math.random() * Math.PI * 2;
+        
+        // Random angle in degrees for asteroid
+        const randomAngleDegrees = Math.floor(Math.random() * 360);
+        
+        // Random speed between 1 and 5
+        const randomSpeed = 1 + Math.random() * 4;
+        
+        // Random value between 5 and 20
+        const randomValue = Math.floor(5 + Math.random() * 15);
+        
+        // Decide which type of object to spawn (asteroid, shipwreck, or escape pod)
+        const objectType = Math.floor(Math.random() * 3);
+        
+        switch (objectType) {
+            case 0: // Asteroid
+                this.addSpaceObject(new Asteroid(
+                    position.x,
+                    position.y,
+                    randomAngleDegrees,
+                    randomSpeed,
+                    randomValue
+                ));
+                break;
+            case 1: // Shipwreck
+                // Random salvage type
+                const salvageTypes = [
+                    SalvageType.FUEL,
+                    SalvageType.WEAPONS,
+                    SalvageType.TECH,
+                    SalvageType.GENERIC
+                ];
+                const randomSalvageType = salvageTypes[Math.floor(Math.random() * salvageTypes.length)];
+                
+                this.addSpaceObject(new Shipwreck(
+                    position.x,
+                    position.y,
+                    randomAngle,
+                    randomSpeed / 2, // Slower speed for shipwrecks
+                    randomValue,
+                    randomSalvageType
+                ));
+                break;
+            case 2: // Escape Pod
+                // Random number of survivors (1-3)
+                const survivors = Math.floor(1 + Math.random() * 3);
+                
+                // 50% chance of distress signal being active
+                const distressSignalActive = Math.random() > 0.5;
+                
+                this.addSpaceObject(new EscapePod(
+                    position.x,
+                    position.y,
+                    randomAngle,
+                    randomSpeed,
+                    randomValue,
+                    survivors,
+                    distressSignalActive
+                ));
+                break;
+        }
+    }
+    
+    /**
+     * Get a random position that's not too close to the ship
+     */
+    private getRandomSpawnPosition(): { x: number, y: number } {
+        const ship = this.getShip();
+        const shipX = ship.getX();
+        const shipY = ship.getY();
+        
+        // Minimum safe distance from ship
+        const minDistance = 100;
+        
+        // Try to find a position that's not too close to the ship
+        let x, y, distance;
+        
+        do {
+            // Random position within world bounds
+            x = Math.random() * World.WIDTH;
+            y = Math.random() * World.HEIGHT;
+            
+            // Calculate distance from ship (considering wrapping)
+            distance = this.getMinDistanceInWrappedWorld(shipX, shipY, x, y);
+        } while (distance < minDistance);
+        
+        return { x, y };
     }
 } 
