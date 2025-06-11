@@ -24,11 +24,11 @@ class Game {
         this.mouseX = 0;
         this.mouseY = 0;
         
-        // Initialize renderer
-        this.gameRenderer = new GameRenderer(this.canvas);
-
         // Initialize world (default for now)
         this.world = WorldInitializer.createDefaultWorld();
+        
+        // Initialize renderer with the world
+        this.gameRenderer = new GameRenderer(this.canvas, this.world);
         
         // Try to load world from configuration
         this.loadWorld();
@@ -41,6 +41,9 @@ class Game {
         try {
             // Try to load the world from the configuration file
             this.world = await WorldInitializer.loadWorldFromFile('./worlds/default.json');
+            
+            // If we successfully loaded a new world, update the renderer
+            this.gameRenderer = new GameRenderer(this.canvas, this.world);
         } catch (error) {
             console.error('Failed to load world configuration:', error);
             // Keep using the default world if loading fails
@@ -118,28 +121,69 @@ class Game {
         }
         
         const ship = this.world.getShip();
+        const worldWidth = this.world.getWidth();
+        const worldHeight = this.world.getHeight();
         
         // Calculate screen position of interception point
         const screenX = this.canvas.width / 2 + (interceptionData.interceptX - ship.getX());
         const screenY = this.canvas.height / 2 + (interceptionData.interceptY - ship.getY());
         
-        // Draw the interception point
+        // Helper function to check if a screen position is visible
+        const isPositionVisible = (x: number, y: number): boolean => {
+            const margin = 50; // Margin for interception marker size
+            return (
+                x > -margin && 
+                x < this.canvas.width + margin && 
+                y > -margin && 
+                y < this.canvas.height + margin
+            );
+        };
+        
+        // Draw the main interception point if visible
+        if (isPositionVisible(screenX, screenY)) {
+            this.drawInterceptionMarker(ctx, screenX, screenY, timeRemaining);
+        }
+        
+        // Define offsets for the 8 possible wrapped positions (including diagonals)
+        const wrapOffsets = [
+            { x: -worldWidth, y: 0 },             // Left
+            { x: worldWidth, y: 0 },              // Right
+            { x: 0, y: -worldHeight },            // Top
+            { x: 0, y: worldHeight },             // Bottom
+            { x: -worldWidth, y: -worldHeight },  // Top-Left
+            { x: worldWidth, y: -worldHeight },   // Top-Right
+            { x: -worldWidth, y: worldHeight },   // Bottom-Left
+            { x: worldWidth, y: worldHeight }     // Bottom-Right
+        ];
+        
+        // Draw wrapped interception points
+        wrapOffsets.forEach(offset => {
+            const wrappedScreenX = screenX + offset.x;
+            const wrappedScreenY = screenY + offset.y;
+            
+            if (isPositionVisible(wrappedScreenX, wrappedScreenY)) {
+                this.drawInterceptionMarker(ctx, wrappedScreenX, wrappedScreenY, timeRemaining);
+            }
+        });
+    }
+    
+    private drawInterceptionMarker(ctx: CanvasRenderingContext2D, x: number, y: number, timeRemaining: number): void {
         ctx.save();
         
         // Draw a pulsing circle
         const pulseSize = 5 + 3 * Math.sin(performance.now() / 200);
         ctx.beginPath();
-        ctx.arc(screenX, screenY, pulseSize, 0, Math.PI * 2);
+        ctx.arc(x, y, pulseSize, 0, Math.PI * 2);
         ctx.fillStyle = 'rgba(255, 0, 0, 0.7)';
         ctx.fill();
         
         // Draw crosshairs
         const crosshairSize = 10;
         ctx.beginPath();
-        ctx.moveTo(screenX - crosshairSize, screenY);
-        ctx.lineTo(screenX + crosshairSize, screenY);
-        ctx.moveTo(screenX, screenY - crosshairSize);
-        ctx.lineTo(screenX, screenY + crosshairSize);
+        ctx.moveTo(x - crosshairSize, y);
+        ctx.lineTo(x + crosshairSize, y);
+        ctx.moveTo(x, y - crosshairSize);
+        ctx.lineTo(x, y + crosshairSize);
         ctx.strokeStyle = 'rgba(255, 0, 0, 0.7)';
         ctx.lineWidth = 2;
         ctx.stroke();
@@ -148,7 +192,7 @@ class Game {
         ctx.font = '12px Arial';
         ctx.fillStyle = '#ffffff';
         ctx.textAlign = 'center';
-        ctx.fillText(`${timeRemaining.toFixed(1)}s`, screenX, screenY - 15);
+        ctx.fillText(`${timeRemaining.toFixed(1)}s`, x, y - 15);
         
         ctx.restore();
     }
