@@ -1,6 +1,9 @@
 import { GameRenderer } from './renderers/GameRenderer';
 import { World } from './World';
 import { WorldInitializer } from './WorldInitializer';
+import { Collectible } from './Collectible';
+import { Shipwreck, SalvageType } from './Shipwreck';
+import { EscapePod } from './EscapePod';
 
 class Game {
     private canvas: HTMLCanvasElement;
@@ -14,6 +17,8 @@ class Game {
     private mouseY: number;
     private world: World;
     private scoreElement: HTMLElement | null;
+    private lastCollectedElement: HTMLElement | null;
+    private inventoryListElement: HTMLElement | null;
     private ctx: CanvasRenderingContext2D;
     private lastFrameTime: number = 0;
 
@@ -27,6 +32,8 @@ class Game {
         this.mouseX = 0;
         this.mouseY = 0;
         this.scoreElement = document.getElementById('score');
+        this.lastCollectedElement = document.getElementById('last-collected');
+        this.inventoryListElement = document.getElementById('inventory-list');
         
         // Get canvas context - using non-null assertion since we know the canvas exists
         const ctx = this.canvas.getContext('2d');
@@ -129,6 +136,65 @@ class Game {
         // Add score to HUD
         if (this.scoreElement) {
             this.scoreElement.textContent = this.world.getScore().toString();
+        }
+        
+        // Update last collected item display
+        if (this.lastCollectedElement) {
+            const lastCollected = this.world.getLastCollected();
+            if (lastCollected) {
+                let details = '';
+                if (lastCollected instanceof Shipwreck) {
+                    const salvageType = lastCollected.getSalvageType();
+                    details = `Shipwreck (${salvageType}) - Value: ${lastCollected.getValue()}`;
+                } else if (lastCollected instanceof EscapePod) {
+                    const survivors = lastCollected.getSurvivors();
+                    details = `Escape Pod (${survivors} survivors) - Value: ${lastCollected.getValue()}`;
+                }
+                this.lastCollectedElement.textContent = details;
+            } else {
+                this.lastCollectedElement.textContent = 'Nothing collected yet';
+            }
+        }
+        
+        // Update inventory display
+        if (this.inventoryListElement) {
+            const inventory = this.world.getInventory();
+            
+            // Sort inventory by most recent first
+            const sortedInventory = [...inventory].sort((a, b) => b.timestamp - a.timestamp);
+            
+            // Clear current list
+            this.inventoryListElement.innerHTML = '';
+            
+            // Add each item
+            if (sortedInventory.length === 0) {
+                this.inventoryListElement.textContent = 'No items collected';
+            } else {
+                sortedInventory.forEach(item => {
+                    const itemElement = document.createElement('div');
+                    itemElement.className = 'inventory-item';
+                    
+                    // Add specific class based on type
+                    if (item.type === 'shipwreck' && item.salvageType) {
+                        itemElement.classList.add(item.salvageType);
+                    } else if (item.type === 'escape-pod') {
+                        itemElement.classList.add('escape-pod');
+                    }
+                    
+                    // Format the item details
+                    let itemText = '';
+                    if (item.type === 'shipwreck') {
+                        itemText = `Shipwreck (${item.salvageType || 'generic'}) - ${item.value} pts`;
+                    } else if (item.type === 'escape-pod') {
+                        itemText = `Escape Pod - ${item.value} pts`;
+                    }
+                    
+                    itemElement.textContent = itemText;
+                    if (this.inventoryListElement) {
+                        this.inventoryListElement.appendChild(itemElement);
+                    }
+                });
+            }
         }
         
         // Add interception data to HUD if available

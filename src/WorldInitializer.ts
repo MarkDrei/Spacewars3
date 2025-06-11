@@ -43,9 +43,25 @@ export class WorldInitializer {
     static createDefaultWorld(): World {
         const world = new World();
         
-        // Add some collectibles to the default world
+        // Add asteroids in various positions
+        world.addSpaceObject(new Asteroid(100, 100, 45, 3));  // Moving northeast
+        world.addSpaceObject(new Asteroid(400, 100, 135, 2)); // Moving southeast
+        world.addSpaceObject(new Asteroid(400, 400, 225, 4)); // Moving southwest
+        world.addSpaceObject(new Asteroid(100, 400, 315, 1)); // Moving northwest
+        world.addSpaceObject(new Asteroid(250, 150, 180, 3)); // Moving south
+        
+        // Add shipwrecks with different salvage types
         world.addSpaceObject(new Shipwreck(150, 150, 0, 0, 10, SalvageType.FUEL));
+        world.addSpaceObject(new Shipwreck(350, 350, 0, 0, 15, SalvageType.WEAPONS));
+        world.addSpaceObject(new Shipwreck(200, 400, 0, 0, 20, SalvageType.GENERIC));
+        
+        // Add escape pods
         world.addSpaceObject(new EscapePod(350, 250, Math.PI / 4, 2, 20, 2, true));
+        world.addSpaceObject(new EscapePod(100, 300, Math.PI / 2, 3, 25, 3, true));
+        world.addSpaceObject(new EscapePod(450, 150, -Math.PI / 6, 1.5, 15, 1, false));
+        
+        // Add a moving shipwreck (like it's drifting)
+        world.addSpaceObject(new Shipwreck(300, 200, Math.PI / 3, 0.5, 30, SalvageType.TECH));
         
         return world;
     }

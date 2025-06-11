@@ -13,11 +13,21 @@ export interface InterceptionData {
     timestamp: number;
 }
 
+// New interface to track inventory items
+export interface InventoryItem {
+    type: string;
+    salvageType?: string;
+    value: number;
+    timestamp: number;
+}
+
 export class World {
     private ship: Ship;
     private spaceObjects: SpaceObject[];
     private interceptionData: InterceptionData | null = null;
     private score: number = 0;
+    private lastCollected: Collectible | null = null;
+    private inventory: InventoryItem[] = [];
     
     // World boundaries
     public static readonly WIDTH = 500;
@@ -28,13 +38,7 @@ export class World {
         this.ship = new Ship();
         
         // Initialize space objects (including ship)
-        this.spaceObjects = [
-            this.ship,
-            new Asteroid(-100, -100, 0, 10), // 0 degrees
-            new Asteroid(-100, -100, 180, 10), // 180 degrees
-            new Asteroid(0, 0, 0, 15), // Flying towards each other
-            new Asteroid(100, 0, 180, 15) // Flying towards each other
-        ];
+        this.spaceObjects = [this.ship];
     }
 
     // Getters
@@ -86,6 +90,20 @@ export class World {
      */
     addScore(points: number): void {
         this.score += points;
+    }
+
+    /**
+     * Get the last collected item
+     */
+    getLastCollected(): Collectible | null {
+        return this.lastCollected;
+    }
+    
+    /**
+     * Get the inventory of collected items
+     */
+    getInventory(): InventoryItem[] {
+        return this.inventory;
     }
 
     // Update all object positions based on their velocity and the elapsed time
@@ -306,8 +324,7 @@ export class World {
      */
     private checkCollectibleCollisions(): void {
         const ship = this.getShip();
-        const shipX = ship.getX();
-        const shipY = ship.getY();
+        
         const collectionRadius = 30; // Radius for collecting objects (larger than hover radius)
         
         // Get all collectibles
@@ -317,9 +334,9 @@ export class World {
         
         // Check each collectible for collision with ship
         collectibles.forEach(collectible => {
-            // Distance calculation considering wrapped world
+            // Calculate minimum distance (considering wrapping)
             const minDistance = this.getMinDistanceInWrappedWorld(
-                shipX, shipY, 
+                ship.getX(), ship.getY(),
                 collectible.getX(), collectible.getY()
             );
             
@@ -328,7 +345,20 @@ export class World {
                 // Apply collectible effect
                 collectible.onCollect(this);
                 
-                // Add value to score
+                // Track this as the last collected item
+                this.lastCollected = collectible;
+                
+                // Add to inventory
+                this.inventory.push({
+                    type: collectible.getType(),
+                    value: collectible.getValue(),
+                    timestamp: Date.now(),
+                    // Add salvage type if it's a shipwreck
+                    ...(collectible.getType() === 'shipwreck' && 
+                        { salvageType: (collectible as any).getSalvageType() })
+                });
+                
+                // Add to score
                 this.addScore(collectible.getValue());
             }
         });

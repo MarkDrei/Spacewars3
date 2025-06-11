@@ -4,17 +4,23 @@ export class RadarRenderer {
     drawRadar(ctx: CanvasRenderingContext2D, centerX: number, centerY: number, ship: Ship): void {
         const maxRadius = Math.min(centerX, centerY);
 
-        // Draw rings
-        for (let radius = maxRadius / 4; radius <= maxRadius; radius += maxRadius / 4) {
-            ctx.beginPath();
-            ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
-            ctx.strokeStyle = '#8b0000';  // Dark red for rings
-            ctx.lineWidth = 1;
-            ctx.stroke();
-        }
+        // Draw outer circle
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, maxRadius, 0, Math.PI * 2);
+        ctx.strokeStyle = '#8b0000';  // Dark red for rings
+        ctx.lineWidth = 1;
+        ctx.stroke();
 
-        // Draw lines
-        for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 4) {
+        // Draw inner circle at 75 distance
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, 75, 0, Math.PI * 2);
+        ctx.strokeStyle = '#8b0000';  // Dark red for rings
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        // Draw horizontal and vertical lines only (no diagonals)
+        const angles = [0, Math.PI / 2, Math.PI, Math.PI * 3 / 2];
+        for (let angle of angles) {
             ctx.beginPath();
             ctx.moveTo(centerX, centerY);
             ctx.lineTo(centerX + maxRadius * Math.cos(angle), centerY + maxRadius * Math.sin(angle));
