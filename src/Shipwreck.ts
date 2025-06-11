@@ -1,5 +1,5 @@
 import { Collectible } from './Collectible';
-import { World } from './World';
+import { Player } from './Player';
 
 /**
  * ShipWreck collectible - remains of a destroyed ship that can be salvaged.
@@ -31,14 +31,14 @@ export class Shipwreck extends Collectible {
     /**
      * Implementation of abstract method from Collectible.
      * Defines what happens when this ship wreck is collected.
-     * @param world - Reference to the game world
+     * @param player - Reference to the player
      */
-    onCollect(world: World): void {
+    onCollect(player: Player): void {
         // Apply effects based on salvage type
         switch (this.salvageType) {
             case SalvageType.FUEL:
                 // Example: Increase ship speed
-                const ship = world.getShip();
+                const ship = player.getShip();
                 ship.setSpeed(ship.getSpeed() + 5);
                 break;
                 

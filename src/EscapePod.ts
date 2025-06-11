@@ -1,5 +1,5 @@
 import { Collectible } from './Collectible';
-import { World } from './World';
+import { Player } from './Player';
 
 /**
  * EscapePod collectible - a life-saving pod ejected from a destroyed ship.
@@ -38,9 +38,9 @@ export class EscapePod extends Collectible {
     /**
      * Implementation of abstract method from Collectible.
      * Defines what happens when this escape pod is collected.
-     * @param world - Reference to the game world
+     * @param player - Reference to the player
      */
-    onCollect(world: World): void {
+    onCollect(player: Player): void {
         // Example effect: Could provide benefits based on number of survivors
         // For now, just mark as collected
         this.collect();

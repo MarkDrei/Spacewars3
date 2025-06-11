@@ -1,4 +1,5 @@
 import { SpaceObject } from './SpaceObject';
+import { Player } from './Player';
 
 /**
  * Abstract base class for all collectible objects in the game.
@@ -45,9 +46,9 @@ export abstract class Collectible extends SpaceObject {
     /**
      * Abstract method that defines what happens when this collectible is collected
      * Each collectible type will implement its own collection effect
-     * @param world - Reference to the game world
+     * @param player - Reference to the player
      */
-    abstract onCollect(world: any): void;
+    abstract onCollect(player: Player): void;
     
     /**
      * Get the type of collectible (for rendering and game logic)

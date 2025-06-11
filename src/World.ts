@@ -3,6 +3,7 @@ import { Ship } from './Ship';
 import { Asteroid } from './Asteroid';
 import { InterceptCalculator } from './InterceptCalculator';
 import { Collectible } from './Collectible';
+import { Player, InventoryItem } from './Player';
 
 export interface InterceptionData {
     targetObject: SpaceObject;
@@ -13,21 +14,10 @@ export interface InterceptionData {
     timestamp: number;
 }
 
-// New interface to track inventory items
-export interface InventoryItem {
-    type: string;
-    salvageType?: string;
-    value: number;
-    timestamp: number;
-}
-
 export class World {
-    private ship: Ship;
+    private player: Player;
     private spaceObjects: SpaceObject[];
     private interceptionData: InterceptionData | null = null;
-    private score: number = 0;
-    private lastCollected: Collectible | null = null;
-    private inventory: InventoryItem[] = [];
     
     // World boundaries
     public static readonly WIDTH = 500;
@@ -35,17 +25,18 @@ export class World {
 
     constructor() {
         // Initialize ship
-        this.ship = new Ship();
+        const ship = new Ship();
+        
+        // Initialize player with ship
+        this.player = new Player(ship);
         
         // Initialize space objects (including ship)
-        this.spaceObjects = [this.ship];
+        this.spaceObjects = [ship];
     }
 
     // Getters
     getShip(): Ship {
-        // Find the ship in the space objects array
-        const ship = this.spaceObjects.find(obj => obj instanceof Ship) as Ship;
-        return ship || this.ship; // Return the found ship or the stored reference
+        return this.player.getShip();
     }
 
     getSpaceObjects(): SpaceObject[] {
@@ -82,28 +73,35 @@ export class World {
      * Get the current score
      */
     getScore(): number {
-        return this.score;
+        return this.player.getScore();
     }
     
     /**
      * Add points to the score
      */
     addScore(points: number): void {
-        this.score += points;
+        this.player.addScore(points);
     }
 
     /**
      * Get the last collected item
      */
     getLastCollected(): Collectible | null {
-        return this.lastCollected;
+        return this.player.getLastCollected();
     }
     
     /**
      * Get the inventory of collected items
      */
     getInventory(): InventoryItem[] {
-        return this.inventory;
+        return this.player.getInventory();
+    }
+
+    /**
+     * Get the player object
+     */
+    getPlayer(): Player {
+        return this.player;
     }
 
     // Update all object positions based on their velocity and the elapsed time
@@ -277,41 +275,38 @@ export class World {
             }
         }
         
-        // If we found a valid interception
-        if (isFinite(bestInterceptTime)) {
-            // Wrap the interception point to world boundaries
-            const wrappedPos = this.wrapPosition(bestInterceptX, bestInterceptY);
-            
-            // Store interception data
+        // Check if we found a valid interception
+        if (bestInterceptTime !== Number.POSITIVE_INFINITY) {
+            // Store interception data for visualization
             this.interceptionData = {
                 targetObject: targetObject,
                 interceptTime: bestInterceptTime,
-                interceptX: wrappedPos.x,
-                interceptY: wrappedPos.y,
+                interceptX: bestInterceptX,
+                interceptY: bestInterceptY,
                 shipAngle: interceptAngle,
                 timestamp: performance.now()
             };
         }
     }
 
-    // Set ship angle directly (when clicking without a target)
+    /**
+     * Set the ship's angle directly
+     */
     setShipAngle(angle: number): void {
         const ship = this.getShip();
         ship.setAngle(angle);
-        // Clear any interception data
-        this.interceptionData = null;
     }
 
-    // Add a new space object to the world
+    /**
+     * Add a space object to the world
+     */
     addSpaceObject(object: SpaceObject): void {
         this.spaceObjects.push(object);
-        // If the object is a ship, update our ship reference
-        if (object instanceof Ship) {
-            this.ship = object;
-        }
     }
 
-    // Remove a space object from the world
+    /**
+     * Remove a space object from the world
+     */
     removeSpaceObject(object: SpaceObject): void {
         const index = this.spaceObjects.indexOf(object);
         if (index !== -1) {
@@ -342,54 +337,42 @@ export class World {
             
             // If ship is close enough, collect the item
             if (minDistance <= collectionRadius) {
-                // Apply collectible effect
-                collectible.onCollect(this);
-                
-                // Track this as the last collected item
-                this.lastCollected = collectible;
-                
-                // Add to inventory
-                this.inventory.push({
-                    type: collectible.getType(),
-                    value: collectible.getValue(),
-                    timestamp: Date.now(),
-                    // Add salvage type if it's a shipwreck
-                    ...(collectible.getType() === 'shipwreck' && 
-                        { salvageType: (collectible as any).getSalvageType() })
-                });
-                
-                // Add to score
-                this.addScore(collectible.getValue());
+                // Apply collectible effect and update player stats
+                this.player.collectItem(collectible);
             }
         });
         
         // Remove collected objects from the world
         this.removeCollectedObjects();
     }
-    
+
     /**
      * Calculate minimum distance between two points in a wrapped world
      */
     private getMinDistanceInWrappedWorld(x1: number, y1: number, x2: number, y2: number): number {
-        let minDistance = Number.MAX_VALUE;
+        // Check all 9 possible positions (wrapping around edges)
+        const worldWidth = World.WIDTH;
+        const worldHeight = World.HEIGHT;
         
-        // Try all possible wrapped positions and find the minimum distance
-        for (let offsetX = -1; offsetX <= 1; offsetX++) {
-            for (let offsetY = -1; offsetY <= 1; offsetY++) {
-                const wrappedX = x2 + offsetX * World.WIDTH;
-                const wrappedY = y2 + offsetY * World.HEIGHT;
+        let minDistanceSquared = Number.MAX_VALUE;
+        
+        // Try all combinations of wrapping in x and y directions
+        for (let dx = -1; dx <= 1; dx++) {
+            for (let dy = -1; dy <= 1; dy++) {
+                const wrappedX = x2 + dx * worldWidth;
+                const wrappedY = y2 + dy * worldHeight;
                 
-                const deltaX = wrappedX - x1;
-                const deltaY = wrappedY - y1;
-                const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+                const distX = wrappedX - x1;
+                const distY = wrappedY - y1;
+                const distSquared = distX * distX + distY * distY;
                 
-                minDistance = Math.min(minDistance, distance);
+                minDistanceSquared = Math.min(minDistanceSquared, distSquared);
             }
         }
         
-        return minDistance;
+        return Math.sqrt(minDistanceSquared);
     }
-    
+
     /**
      * Remove all collected objects from the world
      */
