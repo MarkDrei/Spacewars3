@@ -1,6 +1,7 @@
 import { WorldInitializer, WorldConfig } from '../WorldInitializer';
 import { Ship } from '../Ship';
 import { Asteroid } from '../Asteroid';
+import { Collectible } from '../Collectible';
 
 describe('WorldInitializer', () => {
     test('should create a default world', () => {
@@ -45,13 +46,15 @@ describe('WorldInitializer', () => {
                     x: 50,
                     y: 60,
                     angleDegrees: 90,
-                    speed: 5
+                    speed: 5,
+                    value: 10
                 },
                 {
                     x: -50,
                     y: -60,
                     angleDegrees: 270,
-                    speed: 10
+                    speed: 10,
+                    value: 15
                 }
             ]
         };
@@ -71,6 +74,12 @@ describe('WorldInitializer', () => {
         const positions = asteroids.map(a => ({ x: a.getX(), y: a.getY() }));
         expect(positions).toContainEqual(expect.objectContaining({ x: 50, y: 60 }));
         expect(positions).toContainEqual(expect.objectContaining({ x: -50, y: -60 }));
+        
+        // Verify they are collectible
+        asteroids.forEach(asteroid => {
+            expect(asteroid).toBeInstanceOf(Collectible);
+            expect(asteroid).toBeInstanceOf(Asteroid);
+        });
     });
     
     test('should create a world from config with partial ship properties', () => {

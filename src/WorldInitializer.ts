@@ -16,6 +16,7 @@ export interface WorldConfig {
         y: number;
         angleDegrees: number;
         speed: number;
+        value?: number;
     }[];
     shipWrecks?: {
         x: number;
@@ -89,8 +90,11 @@ export class WorldInitializer {
             if (config.ship.speed !== undefined) shipSpeed = config.ship.speed;
         }
         
+        // Create a new ship with the specified configuration
         const ship = new Ship(shipX, shipY, shipAngle, shipSpeed);
-        world.addSpaceObject(ship);
+        
+        // Update the player's ship in the world
+        world.setPlayerShip(ship);
         
         // Create and add asteroids
         if (config.asteroids) {
@@ -99,7 +103,8 @@ export class WorldInitializer {
                     asteroidConfig.x,
                     asteroidConfig.y,
                     asteroidConfig.angleDegrees,
-                    asteroidConfig.speed
+                    asteroidConfig.speed,
+                    asteroidConfig.value
                 );
                 world.addSpaceObject(asteroid);
             });

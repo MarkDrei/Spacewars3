@@ -384,4 +384,17 @@ export class World {
             return true;
         });
     }
+
+    /**
+     * Update the player's ship reference
+     */
+    setPlayerShip(ship: Ship): void {
+        // First, add the ship to space objects if it's not already there
+        if (!this.spaceObjects.includes(ship)) {
+            this.addSpaceObject(ship);
+        }
+        
+        // Create a new player with the ship
+        this.player = new Player(ship);
+    }
 } 
