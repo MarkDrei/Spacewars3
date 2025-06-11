@@ -1,5 +1,8 @@
 import { Ship } from '../Ship';
 import { SpaceObject } from '../SpaceObject';
+import { Collectible } from '../Collectible';
+import { Shipwreck, SalvageType } from '../Shipwreck';
+import { EscapePod } from '../EscapePod';
 
 export class TooltipRenderer {
     private ctx: CanvasRenderingContext2D;
@@ -36,27 +39,13 @@ export class TooltipRenderer {
             screenY = this.canvas.height / 2 + hoveredObject.getY() - ship.getY();
         }
         
-        // Get object type
-        const objectType = hoveredObject === ship ? "Ship" : "Asteroid";
-        
-        // Calculate distance to ship
-        const distance = this.calculateDistanceToShip(hoveredObject, ship);
-        
-        // Format angle in degrees (0-360)
-        const angleDegrees = Math.round((hoveredObject.getAngle() * 180 / Math.PI + 360) % 360);
-        
-        // Prepare tooltip text
-        const tooltipText = [
-            `Type: ${objectType}`,
-            `Speed: ${hoveredObject.getSpeed()}`,
-            `Angle: ${angleDegrees}°`,
-            `Distance: ${Math.round(distance)}`
-        ];
+        // Get object information
+        const tooltipText = this.getTooltipTextForObject(hoveredObject, ship);
         
         // Draw tooltip background
         const padding = 5;
         const lineHeight = 20;
-        const tooltipWidth = 150;
+        const tooltipWidth = 180;
         const tooltipHeight = tooltipText.length * lineHeight + padding * 2;
         
         // Position tooltip to avoid going off-screen
@@ -84,5 +73,88 @@ export class TooltipRenderer {
                 tooltipY + padding + (index + 1) * lineHeight - 5
             );
         });
+    }
+    
+    /**
+     * Get tooltip text based on object type
+     */
+    private getTooltipTextForObject(object: SpaceObject, ship: Ship): string[] {
+        // Calculate common properties
+        const distance = this.calculateDistanceToShip(object, ship);
+        const angleDegrees = Math.round((object.getAngle() * 180 / Math.PI + 360) % 360);
+        
+        // Check object type and create appropriate tooltip
+        if (object === ship) {
+            return [
+                'Type: Ship',
+                `Speed: ${object.getSpeed()}`,
+                `Angle: ${angleDegrees}°`
+            ];
+        } else if (object instanceof Collectible) {
+            return this.getCollectibleTooltip(object as Collectible, distance, angleDegrees);
+        } else {
+            return [
+                'Type: Asteroid',
+                `Speed: ${object.getSpeed()}`,
+                `Angle: ${angleDegrees}°`,
+                `Distance: ${Math.round(distance)}`
+            ];
+        }
+    }
+    
+    /**
+     * Get tooltip text for collectibles
+     */
+    private getCollectibleTooltip(collectible: Collectible, distance: number, angleDegrees: number): string[] {
+        const baseTooltip = [
+            `Type: ${this.getReadableTypeName(collectible)}`,
+            `Value: ${collectible.getValue()}`,
+            `Speed: ${collectible.getSpeed()}`,
+            `Angle: ${angleDegrees}°`,
+            `Distance: ${Math.round(distance)}`
+        ];
+        
+        // Add specific details based on collectible type
+        if (collectible instanceof Shipwreck) {
+            baseTooltip.splice(2, 0, `Salvage: ${this.getReadableSalvageType(collectible.getSalvageType())}`);
+        } else if (collectible instanceof EscapePod) {
+            baseTooltip.splice(2, 0, `Survivors: ${collectible.getSurvivors()}`);
+            
+            if (collectible.isDistressSignalActive()) {
+                baseTooltip.splice(3, 0, 'Distress Signal: Active');
+            }
+        }
+        
+        return baseTooltip;
+    }
+    
+    /**
+     * Convert collectible type to readable text
+     */
+    private getReadableTypeName(collectible: Collectible): string {
+        if (collectible instanceof Shipwreck) {
+            return 'Ship Wreck';
+        } else if (collectible instanceof EscapePod) {
+            return 'Escape Pod';
+        } else {
+            return 'Collectible';
+        }
+    }
+    
+    /**
+     * Convert salvage type to readable text
+     */
+    private getReadableSalvageType(type: SalvageType): string {
+        switch (type) {
+            case SalvageType.FUEL:
+                return 'Fuel';
+            case SalvageType.WEAPONS:
+                return 'Weapons';
+            case SalvageType.TECH:
+                return 'Technology';
+            case SalvageType.GENERIC:
+            default:
+                return 'Generic';
+        }
     }
 } 

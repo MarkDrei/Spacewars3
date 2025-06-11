@@ -205,4 +205,4 @@ export class InterceptCalculator {
         // Otherwise, it's moving away
         return Math.abs(angleDiff) > Math.PI / 2;
     }
-}
+} 

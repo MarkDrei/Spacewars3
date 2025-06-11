@@ -13,6 +13,9 @@ class Game {
     private mouseX: number;
     private mouseY: number;
     private world: World;
+    private scoreElement: HTMLElement | null;
+    private ctx: CanvasRenderingContext2D;
+    private lastFrameTime: number = 0;
 
     constructor() {
         this.canvas = document.getElementById('gameCanvas') as HTMLCanvasElement;
@@ -23,30 +26,49 @@ class Game {
         this.lastTime = performance.now();
         this.mouseX = 0;
         this.mouseY = 0;
+        this.scoreElement = document.getElementById('score');
+        
+        // Get canvas context - using non-null assertion since we know the canvas exists
+        const ctx = this.canvas.getContext('2d');
+        if (!ctx) {
+            throw new Error('Could not get canvas context');
+        }
+        this.ctx = ctx;
         
         // Initialize world (default for now)
         this.world = WorldInitializer.createDefaultWorld();
         
         // Initialize renderer with the world
-        this.gameRenderer = new GameRenderer(this.canvas, this.world);
+        this.gameRenderer = new GameRenderer(
+            this.ctx,
+            this.canvas,
+            this.world
+        );
         
         // Try to load world from configuration
         this.loadWorld();
         
         this.initializeEventListeners();
-        this.gameLoop();
+        this.initializeGame();
     }
     
     private async loadWorld(): Promise<void> {
         try {
-            // Try to load the world from the configuration file
-            this.world = await WorldInitializer.loadWorldFromFile('./worlds/default.json');
+            // Load a custom world configuration
+            const world = await WorldInitializer.loadWorldFromFile('./worlds/test_world.json');
             
-            // If we successfully loaded a new world, update the renderer
-            this.gameRenderer = new GameRenderer(this.canvas, this.world);
+            if (world) {
+                this.world = world;
+                
+                // If we successfully loaded a new world, update the renderer
+                this.gameRenderer = new GameRenderer(
+                    this.ctx,
+                    this.canvas,
+                    this.world
+                );
+            }
         } catch (error) {
             console.error('Failed to load world configuration:', error);
-            // Keep using the default world if loading fails
         }
     }
 
@@ -82,11 +104,32 @@ class Game {
         });
     }
 
+    private initializeGame(): void {
+        // Initialize world
+        this.world = WorldInitializer.createDefaultWorld();
+        
+        // Initialize renderer
+        this.gameRenderer = new GameRenderer(
+            this.ctx,
+            this.canvas,
+            this.world
+        );
+        
+        // Start the game loop
+        this.lastFrameTime = performance.now();
+        requestAnimationFrame(this.gameLoop.bind(this));
+    }
+
     private updateHUD(): void {
         const ship = this.world.getShip();
         this.clickCounterElement.textContent = this.clickCounter.toString();
         this.speedElement.textContent = ship.getSpeed().toString();
         this.coordinatesElement.textContent = `(${Math.round(ship.getX())}, ${Math.round(ship.getY())})`;
+        
+        // Add score to HUD
+        if (this.scoreElement) {
+            this.scoreElement.textContent = this.world.getScore().toString();
+        }
         
         // Add interception data to HUD if available
         const interceptionData = this.world.getInterceptionData();
@@ -197,10 +240,20 @@ class Game {
         ctx.restore();
     }
 
+    private render(): void {
+        const ship = this.world.getShip();
+        
+        // Draw the game world
+        this.gameRenderer.drawWorld(ship);
+        
+        // Draw interception point if available
+        this.drawInterceptionPoint(this.ctx);
+    }
+
     private gameLoop(): void {
         const currentTime = performance.now();
-        const deltaTime = (currentTime - this.lastTime) / 1000; // Convert to seconds
-        this.lastTime = currentTime;
+        const deltaTime = (currentTime - this.lastFrameTime) / 1000; // Convert to seconds
+        this.lastFrameTime = currentTime;
 
         // Update the world
         this.world.update(deltaTime);
@@ -208,38 +261,14 @@ class Game {
         // Update hover states
         this.updateHoverState();
 
-        // Draw background
-        this.gameRenderer.drawBackground();
-
-        // Draw radar
-        this.gameRenderer.drawRadar(this.world.getShip());
-
-        // Draw the spaceship
-        this.gameRenderer.drawShip(this.world.getShip());
-
-        // Get asteroids from the world (filter space objects to get only asteroids)
-        const asteroids = this.world.getSpaceObjects().filter(obj => obj !== this.world.getShip());
-        
-        // Draw the asteroids
-        this.gameRenderer.drawAsteroids(
-            this.world.getShip(),
-            asteroids
-        );
-        
-        // Get canvas context for drawing interception point
-        const ctx = this.canvas.getContext('2d')!;
-        
-        // Draw interception point if available
-        this.drawInterceptionPoint(ctx);
-        
-        // Draw tooltips
-        this.gameRenderer.drawTooltip(this.world.getSpaceObjects(), this.world.getShip());
-        
         // Update HUD
         this.updateHUD();
         
+        // Render the game
+        this.render();
+        
         // Request next frame
-        requestAnimationFrame(() => this.gameLoop());
+        requestAnimationFrame(this.gameLoop.bind(this));
     }
 }
 

@@ -2,6 +2,7 @@ import { SpaceObject } from './SpaceObject';
 import { Ship } from './Ship';
 import { Asteroid } from './Asteroid';
 import { InterceptCalculator } from './InterceptCalculator';
+import { Collectible } from './Collectible';
 
 export interface InterceptionData {
     targetObject: SpaceObject;
@@ -16,6 +17,7 @@ export class World {
     private ship: Ship;
     private spaceObjects: SpaceObject[];
     private interceptionData: InterceptionData | null = null;
+    private score: number = 0;
     
     // World boundaries
     public static readonly WIDTH = 500;
@@ -72,6 +74,20 @@ export class World {
         return { x: wrappedX, y: wrappedY };
     }
 
+    /**
+     * Get the current score
+     */
+    getScore(): number {
+        return this.score;
+    }
+    
+    /**
+     * Add points to the score
+     */
+    addScore(points: number): void {
+        this.score += points;
+    }
+
     // Update all object positions based on their velocity and the elapsed time
     update(deltaTime: number): void {
         // Update all space objects
@@ -84,6 +100,9 @@ export class World {
             obj.setX(wrappedPos.x);
             obj.setY(wrappedPos.y);
         });
+        
+        // Check for collisions with collectibles
+        this.checkCollectibleCollisions();
         
         // Update interception data if it exists
         if (this.interceptionData) {
@@ -280,5 +299,76 @@ export class World {
         if (index !== -1) {
             this.spaceObjects.splice(index, 1);
         }
+    }
+
+    /**
+     * Check for collisions between the ship and any collectibles
+     */
+    private checkCollectibleCollisions(): void {
+        const ship = this.getShip();
+        const shipX = ship.getX();
+        const shipY = ship.getY();
+        const collectionRadius = 30; // Radius for collecting objects (larger than hover radius)
+        
+        // Get all collectibles
+        const collectibles = this.spaceObjects.filter(
+            obj => obj instanceof Collectible && !((obj as Collectible).isCollectedState())
+        ) as Collectible[];
+        
+        // Check each collectible for collision with ship
+        collectibles.forEach(collectible => {
+            // Distance calculation considering wrapped world
+            const minDistance = this.getMinDistanceInWrappedWorld(
+                shipX, shipY, 
+                collectible.getX(), collectible.getY()
+            );
+            
+            // If ship is close enough, collect the item
+            if (minDistance <= collectionRadius) {
+                // Apply collectible effect
+                collectible.onCollect(this);
+                
+                // Add value to score
+                this.addScore(collectible.getValue());
+            }
+        });
+        
+        // Remove collected objects from the world
+        this.removeCollectedObjects();
+    }
+    
+    /**
+     * Calculate minimum distance between two points in a wrapped world
+     */
+    private getMinDistanceInWrappedWorld(x1: number, y1: number, x2: number, y2: number): number {
+        let minDistance = Number.MAX_VALUE;
+        
+        // Try all possible wrapped positions and find the minimum distance
+        for (let offsetX = -1; offsetX <= 1; offsetX++) {
+            for (let offsetY = -1; offsetY <= 1; offsetY++) {
+                const wrappedX = x2 + offsetX * World.WIDTH;
+                const wrappedY = y2 + offsetY * World.HEIGHT;
+                
+                const deltaX = wrappedX - x1;
+                const deltaY = wrappedY - y1;
+                const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+                
+                minDistance = Math.min(minDistance, distance);
+            }
+        }
+        
+        return minDistance;
+    }
+    
+    /**
+     * Remove all collected objects from the world
+     */
+    private removeCollectedObjects(): void {
+        this.spaceObjects = this.spaceObjects.filter(obj => {
+            if (obj instanceof Collectible) {
+                return !obj.isCollectedState();
+            }
+            return true;
+        });
     }
 } 

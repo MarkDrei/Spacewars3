@@ -1,6 +1,8 @@
 import { World } from './World';
 import { Ship } from './Ship';
 import { Asteroid } from './Asteroid';
+import { Shipwreck, SalvageType } from './Shipwreck';
+import { EscapePod } from './EscapePod';
 
 export interface WorldConfig {
     ship?: {
@@ -15,6 +17,23 @@ export interface WorldConfig {
         angleDegrees: number;
         speed: number;
     }[];
+    shipWrecks?: {
+        x: number;
+        y: number;
+        angle?: number;
+        speed?: number;
+        value?: number;
+        salvageType?: SalvageType;
+    }[];
+    escapePods?: {
+        x: number;
+        y: number;
+        angle: number;
+        speed?: number;
+        value?: number;
+        survivors?: number;
+        distressSignalActive?: boolean;
+    }[];
 }
 
 export class WorldInitializer {
@@ -22,7 +41,13 @@ export class WorldInitializer {
      * Creates a default world with predefined objects
      */
     static createDefaultWorld(): World {
-        return new World();
+        const world = new World();
+        
+        // Add some collectibles to the default world
+        world.addSpaceObject(new Shipwreck(150, 150, 0, 0, 10, SalvageType.FUEL));
+        world.addSpaceObject(new EscapePod(350, 250, Math.PI / 4, 2, 20, 2, true));
+        
+        return world;
     }
     
     /**
@@ -61,6 +86,37 @@ export class WorldInitializer {
                     asteroidConfig.speed
                 );
                 world.addSpaceObject(asteroid);
+            });
+        }
+        
+        // Create and add ship wrecks
+        if (config.shipWrecks) {
+            config.shipWrecks.forEach(wreckConfig => {
+                const shipWreck = new Shipwreck(
+                    wreckConfig.x,
+                    wreckConfig.y,
+                    wreckConfig.angle || 0,
+                    wreckConfig.speed || 0,
+                    wreckConfig.value || 10,
+                    wreckConfig.salvageType || SalvageType.GENERIC
+                );
+                world.addSpaceObject(shipWreck);
+            });
+        }
+        
+        // Create and add escape pods
+        if (config.escapePods) {
+            config.escapePods.forEach(podConfig => {
+                const escapePod = new EscapePod(
+                    podConfig.x,
+                    podConfig.y,
+                    podConfig.angle,
+                    podConfig.speed || 1,
+                    podConfig.value || 15,
+                    podConfig.survivors || 1,
+                    podConfig.distressSignalActive !== undefined ? podConfig.distressSignalActive : true
+                );
+                world.addSpaceObject(escapePod);
             });
         }
         
