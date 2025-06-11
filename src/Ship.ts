@@ -1,9 +1,8 @@
 import { SpaceObject } from './SpaceObject';
 
 export class Ship extends SpaceObject {
-    constructor() {
-        // Start at origin (0,0), angle 0, speed 20
-        super(0, 0, 0, 20);
+    constructor(x: number = 0, y: number = 0, angle: number = 0, speed: number = 20) {
+        super(x, y, angle, speed);
     }
 
     // Ship-specific methods can be added here if needed

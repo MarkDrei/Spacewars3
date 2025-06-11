@@ -1,17 +1,16 @@
-import { Asteroid } from './Asteroid';
 import { SpaceObject } from './SpaceObject';
 
 export class AsteroidRenderer {
-    drawAsteroids(ctx: CanvasRenderingContext2D, centerX: number, centerY: number, shipX: number, shipY: number, asteroids: Asteroid[]): void {
-        asteroids.forEach(asteroid => {
-            const asteroidScreenX = centerX + asteroid.getX() - shipX;
-            const asteroidScreenY = centerY + asteroid.getY() - shipY;
+    drawAsteroids(ctx: CanvasRenderingContext2D, centerX: number, centerY: number, shipX: number, shipY: number, objects: SpaceObject[]): void {
+        objects.forEach(object => {
+            const objectScreenX = centerX + object.getX() - shipX;
+            const objectScreenY = centerY + object.getY() - shipY;
             ctx.save();
-            ctx.translate(asteroidScreenX, asteroidScreenY);
-            ctx.rotate(asteroid.getAngle() + Math.PI/2);
+            ctx.translate(objectScreenX, objectScreenY);
+            ctx.rotate(object.getAngle() + Math.PI/2);
 
-            // Draw hover effect if asteroid is hovered
-            if (asteroid.isHoveredState()) {
+            // Draw hover effect if object is hovered
+            if (object.isHoveredState()) {
                 ctx.beginPath();
                 ctx.arc(0, 0, SpaceObject.HOVER_RADIUS, 0, Math.PI * 2);
                 ctx.strokeStyle = '#808080';

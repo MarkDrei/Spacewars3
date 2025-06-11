@@ -22,6 +22,14 @@ export abstract class SpaceObject {
         return this.y;
     }
 
+    setX(x: number): void {
+        this.x = x;
+    }
+
+    setY(y: number): void {
+        this.y = y;
+    }
+
     getAngle(): number {
         return this.angle;
     }

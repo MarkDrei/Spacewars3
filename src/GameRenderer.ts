@@ -1,5 +1,4 @@
 import { Ship } from './Ship';
-import { Asteroid } from './Asteroid';
 import { SpaceObject } from './SpaceObject';
 import { AsteroidRenderer } from './AsteroidRenderer';
 import { ShipRenderer } from './ShipRenderer';
@@ -50,14 +49,14 @@ export class GameRenderer {
         );
     }
 
-    drawAsteroids(ship: Ship, asteroids: Asteroid[]): void {
+    drawAsteroids(ship: Ship, objects: SpaceObject[]): void {
         this.asteroidRenderer.drawAsteroids(
             this.ctx,
             this.canvas.width / 2,
             this.canvas.height / 2,
             ship.getX(),
             ship.getY(),
-            asteroids
+            objects
         );
     }
 
