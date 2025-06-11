@@ -16,6 +16,10 @@ export class World {
     private ship: Ship;
     private spaceObjects: SpaceObject[];
     private interceptionData: InterceptionData | null = null;
+    
+    // World boundaries
+    public static readonly WIDTH = 500;
+    public static readonly HEIGHT = 500;
 
     constructor() {
         // Initialize ship
@@ -45,11 +49,41 @@ export class World {
     getInterceptionData(): InterceptionData | null {
         return this.interceptionData;
     }
+    
+    // Get world dimensions
+    getWidth(): number {
+        return World.WIDTH;
+    }
+    
+    getHeight(): number {
+        return World.HEIGHT;
+    }
+    
+    // Wrap a position to stay within world boundaries
+    wrapPosition(x: number, y: number): { x: number, y: number } {
+        // Wrap x-coordinate
+        let wrappedX = x % World.WIDTH;
+        if (wrappedX < 0) wrappedX += World.WIDTH;
+        
+        // Wrap y-coordinate
+        let wrappedY = y % World.HEIGHT;
+        if (wrappedY < 0) wrappedY += World.HEIGHT;
+        
+        return { x: wrappedX, y: wrappedY };
+    }
 
     // Update all object positions based on their velocity and the elapsed time
     update(deltaTime: number): void {
         // Update all space objects
-        this.spaceObjects.forEach(obj => obj.updatePosition(deltaTime));
+        this.spaceObjects.forEach(obj => {
+            // First update position normally
+            obj.updatePosition(deltaTime);
+            
+            // Then wrap position if needed
+            const wrappedPos = this.wrapPosition(obj.getX(), obj.getY());
+            obj.setX(wrappedPos.x);
+            obj.setY(wrappedPos.y);
+        });
         
         // Update interception data if it exists
         if (this.interceptionData) {
@@ -71,12 +105,49 @@ export class World {
             obj.setHovered(false);
         });
         
+        // Wrap mouse position to world boundaries
+        const wrappedMouse = this.wrapPosition(worldMouseX, worldMouseY);
+        
         // Then, set hover state for objects under the mouse
         this.spaceObjects.forEach(obj => {
-            if (obj.isPointInHoverRadius(worldMouseX, worldMouseY)) {
+            // Check if the object is hovered at its current position
+            if (obj.isPointInHoverRadius(wrappedMouse.x, wrappedMouse.y)) {
                 obj.setHovered(true);
+                return;
             }
+            
+            // Check for hover near world edges (for wrapped objects)
+            this.checkWrappedHover(obj, wrappedMouse.x, wrappedMouse.y);
         });
+    }
+    
+    // Check if an object is hovered when considering wrapping
+    private checkWrappedHover(obj: SpaceObject, mouseX: number, mouseY: number): void {
+        const objX = obj.getX();
+        const objY = obj.getY();
+        const radius = obj.getHoverRadius();
+        
+        // Check all 8 possible wrapped positions around the world edges
+        const positions = [
+            { x: objX - World.WIDTH, y: objY },                  // Left
+            { x: objX + World.WIDTH, y: objY },                  // Right
+            { x: objX, y: objY - World.HEIGHT },                 // Top
+            { x: objX, y: objY + World.HEIGHT },                 // Bottom
+            { x: objX - World.WIDTH, y: objY - World.HEIGHT },   // Top-Left
+            { x: objX + World.WIDTH, y: objY - World.HEIGHT },   // Top-Right
+            { x: objX - World.WIDTH, y: objY + World.HEIGHT },   // Bottom-Left
+            { x: objX + World.WIDTH, y: objY + World.HEIGHT }    // Bottom-Right
+        ];
+        
+        // Check if any of these positions are within hover radius
+        for (const pos of positions) {
+            const dx = mouseX - pos.x;
+            const dy = mouseY - pos.y;
+            if (dx * dx + dy * dy <= radius * radius) {
+                obj.setHovered(true);
+                return;
+            }
+        }
     }
 
     // Find a hovered object that isn't the ship
@@ -98,53 +169,91 @@ export class World {
         const targetAngle = targetObject.getAngle();
         const shipSpeed = ship.getSpeed();
         
-        // Calculate velocities
-        const targetVelX = targetSpeed * Math.cos(targetAngle);
-        const targetVelY = targetSpeed * Math.sin(targetAngle);
-        const shipVelX = shipSpeed * Math.cos(interceptAngle);
-        const shipVelY = shipSpeed * Math.sin(interceptAngle);
+        // Get positions
+        const shipX = ship.getX();
+        const shipY = ship.getY();
+        const targetX = targetObject.getX();
+        const targetY = targetObject.getY();
         
-        // Calculate relative positions
-        const relativeX = targetObject.getX() - ship.getX();
-        const relativeY = targetObject.getY() - ship.getY();
+        // Initialize variables for best solution
+        let bestInterceptTime = Number.POSITIVE_INFINITY;
+        let bestInterceptX = 0;
+        let bestInterceptY = 0;
         
-        // Calculate relative velocity
-        const relVelX = shipVelX - targetVelX;
-        const relVelY = shipVelY - targetVelY;
-        
-        // Calculate quadratic equation coefficients
-        const a = relVelX * relVelX + relVelY * relVelY;
-        const b = 2 * (relativeX * relVelX + relativeY * relVelY);
-        const c = relativeX * relativeX + relativeY * relativeY;
-        
-        // Calculate discriminant
-        const discriminant = b * b - 4 * a * c;
-        
-        // If interception is possible
-        if (discriminant >= 0) {
-            // Calculate interception time (smaller positive root)
-            const t1 = (-b + Math.sqrt(discriminant)) / (2 * a);
-            const t2 = (-b - Math.sqrt(discriminant)) / (2 * a);
-            
-            let interceptTime = Number.MAX_VALUE;
-            if (t1 > 0) interceptTime = t1;
-            if (t2 > 0 && t2 < interceptTime) interceptTime = t2;
-            
-            if (interceptTime !== Number.MAX_VALUE) {
-                // Calculate future positions
-                const futureTargetX = targetObject.getX() + targetVelX * interceptTime;
-                const futureTargetY = targetObject.getY() + targetVelY * interceptTime;
+        // Try all images of ship and target (shifting by -wrapSize, 0, +wrapSize in both axes)
+        for (let kxX = -1; kxX <= 1; kxX++) {
+            for (let kyX = -1; kyX <= 1; kyX++) {
+                const shipXi = shipX + kxX * World.WIDTH;
+                const shipYi = shipY + kyX * World.HEIGHT;
                 
-                // Store interception data
-                this.interceptionData = {
-                    targetObject: targetObject,
-                    interceptTime: interceptTime,
-                    interceptX: futureTargetX,
-                    interceptY: futureTargetY,
-                    shipAngle: interceptAngle,
-                    timestamp: performance.now()
-                };
+                for (let kxY = -1; kxY <= 1; kxY++) {
+                    for (let kyY = -1; kyY <= 1; kyY++) {
+                        const targetXi = targetX + kxY * World.WIDTH;
+                        const targetYi = targetY + kyY * World.HEIGHT;
+                        
+                        // Calculate relative positions
+                        const dx = targetXi - shipXi;
+                        const dy = targetYi - shipYi;
+                        
+                        // Calculate velocities
+                        const targetVelX = targetSpeed * Math.cos(targetAngle);
+                        const targetVelY = targetSpeed * Math.sin(targetAngle);
+                        const shipVelX = shipSpeed * Math.cos(interceptAngle);
+                        const shipVelY = shipSpeed * Math.sin(interceptAngle);
+                        
+                        // Calculate relative velocity
+                        const relVelX = shipVelX - targetVelX;
+                        const relVelY = shipVelY - targetVelY;
+                        
+                        // Calculate quadratic equation coefficients
+                        const a = relVelX * relVelX + relVelY * relVelY;
+                        const b = 2 * (dx * relVelX + dy * relVelY);
+                        const c = dx * dx + dy * dy;
+                        
+                        // Calculate discriminant
+                        const discriminant = b * b - 4 * a * c;
+                        
+                        // If interception is possible
+                        if (discriminant >= 0 && a > 0.0001) {
+                            // Calculate interception time (smaller positive root)
+                            const t1 = (-b + Math.sqrt(discriminant)) / (2 * a);
+                            const t2 = (-b - Math.sqrt(discriminant)) / (2 * a);
+                            
+                            let interceptTime = Number.MAX_VALUE;
+                            if (t1 > 0) interceptTime = t1;
+                            if (t2 > 0 && t2 < interceptTime) interceptTime = t2;
+                            
+                            if (interceptTime !== Number.MAX_VALUE && interceptTime < bestInterceptTime) {
+                                bestInterceptTime = interceptTime;
+                                
+                                // Calculate future positions
+                                const futureTargetX = targetXi + targetVelX * interceptTime;
+                                const futureTargetY = targetYi + targetVelY * interceptTime;
+                                
+                                // Store wrapped interception coordinates
+                                bestInterceptX = futureTargetX;
+                                bestInterceptY = futureTargetY;
+                            }
+                        }
+                    }
+                }
             }
+        }
+        
+        // If we found a valid interception
+        if (isFinite(bestInterceptTime)) {
+            // Wrap the interception point to world boundaries
+            const wrappedPos = this.wrapPosition(bestInterceptX, bestInterceptY);
+            
+            // Store interception data
+            this.interceptionData = {
+                targetObject: targetObject,
+                interceptTime: bestInterceptTime,
+                interceptX: wrappedPos.x,
+                interceptY: wrappedPos.y,
+                shipAngle: interceptAngle,
+                timestamp: performance.now()
+            };
         }
     }
 
