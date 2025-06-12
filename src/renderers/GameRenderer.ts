@@ -139,18 +139,30 @@ export class GameRenderer {
     }
 
     drawAsteroids(ship: Ship, objects: SpaceObject[]): void {
-        // Draw the main objects first
-        this.asteroidRenderer.drawAsteroids(
-            this.ctx,
-            this.canvas.width / 2,
-            this.canvas.height / 2,
-            ship.getX(),
-            ship.getY(),
-            objects
-        );
+        // Get all asteroids, including those that are collectibles
+        const allObjects = [...objects];
+        
+        // Add asteroid collectibles if they're not already in the objects list
+        const asteroidCollectibles = this.world.getSpaceObjects()
+            .filter(obj => obj instanceof Asteroid && !objects.includes(obj));
+        allObjects.push(...asteroidCollectibles);
+        
+        // Draw each asteroid individually
+        allObjects.forEach(obj => {
+            if (obj instanceof Asteroid || !(obj instanceof Collectible)) {
+                this.asteroidRenderer.drawAsteroid(
+                    this.ctx,
+                    this.canvas.width / 2,
+                    this.canvas.height / 2,
+                    ship.getX(),
+                    ship.getY(),
+                    obj
+                );
+            }
+        });
         
         // Now draw the wrapped objects
-        this.drawWrappedObjects(ship, objects);
+        this.drawWrappedObjects(ship, allObjects);
     }
     
     private drawWrappedObjects(ship: Ship, objects: SpaceObject[]): void {
@@ -236,17 +248,16 @@ export class GameRenderer {
             isHoveredState: () => object.isHoveredState()
         } as SpaceObject;
         
-        // Only draw non-collectible objects here
-        // Collectibles (including asteroids) are handled in drawWrappedCollectibles
-        if (!(object instanceof Collectible)) {
+        // Handle all objects, including Asteroids that are Collectibles
+        if (!(object instanceof Collectible) || object instanceof Asteroid) {
             // Use the asteroid renderer to draw this wrapped object
-            this.asteroidRenderer.drawAsteroids(
+            this.asteroidRenderer.drawAsteroid(
                 this.ctx,
                 centerX,
                 centerY,
                 shipX,
                 shipY,
-                [wrappedObject]
+                wrappedObject
             );
         }
     }
@@ -265,14 +276,9 @@ export class GameRenderer {
         // Get all space objects except the ship
         const objects = this.world.getSpaceObjects().filter(obj => obj !== ship);
         
-        // Separate objects by type
-        const nonCollectibles = objects.filter(obj => !(obj instanceof Collectible));
         const collectibles = objects.filter(obj => obj instanceof Collectible) as Collectible[];
         
-        // Draw non-collectible objects
-        this.drawAsteroids(ship, nonCollectibles);
-        
-        // Draw collectibles (including asteroid collectibles)
+        // Draw collectibles 
         this.drawCollectibles(ship, collectibles);
         
         // Draw ship
@@ -339,13 +345,13 @@ export class GameRenderer {
                 );
             } else if (collectible instanceof Asteroid) {
                 // Handle asteroid collectibles
-                this.asteroidRenderer.drawAsteroids(
+                this.asteroidRenderer.drawAsteroid(
                     this.ctx,
                     centerX,
                     centerY,
                     shipX,
                     shipY,
-                    [collectible]
+                    collectible
                 );
             }
         });
@@ -413,22 +419,13 @@ export class GameRenderer {
                             collectible
                         );
                     } else if (collectible instanceof Asteroid) {
-                        // Create a temporary wrapped asteroid for rendering
-                        const wrappedObject = {
-                            getX: () => wrappedX,
-                            getY: () => wrappedY,
-                            getAngle: () => collectible.getAngle(),
-                            getSpeed: () => collectible.getSpeed(),
-                            isHoveredState: () => collectible.isHoveredState()
-                        } as SpaceObject;
-                        
-                        this.asteroidRenderer.drawAsteroids(
+                        this.asteroidRenderer.drawAsteroid(
                             this.ctx,
-                            centerX,
-                            centerY,
+                            centerX + offset.x,
+                            centerY + offset.y,
                             shipX,
                             shipY,
-                            [wrappedObject]
+                            collectible
                         );
                     }
                 }
