@@ -129,15 +129,6 @@ export class GameRenderer {
         );
     }
 
-    drawShip(ship: Ship): void {
-        this.shipRenderer.drawShip(
-            this.ctx,
-            this.canvas.width / 2,
-            this.canvas.height / 2,
-            ship
-        );
-    }
-
     drawTooltip(spaceObjects: SpaceObject[], ship: Ship): void {
         this.tooltipRenderer.drawTooltip(spaceObjects, ship);
     }
