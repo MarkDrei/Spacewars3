@@ -1,10 +1,12 @@
-# Space Explorer Game
+# Spacewars: Ironcore
 
-A 2D space exploration game with a toroidal world, featuring collectable objects, interception mechanics, and a radar system.
+This project is an experimental project, mainly focusing on trying out vibe coding in a technology that I hardly know.
+
+Goal is to create a 2D space exploration game with a toroidal world, featuring collectable objects, interception mechanics, and a radar system.
 
 ## Overview
 
-Space Explorer is a browser-based game where the player navigates a spaceship in a 2D toroidal world (the edges wrap around). The player can collect various objects such as shipwrecks and escape pods, and the game includes a sophisticated interception algorithm for targeting moving objects.
+Spacewars is a browser-based game where the player navigates a spaceship in a 2D toroidal world (the edges wrap around). The player can collect various objects such as shipwrecks and escape pods, and the game includes a sophisticated interception algorithm for targeting moving objects.
 
 ## Architecture
 
