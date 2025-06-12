@@ -98,16 +98,6 @@ export class AsteroidRenderer {
         ctx.restore();
     }
 
-    drawAsteroids(ctx: CanvasRenderingContext2D, centerX: number, centerY: number, shipX: number, shipY: number, objects: SpaceObject[]): void {
-        // Filter objects to only include asteroids
-        const asteroids = objects.filter(obj => obj instanceof Asteroid) as Asteroid[];
-        
-        // Draw each asteroid using the new method
-        asteroids.forEach(asteroid => {
-            this.drawAsteroid(ctx, centerX, centerY, shipX, shipY, asteroid);
-        });
-    }
-
     private drawCrater(ctx: CanvasRenderingContext2D, x: number, y: number, size: number): void {
         ctx.beginPath();
         ctx.arc(x, y, size, 0, Math.PI * 2);
