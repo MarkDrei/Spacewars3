@@ -81,7 +81,7 @@ export class GameRenderer {
         this.drawWorldBoundaries();
     }
     
-    // Draw the world boundaries
+    // Draw the world boundaries with a green color
     private drawWorldBoundaries(): void {
         const shipX = this.world.getShip().getX();
         const shipY = this.world.getShip().getY();
@@ -139,11 +139,17 @@ export class GameRenderer {
         // Draw the background
         this.drawBackground();
         
-        // Get all space objects except the ship
-        const objects = this.world.getSpaceObjects().filter(obj => obj !== ship);
-        
         // Get collectibles
+        const objects = this.world.getSpaceObjects();
         const collectibles = objects.filter(obj => obj instanceof Collectible) as Collectible[];
+        
+        // Draw radar centered around the ship
+        this.radarRenderer.drawRadar(
+            this.ctx,
+            this.canvas.width / 2,
+            this.canvas.height / 2,
+            ship
+        );
         
         // Draw collectibles using the collectibles renderer
         this.collectiblesRenderer.drawCollectibles(
@@ -155,14 +161,6 @@ export class GameRenderer {
         
         // Draw ship
         this.shipRenderer.drawShip(
-            this.ctx,
-            this.canvas.width / 2,
-            this.canvas.height / 2,
-            ship
-        );
-        
-        // Draw radar centered around the ship
-        this.radarRenderer.drawRadar(
             this.ctx,
             this.canvas.width / 2,
             this.canvas.height / 2,

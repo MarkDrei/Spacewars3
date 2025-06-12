@@ -32,7 +32,8 @@ export class RadarRenderer {
         // Draw coordinates
         const shipX = ship.getX();
         const shipY = ship.getY();
-        const coordinateDistance = 200; // Only show coordinates within 200 units
+        const coordinateDistance = 400; // Show coordinates within 400 units
+        const innerExclusionZone = 70; // Don't show coordinates within 70 units
 
         // Calculate the range of coordinates to show
         const minX = Math.floor((shipX - coordinateDistance) / 50) * 50;
@@ -47,9 +48,13 @@ export class RadarRenderer {
         ctx.textAlign = 'center';
         for (let x = minX; x <= maxX; x += 50) {
             if (x % 50 === 0) { // Only draw coordinates divisible by 50
-                const screenX = centerX + (x - shipX);
-                const screenY = centerY + 15; // Position below the center
-                ctx.fillText(x.toString(), screenX, screenY);
+                const distanceFromShipX = Math.abs(x - shipX);
+                // Only draw if outside the inner exclusion zone and within the outer limit
+                if (distanceFromShipX >= innerExclusionZone && distanceFromShipX <= coordinateDistance) {
+                    const screenX = centerX + (x - shipX);
+                    const screenY = centerY + 15; // Position below the center
+                    ctx.fillText(x.toString(), screenX, screenY);
+                }
             }
         }
 
@@ -57,9 +62,13 @@ export class RadarRenderer {
         ctx.textAlign = 'right';
         for (let y = minY; y <= maxY; y += 50) {
             if (y % 50 === 0) { // Only draw coordinates divisible by 50
-                const screenX = centerX - 15; // Position to the left of the center
-                const screenY = centerY + (y - shipY);
-                ctx.fillText(y.toString(), screenX, screenY);
+                const distanceFromShipY = Math.abs(y - shipY);
+                // Only draw if outside the inner exclusion zone and within the outer limit
+                if (distanceFromShipY >= innerExclusionZone && distanceFromShipY <= coordinateDistance) {
+                    const screenX = centerX - 15; // Position to the left of the center
+                    const screenY = centerY + (y - shipY);
+                    ctx.fillText(y.toString(), screenX, screenY);
+                }
             }
         }
     }
