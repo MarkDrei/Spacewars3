@@ -43,36 +43,50 @@ export class CollectiblesRenderer {
         const shipY = ship.getY();
         
         collectibles.forEach(collectible => {
-            if (collectible instanceof Shipwreck) {
-                this.shipwreckRenderer.drawCollectible(
-                    this.ctx,
-                    centerX,
-                    centerY,
-                    shipX,
-                    shipY,
-                    collectible
-                );
-            } else if (collectible instanceof EscapePod) {
-                this.escapePodRenderer.drawCollectible(
-                    this.ctx,
-                    centerX,
-                    centerY,
-                    shipX,
-                    shipY,
-                    collectible
-                );
-            } else if (collectible instanceof Asteroid) {
-                // Handle asteroid collectibles
-                this.asteroidRenderer.drawCollectible(
-                    this.ctx,
-                    centerX,
-                    centerY,
-                    shipX,
-                    shipY,
-                    collectible
-                );
-            }
+            this.renderCollectible(collectible, centerX, centerY, shipX, shipY);
         });
+    }
+    
+    /**
+     * Render a single collectible at the specified position
+     */
+    private renderCollectible(
+        collectible: Collectible, 
+        screenX: number, 
+        screenY: number, 
+        shipX: number, 
+        shipY: number,
+        offsetX: number = 0,
+        offsetY: number = 0
+    ): void {
+        if (collectible instanceof Shipwreck) {
+            this.shipwreckRenderer.drawCollectible(
+                this.ctx,
+                screenX + offsetX,
+                screenY + offsetY,
+                shipX,
+                shipY,
+                collectible
+            );
+        } else if (collectible instanceof EscapePod) {
+            this.escapePodRenderer.drawCollectible(
+                this.ctx,
+                screenX + offsetX,
+                screenY + offsetY,
+                shipX,
+                shipY,
+                collectible
+            );
+        } else if (collectible instanceof Asteroid) {
+            this.asteroidRenderer.drawCollectible(
+                this.ctx,
+                screenX + offsetX,
+                screenY + offsetY,
+                shipX,
+                shipY,
+                collectible
+            );
+        }
     }
     
     /**
@@ -137,34 +151,7 @@ export class CollectiblesRenderer {
                 
                 // Only draw if it would be visible on screen
                 if (this.isPositionVisible(wrappedX, wrappedY, visibleLeft, visibleRight, visibleTop, visibleBottom)) {
-                    if (collectible instanceof Shipwreck) {
-                        this.shipwreckRenderer.drawCollectible(
-                            this.ctx,
-                            centerX + offset.x,
-                            centerY + offset.y,
-                            shipX,
-                            shipY,
-                            collectible
-                        );
-                    } else if (collectible instanceof EscapePod) {
-                        this.escapePodRenderer.drawCollectible(
-                            this.ctx,
-                            centerX + offset.x,
-                            centerY + offset.y,
-                            shipX,
-                            shipY,
-                            collectible
-                        );
-                    } else if (collectible instanceof Asteroid) {
-                        this.asteroidRenderer.drawCollectible(
-                            this.ctx,
-                            centerX + offset.x,
-                            centerY + offset.y,
-                            shipX,
-                            shipY,
-                            collectible
-                        );
-                    }
+                    this.renderCollectible(collectible, centerX, centerY, shipX, shipY, offset.x, offset.y);
                 }
             });
         });
