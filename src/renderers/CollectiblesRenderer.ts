@@ -63,7 +63,7 @@ export class CollectiblesRenderer {
                 );
             } else if (collectible instanceof Asteroid) {
                 // Handle asteroid collectibles
-                this.asteroidRenderer.drawAsteroid(
+                this.asteroidRenderer.drawCollectible(
                     this.ctx,
                     centerX,
                     centerY,
@@ -156,7 +156,7 @@ export class CollectiblesRenderer {
                             collectible
                         );
                     } else if (collectible instanceof Asteroid) {
-                        this.asteroidRenderer.drawAsteroid(
+                        this.asteroidRenderer.drawCollectible(
                             this.ctx,
                             centerX + offset.x,
                             centerY + offset.y,

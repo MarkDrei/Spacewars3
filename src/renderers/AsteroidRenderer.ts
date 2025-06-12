@@ -1,23 +1,18 @@
 import { Asteroid } from '../Asteroid';
 import { SpaceObject } from '../SpaceObject';
+import { Collectible } from '../Collectible';
+import { CollectibleRenderer } from './CollectibleRenderer';
 
-export class AsteroidRenderer {
+export class AsteroidRenderer extends CollectibleRenderer {
     drawAsteroid(ctx: CanvasRenderingContext2D, centerX: number, centerY: number, shipX: number, shipY: number, asteroid: SpaceObject): void {
-        const objectScreenX = centerX + asteroid.getX() - shipX;
-        const objectScreenY = centerY + asteroid.getY() - shipY;
-        ctx.save();
-        ctx.translate(objectScreenX, objectScreenY);
-        ctx.rotate(asteroid.getAngle() + Math.PI/2);
+        // Use the base class method to handle common drawing functionality
+        this.drawCollectible(ctx, centerX, centerY, shipX, shipY, asteroid as Collectible);
+    }
 
-        // Draw hover effect if object is hovered
-        if (asteroid.isHoveredState()) {
-            ctx.beginPath();
-            ctx.arc(0, 0, SpaceObject.HOVER_RADIUS, 0, Math.PI * 2);
-            ctx.strokeStyle = '#808080';
-            ctx.lineWidth = 1;
-            ctx.stroke();
-        }
-
+    /**
+     * Implementation of the abstract method from CollectibleRenderer
+     */
+    protected drawCollectibleShape(ctx: CanvasRenderingContext2D, collectible: Collectible): void {
         // Draw the main asteroid body
         ctx.beginPath();
         // Create an irregular, rocky shape
@@ -94,8 +89,6 @@ export class AsteroidRenderer {
         ctx.strokeStyle = '#d7ccc8';  // Very light highlight
         ctx.lineWidth = 1;
         ctx.stroke();
-
-        ctx.restore();
     }
 
     private drawCrater(ctx: CanvasRenderingContext2D, x: number, y: number, size: number): void {
