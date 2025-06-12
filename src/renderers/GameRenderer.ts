@@ -11,6 +11,7 @@ import { EscapePodRenderer } from './EscapePodRenderer';
 import { Shipwreck } from '../Shipwreck';
 import { EscapePod } from '../EscapePod';
 import { Asteroid } from '../Asteroid';
+import { CollectiblesRenderer } from './CollectiblesRenderer';
 
 export class GameRenderer {
     private ctx: CanvasRenderingContext2D;
@@ -20,8 +21,7 @@ export class GameRenderer {
     private asteroidRenderer: AsteroidRenderer;
     private radarRenderer: RadarRenderer;
     private tooltipRenderer: TooltipRenderer;
-    private shipwreckRenderer: ShipwreckRenderer;
-    private escapePodRenderer: EscapePodRenderer;
+    private collectiblesRenderer: CollectiblesRenderer;
 
     constructor(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, world: World) {
         this.ctx = ctx;
@@ -31,8 +31,7 @@ export class GameRenderer {
         this.asteroidRenderer = new AsteroidRenderer();
         this.radarRenderer = new RadarRenderer();
         this.tooltipRenderer = new TooltipRenderer(canvas);
-        this.shipwreckRenderer = new ShipwreckRenderer();
-        this.escapePodRenderer = new EscapePodRenderer();
+        this.collectiblesRenderer = new CollectiblesRenderer(ctx, canvas);
     }
 
     drawBackground(): void {
@@ -143,10 +142,16 @@ export class GameRenderer {
         // Get all space objects except the ship
         const objects = this.world.getSpaceObjects().filter(obj => obj !== ship);
         
+        // Get collectibles
         const collectibles = objects.filter(obj => obj instanceof Collectible) as Collectible[];
         
-        // Draw collectibles 
-        this.drawCollectibles(ship, collectibles);
+        // Draw collectibles using the collectibles renderer
+        this.collectiblesRenderer.drawCollectibles(
+            ship, 
+            collectibles, 
+            this.world.getWidth(), 
+            this.world.getHeight()
+        );
         
         // Draw ship
         this.shipRenderer.drawShip(
@@ -169,155 +174,5 @@ export class GameRenderer {
             this.world.getSpaceObjects(),
             ship
         );
-    }
-
-    /**
-     * Draw collectible objects
-     */
-    drawCollectibles(ship: Ship, collectibles: Collectible[]): void {
-        // Draw the main collectibles first
-        this.drawMainCollectibles(ship, collectibles);
-        
-        // Now draw the wrapped collectibles
-        this.drawWrappedCollectibles(ship, collectibles);
-    }
-    
-    /**
-     * Draw the main collectible objects
-     */
-    private drawMainCollectibles(ship: Ship, collectibles: Collectible[]): void {
-        const centerX = this.canvas.width / 2;
-        const centerY = this.canvas.height / 2;
-        const shipX = ship.getX();
-        const shipY = ship.getY();
-        
-        collectibles.forEach(collectible => {
-            if (collectible instanceof Shipwreck) {
-                this.shipwreckRenderer.drawCollectible(
-                    this.ctx,
-                    centerX,
-                    centerY,
-                    shipX,
-                    shipY,
-                    collectible
-                );
-            } else if (collectible instanceof EscapePod) {
-                this.escapePodRenderer.drawCollectible(
-                    this.ctx,
-                    centerX,
-                    centerY,
-                    shipX,
-                    shipY,
-                    collectible
-                );
-            } else if (collectible instanceof Asteroid) {
-                // Handle asteroid collectibles
-                this.asteroidRenderer.drawAsteroid(
-                    this.ctx,
-                    centerX,
-                    centerY,
-                    shipX,
-                    shipY,
-                    collectible
-                );
-            }
-        });
-    }
-    
-    /**
-     * Check if a world position is within the visible viewport
-     */
-    private isPositionVisible(
-        worldX: number, 
-        worldY: number, 
-        visibleLeft: number, 
-        visibleRight: number, 
-        visibleTop: number, 
-        visibleBottom: number
-    ): boolean {
-        // Add a small margin to account for object size
-        const margin = 50;
-        return (
-            worldX >= visibleLeft - margin && 
-            worldX <= visibleRight + margin &&
-            worldY >= visibleTop - margin && 
-            worldY <= visibleBottom + margin
-        );
-    }
-    
-    /**
-     * Draw wrapped collectible objects
-     */
-    private drawWrappedCollectibles(ship: Ship, collectibles: Collectible[]): void {
-        const worldWidth = this.world.getWidth();
-        const worldHeight = this.world.getHeight();
-        const centerX = this.canvas.width / 2;
-        const centerY = this.canvas.height / 2;
-        const shipX = ship.getX();
-        const shipY = ship.getY();
-        
-        // Calculate visible area in world coordinates
-        const canvasWidth = this.canvas.width;
-        const canvasHeight = this.canvas.height;
-        const visibleLeft = shipX - canvasWidth / 2;
-        const visibleRight = shipX + canvasWidth / 2;
-        const visibleTop = shipY - canvasHeight / 2;
-        const visibleBottom = shipY + canvasHeight / 2;
-        
-        // Define offsets for the 8 possible wrapped positions (including diagonals)
-        const wrapOffsets = [
-            { x: -worldWidth, y: 0 },             // Left
-            { x: worldWidth, y: 0 },              // Right
-            { x: 0, y: -worldHeight },            // Top
-            { x: 0, y: worldHeight },             // Bottom
-            { x: -worldWidth, y: -worldHeight },  // Top-Left
-            { x: worldWidth, y: -worldHeight },   // Top-Right
-            { x: -worldWidth, y: worldHeight },   // Bottom-Left
-            { x: worldWidth, y: worldHeight }     // Bottom-Right
-        ];
-        
-        // Check each collectible
-        collectibles.forEach(collectible => {
-            const collectibleX = collectible.getX();
-            const collectibleY = collectible.getY();
-            
-            // Check all possible wrapped positions for each collectible
-            wrapOffsets.forEach(offset => {
-                const wrappedX = collectibleX + offset.x;
-                const wrappedY = collectibleY + offset.y;
-                
-                // Only draw if it would be visible on screen
-                if (this.isPositionVisible(wrappedX, wrappedY, visibleLeft, visibleRight, visibleTop, visibleBottom)) {
-                    if (collectible instanceof Shipwreck) {
-                        this.shipwreckRenderer.drawCollectible(
-                            this.ctx,
-                            centerX + offset.x,
-                            centerY + offset.y,
-                            shipX,
-                            shipY,
-                            collectible
-                        );
-                    } else if (collectible instanceof EscapePod) {
-                        this.escapePodRenderer.drawCollectible(
-                            this.ctx,
-                            centerX + offset.x,
-                            centerY + offset.y,
-                            shipX,
-                            shipY,
-                            collectible
-                        );
-                    } else if (collectible instanceof Asteroid) {
-                        this.asteroidRenderer.drawAsteroid(
-                            this.ctx,
-                            centerX + offset.x,
-                            centerY + offset.y,
-                            shipX,
-                            shipY,
-                            collectible
-                        );
-                    }
-                }
-            });
-        });
     }
 } 
