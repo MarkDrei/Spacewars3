@@ -11,7 +11,7 @@ export class ShipRenderer {
         this.shipImage.onload = () => {
             this.imageLoaded = true;
         };
-        this.shipImage.src = 'resources/tinyShips/tiny-spaceships/tiny_ship1.png';
+        this.shipImage.src = 'resources/ai_gen/ship1.png';
     }
 
     drawShip(
@@ -124,7 +124,7 @@ export class ShipRenderer {
         ctx.translate(centerX, centerY);
         ctx.rotate(ship.getAngle() + Math.PI / 2);
 
-        const scale = 0.5;
+        const scale = 0.15;
         const width = this.shipImage.width * scale;
         const height = this.shipImage.height * scale;
         ctx.drawImage(this.shipImage, -width / 2, -height / 2, width, height);
