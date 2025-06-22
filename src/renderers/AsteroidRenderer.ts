@@ -23,7 +23,7 @@ export class AsteroidRenderer extends CollectibleRenderer {
      */
     protected drawCollectibleShape(ctx: CanvasRenderingContext2D, collectible: Collectible): void {
         if (this.asteroidImage.complete && this.asteroidImage.naturalHeight !== 0) {
-            const size = 35; // Size of the asteroid
+            const size = 45; // Size of the asteroid
             ctx.drawImage(this.asteroidImage, -size / 2, -size / 2, size, size);
         }
     }
