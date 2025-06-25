@@ -8,7 +8,8 @@
     "build": "webpack --mode production",
     "watch": "webpack --watch --mode development",
     "test": "jest",
-    "test:watch": "jest --watch"
+    "test:watch": "jest --watch",
+    "serve": "serve -l tcp://0.0.0.0:${PORT:-10000} dist"
   },
   "devDependencies": {
     "@types/jest": "^29.5.14",

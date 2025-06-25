@@ -164,5 +164,22 @@ npm run build
 ### Running in Development Mode
 
 ```bash
-npm run dev
-``` 
+npm install
+npm start
+```
+
+### Running in Production Mode
+
+First, build the project:
+
+```bash
+npm run build
+```
+
+Then, serve the production build:
+
+```bash
+npm run serve
+```
+
+This will serve the optimized files from the `dist` directory using a static server. 
