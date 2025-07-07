@@ -10,4 +10,7 @@ tsconfig.tsbuildinfo
 # Build output
 dist/
 
+# database
+packages/server/db/*
+
 repo/

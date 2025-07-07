@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Spacewars: Ironcore</title>
+  <meta name="description" content="A 2D space exploration game with a toroidal world" />
+  <style>
+    body {
+        margin: 0;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        background-color: #121212; /* dark gray background */
+        font-family: Arial, sans-serif;
+    }
+    #gameCanvas {
+        border: 2px solid #333;
+        background-color: white;
+        margin-bottom: 20px;
+    }
+    #hud {
+        padding: 10px;
+        background-color: #fff;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        width: 780px; /* Matches canvas width minus padding and borders */
+        display: flex;
+        justify-content: space-between;
+    }
+    .hud-section {
+        flex: 1;
+        padding: 0 10px;
+    }
+    .hud-section h3 {
+        margin-top: 0;
+        border-bottom: 1px solid #eee;
+        padding-bottom: 5px;
+    }
+    #inventory-list {
+        max-height: 100px;
+        overflow-y: auto;
+        font-size: 0.9em;
+    }
+    .inventory-item {
+        margin-bottom: 5px;
+        padding: 3px;
+        border-radius: 3px;
+        background-color: #f5f5f5;
+    }
+    .fuel {
+        background-color: #ffeb3b3d; /* Light yellow */
+    }
+    .weapons {
+        background-color: #f443363d; /* Light red */
+    }
+    .tech {
+        background-color: #2196f33d; /* Light blue */
+    }
+    .generic {
+        background-color: #9e9e9e3d; /* Light gray */
+    }
+    .escape-pod {
+        background-color: #4caf503d; /* Light green */
+    }
+  </style>
+</head>
+<body>
+  <canvas id="gameCanvas" width="800" height="800"></canvas>
+  <div id="hud">
+      <div class="hud-section">
+          <h3>Ship Status</h3>
+          Clicks: <span id="clickCounter">0</span><br>
+          Speed: <span id="speed">0</span><br>
+          Coordinates: <span id="coordinates">(0, 0)</span><br>
+          Score: <span id="score">0</span>
+      </div>
+      
+      <div class="hud-section">
+          <h3>Last Collected</h3>
+          <div id="last-collected">Nothing collected yet</div>
+      </div>
+      
+      <div class="hud-section">
+          <h3>Inventory</h3>
+          <div id="inventory-list"></div>
+      </div>
+  </div>
+  <script type="module" src="/src/index.ts"></script>
+</body>
+</html>

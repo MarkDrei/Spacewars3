@@ -1,8 +1,8 @@
-import { WorldInitializer } from '../WorldInitializer';
-import type { WorldConfig } from '../WorldInitializer';
-import { Ship } from '../Ship';
-import { Asteroid } from '../Asteroid';
-import { Collectible } from '../Collectible';
+import { WorldInitializer } from '../src/WorldInitializer';
+import type { WorldConfig } from '../src/WorldInitializer';
+import { Ship } from '../src/Ship';
+import { Asteroid } from '../src/Asteroid';
+import { Collectible } from '../src/Collectible';
 
 describe('WorldInitializer', () => {
     test('should create a default world', () => {

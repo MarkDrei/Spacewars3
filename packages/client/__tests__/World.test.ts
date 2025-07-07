@@ -1,6 +1,6 @@
-import { World } from '../World';
-import { Ship } from '../Ship';
-import { SpaceObject } from '../SpaceObject';
+import { World } from '../src/World';
+import { Ship } from '../src/Ship';
+import { SpaceObject } from '../src/SpaceObject';
 
 // Create a mock class for SpaceObject since it's abstract
 class MockSpaceObject extends SpaceObject {

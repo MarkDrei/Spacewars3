@@ -60,8 +60,8 @@ class Game {
     
     private async loadWorld(): Promise<void> {
         try {
-            // Load a custom world configuration
-            const world = await WorldInitializer.loadWorldFromFile('./worlds/test_world.json');
+            // Load a custom world configuration - use path relative to public folder for browser
+            const world = await WorldInitializer.loadWorldFromFile('./src/worlds/test_world.json');
             
             if (world) {
                 this.world = world;

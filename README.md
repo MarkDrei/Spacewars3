@@ -167,34 +167,80 @@ The game includes a HUD that displays:
 - Node.js (v14+)
 - npm (v6+)
 
+### Project Structure
+
+The project is organized as a monorepo with the following packages:
+
+- `packages/client`: Frontend game client built with TypeScript, Vite, and HTML5 Canvas
+- `packages/server`: Backend server built with Express and SQLite
+- `packages/shared`: Shared code and types used by both client and server
+
+### Install Dependencies
+
+First, install dependencies for all packages:
+
+```powershell
+npm install
+```
+
 ### Building the Project
 
-```bash
-npm install
+To build all packages:
+
+```powershell
 npm run build
 ```
 
-This will create optimized files in the `dist` directory.
+This will:
+1. Build the shared package first
+2. Build the client and server packages in parallel
+3. Create optimized files in their respective `dist` directories
 
 ### Running in Development Mode
 
-```bash
-npm install
-npm start
+To start both the client and server in development mode:
+
+```powershell
+npm run dev
 ```
 
-This starts the Vite development server with hot module replacement (HMR) enabled.
+This will:
+1. Start the Vite development server for the client on port 3000
+2. Start the Express server on port 5174
+3. Configure the client to proxy API requests to the server
+
+You can also run each package separately:
+
+```powershell
+# Client only
+cd packages/client; npm run dev
+
+# Server only
+cd packages/server; npm run dev
+```
 
 ### Running Tests
 
-```bash
+To run tests for all packages:
+
+```powershell
 npm test
+```
+
+To run tests for a specific package:
+
+```powershell
+# Client tests
+cd packages/client; npm test
+
+# Server tests
+cd packages/server; npm test
 ```
 
 ### Type Checking
 
-```bash
-npx tsc --noEmit
-```
+To type-check all packages:
 
-This runs the TypeScript compiler to check for type errors without emitting any files.
+```powershell
+npm run typecheck
+```

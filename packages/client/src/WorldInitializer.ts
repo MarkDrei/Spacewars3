@@ -150,7 +150,11 @@ export class WorldInitializer {
      */
     static async loadWorldFromFile(filePath: string): Promise<World> {
         try {
+            // For browser environments, use fetch
             const response = await fetch(filePath);
+            if (!response.ok) {
+                throw new Error(`Failed to load world configuration: ${response.status} ${response.statusText}`);
+            }
             const config = await response.json();
             return WorldInitializer.createWorldFromConfig(config);
         } catch (error) {
@@ -158,4 +162,4 @@ export class WorldInitializer {
             return WorldInitializer.createDefaultWorld();
         }
     }
-} 
+}

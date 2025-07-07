@@ -1,20 +1,15 @@
+/** @type {import('jest').Config} */
 module.exports = {
-  preset: 'ts-jest',
-  testEnvironment: 'jsdom',
-  moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
-  roots: ['<rootDir>/src'],
-  testRegex: '(/__tests__/.*|(\\.|/)(test|spec))\\.(jsx?|tsx?)$',
-  transform: {
-    '^.+\\.tsx?$': ['ts-jest', {
-      // Disable unused variable checking for tests
-      tsconfig: {
-        noUnusedLocals: false,
-        noUnusedParameters: false
-      }
-    }]
-  },
-  collectCoverage: true,
+  projects: [
+    '<rootDir>/packages/client/jest.config.js',
+    '<rootDir>/packages/server/jest.config.js'
+  ],
+  collectCoverageFrom: [
+    'packages/*/src/**/*.{ts,tsx}',
+    '!packages/*/src/**/*.d.ts',
+    '!packages/*/src/**/*.test.{ts,tsx}'
+  ],
   coverageReporters: ['text', 'lcov'],
   coverageDirectory: 'coverage',
   verbose: true
-}; 
+};

@@ -1,6 +1,6 @@
-import { InterceptCalculator } from '../InterceptCalculator';
-import { SpaceObject } from '../SpaceObject';
-import { World } from '../World';
+import { InterceptCalculator } from '../src/InterceptCalculator';
+import { SpaceObject } from '../src/SpaceObject';
+import { World } from '../src/World';
 
 // Create a mock class for SpaceObject since it's abstract
 class MockSpaceObject extends SpaceObject {

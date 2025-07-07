@@ -1,0 +1,19 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "composite": true,
+    "outDir": "dist",
+    "rootDir": ".",
+    "types": ["jest", "node"]
+  },
+  "include": [
+    "src/**/*", 
+    "tests/**/*", 
+    "*.ts"
+  ],
+  "references": [
+    { "path": "../shared" }
+  ]
+}

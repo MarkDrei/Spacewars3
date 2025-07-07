@@ -1,0 +1,78 @@
+{
+    "ship": {
+        "x": 250,
+        "y": 250,
+        "angle": 0,
+        "speed": 20
+    },
+    "asteroids": [
+        {
+            "x": 100,
+            "y": 100,
+            "angleDegrees": 45,
+            "speed": 3,
+            "value": 5
+        },
+        {
+            "x": 400,
+            "y": 100,
+            "angleDegrees": 135,
+            "speed": 2,
+            "value": 10
+        },
+        {
+            "x": 400,
+            "y": 400,
+            "angleDegrees": 225,
+            "speed": 4,
+            "value": 15
+        },
+        {
+            "x": 100,
+            "y": 400,
+            "angleDegrees": 315,
+            "speed": 1,
+            "value": 20
+        }
+    ],
+    "shipWrecks": [
+        {
+            "x": 150,
+            "y": 150,
+            "salvageType": "FUEL",
+            "value": 10
+        },
+        {
+            "x": 350,
+            "y": 350,
+            "salvageType": "WEAPONS",
+            "value": 15
+        },
+        {
+            "x": 200,
+            "y": 400,
+            "salvageType": "GENERIC",
+            "value": 20
+        }
+    ],
+    "escapePods": [
+        {
+            "x": 350,
+            "y": 250,
+            "angle": 0.785,
+            "speed": 2,
+            "value": 20,
+            "survivors": 2,
+            "distressSignalActive": true
+        },
+        {
+            "x": 100,
+            "y": 300,
+            "angle": 1.571,
+            "speed": 3,
+            "value": 25,
+            "survivors": 3,
+            "distressSignalActive": true
+        }
+    ]
+}
