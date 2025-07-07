@@ -5,7 +5,13 @@ module.exports = {
   roots: ['<rootDir>/src'],
   testRegex: '(/__tests__/.*|(\\.|/)(test|spec))\\.(jsx?|tsx?)$',
   transform: {
-    '^.+\\.tsx?$': 'ts-jest'
+    '^.+\\.tsx?$': ['ts-jest', {
+      // Disable unused variable checking for tests
+      tsconfig: {
+        noUnusedLocals: false,
+        noUnusedParameters: false
+      }
+    }]
   },
   collectCoverage: true,
   coverageReporters: ['text', 'lcov'],

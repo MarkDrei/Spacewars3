@@ -1,4 +1,5 @@
-import { WorldInitializer, WorldConfig } from '../WorldInitializer';
+import { WorldInitializer } from '../WorldInitializer';
+import type { WorldConfig } from '../WorldInitializer';
 import { Ship } from '../Ship';
 import { Asteroid } from '../Asteroid';
 import { Collectible } from '../Collectible';

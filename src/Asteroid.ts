@@ -12,7 +12,7 @@ export class Asteroid extends Collectible {
      * Define what happens when this asteroid is collected
      * @param player - Reference to the player
      */
-    onCollect(player: Player): void {
+    onCollect(_player: Player): void {
         // For now, just basic collection behavior
         // Points are already added in the Player.collectItem method
         this.collect();

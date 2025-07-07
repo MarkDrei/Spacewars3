@@ -57,10 +57,14 @@ describe('InterceptCalculator', () => {
         expect(angle).not.toBeNaN();
         
         // Verify the interception by simulating the movement
+        // We're calculating these variables for better understanding of the test case
+        // even though they're not directly used in assertions - suppress the unused vars warning
+        /* eslint-disable @typescript-eslint/no-unused-vars */
         const shipVelX = 10 * Math.cos(angle);
         const shipVelY = 10 * Math.sin(angle);
         const targetVelX = 5 * Math.cos(Math.PI / 2); // 0
         const targetVelY = 5 * Math.sin(Math.PI / 2); // 5
+        /* eslint-enable @typescript-eslint/no-unused-vars */
         
         // Find the interception time by solving when the positions are equal
         // This is a simplified test, so we'll just verify the angle is reasonable
@@ -111,7 +115,7 @@ describe('InterceptCalculator', () => {
         const shipVelX = 10 * Math.cos(angle);
         const shipVelY = 10 * Math.sin(angle);
         const targetVelX = 5 * Math.cos(Math.PI); // -5
-        const targetVelY = 5 * Math.sin(Math.PI); // 0
+        const _targetVelY = 5 * Math.sin(Math.PI); // 0
         
         // Calculate interception time
         // For objects moving toward each other, we need to solve:
@@ -123,7 +127,7 @@ describe('InterceptCalculator', () => {
         const targetFutureX = 100 + targetVelX * interceptTime;
         // Where will the ship be?
         const shipFutureX = 0 + shipVelX * interceptTime;
-        const shipFutureY = 0 + shipVelY * interceptTime;
+        const _shipFutureY = 0 + shipVelY * interceptTime;
         
         // They should be close to each other at the interception point
         // We only check if the interception time is positive and the distance is reasonable
@@ -175,13 +179,13 @@ describe('InterceptCalculator', () => {
         expect(angle).not.toBeNaN();
         
         // Verify the interception by simulating the movement
-        const shipVelX = 15 * Math.cos(angle);
-        const shipVelY = 15 * Math.sin(angle);
-        const targetVelX = 10 * Math.cos(-Math.PI / 4); // ~7.07
-        const targetVelY = 10 * Math.sin(-Math.PI / 4); // ~-7.07
+        const _shipVelX = 15 * Math.cos(angle);
+        const _shipVelY = 15 * Math.sin(angle);
+        const _targetVelX = 10 * Math.cos(-Math.PI / 4); // ~7.07
+        const _targetVelY = 10 * Math.sin(-Math.PI / 4); // ~-7.07
         
         // The angle should point generally toward the target's future position
-        const directAngle = Math.atan2(100, 100); // Direct angle to current position
+        const _directAngle = Math.atan2(100, 100); // Direct angle to current position
         // In a toroidal world, the ship might take a different path, so don't constrain too tightly
         expect(angle).not.toBeNaN();
     });
@@ -266,17 +270,15 @@ describe('InterceptCalculator', () => {
         expect(angle).not.toBeNaN();
         
         // Verify that an interception is possible by simulating the movement
-        const shipVelX = 20 * Math.cos(angle);
-        const shipVelY = 20 * Math.sin(angle);
-        const targetVelX = 10 * Math.cos(targetAngle); // Moving left component
-        const targetVelY = 10 * Math.sin(targetAngle); // Moving down component
+        const _shipVelX = 20 * Math.cos(angle);
+        const _shipVelY = 20 * Math.sin(angle);
+        const _targetVelX = 10 * Math.cos(targetAngle); // Moving left component
+        const _targetVelY = 10 * Math.sin(targetAngle); // Moving down component
         
         // Get the console.log mock calls to check if interception was found
         const mockConsoleLog = console.log as jest.Mock;
-        const calls = mockConsoleLog.mock.calls.flat();
-        
-        // We should be able to find an interception for this case
-        expect(angle).not.toBeNaN();
+        // We store this for debugging but don't use it in the assertions
+        const _calls = mockConsoleLog.mock.calls.flat();
     });
     
     test('should handle interception across world boundaries', () => {
@@ -296,4 +298,4 @@ describe('InterceptCalculator', () => {
         // This means the angle should be close to π (or -π) radians
         expect(Math.cos(angle)).toBeLessThan(0);
     });
-}); 
+});

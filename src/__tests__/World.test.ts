@@ -1,6 +1,6 @@
 import { World } from '../World';
 import { Ship } from '../Ship';
-import { Asteroid } from '../Asteroid';
+// import { Asteroid } from '../Asteroid'; // Commented out as it's unused
 import { SpaceObject } from '../SpaceObject';
 
 // Create a mock class for SpaceObject since it's abstract

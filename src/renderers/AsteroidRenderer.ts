@@ -1,4 +1,4 @@
-import { Asteroid } from '../Asteroid';
+// import { Asteroid } from '../Asteroid'; // Commented out as it's unused
 import { SpaceObject } from '../SpaceObject';
 import { Collectible } from '../Collectible';
 import { CollectibleRenderer } from './CollectibleRenderer';

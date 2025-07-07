@@ -3,7 +3,8 @@ import { Ship } from './Ship';
 import { Asteroid } from './Asteroid';
 import { InterceptCalculator } from './InterceptCalculator';
 import { Collectible } from './Collectible';
-import { Player, InventoryItem } from './Player';
+import { Player } from './Player';
+import type { InventoryItem } from './Player';
 import { Shipwreck, SalvageType } from './Shipwreck';
 import { EscapePod } from './EscapePod';
 

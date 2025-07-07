@@ -1,8 +1,9 @@
 import { GameRenderer } from './renderers/GameRenderer';
 import { World } from './World';
 import { WorldInitializer } from './WorldInitializer';
-import { Collectible } from './Collectible';
-import { Shipwreck, SalvageType } from './Shipwreck';
+// Unused imports commented out
+// import { Collectible } from './Collectible';
+import { Shipwreck /*, SalvageType*/ } from './Shipwreck';
 import { EscapePod } from './EscapePod';
 
 class Game {
@@ -11,7 +12,6 @@ class Game {
     private clickCounterElement: HTMLElement;
     private speedElement: HTMLElement;
     private coordinatesElement: HTMLElement;
-    private lastTime: number;
     private gameRenderer: GameRenderer;
     private mouseX: number;
     private mouseY: number;
@@ -28,7 +28,8 @@ class Game {
         this.clickCounterElement = document.getElementById('clickCounter')!;
         this.speedElement = document.getElementById('speed')!;
         this.coordinatesElement = document.getElementById('coordinates')!;
-        this.lastTime = performance.now();
+        // Initialize time tracking with the current time
+        this.lastFrameTime = performance.now();
         this.mouseX = 0;
         this.mouseY = 0;
         this.scoreElement = document.getElementById('score');
@@ -341,4 +342,4 @@ class Game {
 // Start the game when the DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
     new Game();
-}); 
+});

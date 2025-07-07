@@ -40,7 +40,7 @@ export class EscapePod extends Collectible {
      * Defines what happens when this escape pod is collected.
      * @param player - Reference to the player
      */
-    onCollect(player: Player): void {
+    onCollect(_player: Player): void {
         // Example effect: Could provide benefits based on number of survivors
         // For now, just mark as collected
         this.collect();
@@ -73,7 +73,7 @@ export class EscapePod extends Collectible {
     /**
      * Override updatePosition to simulate pod distress signal behavior
      */
-    updatePosition(deltaTime: number): void {
+    override updatePosition(deltaTime: number): void {
         // Call parent method to update position normally
         super.updatePosition(deltaTime);
         

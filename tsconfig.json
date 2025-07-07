@@ -1,14 +1,41 @@
 {
   "compilerOptions": {
-    "target": "ES6",
-    "module": "ES6",
-    "strict": true,
+    "target": "ES2020",
+    "module": "ESNext",
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": false,
+    "moduleDetection": "force",
     "esModuleInterop": true,
-    "skipLibCheck": true,
+    "jsx": "react-jsx",
+    "noEmit": true,
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "allowUnusedLabels": false,
+    "allowUnreachableCode": false,
+    "exactOptionalPropertyTypes": false,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitOverride": true,
+    "noPropertyAccessFromIndexSignature": false,
     "forceConsistentCasingInFileNames": true,
-    "outDir": "./dist",
-    "rootDir": "./src"
+    "skipLibCheck": true
   },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules"]
-} 
+  "include": ["src"],
+  "exclude": ["node_modules", "**/__tests__/**"],
+  "ts-node": {
+    "compilerOptions": {
+      "module": "CommonJS"
+    }
+  },
+  "overrides": [
+    {
+      "files": ["**/__tests__/**/*.ts"],
+      "compilerOptions": {
+        "noUnusedLocals": false,
+        "noUnusedParameters": false
+      }
+    }
+  ]
+}
