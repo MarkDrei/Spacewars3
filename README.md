@@ -8,6 +8,13 @@ Goal is to create a 2D space exploration game with a toroidal world, featuring c
 
 Spacewars is a browser-based game where the player navigates a spaceship in a 2D toroidal world (the edges wrap around). The player can collect various objects such as shipwrecks and escape pods, and the game includes a sophisticated interception algorithm for targeting moving objects.
 
+## Technical Stack
+
+- **TypeScript**: Strongly-typed JavaScript for better development experience
+- **Vite**: Modern, fast build tool and development server
+- **Jest**: For unit testing
+- **HTML5 Canvas**: For rendering the game
+
 ## Architecture
 
 The game follows a component-based architecture, with clear separation of concerns:
@@ -148,11 +155,17 @@ The game includes a HUD that displays:
 ## Getting Started
 
 1. Clone the repository
-2. Open index.html in a browser
-3. Use mouse clicks to navigate the ship
-4. Collect objects by moving near them
+2. Install dependencies with `npm install`
+3. Start the development server with `npm start`
+4. Use mouse clicks to navigate the ship
+5. Collect objects by moving near them
 
 ## Development
+
+### Prerequisites
+
+- Node.js (v14+)
+- npm (v6+)
 
 ### Building the Project
 
@@ -161,6 +174,8 @@ npm install
 npm run build
 ```
 
+This will create optimized files in the `dist` directory.
+
 ### Running in Development Mode
 
 ```bash
@@ -168,18 +183,18 @@ npm install
 npm start
 ```
 
-### Running in Production Mode
+This starts the Vite development server with hot module replacement (HMR) enabled.
 
-First, build the project:
-
-```bash
-npm run build
-```
-
-Then, serve the production build:
+### Running Tests
 
 ```bash
-npm run serve
+npm test
 ```
 
-This will serve the optimized files from the `dist` directory using a static server. 
+### Type Checking
+
+```bash
+npx tsc --noEmit
+```
+
+This runs the TypeScript compiler to check for type errors without emitting any files.
