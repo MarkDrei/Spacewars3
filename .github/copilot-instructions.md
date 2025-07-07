@@ -9,7 +9,7 @@
 ## Project Structure
 - `packages/client/`: Frontend game client
   - `packages/client/src/`: Game source code
-    - `packages/client/__tests__/`: Client test files
+    - `packages/client/test/`: Client test files
     - `packages/client/src/renderers/`: Rendering components
     - `packages/client/src/worlds/`: World configuration files
 - `packages/server/`: Backend server for user authentication and game data
@@ -29,7 +29,7 @@
 ## Testing
 - All business logic must be covered by unit tests
 - Tests are organized by package:
-  - Client tests: `packages/client/__tests__/` (jsdom environment)
+  - Client tests: `packages/client/test/` (jsdom environment)
   - Server tests: `packages/server/tests/` (node environment)
 - Test naming convention: whatIsTested_scenario_expectedOutcome
   - Example: `updateStats_researchDoesNotComplete_awardsAllIronAtOldRate`

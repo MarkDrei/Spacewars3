@@ -257,7 +257,7 @@ Tests are configured in a monorepo structure with package-specific Jest configur
 - View test coverage: `npm test -- --coverage`
 
 ### Test Structure
-- Client tests are in `packages/client/__tests__/`
+- Client tests are in `packages/client/test/`
   - Uses jsdom environment for DOM testing
   - Tests React components and game logic
 - Server tests are in `packages/server/tests/`
@@ -271,5 +271,3 @@ Each package has its own Jest configuration optimized for its needs:
 - `packages/client/jest.config.js`: Client-specific setup with jsdom
 - `packages/server/jest.config.js`: Server-specific setup with node
 - Root `jest.config.js`: Orchestrates running all package tests together
-
-## Development
