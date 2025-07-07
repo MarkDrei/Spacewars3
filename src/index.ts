@@ -1,9 +1,7 @@
 import { GameRenderer } from './renderers/GameRenderer';
 import { World } from './World';
 import { WorldInitializer } from './WorldInitializer';
-// Unused imports commented out
-// import { Collectible } from './Collectible';
-import { Shipwreck /*, SalvageType*/ } from './Shipwreck';
+import { Shipwreck } from './Shipwreck';
 import { EscapePod } from './EscapePod';
 
 class Game {

@@ -1,17 +1,10 @@
 import { Ship } from '../Ship';
 import { SpaceObject } from '../SpaceObject';
-import { AsteroidRenderer } from './AsteroidRenderer';
 import { ShipRenderer } from './ShipRenderer';
 import { RadarRenderer } from './RadarRenderer';
 import { TooltipRenderer } from './TooltipRenderer';
 import { World } from '../World';
 import { Collectible } from '../Collectible';
-// Unused imports commented out - they might be needed later
-// import { ShipwreckRenderer } from './ShipwreckRenderer';
-// import { EscapePodRenderer } from './EscapePodRenderer';
-// import { Shipwreck } from '../Shipwreck';
-// import { EscapePod } from '../EscapePod';
-// import { Asteroid } from '../Asteroid';
 import { CollectiblesRenderer } from './CollectiblesRenderer';
 
 export class GameRenderer {
@@ -19,10 +12,6 @@ export class GameRenderer {
     private canvas: HTMLCanvasElement;
     private world: World;
     private shipRenderer: ShipRenderer;
-    // AsteroidRenderer is initialized but not used in the current implementation
-    // We're keeping it for future use when rendering asteroids directly
-    // @ts-expect-error Suppress unused property warning
-    private _asteroidRenderer: AsteroidRenderer;
     private radarRenderer: RadarRenderer;
     private tooltipRenderer: TooltipRenderer;
     private collectiblesRenderer: CollectiblesRenderer;
@@ -32,7 +21,6 @@ export class GameRenderer {
         this.canvas = canvas;
         this.world = world;
         this.shipRenderer = new ShipRenderer();
-        this._asteroidRenderer = new AsteroidRenderer();
         this.radarRenderer = new RadarRenderer();
         this.tooltipRenderer = new TooltipRenderer(canvas);
         this.collectiblesRenderer = new CollectiblesRenderer(ctx, canvas);
