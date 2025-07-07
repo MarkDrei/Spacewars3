@@ -10,7 +10,7 @@ import {
   triggerResearch,
   updateTechTree,
   getActiveResearch
-} from '../techtree';
+} from '../src/techtree';
 
 describe('getResearchUpgradeCost', () => {
   test('getResearchUpgradeCost_levelIsStartLevel_returnsBaseCost', () => {

@@ -8,6 +8,5 @@ module.exports = {
   transform: {
     '^.+\\.ts$': ['ts-jest']
   },
-  displayName: 'server',
-  testTimeout: 30000 // Increase timeout to 30 seconds
+  displayName: 'server'
 };

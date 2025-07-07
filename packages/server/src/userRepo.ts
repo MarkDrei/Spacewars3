@@ -3,8 +3,7 @@
 // ---
 
 import sqlite3 from 'sqlite3';
-import { User } from './user';
-import type { SaveUserCallback } from './user';
+import { User, SaveUserCallback } from './user';
 import { createInitialTechTree } from './techtree';
 
 function userFromRow(row: any, saveCallback: SaveUserCallback): User {
@@ -19,66 +18,52 @@ function userFromRow(row: any, saveCallback: SaveUserCallback): User {
     row.id,
     row.username,
     row.password_hash,
-    row.iron || 0,
-    row.last_updated || Math.floor(Date.now() / 1000),
+    row.iron,
+    row.last_updated,
     techTree,
     saveCallback
   );
 }
 
-export function getUserById(db: sqlite3.Database, id: number): Promise<User | null> {
+export function getUserById(db: sqlite3.Database, id: number, saveCallback: SaveUserCallback): Promise<User | null> {
   return new Promise((resolve, reject) => {
     db.get('SELECT * FROM users WHERE id = ?', [id], (err, row) => {
       if (err) return reject(err);
       if (!row) return resolve(null);
-      
-      const saveCallback = saveUserToDb(db);
       resolve(userFromRow(row, saveCallback));
     });
   });
 }
 
-export function getUserByUsername(db: sqlite3.Database, username: string): Promise<User | null> {
+export function getUserByUsername(db: sqlite3.Database, username: string, saveCallback: SaveUserCallback): Promise<User | null> {
   return new Promise((resolve, reject) => {
     db.get('SELECT * FROM users WHERE username = ?', [username], (err, row) => {
       if (err) return reject(err);
       if (!row) return resolve(null);
-      
-      const saveCallback = saveUserToDb(db);
       resolve(userFromRow(row, saveCallback));
     });
   });
 }
 
-export function createUser(db: sqlite3.Database, username: string, passwordHash: string): Promise<User> {
+export function createUser(db: sqlite3.Database, username: string, password_hash: string, saveCallback: SaveUserCallback): Promise<User> {
   return new Promise((resolve, reject) => {
     const now = Math.floor(Date.now() / 1000);
-    const techTree = JSON.stringify(createInitialTechTree());
-    
-    db.run(
-      'INSERT INTO users (username, password_hash, iron, last_updated, tech_tree) VALUES (?, ?, ?, ?, ?)',
-      [username, passwordHash, 0, now, techTree],
-      function(err) {
-        if (err) return reject(err);
-        
-        const id = this.lastID;
-        const saveCallback = saveUserToDb(db);
-        
-        resolve(new User(id, username, passwordHash, 0, now, createInitialTechTree(), saveCallback));
-      }
-    );
+    const techTree = createInitialTechTree();
+    db.run('INSERT INTO users (username, password_hash, iron, last_updated, tech_tree) VALUES (?, ?, ?, ?, ?)', [username, password_hash, 0.0, now, JSON.stringify(techTree)], function (err) {
+      if (err) return reject(err);
+      const id = this.lastID;
+      resolve(new User(id, username, password_hash, 0.0, now, techTree, saveCallback));
+    });
   });
 }
 
 export function saveUserToDb(db: sqlite3.Database): SaveUserCallback {
-  return async (user: User) => {
+  return async (user) => {
     return new Promise((resolve, reject) => {
-      const techTreeJson = JSON.stringify(user.techTree);
-      
       db.run(
         'UPDATE users SET iron = ?, last_updated = ?, tech_tree = ? WHERE id = ?',
-        [user.iron, user.last_updated, techTreeJson, user.id],
-        (err) => {
+        [user.iron, user.last_updated, JSON.stringify(user.techTree), user.id],
+        function (err) {
           if (err) return reject(err);
           resolve();
         }
@@ -86,3 +71,6 @@ export function saveUserToDb(db: sqlite3.Database): SaveUserCallback {
     });
   };
 }
+
+// Add 'export' at the top to make this file a module
+export {};

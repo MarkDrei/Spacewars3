@@ -9,14 +9,9 @@ import sqlite3 from 'sqlite3';
 import bcrypt from 'bcrypt';
 import path from 'path';
 import cors from 'cors';
-
-// Define User interface locally to avoid circular dependencies
-export interface User {
-  id: number;
-  username: string;
-  iron: number;
-  lastUpdated: number;
-}
+import { User, SaveUserCallback } from './user';
+import { getUserById, getUserByUsername, createUser, saveUserToDb } from './userRepo';
+import { ResearchType, TechTree } from './techtree';
 
 // Extend express-session to include userId
 declare module 'express-session' {
@@ -29,210 +24,155 @@ export function createApp(db: sqlite3.Database) {
   const app = express();
   app.use(express.json());
   app.use(cors({
-    origin: 'http://localhost:3000',
+    origin: 'http://localhost:5173',
     credentials: true
   }));
   app.use(session({
-    secret: 'spacewars-secret-key',
+    secret: 'your-secret-key',
     resave: false,
     saveUninitialized: false,
-    cookie: {
-      secure: process.env.NODE_ENV === 'production',
-      maxAge: 24 * 60 * 60 * 1000 // 24 hours
-    }
+    cookie: { secure: false, httpOnly: true }
   }));
 
-  // Authentication endpoints
-  app.post('/api/login', (req, res) => {
-    const { username, password } = req.body;
-    
-    if (!username || !password) {
-      return res.status(400).json({ error: 'Username and password are required' });
-    }
-    
-    db.get('SELECT * FROM users WHERE username = ?', [username], async (err, row: any) => {
-      if (err) {
-        console.error('Database error:', err);
-        return res.status(500).json({ error: 'Internal server error' });
-      }
-      
-      if (!row) {
-        return res.status(401).json({ error: 'Invalid username or password' });
-      }
-      
-      const passwordMatch = await bcrypt.compare(password, row.password_hash);
-      
-      if (!passwordMatch) {
-        return res.status(401).json({ error: 'Invalid username or password' });
-      }
-      
-      // Set session
-      req.session.userId = row.id;
-      
-      // Return user info (excluding password)
-      const user: User = {
-        id: row.id,
-        username: row.username,
-        iron: row.iron,
-        lastUpdated: row.last_updated
-      };
-      
-      res.json({ user });
-    });
-  });
-
+  // Register endpoint
   app.post('/api/register', async (req, res) => {
     const { username, password } = req.body;
-    
-    if (!username || !password) {
-      return res.status(400).json({ error: 'Username and password are required' });
-    }
-    
-    // Check if username already exists
-    db.get('SELECT id FROM users WHERE username = ?', [username], async (err, row) => {
-      if (err) {
-        console.error('Database error:', err);
-        return res.status(500).json({ error: 'Internal server error' });
-      }
-      
-      if (row) {
-        return res.status(409).json({ error: 'Username already taken' });
-      }
-      
-      // Hash password
-      const saltRounds = 10;
-      const passwordHash = await bcrypt.hash(password, saltRounds);
-      const now = Math.floor(Date.now() / 1000);
-      
-      // Create new user
-      db.run(
-        'INSERT INTO users (username, password_hash, iron, last_updated) VALUES (?, ?, ?, ?)',
-        [username, passwordHash, 0, now],
-        function(err) {
-          if (err) {
-            console.error('Database error:', err);
-            return res.status(500).json({ error: 'Internal server error' });
-          }
-          
-          const userId = this.lastID;
-          req.session.userId = userId;
-          
-          const user: User = {
-            id: userId,
-            username,
-            iron: 0,
-            lastUpdated: now
-          };
-          
-          res.status(201).json({ user });
-        }
-      );
-    });
-  });
-
-  app.get('/api/user', (req, res) => {
-    if (!req.session.userId) {
-      return res.status(401).json({ error: 'Not authenticated' });
-    }
-    
-    db.get('SELECT id, username, iron, last_updated FROM users WHERE id = ?', [req.session.userId], (err, row: any) => {
-      if (err) {
-        console.error('Database error:', err);
-        return res.status(500).json({ error: 'Internal server error' });
-      }
-      
-      if (!row) {
-        return res.status(404).json({ error: 'User not found' });
-      }
-      
-      const user: User = {
-        id: row.id,
-        username: row.username,
-        iron: row.iron,
-        lastUpdated: row.last_updated
-      };
-      
-      res.json({ user });
-    });
-  });
-
-  app.post('/api/logout', (req, res) => {
-    req.session.destroy(err => {
-      if (err) {
-        console.error('Session destruction error:', err);
-        return res.status(500).json({ error: 'Internal server error' });
-      }
-      
-      res.json({ message: 'Logged out successfully' });
-    });
-  });
-
-  // Game stats endpoints
-  app.get('/api/stats', (req, res) => {
-    if (!req.session.userId) {
-      return res.status(401).json({ error: 'Not authenticated' });
-    }
-    
-    db.get('SELECT * FROM game_stats WHERE user_id = ?', [req.session.userId], (err, row) => {
-      if (err) {
-        console.error('Database error:', err);
-        return res.status(500).json({ error: 'Internal server error' });
-      }
-      
-      if (!row) {
-        // Create default stats if none exist
-        const now = Math.floor(Date.now() / 1000);
-        const defaultStats = {
-          user_id: req.session.userId,
-          score: 0,
-          fuel: 0,
-          weapons: 0,
-          tech: 0,
-          generic: 0,
-          created_at: now
-        };
-        
-        db.run(
-          'INSERT INTO game_stats (user_id, score, fuel, weapons, tech, generic, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
-          [defaultStats.user_id, defaultStats.score, defaultStats.fuel, defaultStats.weapons, defaultStats.tech, defaultStats.generic, defaultStats.created_at],
-          function(err) {
-            if (err) {
-              console.error('Database error:', err);
-              return res.status(500).json({ error: 'Internal server error' });
-            }
-            
-            res.json({ stats: defaultStats });
-          }
-        );
-      } else {
-        res.json({ stats: row });
-      }
-    });
-  });
-
-  app.put('/api/stats', (req, res) => {
-    if (!req.session.userId) {
-      return res.status(401).json({ error: 'Not authenticated' });
-    }
-    
-    const { score, fuel, weapons, tech, generic } = req.body;
-    
-    db.run(
-      'UPDATE game_stats SET score = ?, fuel = ?, weapons = ?, tech = ?, generic = ? WHERE user_id = ?',
-      [score, fuel, weapons, tech, generic, req.session.userId],
-      function(err) {
-        if (err) {
-          console.error('Database error:', err);
-          return res.status(500).json({ error: 'Internal server error' });
-        }
-        
-        if (this.changes === 0) {
-          return res.status(404).json({ error: 'Stats not found' });
-        }
-        
+    if (!username || !password) return res.status(400).json({ error: 'Missing fields' });
+    bcrypt.hash(password, 10, async (err, hash) => {
+      if (err) return res.status(500).json({ error: 'Server error' });
+      try {
+        const user = await createUser(db, username, hash, saveUserToDb(db));
+        req.session.userId = user.id;
         res.json({ success: true });
+      } catch (e) {
+        res.status(400).json({ error: 'Username taken' });
       }
-    );
+    });
+  });
+
+  // Login endpoint
+  app.post('/api/login', async (req, res) => {
+    const { username, password } = req.body;
+    if (!username || !password) return res.status(400).json({ error: 'Missing fields' });
+    try {
+      const user = await getUserByUsername(db, username, saveUserToDb(db));
+      if (!user) return res.status(400).json({ error: 'Invalid credentials' });
+      bcrypt.compare(password, user.password_hash, async (err, result) => {
+        if (result) {
+          const now = Math.floor(Date.now() / 1000);
+          user.updateStats(now);
+          await user.save();
+          req.session.userId = user.id;
+          res.json({ success: true });
+        } else {
+          res.status(400).json({ error: 'Invalid credentials' });
+        }
+      });
+    } catch (e) {
+      res.status(500).json({ error: 'Server error' });
+    }
+  });
+
+  // Session check
+  app.get('/api/session', (req, res) => {
+    if (req.session.userId) {
+      db.get('SELECT username FROM users WHERE id = ?', [req.session.userId], (err, userRow) => {
+        const user = userRow as { username: string };
+        if (user) return res.json({ loggedIn: true, username: user.username });
+        res.json({ loggedIn: false });
+      });
+    } else {
+      res.json({ loggedIn: false });
+    }
+  });
+
+  // Logout
+  app.post('/api/logout', (req, res) => {
+    req.session.destroy(() => {
+      res.json({ success: true });
+    });
+  });
+
+  // Get user stats endpoint
+  app.get('/api/user-stats', async (req, res) => {
+    if (!req.session.userId) return res.status(401).json({ error: 'Not authenticated' });
+    try {
+      const user = await getUserById(db, req.session.userId, saveUserToDb(db));
+      if (!user) return res.status(404).json({ error: 'User not found' });
+      const now = Math.floor(Date.now() / 1000);
+      user.updateStats(now);
+      await user.save();
+      res.json({ iron: user.iron, last_updated: user.last_updated, ironPerSecond: user.getIronPerSecond() });
+    } catch (e) {
+      res.status(500).json({ error: 'Server error' });
+    }
+  });
+
+  // Get tech tree and research details endpoint
+  app.get('/api/techtree', async (req, res) => {
+    if (!req.session.userId) return res.status(401).json({ error: 'Not authenticated' });
+    try {
+      const user = await getUserById(db, req.session.userId, saveUserToDb(db));
+      if (!user) return res.status(404).json({ error: 'User not found' });
+      const { AllResearches, getResearchUpgradeCost, getResearchUpgradeDuration, getResearchEffect, ResearchType } = require('./techtree');
+      // Build research definitions with next upgrade cost/duration for the user
+      const researches: Record<string, any> = {};
+      (Object.values(ResearchType) as string[]).forEach(type => {
+        const research = AllResearches[type];
+        const key = research.treeKey as keyof typeof user.techTree;
+        const currentLevel = user.techTree[key];
+        const nextLevel = typeof currentLevel === 'number' ? currentLevel + 1 : 1;
+        researches[type] = {
+          ...research,
+          nextUpgradeCost: getResearchUpgradeCost(research, nextLevel),
+          nextUpgradeDuration: getResearchUpgradeDuration(research, nextLevel),
+          currentEffect: getResearchEffect(research, currentLevel),
+          nextEffect: getResearchEffect(research, nextLevel),
+        };
+      });
+      res.json({
+        techTree: user.techTree,
+        researches
+      });
+    } catch (e) {
+      res.status(500).json({ error: 'Server error' });
+    }
+  });
+
+  // Trigger research endpoint
+  app.post('/api/trigger-research', async (req, res) => {
+    if (!req.session.userId) return res.status(401).json({ error: 'Not authenticated' });
+    const { type } = req.body;
+    if (!type) return res.status(400).json({ error: 'Missing research type' });
+    try {
+      const { ResearchType, triggerResearch, getResearchUpgradeCost, AllResearches } = require('./techtree');
+      const user = await getUserById(db, req.session.userId, saveUserToDb(db));
+      if (!user) return res.status(404).json({ error: 'User not found' });
+      const now = Math.floor(Date.now() / 1000);
+      user.updateStats(now);
+      if (user.techTree.activeResearch) {
+        return res.status(400).json({ error: 'Research already in progress' });
+      }
+      if (!Object.values(ResearchType).includes(type)) {
+        return res.status(400).json({ error: 'Invalid research type' });
+      }
+      const research = AllResearches[type];
+      const key = research.treeKey as keyof TechTree;
+      const currentLevel = user.techTree[key];
+      if (typeof currentLevel !== 'number') {
+        return res.status(500).json({ error: 'Invalid tech tree state' });
+      }
+      const cost = getResearchUpgradeCost(research, currentLevel + 1);
+      if (user.iron < cost) {
+        return res.status(400).json({ error: 'Not enough iron' });
+      }
+      user.iron -= cost;
+      triggerResearch(user.techTree, type);
+      await user.save();
+      res.json({ success: true });
+    } catch (e) {
+      res.status(500).json({ error: 'Server error' });
+    }
   });
 
   return app;

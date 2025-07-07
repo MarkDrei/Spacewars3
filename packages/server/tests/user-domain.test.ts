@@ -1,5 +1,5 @@
-import { User, SaveUserCallback } from '../user';
-import { TechTree, ResearchType, triggerResearch, getResearchEffectFromTree, createInitialTechTree, updateTechTree } from '../techtree';
+import { User, SaveUserCallback } from '../src/user';
+import { TechTree, ResearchType, triggerResearch, getResearchEffectFromTree, createInitialTechTree, updateTechTree } from '../src/techtree';
 
 describe('User.updateStats with IronHarvesting research progression', () => {
   let user: User;

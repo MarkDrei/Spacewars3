@@ -1,5 +1,5 @@
 import request from 'supertest';
-import { createApp } from '../createApp';
+import { createApp } from '../src/createApp';
 import sqlite3 from 'sqlite3';
 
 describe('Trigger Research API', () => {

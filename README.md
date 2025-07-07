@@ -244,3 +244,32 @@ To type-check all packages:
 ```powershell
 npm run typecheck
 ```
+
+## Testing
+
+Tests are configured in a monorepo structure with package-specific Jest configurations:
+
+### Running Tests
+- Run all tests across packages: `npm test`
+- Run client tests only: `cd packages/client; npm test`
+- Run server tests only: `cd packages/server; npm test`
+- Run tests in watch mode: `npm test -- --watch`
+- View test coverage: `npm test -- --coverage`
+
+### Test Structure
+- Client tests are in `packages/client/__tests__/`
+  - Uses jsdom environment for DOM testing
+  - Tests React components and game logic
+- Server tests are in `packages/server/tests/`
+  - Uses node environment for backend testing
+  - Tests API endpoints and business logic
+- All test files use the pattern: `*.test.ts`
+- Tests are written following the pattern: `whatIsTested_scenario_expectedOutcome`
+
+### Test Configuration
+Each package has its own Jest configuration optimized for its needs:
+- `packages/client/jest.config.js`: Client-specific setup with jsdom
+- `packages/server/jest.config.js`: Server-specific setup with node
+- Root `jest.config.js`: Orchestrates running all package tests together
+
+## Development

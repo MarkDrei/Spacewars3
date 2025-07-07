@@ -27,11 +27,21 @@
 - Shared types and utilities should be placed in the shared package.
 
 ## Testing
-- All business logic should be covered by unit tests.
-- Client tests should be placed in the `packages/client/__tests__/` directory.
-- Server tests should be placed in the `packages/server/tests/` directory.
-- Tests names follow the pattern: whatIsTested_scenario_expectedOutcome (e.g., `updateStats_researchDoesNotComplete_awardsAllIronAtOldRate`).
-- Run all tests using `npm test` or package-specific tests by running `npm test` in the package directory.
+- All business logic must be covered by unit tests
+- Tests are organized by package:
+  - Client tests: `packages/client/__tests__/` (jsdom environment)
+  - Server tests: `packages/server/tests/` (node environment)
+- Test naming convention: whatIsTested_scenario_expectedOutcome
+  - Example: `updateStats_researchDoesNotComplete_awardsAllIronAtOldRate`
+  - Use descriptive names that explain the test's purpose
+- Running tests:
+  - All packages: `npm test` (from root)
+  - Single package: `cd packages/<package>; npm test`
+  - Watch mode: `npm test -- --watch`
+  - Coverage: `npm test -- --coverage`
+- Each package has its own Jest config optimized for its needs
+- The root Jest config orchestrates running all package tests together
+- Tests should focus on business logic and avoid testing implementation details
 
 ## Building and Running
 - The project is designed to run on Windows using PowerShell. Commands should use PowerShell syntax (`;` instead of `&&` for chaining).
