@@ -23,19 +23,10 @@
     "skipLibCheck": true
   },
   "include": ["src"],
-  "exclude": ["node_modules", "**/__tests__/**"],
+  "exclude": ["node_modules"],
   "ts-node": {
     "compilerOptions": {
       "module": "CommonJS"
     }
-  },
-  "overrides": [
-    {
-      "files": ["**/__tests__/**/*.ts"],
-      "compilerOptions": {
-        "noUnusedLocals": false,
-        "noUnusedParameters": false
-      }
-    }
-  ]
+  }
 }

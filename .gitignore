@@ -3,3 +3,9 @@ coverage/
 
 # db
 server/users.db
+
+# TypeScript build cache
+tsconfig.tsbuildinfo
+
+# Build output
+dist/
