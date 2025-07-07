@@ -1,17 +1,23 @@
 # Spacewars Ironcore
 
-- This project is a 2D space exploration game built with TypeScript and Vite.
-- The game uses HTML5 Canvas for rendering.
-- The project follows a component-based architecture with clear separation between game logic and rendering.
+- This project is a 2D space exploration game built with TypeScript, React, and Vite.
+- The game uses HTML5 Canvas for rendering within a React application.
+- The project follows a component-based architecture with clear separation between game logic, rendering, and UI components.
 - All new code should be written in TypeScript with proper type definitions.
 - The project is structured as a monorepo with client, server, and shared packages.
 
 ## Project Structure
 - `packages/client/`: Frontend game client
   - `packages/client/src/`: Game source code
-    - `packages/client/test/`: Client test files
-    - `packages/client/src/renderers/`: Rendering components
+    - `packages/client/src/components/`: React components
+    - `packages/client/src/pages/`: Page components (Login, Game)
+    - `packages/client/src/hooks/`: React hooks
+    - `packages/client/src/renderers/`: Canvas rendering components
     - `packages/client/src/worlds/`: World configuration files
+    - `packages/client/src/Game.ts`: Main game controller
+    - `packages/client/src/App.tsx`: Main React component with routing
+    - `packages/client/src/main.tsx`: Application entry point
+  - `packages/client/test/`: Client test files
 - `packages/server/`: Backend server for user authentication and game data
   - `packages/server/src/`: Server source code
   - `packages/server/tests/`: Server test files
@@ -20,10 +26,13 @@
 
 ## Development Guidelines
 - Use TypeScript features like interfaces and type definitions to ensure type safety.
-- Maintain the separation between game logic and rendering components.
-- All rendering logic should go in the appropriate renderer class.
+- Maintain the separation between game logic, rendering components, and React UI.
+- All canvas rendering logic should go in the appropriate renderer class.
+- All UI components should be implemented as React components.
 - The `SpaceObject` class is the base class for all objects in the game world.
 - The `World` class manages all game objects and their interactions.
+- The `Game` class integrates with React components through canvas references.
+- Use React Hooks for state management and component lifecycle.
 - Shared types and utilities should be placed in the shared package.
 
 ## Testing
@@ -51,3 +60,7 @@
 - Use `npm run typecheck` to check for TypeScript errors across all packages.
 - The client runs on port 3000, and the server runs on port 5174.
 - API requests from the client to the server are proxied through `/api` path.
+- The React application uses React Router for navigation between pages:
+  - `/`: Login page
+  - `/game`: Game page (protected by authentication)
+  - Other routes redirect to the login page
