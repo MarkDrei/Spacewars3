@@ -6,7 +6,8 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview --host 0.0.0.0 --port ${PORT:-3000}",
-    "test": "jest"
+    "test": "jest",
+    "deploy": "cd ../../ && npm install && cd packages/client && npm install && npm run build"
   },
   "dependencies": {
     "@spacewars-ironcore/shared": "0.1.0",
