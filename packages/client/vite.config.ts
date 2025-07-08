@@ -35,5 +35,14 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: true,
+    // Add SPA fallback for client-side routing
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom', 'react-router-dom'],
+          game: ['./src/Game.ts']
+        }
+      }
+    }
   },
 });
