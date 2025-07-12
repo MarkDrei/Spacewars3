@@ -1,0 +1,181 @@
+.profile-page {
+  min-height: calc(100vh - 60px);
+  background-color: #121212;
+  color: white;
+  padding: 2rem 1rem;
+}
+
+.profile-container {
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.profile-container h1 {
+  color: #4caf50;
+  text-align: center;
+  margin-bottom: 2rem;
+  font-size: 2.5rem;
+}
+
+.profile-header {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  margin-bottom: 3rem;
+  padding: 2rem;
+  background-color: #1e1e1e;
+  border-radius: 12px;
+  border: 2px solid #4caf50;
+}
+
+.avatar {
+  width: 80px;
+  height: 80px;
+  background-color: #4caf50;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  font-weight: bold;
+  color: white;
+}
+
+.player-info h2 {
+  margin: 0 0 0.5rem 0;
+  font-size: 2rem;
+  color: white;
+}
+
+.level {
+  color: #4caf50;
+  font-weight: bold;
+  margin: 0 0 0.5rem 0;
+}
+
+.total-score {
+  color: #66bb6a;
+  font-size: 1.2rem;
+  margin: 0;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 3rem;
+}
+
+.stat-card {
+  background-color: #1e1e1e;
+  padding: 1.5rem;
+  border-radius: 8px;
+  text-align: center;
+  border-left: 4px solid #4caf50;
+}
+
+.stat-card h3 {
+  color: #4caf50;
+  margin: 0 0 1rem 0;
+  font-size: 1rem;
+}
+
+.stat-value {
+  font-size: 2rem;
+  font-weight: bold;
+  margin: 0;
+  color: white;
+}
+
+.achievements {
+  background-color: #1e1e1e;
+  padding: 2rem;
+  border-radius: 8px;
+  margin-bottom: 2rem;
+}
+
+.achievements h3 {
+  color: #4caf50;
+  margin: 0 0 1.5rem 0;
+}
+
+.achievement-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.achievement {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  background-color: #2d2d2d;
+  border-radius: 6px;
+}
+
+.achievement-icon {
+  font-size: 2rem;
+}
+
+.achievement-info h4 {
+  margin: 0 0 0.25rem 0;
+  color: white;
+}
+
+.achievement-info p {
+  margin: 0;
+  opacity: 0.8;
+  font-size: 0.9rem;
+}
+
+.playtime-info {
+  background-color: #1e1e1e;
+  padding: 2rem;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.playtime-info h3 {
+  color: #4caf50;
+  margin: 0 0 1rem 0;
+}
+
+.playtime-info p {
+  font-size: 1.2rem;
+  margin: 0;
+}
+
+.playtime-info strong {
+  color: #66bb6a;
+}
+
+@media (max-width: 768px) {
+  .profile-page {
+    padding: 1rem 0.5rem;
+  }
+
+  .profile-container h1 {
+    font-size: 2rem;
+  }
+
+  .profile-header {
+    flex-direction: column;
+    text-align: center;
+    gap: 1rem;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+  }
+
+  .stat-card {
+    padding: 1rem;
+  }
+
+  .achievements,
+  .playtime-info {
+    padding: 1.5rem;
+  }
+}
