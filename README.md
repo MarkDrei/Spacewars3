@@ -11,7 +11,8 @@ Spacewars is a browser-based game where the player navigates a spaceship in a 2D
 ## Technical Stack & Architecture
 
 - **Frontend**: TypeScript, React, HTML5 Canvas, Vite
-- **Backend**: Express, SQLite
+- **Backend**: Express, SQLite, bcrypt for authentication
+- **Authentication**: Session-based with HTTP-only cookies
 - **Testing**: Jest
 - **Structure**: Monorepo with client, server, and shared packages
 
@@ -29,6 +30,9 @@ The game follows a component-based architecture with clear separation between ga
 The client is implemented as a React application with TypeScript that integrates HTML5 Canvas for game rendering:
 
 - **React + React Router**: For page navigation and authentication flow
+- **Authentication System**: Complete user registration, login, and session management
+- **Protected Routes**: Game and other pages accessible only to authenticated users
+- **Navigation**: Responsive navbar with mobile hamburger menu
 - **Game Logic**: Encapsulated in TypeScript classes
 - **Rendering**: Handled by specialized renderer classes
 

@@ -4,10 +4,15 @@ The backend server for Spacewars Ironcore. This package provides authentication,
 
 ## Features
 
-- User authentication and session management
-- Player stats and progress tracking
+- User authentication and session management with bcrypt password hashing
+- User registration and login endpoints
+- Session-based authentication with HTTP-only cookies
+- Player stats and progress tracking with tech tree system
+- Iron resource management and passive income mechanics
+- Research system with upgrade costs and durations
 - SQLite database for data storage
 - RESTful API for client communication
+- CORS configuration for development
 
 ## Development
 
