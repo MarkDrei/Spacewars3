@@ -104,3 +104,94 @@ The foundation is now complete. Future work could include:
 - [ ] Admin panel for user management
 - [ ] Enhanced testing coverage
 - [ ] Performance optimizations
+
+## 🧪 Testing Plan and TODOs
+
+### 🔄 Phase 5: Testing (Ongoing)
+
+#### ✅ Suggested Next Steps
+
+1. **Set Up Cypress for E2E Testing**
+   - [ ] Install Cypress and configure it for the project.
+   - [ ] Write E2E tests for the full authentication flow:
+     - Registering a new user.
+     - Logging in with valid credentials.
+     - Navigating between pages (Game, About, Profile).
+     - Logging out and being redirected to the login page.
+
+2. **Add Unit Tests for Components**
+   - [ ] Use React Testing Library to test individual components:
+     - `LoginPage`: Ensure the form renders correctly and handles validation.
+     - `Navigation`: Verify links and active states based on authentication.
+     - `GamePage`: Ensure the game canvas initializes and cleans up properly.
+
+3. **Test Protected Routes**
+   - [ ] Write tests to ensure unauthenticated users are redirected to the login page when accessing protected routes (e.g., `/game`, `/about`, `/profile`).
+
+4. **Test Game Canvas Logic**
+   - [ ] Mock the game initialization and cleanup logic to verify that it behaves correctly:
+     - Ensure the game starts when the `GamePage` is mounted.
+     - Verify that resources are cleaned up when the `GamePage` is unmounted.
+
+### 🛠️ Plan for Stable E2E Testing
+
+To ensure E2E tests remain stable despite frequent app changes:
+
+1. **Focus on Critical User Flows**
+   - Only test the most important flows, such as authentication and navigation.
+   - Avoid testing minor UI details that are likely to change.
+
+2. **Use Stable Selectors**
+   - Add `data-testid` attributes to key elements and use them in tests.
+   - Example:
+     ```html
+     <button data-testid="login-button">Login</button>
+     ```
+     ```javascript
+     cy.get('[data-testid="login-button"]').click();
+     ```
+
+3. **Mock External Dependencies**
+   - Use `cy.intercept()` to mock API responses for predictable test results.
+   - Example:
+     ```javascript
+     cy.intercept('POST', '/api/login', { statusCode: 200, body: { success: true } });
+     ```
+
+4. **Modularize Tests**
+   - Break tests into smaller, reusable modules (e.g., a `login()` helper function).
+   - Example:
+     ```javascript
+     const login = (username, password) => {
+       cy.get('[data-testid="username-input"]').type(username);
+       cy.get('[data-testid="password-input"]').type(password);
+       cy.get('[data-testid="login-button"]').click();
+     };
+     ```
+
+5. **Handle Dynamic Content**
+   - Use assertions that adapt to dynamic content (e.g., `cy.contains()` for text matching).
+   - Example:
+     ```javascript
+     cy.contains('Welcome,').should('exist');
+     ```
+
+### 🧪 Main Testing TODOs
+
+1. **E2E Tests**
+   - [ ] Authentication flow (register, login, logout).
+   - [ ] Navigation between pages (Game, About, Profile).
+   - [ ] Protected routes (redirect unauthenticated users).
+
+2. **Unit Tests**
+   - [ ] `LoginPage`: Form rendering and validation.
+   - [ ] `Navigation`: Links and active states.
+   - [ ] `GamePage`: Game canvas initialization and cleanup.
+
+3. **Integration Tests**
+   - [ ] Mock API responses for authService methods.
+   - [ ] Verify session persistence across page reloads.
+
+4. **Game Logic Tests**
+   - [ ] Mock game initialization and cleanup.
+   - [ ] Test game state updates and rendering.
