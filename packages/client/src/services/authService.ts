@@ -31,7 +31,6 @@ export const authService = {
       const data = await response.json();
       
       if (!response.ok) {
-        console.error('Register failed:', response.status, data);
         return { error: data.error || `Server error: ${response.status}` };
       }
       
@@ -56,7 +55,6 @@ export const authService = {
       const data = await response.json();
       
       if (!response.ok) {
-        console.error('Login failed:', response.status, data);
         return { error: data.error || `Server error: ${response.status}` };
       }
       
@@ -77,7 +75,6 @@ export const authService = {
       const data = await response.json();
       
       if (!response.ok) {
-        console.error('Logout failed:', response.status, data);
         return { error: data.error || `Server error: ${response.status}` };
       }
       
@@ -97,7 +94,6 @@ export const authService = {
       const data = await response.json();
       
       if (!response.ok) {
-        console.error('Session check failed:', response.status, data);
         return { loggedIn: false };
       }
       
@@ -105,23 +101,6 @@ export const authService = {
     } catch (error) {
       console.error('Network error during session check:', error);
       return { loggedIn: false };
-    }
-  },
-  
-  async testServerConnection(): Promise<{ connected: boolean; error?: string }> {
-    try {
-      const response = await fetch(`${API_BASE}/session`, {
-        credentials: 'include',
-      });
-      
-      if (response.ok) {
-        return { connected: true };
-      } else {
-        return { connected: false, error: `Server responded with status: ${response.status}` };
-      }
-    } catch (error) {
-      console.error('Server connection test failed:', error);
-      return { connected: false, error: 'Failed to connect to server' };
     }
   },
 };

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import './LoginPage.css';
 
 interface LoginPageProps {
@@ -15,12 +15,6 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onRegister }) => {
   });
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [debugInfo, setDebugInfo] = useState<string>('');
-
-  // Add debug info on mount
-  useEffect(() => {
-    setDebugInfo(`API_BASE: /api, Current URL: ${window.location.href}`);
-  }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -171,14 +165,6 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onRegister }) => {
                 {isSignUp ? 'Sign In' : 'Sign Up'}
               </button>
             </p>
-            
-            {/* Debug info */}
-            <div className="debug-info">
-              <small style={{ color: '#666', fontSize: '0.8rem' }}>
-                Debug: {debugInfo}
-              </small>
-            </div>
-
           </div>
         </div>
       </div>
