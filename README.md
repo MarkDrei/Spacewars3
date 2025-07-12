@@ -108,3 +108,28 @@ cd packages/server; npm run dev
   - All tests: `npm test`
   - Watch mode: `npm test -- --watch`
   - Coverage: `npm test -- --coverage`
+
+### End-to-End (E2E) Testing with Cypress
+
+Cypress is used for automated browser-based E2E tests. These tests interact with the real frontend and backend, simulating user actions like registration, login, and navigation.
+
+#### Setup
+```powershell
+npm install cypress --save-dev
+```
+
+#### Running Cypress
+```powershell
+npx cypress open
+```
+- This opens the Cypress Test Runner UI. Select a test file (e.g., `auth.cy.js`) to run it in the browser.
+
+#### Writing Tests
+- Test files are located in `cypress/e2e/`.
+- Example test: `auth.cy.js` covers registration and login flows.
+- Cypress tests use real backend and database by default, but you can mock API responses with `cy.intercept()`.
+
+#### Best Practices
+- Use stable selectors (e.g., `data-testid`) for robust tests.
+- Focus on critical user flows (authentication, navigation).
+- Modularize tests for maintainability.

@@ -112,12 +112,13 @@ The foundation is now complete. Future work could include:
 #### ✅ Suggested Next Steps
 
 1. **Set Up Cypress for E2E Testing**
-   - [ ] Install Cypress and configure it for the project.
-   - [ ] Write E2E tests for the full authentication flow:
-     - Registering a new user.
-     - Logging in with valid credentials.
-     - Navigating between pages (Game, About, Profile).
-     - Logging out and being redirected to the login page.
+   - [x] Install Cypress and configure it for the project.
+   - [x] Write E2E test for the full authentication flow:
+     - Registering a new user. ✅
+     - Logging in with valid credentials. ✅
+     - Navigating between pages (Game, About, Profile). [ ]
+     - Logging out and being redirected to the login page. [ ]
+   - **Progress:** Cypress is installed and the first E2E authentication test is running successfully!
 
 2. **Add Unit Tests for Components**
    - [ ] Use React Testing Library to test individual components:
