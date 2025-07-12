@@ -1,10 +1,14 @@
 import React from 'react';
 import './ProfilePage.css';
 
-const ProfilePage: React.FC = () => {
+interface ProfilePageProps {
+  username?: string | null;
+}
+
+const ProfilePage: React.FC<ProfilePageProps> = ({ username }) => {
   // Dummy user data - in a real app, this would come from state management or API
   const userStats = {
-    username: 'SpaceExplorer',
+    username: username || 'SpaceExplorer',
     level: 12,
     totalScore: 15420,
     gamesPlayed: 47,

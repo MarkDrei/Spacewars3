@@ -5,22 +5,31 @@ import GamePage from './pages/Game/GamePage';
 import AboutPage from './pages/About/AboutPage';
 import ProfilePage from './pages/Profile/ProfilePage';
 import Navigation from './components/Navigation/Navigation';
+import { useAuth } from './hooks/useAuth';
 
 const App: React.FC = () => {
-  // This is a dummy auth state - in a real app, this would come from a context
-  const [isLoggedIn, setIsLoggedIn] = React.useState(false);
+  const { isLoggedIn, isLoading, username, login, register, logout } = useAuth();
 
-  const handleLogin = () => {
-    setIsLoggedIn(true);
-  };
-
-  const handleLogout = () => {
-    setIsLoggedIn(false);
-  };
+  // Show loading screen while checking authentication
+  if (isLoading) {
+    return (
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        height: '100vh',
+        backgroundColor: '#121212',
+        color: '#4caf50',
+        fontSize: '1.2rem'
+      }}>
+        Loading...
+      </div>
+    );
+  }
 
   return (
     <div className="app">
-      {isLoggedIn && <Navigation onLogout={handleLogout} />}
+      {isLoggedIn && <Navigation onLogout={logout} />}
       
       <Routes>
         <Route 
@@ -28,7 +37,7 @@ const App: React.FC = () => {
           element={
             isLoggedIn ? 
               <Navigate to="/game" /> : 
-              <LoginPage onLogin={handleLogin} />
+              <LoginPage onLogin={login} onRegister={register} />
           } 
         />
         <Route 
@@ -51,7 +60,7 @@ const App: React.FC = () => {
           path="/profile" 
           element={
             isLoggedIn ? 
-              <ProfilePage /> : 
+              <ProfilePage username={username} /> : 
               <Navigate to="/" />
           } 
         />

@@ -22,9 +22,18 @@ declare module 'express-session' {
 
 export function createApp(db: sqlite3.Database) {
   const app = express();
+  
+  // Add request logging middleware
+  app.use((req, res, next) => {
+    console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+    console.log('Origin:', req.headers.origin);
+    console.log('User-Agent:', req.headers['user-agent']);
+    next();
+  });
+  
   app.use(express.json());
   app.use(cors({
-    origin: 'http://localhost:5173',
+    origin: ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:5173'],
     credentials: true
   }));
   app.use(session({
@@ -36,15 +45,39 @@ export function createApp(db: sqlite3.Database) {
 
   // Register endpoint
   app.post('/api/register', async (req, res) => {
+    console.log('=== REGISTER ENDPOINT CALLED ===');
+    console.log('Request body:', req.body);
+    console.log('Headers:', req.headers);
+    
     const { username, password } = req.body;
-    if (!username || !password) return res.status(400).json({ error: 'Missing fields' });
+    
+    console.log('Extracted username:', username);
+    console.log('Extracted password:', password ? '[HIDDEN]' : 'undefined');
+    
+    if (!username || !password) {
+      console.log('Missing fields - returning 400');
+      return res.status(400).json({ error: 'Missing fields' });
+    }
+    
+    console.log('Starting password hashing...');
     bcrypt.hash(password, 10, async (err, hash) => {
-      if (err) return res.status(500).json({ error: 'Server error' });
+      if (err) {
+        console.log('Bcrypt error:', err);
+        return res.status(500).json({ error: 'Server error' });
+      }
+      
+      console.log('Password hashed successfully, attempting to create user...');
       try {
         const user = await createUser(db, username, hash, saveUserToDb(db));
+        console.log('User created successfully:', { id: user.id, username: user.username });
+        
         req.session.userId = user.id;
+        console.log('Session set, user ID:', req.session.userId);
+        
         res.json({ success: true });
+        console.log('Registration successful, response sent');
       } catch (e) {
+        console.log('Create user error:', e);
         res.status(400).json({ error: 'Username taken' });
       }
     });
@@ -52,23 +85,50 @@ export function createApp(db: sqlite3.Database) {
 
   // Login endpoint
   app.post('/api/login', async (req, res) => {
+    console.log('=== LOGIN ENDPOINT CALLED ===');
+    console.log('Request body:', req.body);
+    
     const { username, password } = req.body;
-    if (!username || !password) return res.status(400).json({ error: 'Missing fields' });
+    
+    console.log('Extracted username:', username);
+    console.log('Extracted password:', password ? '[HIDDEN]' : 'undefined');
+    
+    if (!username || !password) {
+      console.log('Missing fields - returning 400');
+      return res.status(400).json({ error: 'Missing fields' });
+    }
+    
     try {
+      console.log('Looking up user by username...');
       const user = await getUserByUsername(db, username, saveUserToDb(db));
-      if (!user) return res.status(400).json({ error: 'Invalid credentials' });
+      
+      if (!user) {
+        console.log('User not found');
+        return res.status(400).json({ error: 'Invalid credentials' });
+      }
+      
+      console.log('User found, comparing passwords...');
       bcrypt.compare(password, user.password_hash, async (err, result) => {
+        if (err) {
+          console.log('Bcrypt compare error:', err);
+          return res.status(500).json({ error: 'Server error' });
+        }
+        
         if (result) {
+          console.log('Password match successful');
           const now = Math.floor(Date.now() / 1000);
           user.updateStats(now);
           await user.save();
           req.session.userId = user.id;
+          console.log('Login successful, session set for user ID:', user.id);
           res.json({ success: true });
         } else {
+          console.log('Password mismatch');
           res.status(400).json({ error: 'Invalid credentials' });
         }
       });
     } catch (e) {
+      console.log('Login error:', e);
       res.status(500).json({ error: 'Server error' });
     }
   });
