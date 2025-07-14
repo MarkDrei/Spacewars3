@@ -180,12 +180,12 @@ To ensure E2E tests remain stable despite frequent app changes:
 ### 🧪 Main Testing TODOs
 
 1. **E2E Tests**
-   - [ ] Authentication flow (register, login, logout).
+   - [x] Authentication flow (register, login, logout). ✅
    - [ ] Navigation between pages (Game, About, Profile).
    - [ ] Protected routes (redirect unauthenticated users).
 
 2. **Unit Tests**
-   - [ ] `LoginPage`: Form rendering and validation.
+   - [x] `LoginPage`: Form rendering and validation. ✅ (11 tests passing)
    - [ ] `Navigation`: Links and active states.
    - [ ] `GamePage`: Game canvas initialization and cleanup.
 
