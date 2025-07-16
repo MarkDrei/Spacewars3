@@ -23,7 +23,7 @@ afterAll((done) => {
 });
 
 describe('User stats API', () => {
-  let agent: any;
+  let agent: ReturnType<typeof request.agent>;
   beforeEach(() => {
     agent = request.agent(app);
   });

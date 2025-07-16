@@ -1,8 +1,15 @@
-const { spawn } = require('child_process');
-const { join } = require('path');
-const { existsSync } = require('fs');
+// @ts-check
+import { spawn } from 'child_process';
+import { join } from 'path';
+import { existsSync } from 'fs';
 
-// Function to run a command in a specific directory
+/**
+ * Runs a command in a specific directory and resolves when the process exits successfully.
+ * @param {string} command
+ * @param {string[]} args
+ * @param {string} cwd
+ * @returns {Promise<void>}
+ */
 function runCommand(command, args, cwd) {
   return new Promise((resolve, reject) => {
     console.log(`Running: ${command} ${args.join(' ')} in ${cwd}`);

@@ -1,3 +1,5 @@
+/* global cy, describe, it, beforeEach */
+
 describe('Authentication Flow', () => {
   beforeEach(() => {
     // Clear any existing user data before each test

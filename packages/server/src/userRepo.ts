@@ -6,7 +6,16 @@ import sqlite3 from 'sqlite3';
 import { User, SaveUserCallback } from './user';
 import { createInitialTechTree } from './techtree';
 
-function userFromRow(row: any, saveCallback: SaveUserCallback): User {
+interface UserRow {
+  id: number;
+  username: string;
+  password_hash: string;
+  iron: number;
+  last_updated: number;
+  tech_tree: string;
+}
+
+function userFromRow(row: UserRow, saveCallback: SaveUserCallback): User {
   // Parse techTree from JSON, fallback to initial if missing or invalid
   let techTree;
   try {
@@ -30,7 +39,7 @@ export function getUserById(db: sqlite3.Database, id: number, saveCallback: Save
     db.get('SELECT * FROM users WHERE id = ?', [id], (err, row) => {
       if (err) return reject(err);
       if (!row) return resolve(null);
-      resolve(userFromRow(row, saveCallback));
+      resolve(userFromRow(row as UserRow, saveCallback));
     });
   });
 }
@@ -40,7 +49,7 @@ export function getUserByUsername(db: sqlite3.Database, username: string, saveCa
     db.get('SELECT * FROM users WHERE username = ?', [username], (err, row) => {
       if (err) return reject(err);
       if (!row) return resolve(null);
-      resolve(userFromRow(row, saveCallback));
+      resolve(userFromRow(row as UserRow, saveCallback));
     });
   });
 }

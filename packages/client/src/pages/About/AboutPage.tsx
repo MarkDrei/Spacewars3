@@ -37,7 +37,7 @@ const AboutPage: React.FC = () => {
         <section className="about-section">
           <h2>How to Play</h2>
           <ol>
-            <li>Click anywhere on the game canvas to set your ship's direction</li>
+            <li>Click anywhere on the game canvas to set your ship&apos;s direction</li>
             <li>Your ship will accelerate towards the clicked location</li>
             <li>Collect shipwrecks and escape pods for points</li>
             <li>Use the radar to locate nearby objects</li>

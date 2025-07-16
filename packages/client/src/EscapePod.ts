@@ -40,6 +40,7 @@ export class EscapePod extends Collectible {
      * Defines what happens when this escape pod is collected.
      * @param player - Reference to the player
      */
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     onCollect(_player: Player): void {
         // Example effect: Could provide benefits based on number of survivors
         // For now, just mark as collected

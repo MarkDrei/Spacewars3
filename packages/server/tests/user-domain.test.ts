@@ -1,13 +1,11 @@
 import { User, SaveUserCallback } from '../src/user';
-import { TechTree, ResearchType, triggerResearch, getResearchEffectFromTree, createInitialTechTree, updateTechTree } from '../src/techtree';
+import { ResearchType, triggerResearch, getResearchEffectFromTree, createInitialTechTree } from '../src/techtree';
 
 describe('User.updateStats with IronHarvesting research progression', () => {
   let user: User;
-  let saved: any;
-  const dummySave: SaveUserCallback = async (u) => { saved = { ...u }; };
+  const dummySave: SaveUserCallback = async () => { /* no-op for testing */ };
 
   beforeEach(() => {
-    saved = null;
     user = new User(
       1,
       'testuser',

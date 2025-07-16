@@ -177,8 +177,8 @@ describe('LoginPage', () => {
   it('should disable form inputs and button when loading', async () => {
     const user = userEvent.setup();
     // Create a promise that we can control
-    let resolveLogin: (value: any) => void;
-    const loginPromise = new Promise(resolve => {
+    let resolveLogin: (value: { success: boolean; error?: string }) => void;
+    const loginPromise = new Promise<{ success: boolean; error?: string }>(resolve => {
       resolveLogin = resolve;
     });
     mockOnLogin.mockReturnValue(loginPromise);
@@ -196,8 +196,13 @@ describe('LoginPage', () => {
     expect(screen.getByLabelText('Password')).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Loading...' })).toBeDisabled();
     
-    // Resolve the promise to clean up
+    // Resolve the promise and wait for state updates
     resolveLogin!({ success: true });
+    
+    // Wait for the loading state to be cleared
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: 'Loading...' })).not.toBeInTheDocument();
+    });
   });
 
   it('should reset form when switching between login and register modes', async () => {

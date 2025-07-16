@@ -2,7 +2,7 @@
 // Domain logic for the User and its stats, including persistence callback.
 // ---
 
-import { TechTree, ResearchType, getResearchEffectFromTree, createInitialTechTree } from './techtree';
+import { TechTree, ResearchType, getResearchEffectFromTree, createInitialTechTree, updateTechTree } from './techtree';
 
 class User {
   id: number;
@@ -40,12 +40,11 @@ class User {
   }
 
   updateStats(now: number): void {
-    let elapsed = now - this.last_updated;
+    const elapsed = now - this.last_updated;
     if (elapsed <= 0) return;
 
-    const { updateTechTree, getResearchEffectFromTree } = require('./techtree');
     let iron = this.iron;
-    let techTree = this.techTree;
+    const techTree = this.techTree;
     const active = techTree.activeResearch;
     if (!active || active.type !== ResearchType.IronHarvesting) {
       // No relevant research in progress, just award all time

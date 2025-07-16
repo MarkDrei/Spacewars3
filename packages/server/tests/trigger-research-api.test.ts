@@ -5,7 +5,7 @@ import sqlite3 from 'sqlite3';
 describe('Trigger Research API', () => {
   let db: sqlite3.Database;
   let app: ReturnType<typeof createApp>;
-  let agent: any;
+  let agent: ReturnType<typeof request.agent>;
 
   beforeAll((done) => {
     db = new (sqlite3.verbose().Database)(':memory:');

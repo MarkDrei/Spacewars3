@@ -3,6 +3,8 @@ import { World } from './World';
 import { GameRenderer } from './renderers/GameRenderer';
 import { WorldInitializer } from './WorldInitializer';
 import { Ship } from './Ship';
+import { Shipwreck } from './Shipwreck';
+import { EscapePod } from './EscapePod';
 
 export class Game {
   private world: World;
@@ -128,12 +130,14 @@ export class Game {
         const type = lastCollected.getType();
         
         if (type === 'shipwreck') {
-          // Cast to any to access specific properties
-          const salvageType = (lastCollected as any).getSalvageType?.() || 'generic';
+          // Use proper type checking instead of any
+          const salvageType = lastCollected instanceof Shipwreck ? 
+            lastCollected.getSalvageType() : 'generic';
           details = `Shipwreck (${salvageType}) - Value: ${lastCollected.getValue()}`;
         } else if (type === 'escape-pod') {
-          // Cast to any to access specific properties
-          const survivors = (lastCollected as any).getSurvivors?.() || 0;
+          // Use proper type checking instead of any
+          const survivors = lastCollected instanceof EscapePod ?
+            lastCollected.getSurvivors() : 0;
           details = `Escape Pod (${survivors} survivors) - Value: ${lastCollected.getValue()}`;
         } else {
           details = `${type} - Value: ${lastCollected.getValue()}`;
@@ -229,8 +233,8 @@ export class Game {
         this.renderer.drawWorld(this.ship);
         // Draw interception point on top of the rendered world
         this.drawInterceptionPoint(this.ctx);
-      } else if (typeof (this.renderer as any).render === 'function') {
-        (this.renderer as any).render();
+      } else if ('render' in this.renderer && typeof this.renderer.render === 'function') {
+        (this.renderer as { render: () => void }).render();
         // Draw interception point on top of the rendered world
         this.drawInterceptionPoint(this.ctx);
       } else {

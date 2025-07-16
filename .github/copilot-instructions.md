@@ -6,6 +6,12 @@
 - All new code should be written in TypeScript with proper type definitions.
 - The project is structured as a monorepo with client, server, and shared packages.
 
+## Module System
+
+- This project uses [ES Modules](https://nodejs.org/api/esm.html) exclusively (`"type": "module"` in package.json).
+- Use `import`/`export` syntax only.
+- Do not use CommonJS (`require`, `module.exports`).
+
 ## Project Structure
 - `packages/client/`: Frontend game client
   - `packages/client/src/`: Game source code

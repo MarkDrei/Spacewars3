@@ -7,11 +7,9 @@ import express from 'express';
 import session from 'express-session';
 import sqlite3 from 'sqlite3';
 import bcrypt from 'bcrypt';
-import path from 'path';
 import cors from 'cors';
-import { User, SaveUserCallback } from './user';
 import { getUserById, getUserByUsername, createUser, saveUserToDb } from './userRepo';
-import { ResearchType, TechTree } from './techtree';
+import { AllResearches, getResearchUpgradeCost, getResearchUpgradeDuration, getResearchEffect, ResearchType, triggerResearch, TechTree } from './techtree';
 
 // Extend express-session to include userId
 declare module 'express-session' {
@@ -52,8 +50,14 @@ export function createApp(db: sqlite3.Database) {
         const user = await createUser(db, username, hash, saveUserToDb(db));
         req.session.userId = user.id;
         res.json({ success: true });
-      } catch (e: any) {
-        if (e.message && e.message.includes('UNIQUE constraint failed')) {
+      } catch (e) {
+        console.error('User creation error:', e);
+        if (e instanceof Error && e.message && e.message.includes('UNIQUE constraint failed')) {
+          res.status(400).json({ error: 'Username taken' });
+        } else if (typeof e === 'object' && e !== null && 'message' in e && 
+                   typeof e.message === 'string' && e.message.includes('UNIQUE constraint failed')) {
+          res.status(400).json({ error: 'Username taken' });
+        } else if (typeof e === 'object' && e !== null && 'code' in e && e.code === 'SQLITE_CONSTRAINT') {
           res.status(400).json({ error: 'Username taken' });
         } else {
           console.error('User creation error:', e);
@@ -130,7 +134,7 @@ export function createApp(db: sqlite3.Database) {
       user.updateStats(now);
       await user.save();
       res.json({ iron: user.iron, last_updated: user.last_updated, ironPerSecond: user.getIronPerSecond() });
-    } catch (e) {
+    } catch {
       res.status(500).json({ error: 'Server error' });
     }
   });
@@ -141,10 +145,16 @@ export function createApp(db: sqlite3.Database) {
     try {
       const user = await getUserById(db, req.session.userId, saveUserToDb(db));
       if (!user) return res.status(404).json({ error: 'User not found' });
-      const { AllResearches, getResearchUpgradeCost, getResearchUpgradeDuration, getResearchEffect, ResearchType } = require('./techtree');
       // Build research definitions with next upgrade cost/duration for the user
-      const researches: Record<string, any> = {};
-      (Object.values(ResearchType) as string[]).forEach(type => {
+      const researches: Record<string, {
+        name: string;
+        description: string;
+        nextUpgradeCost: number;
+        nextUpgradeDuration: number;
+        currentEffect: number;
+        nextEffect: number;
+      }> = {};
+      (Object.values(ResearchType) as ResearchType[]).forEach(type => {
         const research = AllResearches[type];
         const key = research.treeKey as keyof typeof user.techTree;
         const currentLevel = user.techTree[key];
@@ -153,7 +163,7 @@ export function createApp(db: sqlite3.Database) {
           ...research,
           nextUpgradeCost: getResearchUpgradeCost(research, nextLevel),
           nextUpgradeDuration: getResearchUpgradeDuration(research, nextLevel),
-          currentEffect: getResearchEffect(research, currentLevel),
+          currentEffect: getResearchEffect(research, typeof currentLevel === 'number' ? currentLevel : 0),
           nextEffect: getResearchEffect(research, nextLevel),
         };
       });
@@ -161,7 +171,7 @@ export function createApp(db: sqlite3.Database) {
         techTree: user.techTree,
         researches
       });
-    } catch (e) {
+    } catch {
       res.status(500).json({ error: 'Server error' });
     }
   });
@@ -172,7 +182,6 @@ export function createApp(db: sqlite3.Database) {
     const { type } = req.body;
     if (!type) return res.status(400).json({ error: 'Missing research type' });
     try {
-      const { ResearchType, triggerResearch, getResearchUpgradeCost, AllResearches } = require('./techtree');
       const user = await getUserById(db, req.session.userId, saveUserToDb(db));
       if (!user) return res.status(404).json({ error: 'User not found' });
       const now = Math.floor(Date.now() / 1000);
@@ -183,7 +192,7 @@ export function createApp(db: sqlite3.Database) {
       if (!Object.values(ResearchType).includes(type)) {
         return res.status(400).json({ error: 'Invalid research type' });
       }
-      const research = AllResearches[type];
+      const research = AllResearches[type as ResearchType];
       const key = research.treeKey as keyof TechTree;
       const currentLevel = user.techTree[key];
       if (typeof currentLevel !== 'number') {
@@ -197,7 +206,7 @@ export function createApp(db: sqlite3.Database) {
       triggerResearch(user.techTree, type);
       await user.save();
       res.json({ success: true });
-    } catch (e) {
+    } catch {
       res.status(500).json({ error: 'Server error' });
     }
   });

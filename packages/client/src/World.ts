@@ -442,7 +442,7 @@ export class World {
                     randomValue
                 ));
                 break;
-            case 1: // Shipwreck
+            case 1: { // Shipwreck
                 // Random salvage type
                 const salvageTypes = [
                     SalvageType.FUEL,
@@ -461,7 +461,8 @@ export class World {
                     randomSalvageType
                 ));
                 break;
-            case 2: // Escape Pod
+            }
+            case 2: { // Escape Pod
                 // Random number of survivors (1-3)
                 const survivors = Math.floor(1 + Math.random() * 3);
                 
@@ -478,6 +479,7 @@ export class World {
                     distressSignalActive
                 ));
                 break;
+            }
         }
     }
     

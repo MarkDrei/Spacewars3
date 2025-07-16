@@ -20,7 +20,7 @@ export class RadarRenderer {
 
         // Draw horizontal and vertical lines only (no diagonals)
         const angles = [0, Math.PI / 2, Math.PI, Math.PI * 3 / 2];
-        for (let angle of angles) {
+        for (const angle of angles) {
             ctx.beginPath();
             ctx.moveTo(centerX, centerY);
             ctx.lineTo(centerX + maxRadius * Math.cos(angle), centerY + maxRadius * Math.sin(angle));

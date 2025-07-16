@@ -163,8 +163,9 @@ describe('updateTechTree', () => {
   test('updateTechTree_activeResearchCompletes_increasesLevelAndUnsetsActiveResearch', () => {
     const tree = createInitialTechTree();
     triggerResearch(tree, ResearchType.IronHarvesting);
-    const duration = tree.activeResearch?.remainingDuration!;
-    updateTechTree(tree, duration);
+    const duration = tree.activeResearch?.remainingDuration;
+    expect(duration).toBeDefined();
+    updateTechTree(tree, duration!);
     expect(tree.activeResearch).toBeUndefined();
     expect(tree.ironHarvesting).toBe(2);
   });
@@ -172,8 +173,9 @@ describe('updateTechTree', () => {
   test('updateTechTree_activeResearchCompletesWithOverflow_increasesLevelAndUnsetsActiveResearch', () => {
     const tree = createInitialTechTree();
     triggerResearch(tree, ResearchType.IronHarvesting);
-    const duration = tree.activeResearch?.remainingDuration!;
-    updateTechTree(tree, duration + 10);
+    const duration = tree.activeResearch?.remainingDuration;
+    expect(duration).toBeDefined();
+    updateTechTree(tree, duration! + 10);
     expect(tree.activeResearch).toBeUndefined();
     expect(tree.ironHarvesting).toBe(2);
   });

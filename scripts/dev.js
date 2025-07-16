@@ -1,6 +1,12 @@
-const { spawn } = require('child_process');
-const { join } = require('path');
-const { existsSync } = require('fs');
+// @ts-check
+import { spawn } from 'child_process';
+import { join, dirname } from 'path';
+import { existsSync } from 'fs';
+import { fileURLToPath } from 'url';
+
+// ES module equivalent of __dirname
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 // Function to run a command in a specific directory
 function runCommand(command, args, cwd) {

@@ -36,11 +36,12 @@ export class Shipwreck extends Collectible {
     onCollect(player: Player): void {
         // Apply effects based on salvage type
         switch (this.salvageType) {
-            case SalvageType.FUEL:
+            case SalvageType.FUEL: {
                 // Example: Increase ship speed
                 const ship = player.getShip();
                 ship.setSpeed(ship.getSpeed() + 5);
                 break;
+            }
                 
             case SalvageType.WEAPONS:
                 // Example effect: Could enhance weapons in future implementation

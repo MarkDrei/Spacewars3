@@ -1,5 +1,6 @@
 import { Collectible } from './Collectible';
 import { Ship } from './Ship';
+import { Shipwreck } from './Shipwreck';
 
 // Interface to track inventory items
 export interface InventoryItem {
@@ -85,8 +86,8 @@ export class Player {
             value: collectible.getValue(),
             timestamp: Date.now(),
             // Add salvage type if it's a shipwreck
-            ...(collectible.getType() === 'shipwreck' && 
-                { salvageType: (collectible as any).getSalvageType() })
+            ...(collectible.getType() === 'shipwreck' && collectible instanceof Shipwreck && 
+                { salvageType: collectible.getSalvageType() })
         });
         
         // Add to score

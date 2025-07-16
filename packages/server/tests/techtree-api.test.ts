@@ -23,7 +23,7 @@ afterAll((done) => {
 });
 
 describe('TechTree API', () => {
-  let agent: any;
+  let agent: ReturnType<typeof request.agent>;
   beforeEach(() => {
     agent = request.agent(app);
   });
@@ -51,7 +51,7 @@ describe('TechTree API', () => {
 });
 
 describe('UserStats API', () => {
-  let agent: any;
+  let agent: ReturnType<typeof request.agent>;
   beforeEach(() => {
     agent = request.agent(app);
   });

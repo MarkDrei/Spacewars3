@@ -28,7 +28,7 @@ export const useAuth = () => {
         username: session.username || null,
         isLoading: false,
       });
-    } catch (error) {
+    } catch {
       setAuthState({
         isLoggedIn: false,
         username: null,
@@ -51,7 +51,7 @@ export const useAuth = () => {
       } else {
         return { success: false, error: result.error || 'Login failed' };
       }
-    } catch (error) {
+    } catch {
       return { success: false, error: 'Network error' };
     }
   };
@@ -70,7 +70,7 @@ export const useAuth = () => {
       } else {
         return { success: false, error: result.error || 'Registration failed' };
       }
-    } catch (error) {
+    } catch {
       return { success: false, error: 'Network error' };
     }
   };
