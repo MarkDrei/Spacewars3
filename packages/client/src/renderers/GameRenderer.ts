@@ -34,12 +34,17 @@ export class GameRenderer {
         this.ctx.fillStyle = '#000000';
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
         
+        // Draw grid and world boundaries
+        this.drawGrid();
+        this.drawWorldBoundaries();
+    }
+
+    private drawGrid(): void {
         // Draw world boundary grid lines (subtle)
         this.ctx.strokeStyle = '#1a1a1a';
         this.ctx.lineWidth = 1;
         
-        // Draw vertical grid lines
-        const gridSize = 50; // Grid size in world units
+        const gridSize = 100; // Grid size in world units
         const shipX = this.world.getShip().getX();
         const shipY = this.world.getShip().getY();
         
@@ -68,9 +73,6 @@ export class GameRenderer {
             this.ctx.lineTo(this.canvas.width, screenY);
             this.ctx.stroke();
         }
-        
-        // Draw world boundaries
-        this.drawWorldBoundaries();
     }
     
     // Draw the world boundaries with a green color
@@ -84,31 +86,16 @@ export class GameRenderer {
         
         // Calculate the screen coordinates of the world boundaries
         const leftEdgeX = centerX - shipX;
-        const rightEdgeX = centerX + (worldWidth - shipX);
         const topEdgeY = centerY - shipY;
-        const bottomEdgeY = centerY + (worldHeight - shipY);
         
         // Draw the world boundaries with a more visible style
-        this.ctx.strokeStyle = '#4CAF50'; // Green color for boundaries
+        this.ctx.strokeStyle = '#214923ff'; // Green color for boundaries
         this.ctx.lineWidth = 2;
         
         // Draw the boundary rectangle
         this.ctx.beginPath();
         this.ctx.rect(leftEdgeX, topEdgeY, worldWidth, worldHeight);
         this.ctx.stroke();
-        
-        // Add boundary labels
-        this.ctx.fillStyle = '#4CAF50';
-        this.ctx.font = '12px Arial';
-        this.ctx.textAlign = 'center';
-        
-        // X-axis labels
-        this.ctx.fillText('0', leftEdgeX, centerY + 20);
-        this.ctx.fillText(worldWidth.toString(), rightEdgeX, centerY + 20);
-        
-        // Y-axis labels
-        this.ctx.fillText('0', centerX + 20, topEdgeY);
-        this.ctx.fillText(worldHeight.toString(), centerX + 20, bottomEdgeY);
     }
 
     drawRadar(ship: Ship): void {

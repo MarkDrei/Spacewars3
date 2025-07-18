@@ -7,7 +7,6 @@ import { Player } from './Player';
  */
 export class EscapePod extends Collectible {
     private readonly survivors: number;
-    private readonly distressSignalActive: boolean;
     
     /**
      * @param x - X coordinate
@@ -16,7 +15,6 @@ export class EscapePod extends Collectible {
      * @param speed - Movement speed (typically slow)
      * @param value - Base value/points awarded when collected
      * @param survivors - Number of survivors in the pod
-     * @param distressSignalActive - Whether the pod is emitting a distress signal
      */
     constructor(
         x: number, 
@@ -25,11 +23,9 @@ export class EscapePod extends Collectible {
         speed: number = 1, 
         value: number = 15,
         survivors: number = 1,
-        distressSignalActive: boolean = true
     ) {
         super(x, y, angle, speed, value);
         this.survivors = survivors;
-        this.distressSignalActive = distressSignalActive;
         
         // Value is increased based on number of survivors
         this.value = value * survivors;
@@ -65,26 +61,10 @@ export class EscapePod extends Collectible {
     }
     
     /**
-     * Check if distress signal is active
-     */
-    isDistressSignalActive(): boolean {
-        return this.distressSignalActive;
-    }
-    
-    /**
      * Override updatePosition to simulate pod distress signal behavior
      */
     override updatePosition(deltaTime: number): void {
         // Call parent method to update position normally
         super.updatePosition(deltaTime);
-        
-        // If distress signal is active, add some wobble to the movement
-        // This would make it visually distinctive when rendered
-        if (this.distressSignalActive) {
-            // Small random movement to simulate distress signal activity
-            const wobbleAmount = 0.3;
-            this.x += (Math.random() - 0.5) * wobbleAmount;
-            this.y += (Math.random() - 0.5) * wobbleAmount;
-        }
     }
 } 

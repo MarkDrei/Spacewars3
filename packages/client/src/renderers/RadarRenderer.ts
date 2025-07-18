@@ -11,63 +11,98 @@ export class RadarRenderer {
         ctx.lineWidth = 1;
         ctx.stroke();
 
-        // Draw inner circle at 75 distance
+        // Draw inner circle at 125 distance
         ctx.beginPath();
-        ctx.arc(centerX, centerY, 75, 0, Math.PI * 2);
+        ctx.arc(centerX, centerY, 125, 0, Math.PI * 2);
         ctx.strokeStyle = '#8b0000';  // Dark red for rings
         ctx.lineWidth = 1;
         ctx.stroke();
 
-        // Draw horizontal and vertical lines only (no diagonals)
-        const angles = [0, Math.PI / 2, Math.PI, Math.PI * 3 / 2];
-        for (const angle of angles) {
+        // Draw crosshairs and coordinates
+        this.drawCrosshairsAndCoordinates(ctx, centerX, centerY, maxRadius, ship);
+    }
+
+    private drawCrosshairsAndCoordinates(ctx: CanvasRenderingContext2D, centerX: number, centerY: number, maxRadius: number, ship: Ship): void {
+        const useScreenEdges = false; // Hardcoded boolean - true for screen edges, false for center crossing
+        
+        // Draw horizontal and vertical lines
+        ctx.strokeStyle = '#8b0000';  // Dark red for lines
+        ctx.lineWidth = 1;
+        
+        if (useScreenEdges) {
+            // Draw lines at screen edges
+            // Horizontal line at bottom of screen
             ctx.beginPath();
-            ctx.moveTo(centerX, centerY);
-            ctx.lineTo(centerX + maxRadius * Math.cos(angle), centerY + maxRadius * Math.sin(angle));
-            ctx.strokeStyle = '#8b0000';  // Dark red for lines
-            ctx.lineWidth = 1;
+            ctx.moveTo(0, centerY * 2);
+            ctx.lineTo(centerX * 2, centerY * 2);
+            ctx.stroke();
+            
+            // Vertical line at left of screen
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(0, centerY * 2);
+            ctx.stroke();
+        } else {
+            // Draw lines crossing the center
+            // Draw horizontal line
+            ctx.beginPath();
+            ctx.moveTo(centerX - maxRadius, centerY);
+            ctx.lineTo(centerX + maxRadius, centerY);
+            ctx.stroke();
+            
+            // Draw vertical line
+            ctx.beginPath();
+            ctx.moveTo(centerX, centerY - maxRadius);
+            ctx.lineTo(centerX, centerY + maxRadius);
             ctx.stroke();
         }
 
         // Draw coordinates
         const shipX = ship.getX();
         const shipY = ship.getY();
-        const coordinateDistance = 400; // Show coordinates within 400 units
-        const innerExclusionZone = 70; // Don't show coordinates within 70 units
-
-        // Calculate the range of coordinates to show
-        const minX = Math.floor((shipX - coordinateDistance) / 50) * 50;
-        const maxX = Math.ceil((shipX + coordinateDistance) / 50) * 50;
-        const minY = Math.floor((shipY - coordinateDistance) / 50) * 50;
-        const maxY = Math.ceil((shipY + coordinateDistance) / 50) * 50;
+        const coordinateDistance = 400;
+        const innerExclusionZone = 70;
 
         ctx.font = '12px Arial';
-        ctx.fillStyle = '#ff0000';  // Bright red for numbers
+        ctx.fillStyle = '#ff0000';
 
-        // Draw X coordinates
-        ctx.textAlign = 'center';
-        for (let x = minX; x <= maxX; x += 50) {
-            if (x % 50 === 0) { // Only draw coordinates divisible by 50
-                const distanceFromShipX = Math.abs(x - shipX);
-                // Only draw if outside the inner exclusion zone and within the outer limit
-                if (distanceFromShipX >= innerExclusionZone && distanceFromShipX <= coordinateDistance) {
-                    const screenX = centerX + (x - shipX);
-                    const screenY = centerY + 15; // Position below the center
-                    ctx.fillText(x.toString(), screenX, screenY);
+        if (useScreenEdges) {
+            // Draw X coordinates along bottom edge (above the line)
+            ctx.textAlign = 'center';
+            for (let x = Math.floor((shipX - coordinateDistance) / 100) * 100; x <= Math.ceil((shipX + coordinateDistance) / 100) * 100; x += 100) {
+                const screenX = centerX + (x - shipX);
+                if (screenX >= 0 && screenX <= centerX * 2) { // Keep on screen
+                    ctx.fillText(x.toString(), screenX, centerY * 2 - 5);
                 }
             }
-        }
 
-        // Draw Y coordinates
-        ctx.textAlign = 'right';
-        for (let y = minY; y <= maxY; y += 50) {
-            if (y % 50 === 0) { // Only draw coordinates divisible by 50
-                const distanceFromShipY = Math.abs(y - shipY);
-                // Only draw if outside the inner exclusion zone and within the outer limit
-                if (distanceFromShipY >= innerExclusionZone && distanceFromShipY <= coordinateDistance) {
-                    const screenX = centerX - 15; // Position to the left of the center
+            // Draw Y coordinates along left edge
+            ctx.textAlign = 'left';
+            for (let y = Math.floor((shipY - coordinateDistance) / 100) * 100; y <= Math.ceil((shipY + coordinateDistance) / 100) * 100; y += 100) {
+                const distanceFromShip = Math.abs(y - shipY);
+                if (distanceFromShip >= innerExclusionZone && distanceFromShip <= coordinateDistance) {
                     const screenY = centerY + (y - shipY);
-                    ctx.fillText(y.toString(), screenX, screenY);
+                    if (screenY >= 15 && screenY <= centerY * 2) { // Keep on screen
+                        ctx.fillText(y.toString(), 5, screenY);
+                    }
+                }
+            }
+        } else {
+            // Draw X coordinates along horizontal axis (center crossing)
+            ctx.textAlign = 'center';
+            for (let x = Math.floor((shipX - coordinateDistance) / 100) * 100; x <= Math.ceil((shipX + coordinateDistance) / 100) * 100; x += 100) {
+                const distanceFromShip = Math.abs(x - shipX);
+                if (distanceFromShip >= innerExclusionZone && distanceFromShip <= coordinateDistance) {
+                    ctx.fillText(x.toString(), centerX + (x - shipX), centerY + 15);
+                }
+            }
+
+            // Draw Y coordinates along vertical axis (center crossing)
+            ctx.textAlign = 'right';
+            for (let y = Math.floor((shipY - coordinateDistance) / 100) * 100; y <= Math.ceil((shipY + coordinateDistance) / 100) * 100; y += 100) {
+                const distanceFromShip = Math.abs(y - shipY);
+                if (distanceFromShip >= innerExclusionZone && distanceFromShip <= coordinateDistance) {
+                    ctx.fillText(y.toString(), centerX - 15, centerY + (y - shipY));
                 }
             }
         }

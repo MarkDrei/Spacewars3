@@ -57,9 +57,9 @@ export class WorldInitializer {
         world.addSpaceObject(new Shipwreck(200, 400, 0, 0, 20, SalvageType.GENERIC));
         
         // Add escape pods
-        world.addSpaceObject(new EscapePod(350, 250, Math.PI / 4, 2, 20, 2, true));
-        world.addSpaceObject(new EscapePod(100, 300, Math.PI / 2, 3, 25, 3, true));
-        world.addSpaceObject(new EscapePod(450, 150, -Math.PI / 6, 1.5, 15, 1, false));
+        world.addSpaceObject(new EscapePod(350, 250, Math.PI / 4, 2, 20, 2));
+        world.addSpaceObject(new EscapePod(100, 300, Math.PI / 2, 3, 25, 3));
+        world.addSpaceObject(new EscapePod(450, 150, -Math.PI / 6, 1.5, 15, 1));
         
         // Add a moving shipwreck (like it's drifting)
         world.addSpaceObject(new Shipwreck(300, 200, Math.PI / 3, 0.5, 30, SalvageType.TECH));
@@ -134,8 +134,7 @@ export class WorldInitializer {
                     podConfig.angle,
                     podConfig.speed || 1,
                     podConfig.value || 15,
-                    podConfig.survivors || 1,
-                    podConfig.distressSignalActive !== undefined ? podConfig.distressSignalActive : true
+                    podConfig.survivors || 1
                 );
                 world.addSpaceObject(escapePod);
             });

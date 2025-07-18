@@ -53,28 +53,6 @@ export class EscapePodRenderer extends CollectibleRenderer {
             ctx.fillStyle = gradient;
             ctx.fill();
         }
-        
-        // Draw distress signal if active
-        if (escapePod.isDistressSignalActive()) {
-            // Pulsing effect based on time
-            const time = Date.now() % 2000 / 2000;
-            const signalSize = 15 * (1 + time);
-            const alpha = 0.7 - time * 0.7;  // Fade out as it expands
-            
-            // Draw circular pulse
-            ctx.beginPath();
-            ctx.arc(0, 0, signalSize, 0, Math.PI * 2);
-            ctx.strokeStyle = `rgba(255, 0, 0, ${alpha})`;
-            ctx.lineWidth = 2;
-            ctx.stroke();
-            
-            // Draw emergency beacon on top
-            ctx.beginPath();
-            ctx.arc(0, -2, 3, 0, Math.PI * 2);
-            const beaconBlink = Date.now() % 500 > 250;
-            ctx.fillStyle = beaconBlink ? '#ff0000' : '#880000';
-            ctx.fill();
-        }
 
         ctx.restore();
     }

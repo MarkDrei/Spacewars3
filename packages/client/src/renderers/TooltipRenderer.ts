@@ -119,10 +119,6 @@ export class TooltipRenderer {
             baseTooltip.splice(2, 0, `Salvage: ${this.getReadableSalvageType(collectible.getSalvageType())}`);
         } else if (collectible instanceof EscapePod) {
             baseTooltip.splice(2, 0, `Survivors: ${collectible.getSurvivors()}`);
-            
-            if (collectible.isDistressSignalActive()) {
-                baseTooltip.splice(3, 0, 'Distress Signal: Active');
-            }
         }
         
         return baseTooltip;

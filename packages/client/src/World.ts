@@ -466,17 +466,13 @@ export class World {
                 // Random number of survivors (1-3)
                 const survivors = Math.floor(1 + Math.random() * 3);
                 
-                // 50% chance of distress signal being active
-                const distressSignalActive = Math.random() > 0.5;
-                
                 this.addSpaceObject(new EscapePod(
                     position.x,
                     position.y,
                     randomAngle,
                     randomSpeed,
                     randomValue,
-                    survivors,
-                    distressSignalActive
+                    survivors
                 ));
                 break;
             }
