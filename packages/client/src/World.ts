@@ -200,7 +200,7 @@ export class World {
         
         // Calculate the interception angle
         const interceptAngle = InterceptCalculator.calculateInterceptAngle(ship, targetObject);
-        ship.setAngle(interceptAngle);
+        ship.setAngle(interceptAngle.angle);
         
         // Calculate interception point for visualization
         const targetSpeed = targetObject.getSpeed();
@@ -236,8 +236,8 @@ export class World {
                         // Calculate velocities
                         const targetVelX = targetSpeed * Math.cos(targetAngle);
                         const targetVelY = targetSpeed * Math.sin(targetAngle);
-                        const shipVelX = shipSpeed * Math.cos(interceptAngle);
-                        const shipVelY = shipSpeed * Math.sin(interceptAngle);
+                        const shipVelX = shipSpeed * Math.cos(interceptAngle.angle);
+                        const shipVelY = shipSpeed * Math.sin(interceptAngle.angle);
                         
                         // Calculate relative velocity
                         const relVelX = shipVelX - targetVelX;
@@ -286,7 +286,7 @@ export class World {
                 interceptTime: bestInterceptTime,
                 interceptX: bestInterceptX,
                 interceptY: bestInterceptY,
-                shipAngle: interceptAngle,
+                shipAngle: interceptAngle.angle,
                 timestamp: performance.now()
             };
         }

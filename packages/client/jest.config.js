@@ -17,6 +17,8 @@ module.exports = {
   displayName: 'client',
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
+    '^@shared$': '<rootDir>/../shared/src/index.ts',
+    '^@shared/(.*)$': '<rootDir>/../shared/src/$1',
     '\\.(css|less|scss|sass)$': 'identity-obj-proxy'
   }
 };

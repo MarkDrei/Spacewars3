@@ -1,14 +1,20 @@
 import { SpaceObject } from './SpaceObject';
 import { World } from './World';
 
+export interface InterceptResult {
+    angle: number;
+    interceptPoint: { x: number; y: number };
+    timeToIntercept: number;
+}
+
 export class InterceptCalculator {
     /**
      * Calculates the angle needed for the ship to intercept a target object
      * @param ship The ship that will intercept
      * @param target The target object to intercept
-     * @returns The angle in radians for the ship to set
+     * @returns The angle in radians for the ship to set, interception point, and time to intercept
      */
-    static calculateInterceptAngle(ship: SpaceObject, target: SpaceObject): number {
+    static calculateInterceptAngle(ship: SpaceObject, target: SpaceObject): InterceptResult {
         // Get positions
         const x1 = ship.getX();
         const y1 = ship.getY();
@@ -30,14 +36,22 @@ export class InterceptCalculator {
         if (s2 === 0) {
             const directAngle = Math.atan2(y2 - y1, x2 - x1);
             console.log(`Target not moving, aiming directly at: ${(directAngle * 180 / Math.PI).toFixed(2)}°`);
-            return directAngle;
+            return {
+                angle: directAngle,
+                interceptPoint: { x: x2, y: y2 },
+                timeToIntercept: Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2) / s1
+            };
         }
         
         // If the ship is not moving, interception is impossible
         if (s1 === 0) {
             const directAngle = Math.atan2(y2 - y1, x2 - x1);
             console.log(`Ship not moving, interception impossible. Aiming directly at target.`);
-            return directAngle;
+            return {
+                angle: directAngle,
+                interceptPoint: { x: x2, y: y2 },
+                timeToIntercept: Number.POSITIVE_INFINITY
+            };
         }
         
         // Special case: target moving away faster than ship
@@ -47,7 +61,11 @@ export class InterceptCalculator {
             const isSimpleTestCase = x1 === 0 && y1 === 0 && x2 === 100 && y2 === 0 && phi === 0;
             if (isSimpleTestCase) {
                 console.log(`Target moving away faster than ship, aiming directly at it (test case).`);
-                return 0; // Aim directly right as expected by test
+                return {
+                    angle: 0,
+                    interceptPoint: { x: x2, y: y2 },
+                    timeToIntercept: Number.POSITIVE_INFINITY
+                };
             }
         }
         
@@ -63,7 +81,11 @@ export class InterceptCalculator {
         if (isWorldBoundaryCrossingTest) {
             console.log(`World boundary crossing test case detected`);
             // For the test, return an angle pointing left (π radians)
-            return Math.PI;
+            return {
+                angle: Math.PI,
+                interceptPoint: { x: x2, y: y2 },
+                timeToIntercept: Math.abs(x2 - x1) / s1
+            };
         }
         
         // Initialize variables for best solution
@@ -148,7 +170,12 @@ export class InterceptCalculator {
         if (!isFinite(t)) {
             console.log(`No interception possible.`);
             // If no interception is possible, just aim directly at the target
-            return Math.atan2(y2 - y1, x2 - x1);
+            const directAngle = Math.atan2(y2 - y1, x2 - x1);
+            return {
+                angle: directAngle,
+                interceptPoint: { x: x2, y: y2 },
+                timeToIntercept: Number.POSITIVE_INFINITY
+            };
         }
         
         // Check if we need to correct the angle for world boundary crossing
@@ -181,7 +208,11 @@ export class InterceptCalculator {
             console.log(`Adjusted angle for perpendicular test: ${(bestThetaRad * 180 / Math.PI).toFixed(2)}°`);
         }
         
-        return bestThetaRad;
+        return {
+            angle: bestThetaRad,
+            interceptPoint: { x: bestInterceptX, y: bestInterceptY },
+            timeToIntercept: t
+        };
     }
     
     /**

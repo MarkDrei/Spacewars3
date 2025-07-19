@@ -105,6 +105,14 @@ The foundation is now complete. Future work could include:
 - [ ] Enhanced testing coverage
 - [ ] Performance optimizations
 
+## 🔧 Technical Debt
+
+### Unused/Unimplemented Features
+- [ ] **Interception Data Visualization**: The `World.ts` class stores interception data (`interceptionData` property) but it's not visualized anywhere in the UI. Either:
+  - Implement visualization in radar renderer to show intercept points and countdown timers
+  - OR remove the unused code to reduce complexity and maintenance burden
+  - Files affected: `World.ts` (lines around 284), potentially radar/game renderers
+
 ## 🧪 Testing Plan and TODOs
 
 ### 🔄 Phase 5: Testing (Ongoing)
