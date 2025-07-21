@@ -32,6 +32,16 @@ export class InterceptCalculator {
         console.log(`Ship position: (${x1.toFixed(2)}, ${y1.toFixed(2)}), Speed: ${s1}, Angle: ${(ship.getAngle() * 180 / Math.PI).toFixed(2)}°`);
         console.log(`Target position: (${x2.toFixed(2)}, ${y2.toFixed(2)}), Speed: ${s2}, Angle: ${(phi * 180 / Math.PI).toFixed(2)}°`);
         
+        // If both objects are at the same position, interception is immediate
+        if (x1 === x2 && y1 === y2) {
+            console.log(`Ship and target at same position, no movement needed.`);
+            return {
+                angle: ship.getAngle(), // Keep current ship angle unchanged
+                interceptPoint: { x: x1, y: y1 },
+                timeToIntercept: 0
+            };
+        }
+        
         // If the target is not moving, just aim directly at it
         if (s2 === 0) {
             const directAngle = Math.atan2(y2 - y1, x2 - x1);
@@ -89,27 +99,28 @@ export class InterceptCalculator {
         }
         
         // Initialize variables for best solution
-        let t = Number.POSITIVE_INFINITY;
+        let bestInterceptTime = Number.POSITIVE_INFINITY;
         let bestThetaRad = 0;
         let bestInterceptX = 0;
         let bestInterceptY = 0;
         let bestDistanceX = 0;
         let bestDistanceY = 0;
-        let bestKxX = 0, bestKyX = 0, bestKxY = 0, bestKyY = 0;
+        let bestShipWrapX = 0, bestShipWrapY = 0, bestTargetWrapX = 0, bestTargetWrapY = 0;
         
         // Try all images of ship and target (shifting by -wrapSize, 0, +wrapSize in both axes)
-        for (let kxX = -1; kxX <= 1; kxX++) {
-            for (let kyX = -1; kyX <= 1; kyX++) {
-                const x1i = x1 + kxX * wrapSize;
-                const y1i = y1 + kyX * wrapSize;
+        // Each object can appear in 9 different positions due to world wrapping
+        for (let shipWrapX = -1; shipWrapX <= 1; shipWrapX++) {
+            for (let shipWrapY = -1; shipWrapY <= 1; shipWrapY++) {
+                const shipImageX = x1 + shipWrapX * wrapSize;
+                const shipImageY = y1 + shipWrapY * wrapSize;
                 
-                for (let kxY = -1; kxY <= 1; kxY++) {
-                    for (let kyY = -1; kyY <= 1; kyY++) {
-                        const x2i = x2 + kxY * wrapSize;
-                        const y2i = y2 + kyY * wrapSize;
+                for (let targetWrapX = -1; targetWrapX <= 1; targetWrapX++) {
+                    for (let targetWrapY = -1; targetWrapY <= 1; targetWrapY++) {
+                        const targetImageX = x2 + targetWrapX * wrapSize;
+                        const targetImageY = y2 + targetWrapY * wrapSize;
                         
-                        const dx = x2i - x1i;
-                        const dy = y2i - y1i;
+                        const dx = targetImageX - shipImageX;
+                        const dy = targetImageY - shipImageY;
                         
                         const cosPhi = Math.cos(phi);
                         const sinPhi = Math.sin(phi);
@@ -123,51 +134,51 @@ export class InterceptCalculator {
                         
                         if (discriminant < 0) continue;
                         
-                        // Find the smallest positive t
+                        // Find the smallest positive time using quadratic formula
                         const sqrtD = Math.sqrt(discriminant);
-                        const t1 = (-B + sqrtD) / (2 * A);
-                        const t2 = (-B - sqrtD) / (2 * A);
+                        const interceptTime1 = (-B + sqrtD) / (2 * A);
+                        const interceptTime2 = (-B - sqrtD) / (2 * A);
                         
-                        let tt = -1;
-                        if (t1 > 0 && t2 > 0) tt = Math.min(t1, t2);
-                        else if (t1 > 0) tt = t1;
-                        else if (t2 > 0) tt = t2;
+                        let currentInterceptTime = -1;
+                        if (interceptTime1 > 0 && interceptTime2 > 0) currentInterceptTime = Math.min(interceptTime1, interceptTime2);
+                        else if (interceptTime1 > 0) currentInterceptTime = interceptTime1;
+                        else if (interceptTime2 > 0) currentInterceptTime = interceptTime2;
                         else continue;
                         
                         // Calculate the interception angle for ship
-                        const vx = (dx / tt + s2 * cosPhi) / s1;
-                        const vy = (dy / tt + s2 * sinPhi) / s1;
+                        const vx = (dx / currentInterceptTime + s2 * cosPhi) / s1;
+                        const vy = (dy / currentInterceptTime + s2 * sinPhi) / s1;
                         const thetaRad = Math.atan2(vy, vx);
                         
                         // Calculate distances
-                        const distanceX = s1 * tt;
-                        const distanceY = s2 * tt;
+                        const distanceX = s1 * currentInterceptTime;
+                        const distanceY = s2 * currentInterceptTime;
                         
                         // Interception point (on the torus)
-                        let interceptX = (x1i + s1 * Math.cos(thetaRad) * tt) % wrapSize;
-                        let interceptY = (y1i + s1 * Math.sin(thetaRad) * tt) % wrapSize;
+                        let interceptX = (shipImageX + s1 * Math.cos(thetaRad) * currentInterceptTime) % wrapSize;
+                        let interceptY = (shipImageY + s1 * Math.sin(thetaRad) * currentInterceptTime) % wrapSize;
                         if (interceptX < 0) interceptX += wrapSize;
                         if (interceptY < 0) interceptY += wrapSize;
                         
                         // Update best solution
-                        if (tt < t) {
-                            t = tt;
+                        if (currentInterceptTime < bestInterceptTime) {
+                            bestInterceptTime = currentInterceptTime;
                             bestThetaRad = thetaRad;
                             bestDistanceX = distanceX;
                             bestDistanceY = distanceY;
                             bestInterceptX = interceptX;
                             bestInterceptY = interceptY;
-                            bestKxX = kxX;
-                            bestKyX = kyX;
-                            bestKxY = kxY;
-                            bestKyY = kyY;
+                            bestShipWrapX = shipWrapX;
+                            bestShipWrapY = shipWrapY;
+                            bestTargetWrapX = targetWrapX;
+                            bestTargetWrapY = targetWrapY;
                         }
                     }
                 }
             }
         }
         
-        if (!isFinite(t)) {
+        if (!isFinite(bestInterceptTime)) {
             console.log(`No interception possible.`);
             // If no interception is possible, just aim directly at the target
             const directAngle = Math.atan2(y2 - y1, x2 - x1);
@@ -195,9 +206,9 @@ export class InterceptCalculator {
         console.log(`Interception angle: ${(bestThetaRad * 180 / Math.PI).toFixed(2)}°`);
         console.log(`Distance traveled by ship: ${bestDistanceX.toFixed(2)} units`);
         console.log(`Distance traveled by target: ${bestDistanceY.toFixed(2)} units`);
-        console.log(`Time to intercept: ${t.toFixed(2)} units`);
+        console.log(`Time to intercept: ${bestInterceptTime.toFixed(2)} units`);
         console.log(`Interception point: (${bestInterceptX.toFixed(2)}, ${bestInterceptY.toFixed(2)})`);
-        console.log(`Ship image offset: (${bestKxX}, ${bestKyX}), Target image offset: (${bestKxY}, ${bestKyY})`);
+        console.log(`Ship image offset: (${bestShipWrapX}, ${bestShipWrapY}), Target image offset: (${bestTargetWrapX}, ${bestTargetWrapY})`);
         console.log('================================');
         
         // Special case for "should handle perpendicular crossing paths" test
@@ -211,7 +222,7 @@ export class InterceptCalculator {
         return {
             angle: bestThetaRad,
             interceptPoint: { x: bestInterceptX, y: bestInterceptY },
-            timeToIntercept: t
+            timeToIntercept: bestInterceptTime
         };
     }
     

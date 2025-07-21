@@ -180,7 +180,7 @@ describe('InterceptCalculator', () => {
         // Expected: Any valid angle (not NaN)
         
         // Arrange
-        const ship = new MockSpaceObject(0, 0, 0, 10);
+        const ship = new MockSpaceObject(0, 0, 33, 10);
         const target = new MockSpaceObject(0, 0, 0, 5); // Target at same position as ship
         
         // Act
@@ -188,7 +188,10 @@ describe('InterceptCalculator', () => {
         
         // Assert
         // Any angle is fine since they're at the same position, but the function should return a valid number
-        expect(result.angle).not.toBeNaN();
+        expect(result.angle).toBeCloseTo(33); // Special case direct interception: Should be unchanged
+        expect(result.interceptPoint.x).toBeCloseTo(0);
+        expect(result.interceptPoint.y).toBeCloseTo(0);
+        expect(result.timeToIntercept).toBeCloseTo(0); // Needs fixing in InterceptCalculator
     });
     
     test('should calculate correct interception for complex scenario', () => {
