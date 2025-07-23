@@ -29,7 +29,7 @@ export class InterceptCalculator {
         const wrapSize = World.WIDTH; // Assuming square world
         
         console.log('===== INTERCEPTION CALCULATION =====');
-        console.log(`Ship position: (${x1.toFixed(2)}, ${y1.toFixed(2)}), Speed: ${s1}, Angle: ${(ship.getAngle() * 180 / Math.PI).toFixed(2)}°`);
+        console.log(`Ship position: (${x1.toFixed(2)}, ${y1.toFixed(2)}), Speed: ${s1}`);
         console.log(`Target position: (${x2.toFixed(2)}, ${y2.toFixed(2)}), Speed: ${s2}, Angle: ${(phi * 180 / Math.PI).toFixed(2)}°`);
         
         // If both objects are at the same position, interception is immediate
@@ -42,59 +42,13 @@ export class InterceptCalculator {
             };
         }
         
-        // If the target is not moving, just aim directly at it
-        if (s2 === 0) {
-            const directAngle = Math.atan2(y2 - y1, x2 - x1);
-            console.log(`Target not moving, aiming directly at: ${(directAngle * 180 / Math.PI).toFixed(2)}°`);
-            return {
-                angle: directAngle,
-                interceptPoint: { x: x2, y: y2 },
-                timeToIntercept: Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2) / s1
-            };
-        }
-        
         // If the ship is not moving, interception is impossible
         if (s1 === 0) {
-            const directAngle = Math.atan2(y2 - y1, x2 - x1);
             console.log(`Ship not moving, interception impossible. Aiming directly at target.`);
             return {
-                angle: directAngle,
+                angle: Number.NaN, // No valid angle since ship can't move
                 interceptPoint: { x: x2, y: y2 },
                 timeToIntercept: Number.POSITIVE_INFINITY
-            };
-        }
-        
-        // Special case: target moving away faster than ship
-        // For non-wrapped scenarios, in this case we should aim directly at the target
-        if (s2 > s1 && InterceptCalculator.isTargetMovingAway(x1, y1, x2, y2, phi)) {
-            // Check if this is a test scenario from the tests - for specific test cases where we expect direct approach
-            const isSimpleTestCase = x1 === 0 && y1 === 0 && x2 === 100 && y2 === 0 && phi === 0;
-            if (isSimpleTestCase) {
-                console.log(`Target moving away faster than ship, aiming directly at it (test case).`);
-                return {
-                    angle: 0,
-                    interceptPoint: { x: x2, y: y2 },
-                    timeToIntercept: Number.POSITIVE_INFINITY
-                };
-            }
-        }
-        
-        // Special case: boundary crossing test
-        // Check if this matches the specific test setup for boundary crossing
-        const isWorldBoundaryCrossingTest = 
-            Math.abs(x1 - (World.WIDTH - 50)) < 1 && 
-            Math.abs(y1 - 250) < 1 && 
-            Math.abs(x2 - 50) < 1 && 
-            Math.abs(y2 - 250) < 1 && 
-            phi === 0;
-            
-        if (isWorldBoundaryCrossingTest) {
-            console.log(`World boundary crossing test case detected`);
-            // For the test, return an angle pointing left (π radians)
-            return {
-                angle: Math.PI,
-                interceptPoint: { x: x2, y: y2 },
-                timeToIntercept: Math.abs(x2 - x1) / s1
             };
         }
         
@@ -105,101 +59,79 @@ export class InterceptCalculator {
         let bestInterceptY = 0;
         let bestDistanceX = 0;
         let bestDistanceY = 0;
-        let bestShipWrapX = 0, bestShipWrapY = 0, bestTargetWrapX = 0, bestTargetWrapY = 0;
+        let bestTargetWrapX = 0, bestTargetWrapY = 0;
         
-        // Try all images of ship and target (shifting by -wrapSize, 0, +wrapSize in both axes)
-        // Each object can appear in 9 different positions due to world wrapping
-        for (let shipWrapX = -1; shipWrapX <= 1; shipWrapX++) {
-            for (let shipWrapY = -1; shipWrapY <= 1; shipWrapY++) {
-                const shipImageX = x1 + shipWrapX * wrapSize;
-                const shipImageY = y1 + shipWrapY * wrapSize;
+        // Try all images of the target (shifting by -wrapSize, 0, +wrapSize in both axes)
+        // The target can appear in 9 different positions due to world wrapping
+        // We keep the ship position fixed and find the closest target image to intercept
+        for (let targetWrapX = -2; targetWrapX <= 2; targetWrapX++) {
+            for (let targetWrapY = -2; targetWrapY <= 2; targetWrapY++) {
+                const targetImageX = x2 + targetWrapX * wrapSize;
+                const targetImageY = y2 + targetWrapY * wrapSize;
                 
-                for (let targetWrapX = -1; targetWrapX <= 1; targetWrapX++) {
-                    for (let targetWrapY = -1; targetWrapY <= 1; targetWrapY++) {
-                        const targetImageX = x2 + targetWrapX * wrapSize;
-                        const targetImageY = y2 + targetWrapY * wrapSize;
+                const dx = targetImageX - x1;
+                const dy = targetImageY - y1;
+                
+                const cosPhi = Math.cos(phi);
+                const sinPhi = Math.sin(phi);
+                
+                // Quadratic coefficients
+                const A = s2 * s2 - s1 * s1;
+                const B = 2 * s2 * (dx * cosPhi + dy * sinPhi);
+                const C = dx * dx + dy * dy;
+                
+                const discriminant = B * B - 4 * A * C;
+                
+                if (discriminant < 0) continue;
                         
-                        const dx = targetImageX - shipImageX;
-                        const dy = targetImageY - shipImageY;
-                        
-                        const cosPhi = Math.cos(phi);
-                        const sinPhi = Math.sin(phi);
-                        
-                        // Quadratic coefficients
-                        const A = s2 * s2 - s1 * s1;
-                        const B = 2 * s2 * (dx * cosPhi + dy * sinPhi);
-                        const C = dx * dx + dy * dy;
-                        
-                        const discriminant = B * B - 4 * A * C;
-                        
-                        if (discriminant < 0) continue;
-                        
-                        // Find the smallest positive time using quadratic formula
-                        const sqrtD = Math.sqrt(discriminant);
-                        const interceptTime1 = (-B + sqrtD) / (2 * A);
-                        const interceptTime2 = (-B - sqrtD) / (2 * A);
-                        
-                        let currentInterceptTime = -1;
-                        if (interceptTime1 > 0 && interceptTime2 > 0) currentInterceptTime = Math.min(interceptTime1, interceptTime2);
-                        else if (interceptTime1 > 0) currentInterceptTime = interceptTime1;
-                        else if (interceptTime2 > 0) currentInterceptTime = interceptTime2;
-                        else continue;
-                        
-                        // Calculate the interception angle for ship
-                        const vx = (dx / currentInterceptTime + s2 * cosPhi) / s1;
-                        const vy = (dy / currentInterceptTime + s2 * sinPhi) / s1;
-                        const thetaRad = Math.atan2(vy, vx);
-                        
-                        // Calculate distances
-                        const distanceX = s1 * currentInterceptTime;
-                        const distanceY = s2 * currentInterceptTime;
-                        
-                        // Interception point (on the torus)
-                        let interceptX = (shipImageX + s1 * Math.cos(thetaRad) * currentInterceptTime) % wrapSize;
-                        let interceptY = (shipImageY + s1 * Math.sin(thetaRad) * currentInterceptTime) % wrapSize;
-                        if (interceptX < 0) interceptX += wrapSize;
-                        if (interceptY < 0) interceptY += wrapSize;
-                        
-                        // Update best solution
-                        if (currentInterceptTime < bestInterceptTime) {
-                            bestInterceptTime = currentInterceptTime;
-                            bestThetaRad = thetaRad;
-                            bestDistanceX = distanceX;
-                            bestDistanceY = distanceY;
-                            bestInterceptX = interceptX;
-                            bestInterceptY = interceptY;
-                            bestShipWrapX = shipWrapX;
-                            bestShipWrapY = shipWrapY;
-                            bestTargetWrapX = targetWrapX;
-                            bestTargetWrapY = targetWrapY;
-                        }
-                    }
+                // Find the smallest positive time using quadratic formula
+                const sqrtD = Math.sqrt(discriminant);
+                const interceptTime1 = (-B + sqrtD) / (2 * A);
+                const interceptTime2 = (-B - sqrtD) / (2 * A);
+                
+                let currentInterceptTime = -1;
+                if (interceptTime1 > 0 && interceptTime2 > 0) currentInterceptTime = Math.min(interceptTime1, interceptTime2);
+                else if (interceptTime1 > 0) currentInterceptTime = interceptTime1;
+                else if (interceptTime2 > 0) currentInterceptTime = interceptTime2;
+                else continue;
+                
+                // Calculate the interception angle for ship
+                const vx = (dx / currentInterceptTime + s2 * cosPhi) / s1;
+                const vy = (dy / currentInterceptTime + s2 * sinPhi) / s1;
+                const thetaRad = Math.atan2(vy, vx);
+                
+                // Calculate distances
+                const distanceX = s1 * currentInterceptTime;
+                const distanceY = s2 * currentInterceptTime;
+                
+                // Interception point (on the torus) - ship starts from original position
+                let interceptX = (x1 + s1 * Math.cos(thetaRad) * currentInterceptTime) % wrapSize;
+                let interceptY = (y1 + s1 * Math.sin(thetaRad) * currentInterceptTime) % wrapSize;
+                if (interceptX < 0) interceptX += wrapSize;
+                if (interceptY < 0) interceptY += wrapSize;
+                
+                // Update best solution
+                if (currentInterceptTime < bestInterceptTime) {
+                    bestInterceptTime = currentInterceptTime;
+                    bestThetaRad = thetaRad;
+                    bestDistanceX = distanceX;
+                    bestDistanceY = distanceY;
+                    bestInterceptX = interceptX;
+                    bestInterceptY = interceptY;
+                    bestTargetWrapX = targetWrapX;
+                    bestTargetWrapY = targetWrapY;
                 }
             }
         }
         
         if (!isFinite(bestInterceptTime)) {
             console.log(`No interception possible.`);
-            // If no interception is possible, just aim directly at the target
-            const directAngle = Math.atan2(y2 - y1, x2 - x1);
+        
             return {
-                angle: directAngle,
+                angle: Number.NaN,
                 interceptPoint: { x: x2, y: y2 },
                 timeToIntercept: Number.POSITIVE_INFINITY
             };
-        }
-        
-        // Check if we need to correct the angle for world boundary crossing
-        // If the ship is near the right edge and target is near the left edge,
-        // we should favor going left (negative X) to cross the boundary
-        const isShipNearRightEdge = x1 > wrapSize * 0.7;
-        const isTargetNearLeftEdge = x2 < wrapSize * 0.3;
-        
-        if (isShipNearRightEdge && isTargetNearLeftEdge && y1 === y2 && Math.cos(bestThetaRad) > 0) {
-            // We're in a case where boundary crossing might be beneficial but algorithm chose right
-            // Adjust the angle to point left instead
-            console.log(`Adjusting angle for world boundary crossing from ${bestThetaRad} to ${Math.PI}`);
-            bestThetaRad = Math.PI; // Point left
         }
         
         // Log results
@@ -208,16 +140,8 @@ export class InterceptCalculator {
         console.log(`Distance traveled by target: ${bestDistanceY.toFixed(2)} units`);
         console.log(`Time to intercept: ${bestInterceptTime.toFixed(2)} units`);
         console.log(`Interception point: (${bestInterceptX.toFixed(2)}, ${bestInterceptY.toFixed(2)})`);
-        console.log(`Ship image offset: (${bestShipWrapX}, ${bestShipWrapY}), Target image offset: (${bestTargetWrapX}, ${bestTargetWrapY})`);
+        console.log(`Ship image offset: (0, 0), Target image offset: (${bestTargetWrapX}, ${bestTargetWrapY})`);
         console.log('================================');
-        
-        // Special case for "should handle perpendicular crossing paths" test
-        const isPerpendicularTest = x1 === 0 && y1 === 0 && x2 === 100 && y2 === 0 && Math.abs(phi - Math.PI/2) < 0.001;
-        if (isPerpendicularTest && Math.sin(bestThetaRad) < 0) {
-            // Ensure the ship has an upward component as expected by the test
-            bestThetaRad = Math.atan2(Math.abs(Math.sin(bestThetaRad)), Math.cos(bestThetaRad));
-            console.log(`Adjusted angle for perpendicular test: ${(bestThetaRad * 180 / Math.PI).toFixed(2)}°`);
-        }
         
         return {
             angle: bestThetaRad,
@@ -226,25 +150,4 @@ export class InterceptCalculator {
         };
     }
     
-    /**
-     * Determines if the target is moving away from the ship
-     */
-    private static isTargetMovingAway(shipX: number, shipY: number, targetX: number, targetY: number, targetAngle: number): boolean {
-        // Calculate vector from target to ship
-        const dx = shipX - targetX;
-        const dy = shipY - targetY;
-        
-        // Calculate angle from target to ship
-        const angleToShip = Math.atan2(dy, dx);
-        
-        // Calculate difference between target's movement angle and angle to ship
-        let angleDiff = targetAngle - angleToShip;
-        // Normalize to [-π, π]
-        while (angleDiff > Math.PI) angleDiff -= 2 * Math.PI;
-        while (angleDiff < -Math.PI) angleDiff += 2 * Math.PI;
-        
-        // If absolute angle difference is less than 90 degrees, target is moving toward ship
-        // Otherwise, it's moving away
-        return Math.abs(angleDiff) > Math.PI / 2;
-    }
 } 
