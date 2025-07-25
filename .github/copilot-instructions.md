@@ -62,8 +62,9 @@
 - The project is designed to run on Windows using PowerShell. Commands should use PowerShell syntax (`;` instead of `&&` for chaining).
 - Use `npm install` to install dependencies for all packages.
 - Use `npm run build` to build all packages.
-- Use `npm run dev` to start both the client and server in development mode.
-- Use `npm run typecheck` to check for TypeScript errors across all packages.
+- Use `npm run dev` to start both the client and server in development mode (run from ROOT directory).
+- Use `npm run mosttest` to run linting, type checking, and most tests excluding e2e (run from ROOT directory).
+- Use `npm run ci` to run all tests including e2e tests (run from ROOT directory).
 - The client runs on port 3000, and the server runs on port 5174.
 - API requests from the client to the server are proxied through `/api` path.
 - The React application uses React Router for navigation between pages:

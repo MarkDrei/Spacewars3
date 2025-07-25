@@ -1,206 +1,177 @@
 # Frontend Restructuring Plan - COMPLETED ✅
 
-~~Goal: There will be a login page, where the user can login or create an account. Only if he has successfully logged in, he will come to the main game, which will feature the current page with the game canvas. Over time we will add more pages to the game, so we need a navigation. All those new pages and navigation will only be available to the logged in user.~~
+# Server-Authoritative Architecture Migration Plan 🚀
 
-**STATUS: COMPLETED** - The authentication system and navigation have been successfully implemented!
+## Current State Analysis
 
-## ✅ COMPLETED: Setup Authentication Infrastructure
-- [x] Create auth-related shared types (AuthResponse, SessionResponse, LoginCredentials)
-- [x] Set up client-side auth state management (useAuth hook)
-- [x] Create protected route components (App.tsx routing)
-- [x] Add auth utilities (authService.ts with API calls)
-- [x] Token/session management with HTTP-only cookies
+### 🎯 **What We Have:**
+- **Client-Heavy Architecture**: Game state, inventory, score, world data all in client
+- **Backend**: Authentication, user stats (iron, tech tree), sessions, research system
+- **Frontend**: React UI + HTML5 Canvas game with local state management
+- **Existing Backend Features**: Iron management, tech tree, research triggering (not used in UI)
 
-## ✅ COMPLETED: New Directory Structure
+### 🎯 **Target Architecture:**
+- **Server-Authoritative**: Backend owns game state, world data, player progress
+- **Optimistic UI**: Client shows immediate feedback, syncs periodically
+- **Unified Status System**: Global status display across all pages
+
+---
+
+## 📋 Migration Plan
+
+### **Phase 1: Frontend Integration of Existing Backend Features** 
+*Priority: HIGH | Complexity: LOW-MEDIUM*
+
+#### 1.1 Global Status Header
+- [ ] **Create StatusHeader Component** (`src/components/StatusHeader/`)
+  - Display current iron amount
+  - Status indicator (grey bubble/light by default)
+  - Responsive design for all pages
+  - Auto-refresh iron values
+
+- [ ] **Status Indicator System**:
+  - 🔘 **Grey**: Default state (nothing to report)
+  - 🟡 **Yellow**: No research in progress
+  - 🟢 **Green**: New neutral messages
+  - 🔴 **Red**: Error/conflict states or related messages
+
+- [ ] **Add StatusHeader to All Pages**:
+  - NOT to Login page
+  - Game page
+  - Profile page  
+  - About page
+  - New Research page
+
+#### 1.2 Research Management Page
+- [ ] **Create Research Page** (`src/pages/Research/`)
+  - Display tech tree status
+  - Show current research progress
+  - Allow triggering new research
+  - Show research costs and durations
+  - Display iron income rate
+
+- [ ] **Research Components**:
+  - `ResearchTree.tsx` - Visual tech tree display
+  - `ResearchItem.tsx` - Individual research card
+  - `ResearchProgress.tsx` - Progress indicators
+  - `TriggerResearch.tsx` - Research initiation controls
+
+- [ ] **Add Research Route**:
+  - Protected route `/research`
+  - Add to navigation menu
+  - Integrate with existing API endpoints
+
+#### 1.3 Backend Integration Services
+- [ ] **Enhanced API Service** (`src/services/researchService.ts`):
+  - Get tech tree state
+  - Trigger research
+  - Check research progress
+  - Get iron production rates
+
+- [ ] **Status Polling Service** (`src/services/statusService.ts`):
+  - Periodic iron amount updates
+  - Research completion checking
+  - Status change notifications
+  - Configurable poll intervals
+
+### **Phase 2: Enhanced Status System** 
+*Priority: MEDIUM | Complexity: LOW*
+
+#### 2.1 Real-time Status Updates
+- [ ] **Status Context** (`src/contexts/StatusContext.tsx`):
+  - Global status state management
+  - Iron amount tracking
+  - Research progress tracking
+  - Status indicator state
+
+- [ ] **Status Hooks** (`src/hooks/useStatus.ts`):
+  - `useIronAmount()` - Current iron with auto-refresh
+  - `useResearchStatus()` - Research completion status
+  - `useStatusIndicator()` - Status light management
+
+#### 2.2 Notification System
+- [ ] **Status Notifications**:
+  - Research completion alerts
+  - Iron milestone notifications
+  - Status indicator animations
+  - Dismissible notification queue
+
+### **Phase 3: Game State Integration (Future)**
+*Priority: LOW | Complexity: TBD*
+
+#### 3.1 Database Schema (When Needed)
+- [ ] **Game state tables** - Details TBD based on requirements
+- [ ] **World persistence** - Approach TBD
+- [ ] **Player progress** - Schema TBD
+
+#### 3.2 Game State API (When Needed)  
+- [ ] **Game session endpoints** - Functionality TBD
+- [ ] **World state management** - Implementation TBD
+- [ ] **Progress synchronization** - Strategy TBD
+
+---
+
+## 🔄 **Implementation Priorities**
+
+### **Immediate (Phase 1):**
+1. ✅ **StatusHeader component** with iron display and status indicator
+2. ✅ **Research page** with full tech tree management  
+3. ✅ **Navigation integration** for research page
+4. ✅ **API integration** with existing backend endpoints
+
+### **Next (Phase 2):**
+1. ✅ **Real-time status updates** with polling
+2. ✅ **Enhanced status indicators** with color coding
+3. ✅ **Notification system** for events
+
+### **Future (Phase 3):**
+1. 🔄 **Game state migration** - specific approach TBD
+2. 🔄 **World persistence** - requirements TBD  
+3. 🔄 **Advanced synchronization** - implementation TBD
+
+---
+
+## 🚧 **Technical Requirements**
+
+### **StatusHeader Specification:**
+```typescript
+interface StatusHeaderProps {
+  ironAmount: number;
+  statusIndicator: 'grey' | 'yellow' | 'green' | 'red' | 'white';
+  isLoading?: boolean;
+  onStatusClick?: () => void;
+}
 ```
-packages/client/
-├── src/
-│   ├── components/          # Shared UI components ✅
-│   │   └── Navigation/     # Nav bar and menu ✅
-│   ├── pages/             # Page components ✅
-│   │   ├── Login/         # Login page ✅
-│   │   ├── Game/          # Game canvas ✅
-│   │   ├── About/         # About page ✅
-│   │   └── Profile/       # User profile ✅
-│   ├── hooks/             # Custom hooks ✅
-│   │   └── useAuth.ts    # Auth hook ✅
-│   ├── services/          # API services ✅
-│   │   └── authService.ts # Auth API service ✅
-│   └── game/              # Game logic (existing) ✅
-```
 
-## ✅ COMPLETED: Implementation Phases
+### **Status Indicator Behavior:**
+- **Default**: Grey (no active events)
+- **Research Active**: Yellow (pulsing)
+- **Research Complete**: Green (solid, auto-dismiss after 5s)
+- **Errors**: Red (persistent until dismissed)
+- **New Events**: White (pulsing until acknowledged)
 
-### ✅ Phase 1: Basic Setup
-- [x] Install dependencies (react-router-dom)
-- [x] Set up new directory structure
-- [x] Configure build tools for SPA (Vite already configured)
+### **Research Page Features:**
+- Tech tree visualization (similar to existing backend data structure)
+- Current research progress with time remaining
+- Available research options with costs
+- Iron production rate display
+- Research history/completed items
 
-### ✅ Phase 2: Authentication
-- [x] Create auth components (LoginPage with tabs for login/register)
-- [x] Registration form with validation
-- [x] Login form with validation
-- [x] Auth context provider (useAuth hook)
-- [x] Implement auth API services (authService.ts)
-- [x] Add protected route wrapper (App.tsx)
-- [x] Set up auth state management (useState + useEffect)
+### **Existing Backend Endpoints to Use:**
+- `GET /api/user-stats` - Iron amount and production rate
+- `GET /api/techtree` - Tech tree status and research options
+- `POST /api/trigger-research` - Start new research
 
-### ✅ Phase 3: Game Integration
-- [x] Move current game canvas to Game page
-- [x] Update game initialization for React
-- [x] Handle game cleanup on unmount
-- [x] Add loading states
+---
 
-### ✅ Phase 4: Navigation & Layout
-- [x] Create navigation component (responsive with mobile hamburger menu)
-- [x] Implement basic layout
-- [x] Style with consistent space theme
-- [x] Add mobile responsiveness
+## 📈 **Benefits of This Approach:**
 
-### 🔄 Phase 5: Testing (Ongoing)
-- [ ] Update test configuration
-- [ ] Add tests for
-  - [x] Auth flows (server tests exist)
-  - [ ] Protected routes
-  - [ ] Component rendering
-  - [ ] Game canvas integration
+1. **Immediate Value**: Users can access existing backend features
+2. **Incremental**: Build on what's already working
+3. **Low Risk**: No changes to game logic or database initially  
+4. **Foundation**: Status system prepares for future game state integration
+5. **User Experience**: Unified interface for all game features
 
-## 🎯 Current Status: FULLY FUNCTIONAL
+**Next Steps:** Start with StatusHeader component and Research page integration. Game state migration details will be defined later based on actual requirements.
 
-The authentication system is complete and production-ready:
-
-✅ **Authentication Features:**
-- User registration with any username/password length
-- User login with session persistence
-- Session checking on page refresh
-- Secure logout with session destruction
-- Error handling and validation
-
-✅ **Navigation Features:**
-- Responsive navbar with mobile hamburger menu
-- Protected routes (Game, About, Profile)
-- Active page highlighting
-- Smooth animations and transitions
-
-✅ **Pages Implemented:**
-- **Login Page**: Tabbed interface for login/register
-- **Game Page**: Original game canvas (protected)
-- **About Page**: Game information and features
-- **Profile Page**: User statistics and achievements
-
-✅ **Technical Implementation:**
-- Backend API with SQLite database
-- Session-based authentication with HTTP-only cookies
-- Type-safe TypeScript throughout
-- Responsive design for mobile and desktop
-- Clean, maintainable code structure
-
-## 🚀 Future Enhancements
-
-The foundation is now complete. Future work could include:
-- [ ] Enhanced user profiles with real game statistics
-- [ ] Leaderboards and social features
-- [ ] Game settings and preferences pages
-- [ ] Admin panel for user management
-- [ ] Enhanced testing coverage
-- [ ] Performance optimizations
-
-## 🔧 Technical Debt
-
-### Unused/Unimplemented Features
-- [ ] **Interception Data Visualization**: The `World.ts` class stores interception data (`interceptionData` property) but it's not visualized anywhere in the UI. Either:
-  - Implement visualization in radar renderer to show intercept points and countdown timers
-  - OR remove the unused code to reduce complexity and maintenance burden
-  - Files affected: `World.ts` (lines around 284), potentially radar/game renderers
-
-## 🧪 Testing Plan and TODOs
-
-### 🔄 Phase 5: Testing (Ongoing)
-
-#### ✅ Suggested Next Steps
-
-1. **Set Up Cypress for E2E Testing**
-   - [x] Install Cypress and configure it for the project.
-   - [x] Write E2E test for the full authentication flow:
-     - Registering a new user. ✅
-     - Logging in with valid credentials. ✅
-     - Navigating between pages (Game, About, Profile). [ ]
-     - Logging out and being redirected to the login page. [ ]
-   - **Progress:** Cypress is installed and the first E2E authentication test is running successfully!
-
-2. **Add Unit Tests for Components**
-   - [ ] Use React Testing Library to test individual components:
-     - `LoginPage`: Ensure the form renders correctly and handles validation.
-     - `Navigation`: Verify links and active states based on authentication.
-     - `GamePage`: Ensure the game canvas initializes and cleans up properly.
-
-3. **Test Protected Routes**
-   - [ ] Write tests to ensure unauthenticated users are redirected to the login page when accessing protected routes (e.g., `/game`, `/about`, `/profile`).
-
-4. **Test Game Canvas Logic**
-   - [ ] Mock the game initialization and cleanup logic to verify that it behaves correctly:
-     - Ensure the game starts when the `GamePage` is mounted.
-     - Verify that resources are cleaned up when the `GamePage` is unmounted.
-
-### 🛠️ Plan for Stable E2E Testing
-
-To ensure E2E tests remain stable despite frequent app changes:
-
-1. **Focus on Critical User Flows**
-   - Only test the most important flows, such as authentication and navigation.
-   - Avoid testing minor UI details that are likely to change.
-
-2. **Use Stable Selectors**
-   - Add `data-testid` attributes to key elements and use them in tests.
-   - Example:
-     ```html
-     <button data-testid="login-button">Login</button>
-     ```
-     ```javascript
-     cy.get('[data-testid="login-button"]').click();
-     ```
-
-3. **Mock External Dependencies**
-   - Use `cy.intercept()` to mock API responses for predictable test results.
-   - Example:
-     ```javascript
-     cy.intercept('POST', '/api/login', { statusCode: 200, body: { success: true } });
-     ```
-
-4. **Modularize Tests**
-   - Break tests into smaller, reusable modules (e.g., a `login()` helper function).
-   - Example:
-     ```javascript
-     const login = (username, password) => {
-       cy.get('[data-testid="username-input"]').type(username);
-       cy.get('[data-testid="password-input"]').type(password);
-       cy.get('[data-testid="login-button"]').click();
-     };
-     ```
-
-5. **Handle Dynamic Content**
-   - Use assertions that adapt to dynamic content (e.g., `cy.contains()` for text matching).
-   - Example:
-     ```javascript
-     cy.contains('Welcome,').should('exist');
-     ```
-
-### 🧪 Main Testing TODOs
-
-1. **E2E Tests**
-   - [x] Authentication flow (register, login, logout). ✅
-   - [ ] Navigation between pages (Game, About, Profile).
-   - [ ] Protected routes (redirect unauthenticated users).
-
-2. **Unit Tests**
-   - [x] `LoginPage`: Form rendering and validation. ✅ (11 tests passing)
-   - [ ] `Navigation`: Links and active states.
-   - [ ] `GamePage`: Game canvas initialization and cleanup.
-
-3. **Integration Tests**
-   - [ ] Mock API responses for authService methods.
-   - [ ] Verify session persistence across page reloads.
-
-4. **Game Logic Tests**
-   - [ ] Mock game initialization and cleanup.
-   - [ ] Test game state updates and rendering.
+Ready to begin with Phase 1.1 (StatusHeader component)?

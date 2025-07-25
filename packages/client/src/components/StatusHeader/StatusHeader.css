@@ -1,0 +1,85 @@
+.status-header {
+  width: 100%;
+  background-color: rgba(0, 0, 0, 0.9);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 8px 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.status-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.iron-display {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: #ffffff;
+}
+
+.iron-label {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.iron-amount {
+  font-size: 14px;
+  font-weight: 600;
+  color: #4caf50;
+}
+
+.status-indicator {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.status-indicator:hover {
+  transform: scale(1.1);
+}
+
+.status-indicator.grey {
+  background-color: #757575;
+}
+
+.status-indicator.yellow {
+  background-color: #ffeb3b;
+  box-shadow: 0 0 4px rgba(255, 235, 59, 0.5);
+}
+
+.status-indicator.green {
+  background-color: #4caf50;
+  box-shadow: 0 0 4px rgba(76, 175, 80, 0.5);
+}
+
+.status-indicator.red {
+  background-color: #f44336;
+  box-shadow: 0 0 4px rgba(244, 67, 54, 0.5);
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .status-header {
+    padding: 6px 0;
+  }
+  
+  .status-content {
+    gap: 10px;
+  }
+  
+  .iron-label,
+  .iron-amount {
+    font-size: 13px;
+  }
+  
+  .status-indicator {
+    width: 10px;
+    height: 10px;
+  }
+}

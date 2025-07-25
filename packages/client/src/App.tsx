@@ -5,6 +5,7 @@ import GamePage from './pages/Game/GamePage';
 import AboutPage from './pages/About/AboutPage';
 import ProfilePage from './pages/Profile/ProfilePage';
 import Navigation from './components/Navigation/Navigation';
+import StatusHeader from './components/StatusHeader';
 import { useAuth } from './hooks/useAuth';
 
 const App: React.FC = () => {
@@ -30,6 +31,13 @@ const App: React.FC = () => {
   return (
     <div className="app">
       {isLoggedIn && <Navigation onLogout={logout} />}
+      {isLoggedIn && (
+        <StatusHeader 
+          ironAmount={0} 
+          statusIndicator="grey" 
+          onStatusClick={() => console.log('Status clicked')}
+        />
+      )}
       
       <Routes>
         <Route 
