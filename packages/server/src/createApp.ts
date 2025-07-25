@@ -133,7 +133,14 @@ export function createApp(db: sqlite3.Database) {
       const now = Math.floor(Date.now() / 1000);
       user.updateStats(now);
       await user.save();
-      res.json({ iron: user.iron, last_updated: user.last_updated, ironPerSecond: user.getIronPerSecond() });
+      
+      const responseData = { 
+        iron: user.iron, 
+        last_updated: user.last_updated, 
+        ironPerSecond: user.getIronPerSecond() 
+      };
+      
+      res.json(responseData);
     } catch {
       res.status(500).json({ error: 'Server error' });
     }

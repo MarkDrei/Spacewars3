@@ -23,24 +23,33 @@
 *Priority: HIGH | Complexity: LOW-MEDIUM*
 
 #### 1.1 Global Status Header
-- [ ] **Create StatusHeader Component** (`src/components/StatusHeader/`)
-  - Display current iron amount
-  - Status indicator (grey bubble/light by default)
-  - Responsive design for all pages
-  - Auto-refresh iron values
+- [x] **Create StatusHeader Component** (`src/components/StatusHeader/`)
+  - [x] Display current iron amount (placeholder: 0)
+  - [x] Status indicator (grey bubble/light by default)
+  - [x] Responsive design for all pages
+  - [ ] Auto-refresh iron values
 
-- [ ] **Status Indicator System**:
+- [x] **Status Indicator System**:
   - 🔘 **Grey**: Default state (nothing to report)
   - 🟡 **Yellow**: No research in progress
   - 🟢 **Green**: New neutral messages
   - 🔴 **Red**: Error/conflict states or related messages
 
-- [ ] **Add StatusHeader to All Pages**:
-  - NOT to Login page
-  - Game page
-  - Profile page  
-  - About page
-  - New Research page
+- [x] **Add StatusHeader to All Pages**:
+  - [x] NOT to Login page
+  - [x] Game page
+  - [x] Profile page  
+  - [x] About page
+  - [x] New Research page
+
+**NEXT: Connect to Backend API**
+- [x] **Backend Integration for StatusHeader**:
+  - [x] Create iron fetching service (`userStatsService.ts`)
+  - [x] Update StatusHeader to use real iron amounts  
+  - [x] Add polling for auto-refresh (5 second intervals)
+  - [x] Handle loading and error states (red indicator on error)
+  - [x] Add retry logic for server startup timing
+  - [x] Only fetch iron data when user is logged in
 
 #### 1.2 Research Management Page
 - [ ] **Create Research Page** (`src/pages/Research/`)

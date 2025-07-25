@@ -7,9 +7,11 @@ import ProfilePage from './pages/Profile/ProfilePage';
 import Navigation from './components/Navigation/Navigation';
 import StatusHeader from './components/StatusHeader';
 import { useAuth } from './hooks/useAuth';
+import { useIron } from './hooks/useIron';
 
 const App: React.FC = () => {
   const { isLoggedIn, isLoading, username, login, register, logout } = useAuth();
+  const { ironAmount, isLoading: ironLoading, error: ironError } = useIron(isLoggedIn, 5000); // Poll every 5 seconds
 
   // Show loading screen while checking authentication
   if (isLoading) {
@@ -33,9 +35,16 @@ const App: React.FC = () => {
       {isLoggedIn && <Navigation onLogout={logout} />}
       {isLoggedIn && (
         <StatusHeader 
-          ironAmount={0} 
-          statusIndicator="grey" 
-          onStatusClick={() => console.log('Status clicked')}
+          ironAmount={ironAmount} 
+          statusIndicator={ironError ? "red" : "grey"} 
+          isLoading={ironLoading}
+          onStatusClick={() => {
+            if (ironError) {
+              console.log('Iron fetch error:', ironError);
+            } else {
+              console.log('Status clicked - Iron:', ironAmount);
+            }
+          }}
         />
       )}
       
