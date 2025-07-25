@@ -23,7 +23,7 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ username }) => {
   return (
     <div className="profile-page">
       <div className="profile-container">
-        <h1>Player Profile</h1>
+        <h1 className="page-heading">Player Profile</h1>
         
         <div className="profile-header">
           <div className="avatar">

@@ -52,36 +52,45 @@
   - [x] Only fetch iron data when user is logged in
 
 #### 1.2 Research Management Page
-- [ ] **Create Research Page** (`src/pages/Research/`)
-  - Display tech tree status
-  - Show current research progress
-  - Allow triggering new research
+- [x] **Create Research Page** (`src/pages/Research/`)
+  - Display tech tree status (table format)
+  - Show current research progress with countdown
+  - Allow triggering new research (one at a time)
   - Show research costs and durations
-  - Display iron income rate
+  - Display iron income rate and current levels
+  - Handle loading states and error feedback
 
-- [ ] **Research Components**:
-  - `ResearchTree.tsx` - Visual tech tree display
-  - `ResearchItem.tsx` - Individual research card
-  - `ResearchProgress.tsx` - Progress indicators
-  - `TriggerResearch.tsx` - Research initiation controls
+- [x] **Research Service** (`src/services/researchService.ts`):
+  - Get tech tree state (`GET /api/techtree`)
+  - Trigger research (`POST /api/trigger-research`)
+  - Check research progress
+  - Handle research completion events
+  - Integrate with iron amount updates
 
-- [ ] **Add Research Route**:
+- [x] **Add Research Route & Navigation**:
   - Protected route `/research`
-  - Add to navigation menu
+  - Add to navigation menu (between Game and About)
   - Integrate with existing API endpoints
 
-#### 1.3 Backend Integration Services
-- [ ] **Enhanced API Service** (`src/services/researchService.ts`):
-  - Get tech tree state
-  - Trigger research
-  - Check research progress
-  - Get iron production rates
+#### 1.3 Enhanced StatusHeader Integration
+- [x] **StatusHeader Enhancement**:
+  - Yellow indicator when no research is in progress
+  - Hover tooltip: "No research in progress - click to start research"
+  - Click handler: Navigate to research page
+  - Real-time iron updates after research triggers
+  - Status changes based on research state
 
-- [ ] **Status Polling Service** (`src/services/statusService.ts`):
-  - Periodic iron amount updates
-  - Research completion checking
-  - Status change notifications
-  - Configurable poll intervals
+- [x] **Status Indicator Logic**:
+  - 🔘 **Grey**: Default state (loading or no data)
+  - 🟡 **Yellow**: No research in progress (clickable → research page)
+  - 🟢 **Green**: Research completion notification (auto-dismiss after 5s)
+  - 🔴 **Red**: Error states or API failures
+
+- [x] **Iron Amount Synchronization**:
+  - Refresh iron after research triggers
+  - Update StatusHeader iron display
+  - Handle research cost deduction
+  - Real-time countdown integration
 
 ### **Phase 2: Enhanced Status System** 
 *Priority: MEDIUM | Complexity: LOW*
@@ -146,30 +155,39 @@
 ```typescript
 interface StatusHeaderProps {
   ironAmount: number;
-  statusIndicator: 'grey' | 'yellow' | 'green' | 'red' | 'white';
+  statusIndicator: 'grey' | 'yellow' | 'green' | 'red';
   isLoading?: boolean;
   onStatusClick?: () => void;
+  statusTooltip?: string;
 }
 ```
 
 ### **Status Indicator Behavior:**
-- **Default**: Grey (no active events)
-- **Research Active**: Yellow (pulsing)
-- **Research Complete**: Green (solid, auto-dismiss after 5s)
-- **Errors**: Red (persistent until dismissed)
-- **New Events**: White (pulsing until acknowledged)
+- **Default**: Grey (loading or no data)
+- **No Research**: Yellow (pulsing, clickable → research page, hover: "No research in progress - click to start research")
+- **Research Active**: Grey (no click action, countdown visible in research page)
+- **Research Complete**: Green (solid, auto-dismiss after 5s, click → research page)
+- **Errors**: Red (persistent until dismissed, click shows error details)
 
 ### **Research Page Features:**
-- Tech tree visualization (similar to existing backend data structure)
-- Current research progress with time remaining
-- Available research options with costs
-- Iron production rate display
-- Research history/completed items
+- Tech tree table visualization (matching backend data structure)
+- Current research progress with real-time countdown
+- Available research options with costs and descriptions
+- Iron production rate display in StatusHeader
+- Research history/completed items (current levels)
+- One active research at a time constraint
+- Upgrade cost validation against current iron
+- Navigation integration between Game → Research → About
 
 ### **Existing Backend Endpoints to Use:**
 - `GET /api/user-stats` - Iron amount and production rate
-- `GET /api/techtree` - Tech tree status and research options
+- `GET /api/techtree` - Tech tree status and research options  
 - `POST /api/trigger-research` - Start new research
+
+### **New Frontend Services Needed:**
+- `researchService.ts` - Dedicated research API integration
+- Enhanced `useIron` hook integration for research cost updates
+- Navigation service for status indicator click routing
 
 ---
 

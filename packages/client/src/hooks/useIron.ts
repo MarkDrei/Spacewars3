@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { userStatsService } from '../services/userStatsService';
+import { globalEvents, EVENTS } from '../services/eventService';
 
 interface UseIronReturn {
   ironAmount: number;
@@ -101,11 +102,21 @@ export const useIron = (isLoggedIn: boolean, pollInterval: number = 5000): UseIr
     // Set up display iron updates (every 100ms for smooth updates)
     const displayInterval = setInterval(updateDisplayIron, 100);
     
+    // Listen for iron update events (e.g., after research trigger)
+    const handleIronUpdate = () => {
+      fetchIron();
+    };
+    
+    globalEvents.on(EVENTS.IRON_UPDATED, handleIronUpdate);
+    globalEvents.on(EVENTS.RESEARCH_TRIGGERED, handleIronUpdate);
+    
     // Cleanup
     return () => {
       isMountedRef.current = false;
       clearInterval(serverInterval);
       clearInterval(displayInterval);
+      globalEvents.off(EVENTS.IRON_UPDATED, handleIronUpdate);
+      globalEvents.off(EVENTS.RESEARCH_TRIGGERED, handleIronUpdate);
     };
   }, [isLoggedIn, pollInterval]);
 

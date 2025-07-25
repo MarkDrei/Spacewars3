@@ -36,12 +36,31 @@
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  cursor: pointer;
   transition: all 0.2s ease;
 }
 
-.status-indicator:hover {
+.status-indicator.clickable {
+  cursor: pointer;
+}
+
+.status-indicator.clickable:hover {
   transform: scale(1.1);
+}
+
+.status-indicator.yellow.clickable {
+  animation: pulse-yellow 2s infinite;
+}
+
+@keyframes pulse-yellow {
+  0% {
+    box-shadow: 0 0 4px rgba(255, 235, 59, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 8px rgba(255, 235, 59, 0.8);
+  }
+  100% {
+    box-shadow: 0 0 4px rgba(255, 235, 59, 0.5);
+  }
 }
 
 .status-indicator.grey {

@@ -5,7 +5,7 @@ const AboutPage: React.FC = () => {
   return (
     <div className="about-page">
       <div className="about-container">
-        <h1>About Spacewars: Ironcore</h1>
+        <h1 className="page-heading">About Spacewars: Ironcore</h1>
         
         <section className="about-section">
           <h2>Game Overview</h2>

@@ -8,13 +8,17 @@ interface StatusHeaderProps {
   statusIndicator: StatusIndicator;
   isLoading?: boolean;
   onStatusClick?: () => void;
+  statusTooltip?: string;
+  isClickable?: boolean;
 }
 
 const StatusHeader: React.FC<StatusHeaderProps> = ({
   ironAmount,
   statusIndicator,
   isLoading = false,
-  onStatusClick
+  onStatusClick,
+  statusTooltip,
+  isClickable = false
 }) => {
   const formatIronAmount = (amount: number): string => {
     return amount.toLocaleString();
@@ -30,9 +34,10 @@ const StatusHeader: React.FC<StatusHeaderProps> = ({
           </span>
         </div>
         <div 
-          className={`status-indicator ${statusIndicator}`}
-          onClick={onStatusClick}
-          title="Status indicator"
+          className={`status-indicator ${statusIndicator} ${isClickable ? 'clickable' : ''}`}
+          onClick={isClickable ? onStatusClick : undefined}
+          title={statusTooltip || "Status indicator"}
+          style={{ cursor: isClickable ? 'pointer' : 'default' }}
         />
       </div>
     </div>

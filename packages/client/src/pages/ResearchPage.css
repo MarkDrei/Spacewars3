@@ -1,0 +1,200 @@
+/* Research Page Styles - Dark Theme */
+.research-page {
+  min-height: calc(100vh - 60px);
+  background-color: #121212;
+  color: white;
+  padding: 2rem 1rem;
+}
+
+.research-container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* Error and Loading States */
+.error-message {
+  background-color: #1e1e1e;
+  border: 2px solid #f44336;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  color: #f44336;
+  font-weight: 500;
+}
+
+.loading-message, .no-data-message {
+  text-align: center;
+  color: #4caf50;
+  font-size: 1.2rem;
+  margin: 2rem 0;
+}
+
+.retry-button {
+  background-color: #4caf50;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 500;
+  transition: background-color 0.2s ease;
+}
+
+.retry-button:hover {
+  background-color: #45a049;
+}
+
+/* Research Table */
+.research-table-container {
+  background-color: #1e1e1e;
+  border-radius: 12px;
+  border: 2px solid #4caf50;
+  overflow: hidden;
+  margin-bottom: 2rem;
+}
+
+.research-table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: transparent;
+}
+
+.research-table thead th {
+  background-color: #2d2d2d;
+  color: #4caf50;
+  padding: 1rem;
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.95rem;
+  border-bottom: 2px solid #4caf50;
+}
+
+.research-table thead th:not(:last-child) {
+  border-right: 1px solid rgba(76, 175, 80, 0.3);
+}
+
+/* Research Rows */
+.research-row {
+  background-color: #1e1e1e;
+  transition: background-color 0.2s ease, opacity 0.2s ease;
+}
+
+.research-row:hover:not(.disabled) {
+  background-color: #252525;
+}
+
+.research-row.active {
+  background-color: rgba(76, 175, 80, 0.1);
+  border-left: 4px solid #4caf50;
+}
+
+.research-row.disabled {
+  opacity: 0.5;
+}
+
+/* Research Cells */
+.research-cell {
+  padding: 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  color: #e0e0e0;
+  vertical-align: top;
+}
+
+.research-cell:not(:last-child) {
+  border-right: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.description-cell {
+  max-width: 250px;
+  word-wrap: break-word;
+  line-height: 1.4;
+  font-size: 0.9rem;
+}
+
+.action-cell {
+  text-align: center;
+  min-width: 150px;
+}
+
+/* Research Status Indicators */
+.research-countdown {
+  color: #4caf50;
+  font-weight: 600;
+  font-size: 1.1rem;
+  font-family: 'Courier New', monospace;
+}
+
+.cost-disabled {
+  color: #757575;
+  font-weight: 500;
+}
+
+.cost-insufficient {
+  color: #f44336;
+  font-weight: 500;
+}
+
+/* Upgrade Button */
+.upgrade-button {
+  background-color: #4caf50;
+  color: white;
+  border: none;
+  padding: 0.6rem 1.2rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  min-width: 140px;
+}
+
+.upgrade-button:hover:not(:disabled) {
+  background-color: #45a049;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(76, 175, 80, 0.3);
+}
+
+.upgrade-button:active {
+  transform: translateY(0);
+}
+
+.upgrade-button:disabled {
+  background-color: #757575;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .research-table-container {
+    overflow-x: auto;
+  }
+  
+  .research-table {
+    min-width: 800px;
+  }
+}
+
+@media (max-width: 768px) {
+  .research-page {
+    padding: 1rem 0.5rem;
+  }
+  
+  .research-cell {
+    padding: 0.75rem 0.5rem;
+    font-size: 0.85rem;
+  }
+  
+  .description-cell {
+    max-width: 200px;
+    font-size: 0.8rem;
+  }
+  
+  .upgrade-button {
+    padding: 0.5rem 0.8rem;
+    font-size: 0.8rem;
+    min-width: 120px;
+  }
+}

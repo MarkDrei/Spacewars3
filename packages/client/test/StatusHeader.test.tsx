@@ -44,11 +44,23 @@ describe('StatusHeader', () => {
     const mockOnStatusClick = jest.fn();
 
     // Act
-    render(<StatusHeader {...defaultProps} onStatusClick={mockOnStatusClick} />);
+    render(<StatusHeader {...defaultProps} onStatusClick={mockOnStatusClick} isClickable={true} />);
     fireEvent.click(screen.getByTitle('Status indicator'));
 
     // Assert
     expect(mockOnStatusClick).toHaveBeenCalledTimes(1);
+  });
+
+  test('statusHeader_notClickable_doesNotCallOnStatusClick', () => {
+    // Arrange
+    const mockOnStatusClick = jest.fn();
+
+    // Act
+    render(<StatusHeader {...defaultProps} onStatusClick={mockOnStatusClick} isClickable={false} />);
+    fireEvent.click(screen.getByTitle('Status indicator'));
+
+    // Assert
+    expect(mockOnStatusClick).not.toHaveBeenCalled();
   });
 
   test('statusHeader_loadingState_showsLoadingIndicator', () => {
