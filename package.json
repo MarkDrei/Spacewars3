@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "description": "A 2D space exploration game with a toroidal world, featuring collectable objects, interception mechanics, and a radar system",
   "private": true,
+  "type": "module",
   "workspaces": [
     "packages/*"
   ],
