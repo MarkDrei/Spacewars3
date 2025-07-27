@@ -21,15 +21,30 @@ declare module 'express-session' {
 export function createApp(db: sqlite3.Database) {
   const app = express();
   app.use(express.json());
+  
+  // Configure CORS for both development and production
+  const allowedOrigins = [
+    'http://localhost:3000', 
+    'http://localhost:3001', 
+    'http://localhost:5173',
+    'https://spacewars-ironcore-q7n3.onrender.com'
+  ];
+  
   app.use(cors({
-    origin: ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:5173'],
+    origin: allowedOrigins,
     credentials: true
   }));
+  
   app.use(session({
-    secret: 'your-secret-key',
+    secret: process.env.SESSION_SECRET || 'your-secret-key',
     resave: false,
     saveUninitialized: false,
-    cookie: { secure: false, httpOnly: true }
+    cookie: { 
+      secure: process.env.NODE_ENV === 'production',
+      httpOnly: true,
+      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
+    }
   }));
 
   // Register endpoint

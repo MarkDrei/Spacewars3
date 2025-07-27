@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: spacewars-backend
+    env: node
+    buildCommand: cd packages/server && npm install && npm run build
+    startCommand: cd packages/server && npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SESSION_SECRET
+        generateValue: true

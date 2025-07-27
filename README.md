@@ -133,3 +133,33 @@ npx cypress open
 - Use stable selectors (e.g., `data-testid`) for robust tests.
 - Focus on critical user flows (authentication, navigation).
 - Modularize tests for maintainability.
+
+## Deployment
+
+### Render Deployment
+
+This project is configured for deployment on Render using their free tier.
+
+#### Backend Deployment
+
+1. Create a new Web Service on Render
+2. Connect your GitHub repository
+3. Use the following settings:
+   - **Build Command**: `cd packages/server && npm install && npm run build`
+   - **Start Command**: `cd packages/server && npm start`
+   - **Environment Variables**:
+     - `NODE_ENV`: `production`
+     - `SESSION_SECRET`: (generate a random secret)
+
+The backend uses an in-memory SQLite database on the free tier (data will be lost on service restarts).
+
+#### Frontend Configuration
+
+Update the backend URLs in the client services to match your deployed backend:
+
+Replace `spacewars-backend-your-service-name.onrender.com` with your actual backend service URL in:
+- `packages/client/src/services/authService.ts`
+- `packages/client/src/services/userStatsService.ts`
+- `packages/client/src/services/researchService.ts`
+
+**Frontend URL**: https://spacewars-ironcore-q7n3.onrender.com

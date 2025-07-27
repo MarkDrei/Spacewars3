@@ -42,7 +42,9 @@ interface TriggerResearchResponse {
 }
 
 class ResearchService {
-  private baseUrl = '/api';
+  private baseUrl = process.env.NODE_ENV === 'production' 
+    ? 'https://spacewars-backend-your-service-name.onrender.com/api' 
+    : '/api';
 
   /**
    * Get current tech tree state and research definitions
