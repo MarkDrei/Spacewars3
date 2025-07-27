@@ -6,7 +6,10 @@ import path from 'path';
 const PORT = Number(process.env.PORT) || 5174;
 
 // Use in-memory database for free tier deployment (no persistent storage)
-const DB_PATH = process.env.NODE_ENV === 'production' ? ':memory:' : path.join(__dirname, '../db/users.db');
+// For local development, use the correct path relative to project root
+const DB_PATH = process.env.NODE_ENV === 'production' 
+  ? ':memory:' 
+  : path.join(__dirname, '../../db/users.db');  // Updated path for compiled JS
 
 // Initialize SQLite DB
 const db = new (sqlite3.verbose().Database)(DB_PATH, (err: Error | null) => {
