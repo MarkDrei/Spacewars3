@@ -6,12 +6,16 @@
     "composite": true,
     "outDir": "dist",
     "rootDir": ".",
-    "types": ["jest", "node"]
+    "types": ["node"]
   },
   "include": [
-    "src/**/*", 
-    "tests/**/*", 
-    "*.ts"
+    "src/**/*"
+  ],
+  "exclude": [
+    "tests/**/*",
+    "**/*.test.ts",
+    "**/*.spec.ts",
+    "node_modules"
   ],
   "references": [
     { "path": "../shared" }

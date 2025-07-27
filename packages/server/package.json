@@ -5,7 +5,7 @@
   "type": "commonjs",
   "scripts": {
     "dev": "ts-node src/index.ts",
-    "build": "tsc -b",
+    "build": "tsc --build --verbose",
     "start": "node dist/index.js",
     "test": "jest",
     "init-db": "sqlite3 db/users.db < db/schema.sql"
