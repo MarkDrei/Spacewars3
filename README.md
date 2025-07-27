@@ -157,9 +157,10 @@ The backend uses an in-memory SQLite database on the free tier (data will be los
 
 Update the backend URLs in the client services to match your deployed backend:
 
-Replace `spacewars-backend-your-service-name.onrender.com` with your actual backend service URL in:
+Replace `spacewars3.onrender.com` with your actual backend service URL in:
 - `packages/client/src/services/authService.ts`
 - `packages/client/src/services/userStatsService.ts`
 - `packages/client/src/services/researchService.ts`
 
 **Frontend URL**: https://spacewars-ironcore-q7n3.onrender.com
+**Backend URL**: https://spacewars3.onrender.com

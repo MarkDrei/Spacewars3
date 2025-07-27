@@ -43,7 +43,7 @@ interface TriggerResearchResponse {
 
 class ResearchService {
   private baseUrl = process.env.NODE_ENV === 'production' 
-    ? 'https://spacewars-backend-your-service-name.onrender.com/api' 
+    ? 'https://spacewars3.onrender.com/api' 
     : '/api';
 
   /**

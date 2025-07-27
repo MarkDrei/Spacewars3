@@ -1,6 +1,6 @@
 // User stats service for fetching iron and other user data
 const API_BASE = process.env.NODE_ENV === 'production' 
-  ? 'https://spacewars-backend-your-service-name.onrender.com/api' 
+  ? 'https://spacewars3.onrender.com/api' 
   : '/api';
 
 export interface UserStatsResponse {
