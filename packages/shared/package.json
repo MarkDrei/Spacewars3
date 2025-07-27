@@ -8,7 +8,8 @@
     "build": "tsc -b",
     "test": "jest"
   },
-  "devDependencies": {
-    "@types/node": "^24.0.10"
+  "dependencies": {
+    "@types/node": "^24.0.10",
+    "typescript": "^5.0.0"
   }
 }

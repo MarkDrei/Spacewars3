@@ -5,7 +5,8 @@
     "moduleResolution": "node",
     "composite": true,
     "outDir": "dist",
-    "rootDir": "."
+    "rootDir": ".",
+    "types": ["node"]
   },
   "include": [
     "src/**/*"
@@ -13,8 +14,7 @@
   "exclude": [
     "tests/**/*",
     "**/*.test.ts",
-    "**/*.spec.ts",
-    "node_modules"
+    "**/*.spec.ts"
   ],
   "references": [
     { "path": "../shared" }
