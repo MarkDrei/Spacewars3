@@ -5,10 +5,11 @@
   "type": "commonjs",
   "scripts": {
     "dev": "ts-node src/index.ts",
-    "build": "tsc --build --verbose",
+    "build": "tsc --build --verbose && npm run generate-schema",
     "start": "node dist/src/index.js",
     "test": "jest",
-    "init-db": "sqlite3 db/users.db < db/schema.sql"
+    "init-db": "sqlite3 db/users.db < db/schema.sql",
+    "generate-schema": "ts-node generate-schema.ts"
   },
   "dependencies": {
     "@spacewars-ironcore/shared": "0.1.0",

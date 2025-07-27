@@ -1,5 +1,5 @@
 /** @type {import('jest').Config} */
-module.exports = {
+export default {
   projects: [
     '<rootDir>/packages/client/jest.config.js',
     '<rootDir>/packages/server/jest.config.js'

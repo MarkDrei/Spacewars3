@@ -1,8 +1,8 @@
 // Entry point for the server package
 import { createApp } from './createApp';
+import { CREATE_TABLES } from './schema';
 import sqlite3 from 'sqlite3';
 import path from 'path';
-import { fileURLToPath } from 'url';
 
 const PORT = Number(process.env.PORT) || 5174;
 
@@ -24,27 +24,32 @@ if (isProduction) {
 
 // Initialize SQLite DB
 const db = new (sqlite3.verbose().Database)(DB_PATH, (err: Error | null) => {
-  if (err) throw err;
+  if (err) {
+    console.error('Database connection error:', err);
+    throw err;
+  }
   console.log(`Connected to the SQLite database (${DB_PATH === ':memory:' ? 'in-memory' : 'file'})`);
-});
-
-// Initialize database schema for in-memory database
-if (process.env.NODE_ENV === 'production') {
-  db.serialize(() => {
-    db.run(`CREATE TABLE IF NOT EXISTS users (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      username TEXT UNIQUE NOT NULL,
-      password_hash TEXT NOT NULL,
-      iron INTEGER DEFAULT 0,
-      tech_levels TEXT DEFAULT '{}',
-      research_progress TEXT DEFAULT '{}',
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )`);
+  console.log('Database path:', DB_PATH);
+  
+  // Initialize database schema for in-memory database
+  if (process.env.NODE_ENV === 'production') {
+    db.serialize(() => {
+      CREATE_TABLES.forEach((createTableSQL, index) => {
+        db.run(createTableSQL, (err) => {
+          if (err) {
+            console.error(`Error creating table ${index + 1}:`, err);
+          } else {
+            console.log(`Table ${index + 1} created successfully`);
+          }
+        });
+      });
+      console.log('Database schema initialization completed');
+    });
+  }
+  
+  // Start the server only after database is ready
+  const app = createApp(db);
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Server running at http://0.0.0.0:${PORT}`);
   });
-}
-
-const app = createApp(db);
-
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Server running at http://0.0.0.0:${PORT}`);
 });

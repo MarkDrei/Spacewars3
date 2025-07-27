@@ -97,6 +97,18 @@ cd packages/client; npm run dev
 cd packages/server; npm run dev
 ```
 
+### Database Schema Management
+
+The project uses a **single source of truth** approach for database schemas:
+
+- **Schema Definition**: All schemas are defined in `packages/server/src/schema.ts`
+- **Auto-Generation**: The `db/schema.sql` file is auto-generated (not version controlled)
+- **Making Changes**: 
+  1. Edit `packages/server/src/schema.ts`
+  2. Run `npm run build` (automatically generates new schema.sql)
+  3. For local dev: `cd packages/server && npm run generate-schema`
+  4. For database reset: `cd packages/server && npm run init-db`
+
 ### Testing
 
 - **Test Structure**:
