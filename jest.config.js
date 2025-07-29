@@ -2,7 +2,8 @@
 export default {
   projects: [
     '<rootDir>/packages/client/jest.config.js',
-    '<rootDir>/packages/server/jest.config.js'
+    '<rootDir>/packages/server/jest.config.js',
+    '<rootDir>/packages/shared/jest.config.js'
   ],
   collectCoverageFrom: [
     'packages/*/src/**/*.{ts,tsx}',

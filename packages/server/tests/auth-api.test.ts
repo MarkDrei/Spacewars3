@@ -1,6 +1,7 @@
 import request from 'supertest';
 import { createApp } from '../src/createApp';
 import sqlite3 from 'sqlite3';
+import { CREATE_TABLES } from '../src/schema';
 
 let db: sqlite3.Database;
 let app: ReturnType<typeof createApp>;
@@ -8,14 +9,23 @@ let app: ReturnType<typeof createApp>;
 beforeAll((done) => {
   db = new (sqlite3.verbose().Database)(':memory:');
   app = createApp(db);
-  db.run(`CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    username TEXT UNIQUE,
-    password_hash TEXT,
-    iron REAL NOT NULL DEFAULT 0.0,
-    last_updated INTEGER NOT NULL,
-    tech_tree TEXT NOT NULL
-  )`, done);
+  
+  // Create tables using centralized schema
+  let completed = 0;
+  const tables = CREATE_TABLES;
+  
+  tables.forEach((createTableSQL) => {
+    db.run(createTableSQL, (err) => {
+      if (err) {
+        done(err);
+        return;
+      }
+      completed++;
+      if (completed === tables.length) {
+        done();
+      }
+    });
+  });
 });
 
 afterAll((done) => {

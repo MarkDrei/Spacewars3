@@ -13,6 +13,7 @@ interface UserRow {
   iron: number;
   last_updated: number;
   tech_tree: string;
+  ship_id?: number;
 }
 
 function userFromRow(row: UserRow, saveCallback: SaveUserCallback): User {
@@ -30,7 +31,8 @@ function userFromRow(row: UserRow, saveCallback: SaveUserCallback): User {
     row.iron,
     row.last_updated,
     techTree,
-    saveCallback
+    saveCallback,
+    row.ship_id
   );
 }
 
@@ -70,8 +72,8 @@ export function saveUserToDb(db: sqlite3.Database): SaveUserCallback {
   return async (user) => {
     return new Promise((resolve, reject) => {
       db.run(
-        'UPDATE users SET iron = ?, last_updated = ?, tech_tree = ? WHERE id = ?',
-        [user.iron, user.last_updated, JSON.stringify(user.techTree), user.id],
+        'UPDATE users SET iron = ?, last_updated = ?, tech_tree = ?, ship_id = ? WHERE id = ?',
+        [user.iron, user.last_updated, JSON.stringify(user.techTree), user.ship_id, user.id],
         function (err) {
           if (err) return reject(err);
           resolve();

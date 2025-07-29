@@ -1,7 +1,12 @@
 // Script to generate schema.sql from schema.ts
-const { CREATE_TABLES, SCHEMA_VERSION } = require('./dist/src/schema.js');
-const { writeFileSync } = require('fs');
-const { join } = require('path');
+import { CREATE_TABLES, SCHEMA_VERSION } from './dist/src/schema.js';
+import { writeFileSync } from 'fs';
+import { join } from 'path';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const sqlContent = `-- Auto-generated schema file
 -- Do not edit manually - edit src/schema.ts instead

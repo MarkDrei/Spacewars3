@@ -20,5 +20,7 @@ module.exports = {
     '^@shared$': '<rootDir>/../shared/src/index.ts',
     '^@shared/(.*)$': '<rootDir>/../shared/src/$1',
     '\\.(css|less|scss|sass)$': 'identity-obj-proxy'
-  }
+  },
+  // Use the custom resolver to handle .js extensions in source files
+  resolver: '<rootDir>/../../jest-resolver.cjs',
 };

@@ -5,6 +5,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "clean": "rm -rf dist/ *.tsbuildinfo",
+    "rebuild": "npm run clean && npm run build",
     "preview": "vite preview --host 0.0.0.0 --port ${PORT:-3000}",
     "test": "jest",
     "deploy": "cd ../../ && npm install && cd packages/client && npm install && npm run build"

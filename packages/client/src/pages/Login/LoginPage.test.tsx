@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import LoginPage from './LoginPage';
 
@@ -68,10 +68,10 @@ describe('LoginPage', () => {
     const signUpTab = screen.getAllByText('Sign Up')[0];
     await user.click(signUpTab);
     
-    // Fill form with mismatched passwords
-    await user.type(screen.getByLabelText('Username'), 'testuser');
-    await user.type(screen.getByLabelText('Password'), 'password123');
-    await user.type(screen.getByLabelText('Confirm Password'), 'differentpassword');
+    // Fill form with mismatched passwords using batch operations
+    fireEvent.change(screen.getByLabelText('Username'), { target: { value: 'testuser' } });
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'password123' } });
+    fireEvent.change(screen.getByLabelText('Confirm Password'), { target: { value: 'differentpassword' } });
     
     await user.click(screen.getByRole('button', { name: 'Create Account' }));
     
@@ -85,8 +85,8 @@ describe('LoginPage', () => {
     
     render(<LoginPage onLogin={mockOnLogin} onRegister={mockOnRegister} />);
     
-    await user.type(screen.getByLabelText('Username'), 'testuser');
-    await user.type(screen.getByLabelText('Password'), 'password123');
+    fireEvent.change(screen.getByLabelText('Username'), { target: { value: 'testuser' } });
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'password123' } });
     
     const submitButton = getSubmitButton();
     await user.click(submitButton!);
@@ -104,9 +104,9 @@ describe('LoginPage', () => {
     const signUpTab = screen.getAllByText('Sign Up')[0];
     await user.click(signUpTab);
     
-    await user.type(screen.getByLabelText('Username'), 'newuser');
-    await user.type(screen.getByLabelText('Password'), 'password123');
-    await user.type(screen.getByLabelText('Confirm Password'), 'password123');
+    fireEvent.change(screen.getByLabelText('Username'), { target: { value: 'newuser' } });
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'password123' } });
+    fireEvent.change(screen.getByLabelText('Confirm Password'), { target: { value: 'password123' } });
     await user.click(screen.getByRole('button', { name: 'Create Account' }));
     
     expect(mockOnRegister).toHaveBeenCalledWith('newuser', 'password123');
@@ -118,8 +118,8 @@ describe('LoginPage', () => {
     
     render(<LoginPage onLogin={mockOnLogin} onRegister={mockOnRegister} />);
     
-    await user.type(screen.getByLabelText('Username'), 'testuser');
-    await user.type(screen.getByLabelText('Password'), 'wrongpassword');
+    fireEvent.change(screen.getByLabelText('Username'), { target: { value: 'testuser' } });
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'wrongpassword' } });
     
     const submitButton = getSubmitButton();
     await user.click(submitButton!);
@@ -139,14 +139,20 @@ describe('LoginPage', () => {
     const signUpTab = screen.getAllByText('Sign Up')[0];
     await user.click(signUpTab);
     
-    await user.type(screen.getByLabelText('Username'), 'existinguser');
-    await user.type(screen.getByLabelText('Password'), 'password123');
-    await user.type(screen.getByLabelText('Confirm Password'), 'password123');
+    // Use batch operations for faster input
+    const usernameInput = screen.getByLabelText('Username');
+    const passwordInput = screen.getByLabelText('Password');
+    const confirmPasswordInput = screen.getByLabelText('Confirm Password');
+    
+    fireEvent.change(usernameInput, { target: { value: 'existinguser' } });
+    fireEvent.change(passwordInput, { target: { value: 'password123' } });
+    fireEvent.change(confirmPasswordInput, { target: { value: 'password123' } });
+    
     await user.click(screen.getByRole('button', { name: 'Create Account' }));
     
     await waitFor(() => {
       expect(screen.getByText('Username taken')).toBeInTheDocument();
-    });
+    }, { interval: 5 });
   });
 
   it('should clear error message when user starts typing', async () => {
@@ -156,8 +162,8 @@ describe('LoginPage', () => {
     // First, let's create an error by triggering a failed login
     mockOnLogin.mockResolvedValue({ success: false, error: 'Invalid credentials' });
     
-    await user.type(screen.getByLabelText('Username'), 'user');
-    await user.type(screen.getByLabelText('Password'), 'wrong');
+    fireEvent.change(screen.getByLabelText('Username'), { target: { value: 'user' } });
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'wrong' } });
     
     const submitButton = getSubmitButton();
     await user.click(submitButton!);
@@ -168,8 +174,8 @@ describe('LoginPage', () => {
     });
     
     // Clear the input and type new text - error should clear
-    await user.clear(screen.getByLabelText('Username'));
-    await user.type(screen.getByLabelText('Username'), 'newuser');
+    fireEvent.change(screen.getByLabelText('Username'), { target: { value: '' } });
+    fireEvent.change(screen.getByLabelText('Username'), { target: { value: 'newuser' } });
     
     expect(screen.queryByText('Invalid credentials')).not.toBeInTheDocument();
   });
@@ -185,8 +191,8 @@ describe('LoginPage', () => {
     
     render(<LoginPage onLogin={mockOnLogin} onRegister={mockOnRegister} />);
     
-    await user.type(screen.getByLabelText('Username'), 'testuser');
-    await user.type(screen.getByLabelText('Password'), 'password123');
+    fireEvent.change(screen.getByLabelText('Username'), { target: { value: 'testuser' } });
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'password123' } });
     
     const submitButton = getSubmitButton();
     await user.click(submitButton!);
@@ -210,8 +216,8 @@ describe('LoginPage', () => {
     render(<LoginPage onLogin={mockOnLogin} onRegister={mockOnRegister} />);
     
     // Fill login form
-    await user.type(screen.getByLabelText('Username'), 'testuser');
-    await user.type(screen.getByLabelText('Password'), 'password123');
+    fireEvent.change(screen.getByLabelText('Username'), { target: { value: 'testuser' } });
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'password123' } });
     
     // Switch to sign up mode
     const signUpTab = screen.getAllByText('Sign Up')[0];

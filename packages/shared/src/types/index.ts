@@ -1,3 +1,6 @@
+// Barrel export for all types
+export * from './gameTypes.js';
+
 // Type definitions shared between client and server
 export interface User {
   id: number;
@@ -19,3 +22,4 @@ export interface GameState {
     generic: number;
   };
 }
+

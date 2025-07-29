@@ -14,15 +14,7 @@ module.exports = {
       }
     }]
   },
-  // Allow Jest to transform the shared package
-  transformIgnorePatterns: [
-    'node_modules/(?!@spacewars-ironcore/shared)'
-  ],
-  // Map the shared package to its source files during testing
-  moduleNameMapper: {
-    '^@spacewars-ironcore/shared$': '<rootDir>/../shared/src/index.ts'
-  },
   // Use the custom resolver to handle .js extensions in source files
   resolver: '<rootDir>/../../jest-resolver.cjs',
-  displayName: 'server'
+  displayName: 'shared'
 };

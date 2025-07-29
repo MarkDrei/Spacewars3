@@ -1,6 +1,7 @@
 // Entry point for the server package
 import { createApp } from './createApp';
 import { CREATE_TABLES } from './schema';
+import { seedDatabase } from './seedData';
 import sqlite3 from 'sqlite3';
 import path from 'path';
 
@@ -31,21 +32,27 @@ const db = new (sqlite3.verbose().Database)(DB_PATH, (err: Error | null) => {
   console.log(`Connected to the SQLite database (${DB_PATH === ':memory:' ? 'in-memory' : 'file'})`);
   console.log('Database path:', DB_PATH);
   
-  // Initialize database schema for in-memory database
-  if (process.env.NODE_ENV === 'production') {
-    db.serialize(() => {
-      CREATE_TABLES.forEach((createTableSQL, index) => {
-        db.run(createTableSQL, (err) => {
-          if (err) {
-            console.error(`Error creating table ${index + 1}:`, err);
-          } else {
-            console.log(`Table ${index + 1} created successfully`);
-          }
-        });
+  // Initialize database schema
+  console.log('🗄️  Setting up database schema...');
+  db.serialize(() => {
+    CREATE_TABLES.forEach((createTableSQL, index) => {
+      db.run(createTableSQL, (err) => {
+        if (err) {
+          console.error(`Error creating table ${index + 1}:`, err);
+        } else {
+          console.log(`✅ Table ${index + 1} created successfully`);
+        }
       });
-      console.log('Database schema initialization completed');
     });
-  }
+    
+    // Seed default users after tables are created
+    console.log('🌱 Checking if seeding is needed...');
+    seedDatabase(db).catch(error => {
+      console.error('❌ Error seeding database:', error);
+    });
+    
+    console.log('Database initialization completed');
+  });
   
   // Start the server only after database is ready
   const app = createApp(db);

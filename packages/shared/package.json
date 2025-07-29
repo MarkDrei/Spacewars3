@@ -6,10 +6,17 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc -b",
+    "clean": "rm -rf dist/ *.tsbuildinfo",
+    "rebuild": "npm run clean && npm run build",
     "test": "jest"
   },
   "dependencies": {
     "@types/node": "^24.0.10",
     "typescript": "^5.0.0"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.14",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.3.4"
   }
 }

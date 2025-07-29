@@ -9,8 +9,7 @@
 ## Module System
 
 - This project uses [ES Modules](https://nodejs.org/api/esm.html) exclusively (`"type": "module"` in package.json).
-- Use `import`/`export` syntax only.
-- Do not use CommonJS (`require`, `module.exports`).
+- Use `import`/`export` syntax only. Do not use CommonJS (`require`, `module.exports`).
 
 ## Project Structure
 - `packages/client/`: Frontend game client
@@ -19,7 +18,6 @@
     - `packages/client/src/pages/`: Page components (Login, Game)
     - `packages/client/src/hooks/`: React hooks
     - `packages/client/src/renderers/`: Canvas rendering components
-    - `packages/client/src/worlds/`: World configuration files
     - `packages/client/src/Game.ts`: Main game controller
     - `packages/client/src/App.tsx`: Main React component with routing
     - `packages/client/src/main.tsx`: Application entry point
@@ -31,13 +29,12 @@
 - `packages/shared/`: Shared code and types used by both client and server
 
 ## Development Guidelines
+- Do not delete the DB unless asked to.
+- The dev environment with vite is usually up and running. Don't start a new one unless necessary.
 - Use TypeScript features like interfaces and type definitions to ensure type safety.
 - Maintain the separation between game logic, rendering components, and React UI.
 - All canvas rendering logic should go in the appropriate renderer class.
 - All UI components should be implemented as React components.
-- The `SpaceObject` class is the base class for all objects in the game world.
-- The `World` class manages all game objects and their interactions.
-- The `Game` class integrates with React components through canvas references.
 - Use React Hooks for state management and component lifecycle.
 - Shared types and utilities should be placed in the shared package.
 
@@ -46,20 +43,17 @@
 - Tests are organized by package:
   - Client tests: `packages/client/test/` (jsdom environment)
   - Server tests: `packages/server/tests/` (node environment)
+  - Shared tests: `packages/shared/tests/` (node environment)
 - Test naming convention: whatIsTested_scenario_expectedOutcome
   - Example: `updateStats_researchDoesNotComplete_awardsAllIronAtOldRate`
   - Use descriptive names that explain the test's purpose
 - Running tests:
   - All packages: `npm test` (from root)
   - Single package: `cd packages/<package>; npm test`
-  - Watch mode: `npm test -- --watch`
-  - Coverage: `npm test -- --coverage`
 - Each package has its own Jest config optimized for its needs
-- The root Jest config orchestrates running all package tests together
 - Tests should focus on business logic and avoid testing implementation details
 
 ## Building and Running
-- The project is designed to run on Windows using PowerShell. Commands should use PowerShell syntax (`;` instead of `&&` for chaining).
 - Use `npm install` to install dependencies for all packages.
 - Use `npm run build` to build all packages.
 - Use `npm run dev` to start both the client and server in development mode (run from ROOT directory).

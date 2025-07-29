@@ -9,7 +9,9 @@ import sqlite3 from 'sqlite3';
 import bcrypt from 'bcrypt';
 import cors from 'cors';
 import { getUserById, getUserByUsername, createUser, saveUserToDb } from './userRepo';
+import { loadWorld, saveWorldToDb } from './worldRepo';
 import { AllResearches, getResearchUpgradeCost, getResearchUpgradeDuration, getResearchEffect, ResearchType, triggerResearch, TechTree } from './techtree';
+import { calculateToroidalDistance } from '@spacewars-ironcore/shared';
 
 // Extend express-session to include userId
 declare module 'express-session' {
@@ -55,31 +57,27 @@ export function createApp(db: sqlite3.Database) {
       return res.status(400).json({ error: 'Missing fields' });
     }
     
-    bcrypt.hash(password, 10, async (err, hash) => {
-      if (err) {
-        console.error('Password hashing error:', err);
-        return res.status(500).json({ error: 'Server error' });
-      }
+    try {
+      // Hash password with automatic salt generation
+      const hash = await bcrypt.hash(password, 10);
       
-      try {
-        const user = await createUser(db, username, hash, saveUserToDb(db));
-        req.session.userId = user.id;
-        res.json({ success: true });
-      } catch (e) {
+      const user = await createUser(db, username, hash, saveUserToDb(db));
+      req.session.userId = user.id;
+      res.json({ success: true });
+    } catch (e) {
+      console.error('User creation error:', e);
+      if (e instanceof Error && e.message && e.message.includes('UNIQUE constraint failed')) {
+        res.status(400).json({ error: 'Username taken' });
+      } else if (typeof e === 'object' && e !== null && 'message' in e && 
+                 typeof e.message === 'string' && e.message.includes('UNIQUE constraint failed')) {
+        res.status(400).json({ error: 'Username taken' });
+      } else if (typeof e === 'object' && e !== null && 'code' in e && e.code === 'SQLITE_CONSTRAINT') {
+        res.status(400).json({ error: 'Username taken' });
+      } else {
         console.error('User creation error:', e);
-        if (e instanceof Error && e.message && e.message.includes('UNIQUE constraint failed')) {
-          res.status(400).json({ error: 'Username taken' });
-        } else if (typeof e === 'object' && e !== null && 'message' in e && 
-                   typeof e.message === 'string' && e.message.includes('UNIQUE constraint failed')) {
-          res.status(400).json({ error: 'Username taken' });
-        } else if (typeof e === 'object' && e !== null && 'code' in e && e.code === 'SQLITE_CONSTRAINT') {
-          res.status(400).json({ error: 'Username taken' });
-        } else {
-          console.error('User creation error:', e);
-          res.status(500).json({ error: 'Server error' });
-        }
+        res.status(500).json({ error: 'Server error' });
       }
-    });
+    }
   });
 
   // Login endpoint
@@ -229,6 +227,95 @@ export function createApp(db: sqlite3.Database) {
       await user.save();
       res.json({ success: true });
     } catch {
+      res.status(500).json({ error: 'Server error' });
+    }
+  });
+
+  // Get world data endpoint - retrieves and updates all space objects
+  app.get('/api/world', async (req, res) => {
+    if (!req.session.userId) return res.status(401).json({ error: 'Not authenticated' });
+    
+    try {
+      // Load world data from database
+      const world = await loadWorld(db, saveWorldToDb(db));
+      
+      // Update physics for all objects
+      const currentTime = Date.now();
+      world.updatePhysics(currentTime);
+      
+      // Save updated positions back to database
+      await world.save();
+      
+      // Return world data
+      res.json(world.getWorldData());
+      
+    } catch (error) {
+      console.error('World data error:', error);
+      res.status(500).json({ error: 'Server error' });
+    }
+  });
+
+  // Collect space object endpoint - allows players to collect asteroids, wrecks, and escape pods
+  app.post('/api/collect', async (req, res) => {
+    if (!req.session.userId) return res.status(401).json({ error: 'Not authenticated' });
+    
+    const { objectId } = req.body;
+    if (!objectId) return res.status(400).json({ error: 'Missing object ID' });
+    
+    try {
+      // Load user and world data
+      const user = await getUserById(db, req.session.userId, saveUserToDb(db));
+      if (!user) return res.status(404).json({ error: 'User not found' });
+      
+      const world = await loadWorld(db, saveWorldToDb(db));
+      
+      // Update physics for all objects first
+      const currentTime = Date.now();
+      world.updatePhysics(currentTime);
+      
+      // Find the object to collect
+      const targetObject = world.getSpaceObject(objectId);
+      if (!targetObject) {
+        return res.status(404).json({ error: 'Object not found' });
+      }
+      
+      // Check if object is collectible
+      if (targetObject.type === 'player_ship') {
+        return res.status(400).json({ error: 'Cannot collect player ships' });
+      }
+      
+      // Find player's ship in the world
+      const playerShips = world.getSpaceObjectsByType('player_ship');
+      const playerShip = playerShips.find(ship => ship.id === user.ship_id);
+      
+      if (!playerShip) {
+        return res.status(404).json({ error: 'Player ship not found' });
+      }
+      
+      // Calculate distance between player ship and target object using toroidal distance
+      const distance = calculateToroidalDistance(
+        playerShip,
+        targetObject,
+        world.worldSize
+      );
+      
+      // Check if within collection range (125 units)
+      if (distance > 125) {
+        return res.status(400).json({ error: 'Object too far away' });
+      }
+      
+      // Collect the object
+      user.collected(targetObject.type);
+      await world.collected(objectId);
+      
+      // Save changes
+      await user.save();
+      await world.save();
+      
+      res.json({ success: true, distance });
+      
+    } catch (error) {
+      console.error('Collection error:', error);
       res.status(500).json({ error: 'Server error' });
     }
   });

@@ -11,6 +11,7 @@ class User {
   iron: number;
   last_updated: number;
   techTree: TechTree;
+  ship_id?: number; // Optional ship ID for linking to player's ship
   private saveCallback: SaveUserCallback;
 
   constructor(
@@ -20,7 +21,8 @@ class User {
     iron: number,
     last_updated: number,
     techTree: TechTree,
-    saveCallback: SaveUserCallback
+    saveCallback: SaveUserCallback,
+    ship_id?: number
   ) {
     this.id = id;
     this.username = username;
@@ -28,6 +30,7 @@ class User {
     this.iron = iron;
     this.last_updated = last_updated;
     this.techTree = techTree;
+    this.ship_id = ship_id;
     this.saveCallback = saveCallback;
   }
 
@@ -75,6 +78,16 @@ class User {
 
   async save(): Promise<void> {
     await this.saveCallback(this);
+  }
+
+  /**
+   * Handle collection of space objects
+   * @param objectType Type of the collected object
+   */
+  collected(objectType: 'asteroid' | 'shipwreck' | 'escape_pod'): void {
+    // TODO: Implement collection logic (iron rewards, experience, etc.)
+    // For now, this is a placeholder method
+    console.log(`User ${this.username} collected a ${objectType}`);
   }
 
   static createNew(username: string, password_hash: string, saveCallback: SaveUserCallback): User {
