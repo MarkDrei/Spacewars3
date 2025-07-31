@@ -1,7 +1,7 @@
 // ---
 // Tests for shared physics calculations
 // ---
-
+import { describe, it, expect } from 'vitest';
 import {
   updateObjectPosition,
   updateAllObjectPositions,

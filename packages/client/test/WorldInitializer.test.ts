@@ -1,3 +1,4 @@
+import { describe, expect, test } from 'vitest';
 import { WorldInitializer } from '../src/WorldInitializer';
 import type { WorldConfig } from '../src/WorldInitializer';
 import { Ship } from '../src/Ship';

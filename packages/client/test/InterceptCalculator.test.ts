@@ -1,3 +1,4 @@
+import { describe, expect, vi, test, beforeEach, afterEach } from 'vitest';
 import { InterceptCalculator } from '../src/InterceptCalculator';
 import { SpaceObject } from '../src/SpaceObject';
 import { World } from '../src/World';
@@ -17,7 +18,7 @@ describe('InterceptCalculator', () => {
     const originalConsoleLog = console.log;
     
     beforeEach(() => {
-        console.log = jest.fn();
+        console.log = vi.fn();
     });
     
     afterEach(() => {

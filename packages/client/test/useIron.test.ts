@@ -1,14 +1,16 @@
+import { describe, expect, vi, test, beforeEach } from 'vitest';
+import { Mocked } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { useIron } from '../src/hooks/useIron';
 import { userStatsService } from '../src/services/userStatsService';
 
 // Mock the userStatsService
-jest.mock('../src/services/userStatsService');
-const mockUserStatsService = userStatsService as jest.Mocked<typeof userStatsService>;
+vi.mock('../src/services/userStatsService');
+const mockUserStatsService = userStatsService as Mocked<typeof userStatsService>;
 
 describe('useIron', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   test('useIron_userNotLoggedIn_returnsZeroIronAndNotLoading', () => {
@@ -193,7 +195,7 @@ describe('useIron', () => {
     let currentTime = startTime;
     
     // Mock Date.now to control time
-    Date.now = jest.fn(() => currentTime);
+    Date.now = vi.fn(() => currentTime);
 
     const mockStats = {
       iron: 1000,

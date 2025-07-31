@@ -1,12 +1,13 @@
+import { describe, expect, vi, test, beforeEach } from 'vitest';
 import { userStatsService } from '../src/services/userStatsService';
 
-// Mock fetch globally
-const mockFetch = jest.fn();
+// Mock fetch globally 
+const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
 describe('userStatsService', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockFetch.mockClear();
   });
 
@@ -21,7 +22,7 @@ describe('userStatsService', () => {
       
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: jest.fn().mockResolvedValueOnce(mockResponse)
+        json: vi.fn().mockResolvedValueOnce(mockResponse)
       });
 
       // Act
@@ -42,7 +43,7 @@ describe('userStatsService', () => {
       mockFetch.mockResolvedValueOnce({
         ok: false,
         status: 500,
-        json: jest.fn().mockResolvedValueOnce(errorResponse)
+        json: vi.fn().mockResolvedValueOnce(errorResponse)
       });
 
       // Act
@@ -57,7 +58,7 @@ describe('userStatsService', () => {
       mockFetch.mockResolvedValueOnce({
         ok: false,
         status: 404,
-        json: jest.fn().mockResolvedValueOnce({})
+        json: vi.fn().mockResolvedValueOnce({})
       });
 
       // Act
@@ -85,7 +86,7 @@ describe('userStatsService', () => {
       mockFetch.mockResolvedValueOnce({
         ok: false,
         status: 401,
-        json: jest.fn().mockResolvedValueOnce(errorResponse)
+        json: vi.fn().mockResolvedValueOnce(errorResponse)
       });
 
       // Act

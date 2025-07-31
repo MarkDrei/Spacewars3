@@ -1,3 +1,4 @@
+import { describe, expect, test } from 'vitest';
 // Test the smooth update calculation logic in isolation
 describe('Iron Display Time Calculations', () => {
   test('ironCalculation_timeElapsed_calculatesCorrectAmount', () => {

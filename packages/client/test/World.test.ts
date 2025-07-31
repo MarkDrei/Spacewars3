@@ -1,3 +1,4 @@
+import { describe, expect, test, beforeEach } from 'vitest';
 import { World } from '../src/World';
 import { Ship } from '../src/Ship';
 import { SpaceObject } from '../src/SpaceObject';

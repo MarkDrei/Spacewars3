@@ -1,3 +1,4 @@
+import { describe, expect, test, beforeAll, beforeEach, afterAll } from 'vitest';
 import request from 'supertest';
 import { createApp } from '../src/createApp';
 import sqlite3 from 'sqlite3';
@@ -8,30 +9,32 @@ describe('Trigger Research API', () => {
   let app: ReturnType<typeof createApp>;
   let agent: ReturnType<typeof request.agent>;
 
-  beforeAll((done) => {
+  beforeAll(async () => {
     db = new (sqlite3.verbose().Database)(':memory:');
     app = createApp(db);
-    
+
     // Create tables using centralized schema
-    let completed = 0;
     const tables = CREATE_TABLES;
-    
-    tables.forEach((createTableSQL) => {
-      db.run(createTableSQL, (err) => {
-        if (err) {
-          done(err);
-          return;
-        }
-        completed++;
-        if (completed === tables.length) {
-          done();
-        }
-      });
-    });
+    await Promise.all(
+      tables.map(
+        (createTableSQL) =>
+          new Promise<void>((resolve, reject) => {
+            db.run(createTableSQL, (err) => {
+              if (err) reject(err);
+              else resolve();
+            });
+          })
+      )
+    );
   });
 
-  afterAll((done) => {
-    db.close(done);
+  afterAll(async () => {
+    await new Promise<void>((resolve, reject) => {
+      db.close((err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
   });
 
   beforeEach(() => {

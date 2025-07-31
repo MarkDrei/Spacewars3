@@ -1,7 +1,7 @@
 // ---
 // Tests for the world API endpoint
 // ---
-
+import { describe, expect, it, beforeEach, afterEach } from 'vitest';
 import request from 'supertest';
 import { createApp } from '../src/createApp';
 import { Database } from 'sqlite3';
@@ -41,13 +41,18 @@ describe('World API', () => {
     agent = request.agent(app);
   });
 
-  afterEach((done) => {
-    try {
-      db.close(done);
-    } catch {
-      // Database might already be closed
-      done();
-    }
+  afterEach(async () => {
+    await new Promise<void>((resolve, reject) => {
+      try {
+        db.close((err) => {
+          if (err) reject(err);
+          else resolve();
+        });
+      } catch {
+        // Database might already be closed
+        resolve();
+      }
+    });
   });
 
   describe('GET /api/world', () => {

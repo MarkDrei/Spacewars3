@@ -1,3 +1,4 @@
+import { describe, expect, test, beforeEach } from 'vitest';
 import { User, SaveUserCallback } from '../src/user';
 import { ResearchType, triggerResearch, getResearchEffectFromTree, createInitialTechTree } from '../src/techtree';
 
