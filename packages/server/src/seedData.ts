@@ -135,7 +135,7 @@ export async function seedDatabase(db: sqlite3.Database): Promise<void> {
                   user.username,
                   passwordHash,
                   user.iron,
-                  now,
+                  now / 1000, // Convert to seconds
                   JSON.stringify(user.tech_tree),
                   shipId,
                   (userErr: Error | null) => {

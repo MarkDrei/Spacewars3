@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { userStatsService } from '../services/userStatsService';
 import { globalEvents, EVENTS } from '../services/eventService';
 
@@ -19,6 +19,9 @@ export const useIron = (isLoggedIn: boolean, pollInterval: number = 5000): UseIr
   
   // Use ref to track if component is mounted (for cleanup)
   const isMountedRef = useRef<boolean>(true);
+  
+  // Use ref to track if display interval is already started
+  const displayIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const fetchIron = async (retryCount: number = 0) => {
     try {
@@ -43,16 +46,16 @@ export const useIron = (isLoggedIn: boolean, pollInterval: number = 5000): UseIr
       setServerIronAmount(result.iron);
       setIronPerSecond(result.ironPerSecond);
       setLastServerUpdate(Date.now()); // Use current time when we received the response
-      setDisplayIronAmount(result.iron); // Reset display to server value
+      setDisplayIronAmount(Math.floor(result.iron)); // Ensure integer display
       setIsLoading(false);
       
     //   // Debug: Log what we received from the server
-    //   console.log('📊 Server response:', {
-    //     iron: result.iron,
-    //     ironPerSecond: result.ironPerSecond,
-    //     receivedAt: Date.now(),
-    //     timestamp: new Date().toISOString()
-    //   });
+      console.log('📊 Server response:', {
+        iron: result.iron,
+        ironPerSecond: result.ironPerSecond,
+        receivedAt: Date.now(),
+        timestamp: new Date().toISOString()
+      });
     } catch {
       if (isMountedRef.current) {
         // If it's initial load and we haven't retried much, retry
@@ -68,19 +71,31 @@ export const useIron = (isLoggedIn: boolean, pollInterval: number = 5000): UseIr
   };
 
   // Update displayed iron amount based on time elapsed and iron per second
-  const updateDisplayIron = () => {
+  const updateDisplayIron = useCallback(() => {
     // Only update if we have valid server data and iron production rate
     if (serverIronAmount >= 0 && ironPerSecond > 0 && !error) {
-      const now = Date.now();
-      const secondsElapsed = (now - lastServerUpdate) / 1000;
+      const nowMs = Date.now();
+      const secondsElapsed = (nowMs - lastServerUpdate) / 1000;
       const predictedIron = Math.floor(serverIronAmount + (secondsElapsed * ironPerSecond));
-      
+
+      // // Debug output
+      // console.debug('[useIron] updateDisplayIron:', {
+      //   serverIronAmount,
+      //   ironPerSecond,
+      //   lastServerUpdate,
+      //   now: nowMs,
+      //   secondsElapsed,
+      //   predictedIron,
+      //   displayIronAmount,
+      //   error
+      // });
+
       // Only update if the predicted value is different from current display
       if (predictedIron !== displayIronAmount) {
         setDisplayIronAmount(predictedIron);
       }
     }
-  };
+  }, [serverIronAmount, ironPerSecond, lastServerUpdate, displayIronAmount, error]);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -99,9 +114,6 @@ export const useIron = (isLoggedIn: boolean, pollInterval: number = 5000): UseIr
     // Set up server polling
     const serverInterval = setInterval(fetchIron, pollInterval);
     
-    // Set up display iron updates (every 100ms for smooth updates)
-    const displayInterval = setInterval(updateDisplayIron, 100);
-    
     // Listen for iron update events (e.g., after research trigger)
     const handleIronUpdate = () => {
       fetchIron();
@@ -114,16 +126,33 @@ export const useIron = (isLoggedIn: boolean, pollInterval: number = 5000): UseIr
     return () => {
       isMountedRef.current = false;
       clearInterval(serverInterval);
-      clearInterval(displayInterval);
+      if (displayIntervalRef.current) {
+        clearInterval(displayIntervalRef.current);
+        displayIntervalRef.current = null;
+      }
       globalEvents.off(EVENTS.IRON_UPDATED, handleIronUpdate);
       globalEvents.off(EVENTS.RESEARCH_TRIGGERED, handleIronUpdate);
     };
   }, [isLoggedIn, pollInterval]);
 
-  // Update display iron when server data changes
+  // Start display interval after data is loaded
   useEffect(() => {
-    updateDisplayIron();
-  }, [serverIronAmount, ironPerSecond, lastServerUpdate, isLoading, error]);
+    if (!isLoggedIn || isLoading || error || ironPerSecond <= 0) {
+      return;
+    }
+    
+    // Only start interval if not already started
+    if (!displayIntervalRef.current) {
+      displayIntervalRef.current = setInterval(updateDisplayIron, 100);
+    }
+    
+    return () => {
+      if (displayIntervalRef.current) {
+        clearInterval(displayIntervalRef.current);
+        displayIntervalRef.current = null;
+      }
+    };
+  }, [isLoggedIn, isLoading, error, ironPerSecond, updateDisplayIron]);
 
   return {
     ironAmount: displayIronAmount,
