@@ -24,12 +24,12 @@
 - [ ] **Space World Schema** (`packages/server/db/schema.sql`):
   - `worlds` table: world dimensions, settings, active sessions
   - `space_objects` table: asteroids, shipwrecks, escape pods, collectibles
-  - `ships` table: player ships with position, velocity, angle
+  - `ships` table: player ships with position, speed, angle
   - `game_sessions` table: active game instances, world state snapshots
 
 - [ ] **Object Type System**:
   - Polymorphic object storage (asteroids, shipwrecks, escape pods)
-  - Position, velocity, and physics properties
+  - Position, speed, and physics properties
   - Collection state and respawn mechanics
   - Radar visibility and interaction ranges
 

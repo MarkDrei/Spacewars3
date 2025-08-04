@@ -7,7 +7,7 @@ export interface SpaceObject {
   type: 'player_ship' | 'asteroid' | 'shipwreck' | 'escape_pod';
   x: number;
   y: number;
-  velocity: number;
+  speed: number;
   angle: number;
   last_position_update: number;
 }

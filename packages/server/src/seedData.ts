@@ -9,7 +9,7 @@ export interface SeedUser {
   ship: {
     x: number;
     y: number;
-    velocity: number;
+    speed: number;
     angle: number;
   };
 }
@@ -18,7 +18,7 @@ export interface SeedSpaceObject {
   type: 'asteroid' | 'shipwreck' | 'escape_pod';
   x: number;
   y: number;
-  velocity: number;
+  speed: number;
   angle: number;
 }
 
@@ -27,11 +27,11 @@ export const DEFAULT_USERS: SeedUser[] = [
     username: 'a',
     password: 'a',
     iron: 1000,
-    tech_tree: { ironHarvesting: 1, shipVelocity: 0, afterburner: 0 },
+    tech_tree: { ironHarvesting: 1, shipSpeed: 1, afterburner: 0 },
     ship: {
       x: 250, // Center of 500x500 world
       y: 250,
-      velocity: 0,
+      speed: 0,
       angle: 0
     }
   }
@@ -39,19 +39,19 @@ export const DEFAULT_USERS: SeedUser[] = [
 
 export const DEFAULT_SPACE_OBJECTS: SeedSpaceObject[] = [
   // Asteroids - scattered around the 500x500 world
-  { type: 'asteroid', x: 100, y: 150, velocity: 10, angle: 0 },
-  { type: 'asteroid', x: 400, y: 300, velocity: 15, angle: 45 },
-  { type: 'asteroid', x: 350, y: 100, velocity: 20, angle: 77 },
-  { type: 'asteroid', x: 150, y: 400, velocity: 10, angle: 173 },
-  { type: 'asteroid', x: 450, y: 450, velocity: 13, angle: 283 },
+  { type: 'asteroid', x: 100, y: 150, speed: 10, angle: 0 },
+  { type: 'asteroid', x: 400, y: 300, speed: 15, angle: 45 },
+  { type: 'asteroid', x: 350, y: 100, speed: 20, angle: 77 },
+  { type: 'asteroid', x: 150, y: 400, speed: 10, angle: 173 },
+  { type: 'asteroid', x: 450, y: 450, speed: 13, angle: 283 },
   
   // Shipwrecks - fewer, more valuable
-  { type: 'shipwreck', x: 200, y: 350, velocity: 8, angle: 123 },
-  { type: 'shipwreck', x: 350, y: 200, velocity: 23, angle: 211 },
+  { type: 'shipwreck', x: 200, y: 350, speed: 8, angle: 123 },
+  { type: 'shipwreck', x: 350, y: 200, speed: 23, angle: 211 },
   
   // Escape pods - rare, high value
-  { type: 'escape_pod', x: 100, y: 300, velocity: 30, angle: 115 },
-  { type: 'escape_pod', x: 400, y: 150, velocity: 45, angle: 95 }
+  { type: 'escape_pod', x: 100, y: 300, speed: 30, angle: 115 },
+  { type: 'escape_pod', x: 400, y: 150, speed: 45, angle: 95 }
 ];
 
 export async function seedDatabase(db: sqlite3.Database): Promise<void> {
@@ -77,7 +77,7 @@ export async function seedDatabase(db: sqlite3.Database): Promise<void> {
         
         // First, seed space objects (including player ships)
         const insertSpaceObject = db.prepare(`
-          INSERT INTO space_objects (type, x, y, velocity, angle, last_position_update)
+          INSERT INTO space_objects (type, x, y, speed, angle, last_position_update)
           VALUES (?, ?, ?, ?, ?, ?)
         `);
 
@@ -89,7 +89,7 @@ export async function seedDatabase(db: sqlite3.Database): Promise<void> {
           'player_ship',
           user.ship.x,
           user.ship.y,
-          user.ship.velocity,
+          user.ship.speed,
           user.ship.angle,
           now,
           function(this: sqlite3.RunResult, err: Error | null) {
@@ -106,7 +106,7 @@ export async function seedDatabase(db: sqlite3.Database): Promise<void> {
                   obj.type,
                   obj.x,
                   obj.y,
-                  obj.velocity,
+                  obj.speed,
                   obj.angle,
                   now,
                   (objectErr: Error | null) => {

@@ -79,7 +79,7 @@ describe('Trigger Research API', () => {
     // Start first research
     await agent.post('/api/trigger-research').send({ type: 'IronHarvesting' });
     // Try to start another
-    const res = await agent.post('/api/trigger-research').send({ type: 'ShipVelocity' });
+    const res = await agent.post('/api/trigger-research').send({ type: 'ShipSpeed' });
     expect(res.status).toBe(400);
     expect(res.body.error).toBe('Research already in progress');
   });

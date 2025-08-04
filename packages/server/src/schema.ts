@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS space_objects (
   type TEXT NOT NULL, -- 'player_ship', 'asteroid', 'shipwreck', 'escape_pod'
   x REAL NOT NULL,
   y REAL NOT NULL,
-  velocity REAL NOT NULL DEFAULT 0.0,
+  speed REAL NOT NULL DEFAULT 0.0,
   angle REAL NOT NULL DEFAULT 0.0,
   last_position_update REAL NOT NULL
 )`;

@@ -8,7 +8,7 @@
  */
 export enum ResearchType {
   IronHarvesting = 'IronHarvesting',
-  ShipVelocity = 'ShipVelocity',
+  ShipSpeed = 'shipSpeed',
   Afterburner = 'Afterburner',
 }
 
@@ -21,7 +21,7 @@ export interface Research {
   level: number;
   baseUpgradeCost: number; // in iron
   baseUpgradeDuration: number; // in seconds
-  baseValue: number; // base value for this research (e.g. iron/sec, velocity)
+  baseValue: number; // base value for this research (e.g. iron/sec, speed)
   upgradeCostIncrease: number; // multiplier for cost increase per level
   baseValueIncrease: { type: 'constant' | 'factor'; value: number }; // how the effect increases per level
   description: string;
@@ -46,9 +46,9 @@ export const AllResearches: Record<ResearchType, Research> = {
     treeKey: 'ironHarvesting',
     unit: 'iron/sec',
   },
-  [ResearchType.ShipVelocity]: {
-    type: ResearchType.ShipVelocity,
-    name: 'Ship Velocity',
+  [ResearchType.ShipSpeed]: {
+    type: ResearchType.ShipSpeed,
+    name: 'Ship Speed',
     level: 1,
     baseUpgradeCost: 500,
     baseUpgradeDuration: 30,
@@ -56,7 +56,7 @@ export const AllResearches: Record<ResearchType, Research> = {
     upgradeCostIncrease: 2,
     baseValueIncrease: { type: 'constant', value: 5 },
     description: 'Determines how fast your ship travels.',
-    treeKey: 'shipVelocity',
+    treeKey: 'shipSpeed',
     unit: 'units',
   },
   [ResearchType.Afterburner]: {
@@ -81,7 +81,7 @@ export const AllResearches: Record<ResearchType, Research> = {
  */
 export interface TechTree {
   ironHarvesting: number; // level
-  shipVelocity: number;   // level
+  shipSpeed: number;   // level
   afterburner: number;    // level
   /**
    * The research currently being upgraded, if any.
@@ -97,7 +97,7 @@ export interface TechTree {
 export function createInitialTechTree(): TechTree {
   return {
     ironHarvesting: AllResearches[ResearchType.IronHarvesting].level,
-    shipVelocity: AllResearches[ResearchType.ShipVelocity].level,
+    shipSpeed: AllResearches[ResearchType.ShipSpeed].level,
     afterburner: AllResearches[ResearchType.Afterburner].level,
   };
 }
@@ -107,8 +107,8 @@ function getResearchLevelFromTree(tree: TechTree, type: ResearchType): number {
   switch (type) {
     case ResearchType.IronHarvesting:
       return tree.ironHarvesting;
-    case ResearchType.ShipVelocity:
-      return tree.shipVelocity;
+    case ResearchType.ShipSpeed:
+      return tree.shipSpeed;
     case ResearchType.Afterburner:
       return tree.afterburner;
     default:
@@ -204,8 +204,8 @@ export function updateTechTree(tree: TechTree, timeSeconds: number): void {
       case ResearchType.IronHarvesting:
         tree.ironHarvesting += 1;
         break;
-      case ResearchType.ShipVelocity:
-        tree.shipVelocity += 1;
+      case ResearchType.ShipSpeed:
+        tree.shipSpeed += 1;
         break;
       case ResearchType.Afterburner:
         tree.afterburner += 1;

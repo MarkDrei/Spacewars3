@@ -6,7 +6,7 @@ import './ResearchPage.css';
 
 const researchTypeToKey = {
   IronHarvesting: 'ironHarvesting',
-  ShipVelocity: 'shipVelocity',
+  ShipSpeed: 'shipSpeed',
   Afterburner: 'afterburner',
 } as const;
 

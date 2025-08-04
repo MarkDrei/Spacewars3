@@ -89,10 +89,10 @@ Get the current user's tech tree and all research definitions.
   {
     "techTree": {
       "ironHarvesting": number,
-      "shipVelocity": number,
+      "shipSpeed": number,
       "afterburner": number,
       "activeResearch"?: {
-        "type": "IronHarvesting" | "ShipVelocity" | "Afterburner",
+        "type": "IronHarvesting" | "ShipSpeed" | "Afterburner",
         "remainingDuration": number
       }
     },

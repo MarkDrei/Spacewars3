@@ -110,7 +110,7 @@ describe('Collection API', () => {
       // Insert a player ship
       const now = Date.now();
       const insertSpaceObject = db.prepare(`
-        INSERT INTO space_objects (type, x, y, velocity, angle, last_position_update)
+        INSERT INTO space_objects (type, x, y, speed, angle, last_position_update)
         VALUES (?, ?, ?, ?, ?, ?)
       `);
 
@@ -139,7 +139,7 @@ describe('Collection API', () => {
       // Insert an asteroid but no player ship
       const now = Date.now();
       const insertSpaceObject = db.prepare(`
-        INSERT INTO space_objects (type, x, y, velocity, angle, last_position_update)
+        INSERT INTO space_objects (type, x, y, speed, angle, last_position_update)
         VALUES (?, ?, ?, ?, ?, ?)
       `);
 
@@ -179,7 +179,7 @@ describe('Collection API', () => {
       // Insert player ship and distant asteroid
       const now = Date.now();
       const insertSpaceObject = db.prepare(`
-        INSERT INTO space_objects (type, x, y, velocity, angle, last_position_update)
+        INSERT INTO space_objects (type, x, y, speed, angle, last_position_update)
         VALUES (?, ?, ?, ?, ?, ?)
       `);
 
@@ -225,7 +225,7 @@ describe('Collection API', () => {
       // Insert player ship and nearby asteroid
       const now = Date.now();
       const insertSpaceObject = db.prepare(`
-        INSERT INTO space_objects (type, x, y, velocity, angle, last_position_update)
+        INSERT INTO space_objects (type, x, y, speed, angle, last_position_update)
         VALUES (?, ?, ?, ?, ?, ?)
       `);
 
@@ -273,7 +273,7 @@ describe('Collection API', () => {
       // Insert player ship and various collectible objects nearby
       const now = Date.now();
       const insertSpaceObject = db.prepare(`
-        INSERT INTO space_objects (type, x, y, velocity, angle, last_position_update)
+        INSERT INTO space_objects (type, x, y, speed, angle, last_position_update)
         VALUES (?, ?, ?, ?, ?, ?)
       `);
 
@@ -364,7 +364,7 @@ describe('Collection API', () => {
       // Insert player ship and collectible object
       const now = Date.now();
       const insertSpaceObject = db.prepare(`
-        INSERT INTO space_objects (type, x, y, velocity, angle, last_position_update)
+        INSERT INTO space_objects (type, x, y, speed, angle, last_position_update)
         VALUES (?, ?, ?, ?, ?, ?)
       `);
 
@@ -435,7 +435,7 @@ describe('Collection API', () => {
       // Insert player ship near world edge and asteroid on other side (should wrap around)
       const now = Date.now();
       const insertSpaceObject = db.prepare(`
-        INSERT INTO space_objects (type, x, y, velocity, angle, last_position_update)
+        INSERT INTO space_objects (type, x, y, speed, angle, last_position_update)
         VALUES (?, ?, ?, ?, ?, ?)
       `);
 

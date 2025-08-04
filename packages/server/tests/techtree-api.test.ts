@@ -58,7 +58,7 @@ describe('TechTree API', () => {
     expect(res.body.researches.IronHarvesting.name).toBe('Iron Harvesting');
     // Should include all research fields
     expect(res.body.techTree.ironHarvesting).toBeGreaterThanOrEqual(1);
-    expect(res.body.techTree.shipVelocity).toBeGreaterThanOrEqual(1);
+    expect(res.body.techTree.shipSpeed).toBeGreaterThanOrEqual(1);
     expect(res.body.techTree.afterburner).toBeGreaterThanOrEqual(0);
   });
 });

@@ -107,7 +107,7 @@ export class World {
         return this.player;
     }
 
-    // Update all object positions based on their velocity and the elapsed time
+    // Update all object positions based on their speed and the elapsed time
     update(deltaTime: number): void {
         // Update all space objects
         this.spaceObjects.forEach(obj => {
@@ -239,7 +239,7 @@ export class World {
                         const shipVelX = shipSpeed * Math.cos(interceptAngle.angle);
                         const shipVelY = shipSpeed * Math.sin(interceptAngle.angle);
                         
-                        // Calculate relative velocity
+                        // Calculate relative speed
                         const relVelX = shipVelX - targetVelX;
                         const relVelY = shipVelY - targetVelY;
                         

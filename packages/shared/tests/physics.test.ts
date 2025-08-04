@@ -19,7 +19,7 @@ describe('Physics Calculations', () => {
       const obj: PhysicsObject = {
         x: 100,
         y: 200,
-        velocity: 0,
+        speed: 0,
         angle: 0,
         last_position_update: 1000
       };
@@ -34,7 +34,7 @@ describe('Physics Calculations', () => {
       const obj: PhysicsObject = {
         x: 100,
         y: 200,
-        velocity: 10, // 10 units per second
+        speed: 10, // 10 units per second
         angle: 0, // moving right
         last_position_update: 1000
       };
@@ -49,7 +49,7 @@ describe('Physics Calculations', () => {
       const obj: PhysicsObject = {
         x: 100,
         y: 200,
-        velocity: 20,
+        speed: 20,
         angle: 90, // moving up
         last_position_update: 1000
       };
@@ -64,14 +64,14 @@ describe('Physics Calculations', () => {
       const obj: PhysicsObject = {
         x: 100,
         y: 200,
-        velocity: 10,
+        speed: 10,
         angle: 45, // 45 degrees
         last_position_update: 1000
       };
       
       const result = updateObjectPosition(obj, 2000, WORLD_BOUNDS); // 1 second elapsed
       
-      // At 45 degrees, velocity is split equally between x and y
+      // At 45 degrees, speed is split equally between x and y
       const expectedMovement = 10 * Math.cos(45 * Math.PI / 180); // ~7.07
       expect(result.x).toBeCloseTo(100 + expectedMovement, 2);
       expect(result.y).toBeCloseTo(200 + expectedMovement, 2);
@@ -81,7 +81,7 @@ describe('Physics Calculations', () => {
       const obj: PhysicsObject = {
         x: 490,
         y: 200,
-        velocity: 20,
+        speed: 20,
         angle: 0, // moving right
         last_position_update: 1000
       };
@@ -97,7 +97,7 @@ describe('Physics Calculations', () => {
       const obj: PhysicsObject = {
         x: 200,
         y: 490,
-        velocity: 20,
+        speed: 20,
         angle: 90, // moving up (positive y)
         last_position_update: 1000
       };
@@ -113,7 +113,7 @@ describe('Physics Calculations', () => {
       const obj: PhysicsObject = {
         x: 10,
         y: 10,
-        velocity: 20,
+        speed: 20,
         angle: 180, // moving left (negative x)
         last_position_update: 1000
       };
@@ -129,7 +129,7 @@ describe('Physics Calculations', () => {
       const obj: PhysicsObject = {
         x: 100,
         y: 200,
-        velocity: 100, // 100 units per second
+        speed: 100, // 100 units per second
         angle: 0,
         last_position_update: 1000
       };
@@ -145,8 +145,8 @@ describe('Physics Calculations', () => {
   describe('updateAllObjectPositions', () => {
     it('updateAllObjectPositions_multipleObjects_allUpdated', () => {
       const objects: PhysicsObject[] = [
-        { x: 100, y: 200, velocity: 10, angle: 0, last_position_update: 1000 },
-        { x: 300, y: 400, velocity: 20, angle: 90, last_position_update: 1000 }
+        { x: 100, y: 200, speed: 10, angle: 0, last_position_update: 1000 },
+        { x: 300, y: 400, speed: 20, angle: 90, last_position_update: 1000 }
       ];
       
       const results = updateAllObjectPositions(objects, 2000, WORLD_BOUNDS);
@@ -176,7 +176,7 @@ describe('Physics Calculations', () => {
       }
       
       const objects: TestObject[] = [
-        { id: 1, type: 'ship', x: 100, y: 200, velocity: 10, angle: 0, last_position_update: 1000 }
+        { id: 1, type: 'ship', x: 100, y: 200, speed: 10, angle: 0, last_position_update: 1000 }
       ];
       
       const results = updateAllObjectPositions(objects, 2000, WORLD_BOUNDS);
@@ -258,8 +258,8 @@ describe('Physics Calculations', () => {
   
   describe('isColliding', () => {
     it('isColliding_objectsOverlap_returnsTrue', () => {
-      const obj1 = { x: 100, y: 200, velocity: 0, angle: 0, last_position_update: 1000, radius: 10 };
-      const obj2 = { x: 105, y: 200, velocity: 0, angle: 0, last_position_update: 1000, radius: 10 };
+      const obj1 = { x: 100, y: 200, speed: 0, angle: 0, last_position_update: 1000, radius: 10 };
+      const obj2 = { x: 105, y: 200, speed: 0, angle: 0, last_position_update: 1000, radius: 10 };
       
       const colliding = isColliding(obj1, obj2, WORLD_BOUNDS);
       
@@ -268,8 +268,8 @@ describe('Physics Calculations', () => {
     });
     
     it('isColliding_objectsSeparate_returnsFalse', () => {
-      const obj1 = { x: 100, y: 200, velocity: 0, angle: 0, last_position_update: 1000, radius: 10 };
-      const obj2 = { x: 150, y: 200, velocity: 0, angle: 0, last_position_update: 1000, radius: 10 };
+      const obj1 = { x: 100, y: 200, speed: 0, angle: 0, last_position_update: 1000, radius: 10 };
+      const obj2 = { x: 150, y: 200, speed: 0, angle: 0, last_position_update: 1000, radius: 10 };
       
       const colliding = isColliding(obj1, obj2, WORLD_BOUNDS);
       
@@ -278,8 +278,8 @@ describe('Physics Calculations', () => {
     });
     
     it('isColliding_objectsTouching_returnsTrue', () => {
-      const obj1 = { x: 100, y: 200, velocity: 0, angle: 0, last_position_update: 1000, radius: 10 };
-      const obj2 = { x: 120, y: 200, velocity: 0, angle: 0, last_position_update: 1000, radius: 10 };
+      const obj1 = { x: 100, y: 200, speed: 0, angle: 0, last_position_update: 1000, radius: 10 };
+      const obj2 = { x: 120, y: 200, speed: 0, angle: 0, last_position_update: 1000, radius: 10 };
       
       const colliding = isColliding(obj1, obj2, WORLD_BOUNDS);
       
@@ -288,8 +288,8 @@ describe('Physics Calculations', () => {
     });
     
     it('isColliding_noRadiusSpecified_usesDefault', () => {
-      const obj1 = { x: 100, y: 200, velocity: 0, angle: 0, last_position_update: 1000 };
-      const obj2 = { x: 115, y: 200, velocity: 0, angle: 0, last_position_update: 1000 };
+      const obj1 = { x: 100, y: 200, speed: 0, angle: 0, last_position_update: 1000 };
+      const obj2 = { x: 115, y: 200, speed: 0, angle: 0, last_position_update: 1000 };
       
       const colliding = isColliding(obj1, obj2, WORLD_BOUNDS);
       
@@ -298,8 +298,8 @@ describe('Physics Calculations', () => {
     });
     
     it('isColliding_acrossToroidalBoundary_detectsCollision', () => {
-      const obj1 = { x: 5, y: 200, velocity: 0, angle: 0, last_position_update: 1000, radius: 10 };
-      const obj2 = { x: 495, y: 200, velocity: 0, angle: 0, last_position_update: 1000, radius: 10 };
+      const obj1 = { x: 5, y: 200, speed: 0, angle: 0, last_position_update: 1000, radius: 10 };
+      const obj2 = { x: 495, y: 200, speed: 0, angle: 0, last_position_update: 1000, radius: 10 };
       
       const colliding = isColliding(obj1, obj2, WORLD_BOUNDS);
       

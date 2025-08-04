@@ -1,6 +1,6 @@
 interface TechTree {
   ironHarvesting: number;
-  shipVelocity: number;
+  shipSpeed: number;
   afterburner: number;
   activeResearch?: {
     type: ResearchType;
@@ -25,7 +25,7 @@ interface ResearchDef {
   unit: string;
 }
 
-type ResearchType = 'IronHarvesting' | 'ShipVelocity' | 'Afterburner';
+type ResearchType = 'IronHarvesting' | 'ShipSpeed' | 'Afterburner';
 
 interface TechtreeResponse {
   techTree: TechTree;

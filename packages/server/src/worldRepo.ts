@@ -21,7 +21,7 @@ export function loadWorld(db: sqlite3.Database, saveCallback: SaveWorldCallback)
         type: string;
         x: number;
         y: number;
-        velocity: number;
+        speed: number;
         angle: number;
         last_position_update: number;
       }>).map(row => ({
@@ -91,8 +91,8 @@ export function deleteSpaceObject(db: sqlite3.Database, objectId: number): Promi
 export function insertSpaceObject(db: sqlite3.Database, obj: Omit<SpaceObject, 'id'>): Promise<number> {
   return new Promise((resolve, reject) => {
     db.run(
-      'INSERT INTO space_objects (type, x, y, velocity, angle, last_position_update) VALUES (?, ?, ?, ?, ?, ?)',
-      [obj.type, obj.x, obj.y, obj.velocity, obj.angle, obj.last_position_update],
+      'INSERT INTO space_objects (type, x, y, speed, angle, last_position_update) VALUES (?, ?, ?, ?, ?, ?)',
+      [obj.type, obj.x, obj.y, obj.speed, obj.angle, obj.last_position_update],
       function (err) {
         if (err) {
           reject(err);

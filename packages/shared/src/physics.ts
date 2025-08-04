@@ -5,7 +5,7 @@
 export interface PhysicsObject {
   x: number;
   y: number;
-  velocity: number;
+  speed: number;
   angle: number;
   last_position_update: number;
 }
@@ -26,13 +26,13 @@ export function updateObjectPosition(
 ): { x: number; y: number } {
   const elapsedMs = currentTime - obj.last_position_update;
   
-  // Calculate new position based on velocity and angle (velocity is in units per second)
-  const velocityX = obj.velocity * Math.cos(obj.angle * Math.PI / 180);
-  const velocityY = obj.velocity * Math.sin(obj.angle * Math.PI / 180);
+  // Calculate new position based on speed and angle (speed is in units per second)
+  const speedX = obj.speed * Math.cos(obj.angle * Math.PI / 180);
+  const speedY = obj.speed * Math.sin(obj.angle * Math.PI / 180);
   
-  // Convert to milliseconds for smoother updates (divide by 1000 to get per-ms velocity)
-  let newX = obj.x + (velocityX * elapsedMs / 1000);
-  let newY = obj.y + (velocityY * elapsedMs / 1000);
+  // Convert to milliseconds for smoother updates (divide by 1000 to get per-ms speed)
+  let newX = obj.x + (speedX * elapsedMs / 1000);
+  let newY = obj.y + (speedY * elapsedMs / 1000);
   
   // Toroidal world wrapping
   newX = ((newX % worldBounds.width) + worldBounds.width) % worldBounds.width;

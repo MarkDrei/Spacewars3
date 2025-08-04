@@ -38,6 +38,10 @@ class User {
     return getResearchEffectFromTree(this.techTree, ResearchType.IronHarvesting);
   }
 
+  getMaxShipSpeed(): number {
+    return getResearchEffectFromTree(this.techTree, ResearchType.ShipSpeed);
+  }
+
   calculateIronIncrement(elapsedSeconds: number): number {
     return this.getIronPerSecond() * elapsedSeconds;
   }

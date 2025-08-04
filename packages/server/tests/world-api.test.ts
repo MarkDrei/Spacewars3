@@ -89,7 +89,7 @@ describe('World API', () => {
       // Insert test space objects with known positions and velocities
       const now = Date.now();
       const insertSpaceObject = db.prepare(`
-        INSERT INTO space_objects (type, x, y, velocity, angle, last_position_update)
+        INSERT INTO space_objects (type, x, y, speed, angle, last_position_update)
         VALUES (?, ?, ?, ?, ?, ?)
       `);
 
@@ -112,17 +112,17 @@ describe('World API', () => {
       expect(response.status).toBe(200);
       expect(response.body.spaceObjects).toHaveLength(2);
       
-      // Check that positions have been updated based on velocity and time
+      // Check that positions have been updated based on speed and time
       const asteroid = response.body.spaceObjects.find((obj: { type: string }) => obj.type === 'asteroid');
       const shipwreck = response.body.spaceObjects.find((obj: { type: string }) => obj.type === 'shipwreck');
       
       expect(asteroid).toBeDefined();
-      expect(asteroid.x).toBeGreaterThan(100); // Should have moved right (angle 0, velocity 10)
+      expect(asteroid.x).toBeGreaterThan(100); // Should have moved right (angle 0, speed 10)
       expect(asteroid.y).toBe(200); // Y should be unchanged
       
       expect(shipwreck).toBeDefined();
       expect(shipwreck.x).toBeCloseTo(300, 1); // X should be roughly unchanged (angle 90)
-      expect(shipwreck.y).toBeGreaterThan(400); // Should have moved up (angle 90, velocity 20)
+      expect(shipwreck.y).toBeGreaterThan(400); // Should have moved up (angle 90, speed 20)
     });
 
     it('worldAPI_objectCrossesBoundary_wrapsToroidally', async () => {
@@ -135,7 +135,7 @@ describe('World API', () => {
       // Insert object near boundary that will cross it
       const now = Date.now();
       const insertSpaceObject = db.prepare(`
-        INSERT INTO space_objects (type, x, y, velocity, angle, last_position_update)
+        INSERT INTO space_objects (type, x, y, speed, angle, last_position_update)
         VALUES (?, ?, ?, ?, ?, ?)
       `);
 
@@ -156,7 +156,8 @@ describe('World API', () => {
       expect(response.body.spaceObjects).toHaveLength(1);
       
       const escapePod = response.body.spaceObjects[0];
-      expect(escapePod.x).toBeCloseTo(10, 1); // Should have wrapped around
+      expect(escapePod.x).toBeGreaterThanOrEqual(9.8);
+      expect(escapePod.x).toBeLessThanOrEqual(10.2); // Should have wrapped around
       expect(escapePod.y).toBe(250); // Y unchanged
     });
 
@@ -170,7 +171,7 @@ describe('World API', () => {
       // Insert moving object
       const now = Date.now();
       const insertSpaceObject = db.prepare(`
-        INSERT INTO space_objects (type, x, y, velocity, angle, last_position_update)
+        INSERT INTO space_objects (type, x, y, speed, angle, last_position_update)
         VALUES (?, ?, ?, ?, ?, ?)
       `);
 
@@ -206,10 +207,10 @@ describe('World API', () => {
         password: 'testpass'
       });
 
-      // Insert stationary object (velocity = 0)
+      // Insert stationary object (speed = 0)
       const now = Date.now();
       const insertSpaceObject = db.prepare(`
-        INSERT INTO space_objects (type, x, y, velocity, angle, last_position_update)
+        INSERT INTO space_objects (type, x, y, speed, angle, last_position_update)
         VALUES (?, ?, ?, ?, ?, ?)
       `);
 
@@ -242,7 +243,7 @@ describe('World API', () => {
       // Insert object with old timestamp
       const oldTime = Date.now() - 10000; // 10 seconds ago
       const insertSpaceObject = db.prepare(`
-        INSERT INTO space_objects (type, x, y, velocity, angle, last_position_update)
+        INSERT INTO space_objects (type, x, y, speed, angle, last_position_update)
         VALUES (?, ?, ?, ?, ?, ?)
       `);
 

@@ -8,13 +8,11 @@
     "build": "tsc -b",
     "clean": "rm -rf dist/ *.tsbuildinfo",
     "rebuild": "npm run clean && npm run build",
-    "test": "jest"
+    "test": "vitest run"
   },
   "dependencies": {
-    "@types/node": "^24.0.10",
-    "typescript": "^5.0.0"
+    "@types/node": "^24.0.10"
   },
   "devDependencies": {
-    "vitest": "^3.2.4"
   }
 }

@@ -158,10 +158,77 @@ describe('User.updateStats with IronHarvesting research progression', () => {
   });
 
   test('updateStats_nonIronHarvestingResearch_awardsAllIronAtOldRate', () => {
-    // Start ShipVelocity research (does not affect iron)
-    triggerResearch(user.techTree, ResearchType.ShipVelocity);
+    // Start shipSpeed research (does not affect iron)
+    triggerResearch(user.techTree, ResearchType.ShipSpeed);
     user.updateStats(1010);
     expect(user.iron).toBeCloseTo(10);
     expect(user.techTree.activeResearch).toBeDefined();
+  });
+});
+
+describe('User getter methods', () => {
+  let user: User;
+  const dummySave: SaveUserCallback = async () => { /* no-op for testing */ };
+
+  beforeEach(() => {
+    user = new User(
+      1,
+      'testuser',
+      'hash',
+      0,
+      1000,
+      createInitialTechTree(),
+      dummySave
+    );
+  });
+
+  test('getIronPerSecond_initialTechTree_returnsBaseRate', () => {
+    const ironPerSecond = user.getIronPerSecond();
+    expect(ironPerSecond).toBe(1); // Base iron harvesting rate
+  });
+
+  test('getIronPerSecond_afterIronHarvestingUpgrade_returnsImprovedRate', () => {
+    // Manually upgrade iron harvesting to level 2
+    user.techTree.ironHarvesting = 2;
+    const ironPerSecond = user.getIronPerSecond();
+    expect(ironPerSecond).toBeCloseTo(1.1, 5); // Base rate * 1.1 factor
+  });
+
+  test('getIronPerSecond_afterMultipleIronHarvestingUpgrades_returnsCorrectScaledRate', () => {
+    // Manually upgrade iron harvesting to level 3
+    user.techTree.ironHarvesting = 3;
+    const ironPerSecond = user.getIronPerSecond();
+    expect(ironPerSecond).toBeCloseTo(1.21, 5); // Base rate * 1.1^2
+  });
+
+  test('getMaxShipSpeed_initialTechTree_returnsBaseSpeed', () => {
+    const maxSpeed = user.getMaxShipSpeed();
+    expect(maxSpeed).toBe(25); // Base ship speed
+  });
+
+  test('getMaxShipSpeed_aftershipSpeedUpgrade_returnsImprovedSpeed', () => {
+    // Manually upgrade ship speed to level 2
+    user.techTree.shipSpeed = 2;
+    const maxSpeed = user.getMaxShipSpeed();
+    expect(maxSpeed).toBeCloseTo(30, 5);
+  });
+
+  test('getMaxShipSpeed_afterMultipleshipSpeedUpgrades_returnsCorrectIncreasedSpeed', () => {
+    // Manually upgrade ship speed to level 4
+    user.techTree.shipSpeed = 4;
+    const maxSpeed = user.getMaxShipSpeed();
+    expect(maxSpeed).toBeCloseTo(40, 5);
+  });
+
+  test('getMaxShipSpeed_independentOfIronHarvestingLevel_onlyDependsOnshipSpeed', () => {
+    // Upgrade iron harvesting but not ship speed
+    user.techTree.ironHarvesting = 5;
+    const maxSpeed = user.getMaxShipSpeed();
+    expect(maxSpeed).toBe(25); // Should still be base speed
+
+    // Now upgrade ship speed
+    user.techTree.shipSpeed = 2;
+    const maxSpeedAfterShipUpgrade = user.getMaxShipSpeed();
+    expect(maxSpeedAfterShipUpgrade).toBeCloseTo(30, 5);
   });
 });

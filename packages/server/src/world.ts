@@ -10,7 +10,7 @@ export interface SpaceObject {
   type: 'player_ship' | 'asteroid' | 'shipwreck' | 'escape_pod';
   x: number;
   y: number;
-  velocity: number;
+  speed: number;
   angle: number;
   last_position_update: number;
 }
@@ -130,27 +130,27 @@ class World {
   private async spawnRandomObject(): Promise<void> {
     const random = Math.random();
     let objectType: SpaceObject['type'];
-    let baseVelocity: number;
+    let baseSpeed: number;
 
-    // Determine object type and base velocity based on probabilities
+    // Determine object type and base speed based on probabilities
     if (random < 0.6) {
       objectType = 'asteroid';
-      baseVelocity = 5; // Slow moving
+      baseSpeed = 5; // Slow moving
     } else if (random < 0.9) {
       objectType = 'shipwreck';
-      baseVelocity = 10;
+      baseSpeed = 10;
     } else {
       objectType = 'escape_pod';
-      baseVelocity = 25; // Fast moving
+      baseSpeed = 25; // Fast moving
     }
 
     // Generate random position within world bounds (with some margin from edges)
     const x = Math.random() * (this.worldSize.width);
     const y = Math.random() * (this.worldSize.height);
 
-    // Generate random velocity (±25% variation from base)
-    const velocityVariation = 0.25;
-    const velocity = baseVelocity * (1 + (Math.random() - 0.5) * 2 * velocityVariation);
+    // Generate random speed (±25% variation from base)
+    const speedVariation = 0.25;
+    const speed = baseSpeed * (1 + (Math.random() - 0.5) * 2 * speedVariation);
 
     // Generate random angle (0-360 degrees)
     const angle = Math.random() * 360;
@@ -159,7 +159,7 @@ class World {
       type: objectType,
       x,
       y,
-      velocity: Math.max(0, velocity), // Ensure velocity is not negative
+      speed: Math.max(0, speed), // Ensure speed is not negative
       angle,
       last_position_update: Date.now()
     };

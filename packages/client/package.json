@@ -8,7 +8,7 @@
     "clean": "rm -rf dist/ *.tsbuildinfo",
     "rebuild": "npm run clean && npm run build",
     "preview": "vite preview --host 0.0.0.0 --port ${PORT:-3000}",
-    "test": "jest",
+    "test": "vitest run",
     "deploy": "cd ../../ && npm install && cd packages/client && npm install && npm run build"
   },
   "dependencies": {
@@ -24,7 +24,6 @@
     "@vitejs/plugin-react": "^4.6.0",
     "identity-obj-proxy": "^3.0.0",
     "jest-environment-jsdom": "^29.7.0",
-    "vite": "^7.0.2",
-    "vitest": "^3.2.4"
+    "vite": "^7.0.2"
   }
 }
