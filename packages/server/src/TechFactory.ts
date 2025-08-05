@@ -1,0 +1,402 @@
+// ---
+// TechFactory - Manages ship technology and equipment
+// ---
+
+export type WeaponSubtype = 'Projectile' | 'Energy';
+export type WeaponStrength = 'Weak' | 'Medium' | 'Strong';
+
+export interface WeaponSpec {
+  name: string;
+  subtype: WeaponSubtype;
+  strength: WeaponStrength;
+  reloadTimeMinutes: number; // time in minutes to reload
+  baseDamage: number;
+  baseAccuracy: number; // percentage (0-100)
+  baseCost: number; // iron cost
+  shieldDamageRatio: number; // percentage of damage that goes to shields
+  hullDamageRatio: number; // percentage of damage that goes to hull
+  buildDurationMinutes: number;
+  advantage: string;
+  disadvantage: string;
+}
+
+export interface DefenseSpec {
+  name: string;
+  baseCost: number; // iron cost
+  buildDurationMinutes: number;
+  description: string;
+}
+
+export interface TechCounts {
+  // Weapons
+  pulse_laser: number;
+  auto_turret: number;
+  plasma_lance: number;
+  gauss_rifle: number;
+  photon_torpedo: number;
+  rocket_launcher: number;
+  
+  // Defense
+  kinetic_armor: number;
+  energy_shield: number;
+  missile_jammer: number;
+}
+
+export class TechFactory {
+  private static readonly WEAPON_CATALOG: Record<string, WeaponSpec> = {
+    auto_turret: {
+      name: 'Auto Turret',
+      subtype: 'Projectile',
+      strength: 'Weak',
+      reloadTimeMinutes: 12,
+      baseDamage: 10,
+      baseAccuracy: 50,
+      baseCost: 100,
+      shieldDamageRatio: 80,
+      hullDamageRatio: 20,
+      buildDurationMinutes: 1,
+      advantage: 'Cheap and good damage per second',
+      disadvantage: 'Low accuracy vs agile targets'
+    },
+    pulse_laser: {
+      name: 'Pulse Laser',
+      subtype: 'Energy',
+      strength: 'Weak',
+      reloadTimeMinutes: 12,
+      baseDamage: 7,
+      baseAccuracy: 80,
+      baseCost: 150,
+      shieldDamageRatio: 90,
+      hullDamageRatio: 10,
+      buildDurationMinutes: 2,
+      advantage: 'High accuracy',
+      disadvantage: 'Low damage output'
+    },
+    gauss_rifle: {
+      name: 'Gauss Rifle',
+      subtype: 'Projectile',
+      strength: 'Medium',
+      reloadTimeMinutes: 15,
+      baseDamage: 40,
+      baseAccuracy: 70,
+      baseCost: 500,
+      shieldDamageRatio: 10,
+      hullDamageRatio: 90,
+      buildDurationMinutes: 5,
+      advantage: 'High impact; penetrates shields',
+      disadvantage: 'Low accuracy vs agile targets'
+    },
+    plasma_lance: {
+      name: 'Plasma Lance',
+      subtype: 'Energy',
+      strength: 'Medium',
+      reloadTimeMinutes: 15,
+      baseDamage: 30,
+      baseAccuracy: 90,
+      baseCost: 500,
+      shieldDamageRatio: 70,
+      hullDamageRatio: 30,
+      buildDurationMinutes: 5,
+      advantage: 'Locally overheats shields and causes hull damage',
+      disadvantage: ''
+    },
+    rocket_launcher: {
+      name: 'Rocket Launcher',
+      subtype: 'Projectile',
+      strength: 'Strong',
+      reloadTimeMinutes: 20,
+      baseDamage: 200,
+      baseAccuracy: 100,
+      baseCost: 3500,
+      shieldDamageRatio: 40,
+      hullDamageRatio: 60,
+      buildDurationMinutes: 20,
+      advantage: 'Guided; always hits unless ECM Jammer is active',
+      disadvantage: 'Susceptible to ECM jammers'
+    },
+    photon_torpedo: {
+      name: 'Photon Torpedo',
+      subtype: 'Energy',
+      strength: 'Strong',
+      reloadTimeMinutes: 20,
+      baseDamage: 200,
+      baseAccuracy: 75,
+      baseCost: 2000,
+      shieldDamageRatio: 90,
+      hullDamageRatio: 10,
+      buildDurationMinutes: 10,
+      advantage: 'Heavy shield damage',
+      disadvantage: 'Slightly susceptible to ECM jammers'
+    }
+  };
+
+  // Defense catalog
+  private static readonly DEFENSE_CATALOG: Record<string, DefenseSpec> = {
+    kinetic_armor: {
+      name: 'Kinetic Armor',
+      baseCost: 200,
+      buildDurationMinutes: 2,
+      description: 'Reinforced plating that absorbs damage from physical and projectile-based weapons. Ideal for countering turrets, railguns, and rockets.'
+    },
+    energy_shield: {
+      name: 'Energy Shield',
+      baseCost: 200,
+      buildDurationMinutes: 2,
+      description: 'A protective energy field that absorbs or deflects energy-based attacks like lasers and plasma weapons. Recharges slowly over time.'
+    },
+    missile_jammer: {
+      name: 'Missile Jammer',
+      baseCost: 350,
+      buildDurationMinutes: 5,
+      description: 'Electronic countermeasure system that scrambles enemy targeting systems. Disrupts guided weapons such as rockets and torpedoes.'
+    }
+  };
+
+  /**
+   * Get weapon specification by key
+   */
+  static getWeaponSpec(weaponKey: string): WeaponSpec | null {
+    return this.WEAPON_CATALOG[weaponKey] || null;
+  }
+
+  /**
+   * Get all available weapon specs
+   */
+  static getAllWeaponSpecs(): Record<string, WeaponSpec> {
+    return { ...this.WEAPON_CATALOG };
+  }
+
+  /**
+   * Get all weapon keys that exist in the catalog
+   */
+  static getWeaponKeys(): string[] {
+    return Object.keys(this.WEAPON_CATALOG);
+  }
+
+  /**
+   * Get defense specification by key
+   */
+  static getDefenseSpec(defenseKey: string): DefenseSpec | null {
+    return this.DEFENSE_CATALOG[defenseKey] || null;
+  }
+
+  /**
+   * Get all available defense specs
+   */
+  static getAllDefenseSpecs(): Record<string, DefenseSpec> {
+    return { ...this.DEFENSE_CATALOG };
+  }
+
+  /**
+   * Get all defense keys that exist in the catalog
+   */
+  static getDefenseKeys(): string[] {
+    return Object.keys(this.DEFENSE_CATALOG);
+  }
+
+  /**
+   * Get specification for any tech item (weapon or defense)
+   */
+  static getTechSpec(itemKey: string, itemType: 'weapon' | 'defense'): WeaponSpec | DefenseSpec | null {
+    if (itemType === 'weapon') {
+      return this.getWeaponSpec(itemKey);
+    } else {
+      return this.getDefenseSpec(itemKey);
+    }
+  }
+
+  /**
+   * Calculate total defense effects for a ship's current loadout
+   */
+  static calculateDefenseEffects(techCounts: TechCounts): {
+    totalKineticArmor: number;
+    totalEnergyShield: number;
+    totalMissileJammers: number;
+    totalDefenseCost: number;
+  } {
+    const defenseItems = [
+      { key: 'kinetic_armor', count: techCounts.kinetic_armor },
+      { key: 'energy_shield', count: techCounts.energy_shield },
+      { key: 'missile_jammer', count: techCounts.missile_jammer }
+    ];
+
+    let totalDefenseCost = 0;
+
+    for (const item of defenseItems) {
+      const spec = this.getDefenseSpec(item.key);
+      if (spec && item.count > 0) {
+        totalDefenseCost += spec.baseCost * item.count;
+      }
+    }
+
+    return {
+      totalKineticArmor: techCounts.kinetic_armor,
+      totalEnergyShield: techCounts.energy_shield,
+      totalMissileJammers: techCounts.missile_jammer,
+      totalDefenseCost
+    };
+  }
+
+  /**
+   * Check if a defense item can be built
+   */
+  static canBuildDefense(defenseKey: string, availableIron: number): boolean {
+    const spec = this.getDefenseSpec(defenseKey);
+    return spec ? availableIron >= spec.baseCost : false;
+  }
+
+  /**
+   * Calculate total weapon effects for a ship's current loadout
+   */
+  static calculateWeaponEffects(techCounts: TechCounts): {
+    totalDPS: number;
+    totalAccuracy: number;
+    totalCost: number;
+  } {
+    let totalDPS = 0;
+    let weightedAccuracy = 0;
+    let totalCost = 0;
+    let totalDamage = 0;
+
+    Object.entries(this.WEAPON_CATALOG).forEach(([key, spec]) => {
+      const count = techCounts[key as keyof TechCounts] || 0;
+      if (count > 0) {
+        // DPS = damage / reload time (converted to seconds)
+        const weaponDPS = spec.baseDamage / (spec.reloadTimeMinutes * 60);
+        const weaponTotalDPS = weaponDPS * count;
+        
+        totalDPS += weaponTotalDPS;
+        weightedAccuracy += spec.baseAccuracy * weaponTotalDPS;
+        totalCost += spec.baseCost * count;
+        totalDamage += weaponTotalDPS;
+      }
+    });
+
+    const averageAccuracy = totalDamage > 0 ? weightedAccuracy / totalDamage : 0;
+
+    return {
+      totalDPS,
+      totalAccuracy: averageAccuracy,
+      totalCost
+    };
+  }
+
+  /**
+   * Check if a weapon can be built (placeholder for future cost/requirement checks)
+   */
+  static canBuildWeapon(weaponKey: string, availableIron: number): boolean {
+    const spec = this.getWeaponSpec(weaponKey);
+    return spec ? availableIron >= spec.baseCost : false;
+  }
+
+  /**
+   * Calculate total tech effects for a ship's current loadout (weapons + defense)
+   */
+  static calculateTotalEffects(techCounts: TechCounts): {
+    weapons: {
+      totalDPS: number;
+      totalAccuracy: number;
+      totalCost: number;
+    };
+    defense: {
+      totalKineticArmor: number;
+      totalEnergyShield: number;
+      totalMissileJammers: number;
+      totalDefenseCost: number;
+    };
+    grandTotalCost: number;
+  } {
+    const weaponEffects = this.calculateWeaponEffects(techCounts);
+    const defenseEffects = this.calculateDefenseEffects(techCounts);
+
+    return {
+      weapons: weaponEffects,
+      defense: defenseEffects,
+      grandTotalCost: weaponEffects.totalCost + defenseEffects.totalDefenseCost
+    };
+  }
+
+  /**
+   * Calculate weapon damage effects against a target
+   */
+  static async calculateWeaponDamage(
+    weaponKey: string,
+    techCounts: TechCounts,
+    opponentShieldValue: number,
+    positiveAccuracyModifier: number,
+    negativeAccuracyModifier: number,
+    baseDamageModifier: number,
+    ecmEffectiveness: number,
+    spreadValue: number
+  ): Promise<{ weaponsHit: number; shieldDamage: number; hullDamage: number }> {
+    // Get weapon specification
+    const weaponSpec = this.getWeaponSpec(weaponKey);
+    if (!weaponSpec) {
+      throw new Error(`Unknown weapon: ${weaponKey}`);
+    }
+
+    // Get number of weapons of this type
+    const weaponCount = techCounts[weaponKey as keyof TechCounts] || 0;
+    if (weaponCount === 0) {
+      return { weaponsHit: 0, shieldDamage: 0, hullDamage: 0 };
+    }
+
+    // Calculate overall accuracy based on weapon type
+    let overallAccuracy: number;
+    
+    if (weaponKey === 'rocket_launcher') {
+      // Rocket Launcher: (base + positive) * (1 - ECM)
+      overallAccuracy = (weaponSpec.baseAccuracy + positiveAccuracyModifier) * (1 - ecmEffectiveness);
+    } else if (weaponKey === 'photon_torpedo') {
+      // Photon Torpedo: (base + positive) * (1 - negative/3) * (1 - ECM/3)
+      overallAccuracy = (weaponSpec.baseAccuracy + positiveAccuracyModifier) * 
+                       (1 - (negativeAccuracyModifier / 3)) * 
+                       (1 - (ecmEffectiveness / 3));
+    } else {
+      // Other weapons: (base + positive) * (1 - negative)
+      overallAccuracy = (weaponSpec.baseAccuracy + positiveAccuracyModifier) * (1 - negativeAccuracyModifier);
+    }
+
+    // Calculate weapons that hit (with spread and capped at weapon count)
+    const weaponsHitFloat = (overallAccuracy / 100) * weaponCount * spreadValue;
+    const weaponsHit = Math.min(Math.round(weaponsHitFloat), weaponCount);
+
+    if (weaponsHit === 0) {
+      return { weaponsHit: 0, shieldDamage: 0, hullDamage: 0 };
+    }
+
+    // Calculate overall damage
+    const overallDamage = weaponsHit * weaponSpec.baseDamage * baseDamageModifier;
+
+    // Calculate shield damage
+    let shieldDamageFloat = overallDamage * (weaponSpec.shieldDamageRatio / 100);
+    
+    // Projectile weapons are less effective against shields
+    if (weaponSpec.subtype === 'Projectile') {
+      shieldDamageFloat = shieldDamageFloat / 2;
+    }
+
+    // Calculate actual shield damage and excess
+    const actualShieldDamage = Math.min(shieldDamageFloat, opponentShieldValue);
+    let excessDamage = Math.max(0, shieldDamageFloat - opponentShieldValue);
+
+    // For projectile weapons, double the excess damage (compensating for halving)
+    if (weaponSpec.subtype === 'Projectile') {
+      excessDamage = excessDamage * 2;
+    }
+
+    // Calculate hull damage
+    let hullDamageFloat = (overallDamage * (weaponSpec.hullDamageRatio / 100)) + excessDamage;
+    
+    // Energy weapons are less effective against hull
+    if (weaponSpec.subtype === 'Energy') {
+      hullDamageFloat = hullDamageFloat / 2;
+    }
+
+    return {
+      weaponsHit,
+      shieldDamage: Math.round(actualShieldDamage),
+      hullDamage: Math.round(hullDamageFloat)
+    };
+  }
+}
