@@ -1,5 +1,4 @@
 import { SpaceObject } from './SpaceObject';
-import { Player } from './Player';
 
 /**
  * Abstract base class for all collectible objects in the game.
@@ -12,12 +11,12 @@ export abstract class Collectible extends SpaceObject {
     /**
      * @param x - X coordinate
      * @param y - Y coordinate
-     * @param angle - Direction angle in radians
+     * @param angleDegrees - Direction angle in degrees (0-360)
      * @param speed - Movement speed
-     * @param value - Value/points awarded when collected
+     * @param value - Points awarded when collected
      */
-    constructor(x: number, y: number, angle: number, speed: number, value: number) {
-        super(x, y, angle, speed);
+    constructor(x: number, y: number, angleDegrees: number, speed: number, value: number) {
+        super(x, y, angleDegrees, speed);
         this.value = value;
         this.isCollected = false;
     }
@@ -46,9 +45,8 @@ export abstract class Collectible extends SpaceObject {
     /**
      * Abstract method that defines what happens when this collectible is collected
      * Each collectible type will implement its own collection effect
-     * @param player - Reference to the player
      */
-    abstract onCollect(player: Player): void;
+    abstract onCollect(): void;
     
     /**
      * Get the type of collectible (for rendering and game logic)

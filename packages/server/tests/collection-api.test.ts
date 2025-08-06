@@ -110,7 +110,7 @@ describe('Collection API', () => {
       // Insert a player ship
       const now = Date.now();
       const insertSpaceObject = db.prepare(`
-        INSERT INTO space_objects (type, x, y, speed, angle, last_position_update)
+        INSERT INTO space_objects (type, x, y, speed, angle, last_position_update_ms)
         VALUES (?, ?, ?, ?, ?, ?)
       `);
 
@@ -130,73 +130,52 @@ describe('Collection API', () => {
     });
 
     it('collectAPI_playerShipNotFound_returns404', async () => {
-      // Register and login user
+      // Register and login user (creates ship automatically)
       await agent.post('/api/register').send({
         username: 'testuser',
         password: 'testpass'
       });
 
-      // Insert an asteroid but no player ship
-      const now = Date.now();
-      const insertSpaceObject = db.prepare(`
-        INSERT INTO space_objects (type, x, y, speed, angle, last_position_update)
-        VALUES (?, ?, ?, ?, ?, ?)
-      `);
-
+      // Delete the player's ship to simulate player ship not found
       await new Promise<void>((resolve, reject) => {
-        insertSpaceObject.run('asteroid', 100, 200, 0, 0, now, (err) => {
+        db.run('DELETE FROM space_objects WHERE type = ?', ['player_ship'], (err) => {
           if (err) reject(err);
           else resolve();
         });
       });
 
-      insertSpaceObject.finalize();
+      // Insert an asteroid to collect
+      const now = Date.now();
+      await new Promise<void>((resolve, reject) => {
+        db.run('INSERT INTO space_objects (type, x, y, speed, angle, last_position_update_ms) VALUES (?, ?, ?, ?, ?, ?)',
+          ['asteroid', 100, 200, 0, 0, now], (err) => {
+          if (err) reject(err);
+          else resolve();
+        });
+      });
 
-      const response = await agent.post('/api/collect').send({ objectId: 1 });
+      const response = await agent.post('/api/collect').send({ objectId: 2 });
       
       expect(response.status).toBe(404);
       expect(response.body.error).toBe('Player ship not found');
     });
 
     it('collectAPI_objectTooFarAway_returns400', async () => {
-      // Register and login user
+      // Register and login user (creates ship automatically at 250, 250)
       await agent.post('/api/register').send({
         username: 'testuser',
         password: 'testpass'
       });
 
-      // Get user ID for ship linking
-      const userId = 1; // First user created
-      
-      // Update user with ship_id
+      // Insert asteroid far away from the player ship (distance > 125)
+      const now = Date.now();
       await new Promise<void>((resolve, reject) => {
-        db.run('UPDATE users SET ship_id = ? WHERE id = ?', [1, userId], (err) => {
+        db.run('INSERT INTO space_objects (type, x, y, speed, angle, last_position_update_ms) VALUES (?, ?, ?, ?, ?, ?)',
+          ['asteroid', 50, 50, 0, 0, now], (err) => { // Far from player ship at (250, 250)
           if (err) reject(err);
           else resolve();
         });
       });
-
-      // Insert player ship and distant asteroid
-      const now = Date.now();
-      const insertSpaceObject = db.prepare(`
-        INSERT INTO space_objects (type, x, y, speed, angle, last_position_update)
-        VALUES (?, ?, ?, ?, ?, ?)
-      `);
-
-      await new Promise<void>((resolve, reject) => {
-        insertSpaceObject.run('player_ship', 100, 100, 0, 0, now, (err) => {
-          if (err) reject(err);
-          else {
-            // Insert asteroid far away (distance > 125)
-            insertSpaceObject.run('asteroid', 300, 300, 0, 0, now, (err) => {
-              if (err) reject(err);
-              else resolve();
-            });
-          }
-        });
-      });
-
-      insertSpaceObject.finalize();
 
       const response = await agent.post('/api/collect').send({ objectId: 2 });
       
@@ -205,44 +184,21 @@ describe('Collection API', () => {
     });
 
     it('collectAPI_successfulCollection_returns200', async () => {
-      // Register and login user
+      // Register and login user (creates ship automatically at 250, 250)
       await agent.post('/api/register').send({
         username: 'testuser',
         password: 'testpass'
       });
 
-      // Get user ID for ship linking
-      const userId = 1; // First user created
-      
-      // Update user with ship_id
+      // Insert asteroid nearby the player ship (distance <= 125)
+      const now = Date.now();
       await new Promise<void>((resolve, reject) => {
-        db.run('UPDATE users SET ship_id = ? WHERE id = ?', [1, userId], (err) => {
+        db.run('INSERT INTO space_objects (type, x, y, speed, angle, last_position_update_ms) VALUES (?, ?, ?, ?, ?, ?)',
+          ['asteroid', 280, 280, 0, 0, now], (err) => { // Close to player ship at (250, 250)
           if (err) reject(err);
           else resolve();
         });
       });
-
-      // Insert player ship and nearby asteroid
-      const now = Date.now();
-      const insertSpaceObject = db.prepare(`
-        INSERT INTO space_objects (type, x, y, speed, angle, last_position_update)
-        VALUES (?, ?, ?, ?, ?, ?)
-      `);
-
-      await new Promise<void>((resolve, reject) => {
-        insertSpaceObject.run('player_ship', 100, 100, 0, 0, now, (err) => {
-          if (err) reject(err);
-          else {
-            // Insert asteroid nearby (distance <= 125)
-            insertSpaceObject.run('asteroid', 150, 150, 0, 0, now, (err) => {
-              if (err) reject(err);
-              else resolve();
-            });
-          }
-        });
-      });
-
-      insertSpaceObject.finalize();
 
       const response = await agent.post('/api/collect').send({ objectId: 2 });
       
@@ -253,53 +209,33 @@ describe('Collection API', () => {
     });
 
     it('collectAPI_collectDifferentObjectTypes_allSucceed', async () => {
-      // Register and login user
+      // Register and login user (creates ship automatically at 250, 250)
       await agent.post('/api/register').send({
         username: 'testuser',
         password: 'testpass'
       });
 
-      // Get user ID for ship linking
-      const userId = 1; // First user created
-      
-      // Update user with ship_id
-      await new Promise<void>((resolve, reject) => {
-        db.run('UPDATE users SET ship_id = ? WHERE id = ?', [1, userId], (err) => {
-          if (err) reject(err);
-          else resolve();
-        });
-      });
-
-      // Insert player ship and various collectible objects nearby
+      // Insert various collectible objects nearby the player ship
       const now = Date.now();
-      const insertSpaceObject = db.prepare(`
-        INSERT INTO space_objects (type, x, y, speed, angle, last_position_update)
-        VALUES (?, ?, ?, ?, ?, ?)
-      `);
-
       await new Promise<void>((resolve, reject) => {
-        insertSpaceObject.run('player_ship', 100, 100, 0, 0, now, (err) => {
+        db.run('INSERT INTO space_objects (type, x, y, speed, angle, last_position_update_ms) VALUES (?, ?, ?, ?, ?, ?)',
+          ['asteroid', 270, 270, 0, 0, now], (err) => {
           if (err) reject(err);
           else {
-            insertSpaceObject.run('asteroid', 120, 120, 0, 0, now, (err) => {
+            db.run('INSERT INTO space_objects (type, x, y, speed, angle, last_position_update_ms) VALUES (?, ?, ?, ?, ?, ?)',
+              ['shipwreck', 280, 280, 0, 0, now], (err) => {
               if (err) reject(err);
               else {
-                insertSpaceObject.run('shipwreck', 130, 130, 0, 0, now, (err) => {
+                db.run('INSERT INTO space_objects (type, x, y, speed, angle, last_position_update_ms) VALUES (?, ?, ?, ?, ?, ?)',
+                  ['escape_pod', 290, 290, 0, 0, now], (err) => {
                   if (err) reject(err);
-                  else {
-                    insertSpaceObject.run('escape_pod', 140, 140, 0, 0, now, (err) => {
-                      if (err) reject(err);
-                      else resolve();
-                    });
-                  }
+                  else resolve();
                 });
               }
             });
           }
         });
       });
-
-      insertSpaceObject.finalize();
 
       // Count initial objects
       const initialCount = await new Promise<number>((resolve, reject) => {
@@ -309,7 +245,7 @@ describe('Collection API', () => {
         });
       });
 
-      // Collect asteroid
+      // Collect asteroid (ID 2)
       const response1 = await agent.post('/api/collect').send({ objectId: 2 });
       expect(response1.status).toBe(200);
       expect(response1.body.success).toBe(true);
@@ -323,12 +259,12 @@ describe('Collection API', () => {
       });
       expect(countAfterFirstCollection).toBe(initialCount);
 
-      // Collect shipwreck
+      // Collect shipwreck (ID 3)
       const response2 = await agent.post('/api/collect').send({ objectId: 3 });
       expect(response2.status).toBe(200);
       expect(response2.body.success).toBe(true);
 
-      // Collect escape pod
+      // Collect escape pod (ID 4)
       const response3 = await agent.post('/api/collect').send({ objectId: 4 });
       expect(response3.status).toBe(200);
       expect(response3.body.success).toBe(true);
@@ -344,43 +280,21 @@ describe('Collection API', () => {
     });
 
     it('collectAPI_spawnsNewObjectAfterCollection_differentTypes', async () => {
-      // Register and login user
+      // Register and login user (creates ship automatically at 250, 250)
       await agent.post('/api/register').send({
         username: 'testuser',
         password: 'testpass'
       });
 
-      // Get user ID for ship linking
-      const userId = 1; // First user created
-      
-      // Update user with ship_id
+      // Insert collectible object nearby the player ship
+      const now = Date.now();
       await new Promise<void>((resolve, reject) => {
-        db.run('UPDATE users SET ship_id = ? WHERE id = ?', [1, userId], (err) => {
+        db.run('INSERT INTO space_objects (type, x, y, speed, angle, last_position_update_ms) VALUES (?, ?, ?, ?, ?, ?)',
+          ['asteroid', 270, 270, 0, 0, now], (err) => {
           if (err) reject(err);
           else resolve();
         });
       });
-
-      // Insert player ship and collectible object
-      const now = Date.now();
-      const insertSpaceObject = db.prepare(`
-        INSERT INTO space_objects (type, x, y, speed, angle, last_position_update)
-        VALUES (?, ?, ?, ?, ?, ?)
-      `);
-
-      await new Promise<void>((resolve, reject) => {
-        insertSpaceObject.run('player_ship', 100, 100, 0, 0, now, (err) => {
-          if (err) reject(err);
-          else {
-            insertSpaceObject.run('asteroid', 120, 120, 0, 0, now, (err) => {
-              if (err) reject(err);
-              else resolve();
-            });
-          }
-        });
-      });
-
-      insertSpaceObject.finalize();
 
       // Get initial object types
       const initialObjects = await new Promise<SpaceObjectRow[]>((resolve, reject) => {
@@ -390,7 +304,7 @@ describe('Collection API', () => {
         });
       });
 
-      // Collect the asteroid
+      // Collect the asteroid (ID 2)
       const response = await agent.post('/api/collect').send({ objectId: 2 });
       expect(response.status).toBe(200);
 
@@ -415,44 +329,30 @@ describe('Collection API', () => {
     });
 
     it('collectAPI_toroidalDistanceCalculation_worksCorrectly', async () => {
-      // Register and login user
+      // Register and login user (creates ship automatically)
       await agent.post('/api/register').send({
         username: 'testuser',
         password: 'testpass'
       });
 
-      // Get user ID for ship linking
-      const userId = 1; // First user created
-      
-      // Update user with ship_id
+      // Update the auto-created player ship to be near world edge
+      const now = Date.now();
       await new Promise<void>((resolve, reject) => {
-        db.run('UPDATE users SET ship_id = ? WHERE id = ?', [1, userId], (err) => {
+        db.run('UPDATE space_objects SET x = ?, y = ?, last_position_update_ms = ? WHERE type = ? AND id = ?', 
+          [10, 250, now, 'player_ship', 1], (err) => {
           if (err) reject(err);
           else resolve();
         });
       });
 
-      // Insert player ship near world edge and asteroid on other side (should wrap around)
-      const now = Date.now();
-      const insertSpaceObject = db.prepare(`
-        INSERT INTO space_objects (type, x, y, speed, angle, last_position_update)
-        VALUES (?, ?, ?, ?, ?, ?)
-      `);
-
+      // Insert asteroid on far side - toroidal distance should be small
       await new Promise<void>((resolve, reject) => {
-        insertSpaceObject.run('player_ship', 10, 250, 0, 0, now, (err) => {
+        db.run('INSERT INTO space_objects (type, x, y, speed, angle, last_position_update_ms) VALUES (?, ?, ?, ?, ?, ?)',
+          ['asteroid', 490, 250, 0, 0, now], (err) => {
           if (err) reject(err);
-          else {
-            // Asteroid on far side - toroidal distance should be small
-            insertSpaceObject.run('asteroid', 490, 250, 0, 0, now, (err) => {
-              if (err) reject(err);
-              else resolve();
-            });
-          }
+          else resolve();
         });
       });
-
-      insertSpaceObject.finalize();
 
       const response = await agent.post('/api/collect').send({ objectId: 2 });
       

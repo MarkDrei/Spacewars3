@@ -10,7 +10,7 @@ import bcrypt from 'bcrypt';
 import cors from 'cors';
 import { getUserById, getUserByUsername, createUser, saveUserToDb } from './userRepo';
 import { loadWorld, saveWorldToDb } from './worldRepo';
-import { AllResearches, getResearchUpgradeCost, getResearchUpgradeDuration, getResearchEffect, ResearchType, triggerResearch, TechTree } from './techtree';
+import { AllResearches, getResearchUpgradeCost, getResearchUpgradeDuration, getResearchEffect, ResearchType, triggerResearch, TechTree, getResearchEffectFromTree } from './techtree';
 import { calculateToroidalDistance } from '@spacewars-ironcore/shared';
 
 // Extend express-session to include userId
@@ -120,9 +120,9 @@ export function createApp(db: sqlite3.Database) {
   // Session check
   app.get('/api/session', (req, res) => {
     if (req.session.userId) {
-      db.get('SELECT username FROM users WHERE id = ?', [req.session.userId], (err, userRow) => {
-        const user = userRow as { username: string };
-        if (user) return res.json({ loggedIn: true, username: user.username });
+      db.get('SELECT username, ship_id FROM users WHERE id = ?', [req.session.userId], (err, userRow) => {
+        const user = userRow as { username: string; ship_id: number };
+        if (user) return res.json({ loggedIn: true, username: user.username, shipId: user.ship_id });
         res.json({ loggedIn: false });
       });
     } else {
@@ -231,10 +231,59 @@ export function createApp(db: sqlite3.Database) {
     }
   });
 
+  // Get ship stats endpoint - returns current ship position, speed, angle, and max speed
+  app.get('/api/ship-stats', async (req, res) => {
+    if (!req.session.userId) return res.status(401).json({ error: 'Not authenticated' });
+    
+    try {
+      // Load user and world data
+      const user = await getUserById(db, req.session.userId, saveUserToDb(db));
+      if (!user) return res.status(404).json({ error: 'User not found' });
+      
+      const world = await loadWorld(db, saveWorldToDb(db));
+      
+      // Update physics for all objects first
+      const currentTime = Date.now();
+      world.updatePhysics(currentTime);
+      
+      // Find player's ship in the world
+      const playerShips = world.getSpaceObjectsByType('player_ship');
+      const playerShip = playerShips.find(ship => ship.id === user.ship_id);
+      
+      if (!playerShip) {
+        return res.status(404).json({ error: 'Player ship not found' });
+      }
+      
+      // Calculate max speed from tech tree
+      const baseSpeed = getResearchEffectFromTree(user.techTree, ResearchType.ShipSpeed);
+      const afterburnerBonus = getResearchEffectFromTree(user.techTree, ResearchType.Afterburner);
+      const maxSpeed = baseSpeed * (1 + afterburnerBonus / 100);
+      
+      const responseData = {
+        x: playerShip.x,
+        y: playerShip.y,
+        speed: playerShip.speed,
+        angle: playerShip.angle,
+        maxSpeed: maxSpeed,
+        last_position_update_ms: playerShip.last_position_update_ms
+      };
+      
+      // console.log(`📤 Sending ship stats response:`, responseData);
+      
+      res.json(responseData);
+      
+    } catch (error) {
+      console.error('❌ Ship stats error:', error);
+      res.status(500).json({ error: 'Server error' });
+    }
+  });
+
   // Get world data endpoint - retrieves and updates all space objects
   app.get('/api/world', async (req, res) => {
     if (!req.session.userId) return res.status(401).json({ error: 'Not authenticated' });
-    
+
+    // console.log(`🌍 World data request - userId: ${req.session.userId}`);
+
     try {
       // Load world data from database
       const world = await loadWorld(db, saveWorldToDb(db));
@@ -243,14 +292,29 @@ export function createApp(db: sqlite3.Database) {
       const currentTime = Date.now();
       world.updatePhysics(currentTime);
       
+      // Log all ships in the world for debugging
+      // const ships = world.getSpaceObjectsByType('player_ship');
+      // console.log(`🚢 All ships in world (${ships.length} total):`);
+      // ships.forEach(ship => {
+      //   console.log(`  Ship ID: ${ship.id}, position: (${ship.x}, ${ship.y}), speed: ${ship.speed}, angle: ${ship.angle}, lastUpdate: ${ship.last_position_update_ms}`);
+      // });
+      
+      // // Log total object counts
+      // const objectCounts = world.spaceObjects.reduce((counts: Record<string, number>, obj) => {
+      //   counts[obj.type] = (counts[obj.type] || 0) + 1;
+      //   return counts;
+      // }, {});
+      // console.log(`📊 Object counts:`, objectCounts);
+      
       // Save updated positions back to database
       await world.save();
       
       // Return world data
-      res.json(world.getWorldData());
+      const worldData = world.getWorldData();
+      res.json(worldData);
       
     } catch (error) {
-      console.error('World data error:', error);
+      console.error('❌ World data error:', error);
       res.status(500).json({ error: 'Server error' });
     }
   });
@@ -316,6 +380,85 @@ export function createApp(db: sqlite3.Database) {
       
     } catch (error) {
       console.error('Collection error:', error);
+      res.status(500).json({ error: 'Server error' });
+    }
+  });
+
+  // Navigate ship endpoint - allows players to change their ship's speed and/or angle
+  app.post('/api/navigate', async (req, res) => {
+    if (!req.session.userId) return res.status(401).json({ error: 'Not authenticated' });
+    
+    const { speed, angle } = req.body;
+    // Must provide at least one parameter
+    if (speed === undefined && angle === undefined) {
+      return res.status(400).json({ error: 'Must provide speed and/or angle' });
+    }
+    
+    try {
+      // Load user and world data
+      const user = await getUserById(db, req.session.userId, saveUserToDb(db));
+      if (!user) return res.status(404).json({ error: 'User not found' });
+      
+      const world = await loadWorld(db, saveWorldToDb(db));
+      
+      // Update physics for all objects first
+      const currentTime = Date.now();
+      world.updatePhysics(currentTime);
+      
+      // Find player's ship in the world
+      const playerShips = world.getSpaceObjectsByType('player_ship');
+      const playerShip = playerShips.find(ship => ship.id === user.ship_id);
+      
+      if (!playerShip) {
+        return res.status(404).json({ error: 'Player ship not found' });
+      }
+      
+      // Calculate max speed from tech tree
+      const baseSpeed = getResearchEffectFromTree(user.techTree, ResearchType.ShipSpeed);
+      const afterburnerBonus = getResearchEffectFromTree(user.techTree, ResearchType.Afterburner);
+      const maxSpeed = baseSpeed * (1 + afterburnerBonus / 100);
+      
+      // Validate and update speed if provided
+      let newSpeed = playerShip.speed;
+      if (speed !== undefined) {
+        if (typeof speed !== 'number' || speed < 0) {
+          return res.status(400).json({ error: 'Speed must be a non-negative number' });
+        }
+        if (speed > maxSpeed) {
+          return res.status(400).json({ error: `Speed cannot exceed ${maxSpeed.toFixed(1)} units` });
+        }
+        newSpeed = speed;
+      }
+      
+      // Validate and update angle if provided
+      let newAngle = playerShip.angle;
+      if (angle !== undefined) {
+        if (typeof angle !== 'number') {
+          return res.status(400).json({ error: 'Angle must be a number' });
+        }
+        // Normalize angle to 0-360 degrees
+        newAngle = ((angle % 360) + 360) % 360;
+      }
+      
+      // Update ship's speed and angle
+      await world.updateSpaceObject(playerShip.id, {
+        speed: newSpeed,
+        angle: newAngle,
+        last_position_update_ms: currentTime
+      });
+      
+      // Save changes
+      await world.save();
+      
+      res.json({ 
+        success: true, 
+        speed: newSpeed, 
+        angle: newAngle,
+        maxSpeed: maxSpeed
+      });
+      
+    } catch (error) {
+      console.error('❌ Navigation error:', error);
       res.status(500).json({ error: 'Server error' });
     }
   });

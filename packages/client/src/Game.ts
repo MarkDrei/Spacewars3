@@ -1,18 +1,21 @@
 // Main Game class
 import { World } from './World';
 import { GameRenderer } from './renderers/GameRenderer';
-import { WorldInitializer } from './WorldInitializer';
 import { Ship } from './Ship';
-import { Shipwreck } from './Shipwreck';
-import { EscapePod } from './EscapePod';
+import { WorldData } from '../../shared/src/types/gameTypes';
+import { setShipDirection, interceptTarget } from './services/navigationService';
+import { getShipStats } from './services/shipStatsService';
+import { InterceptCalculator } from './InterceptCalculator';
+import { SpaceObject } from './SpaceObject';
 
 export class Game {
   private world: World;
   private renderer: GameRenderer;
-  private lastTimestamp: number = 0;
+  // private lastTimestamp: number = 0; // REMOVED: No longer needed without client physics
   private running: boolean = false;
   private ctx: CanvasRenderingContext2D;
   private ship: Ship;
+  private refetchWorldData?: () => void; // Function to refresh world data from server
 
   constructor(canvas: HTMLCanvasElement) {
     // Initialize the canvas context
@@ -22,10 +25,10 @@ export class Game {
     }
     this.ctx = context;
     
-    // Initialize the world using the static method
-    this.world = WorldInitializer.createDefaultWorld();
+    // Initialize the world - start empty since we'll get data from server
+    this.world = new World(false);
     
-    // Get the player's ship using the getter method
+    // Create a dummy ship initially (will be replaced by server data)
     this.ship = this.world.getShip();
     
     // Initialize the renderer
@@ -47,13 +50,6 @@ export class Game {
   private initializeClickHandler(canvas: HTMLCanvasElement): void {
     // Handle click events
     canvas.addEventListener('click', (event) => {
-      // Update click counter in HUD
-      const clickCounter = document.getElementById('clickCounter');
-      if (clickCounter) {
-        const currentClicks = parseInt(clickCounter.textContent || '0');
-        clickCounter.textContent = (currentClicks + 1).toString();
-      }
-      
       // Get the mouse coordinates relative to the canvas
       const rect = canvas.getBoundingClientRect();
       const mouseX = event.clientX - rect.left;
@@ -64,18 +60,16 @@ export class Game {
       
       if (hoveredObject) {
         // If a space object is hovered, intercept it
-        this.world.interceptObject(hoveredObject);
+        this.handleInterception(hoveredObject);
       } else {
         // If no object is hovered, use the regular click-to-aim behavior
         const centerX = canvas.width / 2;
         const centerY = canvas.height / 2;
         const dx = mouseX - centerX;
         const dy = mouseY - centerY;
-        this.world.setShipAngle(Math.atan2(dy, dx));
+        const angle = Math.atan2(dy, dx);
+        this.handleDirectionChange(angle);
       }
-      
-      // Update HUD with current ship status
-      this.updateHUD();
     });
 
     // Handle mouse move events for hover detection
@@ -88,6 +82,65 @@ export class Game {
       this.updateHoverStates();
     });
   }
+
+  // Handle direction change when clicking on empty space
+  private async handleDirectionChange(angleRadians: number): Promise<void> {
+    try {
+      // Apply immediate local update for visual feedback
+      this.world.setShipAngle(angleRadians);
+      
+      // Then update via API
+      await setShipDirection(angleRadians);
+      console.log('Ship direction updated via API:', angleRadians);
+
+      // Trigger world data refresh to get authoritative server state
+      if (this.refetchWorldData) {
+        this.refetchWorldData();
+      }
+    } catch (error) {
+      console.error('Failed to update ship direction:', error);
+      // Local update already applied above for immediate feedback
+    }
+  }
+
+  // Handle interception when clicking on an object
+  private async handleInterception(targetObject: SpaceObject): Promise<void> {
+    try {
+      // Get current ship stats including max speed from server
+      const shipStats = await getShipStats();
+      
+      if ('error' in shipStats) {
+        console.error('Failed to get ship stats:', shipStats.error);
+        // Fallback to local interception
+        this.world.interceptObject(targetObject);
+        return;
+      }
+
+      // Calculate interception angle using max speed for optimal interception
+      const ship = this.world.getShip();
+      const interceptResult = InterceptCalculator.calculateInterceptAngle(ship, targetObject, shipStats.maxSpeed);
+      
+      if (!isNaN(interceptResult.angle)) {
+        // Apply immediate local interception for visual feedback
+        this.world.interceptObject(targetObject);
+        
+        // Then update via API with max speed
+        await interceptTarget(interceptResult.angle, shipStats.maxSpeed);
+        console.log('Ship interception updated via API with max speed:', shipStats.maxSpeed);
+        
+        // Trigger world data refresh to get authoritative server state
+        if (this.refetchWorldData) {
+          this.refetchWorldData();
+        }
+      } else {
+        console.warn('Could not calculate valid interception angle');
+      }
+    } catch (error) {
+      console.error('Failed to handle interception:', error);
+      // Fallback to local interception
+      this.world.interceptObject(targetObject);
+    }
+  }
   
   // Update hover states based on current mouse position
   private updateHoverStates(): void {
@@ -98,110 +151,27 @@ export class Game {
     // Update hover states for all objects
     this.world.updateHoverStates(worldMouseX, worldMouseY);
   }
-  
-  // Update HUD with latest values
-  private updateHUD(): void {
-    // Update ship coordinates
-    const coordinatesElement = document.getElementById('coordinates');
-    if (coordinatesElement) {
-      const x = Math.round(this.ship.getX());
-      const y = Math.round(this.ship.getY());
-      coordinatesElement.textContent = `(${x}, ${y})`;
-    }
-    
-    // Update ship speed
-    const speedElement = document.getElementById('speed');
-    if (speedElement) {
-      speedElement.textContent = Math.round(this.ship.getSpeed()).toString();
-    }
-    
-    // Update score
-    const scoreElement = document.getElementById('score');
-    if (scoreElement) {
-      scoreElement.textContent = this.world.getScore().toString();
-    }
-    
-    // Update last collected item display
-    const lastCollectedElement = document.getElementById('last-collected');
-    if (lastCollectedElement) {
-      const lastCollected = this.world.getLastCollected();
-      if (lastCollected) {
-        let details = '';
-        const type = lastCollected.getType();
-        
-        if (type === 'shipwreck') {
-          // Use proper type checking instead of any
-          const salvageType = lastCollected instanceof Shipwreck ? 
-            lastCollected.getSalvageType() : 'generic';
-          details = `Shipwreck (${salvageType}) - Value: ${lastCollected.getValue()}`;
-        } else if (type === 'escape-pod') {
-          // Use proper type checking instead of any
-          const survivors = lastCollected instanceof EscapePod ?
-            lastCollected.getSurvivors() : 0;
-          details = `Escape Pod (${survivors} survivors) - Value: ${lastCollected.getValue()}`;
-        } else {
-          details = `${type} - Value: ${lastCollected.getValue()}`;
-        }
-        
-        lastCollectedElement.textContent = details;
-      } else {
-        lastCollectedElement.textContent = 'Nothing collected yet';
-      }
-    }
-    
-    // Update inventory display
-    const inventoryListElement = document.getElementById('inventory-list');
-    if (inventoryListElement) {
-      const inventory = this.world.getInventory();
-      
-      // Sort inventory by most recent first
-      const sortedInventory = [...inventory].sort((a, b) => b.timestamp - a.timestamp);
-      
-      // Clear current list
-      inventoryListElement.innerHTML = '';
-      
-      // Add each item
-      if (sortedInventory.length === 0) {
-        inventoryListElement.textContent = 'No items collected';
-      } else {
-        sortedInventory.forEach(item => {
-          const itemElement = document.createElement('div');
-          itemElement.className = 'inventory-item';
-          
-          // Add specific class based on type
-          if (item.type === 'shipwreck' && item.salvageType) {
-            itemElement.classList.add(item.salvageType);
-          } else if (item.type === 'escape-pod') {
-            itemElement.classList.add('escape-pod');
-          }
-          
-          // Format the item details
-          let itemText = '';
-          if (item.type === 'shipwreck') {
-            itemText = `Shipwreck (${item.salvageType || 'generic'}) - ${item.value} pts`;
-          } else if (item.type === 'escape-pod') {
-            itemText = `Escape Pod - ${item.value} pts`;
-          }
-          
-          itemElement.textContent = itemText;
-          inventoryListElement.appendChild(itemElement);
-        });
-      }
-    }
-    
-    // Display interception data if available
-    const interceptionData = this.world.getInterceptionData();
-    if (interceptionData) {
-      const timeElapsed = (performance.now() - interceptionData.timestamp) / 1000;
-      const timeRemaining = Math.max(0, interceptionData.interceptTime - timeElapsed);
-      console.log(`Time to interception: ${timeRemaining.toFixed(2)} seconds`);
-    }
+
+  /**
+   * Update the game world with server data
+   */
+  public updateWorldData(worldData: WorldData, playerShipId?: number): void {
+    this.world.updateFromServerData(worldData, playerShipId);
+    // Update the local player ship reference
+    this.ship = this.world.getShip();
+  }
+
+  /**
+   * Set the function to refresh world data from server
+   */
+  public setRefetchFunction(refetch: () => void): void {
+    this.refetchWorldData = refetch;
   }
 
   public start(): void {
     if (!this.running) {
       this.running = true;
-      this.lastTimestamp = performance.now();
+      // this.lastTimestamp = performance.now(); // REMOVED: No longer needed
       requestAnimationFrame(this.gameLoop.bind(this));
     }
   }
@@ -210,21 +180,17 @@ export class Game {
     this.running = false;
   }
 
-  private gameLoop(timestamp: number): void {
+  private gameLoop(): void {
     if (!this.running) return;
     
-    // Calculate delta time in seconds
-    const deltaTime = (timestamp - this.lastTimestamp) / 1000;
-    this.lastTimestamp = timestamp;
-    
-    // Update game state
-    this.world.update(deltaTime);
+    // Don't render if we don't have any space objects yet (waiting for server data)
+    if (this.world.getSpaceObjects().length === 0) {
+      requestAnimationFrame(this.gameLoop.bind(this));
+      return;
+    }
     
     // Update hover states
     this.updateHoverStates();
-    
-    // Update HUD
-    this.updateHUD();
     
     // Render the game - adaptively call the appropriate method
     try {

@@ -4,6 +4,7 @@ import { authService, SessionResponse } from '../services/authService';
 export interface AuthState {
   isLoggedIn: boolean;
   username: string | null;
+  shipId: number | null;
   isLoading: boolean;
 }
 
@@ -11,6 +12,7 @@ export const useAuth = () => {
   const [authState, setAuthState] = useState<AuthState>({
     isLoggedIn: false,
     username: null,
+    shipId: null,
     isLoading: true,
   });
 
@@ -26,12 +28,14 @@ export const useAuth = () => {
       setAuthState({
         isLoggedIn: session.loggedIn,
         username: session.username || null,
+        shipId: session.shipId || null,
         isLoading: false,
       });
     } catch {
       setAuthState({
         isLoggedIn: false,
         username: null,
+        shipId: null,
         isLoading: false,
       });
     }
@@ -42,11 +46,8 @@ export const useAuth = () => {
       const result = await authService.login({ username, password });
       
       if (result.success) {
-        setAuthState({
-          isLoggedIn: true,
-          username: username,
-          isLoading: false,
-        });
+        // Re-check auth status to get the shipId
+        await checkAuthStatus();
         return { success: true };
       } else {
         return { success: false, error: result.error || 'Login failed' };
@@ -61,11 +62,8 @@ export const useAuth = () => {
       const result = await authService.register({ username, password });
       
       if (result.success) {
-        setAuthState({
-          isLoggedIn: true,
-          username: username,
-          isLoading: false,
-        });
+        // Re-check auth status to get the shipId
+        await checkAuthStatus();
         return { success: true };
       } else {
         return { success: false, error: result.error || 'Registration failed' };
@@ -84,6 +82,7 @@ export const useAuth = () => {
       setAuthState({
         isLoggedIn: false,
         username: null,
+        shipId: null,
         isLoading: false,
       });
     }

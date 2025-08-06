@@ -77,7 +77,7 @@ export async function seedDatabase(db: sqlite3.Database): Promise<void> {
         
         // First, seed space objects (including player ships)
         const insertSpaceObject = db.prepare(`
-          INSERT INTO space_objects (type, x, y, speed, angle, last_position_update)
+          INSERT INTO space_objects (type, x, y, speed, angle, last_position_update_ms)
           VALUES (?, ?, ?, ?, ?, ?)
         `);
 

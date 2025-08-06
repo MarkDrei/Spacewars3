@@ -12,13 +12,14 @@ export class InterceptCalculator {
      * Calculates the angle needed for the ship to intercept a target object
      * @param ship The ship that will intercept
      * @param target The target object to intercept
+     * @param maxSpeed Optional maximum speed for the ship (if not provided, uses ship's current speed)
      * @returns The angle in radians for the ship to set, interception point, and time to intercept
      */
-    static calculateInterceptAngle(ship: SpaceObject, target: SpaceObject): InterceptResult {
+    static calculateInterceptAngle(ship: SpaceObject, target: SpaceObject, maxSpeed?: number): InterceptResult {
         // Get positions
         const x1 = ship.getX();
         const y1 = ship.getY();
-        const s1 = ship.getSpeed();
+        const s1 = maxSpeed !== undefined ? maxSpeed : ship.getSpeed(); // Use maxSpeed if provided, otherwise current speed
         
         const x2 = target.getX();
         const y2 = target.getY();
@@ -29,7 +30,7 @@ export class InterceptCalculator {
         const wrapSize = World.WIDTH; // Assuming square world
         
         console.log('===== INTERCEPTION CALCULATION =====');
-        console.log(`Ship position: (${x1.toFixed(2)}, ${y1.toFixed(2)}), Speed: ${s1}`);
+        console.log(`Ship position: (${x1.toFixed(2)}, ${y1.toFixed(2)}), Speed: ${s1}${maxSpeed !== undefined ? ' (max speed)' : ' (current speed)'}`);
         console.log(`Target position: (${x2.toFixed(2)}, ${y2.toFixed(2)}), Speed: ${s2}, Angle: ${(phi * 180 / Math.PI).toFixed(2)}°`);
         
         // If both objects are at the same position, interception is immediate

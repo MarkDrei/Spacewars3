@@ -2,11 +2,11 @@ import { SpaceObject } from './SpaceObject';
 import { Ship } from './Ship';
 import { Asteroid } from './Asteroid';
 import { InterceptCalculator } from './InterceptCalculator';
-import { Collectible } from './Collectible';
+// import { Collectible } from './Collectible'; // DISABLED: Server handles collections
 import { Player } from './Player';
-import type { InventoryItem } from './Player';
-import { Shipwreck, SalvageType } from './Shipwreck';
+import { Shipwreck } from './Shipwreck';
 import { EscapePod } from './EscapePod';
+import { WorldData } from '../../shared/src/types/gameTypes';
 
 export interface InterceptionData {
     targetObject: SpaceObject;
@@ -23,18 +23,27 @@ export class World {
     private interceptionData: InterceptionData | null = null;
     
     // World boundaries
-    public static readonly WIDTH = 500;
-    public static readonly HEIGHT = 500;
+    public static WIDTH = 500;
+    public static HEIGHT = 500;
 
-    constructor() {
-        // Initialize ship
-        const ship = new Ship();
+    constructor(initializeDefault: boolean = true) {
+        this.spaceObjects = [];
         
-        // Initialize player with ship
-        this.player = new Player(ship);
-        
-        // Initialize space objects (including ship)
-        this.spaceObjects = [ship];
+        if (initializeDefault) {
+            // Initialize ship
+            const ship = new Ship();
+            
+            // Initialize player with ship
+            this.player = new Player(ship);
+            
+            // Initialize space objects (including ship)
+            this.spaceObjects = [ship];
+        } else {
+            // Create a dummy player ship that will be replaced by server data
+            const dummyShip = new Ship(0, 0, 0, 0); // Position at origin
+            this.player = new Player(dummyShip);
+            // Don't add dummy ship to spaceObjects - it will be replaced by server data
+        }
     }
 
     // Getters
@@ -73,65 +82,85 @@ export class World {
     }
 
     /**
-     * Get the current score
-     */
-    getScore(): number {
-        return this.player.getScore();
-    }
-    
-    /**
-     * Add points to the score
-     */
-    addScore(points: number): void {
-        this.player.addScore(points);
-    }
-
-    /**
-     * Get the last collected item
-     */
-    getLastCollected(): Collectible | null {
-        return this.player.getLastCollected();
-    }
-    
-    /**
-     * Get the inventory of collected items
-     */
-    getInventory(): InventoryItem[] {
-        return this.player.getInventory();
-    }
-
-    /**
      * Get the player object
      */
     getPlayer(): Player {
         return this.player;
     }
 
-    // Update all object positions based on their speed and the elapsed time
-    update(deltaTime: number): void {
-        // Update all space objects
-        this.spaceObjects.forEach(obj => {
-            // First update position normally
-            obj.updatePosition(deltaTime);
+    // NOTE: Client-side physics updates removed - all positions come from server
+
+    /**
+     * Update the world with data received from the server
+     */
+    updateFromServerData(worldData: WorldData, playerShipId?: number): void {
+        // Update world dimensions if they differ
+        World.WIDTH = worldData.worldSize.width;
+        World.HEIGHT = worldData.worldSize.height;
+        
+        // Clear current space objects except the player ship
+        this.spaceObjects = [];
+        
+        // Convert server objects to client objects
+        worldData.spaceObjects.forEach(serverObject => {
+            let clientObject: SpaceObject;
             
-            // Then wrap position if needed
-            const wrappedPos = this.wrapPosition(obj.getX(), obj.getY());
-            obj.setX(wrappedPos.x);
-            obj.setY(wrappedPos.y);
+            switch (serverObject.type) {
+                case 'player_ship':
+                    // Create or update player ships (including other players)
+                    clientObject = new Ship(serverObject.x, serverObject.y, serverObject.angle, serverObject.speed);
+                    // Store server ID in a custom property for identification
+                    (clientObject as SpaceObject & { serverId: number }).serverId = serverObject.id;
+                    break;
+                    
+                case 'asteroid': {
+                    clientObject = new Asteroid(serverObject.x, serverObject.y, serverObject.angle, serverObject.speed);
+                    (clientObject as SpaceObject & { serverId: number }).serverId = serverObject.id;
+                    break;
+                }
+                    
+                case 'shipwreck': {
+                    const shipwreckData = serverObject as import('../../shared/src/types/gameTypes').Shipwreck;
+                    clientObject = new Shipwreck(serverObject.x, serverObject.y, serverObject.angle, serverObject.speed, shipwreckData.value);
+                    (clientObject as SpaceObject & { serverId: number }).serverId = serverObject.id;
+                    break;
+                }
+                    
+                case 'escape_pod': {
+                    const podData = serverObject as import('../../shared/src/types/gameTypes').EscapePod;
+                    clientObject = new EscapePod(serverObject.x, serverObject.y, serverObject.angle, serverObject.speed, podData.value, podData.survivors);
+                    (clientObject as SpaceObject & { serverId: number }).serverId = serverObject.id;
+                    break;
+                }
+                    
+                default:
+                    console.warn('Unknown object type:', serverObject.type);
+                    return;
+            }
+            
+            // TODO: Add way to track server IDs if needed for updates
+            
+            this.spaceObjects.push(clientObject);
         });
         
-        // Check for collisions with collectibles
-        this.checkCollectibleCollisions();
-        
-        // Update interception data if it exists
-        if (this.interceptionData) {
-            // Calculate time elapsed since interception was calculated
-            const timeElapsed = (performance.now() - this.interceptionData.timestamp) / 1000;
-            const timeRemaining = this.interceptionData.interceptTime - timeElapsed;
+        // Update player ship reference - find the ship that matches playerShipId
+        if (playerShipId) {
+            const playerShips = this.spaceObjects.filter(obj => 
+                obj instanceof Ship && (obj as Ship & { serverId: number }).serverId === playerShipId
+            ) as Ship[];
             
-            // If the interception time has passed, clear the data
-            if (timeRemaining <= 0) {
-                this.interceptionData = null;
+            if (playerShips.length > 0) {
+                this.player = new Player(playerShips[0]);
+                // console.log('🎯 Player ship identified:', { serverId: playerShipId, ship: playerShips[0] });
+            } else {
+                console.warn('⚠️  Player ship not found in world data:', { playerShipId, ships: this.spaceObjects.filter(obj => obj instanceof Ship) });
+            }
+        } else {
+            // Fallback: use first ship found if no playerShipId provided
+            const playerShips = this.spaceObjects.filter(obj => obj instanceof Ship);
+            if (playerShips.length > 0) {
+                this.player = new Player(playerShips[0] as Ship);
+                // console.log('🎯 Using first ship as player (no shipId provided)');
             }
         }
     }
@@ -319,8 +348,13 @@ export class World {
 
     /**
      * Check for collisions between the ship and any collectibles
+     * NOTE: Disabled - collections now handled by server
      */
+    // @ts-expect-error - Disabled method, kept for reference
     private checkCollectibleCollisions(): void {
+        // DISABLED: Server now handles all collections via /api/collect endpoint
+        return;
+        /*
         const ship = this.getShip();
         
         const collectionRadius = 30; // Radius for collecting objects (larger than hover radius)
@@ -356,11 +390,13 @@ export class World {
         if (hasCollectedObject) {
             this.spawnRandomObject();
         }
+        */
     }
 
     /**
      * Calculate minimum distance between two points in a wrapped world
      */
+    // @ts-expect-error - Disabled method, kept for reference
     private getMinDistanceInWrappedWorld(x1: number, y1: number, x2: number, y2: number): number {
         // Check all 9 possible positions (wrapping around edges)
         const worldWidth = World.WIDTH;
@@ -387,14 +423,20 @@ export class World {
 
     /**
      * Remove all collected objects from the world
+     * NOTE: Disabled - collections now handled by server
      */
+    // @ts-expect-error - Disabled method, kept for reference
     private removeCollectedObjects(): void {
+        // DISABLED: Server handles object removal
+        return;
+        /*
         this.spaceObjects = this.spaceObjects.filter(obj => {
             if (obj instanceof Collectible) {
                 return !obj.isCollectedState();
             }
             return true;
         });
+        */
     }
 
     /**
@@ -412,8 +454,13 @@ export class World {
 
     /**
      * Spawn a random object at a random position in the world
+     * NOTE: Disabled - spawning now handled by server
      */
+    // @ts-expect-error - Disabled method, kept for reference
     private spawnRandomObject(): void {
+        // DISABLED: Server handles all object spawning
+        return;
+        /*
         // Get a random position that's not too close to the ship
         const position = this.getRandomSpawnPosition();
         
@@ -443,46 +490,38 @@ export class World {
                 ));
                 break;
             case 1: { // Shipwreck
-                // Random salvage type
-                const salvageTypes = [
-                    SalvageType.FUEL,
-                    SalvageType.WEAPONS,
-                    SalvageType.TECH,
-                    SalvageType.GENERIC
-                ];
-                const randomSalvageType = salvageTypes[Math.floor(Math.random() * salvageTypes.length)];
-                
                 this.addSpaceObject(new Shipwreck(
                     position.x,
                     position.y,
                     randomAngle,
                     randomSpeed / 2, // Slower speed for shipwrecks
-                    randomValue,
-                    randomSalvageType
+                    randomValue
                 ));
                 break;
             }
             case 2: { // Escape Pod
-                // Random number of survivors (1-3)
-                const survivors = Math.floor(1 + Math.random() * 3);
-                
                 this.addSpaceObject(new EscapePod(
                     position.x,
                     position.y,
                     randomAngle,
                     randomSpeed,
-                    randomValue,
-                    survivors
+                    randomValue
                 ));
                 break;
             }
         }
+        */
     }
     
     /**
      * Get a random position that's not too close to the ship
+     * NOTE: Disabled - spawning now handled by server
      */
+    // @ts-expect-error - Disabled method, kept for reference
     private getRandomSpawnPosition(): { x: number, y: number } {
+        // DISABLED: Server handles all spawning
+        return { x: 0, y: 0 };
+        /*
         const ship = this.getShip();
         const shipX = ship.getX();
         const shipY = ship.getY();
@@ -503,5 +542,6 @@ export class World {
         } while (distance < minDistance);
         
         return { x, y };
+        */
     }
 } 

@@ -1,6 +1,7 @@
 import { Ship } from '../Ship';
 import { SpaceObject } from '../SpaceObject';
-import { ShipRenderer } from './ShipRenderer';
+import { PlayerShipRenderer } from './PlayerShipRenderer';
+import { OtherShipRenderer } from './OtherShipRenderer';
 import { RadarRenderer } from './RadarRenderer';
 import { TooltipRenderer } from './TooltipRenderer';
 import { World } from '../World';
@@ -11,7 +12,8 @@ export class GameRenderer {
     private ctx: CanvasRenderingContext2D;
     private canvas: HTMLCanvasElement;
     private world: World;
-    private shipRenderer: ShipRenderer;
+    private playerShipRenderer: PlayerShipRenderer;
+    private otherShipRenderer: OtherShipRenderer;
     private radarRenderer: RadarRenderer;
     private tooltipRenderer: TooltipRenderer;
     private collectiblesRenderer: CollectiblesRenderer;
@@ -20,31 +22,32 @@ export class GameRenderer {
         this.ctx = ctx;
         this.canvas = canvas;
         this.world = world;
-        this.shipRenderer = new ShipRenderer();
+        this.playerShipRenderer = new PlayerShipRenderer();
+        this.otherShipRenderer = new OtherShipRenderer();
         this.radarRenderer = new RadarRenderer();
         this.tooltipRenderer = new TooltipRenderer(canvas);
         this.collectiblesRenderer = new CollectiblesRenderer(ctx, canvas);
     }
 
     drawBackground(): void {
-        // Clear the canvas
-        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-
-        // Draw a space background (black)
+        // Fill background with black
         this.ctx.fillStyle = '#000000';
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-        
-        // Draw grid and world boundaries
+    }
+
+    drawBackgroundElements(): void {
+        // Draw grid
         this.drawGrid();
+        
+        // Draw world boundaries
         this.drawWorldBoundaries();
     }
 
     private drawGrid(): void {
-        // Draw world boundary grid lines (subtle)
+        const gridSize = 50;
         this.ctx.strokeStyle = '#1a1a1a';
         this.ctx.lineWidth = 1;
         
-        const gridSize = 100; // Grid size in world units
         const shipX = this.world.getShip().getX();
         const shipY = this.world.getShip().getY();
         
@@ -77,24 +80,44 @@ export class GameRenderer {
     
     // Draw the world boundaries with a green color
     private drawWorldBoundaries(): void {
-        const shipX = this.world.getShip().getX();
-        const shipY = this.world.getShip().getY();
-        const centerX = this.canvas.width / 2;
-        const centerY = this.canvas.height / 2;
+        const ship = this.world.getShip();
+        const shipX = ship.getX();
+        const shipY = ship.getY();
         const worldWidth = this.world.getWidth();
         const worldHeight = this.world.getHeight();
         
         // Calculate the screen coordinates of the world boundaries
-        const leftEdgeX = centerX - shipX;
-        const topEdgeY = centerY - shipY;
+        const leftBoundaryX = this.canvas.width / 2 - shipX;
+        const rightBoundaryX = this.canvas.width / 2 + (worldWidth - shipX);
+        const topBoundaryY = this.canvas.height / 2 - shipY;
+        const bottomBoundaryY = this.canvas.height / 2 + (worldHeight - shipY);
         
         // Draw the world boundaries with a more visible style
         this.ctx.strokeStyle = '#214923ff'; // Green color for boundaries
-        this.ctx.lineWidth = 2;
+        this.ctx.lineWidth = 3;
         
-        // Draw the boundary rectangle
+        // Draw left boundary
         this.ctx.beginPath();
-        this.ctx.rect(leftEdgeX, topEdgeY, worldWidth, worldHeight);
+        this.ctx.moveTo(leftBoundaryX, 0);
+        this.ctx.lineTo(leftBoundaryX, this.canvas.height);
+        this.ctx.stroke();
+        
+        // Draw right boundary
+        this.ctx.beginPath();
+        this.ctx.moveTo(rightBoundaryX, 0);
+        this.ctx.lineTo(rightBoundaryX, this.canvas.height);
+        this.ctx.stroke();
+        
+        // Draw top boundary
+        this.ctx.beginPath();
+        this.ctx.moveTo(0, topBoundaryY);
+        this.ctx.lineTo(this.canvas.width, topBoundaryY);
+        this.ctx.stroke();
+        
+        // Draw bottom boundary
+        this.ctx.beginPath();
+        this.ctx.moveTo(0, bottomBoundaryY);
+        this.ctx.lineTo(this.canvas.width, bottomBoundaryY);
         this.ctx.stroke();
     }
 
@@ -112,25 +135,39 @@ export class GameRenderer {
     }
 
     drawWorld(ship: Ship): void {
-        // Clear the canvas
-        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-        
-        // Draw the background
+        // Clear the canvas and draw space background
         this.drawBackground();
         
-        // Get collectibles
+        // Set up circular clipping for all game content
+        const centerX = this.canvas.width / 2;
+        const centerY = this.canvas.height / 2;
+        const maxRadius = Math.min(centerX, centerY);
+        
+        // Save context state
+        this.ctx.save();
+        
+        // Create circular clipping path
+        this.ctx.beginPath();
+        this.ctx.arc(centerX, centerY, maxRadius, 0, Math.PI * 2);
+        this.ctx.clip();
+        
+        // Draw background elements (grid and world boundaries) inside the clipped area
+        this.drawBackgroundElements();
+        
+        // Get collectibles and ships
         const objects = this.world.getSpaceObjects();
         const collectibles = objects.filter(obj => obj instanceof Collectible) as Collectible[];
+        const ships = objects.filter(obj => obj instanceof Ship) as Ship[];
         
-        // Draw radar centered around the ship
+        // Draw radar centered around the player ship (now clipped to circle)
         this.radarRenderer.drawRadar(
             this.ctx,
-            this.canvas.width / 2,
-            this.canvas.height / 2,
+            centerX,
+            centerY,
             ship
         );
         
-        // Draw collectibles using the collectibles renderer
+        // Draw collectibles using the collectibles renderer (now clipped to circle)
         this.collectiblesRenderer.drawCollectibles(
             ship, 
             collectibles, 
@@ -138,18 +175,43 @@ export class GameRenderer {
             this.world.getHeight()
         );
         
-        // Draw ship
-        this.shipRenderer.drawShip(
+        // Draw player's ship in the center
+        this.playerShipRenderer.drawPlayerShip(
             this.ctx,
-            this.canvas.width / 2,
-            this.canvas.height / 2,
+            centerX,
+            centerY,
             ship
         );
         
-        // Draw tooltip for all objects
+        // Draw other ships at their relative positions
+        ships.forEach(otherShip => {
+            // Skip the player's own ship (compare by serverId if available, otherwise by reference)
+            const playerServerId = (ship as Ship & { serverId?: number }).serverId;
+            const otherServerId = (otherShip as Ship & { serverId?: number }).serverId;
+            
+            if (playerServerId && otherServerId && playerServerId === otherServerId) return;
+            if (!playerServerId && otherShip === ship) return; // Fallback to reference comparison
+            
+            console.log(`🚢 Drawing other ship - player ID: ${playerServerId}, other ID: ${otherServerId}`);
+            
+            // Use the OtherShipRenderer which handles positioning like collectibles
+            this.otherShipRenderer.drawOtherShip(
+                this.ctx,
+                centerX,
+                centerY,
+                ship.getX(), // viewport center X (player ship position)
+                ship.getY(), // viewport center Y (player ship position)
+                otherShip as SpaceObject // Cast to SpaceObject for compatibility
+            );
+        });
+        
+        // Restore context state (removes clipping)
+        this.ctx.restore();
+        
+        // Draw tooltip for all objects (outside the clipped area, so they can extend beyond)
         this.tooltipRenderer.drawTooltip(
             this.world.getSpaceObjects(),
             ship
         );
     }
-} 
+}

@@ -57,14 +57,54 @@ export function getUserByUsername(db: sqlite3.Database, username: string, saveCa
 }
 
 export function createUser(db: sqlite3.Database, username: string, password_hash: string, saveCallback: SaveUserCallback): Promise<User> {
+  return createUserWithShip(db, username, password_hash, saveCallback, true);
+}
+
+export function createUserWithoutShip(db: sqlite3.Database, username: string, password_hash: string, saveCallback: SaveUserCallback): Promise<User> {
+  return createUserWithShip(db, username, password_hash, saveCallback, false);
+}
+
+function createUserWithShip(db: sqlite3.Database, username: string, password_hash: string, saveCallback: SaveUserCallback, createShip: boolean): Promise<User> {
   return new Promise((resolve, reject) => {
     const now = Math.floor(Date.now() / 1000);
     const techTree = createInitialTechTree();
-    db.run('INSERT INTO users (username, password_hash, iron, last_updated, tech_tree) VALUES (?, ?, ?, ?, ?)', [username, password_hash, 0.0, now, JSON.stringify(techTree)], function (err) {
-      if (err) return reject(err);
-      const id = this.lastID;
-      resolve(new User(id, username, password_hash, 0.0, now, techTree, saveCallback));
-    });
+    
+    if (createShip) {
+      // Create user with ship (production behavior)
+      const nowMs = Date.now();
+      
+      // First create a player ship
+      db.run('INSERT INTO space_objects (type, x, y, speed, angle, last_position_update_ms) VALUES (?, ?, ?, ?, ?, ?)', 
+        ['player_ship', 250, 250, 0, 0, nowMs], // Start at center of 500x500 world
+        function (shipErr) {
+          if (shipErr) return reject(shipErr);
+          
+          const shipId = this.lastID;
+          
+          // Then create the user with the ship_id
+          db.run('INSERT INTO users (username, password_hash, iron, last_updated, tech_tree, ship_id) VALUES (?, ?, ?, ?, ?, ?)', 
+            [username, password_hash, 0.0, now, JSON.stringify(techTree), shipId], 
+            function (userErr) {
+              if (userErr) return reject(userErr);
+              
+              const userId = this.lastID;
+              console.log(`✅ Created user ${username} (ID: ${userId}) with ship ID ${shipId}`);
+              resolve(new User(userId, username, password_hash, 0.0, now, techTree, saveCallback, shipId));
+            }
+          );
+        }
+      );
+    } else {
+      // Create user without ship (for testing)
+      db.run('INSERT INTO users (username, password_hash, iron, last_updated, tech_tree) VALUES (?, ?, ?, ?, ?)', 
+        [username, password_hash, 0.0, now, JSON.stringify(techTree)], 
+        function (err) {
+          if (err) return reject(err);
+          const id = this.lastID;
+          resolve(new User(id, username, password_hash, 0.0, now, techTree, saveCallback));
+        }
+      );
+    }
   });
 }
 

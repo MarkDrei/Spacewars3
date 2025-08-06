@@ -6,8 +6,8 @@ export interface PhysicsObject {
   x: number;
   y: number;
   speed: number;
-  angle: number;
-  last_position_update: number;
+  angle: number; // Always in degrees (0-360)
+  last_position_update_ms: number;
 }
 
 export interface WorldBounds {
@@ -22,18 +22,22 @@ export interface WorldBounds {
 export function updateObjectPosition(
   obj: PhysicsObject,
   currentTime: number,
-  worldBounds: WorldBounds
+  worldBounds: WorldBounds,
+  factor: number = 50
 ): { x: number; y: number } {
-  const elapsedMs = currentTime - obj.last_position_update;
+  const elapsedMs = currentTime - obj.last_position_update_ms;
   
-  // Calculate new position based on speed and angle (speed is in units per second)
-  const speedX = obj.speed * Math.cos(obj.angle * Math.PI / 180);
-  const speedY = obj.speed * Math.sin(obj.angle * Math.PI / 180);
+  // Calculate new position based on speed and angle
+  // Speed is in units per minute, angle is in degrees
+  const angleRadians = obj.angle * Math.PI / 180; // Convert degrees to radians for math functions
+  const speedX = obj.speed * Math.cos(angleRadians);
+  const speedY = obj.speed * Math.sin(angleRadians);
   
-  // Convert to milliseconds for smoother updates (divide by 1000 to get per-ms speed)
-  let newX = obj.x + (speedX * elapsedMs / 1000);
-  let newY = obj.y + (speedY * elapsedMs / 1000);
-  
+  // Convert from units/minute to units/ms: divide by 60 (seconds/minute) * 1000 (ms/second) = 60000
+  // Add a factor to adjust speed for testing (try 10-100 for reasonable speeds)
+  let newX = obj.x + ((speedX * elapsedMs / 60000) * factor);
+  let newY = obj.y + ((speedY * elapsedMs / 60000) * factor);
+
   // Toroidal world wrapping
   newX = ((newX % worldBounds.width) + worldBounds.width) % worldBounds.width;
   newY = ((newY % worldBounds.height) + worldBounds.height) % worldBounds.height;
@@ -47,15 +51,16 @@ export function updateObjectPosition(
 export function updateAllObjectPositions<T extends PhysicsObject>(
   objects: T[],
   currentTime: number,
-  worldBounds: WorldBounds
+  worldBounds: WorldBounds,
+  factor?: number
 ): T[] {
   return objects.map(obj => {
-    const newPosition = updateObjectPosition(obj, currentTime, worldBounds);
+    const newPosition = updateObjectPosition(obj, currentTime, worldBounds, factor);
     return {
       ...obj,
       x: newPosition.x,
       y: newPosition.y,
-      last_position_update: currentTime
+      last_position_update_ms: currentTime
     };
   });
 }

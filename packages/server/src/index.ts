@@ -1,6 +1,6 @@
 // Entry point for the server package
 import { createApp } from './createApp';
-import { CREATE_TABLES } from './schema';
+import { CREATE_TABLES, MIGRATE_POSITION_TIMESTAMP } from './schema';
 import { seedDatabase } from './seedData';
 import sqlite3 from 'sqlite3';
 import path from 'path';
@@ -43,6 +43,16 @@ const db = new (sqlite3.verbose().Database)(DB_PATH, (err: Error | null) => {
           console.log(`✅ Table ${index + 1} created successfully`);
         }
       });
+    });
+    
+    // Apply migration for timestamp field rename (ignore error if column already renamed)
+    db.run(MIGRATE_POSITION_TIMESTAMP, (err) => {
+      if (err) {
+        // Expected error if column already renamed or doesn't exist
+        console.log('📝 Migration already applied or not needed');
+      } else {
+        console.log('✅ Migration applied: timestamp field renamed');
+      }
     });
     
     // Seed default users after tables are created

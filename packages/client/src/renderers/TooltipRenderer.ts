@@ -1,7 +1,7 @@
 import { Ship } from '../Ship';
 import { SpaceObject } from '../SpaceObject';
 import { Collectible } from '../Collectible';
-import { Shipwreck, SalvageType } from '../Shipwreck';
+import { Shipwreck } from '../Shipwreck';
 import { EscapePod } from '../EscapePod';
 
 export class TooltipRenderer {
@@ -81,7 +81,7 @@ export class TooltipRenderer {
     private getTooltipTextForObject(object: SpaceObject, ship: Ship): string[] {
         // Calculate common properties
         const distance = this.calculateDistanceToShip(object, ship);
-        const angleDegrees = Math.round((object.getAngle() * 180 / Math.PI + 360) % 360);
+        const angleDegrees = Math.round(object.getAngleDegrees()); // Already in degrees, no conversion needed
         
         // Check object type and create appropriate tooltip
         if (object === ship) {
@@ -114,13 +114,6 @@ export class TooltipRenderer {
             `Distance: ${Math.round(distance)}`
         ];
         
-        // Add specific details based on collectible type
-        if (collectible instanceof Shipwreck) {
-            baseTooltip.splice(2, 0, `Salvage: ${this.getReadableSalvageType(collectible.getSalvageType())}`);
-        } else if (collectible instanceof EscapePod) {
-            baseTooltip.splice(2, 0, `Survivors: ${collectible.getSurvivors()}`);
-        }
-        
         return baseTooltip;
     }
     
@@ -140,17 +133,4 @@ export class TooltipRenderer {
     /**
      * Convert salvage type to readable text
      */
-    private getReadableSalvageType(type: SalvageType): string {
-        switch (type) {
-            case SalvageType.FUEL:
-                return 'Fuel';
-            case SalvageType.WEAPONS:
-                return 'Weapons';
-            case SalvageType.TECH:
-                return 'Technology';
-            case SalvageType.GENERIC:
-            default:
-                return 'Generic';
-        }
-    }
 } 

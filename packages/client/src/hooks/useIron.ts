@@ -49,13 +49,13 @@ export const useIron = (isLoggedIn: boolean, pollInterval: number = 5000): UseIr
       setDisplayIronAmount(Math.floor(result.iron)); // Ensure integer display
       setIsLoading(false);
       
-    //   // Debug: Log what we received from the server
-      console.log('📊 Server response:', {
-        iron: result.iron,
-        ironPerSecond: result.ironPerSecond,
-        receivedAt: Date.now(),
-        timestamp: new Date().toISOString()
-      });
+      // // Debug: Log what we received from the server
+      // console.log('📊 Server response:', {
+      //   iron: result.iron,
+      //   ironPerSecond: result.ironPerSecond,
+      //   receivedAt: Date.now(),
+      //   timestamp: new Date().toISOString()
+      // });
     } catch {
       if (isMountedRef.current) {
         // If it's initial load and we haven't retried much, retry

@@ -21,10 +21,10 @@ describe('Physics Calculations', () => {
         y: 200,
         speed: 0,
         angle: 0,
-        last_position_update: 1000
+        last_position_update_ms: 1000
       };
       
-      const result = updateObjectPosition(obj, 2000, WORLD_BOUNDS);
+      const result = updateObjectPosition(obj, 2000, WORLD_BOUNDS, 50);
       
       expect(result.x).toBe(100);
       expect(result.y).toBe(200);
@@ -34,14 +34,14 @@ describe('Physics Calculations', () => {
       const obj: PhysicsObject = {
         x: 100,
         y: 200,
-        speed: 10, // 10 units per second
+        speed: 10, // 10 units per minute
         angle: 0, // moving right
-        last_position_update: 1000
+        last_position_update_ms: 1000
       };
       
-      const result = updateObjectPosition(obj, 2000, WORLD_BOUNDS); // 1 second elapsed
+      const result = updateObjectPosition(obj, 2000, WORLD_BOUNDS, 50); // 1 second elapsed
       
-      expect(result.x).toBe(110); // 100 + (10 * 1 second)
+      expect(result.x).toBeCloseTo(108.333, 3); // 100 + (10 * 1000ms / 60000 * 50)
       expect(result.y).toBe(200); // unchanged
     });
     
@@ -49,47 +49,51 @@ describe('Physics Calculations', () => {
       const obj: PhysicsObject = {
         x: 100,
         y: 200,
-        speed: 20,
+        speed: 20, // 20 units per minute
         angle: 90, // moving up
-        last_position_update: 1000
+        last_position_update_ms: 1000
       };
       
-      const result = updateObjectPosition(obj, 1500, WORLD_BOUNDS); // 0.5 seconds elapsed
+      const result = updateObjectPosition(obj, 1500, WORLD_BOUNDS, 50); // 0.5 seconds elapsed
       
       expect(result.x).toBeCloseTo(100, 5); // should be unchanged
-      expect(result.y).toBeCloseTo(210, 5); // 200 + (20 * 0.5 seconds)
+      expect(result.y).toBeCloseTo(208.333, 3); // 200 + (20 * 500ms / 60000 * 50)
     });
     
     it('updateObjectPosition_diagonalMovement_bothCoordinatesChange', () => {
       const obj: PhysicsObject = {
         x: 100,
         y: 200,
-        speed: 10,
+        speed: 10, // 10 units per minute
         angle: 45, // 45 degrees
-        last_position_update: 1000
+        last_position_update_ms: 1000
       };
       
-      const result = updateObjectPosition(obj, 2000, WORLD_BOUNDS); // 1 second elapsed
+      const result = updateObjectPosition(obj, 2000, WORLD_BOUNDS, 50); // 1 second elapsed
       
+      // Total movement: (10 * 1000ms / 60000 * 50) = 8.333...
       // At 45 degrees, speed is split equally between x and y
-      const expectedMovement = 10 * Math.cos(45 * Math.PI / 180); // ~7.07
-      expect(result.x).toBeCloseTo(100 + expectedMovement, 2);
-      expect(result.y).toBeCloseTo(200 + expectedMovement, 2);
+      const totalMovement = (10 * 1000 / 60000) * 50;
+      const expectedMovementX = totalMovement * Math.cos(45 * Math.PI / 180);
+      const expectedMovementY = totalMovement * Math.sin(45 * Math.PI / 180);
+      expect(result.x).toBeCloseTo(100 + expectedMovementX, 2);
+      expect(result.y).toBeCloseTo(200 + expectedMovementY, 2);
     });
     
     it('updateObjectPosition_crossesRightBoundary_wrapsToLeft', () => {
       const obj: PhysicsObject = {
         x: 490,
         y: 200,
-        speed: 20,
+        speed: 20, // 20 units per minute
         angle: 0, // moving right
-        last_position_update: 1000
+        last_position_update_ms: 1000
       };
       
-      const result = updateObjectPosition(obj, 2000, WORLD_BOUNDS); // 1 second elapsed
+      const result = updateObjectPosition(obj, 2000, WORLD_BOUNDS, 50); // 1 second elapsed
       
-      // 490 + 20 = 510, which should wrap to 10 (510 % 500 = 10)
-      expect(result.x).toBe(10);
+      // Movement: (20 * 1000ms / 60000 * 50) = 16.667
+      // 490 + 16.667 = 506.667, which wraps to 6.667 (506.667 % 500)
+      expect(result.x).toBeCloseTo(6.667, 3);
       expect(result.y).toBe(200);
     });
     
@@ -97,31 +101,33 @@ describe('Physics Calculations', () => {
       const obj: PhysicsObject = {
         x: 200,
         y: 490,
-        speed: 20,
+        speed: 20, // 20 units per minute
         angle: 90, // moving up (positive y)
-        last_position_update: 1000
+        last_position_update_ms: 1000
       };
       
-      const result = updateObjectPosition(obj, 2000, WORLD_BOUNDS); // 1 second elapsed
+      const result = updateObjectPosition(obj, 2000, WORLD_BOUNDS, 50); // 1 second elapsed
       
-      // 490 + 20 = 510, which should wrap to 10
+      // Movement: (20 * 1000ms / 60000 * 50) = 16.667
+      // 490 + 16.667 = 506.667, which wraps to 6.667
       expect(result.x).toBeCloseTo(200, 5);
-      expect(result.y).toBeCloseTo(10, 5);
+      expect(result.y).toBeCloseTo(6.667, 3);
     });
     
     it('updateObjectPosition_negativeCoordinates_wrapsCorrectly', () => {
       const obj: PhysicsObject = {
         x: 10,
         y: 10,
-        speed: 20,
+        speed: 20, // 20 units per minute
         angle: 180, // moving left (negative x)
-        last_position_update: 1000
+        last_position_update_ms: 1000
       };
       
-      const result = updateObjectPosition(obj, 2000, WORLD_BOUNDS); // 1 second elapsed
+      const result = updateObjectPosition(obj, 2000, WORLD_BOUNDS, 50); // 1 second elapsed
       
-      // 10 - 20 = -10, which should wrap to 490 (500 - 10)
-      expect(result.x).toBeCloseTo(490, 5);
+      // Movement: (20 * 1000ms / 60000 * 50) * cos(180°) = 16.667 * (-1) = -16.667
+      // 10 + (-16.667) = -6.667, which wraps to 493.333
+      expect(result.x).toBeCloseTo(493.333, 3);
       expect(result.y).toBeCloseTo(10, 5);
     });
     
@@ -129,15 +135,15 @@ describe('Physics Calculations', () => {
       const obj: PhysicsObject = {
         x: 100,
         y: 200,
-        speed: 100, // 100 units per second
+        speed: 100, // 100 units per minute
         angle: 0,
-        last_position_update: 1000
+        last_position_update_ms: 1000
       };
       
-      const result = updateObjectPosition(obj, 1100, WORLD_BOUNDS); // 100ms elapsed
+      const result = updateObjectPosition(obj, 1100, WORLD_BOUNDS, 50); // 100ms elapsed
       
-      // 100ms = 0.1 seconds, so movement should be 100 * 0.1 = 10 units
-      expect(result.x).toBe(110);
+      // Movement: (100 * 100ms / 60000 * 50) = 8.333...
+      expect(result.x).toBeCloseTo(108.333, 3);
       expect(result.y).toBe(200);
     });
   });
@@ -145,26 +151,26 @@ describe('Physics Calculations', () => {
   describe('updateAllObjectPositions', () => {
     it('updateAllObjectPositions_multipleObjects_allUpdated', () => {
       const objects: PhysicsObject[] = [
-        { x: 100, y: 200, speed: 10, angle: 0, last_position_update: 1000 },
-        { x: 300, y: 400, speed: 20, angle: 90, last_position_update: 1000 }
+        { x: 100, y: 200, speed: 10, angle: 0, last_position_update_ms: 1000 },
+        { x: 300, y: 400, speed: 20, angle: 90, last_position_update_ms: 1000 }
       ];
       
-      const results = updateAllObjectPositions(objects, 2000, WORLD_BOUNDS);
+      const results = updateAllObjectPositions(objects, 2000, WORLD_BOUNDS, 50);
       
       expect(results).toHaveLength(2);
-      expect(results[0].x).toBe(110);
+      expect(results[0].x).toBeCloseTo(108.333, 3);
       expect(results[0].y).toBe(200);
-      expect(results[0].last_position_update).toBe(2000);
+      expect(results[0].last_position_update_ms).toBe(2000);
       
       expect(results[1].x).toBeCloseTo(300, 5);
-      expect(results[1].y).toBeCloseTo(420, 5);
-      expect(results[1].last_position_update).toBe(2000);
+      expect(results[1].y).toBeCloseTo(416.667, 3); // 400 + (20 * 1000ms / 60000 * 50)
+      expect(results[1].last_position_update_ms).toBe(2000);
     });
     
     it('updateAllObjectPositions_emptyArray_returnsEmpty', () => {
       const objects: PhysicsObject[] = [];
       
-      const results = updateAllObjectPositions(objects, 2000, WORLD_BOUNDS);
+      const results = updateAllObjectPositions(objects, 2000, WORLD_BOUNDS, 50);
       
       expect(results).toHaveLength(0);
     });
@@ -176,14 +182,14 @@ describe('Physics Calculations', () => {
       }
       
       const objects: TestObject[] = [
-        { id: 1, type: 'ship', x: 100, y: 200, speed: 10, angle: 0, last_position_update: 1000 }
+        { id: 1, type: 'ship', x: 100, y: 200, speed: 10, angle: 0, last_position_update_ms: 1000 }
       ];
       
-      const results = updateAllObjectPositions(objects, 2000, WORLD_BOUNDS);
+      const results = updateAllObjectPositions(objects, 2000, WORLD_BOUNDS, 50);
       
       expect(results[0].id).toBe(1);
       expect(results[0].type).toBe('ship');
-      expect(results[0].x).toBe(110);
+      expect(results[0].x).toBeCloseTo(108.333, 3);
     });
   });
   
@@ -258,8 +264,8 @@ describe('Physics Calculations', () => {
   
   describe('isColliding', () => {
     it('isColliding_objectsOverlap_returnsTrue', () => {
-      const obj1 = { x: 100, y: 200, speed: 0, angle: 0, last_position_update: 1000, radius: 10 };
-      const obj2 = { x: 105, y: 200, speed: 0, angle: 0, last_position_update: 1000, radius: 10 };
+      const obj1 = { x: 100, y: 200, speed: 0, angle: 0, last_position_update_ms: 1000, radius: 10 };
+      const obj2 = { x: 105, y: 200, speed: 0, angle: 0, last_position_update_ms: 1000, radius: 10 };
       
       const colliding = isColliding(obj1, obj2, WORLD_BOUNDS);
       
@@ -268,8 +274,8 @@ describe('Physics Calculations', () => {
     });
     
     it('isColliding_objectsSeparate_returnsFalse', () => {
-      const obj1 = { x: 100, y: 200, speed: 0, angle: 0, last_position_update: 1000, radius: 10 };
-      const obj2 = { x: 150, y: 200, speed: 0, angle: 0, last_position_update: 1000, radius: 10 };
+      const obj1 = { x: 100, y: 200, speed: 0, angle: 0, last_position_update_ms: 1000, radius: 10 };
+      const obj2 = { x: 150, y: 200, speed: 0, angle: 0, last_position_update_ms: 1000, radius: 10 };
       
       const colliding = isColliding(obj1, obj2, WORLD_BOUNDS);
       
@@ -278,8 +284,8 @@ describe('Physics Calculations', () => {
     });
     
     it('isColliding_objectsTouching_returnsTrue', () => {
-      const obj1 = { x: 100, y: 200, speed: 0, angle: 0, last_position_update: 1000, radius: 10 };
-      const obj2 = { x: 120, y: 200, speed: 0, angle: 0, last_position_update: 1000, radius: 10 };
+      const obj1 = { x: 100, y: 200, speed: 0, angle: 0, last_position_update_ms: 1000, radius: 10 };
+      const obj2 = { x: 120, y: 200, speed: 0, angle: 0, last_position_update_ms: 1000, radius: 10 };
       
       const colliding = isColliding(obj1, obj2, WORLD_BOUNDS);
       
@@ -288,8 +294,8 @@ describe('Physics Calculations', () => {
     });
     
     it('isColliding_noRadiusSpecified_usesDefault', () => {
-      const obj1 = { x: 100, y: 200, speed: 0, angle: 0, last_position_update: 1000 };
-      const obj2 = { x: 115, y: 200, speed: 0, angle: 0, last_position_update: 1000 };
+      const obj1 = { x: 100, y: 200, speed: 0, angle: 0, last_position_update_ms: 1000 };
+      const obj2 = { x: 115, y: 200, speed: 0, angle: 0, last_position_update_ms: 1000 };
       
       const colliding = isColliding(obj1, obj2, WORLD_BOUNDS);
       
@@ -298,8 +304,8 @@ describe('Physics Calculations', () => {
     });
     
     it('isColliding_acrossToroidalBoundary_detectsCollision', () => {
-      const obj1 = { x: 5, y: 200, speed: 0, angle: 0, last_position_update: 1000, radius: 10 };
-      const obj2 = { x: 495, y: 200, speed: 0, angle: 0, last_position_update: 1000, radius: 10 };
+      const obj1 = { x: 5, y: 200, speed: 0, angle: 0, last_position_update_ms: 1000, radius: 10 };
+      const obj2 = { x: 495, y: 200, speed: 0, angle: 0, last_position_update_ms: 1000, radius: 10 };
       
       const colliding = isColliding(obj1, obj2, WORLD_BOUNDS);
       

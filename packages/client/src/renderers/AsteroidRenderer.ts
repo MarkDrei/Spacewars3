@@ -1,42 +1,59 @@
 import { SpaceObject } from '../SpaceObject';
-import { Collectible } from '../Collectible';
-import { CollectibleRenderer } from './CollectibleRenderer';
+import { SpaceObjectRenderer } from './SpaceObjectRenderer';
 
-export class AsteroidRenderer extends CollectibleRenderer {
+export class AsteroidRenderer extends SpaceObjectRenderer {
     private asteroidImage: HTMLImageElement;
 
     constructor() {
         super();
         this.asteroidImage = new Image();
-        // Updated path to the asteroid image
         this.asteroidImage.src = 'resources/ai_gen/asteroid1.png';
     }
 
     drawAsteroid(ctx: CanvasRenderingContext2D, centerX: number, centerY: number, shipX: number, shipY: number, asteroid: SpaceObject): void {
         // Use the base class method to handle common drawing functionality
-        this.drawCollectible(ctx, centerX, centerY, shipX, shipY, asteroid as Collectible);
+        this.drawSpaceObject(ctx, centerX, centerY, shipX, shipY, asteroid);
     }
 
     /**
-     * Implementation of the abstract method from CollectibleRenderer
+     * Get the asteroid image
      */
-    protected drawCollectibleShape(ctx: CanvasRenderingContext2D, collectible: Collectible): void {
-        this.drawDustTrail(ctx, collectible);
-        
-        if (this.asteroidImage.complete && this.asteroidImage.naturalHeight !== 0) {
-            const size = 45; // Size of the asteroid
-            ctx.drawImage(this.asteroidImage, -size / 2, -size / 2, size, size);
-        }
-        
+    protected getObjectImage(): HTMLImageElement | null {
+        return this.asteroidImage;
+    }
+    
+    /**
+     * Get the size to render the asteroid at
+     */
+    protected getObjectSize(): number {
+        return 45;
+    }
+    
+    /**
+     * Get the color for the fallback shape
+     */
+    protected getFallbackColor(): string {
+        return 'rgba(180, 180, 180, 0.8)';
     }
 
-    private drawDustTrail(ctx: CanvasRenderingContext2D, asteroid: Collectible): void {
-        if (asteroid.getSpeed() === 0) return;
+    /**
+     * Draw dust trail before the asteroid
+     */
+    protected override drawPreEffects(ctx: CanvasRenderingContext2D, spaceObject: SpaceObject): void {
+        this.drawDustTrail(ctx, spaceObject);
+    }
+
+    private drawDustTrail(ctx: CanvasRenderingContext2D, asteroid: SpaceObject): void {
+        const speed = asteroid.getSpeed ? asteroid.getSpeed() : 0;
+        if (speed === 0) return;
 
         const trailLength = 150;
         const particleCount = 35;
-        const asteroidAngle = asteroid.getAngle();
-        const trailDirection = asteroidAngle + Math.PI; // Opposite to the direction of movement
+        
+        // In the rotated coordinate system, after the base rotation and the +90° image adjustment,
+        // the asteroid front points in the +X direction (right)
+        // So the dust trail should point in the -X direction (left)
+        const trailDirection = Math.PI; // Point left in local coordinates (behind the asteroid)
 
         for (let i = 0; i < particleCount; i++) {
             const distanceFromAsteroid = (i / particleCount) * trailLength * (Math.random() * 0.5 + 0.5);

@@ -1,67 +1,34 @@
 import { Collectible } from './Collectible';
-import { Player } from './Player';
 
 /**
- * ShipWreck collectible - remains of a destroyed ship that can be salvaged.
- * Provides value points and potentially other benefits when collected.
+ * Shipwreck collectible - remains of a destroyed ship that can be salvaged.
+ * Provides value points when collected.
  */
 export class Shipwreck extends Collectible {
-    private readonly salvageType: SalvageType;
-    
     /**
-     * @param x - X coordinate
+     * @param x - X coordinate  
      * @param y - Y coordinate
-     * @param angle - Direction angle in radians
-     * @param speed - Movement speed (typically slow or stationary)
+     * @param angleDegrees - Direction angle in degrees (0-360)
+     * @param speed - Movement speed (typically slow)
      * @param value - Base value/points awarded when collected
-     * @param salvageType - Type of salvage in this wreck
      */
     constructor(
         x: number, 
         y: number, 
-        angle: number = 0, 
-        speed: number = 0, 
-        value: number = 10,
-        salvageType: SalvageType = SalvageType.GENERIC
+        angleDegrees: number = 0, 
+        speed: number = 2,
+        value: number = 10
     ) {
-        super(x, y, angle, speed, value);
-        this.salvageType = salvageType;
+        super(x, y, angleDegrees, speed, value);
     }
     
     /**
      * Implementation of abstract method from Collectible.
-     * Defines what happens when this ship wreck is collected.
-     * @param player - Reference to the player
+     * Defines what happens when this shipwreck is collected.
+     * @param _player - Reference to the player (unused for shipwrecks)
      */
-    onCollect(player: Player): void {
-        // Apply effects based on salvage type
-        switch (this.salvageType) {
-            case SalvageType.FUEL: {
-                // Example: Increase ship speed
-                const ship = player.getShip();
-                ship.setSpeed(ship.getSpeed() + 5);
-                break;
-            }
-                
-            case SalvageType.WEAPONS:
-                // Example effect: Could enhance weapons in future implementation
-                // This is a placeholder for future functionality
-                console.log("Weapons salvage collected");
-                break;
-                
-            case SalvageType.TECH:
-                // Example effect: Could provide tech upgrades in future implementation
-                // This is a placeholder for future functionality
-                console.log("Tech salvage collected");
-                break;
-                
-            case SalvageType.GENERIC:
-            default:
-                // Generic salvage just provides points, no special effects
-                break;
-        }
-        
-        // Mark as collected
+    onCollect(): void {
+        // Mark as collected - no special effects
         this.collect();
     }
     
@@ -71,21 +38,4 @@ export class Shipwreck extends Collectible {
     getType(): string {
         return 'shipwreck';
     }
-    
-    /**
-     * Get the salvage type for this wreck
-     */
-    getSalvageType(): SalvageType {
-        return this.salvageType;
-    }
 }
-
-/**
- * Types of salvage that can be found in a ship wreck
- */
-export enum SalvageType {
-    GENERIC = 'generic',
-    FUEL = 'fuel',
-    WEAPONS = 'weapons',
-    TECH = 'tech'
-} 

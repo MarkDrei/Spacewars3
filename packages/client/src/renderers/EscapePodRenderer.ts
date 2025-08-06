@@ -1,11 +1,10 @@
-import { CollectibleRenderer } from './CollectibleRenderer';
-import { Collectible } from '../Collectible';
-import { EscapePod } from '../EscapePod';
+import { SpaceObject } from '../SpaceObject';
+import { SpaceObjectRenderer } from './SpaceObjectRenderer';
 
 /**
  * Renderer for EscapePod collectibles
  */
-export class EscapePodRenderer extends CollectibleRenderer {
+export class EscapePodRenderer extends SpaceObjectRenderer {
     private escapePodImage: HTMLImageElement;
 
     constructor() {
@@ -14,46 +13,91 @@ export class EscapePodRenderer extends CollectibleRenderer {
         this.escapePodImage.src = 'resources/ai_gen/escape_pod.png';
     }
 
-    /**
-     * Draw the escape pod shape
-     */
-    protected drawCollectibleShape(ctx: CanvasRenderingContext2D, collectible: Collectible): void {
-        if (!(collectible instanceof EscapePod)) return;
-        
-        const escapePod = collectible as EscapePod;
-        
-        ctx.save();
-        ctx.rotate(Math.PI / 2);
-
-        if (this.escapePodImage.complete && this.escapePodImage.naturalHeight !== 0) {
-            const aspectRatio = this.escapePodImage.naturalWidth / this.escapePodImage.naturalHeight;
-            const height = 45;
-            const width = height * aspectRatio;
-            ctx.drawImage(this.escapePodImage, -width / 2, -height / 2, width, height);
-        }
-
-        if (escapePod.getSpeed() > 0) {
-            const time = Date.now();
-            const flicker = Math.abs(Math.sin(time / 500)); // Flicker effect for the flame
-            const flameLength = 20 + flicker * 10;
-            const flameWidth = 10 + flicker * 4;
-            const podBottomY = 45 / 2;
-
-            ctx.beginPath();
-            ctx.moveTo(-flameWidth / 2, podBottomY - 5);
-            ctx.lineTo(flameWidth / 2, podBottomY - 5);
-            ctx.lineTo(0, podBottomY + flameLength);
-            ctx.closePath();
-
-            const gradient = ctx.createLinearGradient(0, podBottomY, 0, podBottomY + flameLength);
-            gradient.addColorStop(0, 'rgba(255, 220, 100, 0.9)');
-            gradient.addColorStop(0.7, 'rgba(255, 100, 0, 0.7)');
-            gradient.addColorStop(1, 'rgba(255, 0, 0, 0)');
-
-            ctx.fillStyle = gradient;
-            ctx.fill();
-        }
-
-        ctx.restore();
+    drawEscapePod(ctx: CanvasRenderingContext2D, centerX: number, centerY: number, shipX: number, shipY: number, escapePod: SpaceObject): void {
+        // Use the base class method to handle common drawing functionality
+        this.drawSpaceObject(ctx, centerX, centerY, shipX, shipY, escapePod);
     }
-} 
+
+    /**
+     * Get the escape pod image
+     */
+    protected getObjectImage(): HTMLImageElement | null {
+        return this.escapePodImage;
+    }
+    
+    /**
+     * Get the size to render the escape pod at
+     */
+    protected getObjectSize(): number {
+        return 45;
+    }
+    
+    /**
+     * Get the color for the fallback shape
+     */
+    protected getFallbackColor(): string {
+        return '#ff6b6b'; // Red/orange color for escape pod
+    }
+
+    /**
+     * Draw engine flames after the escape pod
+     */
+    protected override drawPreEffects(ctx: CanvasRenderingContext2D, spaceObject: SpaceObject): void {
+        this.drawEngineFlames(ctx, spaceObject);
+    }
+
+    /**
+     * Draw engine flames behind the escape pod
+     */
+    private drawEngineFlames(ctx: CanvasRenderingContext2D, escapePod: SpaceObject): void {
+        const speed = escapePod.getSpeed ? escapePod.getSpeed() : 0;
+        if (speed === 0) return;
+
+        // Calculate escape pod dimensions based on image aspect ratio (same as rendered image)
+        const baseSize = this.getObjectSize();
+        const aspectRatio = this.getImageAspectRatio();
+        
+        let podWidth: number, podHeight: number;
+        if (aspectRatio > 1) {
+            // Image is wider than tall
+            podWidth = baseSize;
+            podHeight = baseSize / aspectRatio;
+        } else {
+            // Image is taller than wide (or square)
+            podWidth = baseSize * aspectRatio;
+            podHeight = baseSize;
+        }
+
+        const time = Date.now();
+        const flicker = Math.abs(Math.sin(time * 0.003)); // Flicker effect for the flame
+        
+        // Scale flame dimensions based on pod size
+        const flameLength = (podHeight * 0.6) + flicker * (podHeight * 0.3);
+        const flameWidth = podWidth * 0.4 + flicker * (podWidth * 0.2);
+        
+        // Position flames at the "back" of the pod (behind movement direction)
+        // Since the base class rotates by 90°, the back is in the negative X direction
+        const podBackX = -podWidth / 2;
+
+        // Draw main flame
+        ctx.beginPath();
+        const gradient = ctx.createLinearGradient(podBackX, 0, podBackX - flameLength, 0);
+        gradient.addColorStop(0, 'rgba(255, 100, 0, 0.8)');
+        gradient.addColorStop(0.5, 'rgba(255, 200, 0, 0.6)');
+        gradient.addColorStop(1, 'rgba(255, 255, 100, 0.0)');
+        
+        ctx.fillStyle = gradient;
+        ctx.ellipse(podBackX - flameLength / 2, 0, flameLength / 2, flameWidth / 2, 0, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Draw inner flame core (proportionally smaller)
+        ctx.beginPath();
+        const coreGradient = ctx.createLinearGradient(podBackX, 0, podBackX - flameLength * 0.6, 0);
+        coreGradient.addColorStop(0, 'rgba(255, 255, 255, 0.9)');
+        coreGradient.addColorStop(1, 'rgba(255, 100, 0, 0.0)');
+        
+        ctx.fillStyle = coreGradient;
+        ctx.ellipse(podBackX - flameLength * 0.3, 0, flameLength * 0.3, flameWidth * 0.3, 0, 0, Math.PI * 2);
+        ctx.fill();
+    }
+}

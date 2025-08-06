@@ -60,7 +60,7 @@ export class CollectiblesRenderer {
         offsetY: number = 0
     ): void {
         if (collectible instanceof Shipwreck) {
-            this.shipwreckRenderer.drawCollectible(
+            this.shipwreckRenderer.drawShipwreck(
                 this.ctx,
                 screenX + offsetX,
                 screenY + offsetY,
@@ -69,7 +69,7 @@ export class CollectiblesRenderer {
                 collectible
             );
         } else if (collectible instanceof EscapePod) {
-            this.escapePodRenderer.drawCollectible(
+            this.escapePodRenderer.drawEscapePod(
                 this.ctx,
                 screenX + offsetX,
                 screenY + offsetY,
@@ -78,7 +78,7 @@ export class CollectiblesRenderer {
                 collectible
             );
         } else if (collectible instanceof Asteroid) {
-            this.asteroidRenderer.drawCollectible(
+            this.asteroidRenderer.drawAsteroid(
                 this.ctx,
                 screenX + offsetX,
                 screenY + offsetY,

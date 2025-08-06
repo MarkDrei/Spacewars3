@@ -64,7 +64,7 @@ describe('World API', () => {
     });
 
     it('worldAPI_authenticatedWithNoObjects_returnsEmptyWorld', async () => {
-      // Register and login user
+      // Register and login user (automatically creates a player ship)
       await agent.post('/api/register').send({
         username: 'testuser',
         password: 'testpass'
@@ -76,7 +76,12 @@ describe('World API', () => {
       expect(response.body).toHaveProperty('worldSize');
       expect(response.body.worldSize).toEqual({ width: 500, height: 500 });
       expect(response.body).toHaveProperty('spaceObjects');
-      expect(response.body.spaceObjects).toEqual([]);
+      
+      // Now expects one player ship (auto-created during registration)
+      expect(response.body.spaceObjects).toHaveLength(1);
+      expect(response.body.spaceObjects[0].type).toBe('player_ship');
+      expect(response.body.spaceObjects[0].x).toBe(250);
+      expect(response.body.spaceObjects[0].y).toBe(250);
     });
 
     it('worldAPI_withSpaceObjects_returnsObjectsWithUpdatedPositions', async () => {
@@ -89,7 +94,7 @@ describe('World API', () => {
       // Insert test space objects with known positions and velocities
       const now = Date.now();
       const insertSpaceObject = db.prepare(`
-        INSERT INTO space_objects (type, x, y, speed, angle, last_position_update)
+        INSERT INTO space_objects (type, x, y, speed, angle, last_position_update_ms)
         VALUES (?, ?, ?, ?, ?, ?)
       `);
 
@@ -110,7 +115,11 @@ describe('World API', () => {
       const response = await agent.get('/api/world');
       
       expect(response.status).toBe(200);
-      expect(response.body.spaceObjects).toHaveLength(2);
+      expect(response.body.spaceObjects).toHaveLength(3); // player ship + asteroid + shipwreck
+      
+      // Filter out the player ship to check the test objects
+      const testObjects = response.body.spaceObjects.filter((obj: { type: string }) => obj.type !== 'player_ship');
+      expect(testObjects).toHaveLength(2);
       
       // Check that positions have been updated based on speed and time
       const asteroid = response.body.spaceObjects.find((obj: { type: string }) => obj.type === 'asteroid');
@@ -135,13 +144,14 @@ describe('World API', () => {
       // Insert object near boundary that will cross it
       const now = Date.now();
       const insertSpaceObject = db.prepare(`
-        INSERT INTO space_objects (type, x, y, speed, angle, last_position_update)
+        INSERT INTO space_objects (type, x, y, speed, angle, last_position_update_ms)
         VALUES (?, ?, ?, ?, ?, ?)
       `);
 
       await new Promise<void>((resolve, reject) => {
-        // Object at x=490, moving right at 20 units/second, 1 second ago
-        // Should end up at x=10 (490 + 20 = 510, wraps to 10)
+        // Object at x=490, moving right at 20 units/minute, 1 second ago
+        // Movement: (20 * 1000ms / 60000 * 50) = 16.667
+        // Should end up at x=6.667 (490 + 16.667 = 506.667, wraps to 6.667)
         insertSpaceObject.run('escape_pod', 490, 250, 20, 0, now - 1000, (err) => {
           if (err) reject(err);
           else resolve();
@@ -153,11 +163,13 @@ describe('World API', () => {
       const response = await agent.get('/api/world');
       
       expect(response.status).toBe(200);
-      expect(response.body.spaceObjects).toHaveLength(1);
+      expect(response.body.spaceObjects).toHaveLength(2); // escape pod + player ship
       
-      const escapePod = response.body.spaceObjects[0];
-      expect(escapePod.x).toBeGreaterThanOrEqual(9.8);
-      expect(escapePod.x).toBeLessThanOrEqual(10.2); // Should have wrapped around
+      const escapePod = response.body.spaceObjects.find((obj: { type: string }) => obj.type === 'escape_pod');
+      expect(escapePod).toBeDefined();
+      expect(escapePod.x).toBeGreaterThanOrEqual(6.4);
+      expect(escapePod.x).toBeLessThanOrEqual(6.9); // Should have wrapped around
+      expect(escapePod.x).toBeCloseTo(6.667, 0);
       expect(escapePod.y).toBe(250); // Y unchanged
     });
 
@@ -171,7 +183,7 @@ describe('World API', () => {
       // Insert moving object
       const now = Date.now();
       const insertSpaceObject = db.prepare(`
-        INSERT INTO space_objects (type, x, y, speed, angle, last_position_update)
+        INSERT INTO space_objects (type, x, y, speed, angle, last_position_update_ms)
         VALUES (?, ?, ?, ?, ?, ?)
       `);
 
@@ -187,14 +199,18 @@ describe('World API', () => {
       // First call
       const response1 = await agent.get('/api/world');
       expect(response1.status).toBe(200);
-      const position1 = response1.body.spaceObjects[0].x;
+      const asteroid1 = response1.body.spaceObjects.find((obj: { type: string }) => obj.type === 'asteroid');
+      expect(asteroid1).toBeDefined();
+      const position1 = asteroid1.x;
 
       // Wait a bit and call again
       await new Promise(resolve => setTimeout(resolve, 100)); // 100ms delay
 
       const response2 = await agent.get('/api/world');
       expect(response2.status).toBe(200);
-      const position2 = response2.body.spaceObjects[0].x;
+      const asteroid2 = response2.body.spaceObjects.find((obj: { type: string }) => obj.type === 'asteroid');
+      expect(asteroid2).toBeDefined();
+      const position2 = asteroid2.x;
 
       // Position should have increased (object moving right)
       expect(position2).toBeGreaterThan(position1);
@@ -210,7 +226,7 @@ describe('World API', () => {
       // Insert stationary object (speed = 0)
       const now = Date.now();
       const insertSpaceObject = db.prepare(`
-        INSERT INTO space_objects (type, x, y, speed, angle, last_position_update)
+        INSERT INTO space_objects (type, x, y, speed, angle, last_position_update_ms)
         VALUES (?, ?, ?, ?, ?, ?)
       `);
 
@@ -226,9 +242,10 @@ describe('World API', () => {
       const response = await agent.get('/api/world');
       
       expect(response.status).toBe(200);
-      expect(response.body.spaceObjects).toHaveLength(1);
+      expect(response.body.spaceObjects).toHaveLength(2); // asteroid + player ship
       
-      const asteroid = response.body.spaceObjects[0];
+      const asteroid = response.body.spaceObjects.find((obj: { type: string }) => obj.type === 'asteroid');
+      expect(asteroid).toBeDefined();
       expect(asteroid.x).toBe(150); // Should be unchanged
       expect(asteroid.y).toBe(250); // Should be unchanged
     });
@@ -243,7 +260,7 @@ describe('World API', () => {
       // Insert object with old timestamp
       const oldTime = Date.now() - 10000; // 10 seconds ago
       const insertSpaceObject = db.prepare(`
-        INSERT INTO space_objects (type, x, y, speed, angle, last_position_update)
+        INSERT INTO space_objects (type, x, y, speed, angle, last_position_update_ms)
         VALUES (?, ?, ?, ?, ?, ?)
       `);
 
@@ -263,8 +280,8 @@ describe('World API', () => {
       expect(response.status).toBe(200);
       
       const asteroid = response.body.spaceObjects[0];
-      expect(asteroid.last_position_update).toBeGreaterThanOrEqual(beforeCall);
-      expect(asteroid.last_position_update).toBeLessThanOrEqual(afterCall);
+      expect(asteroid.last_position_update_ms).toBeGreaterThanOrEqual(beforeCall);
+      expect(asteroid.last_position_update_ms).toBeLessThanOrEqual(afterCall);
     });
 
     it('worldAPI_databaseError_returns500', async () => {

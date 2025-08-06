@@ -11,6 +11,7 @@ export interface AuthResponse {
 export interface SessionResponse {
   loggedIn: boolean;
   username?: string;
+  shipId?: number;
 }
 
 export interface LoginCredentials {

@@ -25,7 +25,7 @@ export abstract class CollectibleRenderer {
         
         // Translate to object position
         ctx.translate(screenX, screenY);
-        ctx.rotate(collectible.getAngle());
+        ctx.rotate(collectible.getAngleRadians()); // Convert degrees to radians for rendering
         
         // Draw the collectible (implemented by specific renderers)
         this.drawCollectibleShape(ctx, collectible);

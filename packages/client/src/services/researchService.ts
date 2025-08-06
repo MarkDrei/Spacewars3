@@ -143,6 +143,15 @@ class ResearchService {
       ? `${value} ${unit}` 
       : `${value.toFixed(1)} ${unit}`;
   }
+
+  /**
+   * Calculate max ship speed from tech tree data
+   */
+  calculateMaxSpeed(researches: Record<ResearchType, ResearchDef>): number {
+    const baseSpeed = researches.ShipSpeed.currentEffect;
+    const afterburnerBonus = researches.Afterburner.currentEffect;
+    return baseSpeed * (1 + afterburnerBonus / 100);
+  }
 }
 
 // Export singleton instance

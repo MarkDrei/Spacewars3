@@ -1,59 +1,109 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import './GamePage.css';
-// This is a temporary way to initialize the game
-// Later we'll refactor the game code to be more React-friendly
-import { initGame } from '../../Game';
+import { initGame, Game } from '../../Game';
+import { useAuth } from '../../hooks/useAuth';
+import { useWorldData } from '../../hooks/useWorldData';
+import { navigateShip } from '../../services/navigationService';
+import { getShipStats } from '../../services/shipStatsService';
 
 const GamePage: React.FC = () => {
   const gameInitializedRef = useRef(false);
+  const gameInstanceRef = useRef<Game | null>(null);
+  const [isSettingMaxSpeed, setIsSettingMaxSpeed] = useState(false);
+  const { isLoggedIn, shipId } = useAuth();
+  const { worldData, isLoading, error, refetch } = useWorldData(isLoggedIn, 3000);
 
   useEffect(() => {
-    if (!gameInitializedRef.current) {
-      // Only initialize the game once
+    // Only initialize game when we have ship ID for the first time
+    if (!gameInitializedRef.current && shipId) {
       initializeGame();
       gameInitializedRef.current = true;
     }
 
-    // Clean up function
+    // Clean up function - only unmount when component actually unmounts
     return () => {
-      // Any cleanup code needed when component unmounts
-      console.log('Game component unmounted');
+      if (gameInstanceRef.current) {
+        gameInstanceRef.current.stop?.();
+        gameInstanceRef.current = null;
+      }
     };
-  }, []);
+  }, [shipId]); // Only depend on shipId, not worldData
+
+  // Update game world when server data changes
+  useEffect(() => {
+    if (worldData && gameInstanceRef.current && shipId) {
+      gameInstanceRef.current.updateWorldData?.(worldData, shipId);
+      // Set the refetch function so the game can trigger updates
+      gameInstanceRef.current.setRefetchFunction?.(refetch);
+    }
+  }, [worldData, shipId, refetch]);
 
   const initializeGame = () => {
-    // The existing game code expects these elements to be in the DOM
-    // This is a temporary solution until we refactor the game code
     const gameCanvas = document.getElementById('gameCanvas') as HTMLCanvasElement;
     if (gameCanvas) {
-      // Our existing Game class handles initialization, including event listeners
-      initGame(gameCanvas);
+      gameInstanceRef.current = initGame(gameCanvas);
+      console.log('🎮 Game initialized successfully');
+      // The game will receive world data through the update effect
     } else {
       console.error('Game canvas not found');
     }
   };
 
+  const handleMaxSpeed = async () => {
+    if (isSettingMaxSpeed) return; // Prevent double-clicks
+    
+    setIsSettingMaxSpeed(true);
+    try {
+      // Get current ship stats to determine max speed
+      const shipStats = await getShipStats();
+      
+      if ('error' in shipStats) {
+        console.error('Failed to get ship stats:', shipStats.error);
+        return;
+      }
+      
+      // Set ship to max speed (keep current angle)
+      await navigateShip({ speed: shipStats.maxSpeed });
+      
+      // Refresh world data to get updated ship state
+      if (refetch) {
+        refetch();
+      }
+    } catch (error) {
+      console.error('❌ [CLIENT] Failed to set max speed:', error);
+    } finally {
+      setIsSettingMaxSpeed(false);
+    }
+  };
+
+  // Show loading or error states
+  if (isLoading) {
+    return (
+      <div className="game-page">
+        <div className="loading">Loading world data...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="game-page">
+        <div className="error">Error loading world data: {error}</div>
+      </div>
+    );
+  }
+
   return (
     <div className="game-page">
       <canvas id="gameCanvas" width="800" height="800"></canvas>
-      <div id="hud">
-        <div className="hud-section">
-          <h3>Ship Status</h3>
-          Clicks: <span id="clickCounter">0</span><br />
-          Speed: <span id="speed">0</span><br />
-          Coordinates: <span id="coordinates">(0, 0)</span><br />
-          Score: <span id="score">0</span>
-        </div>
-        
-        <div className="hud-section">
-          <h3>Last Collected</h3>
-          <div id="last-collected">Nothing collected yet</div>
-        </div>
-        
-        <div className="hud-section">
-          <h3>Inventory</h3>
-          <div id="inventory-list"></div>
-        </div>
+      <div className="game-controls">
+        <button 
+          className="max-speed-button"
+          onClick={handleMaxSpeed}
+          disabled={isSettingMaxSpeed}
+        >
+          {isSettingMaxSpeed ? 'Setting Max Speed...' : 'Set Max Speed'}
+        </button>
       </div>
     </div>
   );

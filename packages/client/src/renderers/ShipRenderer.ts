@@ -62,7 +62,7 @@ export class ShipRenderer {
             return {
                 getX: () => x,
                 getY: () => y,
-                getAngle: () => ship.getAngle(),
+                getAngle: () => ship.getAngleDegrees(), // Return degrees for tooltip
                 getSpeed: () => ship.getSpeed(),
                 isHoveredState: () => ship.isHoveredState()
             } as Ship;
@@ -122,7 +122,7 @@ export class ShipRenderer {
         // Draw the ship
         ctx.save();
         ctx.translate(centerX, centerY);
-        ctx.rotate(ship.getAngle() + Math.PI / 2);
+        ctx.rotate(ship.getAngleRadians() + Math.PI / 2); // Convert degrees to radians, adjust for ship orientation
 
         const scale = 0.15;
         const width = this.shipImage.width * scale;

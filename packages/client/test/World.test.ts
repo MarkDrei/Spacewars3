@@ -29,43 +29,8 @@ describe('World', () => {
         expect(world.getSpaceObjects()).toContain(ship);
     });
     
-    test('should update all objects positions', () => {
-        // Create a world with predictable motion
-        const testWorld = new World();
-        
-        // Remove all existing objects
-        const objects = [...testWorld.getSpaceObjects()];
-        objects.forEach(obj => testWorld.removeSpaceObject(obj));
-        
-        // Add a ship moving along the x-axis
-        const ship = new Ship();
-        ship.setX(0);
-        ship.setY(0);
-        ship.setAngle(0); // Moving right
-        ship.setSpeed(10);
-        testWorld.addSpaceObject(ship);
-        
-        // Add a mock space object instead of an Asteroid to avoid angle conversion
-        const spaceObject = new MockSpaceObject(100, 100, Math.PI/2, 20); // Moving up
-        testWorld.addSpaceObject(spaceObject);
-        
-        // Get initial positions
-        const initialShipX = ship.getX();
-        const initialShipY = ship.getY();
-        const initialObjectX = spaceObject.getX();
-        const initialObjectY = spaceObject.getY();
-        
-        // Update the world with a time delta
-        testWorld.update(1.0); // 1 second
-        
-        // Ship should have moved along x-axis
-        expect(ship.getX()).toBeGreaterThan(initialShipX);
-        expect(ship.getY()).toEqual(initialShipY); // Y shouldn't change
-        
-        // Object should have moved along y-axis
-        expect(spaceObject.getX()).toEqual(initialObjectX); // X shouldn't change
-        expect(spaceObject.getY()).toBeGreaterThan(initialObjectY); // Y should increase
-    });
+    // NOTE: Test removed - client-side physics update functionality moved to server
+    // The World class no longer has an update() method as physics are handled server-side
     
     test('should update hover states correctly', () => {
         // Create a clean world

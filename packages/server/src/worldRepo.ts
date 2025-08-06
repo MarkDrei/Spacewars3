@@ -23,7 +23,7 @@ export function loadWorld(db: sqlite3.Database, saveCallback: SaveWorldCallback)
         y: number;
         speed: number;
         angle: number;
-        last_position_update: number;
+        last_position_update_ms: number;
       }>).map(row => ({
         ...row,
         type: row.type as SpaceObject['type']
@@ -50,8 +50,8 @@ export function saveWorldToDb(db: sqlite3.Database): SaveWorldCallback {
       const updatePromises = world.spaceObjects.map(obj => {
         return new Promise<void>((objResolve, objReject) => {
           db.run(
-            'UPDATE space_objects SET x = ?, y = ?, last_position_update = ? WHERE id = ?',
-            [obj.x, obj.y, obj.last_position_update, obj.id],
+            'UPDATE space_objects SET x = ?, y = ?, speed = ?, angle = ?, last_position_update_ms = ? WHERE id = ?',
+            [obj.x, obj.y, obj.speed, obj.angle, obj.last_position_update_ms, obj.id],
             (err) => {
               if (err) {
                 objReject(err);
@@ -91,8 +91,8 @@ export function deleteSpaceObject(db: sqlite3.Database, objectId: number): Promi
 export function insertSpaceObject(db: sqlite3.Database, obj: Omit<SpaceObject, 'id'>): Promise<number> {
   return new Promise((resolve, reject) => {
     db.run(
-      'INSERT INTO space_objects (type, x, y, speed, angle, last_position_update) VALUES (?, ?, ?, ?, ?, ?)',
-      [obj.type, obj.x, obj.y, obj.speed, obj.angle, obj.last_position_update],
+      'INSERT INTO space_objects (type, x, y, speed, angle, last_position_update_ms) VALUES (?, ?, ?, ?, ?, ?)',
+      [obj.type, obj.x, obj.y, obj.speed, obj.angle, obj.last_position_update_ms],
       function (err) {
         if (err) {
           reject(err);

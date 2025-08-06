@@ -12,7 +12,7 @@ export interface SpaceObject {
   y: number;
   speed: number;
   angle: number;
-  last_position_update: number;
+  last_position_update_ms: number;
 }
 
 export interface WorldData {
@@ -86,7 +86,7 @@ class World {
     this.spaceObjects[index] = {
       ...this.spaceObjects[index],
       ...updates,
-      last_position_update: Date.now()
+      last_position_update_ms: Date.now()
     };
     
     return true;
@@ -161,7 +161,7 @@ class World {
       y,
       speed: Math.max(0, speed), // Ensure speed is not negative
       angle,
-      last_position_update: Date.now()
+      last_position_update_ms: Date.now()
     };
 
     // Insert into database and get the new ID
