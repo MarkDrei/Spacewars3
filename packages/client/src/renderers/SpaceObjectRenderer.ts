@@ -188,7 +188,8 @@ export abstract class SpaceObjectRenderer {
      * Draw the fallback shape when image is not available
      * Default implementation draws a simple circle
      */
-    protected drawFallbackShape(ctx: CanvasRenderingContext2D, spaceObject: SpaceObject): void {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    protected drawFallbackShape(ctx: CanvasRenderingContext2D, _spaceObject: SpaceObject): void {
         const size = this.getObjectSize();
         ctx.beginPath();
         ctx.arc(0, 0, size / 4, 0, Math.PI * 2);
@@ -203,7 +204,8 @@ export abstract class SpaceObjectRenderer {
      * Draw additional effects before the main object (e.g., dust trails)
      * Override in subclasses to add specific effects
      */
-    protected drawPreEffects(ctx: CanvasRenderingContext2D, spaceObject: SpaceObject): void {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    protected drawPreEffects(_ctx: CanvasRenderingContext2D, _spaceObject: SpaceObject): void {
         // Default: no pre-effects
     }
     
@@ -211,7 +213,8 @@ export abstract class SpaceObjectRenderer {
      * Draw additional effects after the main object (e.g., engine flames)
      * Override in subclasses to add specific effects
      */
-    protected drawPostEffects(ctx: CanvasRenderingContext2D, spaceObject: SpaceObject): void {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    protected drawPostEffects(_ctx: CanvasRenderingContext2D, _spaceObject: SpaceObject): void {
         // Default: no post-effects
     }
 }
