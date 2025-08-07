@@ -1,12 +1,22 @@
 import { describe, expect, test, beforeEach } from 'vitest';
 import { World } from '../src/World';
 import { Ship } from '../src/Ship';
-import { SpaceObject } from '../src/SpaceObject';
+import { SpaceObjectOld } from '../src/SpaceObject';
 
 // Create a mock class for SpaceObject since it's abstract
-class MockSpaceObject extends SpaceObject {
+class MockSpaceObject extends SpaceObjectOld {
     constructor(x: number, y: number, angle: number, speed: number) {
-        super(x, y, angle, speed);
+        // Create server data object for the new constructor
+        const serverData = {
+            id: Math.floor(Math.random() * 1000000), // Random ID for testing
+            type: 'asteroid' as const,
+            x: x,
+            y: y,
+            speed: speed,
+            angle: angle,
+            last_position_update_ms: Date.now()
+        };
+        super(serverData);
     }
 }
 
@@ -58,7 +68,16 @@ describe('World', () => {
         objects.forEach(obj => testWorld.removeSpaceObject(obj));
         
         // Add a ship (which should be ignored by findHoveredObject)
-        const ship = new Ship();
+        const shipData = {
+            id: 1,
+            type: 'player_ship' as const,
+            x: 50,
+            y: 50,
+            speed: 20,
+            angle: 0,
+            last_position_update_ms: Date.now()
+        };
+        const ship = new Ship(shipData);
         ship.setHovered(false); // Make sure ship is not hovered
         testWorld.addSpaceObject(ship);
         
@@ -100,8 +119,5 @@ describe('World', () => {
         
         // Check that the angle was set
         expect(world.getShip().getAngle()).toBe(newAngle);
-        
-        // Check that interception data is cleared
-        expect(world.getInterceptionData()).toBeNull();
     });
 }); 

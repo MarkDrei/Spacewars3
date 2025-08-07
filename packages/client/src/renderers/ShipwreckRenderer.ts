@@ -1,16 +1,16 @@
-import { SpaceObject } from '../SpaceObject';
-import { SpaceObjectRenderer } from './SpaceObjectRenderer';
+import { SpaceObject } from '@shared/types';
+import { SpaceObjectRendererBase } from './SpaceObjectRendererBase';
 
 /**
  * Renderer for Shipwreck collectibles
  */
-export class ShipwreckRenderer extends SpaceObjectRenderer {
+export class ShipwreckRenderer extends SpaceObjectRendererBase {
     private shipwreckImage: HTMLImageElement;
 
     constructor() {
         super();
         this.shipwreckImage = new Image();
-        this.shipwreckImage.src = 'resources/ai_gen/shipwreck1.png';
+        this.shipwreckImage.src = 'resources/ai_gen/shipwreck2.png';
     }
     
     drawShipwreck(ctx: CanvasRenderingContext2D, centerX: number, centerY: number, shipX: number, shipY: number, shipwreck: SpaceObject): void {
@@ -29,7 +29,7 @@ export class ShipwreckRenderer extends SpaceObjectRenderer {
      * Get the size to render the shipwreck at
      */
     protected getObjectSize(): number {
-        return 40;
+        return 55;
     }
     
     /**

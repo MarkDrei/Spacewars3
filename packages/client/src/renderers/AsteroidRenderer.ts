@@ -1,7 +1,7 @@
-import { SpaceObject } from '../SpaceObject';
-import { SpaceObjectRenderer } from './SpaceObjectRenderer';
+import { SpaceObject } from '@shared/types';
+import { SpaceObjectRendererBase } from './SpaceObjectRendererBase';
 
-export class AsteroidRenderer extends SpaceObjectRenderer {
+export class AsteroidRenderer extends SpaceObjectRendererBase {
     private asteroidImage: HTMLImageElement;
 
     constructor() {
@@ -26,7 +26,7 @@ export class AsteroidRenderer extends SpaceObjectRenderer {
      * Get the size to render the asteroid at
      */
     protected getObjectSize(): number {
-        return 45;
+        return 50;
     }
     
     /**
@@ -44,7 +44,7 @@ export class AsteroidRenderer extends SpaceObjectRenderer {
     }
 
     private drawDustTrail(ctx: CanvasRenderingContext2D, asteroid: SpaceObject): void {
-        const speed = asteroid.getSpeed ? asteroid.getSpeed() : 0;
+        const speed = asteroid.speed;
         if (speed === 0) return;
 
         const trailLength = 150;

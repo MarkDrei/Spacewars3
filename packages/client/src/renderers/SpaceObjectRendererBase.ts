@@ -1,11 +1,11 @@
-import { SpaceObject } from '../SpaceObject';
+import { SpaceObject } from '@shared/types';
 import { World } from '../World';
 
 /**
  * Base renderer for all space objects
  * This provides common functionality including positioning, wrapping, and basic rendering
  */
-export abstract class SpaceObjectRenderer {
+export abstract class SpaceObjectRendererBase {
     /**
      * Draw a space object on the canvas
      */
@@ -18,8 +18,8 @@ export abstract class SpaceObjectRenderer {
         spaceObject: SpaceObject
     ): void {
         // Calculate screen position
-        const screenX = centerX + (spaceObject.getX() - viewportX);
-        const screenY = centerY + (spaceObject.getY() - viewportY);
+        const screenX = centerX + (spaceObject.x - viewportX);
+        const screenY = centerY + (spaceObject.y - viewportY);
         
         // Check if the object is visible on screen (with some margin)
         const margin = 100;
@@ -75,8 +75,8 @@ export abstract class SpaceObjectRenderer {
         // Check all possible wrapped positions
         wrapOffsets.forEach(offset => {
             // Calculate the wrapped object position
-            const wrappedX = spaceObject.getX() + offset.x;
-            const wrappedY = spaceObject.getY() + offset.y;
+            const wrappedX = spaceObject.x + offset.x;
+            const wrappedY = spaceObject.y + offset.y;
             
             // Calculate where this would be on screen
             const wrappedScreenX = centerX + (wrappedX - viewportX);
@@ -98,7 +98,8 @@ export abstract class SpaceObjectRenderer {
         
         // Translate to object position
         ctx.translate(screenX, screenY);
-        ctx.rotate(spaceObject.getAngleRadians());
+        // convert angle to radians
+        ctx.rotate(spaceObject.angle * (Math.PI / 180)); // Assuming angle is in degrees
         
         // Draw any additional effects before the main object (like dust trails)
         this.drawPreEffects(ctx, spaceObject);
@@ -135,10 +136,10 @@ export abstract class SpaceObjectRenderer {
         // Draw any additional effects after the main object (like engines)
         this.drawPostEffects(ctx, spaceObject);
         
-        // Draw hover effect if hovered
-        if (spaceObject.isHoveredState()) {
+        if ( World.getInstance().getHoveredObjectId() === spaceObject.id)
+        {
             ctx.beginPath();
-            ctx.arc(0, 0, spaceObject.getHoverRadius(), 0, Math.PI * 2);
+            ctx.arc(0, 0, 25, 0, Math.PI * 2);
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
             ctx.lineWidth = 2;
             ctx.stroke();

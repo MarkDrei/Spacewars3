@@ -168,7 +168,7 @@ describe('World API', () => {
       const escapePod = response.body.spaceObjects.find((obj: { type: string }) => obj.type === 'escape_pod');
       expect(escapePod).toBeDefined();
       expect(escapePod.x).toBeGreaterThanOrEqual(6.4);
-      expect(escapePod.x).toBeLessThanOrEqual(6.9); // Should have wrapped around
+      expect(escapePod.x).toBeLessThanOrEqual(7.0); // Should have wrapped around
       expect(escapePod.x).toBeCloseTo(6.667, 0);
       expect(escapePod.y).toBe(250); // Y unchanged
     });

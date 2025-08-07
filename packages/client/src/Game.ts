@@ -6,7 +6,7 @@ import { WorldData } from '../../shared/src/types/gameTypes';
 import { setShipDirection, interceptTarget } from './services/navigationService';
 import { getShipStats } from './services/shipStatsService';
 import { InterceptCalculator } from './InterceptCalculator';
-import { SpaceObject } from './SpaceObject';
+import { SpaceObjectOld } from './SpaceObject';
 
 export class Game {
   private world: World;
@@ -104,15 +104,13 @@ export class Game {
   }
 
   // Handle interception when clicking on an object
-  private async handleInterception(targetObject: SpaceObject): Promise<void> {
+  private async handleInterception(targetObject: SpaceObjectOld): Promise<void> {
     try {
       // Get current ship stats including max speed from server
       const shipStats = await getShipStats();
       
       if ('error' in shipStats) {
         console.error('Failed to get ship stats:', shipStats.error);
-        // Fallback to local interception
-        this.world.interceptObject(targetObject);
         return;
       }
 
@@ -121,13 +119,10 @@ export class Game {
       const interceptResult = InterceptCalculator.calculateInterceptAngle(ship, targetObject, shipStats.maxSpeed);
       
       if (!isNaN(interceptResult.angle)) {
-        // Apply immediate local interception for visual feedback
-        this.world.interceptObject(targetObject);
-        
         // Then update via API with max speed
         await interceptTarget(interceptResult.angle, shipStats.maxSpeed);
-        console.log('Ship interception updated via API with max speed:', shipStats.maxSpeed);
-        
+        console.log('Ship interception updated via API with angle: ', interceptResult.angle, " and max speed: ", shipStats.maxSpeed);
+
         // Trigger world data refresh to get authoritative server state
         if (this.refetchWorldData) {
           this.refetchWorldData();
@@ -137,8 +132,6 @@ export class Game {
       }
     } catch (error) {
       console.error('Failed to handle interception:', error);
-      // Fallback to local interception
-      this.world.interceptObject(targetObject);
     }
   }
   
@@ -197,12 +190,12 @@ export class Game {
       // Try the most likely method names
       if (typeof this.renderer.drawWorld === 'function') {
         this.renderer.drawWorld(this.ship);
-        // Draw interception point on top of the rendered world
-        this.drawInterceptionPoint(this.ctx);
+        // // Draw interception point on top of the rendered world
+        // this.drawInterceptionPoint(this.ctx);
       } else if ('render' in this.renderer && typeof this.renderer.render === 'function') {
         (this.renderer as { render: () => void }).render();
-        // Draw interception point on top of the rendered world
-        this.drawInterceptionPoint(this.ctx);
+        // // Draw interception point on top of the rendered world
+        // this.drawInterceptionPoint(this.ctx);
       } else {
         console.warn('No recognized rendering method found on GameRenderer');
       }
@@ -210,101 +203,11 @@ export class Game {
       console.error('Error during rendering:', error);
     }
     
-    // Draw interception point if applicable
-    this.drawInterceptionPoint(this.ctx);
+    // // Draw interception point if applicable
+    // this.drawInterceptionPoint(this.ctx);
     
     // Continue the loop
     requestAnimationFrame(this.gameLoop.bind(this));
-  }
-  
-  private drawInterceptionPoint(ctx: CanvasRenderingContext2D): void {
-    const interceptionData = this.world.getInterceptionData();
-    if (!interceptionData) return;
-    
-    // Calculate time elapsed since interception was calculated
-    const timeElapsed = (performance.now() - interceptionData.timestamp) / 1000;
-    const timeRemaining = interceptionData.interceptTime - timeElapsed;
-    
-    // If the interception time has passed, return (world.update will clear it)
-    if (timeRemaining <= 0) {
-      return;
-    }
-    
-    const ship = this.world.getShip();
-    const worldWidth = this.world.getWidth();
-    const worldHeight = this.world.getHeight();
-    
-    // Calculate screen position of interception point
-    const screenX = this.ctx.canvas.width / 2 + (interceptionData.interceptX - ship.getX());
-    const screenY = this.ctx.canvas.height / 2 + (interceptionData.interceptY - ship.getY());
-    
-    // Helper function to check if a screen position is visible
-    const isPositionVisible = (x: number, y: number): boolean => {
-      const margin = 50; // Margin for interception marker size
-      return (
-        x > -margin && 
-        x < this.ctx.canvas.width + margin && 
-        y > -margin && 
-        y < this.ctx.canvas.height + margin
-      );
-    };
-    
-    // Draw the main interception point if visible
-    if (isPositionVisible(screenX, screenY)) {
-      this.drawInterceptionMarker(ctx, screenX, screenY, timeRemaining);
-    }
-    
-    // Define offsets for the 8 possible wrapped positions (including diagonals)
-    const wrapOffsets = [
-      { x: -worldWidth, y: 0 },             // Left
-      { x: worldWidth, y: 0 },              // Right
-      { x: 0, y: -worldHeight },            // Top
-      { x: 0, y: worldHeight },             // Bottom
-      { x: -worldWidth, y: -worldHeight },  // Top-Left
-      { x: worldWidth, y: -worldHeight },   // Top-Right
-      { x: -worldWidth, y: worldHeight },   // Bottom-Left
-      { x: worldWidth, y: worldHeight }     // Bottom-Right
-    ];
-    
-    // Draw wrapped interception points
-    wrapOffsets.forEach(offset => {
-      const wrappedScreenX = screenX + offset.x;
-      const wrappedScreenY = screenY + offset.y;
-      
-      if (isPositionVisible(wrappedScreenX, wrappedScreenY)) {
-        this.drawInterceptionMarker(ctx, wrappedScreenX, wrappedScreenY, timeRemaining);
-      }
-    });
-  }
-  
-  private drawInterceptionMarker(ctx: CanvasRenderingContext2D, x: number, y: number, timeRemaining: number): void {
-    ctx.save();
-    
-    // Draw a pulsing circle
-    const pulseSize = 5 + 3 * Math.sin(performance.now() / 200);
-    ctx.beginPath();
-    ctx.arc(x, y, pulseSize, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(255, 0, 0, 0.7)';
-    ctx.fill();
-    
-    // Draw crosshairs
-    const crosshairSize = 10;
-    ctx.beginPath();
-    ctx.moveTo(x - crosshairSize, y);
-    ctx.lineTo(x + crosshairSize, y);
-    ctx.moveTo(x, y - crosshairSize);
-    ctx.lineTo(x, y + crosshairSize);
-    ctx.strokeStyle = 'rgba(255, 0, 0, 0.7)';
-    ctx.lineWidth = 2;
-    ctx.stroke();
-    
-    // Draw time remaining text
-    ctx.font = '12px Arial';
-    ctx.fillStyle = '#ffffff';
-    ctx.textAlign = 'center';
-    ctx.fillText(`${timeRemaining.toFixed(1)}s`, x, y - 15);
-    
-    ctx.restore();
   }
 }
 

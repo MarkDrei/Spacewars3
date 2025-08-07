@@ -1,11 +1,11 @@
-import { SpaceObject } from '../SpaceObject';
-import { SpaceObjectRenderer } from './SpaceObjectRenderer';
+import { SpaceObject } from '@shared/types';
+import { SpaceObjectRendererBase } from './SpaceObjectRendererBase';
 
 /**
  * Renderer for other player ships (not the current player's ship)
  * Uses the base SpaceObjectRenderer for positioning and wrapping
  */
-export class OtherShipRenderer extends SpaceObjectRenderer {
+export class OtherShipRenderer extends SpaceObjectRendererBase {
     private shipImage: HTMLImageElement;
 
     constructor() {
@@ -40,7 +40,7 @@ export class OtherShipRenderer extends SpaceObjectRenderer {
      * Get the size to render the ship at
      */
     protected getObjectSize(): number {
-        return 40; // Slightly smaller than the player ship for distinction
+        return 60; // Slightly smaller than the player ship for distinction
     }
     
     /**

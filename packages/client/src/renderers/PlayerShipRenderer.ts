@@ -1,5 +1,5 @@
 import { Ship } from '../Ship';
-import { SpaceObject } from '../SpaceObject';
+import { SpaceObjectOld } from '../SpaceObject';
 
 /**
  * Renderer specifically for the player's own ship (always rendered in the center)
@@ -28,7 +28,7 @@ export class PlayerShipRenderer {
         // Draw hover effect if ship is hovered
         if (ship.isHoveredState()) {
             ctx.beginPath();
-            ctx.arc(centerX, centerY, SpaceObject.HOVER_RADIUS, 0, Math.PI * 2);
+            ctx.arc(centerX, centerY, SpaceObjectOld.HOVER_RADIUS, 0, Math.PI * 2);
             ctx.strokeStyle = '#808080';
             ctx.lineWidth = 1;
             ctx.stroke();

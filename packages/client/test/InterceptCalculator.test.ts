@@ -1,15 +1,25 @@
 import { describe, expect, vi, test, beforeEach, afterEach } from 'vitest';
 import { InterceptCalculator } from '../src/InterceptCalculator';
-import { SpaceObject } from '../src/SpaceObject';
+import { SpaceObjectOld } from '../src/SpaceObject';
 import { World } from '../src/World';
 // You can now use either of these import styles:
 // import { radiansToDegrees } from '@shared';  // Using the alias (now working!)
-import { degreesToRadians, radiansToDegrees } from '../../shared/src/utils/angleUtils';  // Using relative path
+import { radiansToDegrees } from '../../shared/src/utils/angleUtils';  // Using relative path
 
 // Create a mock class for SpaceObject since it's abstract
-class MockSpaceObject extends SpaceObject {
+class MockSpaceObject extends SpaceObjectOld {
     constructor(x: number, y: number, angle: number, speed: number) {
-        super(x, y, angle, speed);
+        // Create server data object for the new constructor
+        const serverData = {
+            id: Math.floor(Math.random() * 1000000), // Random ID for testing
+            type: 'asteroid' as const,
+            x: x,
+            y: y,
+            speed: speed,
+            angle: angle,
+            last_position_update_ms: Date.now()
+        };
+        super(serverData);
     }
 }
 
@@ -31,7 +41,7 @@ describe('InterceptCalculator', () => {
         //   S                      T
         //
         // Ship at origin, stationary target directly to the right
-        // Expected: Ship should aim directly right (0 radians)
+        // Expected: Ship should aim directly right (0 degrees)
         
         // Arrange
         const ship = new MockSpaceObject(0, 0, 0, 10);
@@ -41,7 +51,7 @@ describe('InterceptCalculator', () => {
         const result = InterceptCalculator.calculateInterceptAngle(ship, target);
         
         // Assert
-        expect(result.angle).toBeCloseTo(0); // Should aim directly right (0 radians)
+        expect(result.angle).toBeCloseTo(0); // Should aim directly right (0 degrees)
         expect(result.interceptPoint.x).toBeCloseTo(100);
         expect(result.interceptPoint.y).toBeCloseTo(0);
         expect(result.timeToIntercept).toBeCloseTo(10); // 100 units at speed 10
@@ -57,7 +67,7 @@ describe('InterceptCalculator', () => {
         //   Ship(0,0) S
         //
         // Ship at origin, stationary target directly above
-        // Expected: Ship should aim directly up (π/2 radians)
+        // Expected: Ship should aim directly up (90 degrees)
         
         // Arrange
         const ship = new MockSpaceObject(0, 0, 0, 10);
@@ -67,7 +77,7 @@ describe('InterceptCalculator', () => {
         const result = InterceptCalculator.calculateInterceptAngle(ship, target);
         
         // Assert
-        expect(result.angle).toBeCloseTo(Math.PI / 2); // Should aim directly up (π/2 radians)
+        expect(result.angle).toBeCloseTo(90); // Should aim directly up (90 degrees)
         expect(result.interceptPoint.x).toBeCloseTo(0);
         expect(result.interceptPoint.y).toBeCloseTo(100);
         expect(result.timeToIntercept).toBeCloseTo(10); // 100 units at speed 10
@@ -86,7 +96,7 @@ describe('InterceptCalculator', () => {
         //
         // Ship at origin, stationary target at diagonal position
         // Ship should aim directly at target at 45° angle
-        // Expected: Ship should aim at atan2(100,100) = π/4 radians
+        // Expected: Ship should aim at atan2(100,100) = 45 degrees
         
         // Arrange
         const ship = new MockSpaceObject(0, 0, 0, 10);
@@ -97,7 +107,7 @@ describe('InterceptCalculator', () => {
         
         // Assert
         // For a stationary target, we can verify the ship will hit it by traveling in a straight line
-        expect(result.angle).toBeCloseTo(Math.atan2(100, 100), 0); // Should aim directly at target
+        expect(result.angle).toBeCloseTo(radiansToDegrees(Math.atan2(100, 100)), 0); // Should aim directly at target (45 degrees)
         expect(result.interceptPoint.x).toBeCloseTo(100);
         expect(result.interceptPoint.y).toBeCloseTo(100);
         expect(result.timeToIntercept).toBeCloseTo(14.14); // 100 units at speed 10
@@ -117,13 +127,13 @@ describe('InterceptCalculator', () => {
         
         // Arrange
         const ship = new MockSpaceObject(0, 0, 0, 10);
-        const target = new MockSpaceObject(100, 0, Math.PI / 2, 5); // Target at (100,0) moving up at half speed
+        const target = new MockSpaceObject(100, 0, 90, 5); // Target at (100,0) moving up at half speed
         
         // Act
         const result = InterceptCalculator.calculateInterceptAngle(ship, target);
         
         // Assert
-        expect(radiansToDegrees(result.angle)).toBeCloseTo(30); 
+        expect(result.angle).toBeCloseTo(30); 
         expect(result.interceptPoint.x).toBeCloseTo(100);
         expect(result.interceptPoint.y).toBeCloseTo(57.74);
         expect(result.timeToIntercept).toBeCloseTo(11.55); 
@@ -137,7 +147,7 @@ describe('InterceptCalculator', () => {
         //
         // Ship is faster (20) than target (10), both moving right
         // Ship should be able to catch up by aiming directly at target
-        // Expected: Ship should aim directly right (0 radians)
+        // Expected: Ship should aim directly right (0 degrees)
         
         // Arrange
         const ship = new MockSpaceObject(0, 0, 0, 20);
@@ -148,7 +158,7 @@ describe('InterceptCalculator', () => {
         
         // Assert
         // Since the ship is faster (20 > 10), it should be able to catch up by aiming directly
-        expect(radiansToDegrees(result.angle)).toBeCloseTo(0); 
+        expect(result.angle).toBeCloseTo(0); 
         expect(result.interceptPoint.x).toBeCloseTo(200);
         expect(result.interceptPoint.y).toBeCloseTo(0);
         expect(result.timeToIntercept).toBeCloseTo(10); // 100 units at speed difference of 10 (20 - 10)
@@ -166,13 +176,13 @@ describe('InterceptCalculator', () => {
         
         // Arrange
         const ship = new MockSpaceObject(0, 0, 0, 10);
-        const target = new MockSpaceObject(100, 0, Math.PI, 5); // Target at (100,0) moving left toward ship
+        const target = new MockSpaceObject(100, 0, 180, 5); // Target at (100,0) moving left toward ship
         
         // Act
         const result = InterceptCalculator.calculateInterceptAngle(ship, target);
         
         // Assert
-        expect(radiansToDegrees(result.angle)).toBeCloseTo(0); 
+        expect(result.angle).toBeCloseTo(0); 
         expect(result.interceptPoint.x).toBeCloseTo(66.67);
         expect(result.interceptPoint.y).toBeCloseTo(0);
         expect(result.timeToIntercept).toBeCloseTo(6.67);
@@ -195,7 +205,7 @@ describe('InterceptCalculator', () => {
         const result = InterceptCalculator.calculateInterceptAngle(ship, target);
         
         // Assert
-        expect(radiansToDegrees(result.angle)).toBeCloseTo(180); 
+        expect(result.angle).toBeCloseTo(180); 
         expect(result.interceptPoint.x).toBeCloseTo(366.666);
         expect(result.interceptPoint.y).toBeCloseTo(0);
         expect(result.timeToIntercept).toBeCloseTo(26.666);
@@ -242,13 +252,13 @@ describe('InterceptCalculator', () => {
         
         // Arrange
         const ship = new MockSpaceObject(0, 0, 0, 15);
-        const target = new MockSpaceObject(100, 100, -Math.PI / 4, 10); // Target moving at 45 degrees down-left
+        const target = new MockSpaceObject(100, 100, 315, 10); // Target moving at 315 degrees (down-left)
         
         // Act
         const result = InterceptCalculator.calculateInterceptAngle(ship, target);
         
         // Assert
-        expect(radiansToDegrees(result.angle)).toBeCloseTo(3.19);
+        expect(result.angle).toBeCloseTo(3.19);
         expect(result.interceptPoint.x).toBeCloseTo(189.44);
         expect(result.interceptPoint.y).toBeCloseTo(10.56);
         expect(result.timeToIntercept).toBeCloseTo(12.65);
@@ -271,13 +281,13 @@ describe('InterceptCalculator', () => {
         
         // Arrange
         const ship = new MockSpaceObject(0, 0, 0, 15);
-        const target = new MockSpaceObject(100, 100, Math.PI/4, 7); // Target moving at 45 degrees
+        const target = new MockSpaceObject(100, 100, 45, 7); // Target moving at 45 degrees
         
         // Act
         const result = InterceptCalculator.calculateInterceptAngle(ship, target);
         
         // Assert
-        expect(radiansToDegrees(result.angle)).toBeCloseTo(45);
+        expect(result.angle).toBeCloseTo(45);
         expect(result.interceptPoint.x).toBeCloseTo(187.5);
         expect(result.interceptPoint.y).toBeCloseTo(187.5);
         expect(result.timeToIntercept).toBeCloseTo(17.68);
@@ -296,14 +306,14 @@ describe('InterceptCalculator', () => {
         // Complex angular interception calculation required
         
         // Arrange
-        const ship = new MockSpaceObject(0, 0, degreesToRadians(0), 20); // Ship moving down
-        const target = new MockSpaceObject(100, 100, degreesToRadians(305), 10); // Target moving down-left
+        const ship = new MockSpaceObject(0, 0, 0, 20); // Ship moving right
+        const target = new MockSpaceObject(100, 100, 305, 10); // Target moving down-left
 
         // Act
         const result = InterceptCalculator.calculateInterceptAngle(ship, target);
         
         // Assert
-        expect(radiansToDegrees(result.angle)).toBeCloseTo(15.5);
+        expect(result.angle).toBeCloseTo(15.5);
         expect(result.interceptPoint.x).toBeCloseTo(142.37);
         expect(result.interceptPoint.y).toBeCloseTo(39.49);
         expect(result.timeToIntercept).toBeCloseTo(7.39);
@@ -333,7 +343,7 @@ describe('InterceptCalculator', () => {
         
         // Assert
         // Ship should move left (negative X) to intercept target faster by crossing the boundary
-        expect(radiansToDegrees(result.angle)).toBeCloseTo(0);
+        expect(result.angle).toBeCloseTo(0);
         expect(result.interceptPoint.x).toBeCloseTo(61.11);
         expect(result.interceptPoint.y).toBeCloseTo(250);
         expect(result.timeToIntercept).toBeCloseTo(11.11);
@@ -361,14 +371,14 @@ describe('InterceptCalculator', () => {
         
         // Arrange
         const ship = new MockSpaceObject(250, World.HEIGHT - 50, 0, 10);
-        const target = new MockSpaceObject(250, 50, Math.PI/2, 3); // Moving down slowly
+        const target = new MockSpaceObject(250, 50, 90, 3); // Moving down slowly
         
         // Act
         const result = InterceptCalculator.calculateInterceptAngle(ship, target);
         
         // Assert
         // Ship should move up (negative Y) to intercept target faster by crossing the boundary
-        expect(radiansToDegrees(result.angle)).toBeCloseTo(90);
+        expect(result.angle).toBeCloseTo(90);
         expect(result.interceptPoint.x).toBeCloseTo(250);
         expect(result.interceptPoint.y).toBeCloseTo(92.86);
         expect(result.timeToIntercept).toBeCloseTo(14.285);
@@ -389,14 +399,14 @@ describe('InterceptCalculator', () => {
         
         // Arrange
         const ship = new MockSpaceObject(50, 250, 0, 10);
-        const target = new MockSpaceObject(World.WIDTH - 50, 250, Math.PI, 4); // Moving left slowly
+        const target = new MockSpaceObject(World.WIDTH - 50, 250, 180, 4); // Moving left slowly
         
         // Act
         const result = InterceptCalculator.calculateInterceptAngle(ship, target);
         
         // Assert
         // Ship should move left to intercept target faster by crossing the boundary
-        expect(radiansToDegrees(result.angle)).toBeCloseTo(180);
+        expect(result.angle).toBeCloseTo(180);
         expect(result.interceptPoint.x).toBeCloseTo(383.33);
         expect(result.interceptPoint.y).toBeCloseTo(250);
         expect(result.timeToIntercept).toBeCloseTo(16.666);
@@ -424,14 +434,14 @@ describe('InterceptCalculator', () => {
         
         // Arrange
         const ship = new MockSpaceObject(250, 50, 0, 10);
-        const target = new MockSpaceObject(250, World.HEIGHT - 50, -Math.PI/2, 3); // Moving up slowly
+        const target = new MockSpaceObject(250, World.HEIGHT - 50, 270, 3); // Moving up slowly
         
         // Act
         const result = InterceptCalculator.calculateInterceptAngle(ship, target);
         
         // Assert
         // Ship should move up (negative Y) to intercept target faster by crossing the boundary
-        expect(radiansToDegrees(result.angle)).toBeCloseTo(-90); // -90 degrees = 270 degrees
+        expect(result.angle).toBeCloseTo(-90); // -90 degrees = 270 degrees
         expect(result.interceptPoint.x).toBeCloseTo(250);
         expect(result.interceptPoint.y).toBeCloseTo(407.14);
         expect(result.timeToIntercept).toBeCloseTo(14.29);
@@ -459,7 +469,7 @@ describe('InterceptCalculator', () => {
         
         // Assert
         // Ship should move right to intercept target faster by crossing the boundary
-        expect(radiansToDegrees(result.angle)).toBeCloseTo(0);
+        expect(result.angle).toBeCloseTo(0);
         expect(result.interceptPoint.x).toBeCloseTo(116.666);
         expect(result.interceptPoint.y).toBeCloseTo(250);
         expect(result.timeToIntercept).toBeCloseTo(16.666);
@@ -486,14 +496,14 @@ describe('InterceptCalculator', () => {
         
         // Arrange
         const ship = new MockSpaceObject(50, 50, 0, 12);
-        const target = new MockSpaceObject(World.WIDTH - 50, World.HEIGHT - 50, degreesToRadians(225), 3); // Moving up-left slowly
+        const target = new MockSpaceObject(World.WIDTH - 50, World.HEIGHT - 50, 225, 3); // Moving up-left slowly
         
         // Act
         const result = InterceptCalculator.calculateInterceptAngle(ship, target);
         
         // Assert
         // Ship should move diagonally to intercept target faster by crossing both boundaries
-        expect(radiansToDegrees(result.angle)).toBeCloseTo(-135);
+        expect(result.angle).toBeCloseTo(-135);
         expect(result.interceptPoint.x).toBeCloseTo(416.666);
         expect(result.interceptPoint.y).toBeCloseTo(416.666);
         expect(result.timeToIntercept).toBeCloseTo(15.71);
@@ -520,14 +530,14 @@ describe('InterceptCalculator', () => {
         
         // Arrange
         const ship = new MockSpaceObject(World.WIDTH - 50, 50, 0, 12);
-        const target = new MockSpaceObject(50, World.HEIGHT - 50, degreesToRadians(45), 3); // Moving up-right slowly
+        const target = new MockSpaceObject(50, World.HEIGHT - 50, 45, 3); // Moving up-right slowly
         
         // Act
         const result = InterceptCalculator.calculateInterceptAngle(ship, target);
         
         // Assert
         // Ship should move diagonally to intercept target faster by crossing both boundaries
-        expect(radiansToDegrees(result.angle)).toBeCloseTo(-30.522);
+        expect(result.angle).toBeCloseTo(-30.522);
         expect(result.interceptPoint.x).toBeCloseTo(75.82);
         expect(result.interceptPoint.y).toBeCloseTo(475.82);
         expect(result.timeToIntercept).toBeCloseTo(12.17);
@@ -554,14 +564,14 @@ describe('InterceptCalculator', () => {
         
         // Arrange
         const ship = new MockSpaceObject(50, World.HEIGHT - 50, 0, 12);
-        const target = new MockSpaceObject(World.WIDTH - 50, 50, degreesToRadians(225), 3); // Moving down-left slowly
+        const target = new MockSpaceObject(World.WIDTH - 50, 50, 225, 3); // Moving down-left slowly
         
         // Act
         const result = InterceptCalculator.calculateInterceptAngle(ship, target);
         
         // Assert
         // Ship should move diagonally to intercept target faster by crossing both boundaries
-        expect(radiansToDegrees(result.angle)).toBeCloseTo(149.477);
+        expect(result.angle).toBeCloseTo(149.477);
         expect(result.interceptPoint.x).toBeCloseTo(424.180);
         expect(result.interceptPoint.y).toBeCloseTo(24.180);
         expect(result.timeToIntercept).toBeCloseTo(12.17);
@@ -588,14 +598,14 @@ describe('InterceptCalculator', () => {
         
         // Arrange
         const ship = new MockSpaceObject(World.WIDTH - 50, World.HEIGHT - 50, 0, 12);
-        const target = new MockSpaceObject(50, 50, degreesToRadians(315), 1); // Moving down-right slowly
+        const target = new MockSpaceObject(50, 50, 315, 1); // Moving down-right slowly
         
         // Act
         const result = InterceptCalculator.calculateInterceptAngle(ship, target);
         
         // Assert
         // Ship should move diagonally to intercept target faster by crossing both boundaries
-        expect(radiansToDegrees(result.angle)).toBeCloseTo(40.22);
+        expect(result.angle).toBeCloseTo(40.22);
         expect(result.interceptPoint.x).toBeCloseTo(58.36);
         expect(result.interceptPoint.y).toBeCloseTo(41.637);
         expect(result.timeToIntercept).toBeCloseTo(11.83);
@@ -615,16 +625,20 @@ describe('InterceptCalculator', () => {
         // |                                           |
         // Bottom edge ─────────────────────────────────
 
-        // Ship at (50, 250), target at (300, 270) moving down-right
+        // Ship at (50, 250), target at (50, 270) moving right faster
         // Ship should warp around the world to intercept target
-        // Expected: Ship should aim diagonally
+        // Expected: Ship should aim appropriately
+        
         // Arrange
         const ship = new MockSpaceObject(50, 250, 0, 1);
-        const target = new MockSpaceObject(50, 270, degreesToRadians(0), 10); // Moving right faster
+        const target = new MockSpaceObject(50, 270, 0, 10); // Moving right faster
+        
         // Act
         const result = InterceptCalculator.calculateInterceptAngle(ship, target);
+        
         // Assert
-        expect(radiansToDegrees(result.angle)).toBeCloseTo(154.15);
+        // This should be a complex case that might wrap around the world
+        expect(result.angle).toBeCloseTo(154.15);
         expect(result.interceptPoint.x).toBeCloseTo(8.717);
         expect(result.interceptPoint.y).toBeCloseTo(270);
         expect(result.timeToIntercept).toBeCloseTo(45.871);

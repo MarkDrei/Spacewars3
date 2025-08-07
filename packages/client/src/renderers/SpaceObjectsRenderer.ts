@@ -1,18 +1,17 @@
 import { Ship } from '../Ship';
-import { Collectible } from '../Collectible';
-import { Shipwreck } from '../Shipwreck';
-import { EscapePod } from '../EscapePod';
-import { Asteroid } from '../Asteroid';
 import { ShipwreckRenderer } from './ShipwreckRenderer';
 import { EscapePodRenderer } from './EscapePodRenderer';
 import { AsteroidRenderer } from './AsteroidRenderer';
+import { SpaceObject } from '@shared/types';
+import { OtherShipRenderer } from './OtherShipRenderer';
 
-export class CollectiblesRenderer {
+export class SpaceObjectsRenderer {
     private ctx: CanvasRenderingContext2D;
     private canvas: HTMLCanvasElement;
     private shipwreckRenderer: ShipwreckRenderer;
     private escapePodRenderer: EscapePodRenderer;
     private asteroidRenderer: AsteroidRenderer;
+    private shipRenderer: OtherShipRenderer;
 
     constructor(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement) {
         this.ctx = ctx;
@@ -20,38 +19,39 @@ export class CollectiblesRenderer {
         this.shipwreckRenderer = new ShipwreckRenderer();
         this.escapePodRenderer = new EscapePodRenderer();
         this.asteroidRenderer = new AsteroidRenderer();
+        this.shipRenderer = new OtherShipRenderer();
     }
 
     /**
      * Draw collectible objects
      */
-    drawCollectibles(ship: Ship, collectibles: Collectible[], worldWidth: number, worldHeight: number): void {
+    drawSpaceObjects(ship: Ship, collectibles: SpaceObject[], worldWidth: number, worldHeight: number): void {
         // Draw the main collectibles first
-        this.drawMainCollectibles(ship, collectibles);
+        this.drawMainObjects(ship, collectibles);
         
         // Now draw the wrapped collectibles
-        this.drawWrappedCollectibles(ship, collectibles, worldWidth, worldHeight);
+        this.drawWrappedObjects(ship, collectibles, worldWidth, worldHeight);
     }
     
     /**
      * Draw the main collectible objects
      */
-    private drawMainCollectibles(ship: Ship, collectibles: Collectible[]): void {
+    private drawMainObjects(ship: Ship, collectibles: SpaceObject[]): void {
         const centerX = this.canvas.width / 2;
         const centerY = this.canvas.height / 2;
         const shipX = ship.getX();
         const shipY = ship.getY();
         
         collectibles.forEach(collectible => {
-            this.renderCollectible(collectible, centerX, centerY, shipX, shipY);
+            this.renderObject(collectible, centerX, centerY, shipX, shipY);
         });
     }
     
     /**
      * Render a single collectible at the specified position
      */
-    private renderCollectible(
-        collectible: Collectible, 
+    private renderObject(
+        collectible: SpaceObject, 
         screenX: number, 
         screenY: number, 
         shipX: number, 
@@ -59,7 +59,7 @@ export class CollectiblesRenderer {
         offsetX: number = 0,
         offsetY: number = 0
     ): void {
-        if (collectible instanceof Shipwreck) {
+        if (collectible.type === 'shipwreck') {
             this.shipwreckRenderer.drawShipwreck(
                 this.ctx,
                 screenX + offsetX,
@@ -68,7 +68,7 @@ export class CollectiblesRenderer {
                 shipY,
                 collectible
             );
-        } else if (collectible instanceof EscapePod) {
+        } else if (collectible.type === 'escape_pod') {
             this.escapePodRenderer.drawEscapePod(
                 this.ctx,
                 screenX + offsetX,
@@ -77,8 +77,17 @@ export class CollectiblesRenderer {
                 shipY,
                 collectible
             );
-        } else if (collectible instanceof Asteroid) {
+        } else if (collectible.type === 'asteroid') {
             this.asteroidRenderer.drawAsteroid(
+                this.ctx,
+                screenX + offsetX,
+                screenY + offsetY,
+                shipX,
+                shipY,
+                collectible
+            );
+        } else if (collectible.type === 'player_ship') {
+            this.shipRenderer.drawOtherShip(
                 this.ctx,
                 screenX + offsetX,
                 screenY + offsetY,
@@ -113,7 +122,7 @@ export class CollectiblesRenderer {
     /**
      * Draw wrapped collectible objects
      */
-    private drawWrappedCollectibles(ship: Ship, collectibles: Collectible[], worldWidth: number, worldHeight: number): void {
+    private drawWrappedObjects(ship: Ship, collectibles: SpaceObject[], worldWidth: number, worldHeight: number): void {
         const centerX = this.canvas.width / 2;
         const centerY = this.canvas.height / 2;
         const shipX = ship.getX();
@@ -141,9 +150,9 @@ export class CollectiblesRenderer {
         
         // Check each collectible
         collectibles.forEach(collectible => {
-            const collectibleX = collectible.getX();
-            const collectibleY = collectible.getY();
-            
+            const collectibleX = collectible.x;
+            const collectibleY = collectible.y;
+
             // Check all possible wrapped positions for each collectible
             wrapOffsets.forEach(offset => {
                 const wrappedX = collectibleX + offset.x;
@@ -151,7 +160,7 @@ export class CollectiblesRenderer {
                 
                 // Only draw if it would be visible on screen
                 if (this.isPositionVisible(wrappedX, wrappedY, visibleLeft, visibleRight, visibleTop, visibleBottom)) {
-                    this.renderCollectible(collectible, centerX, centerY, shipX, shipY, offset.x, offset.y);
+                    this.renderObject(collectible, centerX, centerY, shipX, shipY, offset.x, offset.y);
                 }
             });
         });

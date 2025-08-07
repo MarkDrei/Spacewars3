@@ -1,37 +1,44 @@
-import { SpaceObject } from './SpaceObject';
+import { SpaceObjectOld } from './SpaceObject';
 import { Ship } from './Ship';
 import { Asteroid } from './Asteroid';
-import { InterceptCalculator } from './InterceptCalculator';
 // import { Collectible } from './Collectible'; // DISABLED: Server handles collections
 import { Player } from './Player';
 import { Shipwreck } from './Shipwreck';
 import { EscapePod } from './EscapePod';
 import { WorldData } from '../../shared/src/types/gameTypes';
 
-export interface InterceptionData {
-    targetObject: SpaceObject;
-    interceptTime: number;
-    interceptX: number;
-    interceptY: number;
-    shipAngle: number;
-    timestamp: number;
-}
-
 export class World {
+
     private player: Player;
-    private spaceObjects: SpaceObject[];
-    private interceptionData: InterceptionData | null = null;
+    private spaceObjects: SpaceObjectOld[];
+    private hoveredObjectId?: number;
     
     // World boundaries
     public static WIDTH = 500;
     public static HEIGHT = 500;
 
+    private static instance: World;
+
+    static getInstance() {
+        return this.instance;
+    }
+
     constructor(initializeDefault: boolean = true) {
         this.spaceObjects = [];
         
+        // TODO: remove entirely?
         if (initializeDefault) {
-            // Initialize ship
-            const ship = new Ship();
+            // Initialize ship with default server data
+            const defaultShipData = {
+                id: -1, // Temporary ID for local ship
+                type: 'player_ship' as const,
+                x: 250,
+                y: 250,
+                speed: 20,
+                angle: 0,
+                last_position_update_ms: Date.now()
+            };
+            const ship = new Ship(defaultShipData);
             
             // Initialize player with ship
             this.player = new Player(ship);
@@ -40,10 +47,20 @@ export class World {
             this.spaceObjects = [ship];
         } else {
             // Create a dummy player ship that will be replaced by server data
-            const dummyShip = new Ship(0, 0, 0, 0); // Position at origin
+            const dummyShipData = {
+                id: -1, // Temporary ID for dummy ship
+                type: 'player_ship' as const,
+                x: 0,
+                y: 0,
+                speed: 0,
+                angle: 0,
+                last_position_update_ms: Date.now()
+            };
+            const dummyShip = new Ship(dummyShipData);
             this.player = new Player(dummyShip);
             // Don't add dummy ship to spaceObjects - it will be replaced by server data
         }
+        World.instance = this; // Set singleton instance
     }
 
     // Getters
@@ -51,12 +68,8 @@ export class World {
         return this.player.getShip();
     }
 
-    getSpaceObjects(): SpaceObject[] {
+    getSpaceObjects(): SpaceObjectOld[] {
         return this.spaceObjects;
-    }
-
-    getInterceptionData(): InterceptionData | null {
-        return this.interceptionData;
     }
     
     // Get world dimensions
@@ -103,33 +116,29 @@ export class World {
         
         // Convert server objects to client objects
         worldData.spaceObjects.forEach(serverObject => {
-            let clientObject: SpaceObject;
+            let clientObject: SpaceObjectOld;
             
             switch (serverObject.type) {
                 case 'player_ship':
                     // Create or update player ships (including other players)
-                    clientObject = new Ship(serverObject.x, serverObject.y, serverObject.angle, serverObject.speed);
-                    // Store server ID in a custom property for identification
-                    (clientObject as SpaceObject & { serverId: number }).serverId = serverObject.id;
+                    clientObject = new Ship(serverObject);
                     break;
                     
                 case 'asteroid': {
-                    clientObject = new Asteroid(serverObject.x, serverObject.y, serverObject.angle, serverObject.speed);
-                    (clientObject as SpaceObject & { serverId: number }).serverId = serverObject.id;
+                    const asteroidData = serverObject as import('../../shared/src/types/gameTypes').Asteroid;
+                    clientObject = new Asteroid(asteroidData);
                     break;
                 }
                     
                 case 'shipwreck': {
                     const shipwreckData = serverObject as import('../../shared/src/types/gameTypes').Shipwreck;
-                    clientObject = new Shipwreck(serverObject.x, serverObject.y, serverObject.angle, serverObject.speed, shipwreckData.value);
-                    (clientObject as SpaceObject & { serverId: number }).serverId = serverObject.id;
+                    clientObject = new Shipwreck(shipwreckData);
                     break;
                 }
                     
                 case 'escape_pod': {
                     const podData = serverObject as import('../../shared/src/types/gameTypes').EscapePod;
-                    clientObject = new EscapePod(serverObject.x, serverObject.y, serverObject.angle, serverObject.speed, podData.value, podData.survivors);
-                    (clientObject as SpaceObject & { serverId: number }).serverId = serverObject.id;
+                    clientObject = new EscapePod(podData);
                     break;
                 }
                     
@@ -138,7 +147,7 @@ export class World {
                     return;
             }
             
-            // TODO: Add way to track server IDs if needed for updates
+            // The server ID is now available through clientObject.getId()
             
             this.spaceObjects.push(clientObject);
         });
@@ -146,7 +155,7 @@ export class World {
         // Update player ship reference - find the ship that matches playerShipId
         if (playerShipId) {
             const playerShips = this.spaceObjects.filter(obj => 
-                obj instanceof Ship && (obj as Ship & { serverId: number }).serverId === playerShipId
+                obj instanceof Ship && obj.getId() === playerShipId
             ) as Ship[];
             
             if (playerShips.length > 0) {
@@ -171,6 +180,7 @@ export class World {
         this.spaceObjects.forEach(obj => {
             obj.setHovered(false);
         });
+        this.hoveredObjectId = undefined;
         
         // Wrap mouse position to world boundaries
         const wrappedMouse = this.wrapPosition(worldMouseX, worldMouseY);
@@ -180,6 +190,7 @@ export class World {
             // Check if the object is hovered at its current position
             if (obj.isPointInHoverRadius(wrappedMouse.x, wrappedMouse.y)) {
                 obj.setHovered(true);
+                this.hoveredObjectId = obj.getId();
                 return;
             }
             
@@ -189,7 +200,7 @@ export class World {
     }
     
     // Check if an object is hovered when considering wrapping
-    private checkWrappedHover(obj: SpaceObject, mouseX: number, mouseY: number): void {
+    private checkWrappedHover(obj: SpaceObjectOld, mouseX: number, mouseY: number): void {
         const objX = obj.getX();
         const objY = obj.getY();
         const radius = obj.getHoverRadius();
@@ -212,113 +223,20 @@ export class World {
             const dy = mouseY - pos.y;
             if (dx * dx + dy * dy <= radius * radius) {
                 obj.setHovered(true);
+                this.hoveredObjectId = obj.getId();
                 return;
             }
         }
     }
 
     // Find a hovered object that isn't the ship
-    findHoveredObject(): SpaceObject | undefined {
+    findHoveredObject(): SpaceObjectOld | undefined {
         const ship = this.getShip();
         return this.spaceObjects.find(obj => obj !== ship && obj.isHoveredState());
     }
 
-    // Calculate interception for a target object
-    interceptObject(targetObject: SpaceObject): void {
-        const ship = this.getShip();
-        
-        // Calculate the interception angle
-        const interceptAngle = InterceptCalculator.calculateInterceptAngle(ship, targetObject);
-        ship.setAngle(interceptAngle.angle);
-        
-        // Calculate interception point for visualization
-        const targetSpeed = targetObject.getSpeed();
-        const targetAngle = targetObject.getAngle();
-        const shipSpeed = ship.getSpeed();
-        
-        // Get positions
-        const shipX = ship.getX();
-        const shipY = ship.getY();
-        const targetX = targetObject.getX();
-        const targetY = targetObject.getY();
-        
-        // Initialize variables for best solution
-        let bestInterceptTime = Number.POSITIVE_INFINITY;
-        let bestInterceptX = 0;
-        let bestInterceptY = 0;
-        
-        // Try all images of ship and target (shifting by -wrapSize, 0, +wrapSize in both axes)
-        for (let kxX = -1; kxX <= 1; kxX++) {
-            for (let kyX = -1; kyX <= 1; kyX++) {
-                const shipXi = shipX + kxX * World.WIDTH;
-                const shipYi = shipY + kyX * World.HEIGHT;
-                
-                for (let kxY = -1; kxY <= 1; kxY++) {
-                    for (let kyY = -1; kyY <= 1; kyY++) {
-                        const targetXi = targetX + kxY * World.WIDTH;
-                        const targetYi = targetY + kyY * World.HEIGHT;
-                        
-                        // Calculate relative positions
-                        const dx = targetXi - shipXi;
-                        const dy = targetYi - shipYi;
-                        
-                        // Calculate velocities
-                        const targetVelX = targetSpeed * Math.cos(targetAngle);
-                        const targetVelY = targetSpeed * Math.sin(targetAngle);
-                        const shipVelX = shipSpeed * Math.cos(interceptAngle.angle);
-                        const shipVelY = shipSpeed * Math.sin(interceptAngle.angle);
-                        
-                        // Calculate relative speed
-                        const relVelX = shipVelX - targetVelX;
-                        const relVelY = shipVelY - targetVelY;
-                        
-                        // Calculate quadratic equation coefficients
-                        const a = relVelX * relVelX + relVelY * relVelY;
-                        const b = 2 * (dx * relVelX + dy * relVelY);
-                        const c = dx * dx + dy * dy;
-                        
-                        // Calculate discriminant
-                        const discriminant = b * b - 4 * a * c;
-                        
-                        // If interception is possible
-                        if (discriminant >= 0 && a > 0.0001) {
-                            // Calculate interception time (smaller positive root)
-                            const t1 = (-b + Math.sqrt(discriminant)) / (2 * a);
-                            const t2 = (-b - Math.sqrt(discriminant)) / (2 * a);
-                            
-                            let interceptTime = Number.MAX_VALUE;
-                            if (t1 > 0) interceptTime = t1;
-                            if (t2 > 0 && t2 < interceptTime) interceptTime = t2;
-                            
-                            if (interceptTime !== Number.MAX_VALUE && interceptTime < bestInterceptTime) {
-                                bestInterceptTime = interceptTime;
-                                
-                                // Calculate future positions
-                                const futureTargetX = targetXi + targetVelX * interceptTime;
-                                const futureTargetY = targetYi + targetVelY * interceptTime;
-                                
-                                // Store wrapped interception coordinates
-                                bestInterceptX = futureTargetX;
-                                bestInterceptY = futureTargetY;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        
-        // Check if we found a valid interception
-        if (bestInterceptTime !== Number.POSITIVE_INFINITY) {
-            // Store interception data for visualization
-            this.interceptionData = {
-                targetObject: targetObject,
-                interceptTime: bestInterceptTime,
-                interceptX: bestInterceptX,
-                interceptY: bestInterceptY,
-                shipAngle: interceptAngle.angle,
-                timestamp: performance.now()
-            };
-        }
+    getHoveredObjectId(): number | undefined {
+        return this.hoveredObjectId;
     }
 
     /**
@@ -332,14 +250,14 @@ export class World {
     /**
      * Add a space object to the world
      */
-    addSpaceObject(object: SpaceObject): void {
+    addSpaceObject(object: SpaceObjectOld): void {
         this.spaceObjects.push(object);
     }
 
     /**
      * Remove a space object from the world
      */
-    removeSpaceObject(object: SpaceObject): void {
+    removeSpaceObject(object: SpaceObjectOld): void {
         const index = this.spaceObjects.indexOf(object);
         if (index !== -1) {
             this.spaceObjects.splice(index, 1);
@@ -452,96 +370,4 @@ export class World {
         this.player = new Player(ship);
     }
 
-    /**
-     * Spawn a random object at a random position in the world
-     * NOTE: Disabled - spawning now handled by server
-     */
-    // @ts-expect-error - Disabled method, kept for reference
-    private spawnRandomObject(): void {
-        // DISABLED: Server handles all object spawning
-        return;
-        /*
-        // Get a random position that's not too close to the ship
-        const position = this.getRandomSpawnPosition();
-        
-        // Random angle in radians
-        const randomAngle = Math.random() * Math.PI * 2;
-        
-        // Random angle in degrees for asteroid
-        const randomAngleDegrees = Math.floor(Math.random() * 360);
-        
-        // Random speed between 1 and 5
-        const randomSpeed = 1 + Math.random() * 4;
-        
-        // Random value between 5 and 20
-        const randomValue = Math.floor(5 + Math.random() * 15);
-        
-        // Decide which type of object to spawn (asteroid, shipwreck, or escape pod)
-        const objectType = Math.floor(Math.random() * 3);
-        
-        switch (objectType) {
-            case 0: // Asteroid
-                this.addSpaceObject(new Asteroid(
-                    position.x,
-                    position.y,
-                    randomAngleDegrees,
-                    randomSpeed,
-                    randomValue
-                ));
-                break;
-            case 1: { // Shipwreck
-                this.addSpaceObject(new Shipwreck(
-                    position.x,
-                    position.y,
-                    randomAngle,
-                    randomSpeed / 2, // Slower speed for shipwrecks
-                    randomValue
-                ));
-                break;
-            }
-            case 2: { // Escape Pod
-                this.addSpaceObject(new EscapePod(
-                    position.x,
-                    position.y,
-                    randomAngle,
-                    randomSpeed,
-                    randomValue
-                ));
-                break;
-            }
-        }
-        */
-    }
-    
-    /**
-     * Get a random position that's not too close to the ship
-     * NOTE: Disabled - spawning now handled by server
-     */
-    // @ts-expect-error - Disabled method, kept for reference
-    private getRandomSpawnPosition(): { x: number, y: number } {
-        // DISABLED: Server handles all spawning
-        return { x: 0, y: 0 };
-        /*
-        const ship = this.getShip();
-        const shipX = ship.getX();
-        const shipY = ship.getY();
-        
-        // Minimum safe distance from ship
-        const minDistance = 100;
-        
-        // Try to find a position that's not too close to the ship
-        let x, y, distance;
-        
-        do {
-            // Random position within world bounds
-            x = Math.random() * World.WIDTH;
-            y = Math.random() * World.HEIGHT;
-            
-            // Calculate distance from ship (considering wrapping)
-            distance = this.getMinDistanceInWrappedWorld(shipX, shipY, x, y);
-        } while (distance < minDistance);
-        
-        return { x, y };
-        */
-    }
 } 

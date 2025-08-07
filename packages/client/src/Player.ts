@@ -21,10 +21,8 @@ export class Player {
      * Handle collecting an item
      * Updates last collected, adds to inventory, and updates score
      */
-    collectItem(collectible: Collectible): void {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    collectItem(_collectible: Collectible): void {
         // TODO: trigger backend
-
-        // Call the collectible's onCollect method
-        collectible.onCollect();
     }
 } 

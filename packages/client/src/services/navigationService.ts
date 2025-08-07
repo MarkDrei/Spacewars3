@@ -55,11 +55,9 @@ export async function setShipDirection(angle: number): Promise<NavigateResponse>
 /**
  * Set ship to intercept a target with max speed
  */
-export async function interceptTarget(angle: number, maxSpeed: number): Promise<NavigateResponse> {
-  // Convert radians to degrees for the API
-  const angleInDegrees = (angle * 180 / Math.PI + 360) % 360;
+export async function interceptTarget(angleInDegrees: number, maxSpeed: number): Promise<NavigateResponse> {
   
-  console.debug(`🎯 [CLIENT] Intercepting target - angle: ${angle} rad (${angleInDegrees}°), maxSpeed: ${maxSpeed}`);
+  console.debug(`🎯 [CLIENT] Intercepting target - angle: ${angleInDegrees}°, maxSpeed: ${maxSpeed}`);
   
   return navigateShip({ 
     angle: angleInDegrees,

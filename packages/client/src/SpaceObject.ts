@@ -1,57 +1,74 @@
-export abstract class SpaceObject {
-    protected x: number;
-    protected y: number;
-    protected angle: number; // Always in degrees (0-360)
-    protected speed: number;
+import { SpaceObject as SharedSpaceObject } from '../../shared/src/types/gameTypes';
+
+export abstract class SpaceObjectOld {
+    protected serverData: SharedSpaceObject;
     protected isHovered: boolean;
     public static readonly HOVER_RADIUS = 20;
 
-    constructor(x: number, y: number, angleDegrees: number, speed: number) {
-        this.x = x;
-        this.y = y;
-        this.angle = angleDegrees; // Store in degrees
-        this.speed = speed;
+    constructor(serverData: SharedSpaceObject) {
+        this.serverData = serverData;
         this.isHovered = false;
     }
 
+    getServerData(): SharedSpaceObject {
+        return this.serverData;
+    }
+
     getX(): number {
-        return this.x;
+        return this.serverData.x;
     }
 
     getY(): number {
-        return this.y;
+        return this.serverData.y;
     }
 
     setX(x: number): void {
-        this.x = x;
+        this.serverData.x = x;
     }
 
     setY(y: number): void {
-        this.y = y;
+        this.serverData.y = y;
     }
 
     getAngle(): number {
-        return this.angle; // Returns degrees
+        return this.serverData.angle; // Returns degrees
     }
 
     getAngleDegrees(): number {
-        return this.angle; // Returns degrees
+        return this.serverData.angle; // Returns degrees
     }
 
     getAngleRadians(): number {
-        return this.angle * Math.PI / 180; // Convert degrees to radians for rendering
+        return this.serverData.angle * Math.PI / 180; // Convert degrees to radians for rendering
     }
 
     getSpeed(): number {
-        return this.speed;
+        return this.serverData.speed;
     }
 
     setAngle(angleDegrees: number): void {
-        this.angle = angleDegrees; // Store in degrees
+        this.serverData.angle = angleDegrees; // Store in degrees
     }
 
     setSpeed(speed: number): void {
-        this.speed = speed;
+        this.serverData.speed = speed;
+    }
+
+    getId(): number {
+        return this.serverData.id;
+    }
+
+    getType(): string {
+        return this.serverData.type;
+    }
+
+    getLastPositionUpdateMs(): number {
+        return this.serverData.last_position_update_ms;
+    }
+
+    // Update the object with new server data
+    updateFromServer(newServerData: SharedSpaceObject): void {
+        this.serverData = newServerData;
     }
 
     // NOTE: updatePosition removed - all positions come from server
@@ -62,9 +79,9 @@ export abstract class SpaceObject {
     // }
 
     isPointInHoverRadius(pointX: number, pointY: number): boolean {
-        const dx = pointX - this.x;
-        const dy = pointY - this.y;
-        return (dx * dx + dy * dy) <= (SpaceObject.HOVER_RADIUS * SpaceObject.HOVER_RADIUS);
+        const dx = pointX - this.getX();
+        const dy = pointY - this.getY();
+        return (dx * dx + dy * dy) <= (SpaceObjectOld.HOVER_RADIUS * SpaceObjectOld.HOVER_RADIUS);
     }
 
     setHovered(hovered: boolean): void {
@@ -76,6 +93,6 @@ export abstract class SpaceObject {
     }
 
     getHoverRadius(): number {
-        return SpaceObject.HOVER_RADIUS;
+        return SpaceObjectOld.HOVER_RADIUS;
     }
 } 

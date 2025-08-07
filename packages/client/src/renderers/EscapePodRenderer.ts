@@ -1,10 +1,10 @@
-import { SpaceObject } from '../SpaceObject';
-import { SpaceObjectRenderer } from './SpaceObjectRenderer';
+import { SpaceObject } from '@shared/types';
+import { SpaceObjectRendererBase } from './SpaceObjectRendererBase';
 
 /**
  * Renderer for EscapePod collectibles
  */
-export class EscapePodRenderer extends SpaceObjectRenderer {
+export class EscapePodRenderer extends SpaceObjectRendererBase {
     private escapePodImage: HTMLImageElement;
 
     constructor() {
@@ -50,7 +50,7 @@ export class EscapePodRenderer extends SpaceObjectRenderer {
      * Draw engine flames behind the escape pod
      */
     private drawEngineFlames(ctx: CanvasRenderingContext2D, escapePod: SpaceObject): void {
-        const speed = escapePod.getSpeed ? escapePod.getSpeed() : 0;
+        const speed = escapePod.speed;
         if (speed === 0) return;
 
         // Calculate escape pod dimensions based on image aspect ratio (same as rendered image)
@@ -69,7 +69,7 @@ export class EscapePodRenderer extends SpaceObjectRenderer {
         }
 
         const time = Date.now();
-        const flicker = Math.abs(Math.sin(time * 0.003)); // Flicker effect for the flame
+        const flicker = Math.abs(Math.sin(time * 0.001)); // Flicker effect for the flame
         
         // Scale flame dimensions based on pod size
         const flameLength = (podHeight * 0.6) + flicker * (podHeight * 0.3);

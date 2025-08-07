@@ -1,5 +1,5 @@
 import { Ship } from '../Ship';
-import { SpaceObject } from '../SpaceObject';
+import { SpaceObjectOld } from '../SpaceObject';
 import { Collectible } from '../Collectible';
 import { Shipwreck } from '../Shipwreck';
 import { EscapePod } from '../EscapePod';
@@ -13,7 +13,7 @@ export class TooltipRenderer {
         this.ctx = canvas.getContext('2d')!;
     }
 
-    private calculateDistanceToShip(object: SpaceObject, ship: Ship): number {
+    private calculateDistanceToShip(object: SpaceObjectOld, ship: Ship): number {
         if (object === ship) return 0;
         
         const dx = object.getX() - ship.getX();
@@ -21,7 +21,7 @@ export class TooltipRenderer {
         return Math.sqrt(dx * dx + dy * dy);
     }
 
-    drawTooltip(spaceObjects: SpaceObject[], ship: Ship): void {
+    drawTooltip(spaceObjects: SpaceObjectOld[], ship: Ship): void {
         // Find the first hovered object
         const hoveredObject = spaceObjects.find(obj => obj.isHoveredState());
         
@@ -78,7 +78,7 @@ export class TooltipRenderer {
     /**
      * Get tooltip text based on object type
      */
-    private getTooltipTextForObject(object: SpaceObject, ship: Ship): string[] {
+    private getTooltipTextForObject(object: SpaceObjectOld, ship: Ship): string[] {
         // Calculate common properties
         const distance = this.calculateDistanceToShip(object, ship);
         const angleDegrees = Math.round(object.getAngleDegrees()); // Already in degrees, no conversion needed
@@ -108,7 +108,6 @@ export class TooltipRenderer {
     private getCollectibleTooltip(collectible: Collectible, distance: number, angleDegrees: number): string[] {
         const baseTooltip = [
             `Type: ${this.getReadableTypeName(collectible)}`,
-            `Value: ${collectible.getValue()}`,
             `Speed: ${collectible.getSpeed()}`,
             `Angle: ${angleDegrees}°`,
             `Distance: ${Math.round(distance)}`
