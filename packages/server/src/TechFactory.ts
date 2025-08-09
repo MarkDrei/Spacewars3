@@ -325,7 +325,7 @@ export class TechFactory {
   /**
    * Calculate weapon damage effects against a target
    */
-  static async calculateWeaponDamage(
+  static calculateWeaponDamage(
     weaponKey: string,
     techCounts: TechCounts,
     opponentShieldValue: number,
@@ -335,7 +335,7 @@ export class TechFactory {
     baseDamageModifier: number,
     ecmEffectiveness: number,
     spreadValue: number
-  ): Promise<{ weaponsHit: number; shieldDamage: number; armorDamage: number; hullDamage: number }> {
+  ): { weaponsHit: number; shieldDamage: number; armorDamage: number; hullDamage: number } {
     // Get weapon specification
     const weaponSpec = this.getWeaponSpec(weaponKey);
     if (!weaponSpec) {
