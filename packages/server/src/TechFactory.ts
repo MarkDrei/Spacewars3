@@ -14,7 +14,7 @@ export interface WeaponSpec {
   baseAccuracy: number; // percentage (0-100)
   baseCost: number; // iron cost
   shieldDamageRatio: number; // percentage of damage that goes to shields
-  hullDamageRatio: number; // percentage of damage that goes to hull
+  armorDamageRatio: number; // percentage of damage that goes to armor
   buildDurationMinutes: number;
   advantage: string;
   disadvantage: string;
@@ -53,7 +53,7 @@ export class TechFactory {
       baseAccuracy: 50,
       baseCost: 100,
       shieldDamageRatio: 80,
-      hullDamageRatio: 20,
+      armorDamageRatio: 20,
       buildDurationMinutes: 1,
       advantage: 'Cheap and good damage per second',
       disadvantage: 'Low accuracy vs agile targets'
@@ -67,7 +67,7 @@ export class TechFactory {
       baseAccuracy: 80,
       baseCost: 150,
       shieldDamageRatio: 90,
-      hullDamageRatio: 10,
+      armorDamageRatio: 10,
       buildDurationMinutes: 2,
       advantage: 'High accuracy',
       disadvantage: 'Low damage output'
@@ -81,7 +81,7 @@ export class TechFactory {
       baseAccuracy: 70,
       baseCost: 500,
       shieldDamageRatio: 10,
-      hullDamageRatio: 90,
+      armorDamageRatio: 90,
       buildDurationMinutes: 5,
       advantage: 'High impact; penetrates shields',
       disadvantage: 'Low accuracy vs agile targets'
@@ -95,7 +95,7 @@ export class TechFactory {
       baseAccuracy: 90,
       baseCost: 500,
       shieldDamageRatio: 70,
-      hullDamageRatio: 30,
+      armorDamageRatio: 30,
       buildDurationMinutes: 5,
       advantage: 'Locally overheats shields and causes hull damage',
       disadvantage: ''
@@ -109,7 +109,7 @@ export class TechFactory {
       baseAccuracy: 100,
       baseCost: 3500,
       shieldDamageRatio: 40,
-      hullDamageRatio: 60,
+      armorDamageRatio: 60,
       buildDurationMinutes: 20,
       advantage: 'Guided; always hits unless ECM Jammer is active',
       disadvantage: 'Susceptible to ECM jammers'
@@ -123,7 +123,7 @@ export class TechFactory {
       baseAccuracy: 75,
       baseCost: 2000,
       shieldDamageRatio: 90,
-      hullDamageRatio: 10,
+      armorDamageRatio: 10,
       buildDurationMinutes: 10,
       advantage: 'Heavy shield damage',
       disadvantage: 'Slightly susceptible to ECM jammers'
@@ -132,6 +132,12 @@ export class TechFactory {
 
   // Defense catalog
   private static readonly DEFENSE_CATALOG: Record<string, DefenseSpec> = {
+    ship_hull: {
+      name: 'Ship Hull',
+      baseCost: 150,
+      buildDurationMinutes: 2,
+      description: 'The basic structure of the ship, providing minimal protection against all damage types. Protects the engine with the same value as the hull.'
+    },
     kinetic_armor: {
       name: 'Kinetic Armor',
       baseCost: 200,
@@ -323,12 +329,13 @@ export class TechFactory {
     weaponKey: string,
     techCounts: TechCounts,
     opponentShieldValue: number,
+    opponentArmorValue: number,
     positiveAccuracyModifier: number,
     negativeAccuracyModifier: number,
     baseDamageModifier: number,
     ecmEffectiveness: number,
     spreadValue: number
-  ): Promise<{ weaponsHit: number; shieldDamage: number; hullDamage: number }> {
+  ): Promise<{ weaponsHit: number; shieldDamage: number; armorDamage: number; hullDamage: number }> {
     // Get weapon specification
     const weaponSpec = this.getWeaponSpec(weaponKey);
     if (!weaponSpec) {
@@ -338,7 +345,7 @@ export class TechFactory {
     // Get number of weapons of this type
     const weaponCount = techCounts[weaponKey as keyof TechCounts] || 0;
     if (weaponCount === 0) {
-      return { weaponsHit: 0, shieldDamage: 0, hullDamage: 0 };
+      return { weaponsHit: 0, shieldDamage: 0, armorDamage: 0, hullDamage: 0 };
     }
 
     // Calculate overall accuracy based on weapon type
@@ -362,7 +369,7 @@ export class TechFactory {
     const weaponsHit = Math.min(Math.round(weaponsHitFloat), weaponCount);
 
     if (weaponsHit === 0) {
-      return { weaponsHit: 0, shieldDamage: 0, hullDamage: 0 };
+      return { weaponsHit: 0, shieldDamage: 0, armorDamage: 0, hullDamage: 0 };
     }
 
     // Calculate overall damage
@@ -370,32 +377,39 @@ export class TechFactory {
 
     // Calculate shield damage
     let shieldDamageFloat = overallDamage * (weaponSpec.shieldDamageRatio / 100);
-    
     // Projectile weapons are less effective against shields
     if (weaponSpec.subtype === 'Projectile') {
       shieldDamageFloat = shieldDamageFloat / 2;
     }
-
     // Calculate actual shield damage and excess
     const actualShieldDamage = Math.min(shieldDamageFloat, opponentShieldValue);
-    let excessDamage = Math.max(0, shieldDamageFloat - opponentShieldValue);
+    let excessShieldDamage = Math.max(0, shieldDamageFloat - opponentShieldValue);
 
     // For projectile weapons, double the excess damage (compensating for halving)
     if (weaponSpec.subtype === 'Projectile') {
-      excessDamage = excessDamage * 2;
+      excessShieldDamage = excessShieldDamage * 2;
     }
 
-    // Calculate hull damage
-    let hullDamageFloat = (overallDamage * (weaponSpec.hullDamageRatio / 100)) + excessDamage;
-    
-    // Energy weapons are less effective against hull
+    // Calculate armor damage
+    let armorDamageFloat = (overallDamage * (weaponSpec.armorDamageRatio / 100));
+    // Energy weapons are less effective against armor
     if (weaponSpec.subtype === 'Energy') {
-      hullDamageFloat = hullDamageFloat / 2;
+      armorDamageFloat = armorDamageFloat / 2;
     }
+    // Calculate actual armor damage and excess
+    const actualArmorDamage = Math.min(armorDamageFloat, opponentArmorValue);
+    let excessArmorDamage = Math.max(0, armorDamageFloat - opponentArmorValue);
+    if (weaponSpec.subtype === 'Energy') {
+      excessArmorDamage = excessArmorDamage * 2;
+    }
+
+    // all remaining damage goes to hull
+    const hullDamageFloat = excessShieldDamage + excessArmorDamage;
 
     return {
       weaponsHit,
       shieldDamage: Math.round(actualShieldDamage),
+      armorDamage: Math.round(actualArmorDamage),
       hullDamage: Math.round(hullDamageFloat)
     };
   }
