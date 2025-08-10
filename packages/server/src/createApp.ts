@@ -63,6 +63,7 @@ export function createApp(db: sqlite3.Database) {
       
       const user = await createUser(db, username, hash, saveUserToDb(db));
       req.session.userId = user.id;
+      console.log(`🔐 Register - Setting session userId: ${user.id} for user: ${username}`);
       res.json({ success: true });
     } catch (e) {
       console.error('User creation error:', e);
@@ -106,6 +107,7 @@ export function createApp(db: sqlite3.Database) {
           user.updateStats(now);
           await user.save();
           req.session.userId = user.id;
+          console.log(`🔐 Login - Setting session userId: ${user.id} for user: ${username}`);
           res.json({ success: true });
         } else {
           res.status(400).json({ error: 'Invalid credentials' });
@@ -119,13 +121,19 @@ export function createApp(db: sqlite3.Database) {
 
   // Session check
   app.get('/api/session', (req, res) => {
+    console.log(`🔍 Session check - userId in session: ${req.session.userId}`);
     if (req.session.userId) {
       db.get('SELECT username, ship_id FROM users WHERE id = ?', [req.session.userId], (err, userRow) => {
         const user = userRow as { username: string; ship_id: number };
-        if (user) return res.json({ loggedIn: true, username: user.username, shipId: user.ship_id });
+        if (user) {
+          console.log(`✅ Session valid - user: ${user.username}, shipId: ${user.ship_id}`);
+          return res.json({ loggedIn: true, username: user.username, shipId: user.ship_id });
+        }
+        console.log(`❌ Session invalid - user not found for userId: ${req.session.userId}`);
         res.json({ loggedIn: false });
       });
     } else {
+      console.log(`❌ Session invalid - no userId in session`);
       res.json({ loggedIn: false });
     }
   });
