@@ -50,54 +50,26 @@ export class EscapePodRenderer extends SpaceObjectRendererBase {
      * Draw engine flames behind the escape pod
      */
     private drawEngineFlames(ctx: CanvasRenderingContext2D, escapePod: SpaceObject): void {
-        const speed = escapePod.speed;
-        if (speed === 0) return;
-
-        // Calculate escape pod dimensions based on image aspect ratio (same as rendered image)
-        const baseSize = this.getObjectSize();
-        const aspectRatio = this.getImageAspectRatio();
-        
-        let podWidth: number, podHeight: number;
-        if (aspectRatio > 1) {
-            // Image is wider than tall
-            podWidth = baseSize;
-            podHeight = baseSize / aspectRatio;
-        } else {
-            // Image is taller than wide (or square)
-            podWidth = baseSize * aspectRatio;
-            podHeight = baseSize;
-        }
+        if (escapePod.speed === 0) return;
 
         const time = Date.now();
-        const flicker = Math.abs(Math.sin(time * 0.001)); // Flicker effect for the flame
-        
-        // Scale flame dimensions based on pod size
-        const flameLength = (podHeight * 0.6) + flicker * (podHeight * 0.3);
-        const flameWidth = podWidth * 0.4 + flicker * (podWidth * 0.2);
-        
-        // Position flames at the "back" of the pod (behind movement direction)
-        // Since the base class rotates by 90°, the back is in the negative X direction
-        const podBackX = -podWidth / 2;
+        const flicker = Math.abs(Math.sin(time / 500)); // Flicker effect for the flame
+        const flameLength = 20 + flicker * 10;
+        const flameWidth = 10 + flicker * 4;
+        const podLeftX = -40 / 2;
 
-        // Draw main flame
         ctx.beginPath();
-        const gradient = ctx.createLinearGradient(podBackX, 0, podBackX - flameLength, 0);
-        gradient.addColorStop(0, 'rgba(255, 100, 0, 0.8)');
-        gradient.addColorStop(0.5, 'rgba(255, 200, 0, 0.6)');
-        gradient.addColorStop(1, 'rgba(255, 255, 100, 0.0)');
-        
+        ctx.moveTo(podLeftX + 5, -flameWidth / 2);
+        ctx.lineTo(podLeftX + 5, flameWidth / 2);
+        ctx.lineTo(podLeftX - flameLength, 0);
+        ctx.closePath();
+
+        const gradient = ctx.createLinearGradient(podLeftX, 0, podLeftX - flameLength, 0);
+        gradient.addColorStop(0, 'rgba(255, 220, 100, 0.9)');
+        gradient.addColorStop(0.7, 'rgba(255, 100, 0, 0.7)');
+        gradient.addColorStop(1, 'rgba(255, 0, 0, 0)');
+
         ctx.fillStyle = gradient;
-        ctx.ellipse(podBackX - flameLength / 2, 0, flameLength / 2, flameWidth / 2, 0, 0, Math.PI * 2);
-        ctx.fill();
-        
-        // Draw inner flame core (proportionally smaller)
-        ctx.beginPath();
-        const coreGradient = ctx.createLinearGradient(podBackX, 0, podBackX - flameLength * 0.6, 0);
-        coreGradient.addColorStop(0, 'rgba(255, 255, 255, 0.9)');
-        coreGradient.addColorStop(1, 'rgba(255, 100, 0, 0.0)');
-        
-        ctx.fillStyle = coreGradient;
-        ctx.ellipse(podBackX - flameLength * 0.3, 0, flameLength * 0.3, flameWidth * 0.3, 0, 0, Math.PI * 2);
         ctx.fill();
     }
 }
