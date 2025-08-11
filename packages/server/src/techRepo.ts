@@ -34,8 +34,8 @@ export class TechRepo {
           kinetic_armor,
           energy_shield,
           missile_jammer
-        FROM build_state 
-        WHERE ship_id = ?
+        FROM users 
+        WHERE id = ?
       `);
       
       stmt.get(userId, (err: Error | null, result: TechCounts | undefined) => {
@@ -63,42 +63,12 @@ export class TechRepo {
 
       const setClause = fields.map(field => `${field} = ?`).join(', ');
       const stmt = this.db.prepare(`
-        UPDATE build_state 
+        UPDATE users 
         SET ${setClause}
-        WHERE ship_id = ?
+        WHERE id = ?
       `);
       
       stmt.run([...values, userId], (err: Error | null) => {
-        if (err) {
-          reject(err);
-          return;
-        }
-        resolve();
-      });
-    });
-  }
-
-  /**
-   * Initialize tech counts for a new user's ship
-   */
-  initializeTechCounts(userId: number): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const stmt = this.db.prepare(`
-        INSERT INTO build_state (
-          ship_id,
-          pulse_laser,
-          auto_turret,
-          plasma_lance,
-          gauss_rifle,
-          photon_torpedo,
-          rocket_launcher,
-          kinetic_armor,
-          energy_shield,
-          missile_jammer
-        ) VALUES (?, 5, 5, 0, 0, 0, 0, 5, 5, 0)
-      `);
-      
-      stmt.run(userId, (err: Error | null) => {
         if (err) {
           reject(err);
           return;
@@ -114,9 +84,9 @@ export class TechRepo {
   getBuildQueue(userId: number): Promise<BuildQueueItem[]> {
     return new Promise((resolve, reject) => {
       const stmt = this.db.prepare(`
-        SELECT build_queue, build_start_sec
-        FROM build_state 
-        WHERE ship_id = ?
+        SELECT build_queue, build_start_sec 
+        FROM users 
+        WHERE id = ?
       `);
       
       stmt.get(userId, (err: Error | null, result: { build_queue: string | null; build_start_sec: number | null } | undefined) => {
@@ -139,18 +109,16 @@ export class TechRepo {
         }
       });
     });
-  }
-
-  /**
+  }  /**
    * Update build queue for a user's ship
    */
   updateBuildQueue(userId: number, queue: BuildQueueItem[], startTime?: number): Promise<void> {
     return new Promise((resolve, reject) => {
       const queueJson = queue.length > 0 ? JSON.stringify(queue) : null;
       const stmt = this.db.prepare(`
-        UPDATE build_state 
+        UPDATE users 
         SET build_queue = ?, build_start_sec = ?
-        WHERE ship_id = ?
+        WHERE id = ?
       `);
       
       stmt.run(queueJson, startTime || null, userId, (err: Error | null) => {
@@ -277,16 +245,6 @@ export class TechRepo {
   }
 
   /**
-   * Check if user has build state record, create if not
-   */
-  async ensureBuildState(userId: number): Promise<void> {
-    const techCounts = await this.getTechCounts(userId);
-    if (!techCounts) {
-      await this.initializeTechCounts(userId);
-    }
-  }
-
-  /**
    * Add weapon to build queue using TechFactory catalog
    */
   async addWeaponToBuildQueue(userId: number, weaponKey: string): Promise<void> {
@@ -319,6 +277,84 @@ export class TechRepo {
     } else {
       await this.addDefenseToBuildQueue(userId, itemKey);
     }
+  }
+
+  /**
+   * Update both tech counts and iron in a single transaction
+   * This is the preferred method for spending iron on tech
+   */
+  updateTechCountsAndIron(userId: number, techCounts: Partial<TechCounts>, ironDelta: number): Promise<void> {
+    return new Promise((resolve, reject) => {
+      this.db.serialize(() => {
+        this.db.run('BEGIN TRANSACTION');
+        
+        const fields = Object.keys(techCounts);
+        const values = Object.values(techCounts);
+        
+        // Build the SET clause for tech counts
+        const techSetClause = fields.length > 0 ? fields.map(field => `${field} = ?`).join(', ') + ', ' : '';
+        
+        const stmt = this.db.prepare(`
+          UPDATE users 
+          SET ${techSetClause}iron = iron + ?
+          WHERE id = ?
+        `);
+        
+        stmt.run([...values, ironDelta, userId], (err: Error | null) => {
+          if (err) {
+            this.db.run('ROLLBACK');
+            reject(err);
+            return;
+          }
+          
+          this.db.run('COMMIT', (commitErr: Error | null) => {
+            if (commitErr) {
+              reject(commitErr);
+              return;
+            }
+            resolve();
+          });
+        });
+      });
+    });
+  }
+
+  /**
+   * Get user's current iron amount
+   */
+  getIron(userId: number): Promise<number> {
+    return new Promise((resolve, reject) => {
+      const stmt = this.db.prepare('SELECT iron FROM users WHERE id = ?');
+      
+      stmt.get(userId, (err: Error | null, result: { iron: number } | undefined) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        resolve(result?.iron || 0);
+      });
+    });
+  }
+
+  /**
+   * Update user's iron amount
+   */
+  updateIron(userId: number, ironDelta: number): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const stmt = this.db.prepare(`
+        UPDATE users 
+        SET iron = iron + ? 
+        WHERE id = ?
+      `);
+      
+      stmt.run(ironDelta, userId, (err: Error | null) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        resolve();
+      });
+    });
   }
 
   /**
