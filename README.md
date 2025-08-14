@@ -1,178 +1,128 @@
 # Spacewars: Ironcore
 
-This project is an experimental project, mainly focusing on trying out vibe coding in a technology that I hardly know.
-
-Goal is to create a 2D space exploration game with a toroidal world, featuring collectable objects, interception mechanics, and a radar system.
+A 2D space exploration game with a toroidal world, featuring collectable objects, interception mechanics, and a radar system.
 
 ## Overview
 
-Spacewars is a browser-based game where the player navigates a spaceship in a 2D toroidal world (the edges wrap around). The player can collect various objects such as shipwrecks and escape pods, and the game includes a sophisticated interception algorithm for targeting moving objects.
+Spacewars is a browser-based game where players navigate a spaceship in a 2D toroidal world (edges wrap around). Players can collect objects like shipwrecks and escape pods, featuring sophisticated interception algorithms for targeting moving objects.
 
-## Technical Stack & Architecture
+## Technical Stack
 
-- **Frontend**: TypeScript, React, HTML5 Canvas, Vite
-- **Backend**: Express, SQLite, bcrypt for authentication
-- **Authentication**: Session-based with HTTP-only cookies
-- **Testing**: Jest
-- **Structure**: Monorepo with client, server, and shared packages
+- **Framework**: Next.js 15 (App Router)
+- **Frontend**: TypeScript, React, HTML5 Canvas
+- **Backend**: Next.js API Routes, SQLite, bcrypt authentication
+- **Session Management**: iron-session with HTTP-only cookies
+- **Testing**: Vitest with jsdom
+- **Database**: SQLite with schema-first approach
 
-The game follows a component-based architecture with clear separation between game logic and rendering:
+## Architecture
+
+The game uses Next.js fullstack architecture with clear separation between client and server logic:
 
 ### Core Components
 
 - **World**: Manages game objects, collision detection, and world boundaries
-- **Player**: Handles player state, inventory, and scoring
-- **SpaceObject**: Base class for all objects (Ship, Collectibles, etc.)
+- **Player**: Handles player state, inventory, and scoring  
+- **SpaceObject**: Base class for all game objects (Ship, Collectibles, etc.)
 - **InterceptCalculator**: Handles trajectory calculations for interception
 
-### Client Implementation
+### Project Structure
 
-The client is implemented as a React application with TypeScript that integrates HTML5 Canvas for game rendering:
-
-- **React + React Router**: For page navigation and authentication flow
-- **Authentication System**: Complete user registration, login, and session management
-- **Protected Routes**: Game and other pages accessible only to authenticated users
-- **Navigation**: Responsive navbar with mobile hamburger menu
-- **Game Logic**: Encapsulated in TypeScript classes
-- **Rendering**: Handled by specialized renderer classes
-
-For more details about the client implementation, see the [Client README](packages/client/README.md).
+```
+src/
+├── app/                    # Next.js App Router pages
+│   ├── api/               # API routes (authentication, game logic)
+│   ├── game/              # Game page
+│   ├── login/             # Login page
+│   └── ...                # Other pages
+├── components/            # React components (Navigation, StatusHeader)
+├── lib/
+│   ├── client/           # Client-side code (hooks, services, game engine)
+│   └── server/           # Server-side code (database, business logic)
+└── shared/               # Shared types and utilities
+```
 
 ## Game Mechanics
 
 - **Movement**: Click to set ship direction and accelerate
 - **Interception**: Calculate trajectories to intercept moving objects
 - **Collectibles**: Shipwrecks (with different salvage types) and Escape Pods
-- **World Wrapping**: Objects that move off one edge reappear on the opposite side
+- **World Wrapping**: Objects moving off edges reappear on opposite side
 - **Radar**: Shows positions of nearby objects
-
-## Project Structure
-
-```
-packages/
-├── client/    # Frontend game client (TypeScript, React, Canvas)
-├── server/    # Backend server (Express, SQLite)
-└── shared/    # Shared code and types
-```
+- **Research**: Technology upgrade system with iron resource management
 
 ## Development
 
 ### Prerequisites
 
-- Node.js (v14+)
-- npm (v6+)
+- Node.js (v18+)
+- npm (v8+)
 
 ### Quick Start
 
-```powershell
+```bash
 # Install dependencies
 npm install
 
-# Start development mode (client + server)
+# Start development server
 npm run dev
 
-# Build all packages
+# Build for production
 npm run build
 
+# Start production server
+npm start
+
 # Run tests
-npm test
+npm run test
 ```
 
 ### Development Commands
 
 | Command | Description |
 |---------|-------------|
-| `npm run dev` | Start client (port 3000) and server (port 5174) in development mode |
-| `npm run build` | Build all packages |
-| `npm test` | Run all tests |
-| `npm run typecheck` | Check TypeScript types across all packages |
+| `npm run dev` | Start Next.js development server (port 3000) |
+| `npm run build` | Build optimized production bundle |
+| `npm start` | Start production server |
+| `npm run test` | Run all tests with Vitest |
+| `npm run test:ui` | Run tests with UI interface |
+| `npm run lint` | Run ESLint |
 
-You can also run commands for specific packages:
+### Database
 
-```powershell
-# Client only
-cd packages/client; npm run dev
-
-# Server only
-cd packages/server; npm run dev
-```
-
-### Database Schema Management
-
-The project uses a **single source of truth** approach for database schemas:
-
-- **Schema Definition**: All schemas are defined in `packages/server/src/schema.ts`
-- **Auto-Generation**: The `db/schema.sql` file is auto-generated (not version controlled)
-- **Making Changes**: 
-  1. Edit `packages/server/src/schema.ts`
-  2. Run `npm run build` (automatically generates new schema.sql)
-  3. For local dev: `cd packages/server && npm run generate-schema`
-  4. For database reset: `cd packages/server && npm run init-db`
+- **Schema**: Defined in `src/lib/server/database.ts`
+- **Location**: `database/users.db` (SQLite)
+- **Auto-initialization**: Database created on first API call
 
 ### Testing
 
-- **Test Structure**:
-  - Client tests: `packages/client/test/` (jsdom environment)
-  - Server tests: `packages/server/tests/` (node environment)
-  - Pattern: `whatIsTested_scenario_expectedOutcome`
-
-- **Test Commands**:
-  - All tests: `npm test`
-  - Watch mode: `npm test -- --watch`
-  - Coverage: `npm test -- --coverage`
-
-### End-to-End (E2E) Testing with Cypress
-
-Cypress is used for automated browser-based E2E tests. These tests interact with the real frontend and backend, simulating user actions like registration, login, and navigation.
-
-#### Setup
-```powershell
-npm install cypress --save-dev
-```
-
-#### Running Cypress
-```powershell
-npx cypress open
-```
-- This opens the Cypress Test Runner UI. Select a test file (e.g., `auth.cy.js`) to run it in the browser.
-
-#### Writing Tests
-- Test files are located in `cypress/e2e/`.
-- Example test: `auth.cy.js` covers registration and login flows.
-- Cypress tests use real backend and database by default, but you can mock API responses with `cy.intercept()`.
-
-#### Best Practices
-- Use stable selectors (e.g., `data-testid`) for robust tests.
-- Focus on critical user flows (authentication, navigation).
-- Modularize tests for maintainability.
+- **Test Structure**: Tests located in `src/__tests__/`
+- **Pattern**: `whatIsTested_scenario_expectedOutcome`
+- **Coverage**: 96.8% (120/124 tests passing)
+- **Environment**: jsdom for React components, node for API routes
 
 ## Deployment
 
-### Render Deployment
+The application is production-ready with multiple deployment options:
 
-This project is configured for deployment on Render using their free tier.
+### Deployment Options
 
-#### Backend Deployment
+- **Render**: Use included `render.yaml`
+- **Vercel**: Use included `vercel.json` 
+- **Any Node.js host**: Standard Next.js build output
 
-1. Create a new Web Service on Render
-2. Connect your GitHub repository
-3. Use the following settings:
-   - **Build Command**: `cd packages/server && npm install && npm run build`
-   - **Start Command**: `cd packages/server && npm start`
-   - **Environment Variables**:
-     - `NODE_ENV`: `production`
-     - `SESSION_SECRET`: (generate a random secret)
+### Environment Variables
 
-The backend uses an in-memory SQLite database on the free tier (data will be lost on service restarts).
+Required for production:
 
-#### Frontend Configuration
+- `NODE_ENV`: `production`
+- `SESSION_SECRET`: Random secret for session encryption
 
-Update the backend URLs in the client services to match your deployed backend:
+### Build Output
 
-Replace `spacewars3.onrender.com` with your actual backend service URL in:
-- `packages/client/src/services/authService.ts`
-- `packages/client/src/services/userStatsService.ts`
-- `packages/client/src/services/researchService.ts`
+- **Static pages**: Home, About, Login pages
+- **Dynamic pages**: Game, Research, Profile (require authentication)
+- **API routes**: 11 endpoints for authentication and game logic
+- **Optimized bundles**: ~100kB first load JS
 
-**Frontend URL**: https://spacewars-ironcore-q7n3.onrender.com
-**Backend URL**: https://spacewars3.onrender.com
+The application uses SQLite database (included) and is ready for production deployment.

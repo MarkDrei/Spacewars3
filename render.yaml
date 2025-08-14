@@ -1,11 +1,15 @@
 services:
   - type: web
-    name: spacewars-backend
+    name: spacewars-nextjs
     env: node
-    buildCommand: npm install --production=false && cd packages/server && npm run build
-    startCommand: cd packages/server && npm start
+    plan: free
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
     envVars:
       - key: NODE_ENV
         value: production
       - key: SESSION_SECRET
         generateValue: true
+    healthCheckPath: /
+    domains:
+      - spacewars-nextjs.onrender.com
