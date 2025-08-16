@@ -63,12 +63,14 @@ export class Game {
         this.handleInterception(hoveredObject);
       } else {
         // If no object is hovered, use the regular click-to-aim behavior
+        // Use shared angleUtils for conversion
         const centerX = canvas.width / 2;
         const centerY = canvas.height / 2;
         const dx = mouseX - centerX;
         const dy = mouseY - centerY;
         const angle = Math.atan2(dy, dx);
-        this.handleDirectionChange(angle);
+        const angleDegrees = (angle * 180 / Math.PI + 360) % 360;
+        this.handleDirectionChange(angleDegrees);
       }
     });
 
@@ -84,14 +86,14 @@ export class Game {
   }
 
   // Handle direction change when clicking on empty space
-  private async handleDirectionChange(angleRadians: number): Promise<void> {
+  private async handleDirectionChange(angleDegrees: number): Promise<void> {
     try {
       // Apply immediate local update for visual feedback
-      this.world.setShipAngle(angleRadians);
+      this.world.setShipAngle(angleDegrees);
       
       // Then update via API
-      await setShipDirection(angleRadians);
-      console.log('Ship direction updated via API:', angleRadians);
+      await setShipDirection(angleDegrees);
+      console.log('Ship direction updated via API:', angleDegrees);
 
       // Trigger world data refresh to get authoritative server state
       if (this.refetchWorldData) {

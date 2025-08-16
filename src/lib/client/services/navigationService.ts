@@ -45,10 +45,7 @@ export async function navigateShip(params: NavigateRequest): Promise<NavigateRes
 /**
  * Set ship direction by clicking on canvas coordinates
  */
-export async function setShipDirection(angle: number): Promise<NavigateResponse> {
-  // Convert radians to degrees for the API
-  const angleInDegrees = (angle * 180 / Math.PI + 360) % 360;
-  
+export async function setShipDirection(angleInDegrees: number): Promise<NavigateResponse> {
   return navigateShip({ angle: angleInDegrees });
 }
 
