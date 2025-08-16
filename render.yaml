@@ -4,12 +4,14 @@ services:
     env: node
     plan: free
     buildCommand: npm ci && npm run build
-    startCommand: npm start
+    startCommand: npm start -- -H 0.0.0.0
     envVars:
       - key: NODE_ENV
         value: production
       - key: SESSION_SECRET
         generateValue: true
+      - key: HOSTNAME
+        value: "0.0.0.0"
     healthCheckPath: /
     domains:
       - spacewars-nextjs.onrender.com

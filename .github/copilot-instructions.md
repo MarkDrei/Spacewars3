@@ -14,13 +14,18 @@
 ## Project Structure
 - `src/app/`: Next.js App Router pages and API routes
   - `src/app/api/`: API routes for authentication and game logic
+    - Endpoints: `/collect`, `/login`, `/logout`, `/navigate`, `/register`, `/session`, `/ship-stats`, `/techtree`, `/trigger-research`, `/user-stats`, `/world`
   - `src/app/game/`: Game page component
   - `src/app/login/`: Login page component
+  - `src/app/research/`: Research page component
+  - `src/app/profile/`: Profile page component
+  - `src/app/about/`: About page component
   - `src/app/layout.tsx`: Root layout with navigation and session management
   - `src/app/page.tsx`: Home page
 - `src/components/`: Reusable React components
   - `src/components/Navigation/`: Navigation component with responsive design
-  - `src/components/StatusHeader.tsx`: Iron amount and status display
+  - `src/components/StatusHeader/`: Iron amount and status display
+  - `src/components/Layout/`: Layout components for authenticated pages
 - `src/lib/`: Core application logic
   - `src/lib/client/`: Client-side code (hooks, services, game engine)
     - `src/lib/client/hooks/`: React hooks for authentication, data fetching
@@ -28,12 +33,16 @@
     - `src/lib/client/game/`: Game engine classes (Game, World, Ship, etc.)
     - `src/lib/client/renderers/`: Canvas rendering classes
   - `src/lib/server/`: Server-side code (database, business logic)
-    - `src/lib/server/database.ts`: Database schema and operations
-    - `src/lib/server/auth.ts`: Authentication utilities
+    - `src/lib/server/database.ts`: Database connection and initialization
+    - `src/lib/server/schema.ts`: Database schema definitions
+    - `src/lib/server/seedData.ts`: Default data seeding functions
+    - `src/lib/server/session.ts`: Session management utilities
+    - `src/lib/server/user.ts`: User domain logic
+    - `src/lib/server/world.ts`: World physics and collision logic
     - `src/lib/server/techtree.ts`: Research system logic
 - `src/shared/`: Shared types and utilities used by both client and server
 - `src/__tests__/`: Test files for all components and logic
-- `database/`: SQLite database files
+- `database/`: SQLite database files (auto-created)
 
 ## Development Guidelines
 - Do not delete the DB unless asked to.
@@ -52,12 +61,15 @@
 - Authentication state managed via `useAuth` hook and session middleware
 - Protected routes automatically redirect to login page if not authenticated
 - Session data includes userId and username for authenticated users
+- Default test user: username "a", password "a" (created during database initialization)
 
 ## Database
-- SQLite database with schema-first approach defined in `src/lib/server/database.ts`
-- Auto-initialization on first API call
-- Tables: users (authentication + game stats), space_objects (game world), research system
+- SQLite database with schema-first approach defined in `src/lib/server/schema.ts`
+- Auto-initialization on first API call - creates database directory, tables, and seeds default data
+- Database file location: `database/users.db` (auto-created if missing)
+- Tables: users (authentication + game stats), space_objects (game world)
 - All database operations should go through the server-side utilities
+- Seeding: Default user "a" and space objects (asteroids, shipwrecks, escape pods) created automatically
 
 ## Testing
 - All business logic must be covered by unit tests
@@ -95,3 +107,5 @@
 - **Canvas rendering**: HTML5 Canvas with specialized renderer classes for different game objects
 - **Interception mechanics**: Sophisticated trajectory calculations for targeting moving objects
 - **Toroidal world**: World edges wrap around for seamless space exploration
+- **Collectibles**: Asteroids, shipwrecks, and escape pods with different iron values
+- **Research system**: Technology upgrades using iron as currency
