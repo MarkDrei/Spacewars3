@@ -46,6 +46,43 @@ export function updateObjectPosition(
 }
 
 /**
+ * Calculate new position for an object using client-side time correction
+ * Accounts for clock drift and network latency
+ */
+export function updateObjectPositionWithTimeCorrection(
+  obj: PhysicsObject,
+  clientCurrentTime: number,
+  responseReceivedAt: number,
+  roundTripTime: number,
+  worldBounds: WorldBounds,
+  factor: number = 50
+): { x: number; y: number } {
+  // Calculate time elapsed using your specification:
+  // "client time" - "time when response was received" + "estimation of roundtrip time"
+  // where estimation of roundtrip time is half the total roundtrip time
+  const networkDelayEstimate = roundTripTime / 2;
+  const timeSinceResponse = clientCurrentTime - responseReceivedAt;
+  const correctedElapsedMs = timeSinceResponse + networkDelayEstimate;
+  
+  // Calculate new position based on speed and angle
+  // Speed is in units per minute, angle is in degrees
+  const angleRadians = obj.angle * Math.PI / 180; // Convert degrees to radians for math functions
+  const speedX = obj.speed * Math.cos(angleRadians);
+  const speedY = obj.speed * Math.sin(angleRadians);
+  
+  // Convert from units/minute to units/ms: divide by 60 (seconds/minute) * 1000 (ms/second) = 60000
+  // Add a factor to adjust speed for testing (try 10-100 for reasonable speeds)
+  let newX = obj.x + ((speedX * correctedElapsedMs / 60000) * factor);
+  let newY = obj.y + ((speedY * correctedElapsedMs / 60000) * factor);
+
+  // Toroidal world wrapping
+  newX = ((newX % worldBounds.width) + worldBounds.width) % worldBounds.width;
+  newY = ((newY % worldBounds.height) + worldBounds.height) % worldBounds.height;
+  
+  return { x: newX, y: newY };
+}
+
+/**
  * Update multiple objects' positions
  */
 export function updateAllObjectPositions<T extends PhysicsObject>(
@@ -61,6 +98,40 @@ export function updateAllObjectPositions<T extends PhysicsObject>(
       x: newPosition.x,
       y: newPosition.y,
       last_position_update_ms: currentTime
+    };
+  });
+}
+
+/**
+ * Update multiple objects' positions with client-side time correction
+ */
+export function updateAllObjectPositionsWithTimeCorrection<T extends PhysicsObject>(
+  objects: T[],
+  clientCurrentTime: number,
+  responseReceivedAt: number,
+  roundTripTime: number,
+  worldBounds: WorldBounds,
+  factor?: number
+): T[] {
+  // Calculate corrected time for timestamp updates
+  const networkDelayEstimate = roundTripTime / 2;
+  const timeSinceResponse = clientCurrentTime - responseReceivedAt;
+  const correctedTimestamp = responseReceivedAt + timeSinceResponse + networkDelayEstimate;
+  
+  return objects.map(obj => {
+    const newPosition = updateObjectPositionWithTimeCorrection(
+      obj, 
+      clientCurrentTime, 
+      responseReceivedAt, 
+      roundTripTime, 
+      worldBounds, 
+      factor
+    );
+    return {
+      ...obj,
+      x: newPosition.x,
+      y: newPosition.y,
+      last_position_update_ms: correctedTimestamp
     };
   });
 }

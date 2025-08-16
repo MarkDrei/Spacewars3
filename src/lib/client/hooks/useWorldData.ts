@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { WorldData } from '@shared/types/gameTypes';
-import { updateAllObjectPositions } from '@shared/physics';
+import { updateAllObjectPositions, updateAllObjectPositionsWithTimeCorrection } from '@shared/physics';
 import { worldDataService } from '../services/worldDataService';
 
 interface UseWorldDataReturn {
@@ -10,8 +10,20 @@ interface UseWorldDataReturn {
   refetch: () => void;
 }
 
+interface WorldDataState extends WorldData {
+  responseReceivedAt?: number;
+  roundTripTime?: number;
+}
+
+interface UseWorldDataReturn {
+  worldData: WorldData | null;
+  isLoading: boolean;
+  error: string | null;
+  refetch: () => void;
+}
+
 export const useWorldData = (isLoggedIn: boolean, pollInterval: number = 3000): UseWorldDataReturn => {
-  const [worldData, setWorldData] = useState<WorldData | null>(null);
+  const [worldData, setWorldData] = useState<WorldDataState | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   
@@ -20,17 +32,15 @@ export const useWorldData = (isLoggedIn: boolean, pollInterval: number = 3000): 
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Optimistic position updates for smooth animation using shared physics logic
-  const updateOptimisticPositions = useCallback((data: WorldData): WorldData => {
+  const updateOptimisticPositions = useCallback((data: WorldDataState): WorldDataState => {
     if (!data) return data;
     
     const now = Date.now();
     
-    // For incremental optimistic updates, we need to use the CURRENT positions and timestamps
-    // from the data (which already includes previous optimistic updates)
-    // NOT the original server data
-    
+    // Always use standard incremental physics for optimistic updates
+    // The time correction is only applied when receiving fresh server data
     const updatedObjects = updateAllObjectPositions(
-      data.spaceObjects, // Use current positions with their current timestamps
+      data.spaceObjects,
       now,
       data.worldSize
     );
@@ -59,16 +69,32 @@ export const useWorldData = (isLoggedIn: boolean, pollInterval: number = 3000): 
         return;
       }
       
-      // Update server timestamp and reset optimistic tracking
-      // No longer needed - positions and timestamps are preserved in state
+      // Apply time correction to server data to account for network latency and clock drift
+      // This ensures the positions are accurate for the current moment
+      const correctedObjects = updateAllObjectPositionsWithTimeCorrection(
+        result.data.data.spaceObjects,
+        Date.now(),
+        result.data.responseReceivedAt,
+        result.data.roundTripTime,
+        result.data.data.worldSize
+      );
       
-      setWorldData(result.data);
+      // Extract timing information and merge with corrected world data
+      const worldDataWithTiming: WorldDataState = {
+        ...result.data.data,
+        spaceObjects: correctedObjects,
+        responseReceivedAt: result.data.responseReceivedAt,
+        roundTripTime: result.data.roundTripTime
+      };
+      
+      setWorldData(worldDataWithTiming);
       setIsLoading(false);
       
       // console.log('🌍 World data updated:', {
-      //   objects: result.data.spaceObjects.length,
-      //   worldSize: result.data.worldSize,
-      //   receivedAt: new Date().toISOString()
+      //   objects: correctedObjects.length,
+      //   worldSize: result.data.data.worldSize,
+      //   receivedAt: new Date().toISOString(),
+      //   roundTripTime: result.data.roundTripTime
       // });
     } catch {
       if (isMountedRef.current) {

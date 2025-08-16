@@ -5,6 +5,8 @@ import { describe, it, expect } from 'vitest';
 import {
   updateObjectPosition,
   updateAllObjectPositions,
+  updateObjectPositionWithTimeCorrection,
+  updateAllObjectPositionsWithTimeCorrection,
   calculateToroidalDistance,
   isColliding,
   PhysicsObject,
@@ -311,6 +313,98 @@ describe('Physics Calculations', () => {
       
       // Toroidal distance is 10, combined radius is 20, so they should be colliding
       expect(colliding).toBe(true);
+    });
+  });
+
+  describe('updateObjectPositionWithTimeCorrection', () => {
+    it('updateObjectPositionWithTimeCorrection_withNetworkDelay_compensatesForLatency', () => {
+      const obj: PhysicsObject = {
+        x: 100,
+        y: 200,
+        speed: 60, // 60 units per minute = 1 unit per second
+        angle: 0, // Moving right
+        last_position_update_ms: 1000
+      };
+
+      const clientCurrentTime = 2100; // Client thinks 1.1 seconds have passed
+      const responseReceivedAt = 2000; // Response received at 2 seconds client time
+      const roundTripTime = 200; // 200ms round trip
+      
+      // Expected: Response represents server state at responseReceivedAt - roundTripTime/2 = 1900ms
+      // Time elapsed since server timestamp should be: 2100 - 1900 = 200ms = 0.2 seconds
+      // Distance traveled: 1 unit/second * 0.2 seconds = 0.2 units
+      
+      const newPosition = updateObjectPositionWithTimeCorrection(
+        obj, 
+        clientCurrentTime, 
+        responseReceivedAt, 
+        roundTripTime, 
+        WORLD_BOUNDS
+      );
+      
+      // With factor 50 applied: 0.2 * 50 = 10 units
+      expect(newPosition.x).toBeCloseTo(110, 0);
+      expect(newPosition.y).toBeCloseTo(200, 0);
+    });
+
+    it('updateObjectPositionWithTimeCorrection_zeroNetworkDelay_behavesLikeStandardFunction', () => {
+      const obj: PhysicsObject = {
+        x: 100,
+        y: 200,
+        speed: 60,
+        angle: 90, // Moving up
+        last_position_update_ms: 1000
+      };
+
+      const clientCurrentTime = 2000;
+      const responseReceivedAt = 2000;
+      const roundTripTime = 0;
+      
+      const correctedPosition = updateObjectPositionWithTimeCorrection(
+        obj, 
+        clientCurrentTime, 
+        responseReceivedAt, 
+        roundTripTime, 
+        WORLD_BOUNDS
+      );
+      
+      // With zero network delay and response received at current time,
+      // corrected elapsed time = (2000 - 2000) + (0 / 2) = 0ms
+      // So the object should not move
+      expect(correctedPosition.x).toBeCloseTo(100, 0);
+      expect(correctedPosition.y).toBeCloseTo(200, 0);
+    });
+  });
+
+  describe('updateAllObjectPositionsWithTimeCorrection', () => {
+    it('updateAllObjectPositionsWithTimeCorrection_multipleObjects_allUpdatedWithTimeCorrection', () => {
+      const objects: PhysicsObject[] = [
+        { x: 100, y: 200, speed: 60, angle: 0, last_position_update_ms: 1000 },
+        { x: 300, y: 400, speed: 120, angle: 180, last_position_update_ms: 1000 }
+      ];
+
+      const clientCurrentTime = 1500;
+      const responseReceivedAt = 1400;
+      const roundTripTime = 100;
+      
+      const updatedObjects = updateAllObjectPositionsWithTimeCorrection(
+        objects,
+        clientCurrentTime,
+        responseReceivedAt,
+        roundTripTime,
+        WORLD_BOUNDS
+      );
+      
+      expect(updatedObjects).toHaveLength(2);
+      expect(updatedObjects[0].x).toBeGreaterThan(100); // First object moved right
+      expect(updatedObjects[1].x).toBeLessThan(300);    // Second object moved left
+      
+      // Timestamps should be updated to corrected time
+      const networkDelayEstimate = roundTripTime / 2;
+      const timeSinceResponse = clientCurrentTime - responseReceivedAt;
+      const expectedTimestamp = responseReceivedAt + timeSinceResponse + networkDelayEstimate;
+      expect(updatedObjects[0].last_position_update_ms).toBeCloseTo(expectedTimestamp, 0);
+      expect(updatedObjects[1].last_position_update_ms).toBeCloseTo(expectedTimestamp, 0);
     });
   });
 });
