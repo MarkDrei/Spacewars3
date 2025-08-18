@@ -3,11 +3,21 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/client/hooks/useAuth';
-import './LoginPage.css';
+import '../app/login/LoginPage.css';
 
-const LoginPage: React.FC = () => {
+export interface LoginPageComponentProps {
+  onLogin?: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  onRegister?: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
+}
+
+export const LoginPageComponent: React.FC<LoginPageComponentProps> = ({ onLogin: propOnLogin, onRegister: propOnRegister }) => {
   const router = useRouter();
-  const { login, register } = useAuth();
+  const { login: hookLogin, register: hookRegister } = useAuth();
+  
+  // Use props if provided (for testing), otherwise use hooks
+  const login = propOnLogin || hookLogin;
+  const register = propOnRegister || hookRegister;
+  
   const [isSignUp, setIsSignUp] = useState(false);
   const [formData, setFormData] = useState({
     username: '',
@@ -175,5 +185,3 @@ const LoginPage: React.FC = () => {
     </div>
   );
 };
-
-export default LoginPage;

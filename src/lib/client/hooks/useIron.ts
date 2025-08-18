@@ -23,7 +23,7 @@ export const useIron = (isLoggedIn: boolean, pollInterval: number = 5000): UseIr
   // Use ref to track if display interval is already started
   const displayIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  const fetchIron = async (retryCount: number = 0) => {
+  const fetchIron = useCallback(async (retryCount: number = 0) => {
     try {
       setError(null);
       const result = await userStatsService.getUserStats();
@@ -68,7 +68,7 @@ export const useIron = (isLoggedIn: boolean, pollInterval: number = 5000): UseIr
         setIsLoading(false);
       }
     }
-  };
+  }, []); // Empty dependency array since fetchIron doesn't depend on any changing values
 
   // Update displayed iron amount based on time elapsed and iron per second
   const updateDisplayIron = useCallback(() => {
@@ -133,7 +133,7 @@ export const useIron = (isLoggedIn: boolean, pollInterval: number = 5000): UseIr
       globalEvents.off(EVENTS.IRON_UPDATED, handleIronUpdate);
       globalEvents.off(EVENTS.RESEARCH_TRIGGERED, handleIronUpdate);
     };
-  }, [isLoggedIn, pollInterval]);
+  }, [isLoggedIn, pollInterval, fetchIron]);
 
   // Start display interval after data is loaded
   useEffect(() => {

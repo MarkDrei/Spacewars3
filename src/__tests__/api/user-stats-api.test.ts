@@ -4,7 +4,7 @@ import { describe, expect, test } from 'vitest';
 import { GET as userStatsGET } from '@/app/api/user-stats/route';
 
 // Import shared test helpers
-import { createRequest, createAuthenticatedSession, randomUsername } from '../helpers/apiTestHelpers';
+import { createRequest, createAuthenticatedSession } from '../helpers/apiTestHelpers';
 
 describe('User stats API', () => {
   test('userStats_notAuthenticated_returns401', async () => {

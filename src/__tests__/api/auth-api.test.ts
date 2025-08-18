@@ -1,4 +1,4 @@
-import { describe, expect, test, beforeEach } from 'vitest';
+import { describe, expect, test } from 'vitest';
 
 // Import API routes directly (for now we'll use the real database)
 import { POST as registerPOST } from '@/app/api/register/route';

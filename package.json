@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "test": "vitest",
+  "ci": "npm run lint && npm test -- --run && npm run build",
     "test:ui": "vitest --ui",
     "test:run": "vitest run"
   },

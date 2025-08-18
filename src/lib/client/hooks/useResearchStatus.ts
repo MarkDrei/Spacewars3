@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { researchService, TechTree } from '../services/researchService';
 
 interface UseResearchStatusResult {
@@ -16,7 +16,7 @@ export const useResearchStatus = (isLoggedIn: boolean, pollInterval: number = 50
   const isMountedRef = useRef<boolean>(true);
   const pollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const fetchTechTree = async (retryCount: number = 0) => {
+  const fetchTechTree = useCallback(async (retryCount: number = 0) => {
     try {
       setError(null);
       const result = await researchService.getTechTree();
@@ -52,9 +52,9 @@ export const useResearchStatus = (isLoggedIn: boolean, pollInterval: number = 50
       setTechTree(null);
       setIsLoading(false);
     }
-  };
+  }, []); // Empty dependency array since it doesn't depend on changing values
 
-  const startPolling = () => {
+  const startPolling = useCallback(() => {
     if (!isLoggedIn || !isMountedRef.current) return;
     
     pollTimeoutRef.current = setTimeout(() => {
@@ -63,7 +63,7 @@ export const useResearchStatus = (isLoggedIn: boolean, pollInterval: number = 50
         startPolling(); // Schedule next poll
       }
     }, pollInterval);
-  };
+  }, [isLoggedIn, pollInterval, fetchTechTree]);
 
   const refetch = () => {
     if (!isLoggedIn) return;
@@ -94,7 +94,7 @@ export const useResearchStatus = (isLoggedIn: boolean, pollInterval: number = 50
         pollTimeoutRef.current = null;
       }
     };
-  }, [isLoggedIn, pollInterval]);
+  }, [isLoggedIn, pollInterval, fetchTechTree, startPolling]);
 
   // Cleanup on unmount
   useEffect(() => {
