@@ -1,25 +1,11 @@
 import { describe, expect, test, beforeEach } from 'vitest';
-import { NextRequest } from 'next/server';
 
 // Import API routes directly (for now we'll use the real database)
 import { POST as registerPOST } from '@/app/api/register/route';
 import { POST as loginPOST } from '@/app/api/login/route';
 
-// Helper function to create a Next.js request
-function createRequest(url: string, method: string, body?: unknown): NextRequest {
-  return new NextRequest(url, {
-    method,
-    body: body ? JSON.stringify(body) : undefined,
-    headers: {
-      'content-type': 'application/json',
-    },
-  });
-}
-
-// Helper to generate unique usernames for tests
-function randomUsername(): string {
-  return `testuser_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-}
+// Import shared test helpers
+import { createRequest, randomUsername } from '../helpers/apiTestHelpers';
 
 describe('Auth API', () => {
   test('register_newUser_success', async () => {
