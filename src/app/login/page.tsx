@@ -5,9 +5,19 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/client/hooks/useAuth';
 import './LoginPage.css';
 
-const LoginPage: React.FC = () => {
+export interface LoginPageProps {
+  onLogin?: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  onRegister?: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
+}
+
+const LoginPage: React.FC<LoginPageProps> = ({ onLogin: propOnLogin, onRegister: propOnRegister }) => {
   const router = useRouter();
-  const { login, register } = useAuth();
+  const { login: hookLogin, register: hookRegister } = useAuth();
+  
+  // Use props if provided (for testing), otherwise use hooks
+  const login = propOnLogin || hookLogin;
+  const register = propOnRegister || hookRegister;
+  
   const [isSignUp, setIsSignUp] = useState(false);
   const [formData, setFormData] = useState({
     username: '',

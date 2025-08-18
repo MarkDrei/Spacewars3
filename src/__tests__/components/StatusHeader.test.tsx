@@ -1,7 +1,7 @@
+import React from 'react';
 import { describe, expect, vi, test, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import StatusHeader from "@/components/StatusHeader/StatusHeader";
-import "@testing-library/jest-dom/vitest";
 
 describe('StatusHeader', () => {
   const defaultProps = {

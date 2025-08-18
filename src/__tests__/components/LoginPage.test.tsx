@@ -1,7 +1,26 @@
+import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import LoginPage from '@/app/login/page';
+
+// Mock Next.js router
+const mockPush = vi.fn();
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: mockPush,
+    replace: vi.fn(),
+    refresh: vi.fn(),
+  }),
+}));
+
+// Mock useAuth hook
+vi.mock('@/lib/client/hooks/useAuth', () => ({
+  useAuth: () => ({
+    login: vi.fn(),
+    register: vi.fn(),
+  }),
+}));
 
 // Mock functions for props
 const mockOnLogin = vi.fn();
