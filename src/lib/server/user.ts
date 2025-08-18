@@ -89,9 +89,33 @@ class User {
    * @param objectType Type of the collected object
    */
   collected(objectType: 'asteroid' | 'shipwreck' | 'escape_pod'): void {
-    // TODO: Implement collection logic (iron rewards, experience, etc.)
-    // For now, this is a placeholder method
-    console.log(`User ${this.username} collected a ${objectType}`);
+    let ironReward = 0;
+    
+    switch (objectType) {
+      case 'asteroid':
+        // Asteroids yield between 50-250 iron
+        ironReward = Math.floor(Math.random() * (250 - 50 + 1)) + 50;
+        break;
+        
+      case 'shipwreck':
+        // Shipwrecks yield between 50-1000 iron
+        ironReward = Math.floor(Math.random() * (1000 - 50 + 1)) + 50;
+        break;
+        
+      case 'escape_pod':
+        // Escape pods do nothing for now
+        ironReward = 0;
+        break;
+        
+      default:
+        console.warn(`Unknown object type collected: ${objectType}`);
+        ironReward = 0;
+    }
+    
+    // Award the iron
+    this.iron += ironReward;
+    
+    console.log(`User ${this.username} collected a ${objectType} and received ${ironReward} iron (total: ${this.iron})`);
   }
 
   static createNew(username: string, password_hash: string, saveCallback: SaveUserCallback): User {

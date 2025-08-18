@@ -7,6 +7,8 @@ import { setShipDirection, interceptTarget } from '../services/navigationService
 import { getShipStats } from '../services/shipStatsService';
 import { InterceptCalculator } from './InterceptCalculator';
 import { SpaceObjectOld } from './SpaceObject';
+import { collectionService } from '../services/collectionService';
+import { calculateToroidalDistance } from '@shared/physics';
 
 export class Game {
   private world: World;
@@ -59,8 +61,21 @@ export class Game {
       const hoveredObject = this.world.findHoveredObject();
       
       if (hoveredObject) {
-        // If a space object is hovered, intercept it
-        this.handleInterception(hoveredObject);
+        // Check if object is close enough to collect and not a ship
+        const ship = this.world.getShip();
+        const distance = calculateToroidalDistance(
+          { x: ship.getX(), y: ship.getY() },
+          { x: hoveredObject.getX(), y: hoveredObject.getY() },
+          { width: this.world.getWidth(), height: this.world.getHeight() }
+        );
+        
+        if (distance <= 125 && hoveredObject.getType() !== 'player_ship') {
+          // Object is close enough and collectible - try to collect it
+          this.handleCollection(hoveredObject);
+        } else {
+          // Object is too far or is a ship - use interception
+          this.handleInterception(hoveredObject);
+        }
       } else {
         // If no object is hovered, use the regular click-to-aim behavior
         // Use shared angleUtils for conversion
@@ -134,6 +149,33 @@ export class Game {
       }
     } catch (error) {
       console.error('Failed to handle interception:', error);
+    }
+  }
+
+  // Handle collection when clicking on a nearby object
+  private async handleCollection(targetObject: SpaceObjectOld): Promise<void> {
+    try {
+      console.log(`Attempting to collect ${targetObject.getType()} with ID ${targetObject.getId()}`);
+      
+      const result = await collectionService.collectObject(targetObject.getId());
+      
+      if (result.success) {
+        if (result.ironReward && result.ironReward > 0) {
+          console.log(`Successfully collected ${result.objectType}! Received ${result.ironReward} iron (Total: ${result.totalIron}). Distance: ${result.distance} units`);
+        } else {
+          console.log(`Successfully collected ${result.objectType}! No iron reward. Distance: ${result.distance} units`);
+        }
+        
+        // Trigger world data refresh to get updated state from server
+        if (this.refetchWorldData) {
+          this.refetchWorldData();
+        }
+      } else {
+        console.error('Failed to collect object:', result.error);
+        // Could show user feedback here (e.g., toast notification)
+      }
+    } catch (error) {
+      console.error('Failed to handle collection:', error);
     }
   }
   

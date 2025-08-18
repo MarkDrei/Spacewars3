@@ -64,15 +64,27 @@ export async function POST(request: NextRequest) {
       throw new ApiError(400, 'Object too far away');
     }
     
+    // Capture iron before collection
+    const ironBefore = user.iron;
+    
     // Collect the object
     user.collected(targetObject.type);
     await world.collected(objectId);
+    
+    // Calculate iron reward
+    const ironReward = user.iron - ironBefore;
     
     // Save changes
     await user.save();
     await world.save();
     
-    return NextResponse.json({ success: true, distance });
+    return NextResponse.json({ 
+      success: true, 
+      distance,
+      ironReward,
+      totalIron: user.iron,
+      objectType: targetObject.type
+    });
   } catch (error) {
     return handleApiError(error);
   }
