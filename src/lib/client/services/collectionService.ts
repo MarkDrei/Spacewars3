@@ -11,15 +11,23 @@ export interface CollectionResult {
 export const collectionService = {
   async collectObject(objectId: number): Promise<CollectionResult> {
     try {
+      console.log(`🚀 Collection service sending request for object ID: ${objectId}`);
+      
+      const requestBody = JSON.stringify({ objectId });
+      console.log(`📤 Request body: ${requestBody}`);
+      
       const response = await fetch('/api/collect', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ objectId }),
+        body: requestBody,
       });
 
+      console.log(`📥 Response status: ${response.status} ${response.statusText}`);
+      
       const data = await response.json();
+      console.log(`📋 Response data:`, data);
       
       if (!response.ok) {
         return {

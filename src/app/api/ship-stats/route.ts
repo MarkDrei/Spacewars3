@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getIronSession } from 'iron-session';
-import { getDatabase } from '@/lib/server/database';
-import { getUserById, saveUserToDb } from '@/lib/server/userRepo';
-import { loadWorld, saveWorldToDb } from '@/lib/server/worldRepo';
+import { getCacheManager } from '@/lib/server/cacheManager';
 import { getResearchEffectFromTree, ResearchType } from '@/lib/server/techtree';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth, ApiError } from '@/lib/server/errors';
@@ -12,15 +10,17 @@ export async function GET(request: NextRequest) {
     const session = await getIronSession<SessionData>(request, NextResponse.json({}), sessionOptions);
     requireAuth(session.userId);
     
-    const db = getDatabase();
+    // Get cache manager and load data from cache
+    const cacheManager = getCacheManager();
+    await cacheManager.initialize();
     
-    // Load user and world data
-    const user = await getUserById(db, session.userId, saveUserToDb(db));
+    // Load user and world data from cache
+    const user = await cacheManager.getUser(session.userId!);
     if (!user) {
       throw new ApiError(404, 'User not found');
     }
     
-    const world = await loadWorld(db, saveWorldToDb(db));
+    const world = await cacheManager.getWorld();
     
     // Update physics for all objects first
     const currentTime = Date.now();

@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getIronSession } from 'iron-session';
-import { getDatabase } from '@/lib/server/database';
-import { loadWorld, saveWorldToDb } from '@/lib/server/worldRepo';
+import { getCacheManager } from '@/lib/server/cacheManager';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth } from '@/lib/server/errors';
 
@@ -12,10 +11,12 @@ export async function GET(request: NextRequest) {
 
     // console.log(`🌍 World data request - userId: ${session.userId}`);
 
-    const db = getDatabase();
+    // Get world data from cache manager (much faster than DB)
+    const cacheManager = getCacheManager();
+    await cacheManager.initialize();
     
-    // Load world data from database
-    const world = await loadWorld(db, saveWorldToDb(db));
+    // Load world data from cache
+    const world = await cacheManager.getWorld();
     
     // Update physics for all objects
     const currentTime = Date.now();
@@ -35,8 +36,8 @@ export async function GET(request: NextRequest) {
     // }, {});
     // console.log(`📊 Object counts:`, objectCounts);
     
-    // Save updated positions back to database
-    await world.save();
+    // Save updated positions back via cache manager (will persist periodically)
+    await cacheManager.updateWorld(world);
     
     // Return world data
     const worldData = world.getWorldData();

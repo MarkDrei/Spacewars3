@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getIronSession } from 'iron-session';
-import { getDatabase } from '@/lib/server/database';
-import { getUserById, saveUserToDb } from '@/lib/server/userRepo';
+import { getCacheManager } from '@/lib/server/cacheManager';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth, ApiError } from '@/lib/server/errors';
 
@@ -10,8 +9,11 @@ export async function GET(request: NextRequest) {
     const session = await getIronSession<SessionData>(request, NextResponse.json({}), sessionOptions);
     requireAuth(session.userId);
     
-    const db = getDatabase();
-    const user = await getUserById(db, session.userId, saveUserToDb(db));
+    // Get user data from cache manager (much faster than DB)
+    const cacheManager = getCacheManager();
+    await cacheManager.initialize();
+    
+    const user = await cacheManager.getUser(session.userId);
     
     if (!user) {
       throw new ApiError(404, 'User not found');
@@ -19,7 +21,9 @@ export async function GET(request: NextRequest) {
     
     const now = Math.floor(Date.now() / 1000);
     user.updateStats(now);
-    await user.save();
+    
+    // Save updated user via cache manager (will persist periodically)
+    await cacheManager.updateUser(user);
     
     const responseData = { 
       iron: user.iron, 

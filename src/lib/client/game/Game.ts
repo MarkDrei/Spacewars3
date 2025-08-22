@@ -155,9 +155,20 @@ export class Game {
   // Handle collection when clicking on a nearby object
   private async handleCollection(targetObject: SpaceObjectOld): Promise<void> {
     try {
-      console.log(`Attempting to collect ${targetObject.getType()} with ID ${targetObject.getId()}`);
+      const objectId = targetObject.getId();
+      const objectType = targetObject.getType();
       
-      const result = await collectionService.collectObject(targetObject.getId());
+      console.log(`Attempting to collect ${objectType} with ID ${objectId}`);
+      console.log(`Object ID type: ${typeof objectId}, value: ${objectId}`);
+      
+      if (typeof objectId !== 'number' || isNaN(objectId)) {
+        console.error(`❌ Invalid object ID: ${objectId} (type: ${typeof objectId})`);
+        return;
+      }
+      
+      const result = await collectionService.collectObject(objectId);
+      
+      console.log(`Collection API response:`, result);
       
       if (result.success) {
         if (result.ironReward && result.ironReward > 0) {
@@ -168,7 +179,10 @@ export class Game {
         
         // Trigger world data refresh to get updated state from server
         if (this.refetchWorldData) {
+          console.log(`🔄 Triggering world data refresh...`);
           this.refetchWorldData();
+        } else {
+          console.log(`⚠️ No refetch function available`);
         }
       } else {
         console.error('Failed to collect object:', result.error);

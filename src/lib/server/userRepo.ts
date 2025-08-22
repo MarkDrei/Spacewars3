@@ -1,10 +1,11 @@
 // ---
-// Handles loading and saving User objects to the database.
+// Handles loading and saving User objects via in-memory cache with database persistence.
 // ---
 
 import sqlite3 from 'sqlite3';
 import { User, SaveUserCallback } from './user';
 import { createInitialTechTree } from './techtree';
+import { getCacheManager } from './cacheManager';
 
 interface UserRow {
   id: number;
@@ -36,7 +37,8 @@ function userFromRow(row: UserRow, saveCallback: SaveUserCallback): User {
   );
 }
 
-export function getUserById(db: sqlite3.Database, id: number, saveCallback: SaveUserCallback): Promise<User | null> {
+// Direct database access functions (used internally by cache manager)
+export function getUserByIdFromDb(db: sqlite3.Database, id: number, saveCallback: SaveUserCallback): Promise<User | null> {
   return new Promise((resolve, reject) => {
     db.get('SELECT * FROM users WHERE id = ?', [id], (err, row) => {
       if (err) return reject(err);
@@ -46,7 +48,7 @@ export function getUserById(db: sqlite3.Database, id: number, saveCallback: Save
   });
 }
 
-export function getUserByUsername(db: sqlite3.Database, username: string, saveCallback: SaveUserCallback): Promise<User | null> {
+export function getUserByUsernameFromDb(db: sqlite3.Database, username: string, saveCallback: SaveUserCallback): Promise<User | null> {
   return new Promise((resolve, reject) => {
     db.get('SELECT * FROM users WHERE username = ?', [username], (err, row) => {
       if (err) return reject(err);
@@ -54,6 +56,19 @@ export function getUserByUsername(db: sqlite3.Database, username: string, saveCa
       resolve(userFromRow(row as UserRow, saveCallback));
     });
   });
+}
+
+// Cache-aware public functions
+export async function getUserById(db: sqlite3.Database, id: number, saveCallback: SaveUserCallback): Promise<User | null> {
+  const cacheManager = getCacheManager();
+  await cacheManager.initialize();
+  return await cacheManager.getUser(id);
+}
+
+export async function getUserByUsername(db: sqlite3.Database, username: string, saveCallback: SaveUserCallback): Promise<User | null> {
+  // Note: Username lookup still requires database access since we don't cache by username
+  // This could be optimized in the future with a username -> userId mapping cache
+  return getUserByUsernameFromDb(db, username, saveCallback);
 }
 
 export function createUser(db: sqlite3.Database, username: string, password_hash: string, saveCallback: SaveUserCallback): Promise<User> {
@@ -64,7 +79,7 @@ export function createUserWithoutShip(db: sqlite3.Database, username: string, pa
   return createUserWithShip(db, username, password_hash, saveCallback, false);
 }
 
-function createUserWithShip(db: sqlite3.Database, username: string, password_hash: string, saveCallback: SaveUserCallback, createShip: boolean): Promise<User> {
+async function createUserWithShip(db: sqlite3.Database, username: string, password_hash: string, saveCallback: SaveUserCallback, createShip: boolean): Promise<User> {
   return new Promise((resolve, reject) => {
     const now = Math.floor(Date.now() / 1000);
     const techTree = createInitialTechTree();
@@ -84,12 +99,26 @@ function createUserWithShip(db: sqlite3.Database, username: string, password_has
           // Then create the user with the ship_id
           db.run('INSERT INTO users (username, password_hash, iron, last_updated, tech_tree, ship_id) VALUES (?, ?, ?, ?, ?, ?)', 
             [username, password_hash, 0.0, now, JSON.stringify(techTree), shipId], 
-            function (userErr) {
+            async function (userErr) {
               if (userErr) return reject(userErr);
               
               const userId = this.lastID;
               console.log(`✅ Created user ${username} (ID: ${userId}) with ship ID ${shipId}`);
-              resolve(new User(userId, username, password_hash, 0.0, now, techTree, saveCallback, shipId));
+              
+              // Create the user object and cache it
+              const user = new User(userId, username, password_hash, 0.0, now, techTree, saveCallback, shipId);
+              
+              try {
+                // Initialize cache manager and cache the new user
+                const cacheManager = getCacheManager();
+                await cacheManager.initialize();
+                await cacheManager.updateUser(user);
+                resolve(user);
+              } catch (cacheErr) {
+                console.error('Failed to cache new user:', cacheErr);
+                // Still resolve with user even if caching fails
+                resolve(user);
+              }
             }
           );
         }
@@ -98,10 +127,24 @@ function createUserWithShip(db: sqlite3.Database, username: string, password_has
       // Create user without ship (for testing)
       db.run('INSERT INTO users (username, password_hash, iron, last_updated, tech_tree) VALUES (?, ?, ?, ?, ?)', 
         [username, password_hash, 0.0, now, JSON.stringify(techTree)], 
-        function (err) {
+        async function (err) {
           if (err) return reject(err);
           const id = this.lastID;
-          resolve(new User(id, username, password_hash, 0.0, now, techTree, saveCallback));
+          
+          // Create the user object and cache it
+          const user = new User(id, username, password_hash, 0.0, now, techTree, saveCallback);
+          
+          try {
+            // Initialize cache manager and cache the new user
+            const cacheManager = getCacheManager();
+            await cacheManager.initialize();
+            await cacheManager.updateUser(user);
+            resolve(user);
+          } catch (cacheErr) {
+            console.error('Failed to cache new user:', cacheErr);
+            // Still resolve with user even if caching fails
+            resolve(user);
+          }
         }
       );
     }

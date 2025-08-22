@@ -1,14 +1,15 @@
 // ---
-// Repository functions for World persistence
+// Repository functions for World persistence via in-memory cache with database persistence
 // ---
 
 import sqlite3 from 'sqlite3';
 import { World, SpaceObject, SaveWorldCallback } from './world';
+import { getCacheManager } from './cacheManager';
 
 /**
- * Load world data from database
+ * Load world data from database (used internally by cache manager)
  */
-export function loadWorld(db: sqlite3.Database, saveCallback: SaveWorldCallback): Promise<World> {
+export function loadWorldFromDb(db: sqlite3.Database, saveCallback: SaveWorldCallback): Promise<World> {
   return new Promise((resolve, reject) => {
     db.all('SELECT * FROM space_objects', [], (err, rows) => {
       if (err) {
@@ -42,6 +43,15 @@ export function loadWorld(db: sqlite3.Database, saveCallback: SaveWorldCallback)
 }
 
 /**
+ * Load world data via cache manager (cache-aware public function)
+ */
+export async function loadWorld(db: sqlite3.Database, saveCallback: SaveWorldCallback): Promise<World> {
+  const cacheManager = getCacheManager();
+  await cacheManager.initialize();
+  return await cacheManager.getWorld();
+}
+
+/**
  * Save world data to database
  */
 export function saveWorldToDb(db: sqlite3.Database): SaveWorldCallback {
@@ -71,10 +81,11 @@ export function saveWorldToDb(db: sqlite3.Database): SaveWorldCallback {
 }
 
 /**
- * Delete a space object from database
+ * Delete a space object from database and update cache
  */
-export function deleteSpaceObject(db: sqlite3.Database, objectId: number): Promise<void> {
-  return new Promise((resolve, reject) => {
+export async function deleteSpaceObject(db: sqlite3.Database, objectId: number): Promise<void> {
+  // First delete from database
+  await new Promise<void>((resolve, reject) => {
     db.run('DELETE FROM space_objects WHERE id = ?', [objectId], (err) => {
       if (err) {
         reject(err);
@@ -83,13 +94,24 @@ export function deleteSpaceObject(db: sqlite3.Database, objectId: number): Promi
       }
     });
   });
+
+  // Then update cache by refreshing the world
+  try {
+    const cacheManager = getCacheManager();
+    await cacheManager.initialize();
+    await cacheManager.forceRefreshWorld();
+  } catch (cacheErr) {
+    console.error('Failed to refresh world cache after object deletion:', cacheErr);
+    // Don't throw here as the database operation succeeded
+  }
 }
 
 /**
- * Insert a new space object into database
+ * Insert a new space object into database and update cache
  */
-export function insertSpaceObject(db: sqlite3.Database, obj: Omit<SpaceObject, 'id'>): Promise<number> {
-  return new Promise((resolve, reject) => {
+export async function insertSpaceObject(db: sqlite3.Database, obj: Omit<SpaceObject, 'id'>): Promise<number> {
+  // First insert into database
+  const objectId = await new Promise<number>((resolve, reject) => {
     db.run(
       'INSERT INTO space_objects (type, x, y, speed, angle, last_position_update_ms) VALUES (?, ?, ?, ?, ?, ?)',
       [obj.type, obj.x, obj.y, obj.speed, obj.angle, obj.last_position_update_ms],
@@ -102,4 +124,16 @@ export function insertSpaceObject(db: sqlite3.Database, obj: Omit<SpaceObject, '
       }
     );
   });
+
+  // Then update cache by refreshing the world
+  try {
+    const cacheManager = getCacheManager();
+    await cacheManager.initialize();
+    await cacheManager.forceRefreshWorld();
+  } catch (cacheErr) {
+    console.error('Failed to refresh world cache after object insertion:', cacheErr);
+    // Don't throw here as the database operation succeeded
+  }
+
+  return objectId;
 }
