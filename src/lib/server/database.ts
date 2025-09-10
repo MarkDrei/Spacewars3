@@ -3,6 +3,7 @@ import path from 'path';
 import fs from 'fs';
 import { CREATE_TABLES } from './schema';
 import { seedDatabase, DEFAULT_USERS, DEFAULT_SPACE_OBJECTS } from './seedData';
+import { applyTechMigrations } from './migrations';
 
 let db: sqlite3.Database | null = null;
 let isInitializing = false;
@@ -106,6 +107,9 @@ export function getDatabase(): sqlite3.Database {
         if (!dbExists) {
           console.log('🆕 New database detected, initializing...');
           await initializeDatabase(db!);
+        } else {
+          console.log('📊 Existing database detected, checking for migrations...');
+          await applyTechMigrations(db!);
         }
         
         isInitializing = false;
