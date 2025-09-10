@@ -1,55 +1,81 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getIronSession } from 'iron-session';
-import { getCacheManager } from '@/lib/server/cacheManager';
+import { getTypedCacheManager } from '@/lib/server/typedCacheManager';
 import { getResearchEffectFromTree, ResearchType } from '@/lib/server/techtree';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth, ApiError } from '@/lib/server/errors';
+import { createEmptyContext } from '@/lib/server/typedLocks';
 
 export async function GET(request: NextRequest) {
   try {
     const session = await getIronSession<SessionData>(request, NextResponse.json({}), sessionOptions);
     requireAuth(session.userId);
     
-    // Get cache manager and load data from cache
-    const cacheManager = getCacheManager();
+    // Get typed cache manager singleton and initialize
+    const cacheManager = getTypedCacheManager();
     await cacheManager.initialize();
     
-    // Load user and world data from cache
-    const user = await cacheManager.getUser(session.userId!);
-    if (!user) {
-      throw new ApiError(404, 'User not found');
-    }
+    // Create empty context for lock acquisition
+    const emptyCtx = createEmptyContext();
     
-    const world = await cacheManager.getWorld();
-    
-    // Update physics for all objects first
-    const currentTime = Date.now();
-    world.updatePhysics(currentTime);
-    
-    // Find player's ship in the world
-    const playerShips = world.getSpaceObjectsByType('player_ship');
-    const playerShip = playerShips.find(ship => ship.id === user.ship_id);
-    
-    if (!playerShip) {
-      throw new ApiError(404, 'Player ship not found');
-    }
-    
-    // Calculate max speed from tech tree
-    const baseSpeed = getResearchEffectFromTree(user.techTree, ResearchType.ShipSpeed);
-    const afterburnerBonus = getResearchEffectFromTree(user.techTree, ResearchType.Afterburner);
-    const maxSpeed = baseSpeed * (1 + afterburnerBonus / 100);
-    
-    const responseData = {
-      x: playerShip.x,
-      y: playerShip.y,
-      speed: playerShip.speed,
-      angle: playerShip.angle,
-      maxSpeed: maxSpeed,
-      last_position_update_ms: playerShip.last_position_update_ms
-    };
-    
-    return NextResponse.json(responseData);
+    // Execute with world read and user locks (read both world and user)
+    return await cacheManager.withWorldRead(emptyCtx, async (worldCtx) => {
+      return await cacheManager.withUserLock(worldCtx, async (userCtx) => {
+        // Get world and user data safely (we have both locks)
+        const world = cacheManager.getWorldUnsafe(userCtx);
+        let user = cacheManager.getUserUnsafe(session.userId!, userCtx);
+        
+        if (!user) {
+          // Load user from database if not in cache
+          return await cacheManager.withDatabaseRead(userCtx, async (dbCtx) => {
+            user = await cacheManager.loadUserFromDbUnsafe(session.userId!, dbCtx);
+            if (!user) {
+              throw new ApiError(404, 'User not found');
+            }
+            
+            // Cache the loaded user
+            cacheManager.setUserUnsafe(user, userCtx);
+            
+            // Continue with ship stats logic
+            return getShipStats(world, user);
+          });
+        } else {
+          // Continue with ship stats logic directly
+          return getShipStats(world, user);
+        }
+      });
+    });
   } catch (error) {
     return handleApiError(error);
   }
+}
+
+function getShipStats(world: any, user: any): NextResponse {
+  // Update physics for all objects first
+  const currentTime = Date.now();
+  world.updatePhysics(currentTime);
+  
+  // Find player's ship in the world
+  const playerShips = world.getSpaceObjectsByType('player_ship');
+  const playerShip = playerShips.find((ship: any) => ship.id === user.ship_id);
+  
+  if (!playerShip) {
+    throw new ApiError(404, 'Player ship not found');
+  }
+  
+  // Calculate max speed from tech tree
+  const baseSpeed = getResearchEffectFromTree(user.techTree, ResearchType.ShipSpeed);
+  const afterburnerBonus = getResearchEffectFromTree(user.techTree, ResearchType.Afterburner);
+  const maxSpeed = baseSpeed * (1 + afterburnerBonus / 100);
+  
+  const responseData = {
+    x: playerShip.x,
+    y: playerShip.y,
+    speed: playerShip.speed,
+    angle: playerShip.angle,
+    maxSpeed: maxSpeed,
+    last_position_update_ms: playerShip.last_position_update_ms
+  };
+  
+  return NextResponse.json(responseData);
 }

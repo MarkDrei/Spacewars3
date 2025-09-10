@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getIronSession } from 'iron-session';
-import { getCacheManager } from '@/lib/server/cacheManager';
+import { getTypedCacheManager } from '@/lib/server/typedCacheManager';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth } from '@/lib/server/errors';
+import { createEmptyContext } from '@/lib/server/typedLocks';
 
 export async function GET(request: NextRequest) {
   try {
@@ -11,37 +12,26 @@ export async function GET(request: NextRequest) {
 
     // console.log(`🌍 World data request - userId: ${session.userId}`);
 
-    // Get world data from cache manager (much faster than DB)
-    const cacheManager = getCacheManager();
+    // Get typed cache manager singleton and initialize
+    const cacheManager = getTypedCacheManager();
     await cacheManager.initialize();
     
-    // Load world data from cache
-    const world = await cacheManager.getWorld();
+    // Create empty context for lock acquisition
+    const emptyCtx = createEmptyContext();
     
-    // Update physics for all objects
-    const currentTime = Date.now();
-    world.updatePhysics(currentTime);
-    
-    // Log all ships in the world for debugging
-    // const ships = world.getSpaceObjectsByType('player_ship');
-    // console.log(`🚢 All ships in world (${ships.length} total):`);
-    // ships.forEach(ship => {
-    //   console.log(`  Ship ID: ${ship.id}, position: (${ship.x}, ${ship.y}), speed: ${ship.speed}, angle: ${ship.angle}, lastUpdate: ${ship.last_position_update_ms}`);
-    // });
-    
-    // // Log total object counts
-    // const objectCounts = world.spaceObjects.reduce((counts: Record<string, number>, obj) => {
-    //   counts[obj.type] = (counts[obj.type] || 0) + 1;
-    //   return counts;
-    // }, {});
-    // console.log(`📊 Object counts:`, objectCounts);
-    
-    // Save updated positions back via cache manager (will persist periodically)
-    await cacheManager.updateWorld(world);
-    
-    // Return world data
-    const worldData = world.getWorldData();
-    return NextResponse.json(worldData);
+    // Execute with world read lock (read-only operation)
+    return await cacheManager.withWorldRead(emptyCtx, async (worldCtx) => {
+      // Get world data safely (we have world read lock)
+      const world = cacheManager.getWorldUnsafe(worldCtx);
+      
+      // Update physics for all objects
+      const currentTime = Date.now();
+      world.updatePhysics(currentTime);
+      
+      // Return world data
+      const worldData = world.getWorldData();
+      return NextResponse.json(worldData);
+    });
   } catch (error) {
     return handleApiError(error);
   }

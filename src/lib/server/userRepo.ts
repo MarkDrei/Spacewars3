@@ -3,9 +3,12 @@
 // ---
 
 import sqlite3 from 'sqlite3';
+import bcrypt from 'bcrypt';
 import { User, SaveUserCallback } from './user';
 import { createInitialTechTree } from './techtree';
-import { getCacheManager } from './cacheManager';
+import { getDatabase } from './database';
+import { getTypedCacheManager } from './typedCacheManager';
+import { createEmptyContext } from './typedLocks';
 
 interface UserRow {
   id: number;
@@ -60,9 +63,31 @@ export function getUserByUsernameFromDb(db: sqlite3.Database, username: string, 
 
 // Cache-aware public functions
 export async function getUserById(db: sqlite3.Database, id: number, saveCallback: SaveUserCallback): Promise<User | null> {
-  const cacheManager = getCacheManager();
+  // Use typed cache manager for cache-aware access
+  const cacheManager = getTypedCacheManager();
   await cacheManager.initialize();
-  return await cacheManager.getUser(id);
+  
+  const emptyCtx = createEmptyContext();
+  
+  // Use user lock to ensure consistent access
+  return await cacheManager.withUserLock(emptyCtx, async (userCtx) => {
+    // Try to get from cache first
+    let user = cacheManager.getUserUnsafe(id, userCtx);
+    
+    if (!user) {
+      // Load from database if not in cache
+      return await cacheManager.withDatabaseRead(userCtx, async (dbCtx) => {
+        user = await cacheManager.loadUserFromDbUnsafe(id, dbCtx);
+        if (user) {
+          // Cache the loaded user
+          cacheManager.setUserUnsafe(user, userCtx);
+        }
+        return user;
+      });
+    }
+    
+    return user;
+  });
 }
 
 export async function getUserByUsername(db: sqlite3.Database, username: string, saveCallback: SaveUserCallback): Promise<User | null> {
@@ -109,14 +134,12 @@ async function createUserWithShip(db: sqlite3.Database, username: string, passwo
               const user = new User(userId, username, password_hash, 0.0, now, techTree, saveCallback, shipId);
               
               try {
-                // Initialize cache manager and cache the new user
-                const cacheManager = getCacheManager();
-                await cacheManager.initialize();
-                await cacheManager.updateUser(user);
+                // Note: User creation doesn't need immediate caching since
+                // the API endpoints will load and cache users as needed
                 resolve(user);
               } catch (cacheErr) {
-                console.error('Failed to cache new user:', cacheErr);
-                // Still resolve with user even if caching fails
+                console.error('Note: User created successfully but caching skipped:', cacheErr);
+                // Still resolve with user since creation succeeded
                 resolve(user);
               }
             }
@@ -135,14 +158,12 @@ async function createUserWithShip(db: sqlite3.Database, username: string, passwo
           const user = new User(id, username, password_hash, 0.0, now, techTree, saveCallback);
           
           try {
-            // Initialize cache manager and cache the new user
-            const cacheManager = getCacheManager();
-            await cacheManager.initialize();
-            await cacheManager.updateUser(user);
+            // Note: User creation doesn't need immediate caching since
+            // the API endpoints will load and cache users as needed
             resolve(user);
           } catch (cacheErr) {
-            console.error('Failed to cache new user:', cacheErr);
-            // Still resolve with user even if caching fails
+            console.error('Note: User created successfully but caching skipped:', cacheErr);
+            // Still resolve with user since creation succeeded
             resolve(user);
           }
         }
@@ -152,8 +173,8 @@ async function createUserWithShip(db: sqlite3.Database, username: string, passwo
 }
 
 export function saveUserToDb(db: sqlite3.Database): SaveUserCallback {
-  return async (user) => {
-    return new Promise((resolve, reject) => {
+  return async (user: User) => {
+    return new Promise<void>((resolve, reject) => {
       db.run(
         'UPDATE users SET iron = ?, last_updated = ?, tech_tree = ?, ship_id = ? WHERE id = ?',
         [user.iron, user.last_updated, JSON.stringify(user.techTree), user.ship_id, user.id],

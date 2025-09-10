@@ -1,38 +1,64 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getIronSession } from 'iron-session';
-import { getCacheManager } from '@/lib/server/cacheManager';
+import { getTypedCacheManager } from '@/lib/server/typedCacheManager';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth, ApiError } from '@/lib/server/errors';
+import { createEmptyContext } from '@/lib/server/typedLocks';
 
 export async function GET(request: NextRequest) {
   try {
     const session = await getIronSession<SessionData>(request, NextResponse.json({}), sessionOptions);
     requireAuth(session.userId);
     
-    // Get user data from cache manager (much faster than DB)
-    const cacheManager = getCacheManager();
+        // Get typed cache manager singleton and initialize
+    const cacheManager = getTypedCacheManager();
     await cacheManager.initialize();
     
-    const user = await cacheManager.getUser(session.userId);
+    // Create empty context for lock acquisition
+    const emptyCtx = createEmptyContext();
     
-    if (!user) {
-      throw new ApiError(404, 'User not found');
-    }
-    
-    const now = Math.floor(Date.now() / 1000);
-    user.updateStats(now);
-    
-    // Save updated user via cache manager (will persist periodically)
-    await cacheManager.updateUser(user);
-    
-    const responseData = { 
-      iron: user.iron, 
-      last_updated: user.last_updated, 
-      ironPerSecond: user.getIronPerSecond() 
-    };
-    
-    return NextResponse.json(responseData);
+    // Execute with user lock (user-specific operation)
+    return await cacheManager.withUserLock(emptyCtx, async (userCtx) => {
+      // Get user data safely (we have user lock)
+      let user = cacheManager.getUserUnsafe(session.userId!, userCtx);
+      
+      if (!user) {
+        // Load user from database if not in cache
+        return await cacheManager.withDatabaseRead(userCtx, async (dbCtx) => {
+          user = await cacheManager.loadUserFromDbUnsafe(session.userId!, dbCtx);
+          if (!user) {
+            throw new ApiError(404, 'User not found');
+          }
+          
+          // Cache the loaded user
+          cacheManager.setUserUnsafe(user, userCtx);
+          
+          // Continue with user stats logic
+          return processUserStats(user, cacheManager, userCtx);
+        });
+      } else {
+        // Continue with user stats logic directly
+        return processUserStats(user, cacheManager, userCtx);
+      }
+    });
   } catch (error) {
     return handleApiError(error);
   }
+}
+
+function processUserStats(user: any, cacheManager: any, userCtx: any): NextResponse {
+  const now = Math.floor(Date.now() / 1000);
+  user.updateStats(now);
+  
+  // Update cache with new data (using unsafe methods because we have proper locks)
+  cacheManager.updateUserUnsafe(user, userCtx);
+  
+  const responseData = { 
+    iron: user.iron, 
+    ironPerSecond: user.ironPerSecond || 0, 
+    last_updated: user.last_updated, 
+    stats: user.stats || {}
+  };
+  
+  return NextResponse.json(responseData);
 }

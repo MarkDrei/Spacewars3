@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getIronSession } from 'iron-session';
-import { getCacheManager } from '@/lib/server/cacheManager';
+import { getTypedCacheManager } from '@/lib/server/typedCacheManager';
 import { AllResearches, getResearchUpgradeCost, ResearchType, triggerResearch, TechTree } from '@/lib/server/techtree';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth, validateRequired, ApiError } from '@/lib/server/errors';
+import { createEmptyContext } from '@/lib/server/typedLocks';
 
 export async function POST(request: NextRequest) {
   try {
@@ -21,50 +22,74 @@ export async function POST(request: NextRequest) {
     
     const researchType = type as ResearchType;
     
-    // Get cache manager and user data
-    const cacheManager = getCacheManager();
+    // Get typed cache manager singleton and initialize
+    const cacheManager = getTypedCacheManager();
     await cacheManager.initialize();
     
-    // Use user mutex to prevent concurrent research operations
-    const userMutex = await cacheManager.getUserMutex(session.userId!);
+    // Create empty context for lock acquisition
+    const emptyCtx = createEmptyContext();
     
-    return await userMutex.acquire(async () => {
-      const user = await cacheManager.getUser(session.userId!);
+    // Execute with user lock (user-specific operation)
+    return await cacheManager.withUserLock(emptyCtx, async (userCtx) => {
+      // Get user data safely (we have user lock)
+      let user = cacheManager.getUserUnsafe(session.userId!, userCtx);
       
       if (!user) {
-        throw new ApiError(404, 'User not found');
+        // Load user from database if not in cache
+        return await cacheManager.withDatabaseRead(userCtx, async (dbCtx) => {
+          user = await cacheManager.loadUserFromDbUnsafe(session.userId!, dbCtx);
+          if (!user) {
+            throw new ApiError(404, 'User not found');
+          }
+          
+          // Cache the loaded user
+          cacheManager.setUserUnsafe(user, userCtx);
+          
+          // Continue with research logic
+          return performResearchTrigger(user, researchType, cacheManager, userCtx);
+        });
+      } else {
+        // Continue with research logic directly
+        return performResearchTrigger(user, researchType, cacheManager, userCtx);
       }
-      
-      const now = Math.floor(Date.now() / 1000);
-      user.updateStats(now);
-      
-      if (user.techTree.activeResearch) {
-        throw new ApiError(400, 'Research already in progress');
-      }
-      
-      const research = AllResearches[researchType];
-      const key = research.treeKey as keyof TechTree;
-      const currentLevel = user.techTree[key];
-      
-      if (typeof currentLevel !== 'number') {
-        throw new ApiError(500, 'Invalid tech tree state');
-      }
-      
-      const cost = getResearchUpgradeCost(research, currentLevel + 1);
-      
-      if (user.iron < cost) {
-        throw new ApiError(400, 'Not enough iron');
-      }
-      
-      user.iron -= cost;
-      triggerResearch(user.techTree, researchType);
-      
-      // Save user via cache manager (will persist periodically)
-      await cacheManager.updateUser(user);
-      
-      return NextResponse.json({ success: true });
     });
   } catch (error) {
     return handleApiError(error);
   }
+}
+
+function performResearchTrigger(
+  user: any,
+  researchType: ResearchType,
+  cacheManager: any,
+  userCtx: any
+): NextResponse {
+  const now = Math.floor(Date.now() / 1000);
+  user.updateStats(now);
+  
+  if (user.techTree.activeResearch) {
+    throw new ApiError(400, 'Research already in progress');
+  }
+  
+  const research = AllResearches[researchType];
+  const key = research.treeKey as keyof TechTree;
+  const currentLevel = user.techTree[key];
+  
+  if (typeof currentLevel !== 'number') {
+    throw new ApiError(500, 'Invalid tech tree state');
+  }
+  
+  const cost = getResearchUpgradeCost(research, currentLevel + 1);
+  
+  if (user.iron < cost) {
+    throw new ApiError(400, 'Not enough iron');
+  }
+  
+  user.iron -= cost;
+  triggerResearch(user.techTree, researchType);
+  
+  // Update cache with new data (using unsafe methods because we have proper locks)
+  cacheManager.updateUserUnsafe(user, userCtx);
+  
+  return NextResponse.json({ success: true });
 }
