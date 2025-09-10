@@ -54,6 +54,23 @@ export const migrations: Migration[] = [
       'ALTER TABLE users DROP COLUMN build_queue',
       'ALTER TABLE users DROP COLUMN build_start_sec'
     ]
+  },
+  {
+    version: 3,
+    name: 'add_messages_table',
+    up: [
+      `CREATE TABLE IF NOT EXISTS messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        recipient_id INTEGER NOT NULL,
+        created_at INTEGER NOT NULL,
+        is_read BOOLEAN NOT NULL DEFAULT 0,
+        message TEXT NOT NULL,
+        FOREIGN KEY (recipient_id) REFERENCES users (id)
+      )`
+    ],
+    down: [
+      'DROP TABLE IF EXISTS messages'
+    ]
   }
   // Future migrations go here
   // {
@@ -130,22 +147,73 @@ export async function applyTechMigrations(db: import('sqlite3').Database): Promi
   
   if (!needsMigration) {
     console.log('✅ Tech system columns already exist');
-    return;
+  } else {
+    console.log('🚀 Applying tech system migrations...');
+    
+    // Get tech system migration
+    const techMigration = migrations.find(m => m.name === 'add_tech_system');
+    if (!techMigration) {
+      console.error('❌ Tech system migration not found');
+      return;
+    }
+    
+    // Apply each migration statement
+    for (const statement of techMigration.up) {
+      await runMigrationStatement(db, statement);
+    }
+    
+    console.log('✅ Tech system migrations completed');
   }
   
-  console.log('🚀 Applying tech system migrations...');
+  // Apply messages table migration
+  await applyMessagesMigrations(db);
+}
+
+/**
+ * Check if a table exists in the database
+ */
+function tableExists(db: import('sqlite3').Database, tableName: string): Promise<boolean> {
+  return new Promise((resolve, reject) => {
+    db.all(`SELECT name FROM sqlite_master WHERE type='table' AND name=?`, [tableName], (err: Error | null, rows: { name: string }[]) => {
+      if (err) {
+        reject(err);
+        return;
+      }
+      
+      resolve(rows.length > 0);
+    });
+  });
+}
+
+/**
+ * Apply messages table migrations to the database
+ */
+export async function applyMessagesMigrations(db: import('sqlite3').Database): Promise<void> {
+  console.log('🔄 Checking for messages table migration...');
   
-  // Get tech system migration
-  const techMigration = migrations.find(m => m.name === 'add_tech_system');
-  if (!techMigration) {
-    console.error('❌ Tech system migration not found');
-    return;
+  try {
+    const exists = await tableExists(db, 'messages');
+    if (exists) {
+      console.log('✅ Messages table already exists');
+      return;
+    }
+    
+    console.log('🚀 Creating messages table...');
+    
+    // Get messages migration
+    const messagesMigration = migrations.find(m => m.name === 'add_messages_table');
+    if (!messagesMigration) {
+      console.error('❌ Messages migration not found');
+      return;
+    }
+    
+    // Apply each migration statement
+    for (const statement of messagesMigration.up) {
+      await runMigrationStatement(db, statement);
+    }
+    
+    console.log('✅ Messages table migration completed');
+  } catch (error) {
+    console.error('❌ Error applying messages migration:', error);
   }
-  
-  // Apply each migration statement
-  for (const statement of techMigration.up) {
-    await runMigrationStatement(db, statement);
-  }
-  
-  console.log('✅ Tech system migrations completed');
 }

@@ -43,9 +43,20 @@ CREATE TABLE IF NOT EXISTS space_objects (
   last_position_update_ms REAL NOT NULL
 )`;
 
+export const CREATE_MESSAGES_TABLE = `
+CREATE TABLE IF NOT EXISTS messages (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  recipient_id INTEGER NOT NULL,
+  created_at INTEGER NOT NULL, -- Unix timestamp in seconds
+  is_read BOOLEAN NOT NULL DEFAULT 0,
+  message TEXT NOT NULL,
+  FOREIGN KEY (recipient_id) REFERENCES users (id)
+)`;
+
 export const CREATE_TABLES = [
   CREATE_SPACE_OBJECTS_TABLE,
-  CREATE_USERS_TABLE
+  CREATE_USERS_TABLE,
+  CREATE_MESSAGES_TABLE
 ];
 
 // Migration to rename column

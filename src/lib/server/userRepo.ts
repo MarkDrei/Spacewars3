@@ -7,6 +7,7 @@ import { User, SaveUserCallback } from './user';
 import { createInitialTechTree } from './techtree';
 import { getTypedCacheManager } from './typedCacheManager';
 import { createEmptyContext } from './typedLocks';
+import { sendMessageToUser } from './messagesRepo';
 
 interface UserRow {
   id: number;
@@ -128,8 +129,11 @@ async function createUserWithShip(db: sqlite3.Database, username: string, passwo
               const userId = this.lastID;
               console.log(`✅ Created user ${username} (ID: ${userId}) with ship ID ${shipId}`);
               
-              // Create the user object and cache it
+              // Create the user object
               const user = new User(userId, username, password_hash, 0.0, now, techTree, saveCallback, shipId);
+              
+              // Send welcome message to new user
+              sendMessageToUser(userId, `Welcome to Spacewars, ${username}! Your journey among the stars begins now. Navigate wisely and collect resources to upgrade your ship.`);
               
               try {
                 // Note: User creation doesn't need immediate caching since
