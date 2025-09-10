@@ -8,6 +8,9 @@ export default defineConfig({
     setupFiles: ['./src/__tests__/setup.ts'],
     include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
     exclude: ['src/server/**'],
+    env: {
+      NODE_ENV: 'test'
+    },
   },
   resolve: {
     alias: {
