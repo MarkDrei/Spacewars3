@@ -55,7 +55,7 @@ function processUserStats(user: any, cacheManager: any, userCtx: any): NextRespo
   
   const responseData = { 
     iron: user.iron, 
-    ironPerSecond: user.ironPerSecond || 0, 
+    ironPerSecond: user.getIronPerSecond(),
     last_updated: user.last_updated, 
     stats: user.stats || {}
   };
