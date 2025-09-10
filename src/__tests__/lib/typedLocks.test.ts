@@ -195,20 +195,20 @@ describe('Phase 1: Typed Locks Core System', () => {
       const rwLock = new TypedReadWriteLock('stats-test', 1 as WorldLevel);
       const emptyCtx = createEmptyContext();
 
-      let initialStats = rwLock.getStats();
+      const initialStats = rwLock.getStats();
       expect(initialStats.readers).toBe(0);
       expect(initialStats.writer).toBe(false);
       expect(initialStats.readQueue).toBe(0);
       expect(initialStats.writeQueue).toBe(0);
 
       await rwLock.read(emptyCtx, async () => {
-        let duringReadStats = rwLock.getStats();
+        const duringReadStats = rwLock.getStats();
         expect(duringReadStats.readers).toBe(1);
         expect(duringReadStats.writer).toBe(false);
         return 'read-complete';
       });
 
-      let finalStats = rwLock.getStats();
+      const finalStats = rwLock.getStats();
       expect(finalStats.readers).toBe(0);
       expect(finalStats.writer).toBe(false);
     });

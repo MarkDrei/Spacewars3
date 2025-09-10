@@ -5,6 +5,8 @@ import { getResearchEffectFromTree, ResearchType } from '@/lib/server/techtree';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth, ApiError } from '@/lib/server/errors';
 import { createEmptyContext } from '@/lib/server/typedLocks';
+import { User } from '@/lib/server/user';
+import { World } from '@/lib/server/world';
 
 export async function GET(request: NextRequest) {
   try {
@@ -50,14 +52,14 @@ export async function GET(request: NextRequest) {
   }
 }
 
-function getShipStats(world: any, user: any): NextResponse {
+function getShipStats(world: World, user: User): NextResponse {
   // Update physics for all objects first
   const currentTime = Date.now();
   world.updatePhysics(currentTime);
   
   // Find player's ship in the world
   const playerShips = world.getSpaceObjectsByType('player_ship');
-  const playerShip = playerShips.find((ship: any) => ship.id === user.ship_id);
+  const playerShip = playerShips.find((ship) => ship.id === user.ship_id);
   
   if (!playerShip) {
     throw new ApiError(404, 'Player ship not found');

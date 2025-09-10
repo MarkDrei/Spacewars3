@@ -195,7 +195,7 @@ describe('Phase 3: Typed API Lock Ordering System', () => {
         // Read-only operation
         manager.withWorldRead(emptyCtx, async (worldCtx) => {
           await new Promise(resolve => setTimeout(resolve, 10));
-          return await manager.withUserLock(worldCtx, async (userCtx) => {
+          return await manager.withUserLock(worldCtx, async (_userCtx) => {
             return 'read-operation';
           });
         }),
@@ -203,13 +203,13 @@ describe('Phase 3: Typed API Lock Ordering System', () => {
         // Write operation 
         manager.withWorldWrite(emptyCtx, async (worldCtx) => {
           await new Promise(resolve => setTimeout(resolve, 15));
-          return await manager.withUserLock(worldCtx, async (userCtx) => {
+          return await manager.withUserLock(worldCtx, async (_userCtx) => {
             return 'write-operation';
           });
         }),
         
         // User-focused operation
-        manager.withUserLock(emptyCtx, async (userCtx) => {
+        manager.withUserLock(emptyCtx, async (_userCtx) => {
           await new Promise(resolve => setTimeout(resolve, 5));
           return 'user-operation';
         }),
@@ -238,7 +238,7 @@ describe('Phase 3: Typed API Lock Ordering System', () => {
       const operations = Array.from({ length: 10 }, (_, i) => {
         if (i % 3 === 0) {
           // Read operations
-          return manager.withWorldRead(emptyCtx, async (worldCtx) => {
+          return manager.withWorldRead(emptyCtx, async (_worldCtx) => {
             await new Promise(resolve => setTimeout(resolve, Math.random() * 20));
             return `read-${i}`;
           });
@@ -246,13 +246,13 @@ describe('Phase 3: Typed API Lock Ordering System', () => {
           // Write operations
           return manager.withWorldWrite(emptyCtx, async (worldCtx) => {
             await new Promise(resolve => setTimeout(resolve, Math.random() * 20));
-            return await manager.withUserLock(worldCtx, async (userCtx) => {
+            return await manager.withUserLock(worldCtx, async (_userCtx) => {
               return `write-${i}`;
             });
           });
         } else {
           // User operations
-          return manager.withUserLock(emptyCtx, async (userCtx) => {
+          return manager.withUserLock(emptyCtx, async (_userCtx) => {
             await new Promise(resolve => setTimeout(resolve, Math.random() * 20));
             return `user-${i}`;
           });

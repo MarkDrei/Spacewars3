@@ -46,7 +46,7 @@ export function loadWorldFromDb(db: sqlite3.Database, saveCallback: SaveWorldCal
 /**
  * Load world data via cache manager (cache-aware public function)
  */
-export async function loadWorld(db: sqlite3.Database, saveCallback: SaveWorldCallback): Promise<World> {
+export async function loadWorld(_db: sqlite3.Database, _saveCallback: SaveWorldCallback): Promise<World> {
   // Use typed cache manager for cache-aware access
   const cacheManager = getTypedCacheManager();
   await cacheManager.initialize();

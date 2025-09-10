@@ -3,7 +3,6 @@ import path from 'path';
 import fs from 'fs';
 import { CREATE_TABLES } from './schema';
 import { seedDatabase, DEFAULT_USERS, DEFAULT_SPACE_OBJECTS } from './seedData';
-import bcrypt from 'bcrypt';
 
 let db: sqlite3.Database | null = null;
 let isInitializing = false;
@@ -46,7 +45,7 @@ function seedTestDatabase(db: sqlite3.Database): void {
     
     // Create ship for the default user
     const user = DEFAULT_USERS[0];
-    const shipResult = db.run(`
+    db.run(`
       INSERT INTO space_objects (type, x, y, speed, angle, last_position_update_ms)
       VALUES (?, ?, ?, ?, ?, ?)
     `, ['player_ship', user.ship.x, user.ship.y, user.ship.speed, user.ship.angle, now]);

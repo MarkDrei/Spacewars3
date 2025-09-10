@@ -77,7 +77,7 @@ describe('Phase 2: Typed Cache Manager', () => {
           return await manager.withUserLock(worldCtx, async (userCtx) => {
             executionOrder.push('user');
             
-            return await manager.withDatabaseRead(userCtx, async (dbCtx) => {
+            return await manager.withDatabaseRead(userCtx, async (_dbCtx) => {
               executionOrder.push('database-read');
               return 'success';
             });
@@ -98,7 +98,7 @@ describe('Phase 2: Typed Cache Manager', () => {
       const result = await manager.withCacheManagement(emptyCtx, async (cacheCtx) => {
         executionOrder.push('cache-mgmt');
         
-        return await manager.withUserLock(cacheCtx, async (userCtx) => {
+        return await manager.withUserLock(cacheCtx, async (_userCtx) => {
           executionOrder.push('user');
           return 'skipped-world';
         });
@@ -114,12 +114,12 @@ describe('Phase 2: Typed Cache Manager', () => {
       const executionOrder: string[] = [];
 
       // Valid: World operations separately from user operations
-      await manager.withWorldRead(emptyCtx, async (worldCtx) => {
+      await manager.withWorldRead(emptyCtx, async (_worldCtx) => {
         executionOrder.push('world-read');
         return 'world-done';
       });
 
-      await manager.withUserLock(emptyCtx, async (userCtx) => {
+      await manager.withUserLock(emptyCtx, async (_userCtx) => {
         executionOrder.push('user');
         return 'user-done';
       });
@@ -208,15 +208,15 @@ describe('Phase 2: Typed Cache Manager', () => {
 
       // Start multiple concurrent operations
       const operations = [
-        manager.withWorldRead(emptyCtx, async (worldCtx) => {
+        manager.withWorldRead(emptyCtx, async (_worldCtx) => {
           await new Promise(resolve => setTimeout(resolve, 10));
           return 'world-read-1';
         }),
-        manager.withWorldRead(emptyCtx, async (worldCtx) => {
+        manager.withWorldRead(emptyCtx, async (_worldCtx) => {
           await new Promise(resolve => setTimeout(resolve, 10));
           return 'world-read-2';
         }),
-        manager.withUserLock(emptyCtx, async (userCtx) => {
+        manager.withUserLock(emptyCtx, async (_userCtx) => {
           await new Promise(resolve => setTimeout(resolve, 10));
           return 'user-1';
         }),

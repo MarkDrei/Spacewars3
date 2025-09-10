@@ -3,10 +3,8 @@
 // ---
 
 import sqlite3 from 'sqlite3';
-import bcrypt from 'bcrypt';
 import { User, SaveUserCallback } from './user';
 import { createInitialTechTree } from './techtree';
-import { getDatabase } from './database';
 import { getTypedCacheManager } from './typedCacheManager';
 import { createEmptyContext } from './typedLocks';
 
@@ -62,7 +60,7 @@ export function getUserByUsernameFromDb(db: sqlite3.Database, username: string, 
 }
 
 // Cache-aware public functions
-export async function getUserById(db: sqlite3.Database, id: number, saveCallback: SaveUserCallback): Promise<User | null> {
+export async function getUserById(db: sqlite3.Database, id: number, _saveCallback: SaveUserCallback): Promise<User | null> {
   // Use typed cache manager for cache-aware access
   const cacheManager = getTypedCacheManager();
   await cacheManager.initialize();

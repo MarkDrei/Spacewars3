@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getIronSession } from 'iron-session';
 import { calculateToroidalDistance } from '@shared/physics';
-import { getTypedCacheManager } from '@/lib/server/typedCacheManager';
+import { getTypedCacheManager, TypedCacheManager } from '@/lib/server/typedCacheManager';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth, ApiError } from '@/lib/server/errors';
-import { createEmptyContext } from '@/lib/server/typedLocks';
+import { createEmptyContext, LockContext, Locked, CacheLevel, WorldLevel, UserLevel } from '@/lib/server/typedLocks';
+import { User } from '@/lib/server/user';
+import { World } from '@/lib/server/world';
+
+// Type aliases for cleaner code
+type UserContext = LockContext<Locked<'user'>, CacheLevel | WorldLevel | UserLevel>;
 
 export async function POST(request: NextRequest) {
   try {
@@ -87,11 +92,11 @@ export async function POST(request: NextRequest) {
  * This function requires world write and user locks to be held
  */
 async function performCollectionLogic(
-  world: any,
-  user: any, 
+  world: World,
+  user: User, 
   objectId: number,
-  cacheManager: any,
-  userCtx: any
+  cacheManager: TypedCacheManager,
+  userCtx: UserContext
 ): Promise<NextResponse> {
   // Update physics for all objects first
   const currentTime = Date.now();
@@ -110,7 +115,7 @@ async function performCollectionLogic(
   
   // Find player's ship in the world
   const playerShips = world.getSpaceObjectsByType('player_ship');
-  const playerShip = playerShips.find((ship: any) => ship.id === user.ship_id);
+  const playerShip = playerShips.find((ship) => ship.id === user.ship_id);
   
   if (!playerShip) {
     throw new ApiError(404, 'Player ship not found');

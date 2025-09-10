@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getIronSession } from 'iron-session';
-import { getTypedCacheManager } from '@/lib/server/typedCacheManager';
+import { getTypedCacheManager, TypedCacheManager } from '@/lib/server/typedCacheManager';
 import { AllResearches, getResearchUpgradeCost, ResearchType, triggerResearch, TechTree } from '@/lib/server/techtree';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth, validateRequired, ApiError } from '@/lib/server/errors';
-import { createEmptyContext } from '@/lib/server/typedLocks';
+import { createEmptyContext, LockContext, Locked, CacheLevel, WorldLevel, UserLevel } from '@/lib/server/typedLocks';
+import { User } from '@/lib/server/user';
+
+// Type aliases for cleaner code
+type UserContext = LockContext<Locked<'user'>, CacheLevel | WorldLevel | UserLevel>;
 
 export async function POST(request: NextRequest) {
   try {
@@ -59,10 +63,10 @@ export async function POST(request: NextRequest) {
 }
 
 function performResearchTrigger(
-  user: any,
+  user: User,
   researchType: ResearchType,
-  cacheManager: any,
-  userCtx: any
+  cacheManager: TypedCacheManager,
+  userCtx: UserContext
 ): NextResponse {
   const now = Math.floor(Date.now() / 1000);
   user.updateStats(now);

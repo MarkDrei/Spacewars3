@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getIronSession } from 'iron-session';
-import { getTypedCacheManager } from '@/lib/server/typedCacheManager';
+import { getTypedCacheManager, TypedCacheManager } from '@/lib/server/typedCacheManager';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth, ApiError } from '@/lib/server/errors';
-import { createEmptyContext } from '@/lib/server/typedLocks';
+import { createEmptyContext, LockContext, Locked, CacheLevel, WorldLevel, UserLevel } from '@/lib/server/typedLocks';
+import { User } from '@/lib/server/user';
+
+// Type aliases for cleaner code
+type UserContext = LockContext<Locked<'user'>, CacheLevel | WorldLevel | UserLevel>;
 
 export async function GET(request: NextRequest) {
   try {
@@ -46,7 +50,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-function processUserStats(user: any, cacheManager: any, userCtx: any): NextResponse {
+function processUserStats(user: User, cacheManager: TypedCacheManager, userCtx: UserContext): NextResponse {
   const now = Math.floor(Date.now() / 1000);
   user.updateStats(now);
   
@@ -56,8 +60,7 @@ function processUserStats(user: any, cacheManager: any, userCtx: any): NextRespo
   const responseData = { 
     iron: user.iron, 
     ironPerSecond: user.getIronPerSecond(),
-    last_updated: user.last_updated, 
-    stats: user.stats || {}
+    last_updated: user.last_updated
   };
   
   return NextResponse.json(responseData);

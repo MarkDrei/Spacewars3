@@ -5,6 +5,7 @@ import { AllResearches, getResearchUpgradeCost, getResearchUpgradeDuration, getR
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth, ApiError } from '@/lib/server/errors';
 import { createEmptyContext } from '@/lib/server/typedLocks';
+import { User } from '@/lib/server/user';
 
 export async function GET(request: NextRequest) {
   try {
@@ -47,7 +48,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-function processTechTree(user: any): NextResponse {
+function processTechTree(user: User): NextResponse {
   // Build research definitions with next upgrade cost/duration for the user
   const researches: Record<string, {
     name: string;
