@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcrypt';
 import { getIronSession } from 'iron-session';
 import { getDatabase } from '@/lib/server/database';
-import { getUserByUsername, saveUserToDb } from '@/lib/server/userRepo';
+import { getUserByUsername } from '@/lib/server/userRepo';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, validateRequired, ApiError } from '@/lib/server/errors';
 
@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
     validateRequired(password, 'password');
     
     const db = getDatabase();
-    const user = await getUserByUsername(db, username, saveUserToDb(db));
+    const user = await getUserByUsername(db, username);
     
     if (!user) {
       throw new ApiError(400, 'Invalid credentials');

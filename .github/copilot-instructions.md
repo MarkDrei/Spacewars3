@@ -6,6 +6,14 @@
 - All new code should be written in TypeScript with proper type definitions.
 - The project is a Next.js fullstack application with integrated API routes.
 
+## Instructions for AI Assistant
+
+- If a prompt is unclear, ask for clarification before proceeding, provide assumptions.
+- Do not take shortcuts when implementing features; follow best practices. If the task is too complex, break it down into smaller steps and explain your approach, document the needed and completed steps in a TODO file.
+- If you encounter any technical debt, add this to TechnicalDebt.md with details.
+- Do not keep old code or files that are no longer needed; clean up the project as you go.
+- Add tests for all new business logic, run linting and compile.
+
 ## Module System
 
 - This project uses [ES Modules](https://nodejs.org/api/esm.html) exclusively (`"type": "module"` in package.json).

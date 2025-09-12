@@ -3,7 +3,6 @@
 // ---
 
 import { describe, test, expect, beforeEach } from 'vitest';
-import { NextRequest } from 'next/server';
 import { GET } from '@/app/api/messages/route';
 import { clearTestDatabase, getTestDatabase } from '../helpers/testDatabase';
 import { createRequest } from '../helpers/apiTestHelpers';

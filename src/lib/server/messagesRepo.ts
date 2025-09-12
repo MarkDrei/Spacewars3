@@ -175,16 +175,5 @@ export class MessagesRepo {
   }
 }
 
-/**
- * Global helper function to create messages for users
- * This can be used throughout the application to send messages to users
- */
-export async function sendMessageToUser(recipientId: number, message: string): Promise<void> {
-  const messagesRepo = new MessagesRepo();
-  try {
-    await messagesRepo.createMessage(recipientId, message);
-    console.log(`📨 Message sent to user ${recipientId}: ${message}`);
-  } catch (error) {
-    console.error(`❌ Failed to send message to user ${recipientId}:`, error);
-  }
-}
+// Note: The sendMessageToUser helper function has been replaced with sendMessageToUserCached
+// from typedCacheManager.ts for better performance and consistency with the cache system.

@@ -12,14 +12,16 @@ import {
   type CacheLevel,
   type WorldLevel,
   type UserLevel,
+  type MessageLevel,
   type DatabaseLevel,
   createEmptyContext
 } from './typedLocks';
 import { User } from './user';
 import { World } from './world';
 import { getDatabase } from './database';
+import { Message, UnreadMessage } from './messagesRepo';
 import { loadWorldFromDb } from './worldRepo';
-import { getUserByIdFromDb } from './userRepo';
+import { getUserByIdFromDb, getUserByUsernameFromDb } from './userRepo';
 import sqlite3 from 'sqlite3';
 
 // Type aliases for lock contexts to improve readability and avoid 'any'
@@ -45,11 +47,16 @@ export interface TypedCacheConfig {
 // Cache statistics interface
 export interface TypedCacheStats {
   userCacheSize: number;
+  usernameCacheSize: number;
+  messageCacheSize: number;
   worldCacheHits: number;
   worldCacheMisses: number;
   userCacheHits: number;
   userCacheMisses: number;
+  messageCacheHits: number;
+  messageCacheMisses: number;
   dirtyUsers: number;
+  dirtyMessages: number;
   worldDirty: boolean;
 }
 
@@ -87,26 +94,40 @@ export class TypedCacheManager {
   };
   private db: sqlite3.Database | null = null;
   private isInitialized = false;
+  private persistenceTimer: NodeJS.Timeout | null = null;
 
   // Typed locks with explicit level assignment
   private cacheManagementLock = new TypedMutex('cache-mgmt', 0 as CacheLevel);
   private worldLock = new TypedReadWriteLock('world', 1 as WorldLevel);
   private userLock = new TypedMutex('user', 2 as UserLevel);
+  private messageLock = new TypedReadWriteLock('message', 2.5 as MessageLevel);
   private databaseLock = new TypedReadWriteLock('database', 3 as DatabaseLevel);
 
   // In-memory cache storage
   private users: Map<number, User> = new Map();
   private world: World | null = null;
+  private userMessages: Map<number, Message[]> = new Map(); // userId -> messages
+  private usernameToUserId: Map<string, number> = new Map(); // username -> userId mapping
   private dirtyUsers: Set<number> = new Set();
   private worldDirty: boolean = false;
+  private dirtyMessages: Set<number> = new Set(); // userIds with dirty messages
 
   // Statistics
   private stats = {
     worldCacheHits: 0,
     worldCacheMisses: 0,
     userCacheHits: 0,
-    userCacheMisses: 0
+    userCacheMisses: 0,
+    messageCacheHits: 0,
+    messageCacheMisses: 0
   };
+
+  /**
+   * Check if cache manager is initialized
+   */
+  get isReady(): boolean {
+    return this.isInitialized;
+  }
 
   /**
    * Initialize the cache manager - must be called before use
@@ -132,6 +153,9 @@ export class TypedCacheManager {
       // Load world data
       await this.initializeWorld();
       console.log('✅ World data loaded');
+
+      // Start background persistence if enabled
+      this.startBackgroundPersistence();
 
       this.isInitialized = true;
       console.log('✅ Typed cache manager initialization complete');
@@ -243,6 +267,7 @@ export class TypedCacheManager {
    */
   setUserUnsafe(user: User, _context: UserAccessContext): void {
     this.users.set(user.id, user);
+    this.usernameToUserId.set(user.username, user.id); // Cache username mapping
     this.dirtyUsers.delete(user.id); // Fresh from DB, not dirty
     console.log(`👤 User ${user.id} cached in memory`);
   }
@@ -252,6 +277,7 @@ export class TypedCacheManager {
    */
   updateUserUnsafe(user: User, _context: UserAccessContext): void {
     this.users.set(user.id, user);
+    this.usernameToUserId.set(user.username, user.id); // Update username mapping
     this.dirtyUsers.add(user.id); // Mark as dirty for persistence
   }
 
@@ -285,6 +311,14 @@ export class TypedCacheManager {
     return await getUserByIdFromDb(this.db, userId, async () => {});
   }
 
+  /**
+   * Load user by username from database without acquiring locks (requires database read lock context)
+   */
+  async loadUserByUsernameFromDbUnsafe(username: string, _context: DatabaseAccessContext): Promise<User | null> {
+    if (!this.db) throw new Error('Database not initialized');
+    return await getUserByUsernameFromDb(this.db, username, async () => {});
+  }
+
   // ===== HIGH-LEVEL OPERATIONS WITH PROPER LOCK ORDERING =====
 
   /**
@@ -312,6 +346,35 @@ export class TypedCacheManager {
   }
 
   /**
+   * Get user by username (with caching)
+   */
+  async getUserByUsername(username: string): Promise<User | null> {
+    const emptyCtx = createEmptyContext();
+    
+    return await this.withUserLock(emptyCtx, async (userCtx: UserContext) => {
+      // Check username cache first
+      const cachedUserId = this.usernameToUserId.get(username);
+      if (cachedUserId) {
+        const user = this.getUserUnsafe(cachedUserId, userCtx);
+        if (user) {
+          console.log(`👤 Username "${username}" cache hit for user ID ${cachedUserId}`);
+          return user;
+        }
+      }
+      
+      // Cache miss - load from database
+      console.log(`🔍 Username "${username}" cache miss, loading from database`);
+      return await this.withDatabaseRead(userCtx, async (dbCtx: DatabaseReadContext) => {
+        const user = await this.loadUserByUsernameFromDbUnsafe(username, dbCtx);
+        if (user) {
+          this.setUserUnsafe(user, userCtx);
+        }
+        return user;
+      });
+    });
+  }
+
+  /**
    * Get cache statistics
    */
   async getStats(): Promise<TypedCacheStats> {
@@ -320,14 +383,305 @@ export class TypedCacheManager {
     return await this.withUserLock(emptyCtx, async (_userCtx: UserContext) => {
       return {
         userCacheSize: this.users.size,
+        usernameCacheSize: this.usernameToUserId.size,
+        messageCacheSize: this.userMessages.size,
         worldCacheHits: this.stats.worldCacheHits,
         worldCacheMisses: this.stats.worldCacheMisses,
         userCacheHits: this.stats.userCacheHits,
         userCacheMisses: this.stats.userCacheMisses,
+        messageCacheHits: this.stats.messageCacheHits,
+        messageCacheMisses: this.stats.messageCacheMisses,
         dirtyUsers: this.dirtyUsers.size,
+        dirtyMessages: this.dirtyMessages.size,
         worldDirty: this.worldDirty
       };
     });
+  }
+
+  // ============================================
+  // MESSAGE CACHE OPERATIONS
+  // ============================================
+
+  /**
+   * Get messages for a user from cache or database
+   */
+  async getMessagesForUser<CurrentLevel extends number>(
+    context: LockContext<any, CurrentLevel>,
+    userId: number
+  ): Promise<Message[]> {
+    return this.messageLock.read(context, async (messageCtx) => {
+      // Check cache first
+      if (this.userMessages.has(userId)) {
+        this.stats.messageCacheHits++;
+        return this.userMessages.get(userId)!;
+      }
+
+      // Cache miss - load from database
+      this.stats.messageCacheMisses++;
+      return this.databaseLock.read(messageCtx, async () => {
+        if (!this.db) throw new Error('Database not initialized');
+        
+        const messages = await this.loadMessagesFromDb(userId);
+        this.userMessages.set(userId, messages);
+        return messages;
+      });
+    });
+  }
+
+  /**
+   * Get unread messages for a user and mark as read
+   */
+  async getAndMarkUnreadMessages<CurrentLevel extends number>(
+    context: LockContext<any, CurrentLevel>,
+    userId: number
+  ): Promise<UnreadMessage[]> {
+    return this.messageLock.write(context, async (messageCtx) => {
+      // Get all messages for user
+      const allMessages = await this.getMessagesForUser(messageCtx, userId);
+      
+      // Filter unread and convert to UnreadMessage format
+      const unreadMessages: UnreadMessage[] = allMessages
+        .filter(msg => !msg.is_read)
+        .map(msg => ({
+          id: msg.id,
+          created_at: msg.created_at,
+          message: msg.message
+        }));
+
+      // Mark as read in cache
+      allMessages.forEach(msg => {
+        if (!msg.is_read) {
+          msg.is_read = true;
+        }
+      });
+
+      // Mark user as dirty for persistence
+      this.dirtyMessages.add(userId);
+
+      return unreadMessages;
+    });
+  }
+
+  /**
+   * Create a new message for a user
+   */
+  async createMessage<CurrentLevel extends number>(
+    context: LockContext<any, CurrentLevel>,
+    userId: number,
+    messageText: string
+  ): Promise<number> {
+    return this.messageLock.write(context, async (messageCtx) => {
+      return this.databaseLock.write(messageCtx, async () => {
+        if (!this.db) throw new Error('Database not initialized');
+        
+        // Create message in database first to get ID
+        const messageId = await this.createMessageInDb(userId, messageText);
+        
+        // Update cache
+        const newMessage: Message = {
+          id: messageId,
+          recipient_id: userId,
+          created_at: Math.floor(Date.now() / 1000),
+          is_read: false,
+          message: messageText
+        };
+
+        if (this.userMessages.has(userId)) {
+          this.userMessages.get(userId)!.push(newMessage);
+        } else {
+          this.userMessages.set(userId, [newMessage]);
+        }
+
+        return messageId;
+      });
+    });
+  }
+
+  /**
+   * Get count of unread messages for a user (from cache)
+   */
+  async getUnreadMessageCount<CurrentLevel extends number>(
+    context: LockContext<any, CurrentLevel>,
+    userId: number
+  ): Promise<number> {
+    return this.messageLock.read(context, async (messageCtx) => {
+      const messages = await this.getMessagesForUser(messageCtx, userId);
+      return messages.filter(msg => !msg.is_read).length;
+    });
+  }
+
+  /**
+   * Delete old read messages (cleanup operation)
+   */
+  async deleteOldReadMessages<CurrentLevel extends number>(
+    context: LockContext<any, CurrentLevel>,
+    olderThanDays = 30
+  ): Promise<number> {
+    return this.messageLock.write(context, async (messageCtx) => {
+      return this.databaseLock.write(messageCtx, async () => {
+        if (!this.db) throw new Error('Database not initialized');
+        
+        const cutoffTime = Math.floor(Date.now() / 1000) - (olderThanDays * 24 * 60 * 60);
+        const deletedCount = await this.deleteOldMessagesFromDb(cutoffTime);
+        
+        // Clear cache to force reload
+        this.userMessages.clear();
+        
+        return deletedCount;
+      });
+    });
+  }
+
+  // ============================================
+  // MESSAGE DATABASE OPERATIONS (PRIVATE)
+  // ============================================
+
+  private async loadMessagesFromDb(userId: number): Promise<Message[]> {
+    return new Promise((resolve, reject) => {
+      const stmt = this.db!.prepare(`
+        SELECT id, recipient_id, created_at, is_read, message
+        FROM messages 
+        WHERE recipient_id = ?
+        ORDER BY created_at DESC
+      `);
+      
+      stmt.all(userId, (err: Error | null, rows: Message[]) => {
+        stmt.finalize();
+        if (err) {
+          reject(err);
+          return;
+        }
+        resolve(rows || []);
+      });
+    });
+  }
+
+  private async createMessageInDb(userId: number, messageText: string): Promise<number> {
+    return new Promise((resolve, reject) => {
+      const createdAt = Math.floor(Date.now() / 1000);
+      const stmt = this.db!.prepare(`
+        INSERT INTO messages (recipient_id, created_at, is_read, message)
+        VALUES (?, ?, 0, ?)
+      `);
+      
+      stmt.run(userId, createdAt, messageText, function(this: sqlite3.RunResult, err: Error | null) {
+        stmt.finalize();
+        if (err) {
+          reject(err);
+          return;
+        }
+        resolve(this.lastID);
+      });
+    });
+  }
+
+  private async deleteOldMessagesFromDb(cutoffTime: number): Promise<number> {
+    return new Promise((resolve, reject) => {
+      const stmt = this.db!.prepare(`
+        DELETE FROM messages 
+        WHERE is_read = 1 AND created_at < ?
+      `);
+      
+      stmt.run(cutoffTime, function(this: sqlite3.RunResult, err: Error | null) {
+        stmt.finalize();
+        if (err) {
+          reject(err);
+          return;
+        }
+        resolve(this.changes);
+      });
+    });
+  }
+
+  private async persistMessagesForUser(userId: number): Promise<void> {
+    const messages = this.userMessages.get(userId);
+    if (!messages) return;
+
+    // Update all messages for this user in the database
+    for (const message of messages) {
+      await new Promise<void>((resolve, reject) => {
+        const stmt = this.db!.prepare(`
+          UPDATE messages 
+          SET is_read = ?
+          WHERE id = ?
+        `);
+        
+        stmt.run(message.is_read ? 1 : 0, message.id, (err: Error | null) => {
+          stmt.finalize();
+          if (err) reject(err);
+          else resolve();
+        });
+      });
+    }
+  }
+
+  /**
+   * Manually persist all dirty messages to database
+   * TODO: Integrate with background persistence system
+   */
+  async persistDirtyMessages<CurrentLevel extends number>(
+    context: LockContext<any, CurrentLevel>
+  ): Promise<void> {
+    await this.messageLock.write(context, async (messageCtx) => {
+      await this.databaseLock.write(messageCtx, async () => {
+        const dirtyUserIds = Array.from(this.dirtyMessages);
+        
+        for (const userId of dirtyUserIds) {
+          await this.persistMessagesForUser(userId);
+        }
+        
+        this.dirtyMessages.clear();
+      });
+    });
+  }
+
+  /**
+   * Start background persistence timer
+   */
+  private startBackgroundPersistence(): void {
+    if (!this.config.enableAutoPersistence) {
+      console.log('📝 Background persistence disabled by config');
+      return;
+    }
+
+    console.log(`📝 Starting background persistence (interval: ${this.config.persistenceIntervalMs}ms)`);
+    
+    this.persistenceTimer = setInterval(async () => {
+      try {
+        await this.backgroundPersist();
+      } catch (error) {
+        console.error('❌ Background persistence error:', error);
+      }
+    }, this.config.persistenceIntervalMs);
+  }
+
+  /**
+   * Stop background persistence timer
+   */
+  private stopBackgroundPersistence(): void {
+    if (this.persistenceTimer) {
+      clearInterval(this.persistenceTimer);
+      this.persistenceTimer = null;
+      console.log('⏹️ Background persistence stopped');
+    }
+  }
+
+  /**
+   * Background persistence operation
+   */
+  private async backgroundPersist(): Promise<void> {
+    const emptyCtx = createEmptyContext();
+    
+    // Persist dirty messages
+    if (this.dirtyMessages.size > 0) {
+      console.log(`💾 Background persisting ${this.dirtyMessages.size} dirty message user(s)`);
+      await this.persistDirtyMessages(emptyCtx);
+    }
+
+    // Note: User persistence should also be added here when implemented
+    // if (this.dirtyUsers.size > 0) {
+    //   await this.persistDirtyUsers(emptyCtx);
+    // }
   }
 
   /**
@@ -338,6 +692,16 @@ export class TypedCacheManager {
     
     await this.withCacheManagement(emptyCtx, async () => {
       console.log('🔄 Shutting down typed cache manager...');
+      
+      // Stop background persistence
+      this.stopBackgroundPersistence();
+      
+      // Final persist of any dirty data
+      if (this.dirtyMessages.size > 0) {
+        console.log('💾 Final persist of dirty messages before shutdown');
+        await this.persistDirtyMessages(emptyCtx);
+      }
+      
       this.isInitialized = false;
       console.log('✅ Typed cache manager shutdown complete');
     });
@@ -347,4 +711,41 @@ export class TypedCacheManager {
 // Convenience function to get singleton instance
 export function getTypedCacheManager(config?: TypedCacheConfig): TypedCacheManager {
   return TypedCacheManager.getInstance(config);
+}
+
+// Convenience functions for message operations
+export async function sendMessageToUserCached(userId: number, message: string): Promise<number> {
+  const cacheManager = getTypedCacheManager();
+  
+  // Auto-initialize if not already done (handles test scenarios)
+  if (!cacheManager.isReady) {
+    await cacheManager.initialize();
+  }
+  
+  const emptyCtx = createEmptyContext();
+  return await cacheManager.createMessage(emptyCtx, userId, message);
+}
+
+export async function getUserMessagesCached(userId: number): Promise<UnreadMessage[]> {
+  const cacheManager = getTypedCacheManager();
+  
+  // Auto-initialize if not already done (handles test scenarios)
+  if (!cacheManager.isReady) {
+    await cacheManager.initialize();
+  }
+  
+  const emptyCtx = createEmptyContext();
+  return await cacheManager.getAndMarkUnreadMessages(emptyCtx, userId);
+}
+
+export async function getUserMessageCountCached(userId: number): Promise<number> {
+  const cacheManager = getTypedCacheManager();
+  
+  // Auto-initialize if not already done (handles test scenarios)
+  if (!cacheManager.isReady) {
+    await cacheManager.initialize();
+  }
+  
+  const emptyCtx = createEmptyContext();
+  return await cacheManager.getUnreadMessageCount(emptyCtx, userId);
 }

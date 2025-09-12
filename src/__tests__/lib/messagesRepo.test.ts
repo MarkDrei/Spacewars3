@@ -225,7 +225,7 @@ describe('MessagesRepo', () => {
       expect(allMessagesBefore).toHaveLength(3);
       
       // Delete read messages older than a very large number of days ago (should delete all read messages)
-      const deletedCount = await messagesRepo.deleteOldReadMessages(-1); // Negative days to ensure deletion
+      await messagesRepo.deleteOldReadMessages(-1); // Negative days to ensure deletion
       
       const allMessagesAfter = await messagesRepo.getAllMessages(1);
       // Should only have the unread messages remaining (2 unread messages)

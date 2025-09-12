@@ -27,6 +27,7 @@ export type EmptyContext = LockContext<Unlocked, never>;
 export type CacheLevel = 0;
 export type WorldLevel = 1; 
 export type UserLevel = 2;
+export type MessageLevel = 2.5; // Between User and Database for user-specific message operations
 export type DatabaseLevel = 3;
 
 // Type helper to check if new lock level is valid (must be > current max level)
@@ -36,17 +37,19 @@ type CanAcquire<NewLevel extends number, CurrentLevel extends number> =
     : NewLevel extends CurrentLevel 
       ? false 
       : [NewLevel, CurrentLevel] extends [number, number]
-        ? NewLevel extends 0 | 1 | 2 | 3
-          ? CurrentLevel extends 0 | 1 | 2 | 3
+        ? NewLevel extends 0 | 1 | 2 | 2.5 | 3
+          ? CurrentLevel extends 0 | 1 | 2 | 2.5 | 3
             ? NewLevel extends 0
               ? CurrentLevel extends never ? true : false
               : NewLevel extends 1
                 ? CurrentLevel extends 0 | never ? true : false
                 : NewLevel extends 2
                   ? CurrentLevel extends 0 | 1 | never ? true : false
-                  : NewLevel extends 3
+                  : NewLevel extends 2.5
                     ? CurrentLevel extends 0 | 1 | 2 | never ? true : false
-                    : false
+                    : NewLevel extends 3
+                      ? CurrentLevel extends 0 | 1 | 2 | 2.5 | never ? true : false
+                      : false
           : false
         : false
       : false;
@@ -270,5 +273,8 @@ export type ValidateLockOrder<L1 extends number, L2 extends number> =
 
 export type TestValidCacheToWorld = ValidateLockOrder<CacheLevel, WorldLevel>; // Should be true
 export type TestValidWorldToUser = ValidateLockOrder<WorldLevel, UserLevel>; // Should be true  
+export type TestValidUserToMessage = ValidateLockOrder<UserLevel, MessageLevel>; // Should be true
+export type TestValidMessageToDatabase = ValidateLockOrder<MessageLevel, DatabaseLevel>; // Should be true
 export type TestInvalidUserToWorld = ValidateLockOrder<UserLevel, WorldLevel>; // Should be false
 export type TestInvalidSameLevel = ValidateLockOrder<WorldLevel, WorldLevel>; // Should be false
+export type TestInvalidMessageToUser = ValidateLockOrder<MessageLevel, UserLevel>; // Should be false
