@@ -57,6 +57,12 @@ export class Game {
       const mouseX = event.clientX - rect.left;
       const mouseY = event.clientY - rect.top;
       
+      // Scale coordinates to match canvas logical size
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      const logicalX = mouseX * scaleX;
+      const logicalY = mouseY * scaleY;
+      
       // Check if any object is hovered
       const hoveredObject = this.world.findHoveredObject();
       
@@ -81,8 +87,8 @@ export class Game {
         // Use shared angleUtils for conversion
         const centerX = canvas.width / 2;
         const centerY = canvas.height / 2;
-        const dx = mouseX - centerX;
-        const dy = mouseY - centerY;
+        const dx = logicalX - centerX;
+        const dy = logicalY - centerY;
         const angle = Math.atan2(dy, dx);
         const angleDegrees = (angle * 180 / Math.PI + 360) % 360;
         this.handleDirectionChange(angleDegrees);
@@ -92,8 +98,14 @@ export class Game {
     // Handle mouse move events for hover detection
     canvas.addEventListener('mousemove', (event) => {
       const rect = canvas.getBoundingClientRect();
-      this.mouseX = event.clientX - rect.left;
-      this.mouseY = event.clientY - rect.top;
+      const mouseX = event.clientX - rect.left;
+      const mouseY = event.clientY - rect.top;
+      
+      // Scale coordinates to match canvas logical size
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      this.mouseX = mouseX * scaleX;
+      this.mouseY = mouseY * scaleY;
       
       // Update hover states for all objects
       this.updateHoverStates();

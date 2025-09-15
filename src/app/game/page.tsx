@@ -12,6 +12,7 @@ import { getShipStats } from '@/lib/client/services/shipStatsService';
 const GamePage: React.FC = () => {
   const gameInitializedRef = useRef(false);
   const gameInstanceRef = useRef<Game | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isSettingMaxSpeed, setIsSettingMaxSpeed] = useState(false);
   const { isLoggedIn, shipId } = useAuth();
   const { worldData, isLoading, error, refetch } = useWorldData(isLoggedIn, 3000);
@@ -42,7 +43,7 @@ const GamePage: React.FC = () => {
   }, [worldData, shipId, refetch]);
 
   const initializeGame = () => {
-    const gameCanvas = document.getElementById('gameCanvas') as HTMLCanvasElement;
+    const gameCanvas = canvasRef.current;
     if (gameCanvas) {
       gameInstanceRef.current = initGame(gameCanvas);
       console.log('🎮 Game initialized successfully');
@@ -103,7 +104,14 @@ const GamePage: React.FC = () => {
   return (
     <AuthenticatedLayout>
       <div className="game-page">
-        <canvas id="gameCanvas" width="800" height="800"></canvas>
+        <div className="canvas-container">
+          <canvas 
+            ref={canvasRef}
+            id="gameCanvas" 
+            width="800" 
+            height="800"
+          ></canvas>
+        </div>
         <div className="game-controls">
           <button 
             className="max-speed-button"
