@@ -47,4 +47,13 @@ export interface Collectible extends SpaceObject {
   value: number;
 }
 
+export interface TargetingLine {
+  startX: number;        // Ship position when line was created (world coords)
+  startY: number;
+  targetX: number;       // Clicked target position (world coords) 
+  targetY: number;
+  createdAt: number;     // Timestamp when line was created
+  duration: number;      // Total duration (4000ms)
+}
+
 export type GameObjectType = SpaceObject['type'];

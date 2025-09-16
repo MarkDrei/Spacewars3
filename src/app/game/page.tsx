@@ -14,8 +14,23 @@ const GamePage: React.FC = () => {
   const gameInstanceRef = useRef<Game | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isSettingMaxSpeed, setIsSettingMaxSpeed] = useState(false);
+  const [debugDrawingsEnabled, setDebugDrawingsEnabled] = useState(true);
   const { isLoggedIn, shipId } = useAuth();
   const { worldData, isLoading, error, refetch } = useWorldData(isLoggedIn, 3000);
+
+  // Sync debugDrawingsEnabled state with game instance
+  useEffect(() => {
+    if (gameInstanceRef.current) {
+      setDebugDrawingsEnabled(gameInstanceRef.current.getDebugDrawingsEnabled());
+    }
+  }, [gameInstanceRef.current]);
+
+  const handleDebugToggle = (enabled: boolean) => {
+    setDebugDrawingsEnabled(enabled);
+    if (gameInstanceRef.current) {
+      gameInstanceRef.current.setDebugDrawingsEnabled(enabled);
+    }
+  };
 
   useEffect(() => {
     // Only initialize game when we have ship ID for the first time
@@ -120,6 +135,21 @@ const GamePage: React.FC = () => {
           >
             {isSettingMaxSpeed ? 'Setting Max Speed...' : 'Set Max Speed'}
           </button>
+          
+          <div className="debug-toggle-container">
+            <label className="debug-toggle-label">
+              Enable debug drawings
+              <div className="toggle-switch">
+                <input
+                  type="checkbox"
+                  checked={debugDrawingsEnabled}
+                  onChange={(e) => handleDebugToggle(e.target.checked)}
+                  className="toggle-input"
+                />
+                <span className="toggle-slider"></span>
+              </div>
+            </label>
+          </div>
         </div>
       </div>
     </AuthenticatedLayout>
