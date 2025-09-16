@@ -2,13 +2,14 @@
 import { World } from './World';
 import { GameRenderer } from '../renderers/GameRenderer';
 import { Ship } from './Ship';
-import { WorldData } from '@shared/types/gameTypes';
+import { WorldData, TargetingLine } from '@shared/types/gameTypes';
 import { setShipDirection, interceptTarget } from '../services/navigationService';
 import { getShipStats } from '../services/shipStatsService';
 import { InterceptCalculator } from './InterceptCalculator';
 import { SpaceObjectOld } from './SpaceObject';
 import { collectionService } from '../services/collectionService';
 import { calculateToroidalDistance } from '@shared/physics';
+import { debugState } from '../debug/debugState';
 
 export class Game {
   private world: World;
@@ -18,6 +19,7 @@ export class Game {
   private ctx: CanvasRenderingContext2D;
   private ship: Ship;
   private refetchWorldData?: () => void; // Function to refresh world data from server
+  private targetingLine: TargetingLine | null = null;
 
   constructor(canvas: HTMLCanvasElement) {
     // Initialize the canvas context
@@ -91,7 +93,13 @@ export class Game {
         const dy = logicalY - centerY;
         const angle = Math.atan2(dy, dx);
         const angleDegrees = (angle * 180 / Math.PI + 360) % 360;
-        this.handleDirectionChange(angleDegrees);
+        
+        // Convert click coordinates to world coordinates
+        const ship = this.world.getShip();
+        const worldTargetX = ship.getX() + dx;
+        const worldTargetY = ship.getY() + dy;
+        
+        this.handleDirectionChange(angleDegrees, worldTargetX, worldTargetY);
       }
     });
 
@@ -113,8 +121,13 @@ export class Game {
   }
 
   // Handle direction change when clicking on empty space
-  private async handleDirectionChange(angleDegrees: number): Promise<void> {
+  private async handleDirectionChange(angleDegrees: number, targetX?: number, targetY?: number): Promise<void> {
     try {
+      // Create targeting line if target coordinates are provided
+      if (targetX !== undefined && targetY !== undefined) {
+        this.createTargetingLine(targetX, targetY);
+      }
+      
       // Apply immediate local update for visual feedback
       this.world.setShipAngle(angleDegrees);
       
@@ -231,6 +244,20 @@ export class Game {
     this.refetchWorldData = refetch;
   }
 
+  /**
+   * Get the current debug drawings state
+   */
+  public getDebugDrawingsEnabled(): boolean {
+    return debugState.debugDrawingsEnabled;
+  }
+
+  /**
+   * Set the debug drawings state
+   */
+  public setDebugDrawingsEnabled(enabled: boolean): void {
+    debugState.setDebugDrawingsEnabled(enabled);
+  }
+
   public start(): void {
     if (!this.running) {
       this.running = true;
@@ -241,6 +268,7 @@ export class Game {
 
   public stop(): void {
     this.running = false;
+    this.clearTargetingLine(); // Clean up targeting line when game stops
   }
 
   private gameLoop(): void {
@@ -259,7 +287,7 @@ export class Game {
     try {
       // Try the most likely method names
       if (typeof this.renderer.drawWorld === 'function') {
-        this.renderer.drawWorld(this.ship);
+        this.renderer.drawWorld(this.ship, this.getTargetingLine());
         // // Draw interception point on top of the rendered world
         // this.drawInterceptionPoint(this.ctx);
       } else if ('render' in this.renderer && typeof this.renderer.render === 'function') {
@@ -278,6 +306,37 @@ export class Game {
     
     // Continue the loop
     requestAnimationFrame(this.gameLoop.bind(this));
+  }
+
+  // Targeting line management methods
+  private createTargetingLine(targetX: number, targetY: number): void {
+    const ship = this.world.getShip();
+    this.targetingLine = {
+      startX: ship.getX(),
+      startY: ship.getY(),
+      targetX,
+      targetY,
+      createdAt: Date.now(),
+      duration: 4000 // 4 seconds
+    };
+  }
+
+  private updateTargetingLine(): void {
+    if (!this.targetingLine) return;
+    
+    const elapsed = Date.now() - this.targetingLine.createdAt;
+    if (elapsed >= this.targetingLine.duration) {
+      this.targetingLine = null;
+    }
+  }
+
+  private clearTargetingLine(): void {
+    this.targetingLine = null;
+  }
+
+  public getTargetingLine(): TargetingLine | null {
+    this.updateTargetingLine(); // Clean up expired lines
+    return this.targetingLine;
   }
 }
 
