@@ -1,0 +1,106 @@
+/* Home Page Styles - Dark Theme */
+.home-page {
+  min-height: calc(100vh - 60px);
+  background-color: #121212;
+  color: white;
+  padding: 2rem 1rem;
+}
+
+.home-container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* Notifications Table */
+.notifications-table-container {
+  background-color: #1e1e1e;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.notifications-table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: #1e1e1e;
+}
+
+/* Header */
+.notifications-header {
+  background-color: #2c2c2c;
+  color: #4caf50;
+  font-weight: 600;
+  font-size: 1.2rem;
+  padding: 0.75rem;
+  text-align: center;
+  border-bottom: 2px solid #4caf50;
+}
+
+/* Notification Rows */
+.notification-row {
+  border-bottom: 1px solid #333;
+  transition: background-color 0.2s ease;
+}
+
+.notification-row:hover {
+  background-color: #252525;
+}
+
+.notification-row:last-child {
+  border-bottom: none;
+}
+
+/* Time Cell */
+.time-cell {
+  padding: 0.75rem;
+  vertical-align: top;
+  background-color: #2a2a2a;
+  border-right: 1px solid #333;
+  width: 120px;
+  min-width: 120px;
+}
+
+.time-line {
+  font-weight: 600;
+  font-size: 1rem;
+  color: #4caf50;
+  margin-bottom: 0.25rem;
+}
+
+.date-line {
+  font-size: 0.875rem;
+  color: #888;
+}
+
+/* Message Cell */
+.message-cell {
+  padding: 0.75rem 1rem;
+  vertical-align: top;
+  line-height: 1.6;
+  color: #e0e0e0;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .home-page {
+    padding: 1rem 0.5rem;
+  }
+  
+  .time-cell {
+    width: 100px;
+    min-width: 100px;
+    padding: 0.5rem;
+  }
+  
+  .message-cell {
+    padding: 0.5rem 0.75rem;
+  }
+  
+  .time-line {
+    font-size: 0.875rem;
+  }
+  
+  .date-line {
+    font-size: 0.75rem;
+  }
+}

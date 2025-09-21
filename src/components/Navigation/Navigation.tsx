@@ -23,13 +23,16 @@ const Navigation: React.FC<NavigationProps> = ({ onLogout }) => {
 
   // Helper function to check if a path is active
   const isActive = (path: string) => {
+    if (path === '/home') {
+      return pathname === '/' || pathname === '/home';
+    }
     return pathname === path;
   };
 
   return (
     <nav className="navbar">
       <div className="navbar-container">
-        <Link href="/game" className="navbar-brand" onClick={closeMenu}>
+        <Link href="/home" className="navbar-brand" onClick={closeMenu}>
           Spacewars: Ironcore
         </Link>
         
@@ -40,6 +43,13 @@ const Navigation: React.FC<NavigationProps> = ({ onLogout }) => {
         </div>
         
         <div className={`navbar-menu ${isMenuOpen ? 'active' : ''}`}>
+          <Link 
+            href="/home" 
+            className={`navbar-item ${isActive('/home') ? 'active' : ''}`}
+            onClick={closeMenu}
+          >
+            Home
+          </Link>
           <Link 
             href="/game" 
             className={`navbar-item ${isActive('/game') ? 'active' : ''}`}
