@@ -12,7 +12,8 @@ import {
   type CacheLevel,
   type WorldLevel,
   type UserLevel,
-  type MessageLevel,
+  type MessageReadLevel,
+  type MessageWriteLevel,
   type DatabaseLevel,
   createEmptyContext
 } from './typedLocks';
@@ -98,10 +99,10 @@ export class TypedCacheManager {
 
   // Typed locks with explicit level assignment
   private cacheManagementLock = new TypedMutex('cache-mgmt', 0 as CacheLevel);
-  private worldLock = new TypedReadWriteLock('world', 1 as WorldLevel);
+  private worldLock = new TypedReadWriteLock('world', 1 as WorldLevel, 1 as WorldLevel);
   private userLock = new TypedMutex('user', 2 as UserLevel);
-  private messageLock = new TypedReadWriteLock('message', 2.5 as MessageLevel);
-  private databaseLock = new TypedReadWriteLock('database', 3 as DatabaseLevel);
+  private messageLock = new TypedReadWriteLock('message', 2.4 as MessageReadLevel, 2.5 as MessageWriteLevel);
+  private databaseLock = new TypedReadWriteLock('database', 3 as DatabaseLevel, 3 as DatabaseLevel);
 
   // In-memory cache storage
   private users: Map<number, User> = new Map();
@@ -403,6 +404,31 @@ export class TypedCacheManager {
   // ============================================
 
   /**
+   * Get messages for a user from cache or database (without acquiring locks)
+   * UNSAFE: Requires message lock context already acquired
+   */
+  private async getMessagesForUserUnsafe(
+    messageCtx: LockContext<any, any>,
+    userId: number
+  ): Promise<Message[]> {
+    // Check cache first
+    if (this.userMessages.has(userId)) {
+      this.stats.messageCacheHits++;
+      return this.userMessages.get(userId)!;
+    }
+
+    // Cache miss - load from database
+    this.stats.messageCacheMisses++;
+    return this.databaseLock.read(messageCtx, async () => {
+      if (!this.db) throw new Error('Database not initialized');
+      
+      const messages = await this.loadMessagesFromDb(userId);
+      this.userMessages.set(userId, messages);
+      return messages;
+    });
+  }
+
+  /**
    * Get messages for a user from cache or database
    */
   async getMessagesForUser<CurrentLevel extends number>(
@@ -410,21 +436,7 @@ export class TypedCacheManager {
     userId: number
   ): Promise<Message[]> {
     return this.messageLock.read(context, async (messageCtx) => {
-      // Check cache first
-      if (this.userMessages.has(userId)) {
-        this.stats.messageCacheHits++;
-        return this.userMessages.get(userId)!;
-      }
-
-      // Cache miss - load from database
-      this.stats.messageCacheMisses++;
-      return this.databaseLock.read(messageCtx, async () => {
-        if (!this.db) throw new Error('Database not initialized');
-        
-        const messages = await this.loadMessagesFromDb(userId);
-        this.userMessages.set(userId, messages);
-        return messages;
-      });
+      return this.getMessagesForUserUnsafe(messageCtx, userId);
     });
   }
 
@@ -436,8 +448,8 @@ export class TypedCacheManager {
     userId: number
   ): Promise<UnreadMessage[]> {
     return this.messageLock.write(context, async (messageCtx) => {
-      // Get all messages for user
-      const allMessages = await this.getMessagesForUser(messageCtx, userId);
+      // Get all messages for user (using unsafe version to avoid deadlock)
+      const allMessages = await this.getMessagesForUserUnsafe(messageCtx, userId);
       
       // Filter unread and convert to UnreadMessage format
       const unreadMessages: UnreadMessage[] = allMessages
@@ -505,7 +517,7 @@ export class TypedCacheManager {
     userId: number
   ): Promise<number> {
     return this.messageLock.read(context, async (messageCtx) => {
-      const messages = await this.getMessagesForUser(messageCtx, userId);
+      const messages = await this.getMessagesForUserUnsafe(messageCtx, userId);
       return messages.filter(msg => !msg.is_read).length;
     });
   }

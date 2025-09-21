@@ -80,6 +80,22 @@
   color: #e0e0e0;
 }
 
+/* Special States */
+.loading-cell, .error-cell, .empty-cell {
+  padding: 2rem;
+  text-align: center;
+  color: #888;
+  font-style: italic;
+}
+
+.error-cell {
+  color: #f44336;
+}
+
+.loading-cell {
+  color: #4caf50;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .home-page {

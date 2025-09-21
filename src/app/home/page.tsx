@@ -1,32 +1,55 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import AuthenticatedLayout from '@/components/Layout/AuthenticatedLayout';
+import { useAuth } from '@/lib/client/hooks/useAuth';
+import { messagesService, UnreadMessage } from '@/lib/client/services/messagesService';
 import './HomePage.css';
 
-// Dummy message data
-const dummyMessages = [
-  {
-    id: 1,
-    time: '09:15:42',
-    date: 'Dec 21',
-    message: 'Welcome to Spacewars!'
-  },
-  {
-    id: 2,
-    time: '14:30:18',
-    date: 'Dec 20',
-    message: 'Your ship has been successfully upgraded with enhanced iron harvesting capabilities. The new mining equipment will allow you to extract 25% more resources from asteroids.'
-  },
-  {
-    id: 3,
-    time: '08:45:03',
-    date: 'Dec 19',
-    message: 'Mission Control has detected unusual activity in sector 7. Multiple shipwrecks have been discovered containing valuable technology and resources. Your enhanced sensors indicate high concentrations of rare metals in the debris fields. Recommend immediate investigation as other ships in the area may also be tracking these signals. Exercise caution when approaching unknown vessels as some may still have active defense systems. The recovered technology could provide significant advantages for future exploration missions. Intelligence suggests these wrecks may be from an advanced civilization that once inhabited this region of space. Archaeological data indicates they possessed superior propulsion systems and energy weapons far beyond our current capabilities.'
-  }
-];
-
 const HomePage: React.FC = () => {
+  const [messages, setMessages] = useState<UnreadMessage[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const { isLoggedIn, isLoading: authLoading } = useAuth();
+
+  // Fetch messages on component mount, but only after authentication is confirmed
+  useEffect(() => {
+    // Don't fetch if still checking auth or not logged in
+    if (authLoading || !isLoggedIn) {
+      return;
+    }
+
+    const fetchMessages = async () => {
+      try {
+        setError(null);
+        setIsLoading(true);
+        
+        console.log('🏠 Home page loading, user authenticated, fetching messages...');
+        const result = await messagesService.getMessages();
+        
+        console.log('📋 Messages service result:', result);
+        
+        if ('error' in result) {
+          console.error('❌ Messages service returned error:', result.error);
+          setError(result.error);
+          setMessages([]);
+        } else {
+          console.log(`✅ Loaded ${result.messages.length} message(s) on home page`);
+          setMessages(result.messages);
+        }
+        
+      } catch (err) {
+        console.error('❌ Error fetching messages:', err);
+        setError('Failed to load messages');
+        setMessages([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchMessages();
+  }, [isLoggedIn, authLoading]);
+
   return (
     <AuthenticatedLayout>
       <div className="home-page">
@@ -39,17 +62,49 @@ const HomePage: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {dummyMessages.map(message => (
-                  <tr key={message.id} className="notification-row">
-                    <td className="time-cell">
-                      <div className="time-line">{message.time}</div>
-                      <div className="date-line">{message.date}</div>
-                    </td>
-                    <td className="message-cell">
-                      {message.message}
+                {authLoading ? (
+                  <tr>
+                    <td colSpan={2} className="loading-cell">
+                      Checking authentication...
                     </td>
                   </tr>
-                ))}
+                ) : !isLoggedIn ? (
+                  <tr>
+                    <td colSpan={2} className="error-cell">
+                      Not authenticated
+                    </td>
+                  </tr>
+                ) : isLoading ? (
+                  <tr>
+                    <td colSpan={2} className="loading-cell">
+                      Loading messages...
+                    </td>
+                  </tr>
+                ) : error ? (
+                  <tr>
+                    <td colSpan={2} className="error-cell">
+                      Error: {error}
+                    </td>
+                  </tr>
+                ) : messages.length === 0 ? (
+                  <tr>
+                    <td colSpan={2} className="empty-cell">
+                      No new messages
+                    </td>
+                  </tr>
+                ) : (
+                  messages.map(message => (
+                    <tr key={message.id} className="notification-row">
+                      <td className="time-cell">
+                        <div className="time-line">{messagesService.formatTime(message.created_at)}</div>
+                        <div className="date-line">{messagesService.formatDate(message.created_at)}</div>
+                      </td>
+                      <td className="message-cell">
+                        {message.message}
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>

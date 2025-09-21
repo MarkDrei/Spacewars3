@@ -27,7 +27,8 @@ export type EmptyContext = LockContext<Unlocked, never>;
 export type CacheLevel = 0;
 export type WorldLevel = 1; 
 export type UserLevel = 2;
-export type MessageLevel = 2.5; // Between User and Database for user-specific message operations
+export type MessageReadLevel = 2.4;  // Read operations on messages
+export type MessageWriteLevel = 2.5; // Write operations on messages (higher than read)
 export type DatabaseLevel = 3;
 
 // Type helper to check if new lock level is valid (must be > current max level)
@@ -37,19 +38,21 @@ type CanAcquire<NewLevel extends number, CurrentLevel extends number> =
     : NewLevel extends CurrentLevel 
       ? false 
       : [NewLevel, CurrentLevel] extends [number, number]
-        ? NewLevel extends 0 | 1 | 2 | 2.5 | 3
-          ? CurrentLevel extends 0 | 1 | 2 | 2.5 | 3
+        ? NewLevel extends 0 | 1 | 2 | 2.4 | 2.5 | 3
+          ? CurrentLevel extends 0 | 1 | 2 | 2.4 | 2.5 | 3
             ? NewLevel extends 0
               ? CurrentLevel extends never ? true : false
               : NewLevel extends 1
                 ? CurrentLevel extends 0 | never ? true : false
                 : NewLevel extends 2
                   ? CurrentLevel extends 0 | 1 | never ? true : false
-                  : NewLevel extends 2.5
+                  : NewLevel extends 2.4
                     ? CurrentLevel extends 0 | 1 | 2 | never ? true : false
-                    : NewLevel extends 3
-                      ? CurrentLevel extends 0 | 1 | 2 | 2.5 | never ? true : false
-                      : false
+                    : NewLevel extends 2.5
+                      ? CurrentLevel extends 0 | 1 | 2 | 2.4 | never ? true : false
+                      : NewLevel extends 3
+                        ? CurrentLevel extends 0 | 1 | 2 | 2.4 | 2.5 | never ? true : false
+                        : false
           : false
         : false
       : false;
@@ -128,29 +131,32 @@ export class TypedMutex<Name extends string, LockLevel extends number> {
   }
 }
 
-// Typed ReadWrite Lock with compile-time lock ordering enforcement
-export class TypedReadWriteLock<Name extends string, LockLevel extends number> {
+// Enhanced Typed ReadWrite Lock with separate read and write levels
+export class TypedReadWriteLock<Name extends string, ReadLevel extends number, WriteLevel extends number> {
   private readers = 0;
   private writer = false;
   private readQueue: Array<() => void> = [];
   private writeQueue: Array<() => void> = [];
   private readonly name: Name;
-  private readonly level: LockLevel;
+  private readonly readLevel: ReadLevel;
+  private readonly writeLevel: WriteLevel;
 
-  constructor(name: Name, level: LockLevel) {
+  constructor(name: Name, readLevel: ReadLevel, writeLevel: WriteLevel) {
     this.name = name;
-    this.level = level;
+    this.readLevel = readLevel;
+    this.writeLevel = writeLevel;
   }
 
   /**
    * Acquire read lock with compile-time lock ordering validation
+   * Uses ReadLevel for validation - prevents acquiring read lock after write lock
    */
   async read<T, CurrentLevel extends number>(
     context: LockContext<any, CurrentLevel>,
-    fn: (ctx: LockContext<Locked<`${Name}:read`>, LockLevel | CurrentLevel>) => Promise<T>
+    fn: (ctx: LockContext<Locked<`${Name}:read`>, ReadLevel | CurrentLevel>) => Promise<T>
   ): Promise<T> {
-    // Compile-time check: can only acquire if lock level is valid
-    type ValidationCheck = CanAcquire<LockLevel, CurrentLevel>;
+    // Compile-time check: can only acquire read lock if ReadLevel > CurrentLevel
+    type ValidationCheck = CanAcquire<ReadLevel, CurrentLevel>;
     const _check: ValidationCheck = true as ValidationCheck;
 
     return new Promise<T>((resolve, reject) => {
@@ -161,9 +167,9 @@ export class TypedReadWriteLock<Name extends string, LockLevel extends number> {
             _state: 'locked:read' as any,
             _maxLevel: (Math.max(
               typeof context._maxLevel === 'number' ? context._maxLevel : -1,
-              this.level
-            )) as LockLevel | CurrentLevel
-          } as LockContext<Locked<`${Name}:read`>, LockLevel | CurrentLevel>;
+              this.readLevel
+            )) as ReadLevel | CurrentLevel
+          } as LockContext<Locked<`${Name}:read`>, ReadLevel | CurrentLevel>;
           
           const result = await fn(lockedContext);
           this.readers--;
@@ -186,13 +192,14 @@ export class TypedReadWriteLock<Name extends string, LockLevel extends number> {
 
   /**
    * Acquire write lock with compile-time lock ordering validation
+   * Uses WriteLevel for validation - higher than ReadLevel to prevent deadlock
    */
   async write<T, CurrentLevel extends number>(
     context: LockContext<any, CurrentLevel>,
-    fn: (ctx: LockContext<Locked<`${Name}:write`>, LockLevel | CurrentLevel>) => Promise<T>
+    fn: (ctx: LockContext<Locked<`${Name}:write`>, WriteLevel | CurrentLevel>) => Promise<T>
   ): Promise<T> {
-    // Compile-time check: can only acquire if lock level is valid
-    type ValidationCheck = CanAcquire<LockLevel, CurrentLevel>;
+    // Compile-time check: can only acquire write lock if WriteLevel > CurrentLevel
+    type ValidationCheck = CanAcquire<WriteLevel, CurrentLevel>;
     const _check: ValidationCheck = true as ValidationCheck;
 
     return new Promise<T>((resolve, reject) => {
@@ -203,9 +210,9 @@ export class TypedReadWriteLock<Name extends string, LockLevel extends number> {
             _state: 'locked:write' as any,
             _maxLevel: (Math.max(
               typeof context._maxLevel === 'number' ? context._maxLevel : -1,
-              this.level
-            )) as LockLevel | CurrentLevel
-          } as LockContext<Locked<`${Name}:write`>, LockLevel | CurrentLevel>;
+              this.writeLevel
+            )) as WriteLevel | CurrentLevel
+          } as LockContext<Locked<`${Name}:write`>, WriteLevel | CurrentLevel>;
           
           const result = await fn(lockedContext);
           this.writer = false;
@@ -273,8 +280,9 @@ export type ValidateLockOrder<L1 extends number, L2 extends number> =
 
 export type TestValidCacheToWorld = ValidateLockOrder<CacheLevel, WorldLevel>; // Should be true
 export type TestValidWorldToUser = ValidateLockOrder<WorldLevel, UserLevel>; // Should be true  
-export type TestValidUserToMessage = ValidateLockOrder<UserLevel, MessageLevel>; // Should be true
-export type TestValidMessageToDatabase = ValidateLockOrder<MessageLevel, DatabaseLevel>; // Should be true
+export type TestValidUserToMessageRead = ValidateLockOrder<UserLevel, MessageReadLevel>; // Should be true
+export type TestValidMessageReadToWrite = ValidateLockOrder<MessageReadLevel, MessageWriteLevel>; // Should be true
+export type TestValidMessageWriteToDatabase = ValidateLockOrder<MessageWriteLevel, DatabaseLevel>; // Should be true
 export type TestInvalidUserToWorld = ValidateLockOrder<UserLevel, WorldLevel>; // Should be false
 export type TestInvalidSameLevel = ValidateLockOrder<WorldLevel, WorldLevel>; // Should be false
-export type TestInvalidMessageToUser = ValidateLockOrder<MessageLevel, UserLevel>; // Should be false
+export type TestInvalidMessageWriteToRead = ValidateLockOrder<MessageWriteLevel, MessageReadLevel>; // Should be false
