@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS users (
   rocket_launcher INTEGER NOT NULL DEFAULT 0,
 
   -- Tech counts (defense)
+  ship_hull INTEGER NOT NULL DEFAULT 5,
   kinetic_armor INTEGER NOT NULL DEFAULT 5,
   energy_shield INTEGER NOT NULL DEFAULT 5,
   missile_jammer INTEGER NOT NULL DEFAULT 0,

@@ -37,6 +37,7 @@ export interface TechCounts {
   rocket_launcher: number;
   
   // Defense
+  ship_hull: number;
   kinetic_armor: number;
   energy_shield: number;
   missile_jammer: number;

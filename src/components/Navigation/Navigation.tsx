@@ -58,6 +58,13 @@ const Navigation: React.FC<NavigationProps> = ({ onLogout }) => {
             Game
           </Link>
           <Link 
+            href="/factory" 
+            className={`navbar-item ${isActive('/factory') ? 'active' : ''}`}
+            onClick={closeMenu}
+          >
+            Factory
+          </Link>
+          <Link 
             href="/research" 
             className={`navbar-item ${isActive('/research') ? 'active' : ''}`}
             onClick={closeMenu}

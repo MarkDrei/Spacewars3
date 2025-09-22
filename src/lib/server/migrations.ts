@@ -71,10 +71,20 @@ export const migrations: Migration[] = [
     down: [
       'DROP TABLE IF EXISTS messages'
     ]
+  },
+  {
+    version: 4,
+    name: 'add_ship_hull_defense',
+    up: [
+      'ALTER TABLE users ADD COLUMN ship_hull INTEGER NOT NULL DEFAULT 5'
+    ],
+    down: [
+      'ALTER TABLE users DROP COLUMN ship_hull'
+    ]
   }
   // Future migrations go here
   // {
-  //   version: 3,
+  //   version: 5,
   //   name: 'add_user_settings',
   //   up: ['ALTER TABLE users ADD COLUMN settings TEXT DEFAULT "{}"'],
   //   down: ['ALTER TABLE users DROP COLUMN settings']
@@ -126,7 +136,7 @@ export async function applyTechMigrations(db: import('sqlite3').Database): Promi
   // Check if any tech columns are missing
   const techColumns = [
     'pulse_laser', 'auto_turret', 'plasma_lance', 'gauss_rifle', 
-    'photon_torpedo', 'rocket_launcher', 'kinetic_armor', 
+    'photon_torpedo', 'rocket_launcher', 'ship_hull', 'kinetic_armor', 
     'energy_shield', 'missile_jammer', 'build_queue', 'build_start_sec'
   ];
   
@@ -167,6 +177,9 @@ export async function applyTechMigrations(db: import('sqlite3').Database): Promi
   
   // Apply messages table migration
   await applyMessagesMigrations(db);
+  
+  // Apply ship_hull migration
+  await applyShipHullMigration(db);
 }
 
 /**
@@ -215,5 +228,38 @@ export async function applyMessagesMigrations(db: import('sqlite3').Database): P
     console.log('✅ Messages table migration completed');
   } catch (error) {
     console.error('❌ Error applying messages migration:', error);
+  }
+}
+
+/**
+ * Apply ship_hull column migration to the database
+ */
+export async function applyShipHullMigration(db: import('sqlite3').Database): Promise<void> {
+  console.log('🔄 Checking for ship_hull column migration...');
+  
+  try {
+    const exists = await columnExists(db, 'users', 'ship_hull');
+    if (exists) {
+      console.log('✅ Ship hull column already exists');
+      return;
+    }
+    
+    console.log('🚀 Adding ship_hull column...');
+    
+    // Get ship_hull migration
+    const shipHullMigration = migrations.find(m => m.name === 'add_ship_hull_defense');
+    if (!shipHullMigration) {
+      console.error('❌ Ship hull migration not found');
+      return;
+    }
+    
+    // Apply each migration statement
+    for (const statement of shipHullMigration.up) {
+      await runMigrationStatement(db, statement);
+    }
+    
+    console.log('✅ Ship hull migration completed');
+  } catch (error) {
+    console.error('❌ Error applying ship hull migration:', error);
   }
 }

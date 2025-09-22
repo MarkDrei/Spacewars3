@@ -29,8 +29,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       techCounts: analysis.techCounts,
-      effects: analysis.effects,
       buildQueue: analysis.buildQueue,
+      totalDPS: analysis.effects?.weapons.totalDPS || 0,
+      totalAccuracy: analysis.effects?.weapons.totalAccuracy || 0,
+      totalKineticArmor: analysis.effects?.defense.totalKineticArmor || 0,
+      totalEnergyShield: analysis.effects?.defense.totalEnergyShield || 0,
+      totalMissileJammers: analysis.effects?.defense.totalMissileJammers || 0,
       queueEstimatedCompletion: analysis.queueEstimatedCompletion,
       completedBuilds: completed
     });
