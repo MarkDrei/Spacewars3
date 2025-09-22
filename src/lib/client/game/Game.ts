@@ -2,7 +2,7 @@
 import { World } from './World';
 import { GameRenderer } from '../renderers/GameRenderer';
 import { Ship } from './Ship';
-import { WorldData, TargetingLine } from '@shared/types/gameTypes';
+import { WorldData, TargetingLine, InterceptionLines } from '@shared/types/gameTypes';
 import { setShipDirection, interceptTarget } from '../services/navigationService';
 import { getShipStats } from '../services/shipStatsService';
 import { InterceptCalculator } from './InterceptCalculator';
@@ -10,16 +10,20 @@ import { SpaceObjectOld } from './SpaceObject';
 import { collectionService } from '../services/collectionService';
 import { calculateToroidalDistance } from '@shared/physics';
 import { debugState } from '../debug/debugState';
+import { InterceptionLineRenderer } from '../renderers/InterceptionLineRenderer';
 
 export class Game {
   private world: World;
   private renderer: GameRenderer;
+  private interceptionRenderer: InterceptionLineRenderer;
   // private lastTimestamp: number = 0; // REMOVED: No longer needed without client physics
   private running: boolean = false;
   private ctx: CanvasRenderingContext2D;
   private ship: Ship;
   private refetchWorldData?: () => void; // Function to refresh world data from server
   private targetingLine: TargetingLine | null = null;
+  private interceptionLines: InterceptionLines | null = null;
+  private onNavigationCallback?: () => void; // Callback for when navigation happens
 
   constructor(canvas: HTMLCanvasElement) {
     // Initialize the canvas context
@@ -37,6 +41,9 @@ export class Game {
     
     // Initialize the renderer
     this.renderer = new GameRenderer(this.ctx, canvas, this.world);
+    
+    // Initialize the interception line renderer
+    this.interceptionRenderer = new InterceptionLineRenderer(this.ctx);
     
     // Initialize click handlers
     this.initializeClickHandler(canvas);
@@ -64,6 +71,13 @@ export class Game {
       const scaleY = canvas.height / rect.height;
       const logicalX = mouseX * scaleX;
       const logicalY = mouseY * scaleY;
+      
+      // Update mouse position for consistent coordinate handling
+      this.mouseX = logicalX;
+      this.mouseY = logicalY;
+      
+      // Update hover states with fresh click coordinates to ensure accuracy
+      this.updateHoverStates();
       
       // Check if any object is hovered
       const hoveredObject = this.world.findHoveredObject();
@@ -139,6 +153,11 @@ export class Game {
       if (this.refetchWorldData) {
         this.refetchWorldData();
       }
+
+      // Trigger navigation callback to update input fields
+      if (this.onNavigationCallback) {
+        this.onNavigationCallback();
+      }
     } catch (error) {
       console.error('Failed to update ship direction:', error);
       // Local update already applied above for immediate feedback
@@ -161,6 +180,9 @@ export class Game {
       const interceptResult = InterceptCalculator.calculateInterceptAngle(ship, targetObject, shipStats.maxSpeed);
       
       if (!isNaN(interceptResult.angle)) {
+        // Create interception lines for visualization using global coordinates
+        this.createInterceptionLines(interceptResult.globalCoordinates, interceptResult.timeToIntercept);
+        
         // Then update via API with max speed
         await interceptTarget(interceptResult.angle, shipStats.maxSpeed);
         console.log('Ship interception updated via API with angle: ', interceptResult.angle, " and max speed: ", shipStats.maxSpeed);
@@ -168,6 +190,11 @@ export class Game {
         // Trigger world data refresh to get authoritative server state
         if (this.refetchWorldData) {
           this.refetchWorldData();
+        }
+
+        // Trigger navigation callback to update input fields
+        if (this.onNavigationCallback) {
+          this.onNavigationCallback();
         }
       } else {
         console.warn('Could not calculate valid interception angle');
@@ -245,6 +272,13 @@ export class Game {
   }
 
   /**
+   * Set a callback function to trigger when navigation happens
+   */
+  public setNavigationCallback(callback: () => void): void {
+    this.onNavigationCallback = callback;
+  }
+
+  /**
    * Get the current debug drawings state
    */
   public getDebugDrawingsEnabled(): boolean {
@@ -288,12 +322,14 @@ export class Game {
       // Try the most likely method names
       if (typeof this.renderer.drawWorld === 'function') {
         this.renderer.drawWorld(this.ship, this.getTargetingLine());
-        // // Draw interception point on top of the rendered world
-        // this.drawInterceptionPoint(this.ctx);
+        
+        // Draw interception lines on top of the rendered world
+        this.drawInterceptionLines();
       } else if ('render' in this.renderer && typeof this.renderer.render === 'function') {
         (this.renderer as { render: () => void }).render();
-        // // Draw interception point on top of the rendered world
-        // this.drawInterceptionPoint(this.ctx);
+        
+        // Draw interception lines on top of the rendered world
+        this.drawInterceptionLines();
       } else {
         console.warn('No recognized rendering method found on GameRenderer');
       }
@@ -337,6 +373,64 @@ export class Game {
   public getTargetingLine(): TargetingLine | null {
     this.updateTargetingLine(); // Clean up expired lines
     return this.targetingLine;
+  }
+
+  // Interception line management methods
+  private createInterceptionLines(globalCoords: { shipX: number; shipY: number; targetX: number; targetY: number; interceptX: number; interceptY: number }, timeToIntercept: number): void {
+    this.interceptionLines = {
+      shipToInterceptX: globalCoords.shipX,
+      shipToInterceptY: globalCoords.shipY,
+      targetToInterceptX: globalCoords.targetX,
+      targetToInterceptY: globalCoords.targetY,
+      interceptX: globalCoords.interceptX,
+      interceptY: globalCoords.interceptY,
+      timeToIntercept: timeToIntercept,
+      originalTimeToIntercept: timeToIntercept,
+      createdAt: Date.now(),
+      duration: 4000 // 4 seconds
+    };
+  }
+
+  private updateInterceptionLines(): void {
+    if (!this.interceptionLines) return;
+    
+    const elapsed = Date.now() - this.interceptionLines.createdAt;
+    
+    // Update the time-to-intercept by subtracting elapsed time
+    const elapsedSeconds = elapsed / 1000;
+    this.interceptionLines.timeToIntercept = Math.max(0, this.interceptionLines.originalTimeToIntercept - elapsedSeconds);
+    
+    // Clear lines if duration has expired
+    if (elapsed >= this.interceptionLines.duration) {
+      this.interceptionLines = null;
+    }
+  }
+
+  private clearInterceptionLines(): void {
+    this.interceptionLines = null;
+  }
+
+  public getInterceptionLines(): InterceptionLines | null {
+    this.updateInterceptionLines(); // Clean up expired lines
+    return this.interceptionLines;
+  }
+
+  // Draw interception lines if present
+  private drawInterceptionLines(): void {
+    const interceptionLines = this.getInterceptionLines();
+    if (interceptionLines) {
+      const centerX = this.ctx.canvas.width / 2;
+      const centerY = this.ctx.canvas.height / 2;
+      const ship = this.world.getShip();
+      
+      this.interceptionRenderer.drawInterceptionLines(
+        interceptionLines,
+        centerX,
+        centerY,
+        ship.getX(),
+        ship.getY()
+      );
+    }
   }
 }
 

@@ -24,13 +24,13 @@
 
 .loading-message, .no-data-message {
   text-align: center;
-  color: #4caf50;
+  color: var(--primary-green);
   font-size: 1.2rem;
   margin: 2rem 0;
 }
 
 .retry-button {
-  background-color: #4caf50;
+  background-color: var(--primary-green);
   color: white;
   border: none;
   padding: 0.75rem 1.5rem;
@@ -42,14 +42,14 @@
 }
 
 .retry-button:hover {
-  background-color: #45a049;
+  background-color: var(--primary-green-hover);
 }
 
 /* Research Table */
 .research-table-container {
   background-color: #1e1e1e;
   border-radius: 12px;
-  border: 2px solid #4caf50;
+  border: 2px solid var(--primary-green);
   overflow: hidden;
   margin-bottom: 2rem;
 }
@@ -62,12 +62,12 @@
 
 .research-table thead th {
   background-color: #2d2d2d;
-  color: #4caf50;
+  color: var(--primary-green);
   padding: 1rem;
   text-align: left;
   font-weight: 600;
   font-size: 0.95rem;
-  border-bottom: 2px solid #4caf50;
+  border-bottom: 2px solid var(--primary-green);
 }
 
 .research-table thead th:not(:last-child) {
@@ -86,7 +86,7 @@
 
 .research-row.active {
   background-color: rgba(76, 175, 80, 0.1);
-  border-left: 4px solid #4caf50;
+  border-left: 4px solid var(--primary-green);
 }
 
 .research-row.disabled {
@@ -119,7 +119,7 @@
 
 /* Research Status Indicators */
 .research-countdown {
-  color: #4caf50;
+  color: var(--primary-green);
   font-weight: 600;
   font-size: 1.1rem;
   font-family: 'Courier New', monospace;
@@ -137,7 +137,7 @@
 
 /* Upgrade Button */
 .upgrade-button {
-  background-color: #4caf50;
+  background-color: var(--primary-green);
   color: white;
   border: none;
   padding: 0.6rem 1.2rem;
@@ -150,7 +150,7 @@
 }
 
 .upgrade-button:hover:not(:disabled) {
-  background-color: #45a049;
+  background-color: var(--primary-green-hover);
   transform: translateY(-1px);
   box-shadow: 0 4px 8px rgba(76, 175, 80, 0.3);
 }

@@ -3,6 +3,11 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  
+  /* Green theme colors */
+  --primary-green: #4caf50;
+  --primary-green-hover: #45a049;
+  --primary-green-active: #3e8e41;
 }
 
 @theme inline {
@@ -37,10 +42,42 @@ code {
 
 /* Shared Page Heading Styles */
 .page-heading {
-  color: #4caf50;
+  color: var(--primary-green);
   text-align: center;
   margin-bottom: 2rem;
   font-size: 2.5rem;
+}
+
+/* Base Button Styles */
+.btn-primary {
+  background-color: var(--primary-green);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.2s ease, opacity 0.2s ease;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: var(--primary-green-hover);
+}
+
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-primary:active:not(:disabled) {
+  background-color: var(--primary-green-active);
+  transform: translateY(1px);
+}
+
+/* Input Focus Styles */
+.input-primary:focus {
+  outline: none;
+  border-color: var(--primary-green);
+  box-shadow: 0 0 4px rgba(76, 175, 80, 0.3);
 }
 
 /* Responsive adjustments for page headings */

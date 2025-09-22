@@ -56,4 +56,17 @@ export interface TargetingLine {
   duration: number;      // Total duration (4000ms)
 }
 
+export interface InterceptionLines {
+  shipToInterceptX: number;      // Ship position (global coords)
+  shipToInterceptY: number;
+  targetToInterceptX: number;    // Target position (global coords - may be outside world bounds)
+  targetToInterceptY: number;
+  interceptX: number;            // Interception point (global coords - may be outside world bounds)
+  interceptY: number;
+  timeToIntercept: number;       // Current time to intercept in seconds (updates as time passes)
+  originalTimeToIntercept: number; // Original time to intercept (used for calculations)
+  createdAt: number;             // Timestamp when lines were created
+  duration: number;              // Total duration (4000ms)
+}
+
 export type GameObjectType = SpaceObject['type'];

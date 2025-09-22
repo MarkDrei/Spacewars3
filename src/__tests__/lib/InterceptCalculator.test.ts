@@ -55,6 +55,14 @@ describe('InterceptCalculator', () => {
         expect(result.interceptPoint.x).toBeCloseTo(100);
         expect(result.interceptPoint.y).toBeCloseTo(0);
         expect(result.timeToIntercept).toBeCloseTo(10); // 100 units at speed 10
+        
+        // Verify global coordinates
+        expect(result.globalCoordinates.shipX).toBeCloseTo(0);
+        expect(result.globalCoordinates.shipY).toBeCloseTo(0);
+        expect(result.globalCoordinates.targetX).toBeCloseTo(100);
+        expect(result.globalCoordinates.targetY).toBeCloseTo(0);
+        expect(result.globalCoordinates.interceptX).toBeCloseTo(100);
+        expect(result.globalCoordinates.interceptY).toBeCloseTo(0);
     });
     
     test('should calculate direct angle for stationary target at different position', () => {
@@ -81,6 +89,14 @@ describe('InterceptCalculator', () => {
         expect(result.interceptPoint.x).toBeCloseTo(0);
         expect(result.interceptPoint.y).toBeCloseTo(100);
         expect(result.timeToIntercept).toBeCloseTo(10); // 100 units at speed 10
+        
+        // Verify global coordinates
+        expect(result.globalCoordinates.shipX).toBeCloseTo(0);
+        expect(result.globalCoordinates.shipY).toBeCloseTo(0);
+        expect(result.globalCoordinates.targetX).toBeCloseTo(0);
+        expect(result.globalCoordinates.targetY).toBeCloseTo(100);
+        expect(result.globalCoordinates.interceptX).toBeCloseTo(0);
+        expect(result.globalCoordinates.interceptY).toBeCloseTo(100);
     });
 
     test('should verify interception point for stationary target', () => {
@@ -347,6 +363,16 @@ describe('InterceptCalculator', () => {
         expect(result.interceptPoint.x).toBeCloseTo(61.11);
         expect(result.interceptPoint.y).toBeCloseTo(250);
         expect(result.timeToIntercept).toBeCloseTo(11.11);
+        
+        // Verify global coordinates - this is where global coords show the true shortest path
+        expect(result.globalCoordinates.shipX).toBeCloseTo(World.WIDTH - 50); // Ship at (1950, 250)
+        expect(result.globalCoordinates.shipY).toBeCloseTo(250);
+        // Target should appear at +2000 X position when wrapping is considered for shortest path
+        expect(result.globalCoordinates.targetX).toBeCloseTo(50 + World.WIDTH); // Target at (2050, 250) globally
+        expect(result.globalCoordinates.targetY).toBeCloseTo(250);
+        // Intercept point in global coordinates - verify it exists and is reasonable
+        expect(result.globalCoordinates.interceptX).toBeDefined();
+        expect(result.globalCoordinates.interceptY).toBeCloseTo(250);
     });
 
     test('should handle interception across top-bottom world boundary', () => {
@@ -382,6 +408,16 @@ describe('InterceptCalculator', () => {
         expect(result.interceptPoint.x).toBeCloseTo(250);
         expect(result.interceptPoint.y).toBeCloseTo(92.86);
         expect(result.timeToIntercept).toBeCloseTo(14.285);
+        
+        // Verify global coordinates for vertical world wrapping
+        expect(result.globalCoordinates.shipX).toBeCloseTo(250);
+        expect(result.globalCoordinates.shipY).toBeCloseTo(World.HEIGHT - 50); // Ship at (250, 1950)
+        expect(result.globalCoordinates.targetX).toBeCloseTo(250);
+        // Target should appear at +2000 Y position when wrapping is considered for shortest path
+        expect(result.globalCoordinates.targetY).toBeCloseTo(50 + World.HEIGHT); // Target at (250, 2050) globally
+        expect(result.globalCoordinates.interceptX).toBeCloseTo(250);
+        // Intercept point in global coordinates - verify it exists and is reasonable
+        expect(result.globalCoordinates.interceptY).toBeDefined();
     });
 
     test('should handle interception across left-right world boundary (ship at left)', () => {
@@ -507,6 +543,16 @@ describe('InterceptCalculator', () => {
         expect(result.interceptPoint.x).toBeCloseTo(416.666);
         expect(result.interceptPoint.y).toBeCloseTo(416.666);
         expect(result.timeToIntercept).toBeCloseTo(15.71);
+        
+        // Verify global coordinates for diagonal world wrapping
+        expect(result.globalCoordinates.shipX).toBeCloseTo(50);
+        expect(result.globalCoordinates.shipY).toBeCloseTo(50);
+        // Target should appear with negative coordinates when wrapping is considered for shortest diagonal path
+        expect(result.globalCoordinates.targetX).toBeCloseTo((World.WIDTH - 50) - World.WIDTH); // Target at (-50, -50) globally
+        expect(result.globalCoordinates.targetY).toBeCloseTo((World.HEIGHT - 50) - World.HEIGHT);
+        // Intercept point in global coordinates - verify they exist and are reasonable
+        expect(result.globalCoordinates.interceptX).toBeDefined();
+        expect(result.globalCoordinates.interceptY).toBeDefined();
     });
 
     test('should handle corner-to-corner interception (top-right to bottom-left)', () => {
