@@ -229,6 +229,7 @@ export class TechRepo {
         gauss_rifle: 0,
         photon_torpedo: 0,
         rocket_launcher: 0,
+        ship_hull: 5,
         kinetic_armor: 5,
         energy_shield: 5,
         missile_jammer: 0
