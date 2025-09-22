@@ -12,9 +12,29 @@ import { getShipStats } from '@/lib/client/services/shipStatsService';
 const GamePage: React.FC = () => {
   const gameInitializedRef = useRef(false);
   const gameInstanceRef = useRef<Game | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isSettingMaxSpeed, setIsSettingMaxSpeed] = useState(false);
+  const [debugDrawingsEnabled, setDebugDrawingsEnabled] = useState(true);
+  const [angleInput, setAngleInput] = useState<string>('0');
+  const [speedInput, setSpeedInput] = useState<string>('0');
+  const [isSettingAngle, setIsSettingAngle] = useState(false);
+  const [isSettingSpeed, setIsSettingSpeed] = useState(false);
   const { isLoggedIn, shipId } = useAuth();
   const { worldData, isLoading, error, refetch } = useWorldData(isLoggedIn, 3000);
+
+  // Sync debugDrawingsEnabled state with game instance
+  useEffect(() => {
+    if (gameInstanceRef.current) {
+      setDebugDrawingsEnabled(gameInstanceRef.current.getDebugDrawingsEnabled());
+    }
+  }, [gameInstanceRef.current]);
+
+  const handleDebugToggle = (enabled: boolean) => {
+    setDebugDrawingsEnabled(enabled);
+    if (gameInstanceRef.current) {
+      gameInstanceRef.current.setDebugDrawingsEnabled(enabled);
+    }
+  };
 
   useEffect(() => {
     // Only initialize game when we have ship ID for the first time
@@ -38,11 +58,24 @@ const GamePage: React.FC = () => {
       gameInstanceRef.current.updateWorldData?.(worldData, shipId);
       // Set the refetch function so the game can trigger updates
       gameInstanceRef.current.setRefetchFunction?.(refetch);
+      // Set the navigation callback to update input fields when user clicks on canvas
+      gameInstanceRef.current.setNavigationCallback?.(updateInputFieldsFromShip);
     }
   }, [worldData, shipId, refetch]);
 
+  // Initialize input fields with current ship state only once when game starts
+  useEffect(() => {
+    if (worldData && gameInstanceRef.current && shipId && angleInput === '0' && speedInput === '0') {
+      const ship = gameInstanceRef.current.getWorld().getShip();
+      if (ship) {
+        setAngleInput(ship.getAngleDegrees().toFixed(1));
+        setSpeedInput(ship.getSpeed().toFixed(1));
+      }
+    }
+  }, [worldData, shipId, angleInput, speedInput]);
+
   const initializeGame = () => {
-    const gameCanvas = document.getElementById('gameCanvas') as HTMLCanvasElement;
+    const gameCanvas = canvasRef.current;
     if (gameCanvas) {
       gameInstanceRef.current = initGame(gameCanvas);
       console.log('🎮 Game initialized successfully');
@@ -72,10 +105,92 @@ const GamePage: React.FC = () => {
       if (refetch) {
         refetch();
       }
+      
+      // Update input fields after successful navigation
+      setTimeout(updateInputFieldsFromShip, 100); // Small delay to ensure world data is updated
     } catch (error) {
       console.error('❌ [CLIENT] Failed to set max speed:', error);
     } finally {
       setIsSettingMaxSpeed(false);
+    }
+  };
+
+  const updateInputFieldsFromShip = () => {
+    if (gameInstanceRef.current) {
+      const ship = gameInstanceRef.current.getWorld().getShip();
+      if (ship) {
+        setAngleInput(ship.getAngleDegrees().toFixed(1));
+        setSpeedInput(ship.getSpeed().toFixed(1));
+      }
+    }
+  };
+
+  const handleSetAngle = async () => {
+    if (isSettingAngle) return;
+    
+    setIsSettingAngle(true);
+    try {
+      const angle = parseFloat(angleInput);
+      if (isNaN(angle)) {
+        console.error('Invalid angle value');
+        return;
+      }
+      
+      // Normalize angle to 0-360 range
+      const normalizedAngle = ((angle % 360) + 360) % 360;
+      
+      await navigateShip({ angle: normalizedAngle });
+      
+      // Refresh world data to get updated ship state
+      if (refetch) {
+        refetch();
+      }
+      
+      // Update input fields after successful navigation
+      setTimeout(updateInputFieldsFromShip, 100); // Small delay to ensure world data is updated
+    } catch (error) {
+      console.error('❌ [CLIENT] Failed to set angle:', error);
+    } finally {
+      setIsSettingAngle(false);
+    }
+  };
+
+  const handleSetSpeed = async () => {
+    if (isSettingSpeed) return;
+    
+    setIsSettingSpeed(true);
+    try {
+      const speed = parseFloat(speedInput);
+      if (isNaN(speed) || speed < 0) {
+        console.error('Invalid speed value');
+        return;
+      }
+      
+      await navigateShip({ speed });
+      
+      // Refresh world data to get updated ship state
+      if (refetch) {
+        refetch();
+      }
+      
+      // Update input fields after successful navigation
+      setTimeout(updateInputFieldsFromShip, 100); // Small delay to ensure world data is updated
+    } catch (error) {
+      console.error('❌ [CLIENT] Failed to set speed:', error);
+    } finally {
+      setIsSettingSpeed(false);
+    }
+  };
+
+  const handleAngleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSetAngle();
+    }
+  };
+
+  const handleSpeedKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSetSpeed();
     }
   };
 
@@ -103,15 +218,89 @@ const GamePage: React.FC = () => {
   return (
     <AuthenticatedLayout>
       <div className="game-page">
-        <canvas id="gameCanvas" width="800" height="800"></canvas>
+        <div className="canvas-container">
+          <canvas 
+            ref={canvasRef}
+            id="gameCanvas" 
+            width="800" 
+            height="800"
+          ></canvas>
+        </div>
         <div className="game-controls">
-          <button 
-            className="max-speed-button"
-            onClick={handleMaxSpeed}
-            disabled={isSettingMaxSpeed}
-          >
-            {isSettingMaxSpeed ? 'Setting Max Speed...' : 'Set Max Speed'}
-          </button>
+          <div className="navigation-controls">
+            <div className="control-row">
+              <label htmlFor="angle-input">Angle (degrees):</label>
+              <div className="input-container">
+                <input
+                  id="angle-input"
+                  type="number"
+                  value={angleInput}
+                  onChange={(e) => setAngleInput(e.target.value)}
+                  onKeyPress={handleAngleKeyPress}
+                  disabled={isSettingAngle}
+                  className={isSettingAngle ? 'loading' : ''}
+                  min="0"
+                  max="360"
+                  step="0.1"
+                />
+                {isSettingAngle && <div className="input-loading-indicator"></div>}
+              </div>
+              <button
+                onClick={handleSetAngle}
+                disabled={isSettingAngle}
+                className="control-button btn-primary"
+              >
+                {isSettingAngle ? 'Setting...' : 'Set Angle'}
+              </button>
+            </div>
+            
+            <div className="control-row">
+              <label htmlFor="speed-input">Speed:</label>
+              <div className="input-container">
+                <input
+                  id="speed-input"
+                  type="number"
+                  value={speedInput}
+                  onChange={(e) => setSpeedInput(e.target.value)}
+                  onKeyPress={handleSpeedKeyPress}
+                  disabled={isSettingSpeed}
+                  className={isSettingSpeed ? 'loading' : ''}
+                  min="0"
+                  step="0.1"
+                />
+                {isSettingSpeed && <div className="input-loading-indicator"></div>}
+              </div>
+              <button
+                onClick={handleSetSpeed}
+                disabled={isSettingSpeed}
+                className="control-button btn-primary"
+              >
+                {isSettingSpeed ? 'Setting...' : 'Set Speed'}
+              </button>
+              <button 
+                className="max-speed-button btn-primary"
+                onClick={handleMaxSpeed}
+                disabled={isSettingMaxSpeed}
+              >
+                {isSettingMaxSpeed ? 'Setting Max Speed...' : 'Set Max Speed'}
+              </button>
+            </div>
+          </div>
+          
+          <div className="debug-toggle-container">
+            <label className="debug-toggle-label">
+              Enable debug drawings
+              <div className="toggle-switch">
+                <input
+                  type="checkbox"
+                  checked={debugDrawingsEnabled}
+                  onChange={(e) => handleDebugToggle(e.target.checked)}
+                  className="toggle-input"
+                />
+                <span className="toggle-slider"></span>
+              </div>
+            </label>
+          </div>
         </div>
       </div>
     </AuthenticatedLayout>

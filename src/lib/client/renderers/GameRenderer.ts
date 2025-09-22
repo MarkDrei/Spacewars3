@@ -5,6 +5,9 @@ import { RadarRenderer } from './RadarRenderer';
 import { TooltipRenderer } from './TooltipRenderer';
 import { World } from '../game/World';
 import { SpaceObjectsRenderer } from './SpaceObjectsRenderer';
+import { TargetingLineRenderer } from './TargetingLineRenderer';
+import type { TargetingLine } from '@shared/types/gameTypes';
+import { debugState } from '../debug/debugState';
 
 export class GameRenderer {
     private ctx: CanvasRenderingContext2D;
@@ -14,6 +17,7 @@ export class GameRenderer {
     private radarRenderer: RadarRenderer;
     private tooltipRenderer: TooltipRenderer;
     private collectiblesRenderer: SpaceObjectsRenderer;
+    private targetingLineRenderer: TargetingLineRenderer;
 
     constructor(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, world: World) {
         this.ctx = ctx;
@@ -23,6 +27,7 @@ export class GameRenderer {
         this.radarRenderer = new RadarRenderer();
         this.tooltipRenderer = new TooltipRenderer(canvas);
         this.collectiblesRenderer = new SpaceObjectsRenderer(ctx, canvas);
+        this.targetingLineRenderer = new TargetingLineRenderer(ctx);
     }
 
     drawBackground(): void {
@@ -76,6 +81,8 @@ export class GameRenderer {
     
     // Draw the world boundaries with a green color
     private drawWorldBoundaries(): void {
+        if (!debugState.debugDrawingsEnabled) return;
+        
         const ship = this.world.getShip();
         const shipX = ship.getX();
         const shipY = ship.getY();
@@ -111,7 +118,7 @@ export class GameRenderer {
         this.tooltipRenderer.drawTooltip(spaceObjects, ship);
     }
 
-    drawWorld(ship: Ship): void {
+    drawWorld(ship: Ship, targetingLine: TargetingLine | null = null): void {
         // Clear the canvas and draw space background
         this.drawBackground();
         
@@ -152,6 +159,17 @@ export class GameRenderer {
             this.world.getWidth(), 
             this.world.getHeight()
         );
+        
+        // Draw targeting line if present (before player ship so it appears underneath)
+        if (targetingLine) {
+            this.targetingLineRenderer.drawTargetingLine(
+                targetingLine,
+                centerX,
+                centerY,
+                ship.getX(),
+                ship.getY()
+            );
+        }
         
         // Draw player's ship in the center
         this.playerShipRenderer.drawPlayerShip(

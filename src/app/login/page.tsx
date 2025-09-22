@@ -146,7 +146,7 @@ const LoginPage: React.FC = () => {
 
             <button
               type="submit"
-              className="auth-button"
+              className="auth-button btn-primary"
               disabled={isLoading}
             >
               {isLoading 

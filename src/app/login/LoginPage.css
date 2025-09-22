@@ -10,7 +10,7 @@
 .login-container {
   background-color: #1e1e1e;
   border-radius: 12px;
-  border: 2px solid #4caf50;
+  border: 2px solid var(--primary-green);
   padding: 2rem;
   width: 100%;
   max-width: 400px;
@@ -18,7 +18,7 @@
 }
 
 .login-container h1 {
-  color: #4caf50;
+  color: var(--primary-green);
   text-align: center;
   margin-bottom: 0.5rem;
   font-size: 2rem;
@@ -60,7 +60,7 @@
 }
 
 .auth-tab.active {
-  background-color: #4caf50;
+  background-color: var(--primary-green);
   color: white;
 }
 
@@ -86,7 +86,7 @@
 }
 
 .form-group label {
-  color: #4caf50;
+  color: var(--primary-green);
   font-weight: 500;
   font-size: 0.9rem;
 }
@@ -103,7 +103,7 @@
 
 .form-group input:focus {
   outline: none;
-  border-color: #4caf50;
+  border-color: var(--primary-green);
 }
 
 .form-group input:disabled {
@@ -116,26 +116,16 @@
 }
 
 .auth-button {
-  background-color: #4caf50;
-  color: white;
-  border: none;
   padding: 0.75rem 1.5rem;
-  border-radius: 6px;
   font-size: 1rem;
   font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
   margin-top: 0.5rem;
 }
 
-.auth-button:hover:not(:disabled) {
-  background-color: #45a049;
-}
-
 .auth-button:disabled {
-  background-color: #2d2d2d;
-  color: #666;
-  cursor: not-allowed;
+  background-color: #2d2d2d !important;
+  color: #666 !important;
+  cursor: not-allowed !important;
 }
 
 .auth-footer {
@@ -154,7 +144,7 @@
 .link-button {
   background: none;
   border: none;
-  color: #4caf50;
+  color: var(--primary-green);
   cursor: pointer;
   text-decoration: underline;
   font-size: 0.9rem;
