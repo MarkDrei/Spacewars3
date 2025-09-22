@@ -29,7 +29,7 @@
 .iron-amount {
   font-size: 14px;
   font-weight: 600;
-  color: #4caf50;
+  color: var(--primary-green);
 }
 
 .status-indicator {
@@ -73,7 +73,7 @@
 }
 
 .status-indicator.green {
-  background-color: #4caf50;
+  background-color: var(--primary-green);
   box-shadow: 0 0 4px rgba(76, 175, 80, 0.5);
 }
 

@@ -1,6 +1,6 @@
 .navbar {
   background-color: #1e1e1e;
-  border-bottom: 2px solid #4caf50;
+  border-bottom: 2px solid var(--primary-green);
   position: sticky;
   top: 0;
   z-index: 1000;
@@ -17,7 +17,7 @@
 }
 
 .navbar-brand {
-  color: #4caf50;
+  color: var(--primary-green);
   text-decoration: none;
   font-size: 1.5rem;
   font-weight: bold;
@@ -39,7 +39,7 @@
 .navbar-toggle span {
   width: 25px;
   height: 3px;
-  background-color: #4caf50;
+  background-color: var(--primary-green);
   margin: 3px 0;
   transition: 0.3s;
   transform-origin: center;
@@ -76,7 +76,7 @@
 }
 
 .navbar-item.active {
-  background-color: #4caf50;
+  background-color: var(--primary-green);
   color: white;
 }
 
@@ -113,7 +113,7 @@
     opacity: 0;
     visibility: hidden;
     transition: all 0.3s ease;
-    border-top: 1px solid #4caf50;
+    border-top: 1px solid var(--primary-green);
   }
 
   .navbar-menu.active {

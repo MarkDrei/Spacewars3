@@ -6,6 +6,14 @@ export interface InterceptResult {
     angle: number;
     interceptPoint: { x: number; y: number };
     timeToIntercept: number;
+    globalCoordinates: {
+        shipX: number;
+        shipY: number;
+        targetX: number;
+        targetY: number;
+        interceptX: number;
+        interceptY: number;
+    };
 }
 
 export class InterceptCalculator {
@@ -41,7 +49,15 @@ export class InterceptCalculator {
             return {
                 angle: ship.getAngle(), // Keep current ship angle unchanged
                 interceptPoint: { x: x1, y: y1 },
-                timeToIntercept: 0
+                timeToIntercept: 0,
+                globalCoordinates: {
+                    shipX: x1,
+                    shipY: y1,
+                    targetX: x2,
+                    targetY: y2,
+                    interceptX: x1,
+                    interceptY: y1
+                }
             };
         }
         
@@ -51,7 +67,15 @@ export class InterceptCalculator {
             return {
                 angle: Number.NaN, // No valid angle since ship can't move
                 interceptPoint: { x: x2, y: y2 },
-                timeToIntercept: Number.POSITIVE_INFINITY
+                timeToIntercept: Number.POSITIVE_INFINITY,
+                globalCoordinates: {
+                    shipX: x1,
+                    shipY: y1,
+                    targetX: x2,
+                    targetY: y2,
+                    interceptX: x2,
+                    interceptY: y2
+                }
             };
         }
         
@@ -133,9 +157,23 @@ export class InterceptCalculator {
             return {
                 angle: Number.NaN,
                 interceptPoint: { x: x2, y: y2 },
-                timeToIntercept: Number.POSITIVE_INFINITY
+                timeToIntercept: Number.POSITIVE_INFINITY,
+                globalCoordinates: {
+                    shipX: x1,
+                    shipY: y1,
+                    targetX: x2,
+                    targetY: y2,
+                    interceptX: x2,
+                    interceptY: y2
+                }
             };
         }
+        
+        // Calculate global coordinates for the best solution
+        const globalTargetX = x2 + bestTargetWrapX * wrapSize;
+        const globalTargetY = y2 + bestTargetWrapY * wrapSize;
+        const globalInterceptX = x1 + s1 * Math.cos(bestThetaRad) * bestInterceptTime;
+        const globalInterceptY = y1 + s1 * Math.sin(bestThetaRad) * bestInterceptTime;
         
         // Log results
         console.log(`Interception angle: ${(bestThetaRad * 180 / Math.PI).toFixed(2)}°`);
@@ -143,13 +181,22 @@ export class InterceptCalculator {
         console.log(`Distance traveled by target: ${bestDistanceY.toFixed(2)} units`);
         console.log(`Time to intercept: ${bestInterceptTime.toFixed(2)} units`);
         console.log(`Interception point: (${bestInterceptX.toFixed(2)}, ${bestInterceptY.toFixed(2)})`);
+        console.log(`Global coordinates - Target: (${globalTargetX.toFixed(2)}, ${globalTargetY.toFixed(2)}), Intercept: (${globalInterceptX.toFixed(2)}, ${globalInterceptY.toFixed(2)})`);
         console.log(`Ship image offset: (0, 0), Target image offset: (${bestTargetWrapX}, ${bestTargetWrapY})`);
         console.log('================================');
         
         return {
             angle: radiansToDegrees(bestThetaRad), // Convert back to degrees for SpaceObject
             interceptPoint: { x: bestInterceptX, y: bestInterceptY },
-            timeToIntercept: bestInterceptTime
+            timeToIntercept: bestInterceptTime,
+            globalCoordinates: {
+                shipX: x1,
+                shipY: y1,
+                targetX: globalTargetX,
+                targetY: globalTargetY,
+                interceptX: globalInterceptX,
+                interceptY: globalInterceptY
+            }
         };
     }
     

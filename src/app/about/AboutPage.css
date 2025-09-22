@@ -15,11 +15,11 @@
   padding: 1.5rem;
   background-color: #1e1e1e;
   border-radius: 8px;
-  border-left: 4px solid #4caf50;
+  border-left: 4px solid var(--primary-green);
 }
 
 .about-section h2 {
-  color: #4caf50;
+  color: var(--primary-green);
   margin-bottom: 1rem;
   font-size: 1.5rem;
 }

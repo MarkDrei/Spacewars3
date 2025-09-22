@@ -18,13 +18,13 @@
   padding: 2rem;
   background-color: #1e1e1e;
   border-radius: 12px;
-  border: 2px solid #4caf50;
+  border: 2px solid var(--primary-green);
 }
 
 .avatar {
   width: 80px;
   height: 80px;
-  background-color: #4caf50;
+  background-color: var(--primary-green);
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -41,7 +41,7 @@
 }
 
 .level {
-  color: #4caf50;
+  color: var(--primary-green);
   font-weight: bold;
   margin: 0 0 0.5rem 0;
 }
@@ -64,11 +64,11 @@
   padding: 1.5rem;
   border-radius: 8px;
   text-align: center;
-  border-left: 4px solid #4caf50;
+  border-left: 4px solid var(--primary-green);
 }
 
 .stat-card h3 {
-  color: #4caf50;
+  color: var(--primary-green);
   margin: 0 0 1rem 0;
   font-size: 1rem;
 }
@@ -88,7 +88,7 @@
 }
 
 .achievements h3 {
-  color: #4caf50;
+  color: var(--primary-green);
   margin: 0 0 1.5rem 0;
 }
 
@@ -130,7 +130,7 @@
 }
 
 .playtime-info h3 {
-  color: #4caf50;
+  color: var(--primary-green);
   margin: 0 0 1rem 0;
 }
 
