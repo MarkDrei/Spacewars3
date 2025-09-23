@@ -160,6 +160,34 @@ code {
   min-width: 150px;
 }
 
+/* Responsive Design for Tables */
+@media (max-width: 1024px) {
+  .data-table-container {
+    overflow-x: auto;
+  }
+
+  .data-table {
+    min-width: 800px;
+  }
+}
+
+@media (max-width: 768px) {
+  .data-cell {
+    padding: 0.75rem 0.5rem;
+    font-size: 0.85rem;
+  }
+
+  .description-cell {
+    max-width: 200px;
+    font-size: 0.8rem;
+  }
+
+  .data-table thead th {
+    padding: 0.75rem 0.5rem;
+    font-size: 0.9rem;
+  }
+}
+
 /* Error and Loading States */
 .error-message {
   background-color: #1e1e1e;
