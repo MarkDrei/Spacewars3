@@ -53,18 +53,11 @@ export async function POST(request: NextRequest) {
     console.log(`⚡ Completing build: ${firstBuild.itemType}/${firstBuild.itemKey} for user: ${session.userId}`);
     
     // Get current tech counts
-    const techCounts = await techRepo.getTechCounts(session.userId!) || {
-      pulse_laser: 5,
-      auto_turret: 5,
-      plasma_lance: 0,
-      gauss_rifle: 0,
-      photon_torpedo: 0,
-      rocket_launcher: 0,
-      ship_hull: 5,
-      kinetic_armor: 5,
-      energy_shield: 5,
-      missile_jammer: 0
-    };
+    const techCounts = await techRepo.getTechCounts(session.userId!);
+    
+    if (!techCounts) {
+      throw new ApiError(404, 'User tech data not found');
+    }
     
     // Increment the tech count for the completed item
     if (firstBuild.itemKey in techCounts) {

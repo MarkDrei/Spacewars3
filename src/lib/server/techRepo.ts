@@ -32,6 +32,7 @@ export class TechRepo {
           gauss_rifle,
           photon_torpedo,
           rocket_launcher,
+          ship_hull,
           kinetic_armor,
           energy_shield,
           missile_jammer
@@ -222,18 +223,11 @@ export class TechRepo {
 
     if (completed.length > 0) {
       // Update tech counts for completed items
-      const techCounts = await this.getTechCounts(userId) || {
-        pulse_laser: 5,
-        auto_turret: 5,
-        plasma_lance: 0,
-        gauss_rifle: 0,
-        photon_torpedo: 0,
-        rocket_launcher: 0,
-        ship_hull: 5,
-        kinetic_armor: 5,
-        energy_shield: 5,
-        missile_jammer: 0
-      };
+      const techCounts = await this.getTechCounts(userId);
+      
+      if (!techCounts) {
+        throw new Error(`User tech data not found for userId: ${userId}`);
+      }
 
       for (const item of completed) {
         if (item.itemKey in techCounts) {
