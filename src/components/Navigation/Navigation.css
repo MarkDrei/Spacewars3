@@ -133,3 +133,15 @@
     text-align: center;
   }
 }
+
+/* Admin link styling */
+.admin-link {
+  border: 1px solid var(--primary-green);
+  border-radius: 4px;
+  background-color: rgba(76, 175, 80, 0.1);
+}
+
+.admin-link:hover {
+  background-color: rgba(76, 175, 80, 0.2);
+  border-color: #66bb6a;
+}

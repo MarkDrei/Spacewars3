@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useAuth } from '@/lib/client/hooks/useAuth';
 import './Navigation.css';
 
 interface NavigationProps {
@@ -12,6 +13,7 @@ interface NavigationProps {
 const Navigation: React.FC<NavigationProps> = ({ onLogout }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const pathname = usePathname();
+  const { username } = useAuth();
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
@@ -28,6 +30,9 @@ const Navigation: React.FC<NavigationProps> = ({ onLogout }) => {
     }
     return pathname === path;
   };
+
+  // Check if user has admin access
+  const hasAdminAccess = username === 'a' || username === 'q';
 
   return (
     <nav className="navbar">
@@ -85,6 +90,15 @@ const Navigation: React.FC<NavigationProps> = ({ onLogout }) => {
           >
             Profile
           </Link>
+          {hasAdminAccess && (
+            <Link 
+              href="/admin" 
+              className={`navbar-item ${isActive('/admin') ? 'active' : ''} admin-link`}
+              onClick={closeMenu}
+            >
+              🛠️ Admin
+            </Link>
+          )}
           <button 
             className="navbar-item navbar-logout" 
             onClick={() => {

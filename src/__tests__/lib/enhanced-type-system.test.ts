@@ -8,14 +8,14 @@ describe('Enhanced Type System Deadlock Prevention', () => {
     const emptyCtx = createEmptyContext();
     
     // ✅ This should work: Read operations
-    const readResult = await messageLock.read(emptyCtx, async (readCtx) => {
+    const readResult = await messageLock.read(emptyCtx, async () => {
       return 'read operation successful';
     });
     
     expect(readResult).toBe('read operation successful');
     
     // ✅ This should work: Write operations
-    const writeResult = await messageLock.write(emptyCtx, async (writeCtx) => {
+    const writeResult = await messageLock.write(emptyCtx, async () => {
       return 'write operation successful';
     });
     
@@ -27,7 +27,7 @@ describe('Enhanced Type System Deadlock Prevention', () => {
     const emptyCtx = createEmptyContext();
     
     // ✅ This should work: Write operation alone
-    const writeResult = await messageLock.write(emptyCtx, async (writeCtx) => {
+    const writeResult = await messageLock.write(emptyCtx, async () => {
       // ❌ The following would cause a compile-time error if uncommented:
       // return messageLock.read(writeCtx, async (readCtx) => {
       //   return 'this would deadlock';
@@ -59,13 +59,13 @@ describe('Enhanced Type System Deadlock Prevention', () => {
     const emptyCtx = createEmptyContext();
     
     // ✅ This pattern should work: Read first, then write (forward progression)
-    const readResult = await messageLock.read(emptyCtx, async (readCtx) => {
+    const readResult = await messageLock.read(emptyCtx, async () => {
       // Could potentially do write operations here if needed
       // (though in practice this might have runtime contention)
       return 'read operation';
     });
     
-    const writeResult = await messageLock.write(emptyCtx, async (writeCtx) => {
+    const writeResult = await messageLock.write(emptyCtx, async () => {
       return 'write operation';
     });
     
