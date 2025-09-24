@@ -63,7 +63,8 @@ function seedTestDatabase(db: sqlite3.Database): void {
     });
     
     // Create the default user with hashed password (sync version)
-    const hashedPassword = '$2b$10$example.hash'; // Use fixed hash for tests
+    // Hash corresponds to password 'a' for test consistency
+    const hashedPassword = '$2b$10$wjxntg6T2IBU42fmC1.sP.RxTQZlm3s2u8Ql7dnRXSwcW0hwZ5hFO';
     const techTreeJson = JSON.stringify(user.tech_tree);
     
     db.run(`

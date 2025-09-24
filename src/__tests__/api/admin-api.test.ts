@@ -28,20 +28,10 @@ describe('Admin Database API', () => {
   });
 
   it('admin_userA_hasAccess', async () => {
-    // Create user with exact username 'a' (admin access)
-    const { password } = await createUser();
-    
-    // Register the user with exact username 'a'
-    const registerRequest = createRequest('http://localhost:3000/api/register', 'POST', { 
-      username: 'a', 
-      password 
-    });
-    await registerPOST(registerRequest);
-    
-    // Login with exact username 'a'
+    // Use seeded user 'a' from test database (password 'a')
     const loginRequest = createRequest('http://localhost:3000/api/login', 'POST', { 
       username: 'a', 
-      password 
+      password: 'a'  // Seeded test user credentials
     });
     const loginResponse = await loginPOST(loginRequest);
     const sessionCookie = extractSessionCookie(loginResponse);
@@ -67,11 +57,11 @@ describe('Admin Database API', () => {
     expect(typeof data.totalUsers).toBe('number');
     expect(typeof data.totalObjects).toBe('number');
     
-    // Should have at least one user (the test user)
+    // Should have at least the seeded user
     expect(data.users.length).toBeGreaterThan(0);
     expect(data.totalUsers).toBeGreaterThan(0);
     
-    // Check user structure
+    // Check that user 'a' exists and has expected properties
     const user = data.users.find((u: { username: string }) => u.username === 'a');
     expect(user).toBeDefined();
     expect(user).toHaveProperty('id');

@@ -125,6 +125,8 @@ npm run test
 - **Environment**: jsdom for React components, node for API routes
 - **Concurrency Testing**: Comprehensive tests for lock ordering and deadlock prevention
 
+📚 **[Complete Testing Strategy Documentation](doc/testing.md)** - Comprehensive guide to database isolation, test categories, and execution patterns.
+
 ## Deployment
 
 The application is production-ready with multiple deployment options, featuring enterprise-grade reliability with deadlock-free architecture.
