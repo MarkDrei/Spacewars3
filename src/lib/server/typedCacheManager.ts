@@ -21,7 +21,7 @@ import { User } from './user';
 import { World } from './world';
 import { getDatabase } from './database';
 import { Message, UnreadMessage } from './messagesRepo';
-import { loadWorldFromDb } from './worldRepo';
+import { loadWorldFromDb, saveWorldToDb } from './worldRepo';
 import { getUserByIdFromDb, getUserByUsernameFromDb } from './userRepo';
 import sqlite3 from 'sqlite3';
 
@@ -648,6 +648,30 @@ export class TypedCacheManager {
   }
 
   /**
+   * Manually persist dirty world data to database
+   */
+  async persistDirtyWorld<CurrentLevel extends number>(
+    context: LockContext<any, CurrentLevel>
+  ): Promise<void> {
+    await this.worldLock.write(context, async (worldCtx) => {
+      if (!this.worldDirty || !this.world) {
+        return; // Nothing to persist
+      }
+
+      await this.databaseLock.write(worldCtx, async () => {
+        if (!this.db) throw new Error('Database not initialized');
+        
+        console.log('💾 Persisting world data to database...');
+        const saveCallback = saveWorldToDb(this.db);
+        await saveCallback(this.world!);
+        
+        this.worldDirty = false;
+        console.log('✅ World data persisted to database');
+      });
+    });
+  }
+
+  /**
    * Start background persistence timer
    */
   private startBackgroundPersistence(): void {
@@ -690,6 +714,12 @@ export class TypedCacheManager {
       await this.persistDirtyMessages(emptyCtx);
     }
 
+    // Persist dirty world data (CRITICAL FIX!)
+    if (this.worldDirty) {
+      console.log('💾 Background persisting world data...');
+      await this.persistDirtyWorld(emptyCtx);
+    }
+
     // Note: User persistence should also be added here when implemented
     // if (this.dirtyUsers.size > 0) {
     //   await this.persistDirtyUsers(emptyCtx);
@@ -712,6 +742,12 @@ export class TypedCacheManager {
       if (this.dirtyMessages.size > 0) {
         console.log('💾 Final persist of dirty messages before shutdown');
         await this.persistDirtyMessages(emptyCtx);
+      }
+      
+      // Final persist of dirty world data before shutdown
+      if (this.worldDirty) {
+        console.log('💾 Final persist of world data before shutdown');
+        await this.persistDirtyWorld(emptyCtx);
       }
       
       this.isInitialized = false;
