@@ -27,7 +27,7 @@ const GamePage: React.FC = () => {
     if (gameInstanceRef.current) {
       setDebugDrawingsEnabled(gameInstanceRef.current.getDebugDrawingsEnabled());
     }
-  }, []);
+  }, [gameInstanceRef.current]);
 
   const handleDebugToggle = (enabled: boolean) => {
     setDebugDrawingsEnabled(enabled);
