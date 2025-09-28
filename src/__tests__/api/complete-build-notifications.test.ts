@@ -5,7 +5,7 @@ import { createRequest } from '../helpers/apiTestHelpers';
 
 // Mock the entire typedCacheManager module to avoid dependency issues
 vi.mock('@/lib/server/typedCacheManager', async (importOriginal) => {
-  const actual = await importOriginal() as any;
+  const actual = await importOriginal() as Record<string, unknown>;
   return {
     ...actual,
     sendMessageToUserCached: vi.fn().mockResolvedValue(1),

@@ -58,15 +58,15 @@ describe('factoryService - Type Safety Functions', () => {
     
     test('getTechCount_undefinedTechCounts_returnsZero', () => {
       // Act & Assert
-      expect(getTechCount(undefined as any, 'pulse_laser')).toBe(0);
+      expect(getTechCount(undefined as unknown as TechCounts, 'pulse_laser')).toBe(0);
     });
     
     test('getTechCount_keyExistsButNotNumber_returnsZero', () => {
       // Arrange - simulate corrupted data
       const corruptedTechCounts = {
         pulse_laser: 5,
-        auto_turret: 'invalid' as any, // corrupted data
-        plasma_lance: null as any,     // corrupted data
+        auto_turret: 'invalid' as unknown as number, // corrupted data
+        plasma_lance: null as unknown as number,     // corrupted data
         gauss_rifle: 2,
         photon_torpedo: 1,
         rocket_launcher: 0,

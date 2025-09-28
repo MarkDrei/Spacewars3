@@ -1,9 +1,8 @@
 import { describe, expect, test, beforeEach, vi } from 'vitest';
-import { renderHook, waitFor, act } from '@testing-library/react';
+import { renderHook, act } from '@testing-library/react';
 import { useBuildQueue } from '@/lib/client/hooks/useBuildQueue';
 import { useFactoryDataCache } from '@/lib/client/hooks/useFactoryDataCache';
 import { factoryService } from '@/lib/client/services/factoryService';
-import { globalEvents, EVENTS } from '@/lib/client/services/eventService';
 
 // Mock the dependencies
 vi.mock('@/lib/client/hooks/useFactoryDataCache');

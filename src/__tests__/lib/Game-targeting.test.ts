@@ -16,10 +16,6 @@ const setPrivateProperty = (obj: unknown, propertyName: string, value: unknown):
   (obj as Record<string, unknown>)[propertyName] = value;
 };
 
-const getPrivateProperty = <T>(obj: unknown, propertyName: string): T => {
-  return (obj as Record<string, T>)[propertyName];
-};
-
 // Mock World class
 const mockWorld = {
   getShip: vi.fn().mockReturnValue({

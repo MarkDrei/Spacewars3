@@ -1,7 +1,6 @@
 import { describe, test, expect, beforeEach, vi, afterEach } from 'vitest';
 import { TechRepo } from '@/lib/server/techRepo';
 import { sendMessageToUserCached } from '@/lib/server/typedCacheManager';
-import { TechFactory } from '@/lib/server/TechFactory';
 import { createTestDatabase } from '../helpers/testDatabase';
 import sqlite3 from 'sqlite3';
 
