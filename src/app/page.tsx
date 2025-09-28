@@ -26,9 +26,9 @@ export default function RootPage() {
     );
   }
 
-  // If logged in, redirect to game
+  // If logged in, redirect to home
   if (isLoggedIn) {
-    router.push('/game');
+    router.push('/home');
     return null;
   }
 

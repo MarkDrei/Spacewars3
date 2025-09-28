@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useAuth } from '@/lib/client/hooks/useAuth';
 import './Navigation.css';
 
 interface NavigationProps {
@@ -12,6 +13,7 @@ interface NavigationProps {
 const Navigation: React.FC<NavigationProps> = ({ onLogout }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const pathname = usePathname();
+  const { username } = useAuth();
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
@@ -23,13 +25,19 @@ const Navigation: React.FC<NavigationProps> = ({ onLogout }) => {
 
   // Helper function to check if a path is active
   const isActive = (path: string) => {
+    if (path === '/home') {
+      return pathname === '/' || pathname === '/home';
+    }
     return pathname === path;
   };
+
+  // Check if user has admin access
+  const hasAdminAccess = username === 'a' || username === 'q';
 
   return (
     <nav className="navbar">
       <div className="navbar-container">
-        <Link href="/game" className="navbar-brand" onClick={closeMenu}>
+        <Link href="/home" className="navbar-brand" onClick={closeMenu}>
           Spacewars: Ironcore
         </Link>
         
@@ -41,11 +49,25 @@ const Navigation: React.FC<NavigationProps> = ({ onLogout }) => {
         
         <div className={`navbar-menu ${isMenuOpen ? 'active' : ''}`}>
           <Link 
+            href="/home" 
+            className={`navbar-item ${isActive('/home') ? 'active' : ''}`}
+            onClick={closeMenu}
+          >
+            Home
+          </Link>
+          <Link 
             href="/game" 
             className={`navbar-item ${isActive('/game') ? 'active' : ''}`}
             onClick={closeMenu}
           >
             Game
+          </Link>
+          <Link 
+            href="/factory" 
+            className={`navbar-item ${isActive('/factory') ? 'active' : ''}`}
+            onClick={closeMenu}
+          >
+            Factory
           </Link>
           <Link 
             href="/research" 
@@ -68,6 +90,15 @@ const Navigation: React.FC<NavigationProps> = ({ onLogout }) => {
           >
             Profile
           </Link>
+          {hasAdminAccess && (
+            <Link 
+              href="/admin" 
+              className={`navbar-item ${isActive('/admin') ? 'active' : ''} admin-link`}
+              onClick={closeMenu}
+            >
+              🛠️ Admin
+            </Link>
+          )}
           <button 
             className="navbar-item navbar-logout" 
             onClick={() => {

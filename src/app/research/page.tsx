@@ -196,8 +196,8 @@ const ResearchPage: React.FC = () => {
             </div>
           )}
 
-          <div className="research-table-container">
-          <table className="research-table">
+          <div className="data-table-container">
+          <table className="data-table">
             <thead>
               <tr>
                 <th>Name</th>
@@ -219,27 +219,27 @@ const ResearchPage: React.FC = () => {
                 return (
                   <tr 
                     key={research.type} 
-                    className={`research-row ${isActive ? 'active' : ''} ${isAnyResearchActive && !isActive ? 'disabled' : ''}`}
+                    className={`data-row ${isActive ? 'active' : ''} ${isAnyResearchActive && !isActive ? 'disabled' : ''}`}
                   >
-                    <td className="research-cell">
+                    <td className="data-cell">
                       {research.name}
                     </td>
-                    <td className="research-cell">
+                    <td className="data-cell">
                       {level}
                     </td>
-                    <td className="research-cell">
+                    <td className="data-cell">
                       {researchService.formatEffect(research.currentEffect, research.unit)}
                     </td>
-                    <td className="research-cell">
+                    <td className="data-cell">
                       {researchService.formatEffect(research.nextEffect, research.unit)}
                     </td>
-                    <td className="research-cell">
+                    <td className="data-cell">
                       {researchService.formatDuration(research.nextUpgradeDuration)}
                     </td>
-                    <td className="research-cell description-cell">
+                    <td className="data-cell description-cell">
                       {research.description}
                     </td>
-                    <td className="research-cell action-cell">
+                    <td className="data-cell action-cell">
                       {isActive ? (
                         <div className="research-countdown">
                           {remaining !== null ? researchService.formatDuration(remaining) : 'Active'}

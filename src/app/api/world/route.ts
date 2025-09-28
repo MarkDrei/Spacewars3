@@ -19,14 +19,17 @@ export async function GET(request: NextRequest) {
     // Create empty context for lock acquisition
     const emptyCtx = createEmptyContext();
     
-    // Execute with world read lock (read-only operation)
-    return await cacheManager.withWorldRead(emptyCtx, async (worldCtx) => {
-      // Get world data safely (we have world read lock)
+    // Execute with world write lock (we're modifying world state with physics)
+    return await cacheManager.withWorldWrite(emptyCtx, async (worldCtx) => {
+      // Get world data safely (we have world write lock)
       const world = cacheManager.getWorldUnsafe(worldCtx);
       
       // Update physics for all objects
       const currentTime = Date.now();
       world.updatePhysics(currentTime);
+      
+      // Mark world as dirty for persistence (critical fix!)
+      cacheManager.updateWorldUnsafe(world, worldCtx);
       
       // Return world data
       const worldData = world.getWorldData();

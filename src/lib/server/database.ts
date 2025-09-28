@@ -3,6 +3,7 @@ import path from 'path';
 import fs from 'fs';
 import { CREATE_TABLES } from './schema';
 import { seedDatabase, DEFAULT_USERS, DEFAULT_SPACE_OBJECTS } from './seedData';
+import { applyTechMigrations } from './migrations';
 
 let db: sqlite3.Database | null = null;
 let isInitializing = false;
@@ -62,7 +63,8 @@ function seedTestDatabase(db: sqlite3.Database): void {
     });
     
     // Create the default user with hashed password (sync version)
-    const hashedPassword = '$2b$10$example.hash'; // Use fixed hash for tests
+    // Hash corresponds to password 'a' for test consistency
+    const hashedPassword = '$2b$10$wjxntg6T2IBU42fmC1.sP.RxTQZlm3s2u8Ql7dnRXSwcW0hwZ5hFO';
     const techTreeJson = JSON.stringify(user.tech_tree);
     
     db.run(`
@@ -106,6 +108,9 @@ export function getDatabase(): sqlite3.Database {
         if (!dbExists) {
           console.log('🆕 New database detected, initializing...');
           await initializeDatabase(db!);
+        } else {
+          console.log('📊 Existing database detected, checking for migrations...');
+          await applyTechMigrations(db!);
         }
         
         isInitializing = false;

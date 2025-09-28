@@ -1,0 +1,181 @@
+/* Factory Page Styles - Dark Theme */
+.factory-page {
+  min-height: calc(100vh - 60px);
+  background-color: #121212;
+  color: white;
+  padding: 2rem 1rem;
+}
+
+.factory-container {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* Factory-specific styles (using shared table styles from globals.css) */
+
+/* Section Headers */
+.section-header {
+  color: var(--primary-green);
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 2rem 0 1rem 0;
+  text-align: center;
+  border-bottom: 2px solid var(--primary-green);
+  padding-bottom: 0.5rem;
+}
+
+.section-header:first-of-type {
+  margin-top: 0;
+}
+
+/* Build Queue specific styling */
+.section-header + .data-table-container {
+  margin-bottom: 2rem;
+}
+
+/* Build Queue countdown styling */
+.research-countdown {
+  color: var(--primary-green);
+  font-weight: 600;
+  font-size: 1.1rem;
+  font-family: 'Courier New', monospace;
+}
+
+/* Cheat Mode Section */
+.cheat-section {
+  margin: 1.5rem 0;
+  padding: 1rem;
+  background: rgba(255, 193, 7, 0.1);
+  border: 1px solid rgba(255, 193, 7, 0.3);
+  border-radius: 8px;
+  text-align: center;
+}
+
+.cheat-button {
+  background: linear-gradient(135deg, #ffc107, #ff9800);
+  color: #000;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-width: 200px;
+}
+
+.cheat-button:hover:not(:disabled) {
+  background: linear-gradient(135deg, #ff9800, #f57c00);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 193, 7, 0.3);
+}
+
+.cheat-button:disabled {
+  background: #666;
+  color: #999;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Build Button */
+.build-button {
+  background-color: var(--primary-green);
+  color: white;
+  border: none;
+  padding: 0.6rem 1.2rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  min-width: 120px;
+}
+
+.build-button:hover:not(:disabled) {
+  background-color: var(--primary-green-hover);
+}
+
+.build-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.build-button:active:not(:disabled) {
+  background-color: var(--primary-green-active);
+  transform: translateY(1px);
+}
+
+/* Cost display */
+.cost-affordable {
+  color: var(--primary-green);
+  font-weight: 500;
+}
+
+.cost-expensive {
+  color: #f44336;
+  font-weight: 500;
+}
+
+/* Stats display */
+.stat-value {
+  font-weight: 600;
+  color: #fff;
+}
+
+.stat-weak {
+  color: #ffeb3b;
+}
+
+.stat-medium {
+  color: #ff9800;
+}
+
+.stat-strong {
+  color: #f44336;
+}
+
+/* Subtype badges */
+.subtype-badge {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.subtype-projectile {
+  background-color: rgba(255, 152, 0, 0.2);
+  color: #ff9800;
+  border: 1px solid #ff9800;
+}
+
+.subtype-energy {
+  background-color: rgba(33, 150, 243, 0.2);
+  color: #2196f3;
+  border: 1px solid #2196f3;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1200px) {
+  .factory-container {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 768px) {
+  .factory-page {
+    padding: 1rem 0.5rem;
+  }
+  
+  .build-button {
+    min-width: 100px;
+    padding: 0.5rem 1rem;
+    font-size: 0.8rem;
+  }
+  
+  .section-header {
+    font-size: 1.3rem;
+  }
+}

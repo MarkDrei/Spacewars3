@@ -60,7 +60,7 @@ export async function closeTestDatabase(): Promise<void> {
 export async function clearTestDatabase(): Promise<void> {
   const db = await getTestDatabase();
   
-  const tables = ['users', 'space_objects'];
+  const tables = ['users', 'space_objects', 'messages'];
   
   await Promise.all(
     tables.map(

@@ -7,6 +7,7 @@ import { User, SaveUserCallback } from './user';
 import { createInitialTechTree } from './techtree';
 import { getTypedCacheManager } from './typedCacheManager';
 import { createEmptyContext } from './typedLocks';
+import { sendMessageToUserCached } from './typedCacheManager';
 
 interface UserRow {
   id: number;
@@ -60,7 +61,7 @@ export function getUserByUsernameFromDb(db: sqlite3.Database, username: string, 
 }
 
 // Cache-aware public functions
-export async function getUserById(db: sqlite3.Database, id: number, _saveCallback: SaveUserCallback): Promise<User | null> {
+export async function getUserById(db: sqlite3.Database, id: number): Promise<User | null> {
   // Use typed cache manager for cache-aware access
   const cacheManager = getTypedCacheManager();
   await cacheManager.initialize();
@@ -88,10 +89,12 @@ export async function getUserById(db: sqlite3.Database, id: number, _saveCallbac
   });
 }
 
-export async function getUserByUsername(db: sqlite3.Database, username: string, saveCallback: SaveUserCallback): Promise<User | null> {
-  // Note: Username lookup still requires database access since we don't cache by username
-  // This could be optimized in the future with a username -> userId mapping cache
-  return getUserByUsernameFromDb(db, username, saveCallback);
+export async function getUserByUsername(db: sqlite3.Database, username: string): Promise<User | null> {
+  // Use typed cache manager for cache-aware username lookup
+  const cacheManager = getTypedCacheManager();
+  await cacheManager.initialize();
+  
+  return await cacheManager.getUserByUsername(username);
 }
 
 export function createUser(db: sqlite3.Database, username: string, password_hash: string, saveCallback: SaveUserCallback): Promise<User> {
@@ -128,8 +131,11 @@ async function createUserWithShip(db: sqlite3.Database, username: string, passwo
               const userId = this.lastID;
               console.log(`✅ Created user ${username} (ID: ${userId}) with ship ID ${shipId}`);
               
-              // Create the user object and cache it
+              // Create the user object
               const user = new User(userId, username, password_hash, 0.0, now, techTree, saveCallback, shipId);
+              
+              // Send welcome message to new user
+              await sendMessageToUserCached(userId, `Welcome to Spacewars, ${username}! Your journey among the stars begins now. Navigate wisely and collect resources to upgrade your ship.`);
               
               try {
                 // Note: User creation doesn't need immediate caching since
