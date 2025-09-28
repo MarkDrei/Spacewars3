@@ -8,7 +8,8 @@ import { getDatabase } from '@/lib/server/database';
 
 /**
  * POST /api/complete-build
- * Instantly complete the first item in build queue (cheat mode for developers)
+ * Instantly complete the first item in build queue by fast-forwarding its completion time
+ * Uses the established processCompletedBuilds() algorithm for consistency
  * Only works for usernames "a" or "q"
  */
 export async function POST(request: NextRequest) {
@@ -48,36 +49,46 @@ export async function POST(request: NextRequest) {
     
     // Get the first item in queue
     const firstBuild = buildQueue[0];
-    const remainingQueue = buildQueue.slice(1); // Remove first item
+    const now = Math.floor(Date.now() / 1000);
     
-    console.log(`⚡ Completing build: ${firstBuild.itemType}/${firstBuild.itemKey} for user: ${session.userId}`);
+    console.log(`⚡ Fast-forwarding time to complete build: ${firstBuild.itemType}/${firstBuild.itemKey} for user: ${session.userId}`);
     
-    // Get current tech counts
-    const techCounts = await techRepo.getTechCounts(session.userId!);
-    
-    if (!techCounts) {
-      throw new ApiError(404, 'User tech data not found');
-    }
-    
-    // Increment the tech count for the completed item
-    if (firstBuild.itemKey in techCounts) {
-      techCounts[firstBuild.itemKey as keyof typeof techCounts] += 1;
-    }
-    
-    // Update database with new counts and queue
-    await techRepo.updateTechCounts(session.userId!, techCounts);
-    await techRepo.updateBuildQueue(session.userId!, remainingQueue);
-    
-    console.log(`✅ Cheat completed build: ${firstBuild.itemType}/${firstBuild.itemKey} for user: ${userData.username}`);
-    
-    return NextResponse.json({
-      success: true,
-      message: `Completed ${firstBuild.itemType}: ${firstBuild.itemKey}`,
-      completedItem: {
-        itemKey: firstBuild.itemKey,
-        itemType: firstBuild.itemType
+    // Advanced time simulation: Set completion time to NOW for the first item
+    // This lets processCompletedBuilds() handle everything naturally
+    const updatedQueue = buildQueue.map((item, index) => {
+      if (index === 0) {
+        // Make the first item completed by setting its time to now
+        return { ...item, completionTime: now };
       }
+      return item;
     });
+    
+    // Update the queue with the advanced time
+    await techRepo.updateBuildQueue(session.userId!, updatedQueue);
+    
+    // Now use the established algorithm to process completed builds
+    // This handles tech count updates, notifications, and queue management
+    const result = await techRepo.processCompletedBuilds(session.userId!);
+    
+    if (result.completed.length > 0) {
+      const completedItem = result.completed[0];
+      console.log(`✅ Cheat completed build: ${completedItem.itemType}/${completedItem.itemKey} for user: ${userData.username}`);
+      
+      return NextResponse.json({
+        success: true,
+        message: `Completed ${completedItem.itemType}: ${completedItem.itemKey}`,
+        completedItem: {
+          itemKey: completedItem.itemKey,
+          itemType: completedItem.itemType
+        }
+      });
+    } else {
+      // This shouldn't happen, but handle gracefully
+      return NextResponse.json({
+        success: false,
+        message: 'Failed to complete build item'
+      });
+    }
     
   } catch (error) {
     console.error('Complete build API error:', error);

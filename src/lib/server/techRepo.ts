@@ -5,6 +5,7 @@
 import sqlite3 from 'sqlite3';
 import { TechCounts, TechFactory } from './TechFactory';
 import { getDatabase } from './database';
+import { sendMessageToUserCached } from './typedCacheManager';
 
 export interface BuildQueueItem {
   itemKey: string;
@@ -41,6 +42,7 @@ export class TechRepo {
       `);
       
       stmt.get(userId, (err: Error | null, result: TechCounts | undefined) => {
+        stmt.finalize(); // Always finalize the statement
         if (err) {
           reject(err);
           return;
@@ -71,6 +73,7 @@ export class TechRepo {
       `);
       
       stmt.run([...values, userId], (err: Error | null) => {
+        stmt.finalize(); // Always finalize the statement
         if (err) {
           reject(err);
           return;
@@ -92,6 +95,7 @@ export class TechRepo {
       `);
       
       stmt.get(userId, (err: Error | null, result: { build_queue: string | null; build_start_sec: number | null } | undefined) => {
+        stmt.finalize(); // Always finalize the statement
         if (err) {
           reject(err);
           return;
@@ -126,6 +130,7 @@ export class TechRepo {
       `);
       
       stmt.run(queueJson, startTime || null, userId, (err: Error | null) => {
+        stmt.finalize(); // Always finalize the statement
         if (err) {
           reject(err);
           return;
@@ -237,9 +242,45 @@ export class TechRepo {
 
       await this.updateTechCounts(userId, techCounts);
       await this.updateBuildQueue(userId, remaining);
+      
+      // Send notifications for completed builds
+      // In production, this runs async to not block the response
+      // In tests, we await it to ensure proper test behavior
+      if (process.env.NODE_ENV === 'test') {
+        // Wait for notifications in test environment
+        await this.sendBuildCompletionNotifications(userId, completed);
+      } else {
+        // Don't block in production - send async
+        this.sendBuildCompletionNotifications(userId, completed).catch((error: Error) => {
+          console.error('❌ Failed to send build completion notifications:', error);
+        });
+      }
     }
 
     return { completed, remaining };
+  }
+
+  /**
+   * Send notifications for completed build items
+   */
+  private async sendBuildCompletionNotifications(userId: number, completed: BuildQueueItem[]): Promise<void> {
+    for (const item of completed) {
+      try {
+        // Get tech spec to create a more informative message
+        const spec = TechFactory.getTechSpec(item.itemKey, item.itemType);
+        const itemName = spec?.name || item.itemKey.replace('_', ' ');
+        const itemTypeLabel = item.itemType === 'weapon' ? 'weapon' : 'defense system';
+        
+        // Create notification message
+        const message = `🔧 Construction complete: ${itemName} (${itemTypeLabel}) is now ready for deployment!`;
+        
+        console.log(`📝 Sending build completion notification to user ${userId}: "${message}"`);
+        await sendMessageToUserCached(userId, message);
+      } catch (error) {
+        console.error(`❌ Failed to send notification for completed ${item.itemType} ${item.itemKey}:`, error);
+        // Continue with other notifications even if one fails
+      }
+    }
   }
 
   /**
@@ -299,6 +340,7 @@ export class TechRepo {
         `);
         
         stmt.run([...values, ironDelta, userId], (err: Error | null) => {
+          stmt.finalize(); // Always finalize the statement
           if (err) {
             this.db.run('ROLLBACK');
             reject(err);
@@ -325,6 +367,7 @@ export class TechRepo {
       const stmt = this.db.prepare('SELECT iron FROM users WHERE id = ?');
       
       stmt.get(userId, (err: Error | null, result: { iron: number } | undefined) => {
+        stmt.finalize(); // Always finalize the statement
         if (err) {
           reject(err);
           return;
@@ -346,6 +389,7 @@ export class TechRepo {
       `);
       
       stmt.run(ironDelta, userId, (err: Error | null) => {
+        stmt.finalize(); // Always finalize the statement
         if (err) {
           reject(err);
           return;
