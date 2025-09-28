@@ -1,0 +1,24 @@
+# Development Dockerfile for hot reloading
+FROM node:18-alpine
+
+# Set the working directory inside the container
+WORKDIR /app
+
+# Copy package.json and package-lock.json (if available)
+COPY package*.json ./
+
+# Install all dependencies (including dev dependencies)
+RUN npm ci
+
+# Create database directory
+RUN mkdir -p database
+
+# Expose the port that Next.js runs on
+EXPOSE 3000
+
+# Set environment variables for development
+ENV NODE_ENV=development
+ENV SESSION_SECRET=your-secret-key-must-be-at-least-32-characters-long-for-docker
+
+# Start the development server with hot reloading
+CMD ["npm", "run", "dev"]

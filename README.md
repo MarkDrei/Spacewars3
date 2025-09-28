@@ -75,12 +75,22 @@ src/
 
 ## Development
 
-### Prerequisites
+### 🐳 Docker Setup (Recommended)
 
-- Node.js (v18+)
-- npm (v8+)
+The project runs in Docker containers for consistent development across all environments:
 
-### Quick Start
+```bash
+# Start development environment
+docker-compose up
+
+# Access at http://localhost:3000
+```
+
+For detailed Docker instructions, VS Code integration, and production deployment, see **[Docker Setup Guide](doc/DOCKER_README.md)**.
+
+### 📦 Local Node.js Setup (Alternative)
+
+If you prefer running without Docker:
 
 ```bash
 # Install dependencies
@@ -89,26 +99,14 @@ npm install
 # Start development server
 npm run dev
 
-# Build for production
-npm run build
-
-# Start production server
-npm start
-
 # Run tests
 npm run test
 ```
 
-### Development Commands
+### Prerequisites
 
-| Command | Description |
-|---------|-------------|
-| `npm run dev` | Start Next.js development server (port 3000) |
-| `npm run build` | Build optimized production bundle |
-| `npm start` | Start production server |
-| `npm run test` | Run all tests with Vitest |
-| `npm run test:ui` | Run tests with UI interface |
-| `npm run lint` | Run ESLint |
+- **Docker**: Docker Desktop (recommended approach)
+- **Node.js**: v18+ and npm (alternative approach)
 
 ### Database
 
@@ -121,9 +119,8 @@ npm run test
 
 - **Test Structure**: Tests located in `src/__tests__/`
 - **Pattern**: `whatIsTested_scenario_expectedOutcome`
-- **Coverage**: **196/196 tests passing (100%)**
 - **Environment**: jsdom for React components, node for API routes
-- **Concurrency Testing**: Comprehensive tests for lock ordering and deadlock prevention
+
 
 ## Deployment
 

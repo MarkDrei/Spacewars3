@@ -1,0 +1,28 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    ports:
+      - "3000:3000"
+    volumes:
+      # Mount source code for hot reloading (excludes node_modules)
+      - .:/app
+      - /app/node_modules
+      # Persist database between container restarts
+      - database_data:/app/database
+    environment:
+      - NODE_ENV=development
+      - SESSION_SECRET=your-secret-key-must-be-at-least-32-characters-long-for-docker
+    stdin_open: true
+    tty: true
+    networks:
+      - spacewars-network
+
+volumes:
+  # Named volume for database persistence
+  database_data:
+
+networks:
+  spacewars-network:
+    driver: bridge

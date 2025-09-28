@@ -39,3 +39,7 @@ next-env.d.ts
 # database
 database
 database_bak
+
+# docker
+.docker/
+docker-compose.override.yml

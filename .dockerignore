@@ -1,0 +1,9 @@
+# Docker
+.dockerignore
+Dockerfile
+Dockerfile.dev
+docker-compose*.yml
+.devcontainer/
+
+# Docker volumes and containers
+database_data/

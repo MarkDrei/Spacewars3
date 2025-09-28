@@ -1,0 +1,23 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    volumes:
+      # Only persist database in production
+      - database_data:/app/database
+    environment:
+      - NODE_ENV=production
+      - SESSION_SECRET=${SESSION_SECRET:-your-secret-key-must-be-at-least-32-characters-long-for-docker}
+    networks:
+      - spacewars-network
+
+volumes:
+  # Named volume for database persistence
+  database_data:
+
+networks:
+  spacewars-network:
+    driver: bridge
