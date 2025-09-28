@@ -40,6 +40,31 @@ export interface TechCounts {
   missile_jammer: number;
 }
 
+/**
+ * Type-safe accessor for TechCounts properties
+ * Returns the count for a given tech key if it exists, otherwise 0
+ */
+export function getTechCount(techCounts: TechCounts | null, key: string): number {
+  if (!techCounts) return 0;
+  
+  // Type-safe check if the key exists in TechCounts
+  if (key in techCounts && typeof techCounts[key as keyof TechCounts] === 'number') {
+    return techCounts[key as keyof TechCounts];
+  }
+  
+  return 0;
+}
+
+/**
+ * Get all valid tech keys that exist in TechCounts interface
+ */
+export function getValidTechKeys(): (keyof TechCounts)[] {
+  return [
+    'pulse_laser', 'auto_turret', 'plasma_lance', 'gauss_rifle', 'photon_torpedo', 'rocket_launcher',
+    'ship_hull', 'kinetic_armor', 'energy_shield', 'missile_jammer'
+  ];
+}
+
 export interface BuildQueueItem {
   itemKey: string;
   itemType: 'weapon' | 'defense';

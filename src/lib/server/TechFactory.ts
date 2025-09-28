@@ -160,6 +160,19 @@ export class TechFactory {
   };
 
   /**
+   * Type-safe accessor for TechCounts properties
+   * Returns the count for a given tech key if it exists, otherwise 0
+   */
+  private static getTechCount(techCounts: TechCounts, key: string): number {
+    // Type-safe check if the key exists in TechCounts
+    if (key in techCounts && typeof techCounts[key as keyof TechCounts] === 'number') {
+      return techCounts[key as keyof TechCounts];
+    }
+    
+    return 0;
+  }
+
+  /**
    * Get weapon specification by key
    */
   static getWeaponSpec(weaponKey: string): WeaponSpec | null {
@@ -266,7 +279,7 @@ export class TechFactory {
     let totalDamage = 0;
 
     Object.entries(this.WEAPON_CATALOG).forEach(([key, spec]) => {
-      const count = techCounts[key as keyof TechCounts] || 0;
+      const count = this.getTechCount(techCounts, key);
       if (count > 0) {
         // DPS = damage / reload time (converted to seconds)
         const weaponDPS = spec.baseDamage / (spec.reloadTimeMinutes * 60);
@@ -344,7 +357,7 @@ export class TechFactory {
     }
 
     // Get number of weapons of this type
-    const weaponCount = techCounts[weaponKey as keyof TechCounts] || 0;
+    const weaponCount = this.getTechCount(techCounts, weaponKey);
     if (weaponCount === 0) {
       return { weaponsHit: 0, shieldDamage: 0, armorDamage: 0, hullDamage: 0 };
     }

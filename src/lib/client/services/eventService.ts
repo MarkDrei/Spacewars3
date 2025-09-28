@@ -29,5 +29,8 @@ export const globalEvents = new EventEmitter();
 export const EVENTS = {
   RESEARCH_TRIGGERED: 'research_triggered',
   RESEARCH_COMPLETED: 'research_completed',
-  IRON_UPDATED: 'iron_updated'
+  IRON_UPDATED: 'iron_updated',
+  BUILD_QUEUE_STARTED: 'build_queue_started',
+  BUILD_QUEUE_COMPLETED: 'build_queue_completed',
+  BUILD_ITEM_COMPLETED: 'build_item_completed'
 };

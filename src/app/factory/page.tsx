@@ -1,178 +1,42 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React from 'react';
 import AuthenticatedLayout from '@/components/Layout/AuthenticatedLayout';
 import { useAuth } from '@/lib/client/hooks/useAuth';
-import { userStatsService } from '@/lib/client/services/userStatsService';
+import { useIron } from '@/lib/client/hooks/useIron';
+import { useBuildQueue } from '@/lib/client/hooks/useBuildQueue';
+import { useTechCounts } from '@/lib/client/hooks/useTechCounts';
 import { 
   factoryService, 
-  WeaponSpec, 
-  DefenseSpec, 
-  TechCounts, 
-  BuildQueueItem
+  getTechCount
 } from '@/lib/client/services/factoryService';
 import './FactoryPage.css';
 
 const FactoryPage: React.FC = () => {
   const { isLoggedIn, isLoading: authLoading } = useAuth();
-  const [weapons, setWeapons] = useState<Record<string, WeaponSpec>>({});
-  const [defenses, setDefenses] = useState<Record<string, DefenseSpec>>({});
-  const [techCounts, setTechCounts] = useState<TechCounts | null>(null);
-  const [buildQueue, setBuildQueue] = useState<BuildQueueItem[]>([]);
-  const [currentIron, setCurrentIron] = useState<number>(0);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [isBuilding, setIsBuilding] = useState<boolean>(false);
-  const [isCompletingBuild, setIsCompletingBuild] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
-  
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const { ironAmount } = useIron(isLoggedIn);
+  const {
+    buildQueue,
+    isLoading: isBuildQueueLoading,
+    isBuilding,
+    isCompletingBuild,
+    error: buildQueueError,
+    buildItem,
+    completeBuild,
+    refetch: refetchBuildQueue
+  } = useBuildQueue(isLoggedIn);
+  const {
+    techCounts,
+    weapons,
+    defenses,
+    isLoading: isTechCountsLoading,
+    error: techCountsError,
+    refetch: refetchTechCounts
+  } = useTechCounts(isLoggedIn);
 
-  // Fetch initial data
-  const fetchData = async () => {
-    try {
-      setError(null);
-      
-      // Fetch catalog, build status, and user stats in parallel (following research page pattern)
-      const [catalogResult, statusResult, userStatsResult] = await Promise.all([
-        factoryService.getTechCatalog(),
-        factoryService.getBuildStatus(),
-        userStatsService.getUserStats()
-      ]);
-
-      if ('error' in catalogResult) {
-        setError(catalogResult.error);
-        return;
-      }
-
-      if ('error' in statusResult) {
-        setError(statusResult.error);
-        return;
-      }
-
-      if ('error' in userStatsResult) {
-        setError(userStatsResult.error);
-        return;
-      }
-
-      setWeapons(catalogResult.weapons);
-      setDefenses(catalogResult.defenses);
-      setTechCounts(statusResult.techCounts);
-      setBuildQueue(statusResult.buildQueue);
-      setCurrentIron(userStatsResult.iron);
-
-    } catch (err) {
-      setError('Failed to load factory data');
-      console.error('Error fetching factory data:', err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Handle building an item
-  const handleBuildItem = async (itemKey: string, itemType: 'weapon' | 'defense') => {
-    if (isBuilding) return;
-
-    setIsBuilding(true);
-    setError(null);
-
-    try {
-      const result = await factoryService.buildItem(itemKey, itemType);
-
-      if ('error' in result) {
-        setError(result.error);
-        return;
-      }
-
-      // Refresh data after successful build
-      await fetchData();
-      
-    } catch (err) {
-      setError('Failed to start building item');
-      console.error('Error building item:', err);
-    } finally {
-      setIsBuilding(false);
-    }
-  };
-
-  // Handle completing a build (cheat mode)
-  const handleCompleteBuild = async () => {
-    if (isCompletingBuild || buildQueue.length === 0) return;
-
-    setIsCompletingBuild(true);
-    setError(null);
-
-    try {
-      const result = await factoryService.completeBuild();
-
-      if ('error' in result) {
-        setError(result.error);
-        return;
-      }
-
-      // Refresh data after successful completion
-      await fetchData();
-      
-    } catch (err) {
-      setError('Failed to complete build');
-      console.error('Error completing build:', err);
-    } finally {
-      setIsCompletingBuild(false);
-    }
-  };
-
-  // Update countdown timer for build queue
-  useEffect(() => {
-    if (buildQueue.length === 0) {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-      return;
-    }
-
-    intervalRef.current = setInterval(() => {
-      setBuildQueue(prevQueue => {
-        const now = Math.floor(Date.now() / 1000);
-        const updatedQueue = prevQueue.map(item => ({
-          ...item,
-          remainingSeconds: Math.max(0, item.completionTime - now)
-        }));
-
-        // Check if any builds completed
-        const hasCompleted = updatedQueue.some(item => item.remainingSeconds <= 0);
-        if (hasCompleted) {
-          // Refresh data to get updated counts
-          fetchData();
-        }
-
-        return updatedQueue;
-      });
-    }, 1000);
-
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-    };
-  }, [buildQueue.length]);
-
-  // Initial data fetch
-  useEffect(() => {
-    // Don't fetch if still checking auth or not logged in
-    if (authLoading || !isLoggedIn) {
-      return;
-    }
-
-    fetchData();
-    
-    // Cleanup on unmount
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
-    };
-  }, [isLoggedIn, authLoading]);
+  // Combine loading and error states from both hooks
+  const isLoading = isBuildQueueLoading || isTechCountsLoading;
+  const error = buildQueueError || techCountsError;
 
   if (authLoading) {
     return (
@@ -222,7 +86,10 @@ const FactoryPage: React.FC = () => {
             <div className="error-message">
               Error: {error}
             </div>
-            <button className="retry-button" onClick={fetchData}>Retry</button>
+            <button className="retry-button" onClick={() => {
+              refetchBuildQueue();
+              refetchTechCounts();
+            }}>Retry</button>
           </div>
         </div>
       </AuthenticatedLayout>
@@ -293,7 +160,7 @@ const FactoryPage: React.FC = () => {
               <div className="cheat-section">
                 <button
                   className="cheat-button"
-                  onClick={handleCompleteBuild}
+                  onClick={completeBuild}
                   disabled={isCompletingBuild || buildQueue.length === 0}
                 >
                   {isCompletingBuild ? 'Completing...' : '⚡ Complete First Build (Cheat)'}
@@ -324,11 +191,11 @@ const FactoryPage: React.FC = () => {
                     </td>
                     <td className="data-cell">
                       <span className="stat-value">
-                        {techCounts[key as keyof TechCounts] || 0}
+                        {getTechCount(techCounts, key)}
                       </span>
                     </td>
                     <td className="data-cell">
-                      <span className={factoryService.canAfford(defense.baseCost, currentIron) ? 'cost-affordable' : 'cost-expensive'}>
+                      <span className={factoryService.canAfford(defense.baseCost, ironAmount) ? 'cost-affordable' : 'cost-expensive'}>
                         {defense.baseCost.toLocaleString()} Iron
                       </span>
                     </td>
@@ -341,8 +208,8 @@ const FactoryPage: React.FC = () => {
                     <td className="data-cell action-cell">
                       <button
                         className="build-button"
-                        disabled={!factoryService.canAfford(defense.baseCost, currentIron) || isBuilding}
-                        onClick={() => handleBuildItem(key, 'defense')}
+                        disabled={!factoryService.canAfford(defense.baseCost, ironAmount) || isBuilding}
+                        onClick={() => buildItem(key, 'defense')}
                       >
                         {isBuilding ? 'Building...' : 'Build'}
                       </button>
@@ -390,7 +257,7 @@ const FactoryPage: React.FC = () => {
                     </td>
                     <td className="data-cell">
                       <span className="stat-value">
-                        {techCounts[key as keyof TechCounts] || 0}
+                        {getTechCount(techCounts, key)}
                       </span>
                     </td>
                     <td className="data-cell">
@@ -403,7 +270,7 @@ const FactoryPage: React.FC = () => {
                       {factoryService.formatDuration(weapon.reloadTimeMinutes)}
                     </td>
                     <td className="data-cell">
-                      <span className={factoryService.canAfford(weapon.baseCost, currentIron) ? 'cost-affordable' : 'cost-expensive'}>
+                      <span className={factoryService.canAfford(weapon.baseCost, ironAmount) ? 'cost-affordable' : 'cost-expensive'}>
                         {weapon.baseCost.toLocaleString()} Iron
                       </span>
                     </td>
@@ -419,8 +286,8 @@ const FactoryPage: React.FC = () => {
                     <td className="data-cell action-cell">
                       <button
                         className="build-button"
-                        disabled={!factoryService.canAfford(weapon.baseCost, currentIron) || isBuilding}
-                        onClick={() => handleBuildItem(key, 'weapon')}
+                        disabled={!factoryService.canAfford(weapon.baseCost, ironAmount) || isBuilding}
+                        onClick={() => buildItem(key, 'weapon')}
                       >
                         {isBuilding ? 'Building...' : 'Build'}
                       </button>
