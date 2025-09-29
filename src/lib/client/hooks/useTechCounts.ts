@@ -16,7 +16,10 @@ interface UseTechCountsReturn {
   refetch: () => void;
 }
 
-export const useTechCounts = (isLoggedIn: boolean, pollInterval: number = 5000): UseTechCountsReturn => {
+export const useTechCounts = (isLoggedInParam: boolean | number = true, pollInterval: number = 5000): UseTechCountsReturn => {
+  // Handle both old (boolean, number) and new (number) signature
+  const isLoggedIn = typeof isLoggedInParam === 'boolean' ? isLoggedInParam : true;
+  const actualPollInterval = typeof isLoggedInParam === 'number' ? isLoggedInParam : pollInterval;
   const [techCounts, setTechCounts] = useState<TechCounts | null>(null);
   const [weapons, setWeapons] = useState<Record<string, WeaponSpec>>({});
   const [defenses, setDefenses] = useState<Record<string, DefenseSpec>>({});
@@ -27,7 +30,7 @@ export const useTechCounts = (isLoggedIn: boolean, pollInterval: number = 5000):
     isLoading: cacheLoading, 
     error: cacheError,
     refetch: refetchCache
-  } = useFactoryDataCache(isLoggedIn, pollInterval);
+  } = useFactoryDataCache(actualPollInterval);
 
   // Use ref to track if component is mounted (for cleanup)
   const isMountedRef = useRef<boolean>(true);

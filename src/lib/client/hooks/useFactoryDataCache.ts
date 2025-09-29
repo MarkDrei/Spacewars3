@@ -108,7 +108,10 @@ const fetchFactoryData = async (retryCount: number = 0): Promise<void> => {
   }
 };
 
-export const useFactoryDataCache = (isLoggedIn: boolean, pollInterval: number = 5000): UseFactoryDataCacheReturn => {
+export const useFactoryDataCache = (isLoggedInParam: boolean | number = true, pollInterval: number = 5000): UseFactoryDataCacheReturn => {
+  // Handle both old (boolean, number) and new (number) signature
+  const isLoggedIn = typeof isLoggedInParam === 'boolean' ? isLoggedInParam : true;
+  const actualPollInterval = typeof isLoggedInParam === 'number' ? isLoggedInParam : pollInterval;
   const [data, setData] = useState<FactoryDataCache | null>(sharedCache);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -169,7 +172,7 @@ export const useFactoryDataCache = (isLoggedIn: boolean, pollInterval: number = 
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
     }
-    intervalRef.current = setInterval(fetchData, pollInterval);
+    intervalRef.current = setInterval(fetchData, actualPollInterval);
 
     // Cleanup
     return () => {
@@ -180,7 +183,7 @@ export const useFactoryDataCache = (isLoggedIn: boolean, pollInterval: number = 
         intervalRef.current = null;
       }
     };
-  }, [isLoggedIn, pollInterval, fetchData, updateLocalState]);
+  }, [isLoggedIn, actualPollInterval, fetchData, updateLocalState]);
 
   const refetch = useCallback(async () => {
     if (!isLoggedIn) return;

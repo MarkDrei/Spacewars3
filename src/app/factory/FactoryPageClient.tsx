@@ -18,7 +18,7 @@ interface FactoryPageClientProps {
 
 const FactoryPageClient: React.FC<FactoryPageClientProps> = ({ auth }) => {
   // Auth is guaranteed by server, so pass true to hooks
-  const { ironAmount } = useIron(true);
+  const { ironAmount } = useIron();
   const {
     buildQueue,
     isLoading: isBuildQueueLoading,
@@ -28,7 +28,7 @@ const FactoryPageClient: React.FC<FactoryPageClientProps> = ({ auth }) => {
     buildItem,
     completeBuild,
     refetch: refetchBuildQueue
-  } = useBuildQueue(true); // Auth guaranteed by server
+  } = useBuildQueue(); // Auth guaranteed by server
   const {
     techCounts,
     weapons,
@@ -36,7 +36,7 @@ const FactoryPageClient: React.FC<FactoryPageClientProps> = ({ auth }) => {
     isLoading: isTechCountsLoading,
     error: techCountsError,
     refetch: refetchTechCounts
-  } = useTechCounts(true); // Auth guaranteed by server
+  } = useTechCounts(); // Auth guaranteed by server
 
   // Combine loading and error states from both hooks
   const isLoading = isBuildQueueLoading || isTechCountsLoading;

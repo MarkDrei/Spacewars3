@@ -9,7 +9,9 @@ interface UseResearchStatusResult {
   refetch: () => void;
 }
 
-export const useResearchStatus = (isLoggedIn: boolean, pollInterval: number = 5000): UseResearchStatusResult => {
+export const useResearchStatus = (isLoggedInParam: boolean | number = true, pollInterval: number = 5000): UseResearchStatusResult => {
+  // Handle both old (boolean, number) and new (number) signature
+  const actualPollInterval = typeof isLoggedInParam === 'number' ? isLoggedInParam : pollInterval;
   const [techTree, setTechTree] = useState<TechTree | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -55,34 +57,23 @@ export const useResearchStatus = (isLoggedIn: boolean, pollInterval: number = 50
   }, []); // Empty dependency array since it doesn't depend on changing values
 
   const startPolling = useCallback(() => {
-    if (!isLoggedIn || !isMountedRef.current) return;
+    if (!isMountedRef.current) return;
     
     pollTimeoutRef.current = setTimeout(() => {
-      if (isMountedRef.current && isLoggedIn) {
+      if (isMountedRef.current) {
         fetchTechTree();
         startPolling(); // Schedule next poll
       }
-    }, pollInterval);
-  }, [isLoggedIn, pollInterval, fetchTechTree]);
+    }, actualPollInterval);
+  }, [actualPollInterval, fetchTechTree]);
 
   const refetch = () => {
-    if (!isLoggedIn) return;
     setIsLoading(true);
     fetchTechTree();
   };
 
-  // Initial fetch when logged in
+  // Initial fetch (auth guaranteed by server component)
   useEffect(() => {
-    if (!isLoggedIn) {
-      setTechTree(null);
-      setIsLoading(false);
-      setError(null);
-      if (pollTimeoutRef.current) {
-        clearTimeout(pollTimeoutRef.current);
-        pollTimeoutRef.current = null;
-      }
-      return;
-    }
 
     setIsLoading(true);
     fetchTechTree();
@@ -94,7 +85,7 @@ export const useResearchStatus = (isLoggedIn: boolean, pollInterval: number = 50
         pollTimeoutRef.current = null;
       }
     };
-  }, [isLoggedIn, pollInterval, fetchTechTree, startPolling]);
+  }, [pollInterval, fetchTechTree, startPolling]);
 
   // Cleanup on unmount
   useEffect(() => {

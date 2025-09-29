@@ -15,8 +15,8 @@ interface AuthenticatedLayoutProps {
 const AuthenticatedLayout: React.FC<AuthenticatedLayoutProps> = ({ children }) => {
   const router = useRouter();
   const { logout } = useAuth();
-  const { ironAmount, isLoading: ironLoading, error: ironError, refetch: refetchIron } = useIron(true, 5000);
-  const { isResearchActive, error: researchError } = useResearchStatus(true, 10000);
+  const { ironAmount, isLoading: ironLoading, error: ironError, refetch: refetchIron } = useIron(5000);
+  const { isResearchActive, error: researchError } = useResearchStatus(10000);
 
   // Handle logout with redirect
   const handleLogout = async () => {

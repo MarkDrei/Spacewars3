@@ -9,7 +9,9 @@ interface UseIronReturn {
   refetch: () => void;
 }
 
-export const useIron = (isLoggedIn: boolean, pollInterval: number = 5000): UseIronReturn => {
+export const useIron = (isLoggedInParam: boolean | number = true, pollInterval: number = 5000): UseIronReturn => {
+  // Handle both old (boolean, number) and new (number) signature  
+  const actualPollInterval = typeof isLoggedInParam === 'number' ? isLoggedInParam : pollInterval;
   const [serverIronAmount, setServerIronAmount] = useState<number>(0);
   const [ironPerSecond, setIronPerSecond] = useState<number>(0);
   const [lastServerUpdate, setLastServerUpdate] = useState<number>(Date.now());
@@ -100,19 +102,11 @@ export const useIron = (isLoggedIn: boolean, pollInterval: number = 5000): UseIr
   useEffect(() => {
     isMountedRef.current = true;
     
-    // Only fetch data if user is logged in
-    if (!isLoggedIn) {
-      setIsLoading(false);
-      setError(null);
-      setDisplayIronAmount(0);
-      return;
-    }
-    
-    // Initial fetch
+    // Initial fetch (auth guaranteed by server component)
     fetchIron();
     
     // Set up server polling
-    const serverInterval = setInterval(fetchIron, pollInterval);
+    const serverInterval = setInterval(fetchIron, actualPollInterval);
     
     // Listen for iron update events (e.g., after research trigger)
     const handleIronUpdate = () => {
@@ -133,11 +127,11 @@ export const useIron = (isLoggedIn: boolean, pollInterval: number = 5000): UseIr
       globalEvents.off(EVENTS.IRON_UPDATED, handleIronUpdate);
       globalEvents.off(EVENTS.RESEARCH_TRIGGERED, handleIronUpdate);
     };
-  }, [isLoggedIn, pollInterval, fetchIron]);
+  }, [actualPollInterval, fetchIron]);
 
   // Start display interval after data is loaded
   useEffect(() => {
-    if (!isLoggedIn || isLoading || error || ironPerSecond <= 0) {
+    if (isLoading || error || ironPerSecond <= 0) {
       return;
     }
     
@@ -152,7 +146,7 @@ export const useIron = (isLoggedIn: boolean, pollInterval: number = 5000): UseIr
         displayIntervalRef.current = null;
       }
     };
-  }, [isLoggedIn, isLoading, error, ironPerSecond, updateDisplayIron]);
+  }, [isLoading, error, ironPerSecond, updateDisplayIron]);
 
   return {
     ironAmount: displayIronAmount,

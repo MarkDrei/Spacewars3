@@ -15,8 +15,8 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ auth }) => {
   const [messages, setMessages] = useState<UnreadMessage[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  // Since auth is guaranteed by server, pass true to useTechCounts
-  const { techCounts, weapons, defenses, isLoading: techLoading, error: techError } = useTechCounts(true);
+  // Since auth is guaranteed by server, no auth params needed
+  const { techCounts, weapons, defenses, isLoading: techLoading, error: techError } = useTechCounts();
 
   // Fetch messages on component mount (auth is already guaranteed)
   useEffect(() => {

@@ -24,7 +24,7 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
   const [isSettingAngle, setIsSettingAngle] = useState(false);
   const [isSettingSpeed, setIsSettingSpeed] = useState(false);
   // Auth is guaranteed by server, so pass true and use auth.shipId
-  const { worldData, isLoading, error, refetch } = useWorldData(true, 3000);
+  const { worldData, isLoading, error, refetch } = useWorldData(3000);
 
   // Sync debugDrawingsEnabled state with game instance
   useEffect(() => {

@@ -14,7 +14,10 @@ interface UseBuildQueueReturn {
   refetch: () => void;
 }
 
-export const useBuildQueue = (isLoggedIn: boolean, pollInterval: number = 5000): UseBuildQueueReturn => {
+export const useBuildQueue = (isLoggedInParam: boolean | number = true, pollInterval: number = 5000): UseBuildQueueReturn => {
+  // Handle both old (boolean, number) and new (number) signature
+  const isLoggedIn = typeof isLoggedInParam === 'boolean' ? isLoggedInParam : true;
+  const actualPollInterval = typeof isLoggedInParam === 'number' ? isLoggedInParam : pollInterval;
   const [buildQueue, setBuildQueue] = useState<BuildQueueItem[]>([]);
   const [isBuilding, setIsBuilding] = useState<boolean>(false);
   const [isCompletingBuild, setIsCompletingBuild] = useState<boolean>(false);
@@ -26,7 +29,7 @@ export const useBuildQueue = (isLoggedIn: boolean, pollInterval: number = 5000):
     isLoading: cacheLoading, 
     error: cacheError,
     refetch: refetchCache
-  } = useFactoryDataCache(isLoggedIn, pollInterval);
+  } = useFactoryDataCache(actualPollInterval);
 
   // Use ref to track if component is mounted (for cleanup)
   const isMountedRef = useRef<boolean>(true);
