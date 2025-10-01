@@ -14,10 +14,8 @@ interface UseBuildQueueReturn {
   refetch: () => void;
 }
 
-export const useBuildQueue = (isLoggedInParam: boolean | number = true, pollInterval: number = 5000): UseBuildQueueReturn => {
-  // Handle both old (boolean, number) and new (number) signature
-  const isLoggedIn = typeof isLoggedInParam === 'boolean' ? isLoggedInParam : true;
-  const actualPollInterval = typeof isLoggedInParam === 'number' ? isLoggedInParam : pollInterval;
+export const useBuildQueue = (pollInterval: number = 5000): UseBuildQueueReturn => {
+  // Auth is guaranteed by server component, so we can directly use the factory data cache
   const [buildQueue, setBuildQueue] = useState<BuildQueueItem[]>([]);
   const [isBuilding, setIsBuilding] = useState<boolean>(false);
   const [isCompletingBuild, setIsCompletingBuild] = useState<boolean>(false);
@@ -29,7 +27,7 @@ export const useBuildQueue = (isLoggedInParam: boolean | number = true, pollInte
     isLoading: cacheLoading, 
     error: cacheError,
     refetch: refetchCache
-  } = useFactoryDataCache(actualPollInterval);
+  } = useFactoryDataCache(pollInterval);
 
   // Use ref to track if component is mounted (for cleanup)
   const isMountedRef = useRef<boolean>(true);
@@ -169,13 +167,6 @@ export const useBuildQueue = (isLoggedInParam: boolean | number = true, pollInte
   useEffect(() => {
     isMountedRef.current = true;
     
-    // Only set up countdown if not logged in
-    if (!isLoggedIn) {
-      setBuildQueue([]);
-      previousQueueLengthRef.current = 0;
-      return;
-    }
-    
     // Cleanup
     return () => {
       isMountedRef.current = false;
@@ -184,11 +175,11 @@ export const useBuildQueue = (isLoggedInParam: boolean | number = true, pollInte
         countdownIntervalRef.current = null;
       }
     };
-  }, [isLoggedIn]);
+  }, []);
 
   // Start countdown interval after data is loaded
   useEffect(() => {
-    if (!isLoggedIn || cacheLoading || combinedError || buildQueue.length === 0) {
+    if (cacheLoading || combinedError || buildQueue.length === 0) {
       // Clear countdown if no queue or error
       if (countdownIntervalRef.current) {
         clearInterval(countdownIntervalRef.current);
@@ -208,13 +199,12 @@ export const useBuildQueue = (isLoggedInParam: boolean | number = true, pollInte
         countdownIntervalRef.current = null;
       }
     };
-  }, [isLoggedIn, cacheLoading, combinedError, buildQueue.length, updateCountdown]);
+  }, [cacheLoading, combinedError, buildQueue.length, updateCountdown]);
 
   // Refetch function
   const refetch = useCallback(() => {
-    if (!isLoggedIn) return;
     refetchCache();
-  }, [isLoggedIn, refetchCache]);
+  }, [refetchCache]);
 
   return {
     buildQueue,

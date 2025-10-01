@@ -108,10 +108,8 @@ const fetchFactoryData = async (retryCount: number = 0): Promise<void> => {
   }
 };
 
-export const useFactoryDataCache = (isLoggedInParam: boolean | number = true, pollInterval: number = 5000): UseFactoryDataCacheReturn => {
-  // Handle both old (boolean, number) and new (number) signature
-  const isLoggedIn = typeof isLoggedInParam === 'boolean' ? isLoggedInParam : true;
-  const actualPollInterval = typeof isLoggedInParam === 'number' ? isLoggedInParam : pollInterval;
+export const useFactoryDataCache = (pollInterval: number = 5000): UseFactoryDataCacheReturn => {
+  // Auth is guaranteed by server component, so we assume authenticated
   const [data, setData] = useState<FactoryDataCache | null>(sharedCache);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -126,13 +124,6 @@ export const useFactoryDataCache = (isLoggedInParam: boolean | number = true, po
   }, []);
 
   const fetchData = useCallback(async () => {
-    if (!isLoggedIn) {
-      setIsLoading(false);
-      setError(null);
-      setData(null);
-      return;
-    }
-
     try {
       setError(null);
       await fetchFactoryData();
@@ -143,21 +134,13 @@ export const useFactoryDataCache = (isLoggedInParam: boolean | number = true, po
         setIsLoading(false);
       }
     }
-  }, [isLoggedIn, updateLocalState]);
+  }, [updateLocalState]);
 
   useEffect(() => {
     isMountedRef.current = true;
 
     // Subscribe to cache updates
     cacheSubscribers.add(updateLocalState);
-
-    // Only fetch data if user is logged in
-    if (!isLoggedIn) {
-      setIsLoading(false);
-      setError(null);
-      setData(null);
-      return;
-    }
 
     // If we already have cached data, use it immediately
     if (sharedCache) {
@@ -172,7 +155,7 @@ export const useFactoryDataCache = (isLoggedInParam: boolean | number = true, po
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
     }
-    intervalRef.current = setInterval(fetchData, actualPollInterval);
+    intervalRef.current = setInterval(fetchData, pollInterval);
 
     // Cleanup
     return () => {
@@ -183,13 +166,12 @@ export const useFactoryDataCache = (isLoggedInParam: boolean | number = true, po
         intervalRef.current = null;
       }
     };
-  }, [isLoggedIn, actualPollInterval, fetchData, updateLocalState]);
+  }, [pollInterval, fetchData, updateLocalState]);
 
   const refetch = useCallback(async () => {
-    if (!isLoggedIn) return;
     setIsLoading(true);
     await fetchData();
-  }, [isLoggedIn, fetchData]);
+  }, [fetchData]);
 
   return {
     data,

@@ -22,9 +22,7 @@ interface UseWorldDataReturn {
   refetch: () => void;
 }
 
-export const useWorldData = (isLoggedInParam: boolean | number = true, pollInterval: number = 3000): UseWorldDataReturn => {
-  // Handle both old (boolean, number) and new (number) signature
-  const actualPollInterval = typeof isLoggedInParam === 'number' ? isLoggedInParam : pollInterval;
+export const useWorldData = (pollInterval: number = 3000): UseWorldDataReturn => {
   const [worldData, setWorldData] = useState<WorldDataState | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -134,7 +132,7 @@ export const useWorldData = (isLoggedInParam: boolean | number = true, pollInter
     fetchWorldData();
     
     // Set up server polling
-    intervalRef.current = setInterval(fetchWorldData, actualPollInterval);
+    intervalRef.current = setInterval(fetchWorldData, pollInterval);
     
     // Cleanup
     return () => {
@@ -144,7 +142,7 @@ export const useWorldData = (isLoggedInParam: boolean | number = true, pollInter
         intervalRef.current = null;
       }
     };
-  }, [actualPollInterval, fetchWorldData]);
+  }, [pollInterval, fetchWorldData]);
 
   return {
     worldData, // Return worldData directly - optimistic updates are already applied in setInterval

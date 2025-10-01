@@ -9,9 +9,7 @@ interface UseIronReturn {
   refetch: () => void;
 }
 
-export const useIron = (isLoggedInParam: boolean | number = true, pollInterval: number = 5000): UseIronReturn => {
-  // Handle both old (boolean, number) and new (number) signature  
-  const actualPollInterval = typeof isLoggedInParam === 'number' ? isLoggedInParam : pollInterval;
+export const useIron = (pollInterval: number = 5000): UseIronReturn => {
   const [serverIronAmount, setServerIronAmount] = useState<number>(0);
   const [ironPerSecond, setIronPerSecond] = useState<number>(0);
   const [lastServerUpdate, setLastServerUpdate] = useState<number>(Date.now());
@@ -106,7 +104,7 @@ export const useIron = (isLoggedInParam: boolean | number = true, pollInterval: 
     fetchIron();
     
     // Set up server polling
-    const serverInterval = setInterval(fetchIron, actualPollInterval);
+    const serverInterval = setInterval(fetchIron, pollInterval);
     
     // Listen for iron update events (e.g., after research trigger)
     const handleIronUpdate = () => {
@@ -127,7 +125,7 @@ export const useIron = (isLoggedInParam: boolean | number = true, pollInterval: 
       globalEvents.off(EVENTS.IRON_UPDATED, handleIronUpdate);
       globalEvents.off(EVENTS.RESEARCH_TRIGGERED, handleIronUpdate);
     };
-  }, [actualPollInterval, fetchIron]);
+  }, [pollInterval, fetchIron]);
 
   // Start display interval after data is loaded
   useEffect(() => {

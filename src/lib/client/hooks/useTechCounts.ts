@@ -16,10 +16,8 @@ interface UseTechCountsReturn {
   refetch: () => void;
 }
 
-export const useTechCounts = (isLoggedInParam: boolean | number = true, pollInterval: number = 5000): UseTechCountsReturn => {
-  // Handle both old (boolean, number) and new (number) signature
-  const isLoggedIn = typeof isLoggedInParam === 'boolean' ? isLoggedInParam : true;
-  const actualPollInterval = typeof isLoggedInParam === 'number' ? isLoggedInParam : pollInterval;
+export const useTechCounts = (pollInterval: number = 5000): UseTechCountsReturn => {
+  // Auth is guaranteed by server component, so we can directly use the factory data cache
   const [techCounts, setTechCounts] = useState<TechCounts | null>(null);
   const [weapons, setWeapons] = useState<Record<string, WeaponSpec>>({});
   const [defenses, setDefenses] = useState<Record<string, DefenseSpec>>({});
@@ -30,7 +28,7 @@ export const useTechCounts = (isLoggedInParam: boolean | number = true, pollInte
     isLoading: cacheLoading, 
     error: cacheError,
     refetch: refetchCache
-  } = useFactoryDataCache(actualPollInterval);
+  } = useFactoryDataCache(pollInterval);
 
   // Use ref to track if component is mounted (for cleanup)
   const isMountedRef = useRef<boolean>(true);
@@ -38,11 +36,6 @@ export const useTechCounts = (isLoggedInParam: boolean | number = true, pollInte
   // Update local state from cache data
   useEffect(() => {
     if (!factoryData) {
-      if (!isLoggedIn) {
-        setTechCounts(null);
-        setWeapons({});
-        setDefenses({});
-      }
       return;
     }
 
@@ -50,7 +43,7 @@ export const useTechCounts = (isLoggedInParam: boolean | number = true, pollInte
     setTechCounts(factoryData.techCounts);
     setWeapons(factoryData.weapons);
     setDefenses(factoryData.defenses);
-  }, [factoryData, isLoggedIn]);
+  }, [factoryData]);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -79,9 +72,8 @@ export const useTechCounts = (isLoggedInParam: boolean | number = true, pollInte
 
   // Refetch function
   const refetch = useCallback(() => {
-    if (!isLoggedIn) return;
     refetchCache();
-  }, [isLoggedIn, refetchCache]);
+  }, [refetchCache]);
 
   return {
     techCounts,

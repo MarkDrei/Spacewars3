@@ -13,18 +13,7 @@ describe('useIron', () => {
     vi.clearAllMocks();
   });
 
-  test('useIron_userNotLoggedIn_returnsZeroIronAndNotLoading', () => {
-    // Act
-    const { result } = renderHook(() => useIron(false));
-
-    // Assert
-    expect(result.current.ironAmount).toBe(0);
-    expect(result.current.isLoading).toBe(false);
-    expect(result.current.error).toBe(null);
-    expect(mockUserStatsService.getUserStats).not.toHaveBeenCalled();
-  });
-
-  test('useIron_userLoggedIn_initiatesFetchAndReturnsData', async () => {
+  test('useIron_initiatesFetchAndReturnsData', async () => {
     // Arrange
     const mockStats = {
       iron: 1500,
@@ -34,7 +23,7 @@ describe('useIron', () => {
     mockUserStatsService.getUserStats.mockResolvedValueOnce(mockStats);
 
     // Act
-    const { result } = renderHook(() => useIron(true));
+    const { result } = renderHook(() => useIron());
 
     // Assert initial state
     expect(result.current.isLoading).toBe(true);
@@ -56,7 +45,7 @@ describe('useIron', () => {
     });
 
     // Act
-    const { result } = renderHook(() => useIron(true));
+    const { result } = renderHook(() => useIron());
 
     // Assert
     await waitFor(() => {
@@ -77,7 +66,7 @@ describe('useIron', () => {
     mockUserStatsService.getUserStats.mockResolvedValueOnce(mockStats);
 
     // Act
-    const { result } = renderHook(() => useIron(true));
+    const { result } = renderHook(() => useIron());
 
     // Wait for initial load
     await waitFor(() => {
@@ -99,7 +88,7 @@ describe('useIron', () => {
       });
 
     // Act
-    const { result } = renderHook(() => useIron(true));
+    const { result } = renderHook(() => useIron());
 
     // Should eventually succeed after retry
     await waitFor(() => {
@@ -109,37 +98,6 @@ describe('useIron', () => {
     expect(result.current.ironAmount).toBe(500);
     expect(result.current.error).toBe(null);
     expect(mockUserStatsService.getUserStats).toHaveBeenCalledTimes(2);
-  });
-
-  test('useIron_userLogsOut_stopsPollingAndResetsState', async () => {
-    // Arrange
-    const mockStats = {
-      iron: 1000,
-      last_updated: 1674567890,
-      ironPerSecond: 1
-    };
-    mockUserStatsService.getUserStats.mockResolvedValue(mockStats);
-
-    // Act
-    const { result, rerender } = renderHook(
-      ({ isLoggedIn }) => useIron(isLoggedIn),
-      { initialProps: { isLoggedIn: true } }
-    );
-
-    // Wait for initial load
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false);
-    });
-
-    expect(result.current.ironAmount).toBe(1000);
-
-    // User logs out
-    rerender({ isLoggedIn: false });
-
-    // Should reset state
-    expect(result.current.ironAmount).toBe(0);
-    expect(result.current.isLoading).toBe(false);
-    expect(result.current.error).toBe(null);
   });
 
   test('useIron_zeroIronPerSecond_displaysServerValue', async () => {
@@ -152,7 +110,7 @@ describe('useIron', () => {
     mockUserStatsService.getUserStats.mockResolvedValueOnce(mockStats);
 
     // Act
-    const { result } = renderHook(() => useIron(true));
+    const { result } = renderHook(() => useIron());
 
     // Wait for initial load
     await waitFor(() => {
@@ -172,7 +130,7 @@ describe('useIron', () => {
     mockUserStatsService.getUserStats.mockResolvedValue(mockStats);
 
     // Act
-    const { result } = renderHook(() => useIron(true));
+    const { result } = renderHook(() => useIron());
 
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false);
@@ -205,7 +163,7 @@ describe('useIron', () => {
     mockUserStatsService.getUserStats.mockResolvedValueOnce(mockStats);
 
     // Act
-    const { result } = renderHook(() => useIron(true));
+    const { result } = renderHook(() => useIron());
 
     // Wait for initial load
     await waitFor(() => {
@@ -248,7 +206,7 @@ describe('useIron', () => {
       .mockResolvedValueOnce(mockStats2);
 
     // Act
-    const { result } = renderHook(() => useIron(true, 1000)); // 1 second poll interval
+    const { result } = renderHook(() => useIron(1000)); // 1 second poll interval
 
     // Wait for initial load
     await waitFor(() => {

@@ -9,9 +9,7 @@ interface UseResearchStatusResult {
   refetch: () => void;
 }
 
-export const useResearchStatus = (isLoggedInParam: boolean | number = true, pollInterval: number = 5000): UseResearchStatusResult => {
-  // Handle both old (boolean, number) and new (number) signature
-  const actualPollInterval = typeof isLoggedInParam === 'number' ? isLoggedInParam : pollInterval;
+export const useResearchStatus = (pollInterval: number = 5000): UseResearchStatusResult => {
   const [techTree, setTechTree] = useState<TechTree | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -64,8 +62,8 @@ export const useResearchStatus = (isLoggedInParam: boolean | number = true, poll
         fetchTechTree();
         startPolling(); // Schedule next poll
       }
-    }, actualPollInterval);
-  }, [actualPollInterval, fetchTechTree]);
+    }, pollInterval);
+  }, [pollInterval, fetchTechTree]);
 
   const refetch = () => {
     setIsLoading(true);
