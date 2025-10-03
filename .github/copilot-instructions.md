@@ -36,7 +36,7 @@
   - `src/components/Layout/`: Layout components for authenticated pages
 - `src/lib/`: Core application logic
   - `src/lib/client/`: Client-side code (hooks, services, game engine)
-    - `src/lib/client/hooks/`: React hooks for authentication, data fetching
+    - `src/lib/client/hooks/`: React hooks for authentication, data fetching, defense values
     - `src/lib/client/services/`: API service functions
     - `src/lib/client/game/`: Game engine classes (Game, World, Ship, etc.)
     - `src/lib/client/renderers/`: Canvas rendering classes
@@ -48,7 +48,8 @@
     - `src/lib/server/user.ts`: User domain logic
     - `src/lib/server/world.ts`: World physics and collision logic
     - `src/lib/server/techtree.ts`: Research system logic
-- `src/shared/`: Shared types and utilities used by both client and server
+    - `src/lib/server/TechFactory.ts`: Tech/defense calculations and specifications
+- `src/shared/`: Shared types and utilities used by both client and server (defenseValues, etc.)
 - `src/__tests__/`: Test files for all components and logic
 - `database/`: SQLite database files (auto-created)
 
@@ -117,3 +118,8 @@
 - **Toroidal world**: World edges wrap around for seamless space exploration
 - **Collectibles**: Asteroids, shipwrecks, and escape pods with different iron values
 - **Research system**: Technology upgrades using iron as currency
+- **Defense system**: Hull, armor, and shield values with client-side regeneration
+  - Max value: 100 × tech_count
+  - Current value: Hardcoded at max/2 (not yet persisted)
+  - Regen rate: 1 per second (hardcoded)
+  - Display: Home page shows current/max values with real-time updates
