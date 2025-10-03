@@ -70,29 +70,9 @@ describe('useTechCounts', () => {
     });
   });
 
-  test('useTechCounts_userNotLoggedIn_returnsNullDataAndNotLoading', () => {
-    // Arrange
-    mockUseFactoryDataCache.mockReturnValue({
-      data: null,
-      isLoading: false,
-      error: null,
-      refetch: vi.fn()
-    });
-
+  test('useTechCounts_authenticatedUserWithData_returnsData', () => {
     // Act
-    const { result } = renderHook(() => useTechCounts(false));
-
-    // Assert
-    expect(result.current.techCounts).toBeNull();
-    expect(result.current.weapons).toEqual({});
-    expect(result.current.defenses).toEqual({});
-    expect(result.current.isLoading).toBe(false);
-    expect(result.current.error).toBeNull();
-  });
-
-  test('useTechCounts_userLoggedInWithData_returnsData', () => {
-    // Act
-    const { result } = renderHook(() => useTechCounts(true));
+    const { result } = renderHook(() => useTechCounts());
 
     // Assert
     expect(result.current.techCounts).toEqual(mockTechCounts);
@@ -112,7 +92,7 @@ describe('useTechCounts', () => {
     });
 
     // Act
-    const { result } = renderHook(() => useTechCounts(true));
+    const { result } = renderHook(() => useTechCounts());
 
     // Assert
     expect(result.current.isLoading).toBe(true);
@@ -131,7 +111,7 @@ describe('useTechCounts', () => {
     });
 
     // Act
-    const { result } = renderHook(() => useTechCounts(true));
+    const { result } = renderHook(() => useTechCounts());
 
     // Assert
     expect(result.current.error).toBe('Network error');
@@ -150,7 +130,7 @@ describe('useTechCounts', () => {
     });
 
     // Act
-    const { result } = renderHook(() => useTechCounts(true));
+    const { result } = renderHook(() => useTechCounts());
     result.current.refetch();
 
     // Assert
@@ -168,7 +148,7 @@ describe('useTechCounts', () => {
     });
 
     // Act
-    renderHook(() => useTechCounts(true));
+    renderHook(() => useTechCounts());
     
     act(() => {
       globalEvents.emit(EVENTS.BUILD_ITEM_COMPLETED);
@@ -189,7 +169,7 @@ describe('useTechCounts', () => {
     });
 
     // Act
-    renderHook(() => useTechCounts(true));
+    renderHook(() => useTechCounts());
     
     act(() => {
       globalEvents.emit(EVENTS.BUILD_QUEUE_COMPLETED);
@@ -199,30 +179,5 @@ describe('useTechCounts', () => {
     expect(mockRefetch).toHaveBeenCalled();
   });
 
-  test('useTechCounts_userLoggedOut_clearsDataProperly', () => {
-    // Arrange - Start logged in
-    const { result, rerender } = renderHook(
-      ({ isLoggedIn }) => useTechCounts(isLoggedIn),
-      { initialProps: { isLoggedIn: true } }
-    );
-
-    // Verify initial data
-    expect(result.current.techCounts).toEqual(mockTechCounts);
-
-    // Act - Log out
-    mockUseFactoryDataCache.mockReturnValue({
-      data: null,
-      isLoading: false,
-      error: null,
-      refetch: vi.fn()
-    });
-    
-    rerender({ isLoggedIn: false });
-
-    // Assert - Data cleared
-    expect(result.current.techCounts).toBeNull();
-    expect(result.current.weapons).toEqual({});
-    expect(result.current.defenses).toEqual({});
-  });
 
 });

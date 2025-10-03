@@ -9,7 +9,7 @@ interface UseIronReturn {
   refetch: () => void;
 }
 
-export const useIron = (isLoggedIn: boolean, pollInterval: number = 5000): UseIronReturn => {
+export const useIron = (pollInterval: number = 5000): UseIronReturn => {
   const [serverIronAmount, setServerIronAmount] = useState<number>(0);
   const [ironPerSecond, setIronPerSecond] = useState<number>(0);
   const [lastServerUpdate, setLastServerUpdate] = useState<number>(Date.now());
@@ -100,15 +100,7 @@ export const useIron = (isLoggedIn: boolean, pollInterval: number = 5000): UseIr
   useEffect(() => {
     isMountedRef.current = true;
     
-    // Only fetch data if user is logged in
-    if (!isLoggedIn) {
-      setIsLoading(false);
-      setError(null);
-      setDisplayIronAmount(0);
-      return;
-    }
-    
-    // Initial fetch
+    // Initial fetch (auth guaranteed by server component)
     fetchIron();
     
     // Set up server polling
@@ -133,11 +125,11 @@ export const useIron = (isLoggedIn: boolean, pollInterval: number = 5000): UseIr
       globalEvents.off(EVENTS.IRON_UPDATED, handleIronUpdate);
       globalEvents.off(EVENTS.RESEARCH_TRIGGERED, handleIronUpdate);
     };
-  }, [isLoggedIn, pollInterval, fetchIron]);
+  }, [pollInterval, fetchIron]);
 
   // Start display interval after data is loaded
   useEffect(() => {
-    if (!isLoggedIn || isLoading || error || ironPerSecond <= 0) {
+    if (isLoading || error || ironPerSecond <= 0) {
       return;
     }
     
@@ -152,7 +144,7 @@ export const useIron = (isLoggedIn: boolean, pollInterval: number = 5000): UseIr
         displayIntervalRef.current = null;
       }
     };
-  }, [isLoggedIn, isLoading, error, ironPerSecond, updateDisplayIron]);
+  }, [isLoading, error, ironPerSecond, updateDisplayIron]);
 
   return {
     ironAmount: displayIronAmount,

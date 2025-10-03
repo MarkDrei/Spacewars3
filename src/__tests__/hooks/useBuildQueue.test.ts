@@ -53,29 +53,9 @@ describe('useBuildQueue', () => {
     });
   });
 
-  test('useBuildQueue_userNotLoggedIn_returnsEmptyStateAndNotLoading', () => {
-    // Arrange
-    mockUseFactoryDataCache.mockReturnValue({
-      data: null,
-      isLoading: false,
-      error: null,
-      refetch: vi.fn()
-    });
-
+  test('useBuildQueue_authenticatedUserWithData_returnsBuildQueue', () => {
     // Act
-    const { result } = renderHook(() => useBuildQueue(false));
-
-    // Assert
-    expect(result.current.buildQueue).toEqual([]);
-    expect(result.current.isLoading).toBe(false);
-    expect(result.current.error).toBeNull();
-    expect(result.current.isBuilding).toBe(false);
-    expect(result.current.isCompletingBuild).toBe(false);
-  });
-
-  test('useBuildQueue_userLoggedInWithData_returnsBuildQueue', () => {
-    // Act
-    const { result } = renderHook(() => useBuildQueue(true));
+    const { result } = renderHook(() => useBuildQueue());
 
     // Assert
     expect(result.current.buildQueue).toEqual(mockBuildQueue);
@@ -95,7 +75,7 @@ describe('useBuildQueue', () => {
     });
 
     // Act
-    const { result } = renderHook(() => useBuildQueue(true));
+    const { result } = renderHook(() => useBuildQueue());
 
     // Assert
     expect(result.current.isLoading).toBe(true);
@@ -112,7 +92,7 @@ describe('useBuildQueue', () => {
     });
 
     // Act
-    const { result } = renderHook(() => useBuildQueue(true));
+    const { result } = renderHook(() => useBuildQueue());
 
     // Assert
     expect(result.current.error).toBe('Network error');
@@ -129,7 +109,7 @@ describe('useBuildQueue', () => {
     });
 
     // Act
-    const { result } = renderHook(() => useBuildQueue(true));
+    const { result } = renderHook(() => useBuildQueue());
     
     await act(async () => {
       await result.current.buildItem('pulse_laser', 'weapon');
@@ -147,7 +127,7 @@ describe('useBuildQueue', () => {
     });
 
     // Act
-    const { result } = renderHook(() => useBuildQueue(true));
+    const { result } = renderHook(() => useBuildQueue());
     
     await act(async () => {
       await result.current.buildItem('pulse_laser', 'weapon');
@@ -166,7 +146,7 @@ describe('useBuildQueue', () => {
     });
 
     // Act
-    const { result } = renderHook(() => useBuildQueue(true));
+    const { result } = renderHook(() => useBuildQueue());
     
     await act(async () => {
       await result.current.completeBuild();
@@ -188,7 +168,7 @@ describe('useBuildQueue', () => {
     });
 
     // Act
-    const { result } = renderHook(() => useBuildQueue(true));
+    const { result } = renderHook(() => useBuildQueue());
     result.current.refetch();
 
     // Assert

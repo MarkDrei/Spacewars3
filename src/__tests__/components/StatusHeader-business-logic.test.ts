@@ -9,10 +9,18 @@ describe('StatusHeader Business Logic', () => {
       return amount.toLocaleString();
     };
 
-    expect(formatIronAmount(1000)).toBe('1.000'); // German locale uses dots
-    expect(formatIronAmount(1234567)).toBe('1.234.567');
+    // Accept both US locale (1,000) and German locale (1.000)
+    const formatted1000 = formatIronAmount(1000);
+    expect(['1,000', '1.000']).toContain(formatted1000);
+    
+    const formatted1234567 = formatIronAmount(1234567);
+    expect(['1,234,567', '1.234.567']).toContain(formatted1234567);
+    
     expect(formatIronAmount(0)).toBe('0');
-    expect(formatIronAmount(1234.67)).toBe('1.234,67'); // German locale comma for decimals
+    
+    // Decimal formatting varies by locale
+    const formatted1234_67 = formatIronAmount(1234.67);
+    expect(['1,234.67', '1.234,67']).toContain(formatted1234_67);
   });
 
   it('should handle negative iron amounts', () => {
@@ -21,7 +29,10 @@ describe('StatusHeader Business Logic', () => {
     };
 
     expect(formatIronAmount(-100)).toBe('-100');
-    expect(formatIronAmount(-1234567)).toBe('-1.234.567');
+    
+    // Accept both US and German locale formatting
+    const formatted = formatIronAmount(-1234567);
+    expect(['-1,234,567', '-1.234.567']).toContain(formatted);
   });
 
   it('should handle very large numbers', () => {
@@ -29,7 +40,9 @@ describe('StatusHeader Business Logic', () => {
       return amount.toLocaleString();
     };
 
-    expect(formatIronAmount(9876543210)).toBe('9.876.543.210');
+    // Accept both US and German locale formatting
+    const formatted = formatIronAmount(9876543210);
+    expect(['9,876,543,210', '9.876.543.210']).toContain(formatted);
   });
 
   it('should handle click events when clickable', () => {
@@ -57,7 +70,10 @@ describe('StatusHeader Business Logic', () => {
       return isLoading ? '...' : ironAmount.toLocaleString();
     };
 
-    expect(getDisplayValue(1000, false)).toBe('1.000'); // German locale
+    // Accept both US and German locale formatting
+    const formattedNotLoading = getDisplayValue(1000, false);
+    expect(['1,000', '1.000']).toContain(formattedNotLoading);
+    
     expect(getDisplayValue(1000, true)).toBe('...');
     expect(getDisplayValue(500, true)).toBe('...');
   });

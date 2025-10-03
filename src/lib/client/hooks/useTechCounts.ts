@@ -16,7 +16,8 @@ interface UseTechCountsReturn {
   refetch: () => void;
 }
 
-export const useTechCounts = (isLoggedIn: boolean, pollInterval: number = 5000): UseTechCountsReturn => {
+export const useTechCounts = (pollInterval: number = 5000): UseTechCountsReturn => {
+  // Auth is guaranteed by server component, so we can directly use the factory data cache
   const [techCounts, setTechCounts] = useState<TechCounts | null>(null);
   const [weapons, setWeapons] = useState<Record<string, WeaponSpec>>({});
   const [defenses, setDefenses] = useState<Record<string, DefenseSpec>>({});
@@ -27,7 +28,7 @@ export const useTechCounts = (isLoggedIn: boolean, pollInterval: number = 5000):
     isLoading: cacheLoading, 
     error: cacheError,
     refetch: refetchCache
-  } = useFactoryDataCache(isLoggedIn, pollInterval);
+  } = useFactoryDataCache(pollInterval);
 
   // Use ref to track if component is mounted (for cleanup)
   const isMountedRef = useRef<boolean>(true);
@@ -35,11 +36,6 @@ export const useTechCounts = (isLoggedIn: boolean, pollInterval: number = 5000):
   // Update local state from cache data
   useEffect(() => {
     if (!factoryData) {
-      if (!isLoggedIn) {
-        setTechCounts(null);
-        setWeapons({});
-        setDefenses({});
-      }
       return;
     }
 
@@ -47,7 +43,7 @@ export const useTechCounts = (isLoggedIn: boolean, pollInterval: number = 5000):
     setTechCounts(factoryData.techCounts);
     setWeapons(factoryData.weapons);
     setDefenses(factoryData.defenses);
-  }, [factoryData, isLoggedIn]);
+  }, [factoryData]);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -76,9 +72,8 @@ export const useTechCounts = (isLoggedIn: boolean, pollInterval: number = 5000):
 
   // Refetch function
   const refetch = useCallback(() => {
-    if (!isLoggedIn) return;
     refetchCache();
-  }, [isLoggedIn, refetchCache]);
+  }, [refetchCache]);
 
   return {
     techCounts,
