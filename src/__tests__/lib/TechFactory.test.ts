@@ -283,3 +283,122 @@ describe('TechFactory utility methods', () => {
     expect(canBuild).toBe(false);
   });
 });
+
+describe('TechFactory.calculateDefenseValues', () => {
+  test('calculateDefenseValues_withZeroTechs_returnsZeroValues', () => {
+    const techCounts: TechCounts = {
+      pulse_laser: 0,
+      auto_turret: 0,
+      plasma_lance: 0,
+      gauss_rifle: 0,
+      photon_torpedo: 0,
+      rocket_launcher: 0,
+      ship_hull: 0,
+      kinetic_armor: 0,
+      energy_shield: 0,
+      missile_jammer: 0
+    };
+
+    const result = TechFactory.calculateDefenseValues(techCounts);
+
+    expect(result.hull.current).toBe(0);
+    expect(result.hull.max).toBe(0);
+    expect(result.hull.regenRate).toBe(1);
+    expect(result.armor.current).toBe(0);
+    expect(result.armor.max).toBe(0);
+    expect(result.armor.regenRate).toBe(1);
+    expect(result.shield.current).toBe(0);
+    expect(result.shield.max).toBe(0);
+    expect(result.shield.regenRate).toBe(1);
+  });
+
+  test('calculateDefenseValues_withSingleTech_returnsCorrectValues', () => {
+    const techCounts: TechCounts = {
+      pulse_laser: 0,
+      auto_turret: 0,
+      plasma_lance: 0,
+      gauss_rifle: 0,
+      photon_torpedo: 0,
+      rocket_launcher: 0,
+      ship_hull: 3,
+      kinetic_armor: 0,
+      energy_shield: 0,
+      missile_jammer: 0
+    };
+
+    const result = TechFactory.calculateDefenseValues(techCounts);
+
+    // Max = 100 × tech_count = 100 × 3 = 300
+    // Current = max / 2 = 150
+    expect(result.hull.max).toBe(300);
+    expect(result.hull.current).toBe(150);
+    expect(result.hull.name).toBe('Ship Hull');
+    expect(result.hull.regenRate).toBe(1);
+  });
+
+  test('calculateDefenseValues_withMultipleTechs_calculatesIndependently', () => {
+    const techCounts: TechCounts = {
+      pulse_laser: 0,
+      auto_turret: 0,
+      plasma_lance: 0,
+      gauss_rifle: 0,
+      photon_torpedo: 0,
+      rocket_launcher: 0,
+      ship_hull: 2,
+      kinetic_armor: 5,
+      energy_shield: 3,
+      missile_jammer: 0
+    };
+
+    const result = TechFactory.calculateDefenseValues(techCounts);
+
+    // Hull: 2 × 100 = 200 max, 100 current
+    expect(result.hull.max).toBe(200);
+    expect(result.hull.current).toBe(100);
+    expect(result.hull.name).toBe('Ship Hull');
+
+    // Armor: 5 × 100 = 500 max, 250 current
+    expect(result.armor.max).toBe(500);
+    expect(result.armor.current).toBe(250);
+    expect(result.armor.name).toBe('Kinetic Armor');
+
+    // Shield: 3 × 100 = 300 max, 150 current
+    expect(result.shield.max).toBe(300);
+    expect(result.shield.current).toBe(150);
+    expect(result.shield.name).toBe('Energy Shield');
+  });
+
+  test('calculateDefenseValues_allDefensesPresent_returnsCorrectCalculations', () => {
+    const techCounts: TechCounts = {
+      pulse_laser: 1,
+      auto_turret: 2,
+      plasma_lance: 1,
+      gauss_rifle: 1,
+      photon_torpedo: 0,
+      rocket_launcher: 0,
+      ship_hull: 10,
+      kinetic_armor: 8,
+      energy_shield: 12,
+      missile_jammer: 3
+    };
+
+    const result = TechFactory.calculateDefenseValues(techCounts);
+
+    // Hull: 10 × 100 = 1000 max, 500 current
+    expect(result.hull.max).toBe(1000);
+    expect(result.hull.current).toBe(500);
+
+    // Armor: 8 × 100 = 800 max, 400 current
+    expect(result.armor.max).toBe(800);
+    expect(result.armor.current).toBe(400);
+
+    // Shield: 12 × 100 = 1200 max, 600 current
+    expect(result.shield.max).toBe(1200);
+    expect(result.shield.current).toBe(600);
+
+    // All should have regenRate of 1
+    expect(result.hull.regenRate).toBe(1);
+    expect(result.armor.regenRate).toBe(1);
+    expect(result.shield.regenRate).toBe(1);
+  });
+});

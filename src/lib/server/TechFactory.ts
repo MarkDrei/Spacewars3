@@ -2,6 +2,8 @@
 // TechFactory - Manages ship technology and equipment
 // ---
 
+import { DefenseValues } from '@/shared/defenseValues';
+
 export type WeaponSubtype = 'Projectile' | 'Energy';
 export type WeaponStrength = 'Weak' | 'Medium' | 'Strong';
 
@@ -263,6 +265,35 @@ export class TechFactory {
   static canBuildDefense(defenseKey: string, availableIron: number): boolean {
     const spec = this.getDefenseSpec(defenseKey);
     return spec ? availableIron >= spec.baseCost : false;
+  }
+
+  /**
+   * Calculate defense values (hull, armor, shield) based on tech counts
+   * Max value = 100 × tech_count
+   * Current value = max / 2 (hardcoded for now, not persisted)
+   * Regen rate = 1 per second (hardcoded for now)
+   */
+  static calculateDefenseValues(techCounts: TechCounts): DefenseValues {
+    return {
+      hull: {
+        name: 'Ship Hull',
+        current: (techCounts.ship_hull * 100) / 2,
+        max: techCounts.ship_hull * 100,
+        regenRate: 1
+      },
+      armor: {
+        name: 'Kinetic Armor',
+        current: (techCounts.kinetic_armor * 100) / 2,
+        max: techCounts.kinetic_armor * 100,
+        regenRate: 1
+      },
+      shield: {
+        name: 'Energy Shield',
+        current: (techCounts.energy_shield * 100) / 2,
+        max: techCounts.energy_shield * 100,
+        regenRate: 1
+      }
+    };
   }
 
   /**
