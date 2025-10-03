@@ -2,12 +2,12 @@ import { getIronSession } from 'iron-session';
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { sessionOptions, SessionData } from './session';
-import { getDatabase } from './database';
+import { getTypedCacheManager } from './typedCacheManager';
 
 export interface ServerAuthState {
   userId: number;
   username: string;
-  shipId: number;
+  shipId?: number;
 }
 
 /**
@@ -23,30 +23,25 @@ export async function getServerAuth(): Promise<ServerAuthState | null> {
       return null;
     }
 
-    // Fetch user data from database to ensure session is still valid
-    const db = getDatabase();
-    const userRow = await new Promise<{ username: string; ship_id: number } | undefined>((resolve, reject) => {
-      db.get(
-        'SELECT username, ship_id FROM users WHERE id = ?',
-        [session.userId],
-        (err, row) => {
-          if (err) {
-            reject(err);
-          } else {
-            resolve(row as { username: string; ship_id: number } | undefined);
-          }
-        }
-      );
-    });
+    // Use cache to validate user existence and get current data
+    const cacheManager = getTypedCacheManager();
+    
+    // Ensure cache manager is initialized before use
+    if (!cacheManager.isReady) {
+      await cacheManager.initialize();
+    }
+    
+    const user = await cacheManager.loadUserIfNeeded(session.userId);
 
-    if (!userRow) {
+    if (!user) {
+      // User doesn't exist in database (deleted user with valid session)
       return null;
     }
 
     return {
       userId: session.userId,
-      username: userRow.username,
-      shipId: userRow.ship_id,
+      username: user.username,
+      shipId: user.ship_id,
     };
   } catch (error) {
     console.error('Server auth check failed:', error);

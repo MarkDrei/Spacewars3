@@ -13,7 +13,7 @@ const ProfilePageClient: React.FC<ProfilePageClientProps> = ({ auth }) => {
   
   // Dummy user data - in a real app, this would come from state management or API
   const userStats = {
-    username: auth.username || 'SpaceExplorer',
+    username: auth.username,
     level: 12,
     totalScore: 15420,
     gamesPlayed: 47,

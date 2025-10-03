@@ -41,20 +41,37 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
   };
 
   useEffect(() => {
-    // Only initialize game when we have ship ID for the first time
-    if (!gameInitializedRef.current && auth.shipId) {
-      initializeGame();
-      gameInitializedRef.current = true;
+    // Initialize game only when we have necessary data AND canvas is rendered (not loading)
+    if (!gameInitializedRef.current && auth.shipId && !isLoading) {
+      // Use requestAnimationFrame to ensure DOM is fully rendered
+      const initializeAfterRender = () => {
+        if (canvasRef.current) {
+          initializeGame();
+          gameInitializedRef.current = true;
+        } else {
+          // Retry once if canvas not immediately available
+          requestAnimationFrame(() => {
+            if (canvasRef.current) {
+              initializeGame();
+              gameInitializedRef.current = true;
+            } else {
+              console.error('Game canvas not found after retry');
+            }
+          });
+        }
+      };
+
+      requestAnimationFrame(initializeAfterRender);
     }
 
-    // Clean up function - only unmount when component actually unmounts
+    // Clean up function
     return () => {
       if (gameInstanceRef.current) {
         gameInstanceRef.current.stop?.();
         gameInstanceRef.current = null;
       }
     };
-  }, [auth.shipId]); // Only depend on shipId, not worldData
+  }, [auth.shipId, isLoading]); // Depend on both shipId and loading state
 
   // Update game world when server data changes
   useEffect(() => {
