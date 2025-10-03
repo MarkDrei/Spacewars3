@@ -22,7 +22,7 @@ interface UseWorldDataReturn {
   refetch: () => void;
 }
 
-export const useWorldData = (isLoggedIn: boolean, pollInterval: number = 3000): UseWorldDataReturn => {
+export const useWorldData = (pollInterval: number = 3000): UseWorldDataReturn => {
   const [worldData, setWorldData] = useState<WorldDataState | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -111,7 +111,7 @@ export const useWorldData = (isLoggedIn: boolean, pollInterval: number = 3000): 
 
   // Set up optimistic updates for smooth animation between server updates
   useEffect(() => {
-    if (!worldData || !isLoggedIn) return;
+    if (!worldData) return;
     
     const optimisticUpdateInterval = setInterval(() => {
       setWorldData(currentData => {
@@ -123,20 +123,12 @@ export const useWorldData = (isLoggedIn: boolean, pollInterval: number = 3000): 
     return () => {
       clearInterval(optimisticUpdateInterval);
     };
-  }, [worldData, isLoggedIn, updateOptimisticPositions]);
+  }, [worldData, updateOptimisticPositions]);
 
   useEffect(() => {
     isMountedRef.current = true;
     
-    // Only fetch data if user is logged in
-    if (!isLoggedIn) {
-      setIsLoading(false);
-      setError(null);
-      setWorldData(null);
-      return;
-    }
-    
-    // Initial fetch
+    // Initial fetch (auth guaranteed by server component)
     fetchWorldData();
     
     // Set up server polling
@@ -150,7 +142,7 @@ export const useWorldData = (isLoggedIn: boolean, pollInterval: number = 3000): 
         intervalRef.current = null;
       }
     };
-  }, [isLoggedIn, pollInterval, fetchWorldData]);
+  }, [pollInterval, fetchWorldData]);
 
   return {
     worldData, // Return worldData directly - optimistic updates are already applied in setInterval

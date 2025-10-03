@@ -80,25 +80,13 @@ describe('useFactoryDataCache', () => {
     resetFactoryDataCache(); // Reset singleton state between tests
   });
 
-  test('useFactoryDataCache_userNotLoggedIn_returnsNullDataAndNotLoading', async () => {
-    // Act
-    const { result } = renderHook(() => useFactoryDataCache(false, 1000));
-
-    // Assert
-    expect(result.current.data).toBeNull();
-    expect(result.current.isLoading).toBe(false);
-    expect(result.current.error).toBeNull();
-    expect(mockFactoryService.getTechCatalog).not.toHaveBeenCalled();
-    expect(mockFactoryService.getBuildStatus).not.toHaveBeenCalled();
-  });
-
-  test('useFactoryDataCache_userLoggedIn_fetchesDataSuccessfully', async () => {
+  test('useFactoryDataCache_authenticatedUser_fetchesDataSuccessfully', async () => {
     // Arrange
     mockFactoryService.getTechCatalog.mockResolvedValue(mockTechCatalog);
     mockFactoryService.getBuildStatus.mockResolvedValue(mockBuildStatus);
 
     // Act
-    const { result } = renderHook(() => useFactoryDataCache(true, 1000));
+    const { result } = renderHook(() => useFactoryDataCache(1000));
 
     // Assert - Initial loading state
     expect(result.current.isLoading).toBe(true);
@@ -129,7 +117,7 @@ describe('useFactoryDataCache', () => {
     mockFactoryService.getBuildStatus.mockResolvedValue(mockBuildStatus);
 
     // Act
-    const { result } = renderHook(() => useFactoryDataCache(true, 1000));
+    const { result } = renderHook(() => useFactoryDataCache(1000));
 
     // Wait for error state
     await waitFor(() => {
@@ -148,7 +136,7 @@ describe('useFactoryDataCache', () => {
     mockFactoryService.getBuildStatus.mockResolvedValue(errorResponse);
 
     // Act
-    const { result } = renderHook(() => useFactoryDataCache(true, 1000));
+    const { result } = renderHook(() => useFactoryDataCache(1000));
 
     // Wait for error state
     await waitFor(() => {

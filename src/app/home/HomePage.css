@@ -11,46 +11,7 @@
   margin: 0 auto;
 }
 
-/* Notifications Table */
-.notifications-table-container {
-  background-color: #1e1e1e;
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-}
-
-.notifications-table {
-  width: 100%;
-  border-collapse: collapse;
-  background-color: #1e1e1e;
-}
-
-/* Header */
-.notifications-header {
-  background-color: #2c2c2c;
-  color: #4caf50;
-  font-weight: 600;
-  font-size: 1.2rem;
-  padding: 0.75rem;
-  text-align: center;
-  border-bottom: 2px solid #4caf50;
-}
-
-/* Notification Rows */
-.notification-row {
-  border-bottom: 1px solid #333;
-  transition: background-color 0.2s ease;
-}
-
-.notification-row:hover {
-  background-color: #252525;
-}
-
-.notification-row:last-child {
-  border-bottom: none;
-}
-
-/* Time Cell */
+/* Custom styles for time cells and message content */
 .time-cell {
   padding: 0.75rem;
   vertical-align: top;
@@ -63,7 +24,7 @@
 .time-line {
   font-weight: 600;
   font-size: 1rem;
-  color: #4caf50;
+  color: var(--primary-green);
   margin-bottom: 0.25rem;
 }
 
@@ -93,7 +54,31 @@
 }
 
 .loading-cell {
-  color: #4caf50;
+  color: var(--primary-green);
+}
+
+/* Tech Counts Table - extends shared data-table styles */
+.tech-counts-table-container {
+  margin-top: 2rem;
+}
+
+/* Category Header */
+.category-header {
+  padding: 0.5rem 0.75rem;
+  font-weight: 600;
+  font-size: 1rem;
+  color: #ff9800;
+  text-align: center;
+  background-color: #2a2a2a;
+  border-bottom: 1px solid #333;
+}
+
+.tech-count-cell {
+  text-align: center;
+  font-weight: 600;
+  color: var(--primary-green);
+  width: 80px;
+  min-width: 80px;
 }
 
 /* Responsive Design */
@@ -118,5 +103,14 @@
   
   .date-line {
     font-size: 0.75rem;
+  }
+
+  .tech-counts-table-container {
+    margin-top: 1.5rem;
+  }
+  
+  .tech-count-cell {
+    width: 60px;
+    min-width: 60px;
   }
 }

@@ -1,35 +1,14 @@
-'use client';
-
-import React from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/lib/client/hooks/useAuth';
+import { redirect } from 'next/navigation';
+import { isAuthenticated } from '@/lib/server/serverSession';
 import LoginPage from './login/page';
 
-export default function RootPage() {
-  const router = useRouter();
-  const { isLoggedIn, isLoading } = useAuth();
-
-  // Show loading screen while checking authentication
-  if (isLoading) {
-    return (
-      <div style={{
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        height: '100vh',
-        backgroundColor: '#121212',
-        color: '#4caf50',
-        fontSize: '1.2rem'
-      }}>
-        Loading...
-      </div>
-    );
-  }
-
-  // If logged in, redirect to home
-  if (isLoggedIn) {
-    router.push('/home');
-    return null;
+export default async function RootPage() {
+  // Check authentication server-side
+  const authenticated = await isAuthenticated();
+  
+  // If logged in, redirect to home immediately
+  if (authenticated) {
+    redirect('/home');
   }
 
   // If not logged in, show login page
