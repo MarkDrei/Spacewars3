@@ -1,10 +1,14 @@
 import { requireAuth } from '@/lib/server/serverSession';
+import { getUserMessagesCached } from '@/lib/server/typedCacheManager';
 import HomePageClient from './HomePageClient';
 
 export default async function HomePage() {
   // Server-side authentication check - redirects to login if not authenticated
   const auth = await requireAuth();
   
-  // Pass authenticated user data to client component
-  return <HomePageClient auth={auth} />;
+  // Load messages on server-side to avoid double-loading and marking as read twice
+  const messages = await getUserMessagesCached(auth.userId);
+  
+  // Pass authenticated user data and messages to client component
+  return <HomePageClient auth={auth} initialMessages={messages} />;
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import AuthenticatedLayout from '@/components/Layout/AuthenticatedLayout';
 import { messagesService, UnreadMessage } from '@/lib/client/services/messagesService';
 import { useTechCounts } from '@/lib/client/hooks/useTechCounts';
@@ -9,47 +9,12 @@ import './HomePage.css';
 
 interface HomePageClientProps {
   auth: ServerAuthState;
+  initialMessages: UnreadMessage[];
 }
 
-const HomePageClient: React.FC<HomePageClientProps> = ({ auth }) => {
-  const [messages, setMessages] = useState<UnreadMessage[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
-  // Since auth is guaranteed by server, no auth params needed
+const HomePageClient: React.FC<HomePageClientProps> = ({ auth, initialMessages }) => {
+  // Messages are pre-loaded from server - no client-side fetching needed
   const { techCounts, weapons, defenses, isLoading: techLoading, error: techError } = useTechCounts();
-
-  // Fetch messages on component mount (auth is already guaranteed)
-  useEffect(() => {
-    const fetchMessages = async () => {
-      try {
-        setError(null);
-        setIsLoading(true);
-        
-        console.log('🏠 Home page loading, user authenticated, fetching messages...');
-        const result = await messagesService.getMessages();
-        
-        console.log('📋 Messages service result:', result);
-        
-        if ('error' in result) {
-          console.error('❌ Messages service returned error:', result.error);
-          setError(result.error);
-          setMessages([]);
-        } else {
-          console.log(`✅ Loaded ${result.messages.length} message(s) on home page`);
-          setMessages(result.messages);
-        }
-        
-      } catch (err) {
-        console.error('❌ Error fetching messages:', err);
-        setError('Failed to load messages');
-        setMessages([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchMessages();
-  }, []); // No auth dependencies needed since server guarantees auth
 
   return (
     <AuthenticatedLayout>
@@ -63,26 +28,14 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ auth }) => {
                 </tr>
               </thead>
               <tbody>
-                {isLoading ? (
-                  <tr>
-                    <td colSpan={2} className="loading-cell">
-                      Loading messages...
-                    </td>
-                  </tr>
-                ) : error ? (
-                  <tr>
-                    <td colSpan={2} className="error-cell">
-                      Error: {error}
-                    </td>
-                  </tr>
-                ) : messages.length === 0 ? (
+                {initialMessages.length === 0 ? (
                   <tr>
                     <td colSpan={2} className="empty-cell">
                       No new messages
                     </td>
                   </tr>
                 ) : (
-                  messages.map(message => (
+                  initialMessages.map(message => (
                     <tr key={message.id} className="data-row">
                       <td className="time-cell">
                         <div className="time-line">{messagesService.formatTime(message.created_at)}</div>
