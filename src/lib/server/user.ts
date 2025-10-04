@@ -3,6 +3,7 @@
 // ---
 
 import { TechTree, ResearchType, getResearchEffectFromTree, createInitialTechTree, updateTechTree } from './techtree';
+import { TechCounts } from './TechFactory';
 
 class User {
   id: number;
@@ -12,6 +13,7 @@ class User {
   last_updated: number;
   techTree: TechTree;
   ship_id?: number; // Optional ship ID for linking to player's ship
+  techCounts: TechCounts; // Tech counts for weapons and defense
   private saveCallback: SaveUserCallback;
 
   constructor(
@@ -22,6 +24,7 @@ class User {
     last_updated: number,
     techTree: TechTree,
     saveCallback: SaveUserCallback,
+    techCounts: TechCounts,
     ship_id?: number
   ) {
     this.id = id;
@@ -30,6 +33,7 @@ class User {
     this.iron = iron;
     this.last_updated = last_updated;
     this.techTree = techTree;
+    this.techCounts = techCounts;
     this.ship_id = ship_id;
     this.saveCallback = saveCallback;
   }

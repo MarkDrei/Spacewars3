@@ -7,7 +7,6 @@ import { handleApiError, requireAuth, ApiError } from '@/lib/server/errors';
 import { createEmptyContext } from '@/lib/server/typedLocks';
 import { User } from '@/lib/server/user';
 import { World } from '@/lib/server/world';
-import { TechRepo } from '@/lib/server/techRepo';
 import { TechFactory } from '@/lib/server/TechFactory';
 
 export async function GET(request: NextRequest) {
@@ -72,16 +71,8 @@ async function getShipStats(world: World, user: User): Promise<NextResponse> {
   const afterburnerBonus = getResearchEffectFromTree(user.techTree, ResearchType.Afterburner);
   const maxSpeed = baseSpeed * (1 + afterburnerBonus / 100);
   
-  // Get tech counts to calculate defense values
-  const techRepo = new TechRepo();
-  const techCounts = await techRepo.getTechCounts(user.id);
-  
-  // Calculate defense values based on tech counts
-  const defenseValues = techCounts ? TechFactory.calculateDefenseValues(techCounts) : {
-    hull: { name: 'Ship Hull', current: 0, max: 0, regenRate: 1 },
-    armor: { name: 'Kinetic Armor', current: 0, max: 0, regenRate: 1 },
-    shield: { name: 'Energy Shield', current: 0, max: 0, regenRate: 1 }
-  };
+  // Calculate defense values from cached user tech counts (no DB call needed)
+  const defenseValues = TechFactory.calculateDefenseValues(user.techCounts);
   
   const responseData = {
     x: playerShip.x,

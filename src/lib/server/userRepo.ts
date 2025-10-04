@@ -8,6 +8,7 @@ import { createInitialTechTree } from './techtree';
 import { getTypedCacheManager } from './typedCacheManager';
 import { createEmptyContext } from './typedLocks';
 import { sendMessageToUserCached } from './typedCacheManager';
+import { TechCounts } from './TechFactory';
 
 interface UserRow {
   id: number;
@@ -17,6 +18,18 @@ interface UserRow {
   last_updated: number;
   tech_tree: string;
   ship_id?: number;
+  // Tech counts (weapons)
+  pulse_laser: number;
+  auto_turret: number;
+  plasma_lance: number;
+  gauss_rifle: number;
+  photon_torpedo: number;
+  rocket_launcher: number;
+  // Tech counts (defense)
+  ship_hull: number;
+  kinetic_armor: number;
+  energy_shield: number;
+  missile_jammer: number;
 }
 
 function userFromRow(row: UserRow, saveCallback: SaveUserCallback): User {
@@ -27,6 +40,21 @@ function userFromRow(row: UserRow, saveCallback: SaveUserCallback): User {
   } catch {
     techTree = createInitialTechTree();
   }
+  
+  // Extract tech counts from row
+  const techCounts: TechCounts = {
+    pulse_laser: row.pulse_laser || 0,
+    auto_turret: row.auto_turret || 0,
+    plasma_lance: row.plasma_lance || 0,
+    gauss_rifle: row.gauss_rifle || 0,
+    photon_torpedo: row.photon_torpedo || 0,
+    rocket_launcher: row.rocket_launcher || 0,
+    ship_hull: row.ship_hull || 0,
+    kinetic_armor: row.kinetic_armor || 0,
+    energy_shield: row.energy_shield || 0,
+    missile_jammer: row.missile_jammer || 0
+  };
+  
   return new User(
     row.id,
     row.username,
@@ -35,6 +63,7 @@ function userFromRow(row: UserRow, saveCallback: SaveUserCallback): User {
     row.last_updated,
     techTree,
     saveCallback,
+    techCounts,
     row.ship_id
   );
 }
@@ -131,8 +160,20 @@ async function createUserWithShip(db: sqlite3.Database, username: string, passwo
               const userId = this.lastID;
               console.log(`✅ Created user ${username} (ID: ${userId}) with ship ID ${shipId}`);
               
-              // Create the user object
-              const user = new User(userId, username, password_hash, 0.0, now, techTree, saveCallback, shipId);
+              // Create the user object with default tech counts
+              const defaultTechCounts: TechCounts = {
+                pulse_laser: 5,
+                auto_turret: 5,
+                plasma_lance: 0,
+                gauss_rifle: 0,
+                photon_torpedo: 0,
+                rocket_launcher: 0,
+                ship_hull: 5,
+                kinetic_armor: 5,
+                energy_shield: 5,
+                missile_jammer: 0
+              };
+              const user = new User(userId, username, password_hash, 0.0, now, techTree, saveCallback, defaultTechCounts, shipId);
               
               // Send welcome message to new user
               await sendMessageToUserCached(userId, `Welcome to Spacewars, ${username}! Your journey among the stars begins now. Navigate wisely and collect resources to upgrade your ship.`);
@@ -158,8 +199,20 @@ async function createUserWithShip(db: sqlite3.Database, username: string, passwo
           if (err) return reject(err);
           const id = this.lastID;
           
-          // Create the user object and cache it
-          const user = new User(id, username, password_hash, 0.0, now, techTree, saveCallback);
+          // Create the user object with default tech counts
+          const defaultTechCounts: TechCounts = {
+            pulse_laser: 5,
+            auto_turret: 5,
+            plasma_lance: 0,
+            gauss_rifle: 0,
+            photon_torpedo: 0,
+            rocket_launcher: 0,
+            ship_hull: 5,
+            kinetic_armor: 5,
+            energy_shield: 5,
+            missile_jammer: 0
+          };
+          const user = new User(id, username, password_hash, 0.0, now, techTree, saveCallback, defaultTechCounts);
           
           try {
             // Note: User creation doesn't need immediate caching since
@@ -180,8 +233,39 @@ export function saveUserToDb(db: sqlite3.Database): SaveUserCallback {
   return async (user: User) => {
     return new Promise<void>((resolve, reject) => {
       db.run(
-        'UPDATE users SET iron = ?, last_updated = ?, tech_tree = ?, ship_id = ? WHERE id = ?',
-        [user.iron, user.last_updated, JSON.stringify(user.techTree), user.ship_id, user.id],
+        `UPDATE users SET 
+          iron = ?, 
+          last_updated = ?, 
+          tech_tree = ?, 
+          ship_id = ?,
+          pulse_laser = ?,
+          auto_turret = ?,
+          plasma_lance = ?,
+          gauss_rifle = ?,
+          photon_torpedo = ?,
+          rocket_launcher = ?,
+          ship_hull = ?,
+          kinetic_armor = ?,
+          energy_shield = ?,
+          missile_jammer = ?
+        WHERE id = ?`,
+        [
+          user.iron, 
+          user.last_updated, 
+          JSON.stringify(user.techTree), 
+          user.ship_id,
+          user.techCounts.pulse_laser,
+          user.techCounts.auto_turret,
+          user.techCounts.plasma_lance,
+          user.techCounts.gauss_rifle,
+          user.techCounts.photon_torpedo,
+          user.techCounts.rocket_launcher,
+          user.techCounts.ship_hull,
+          user.techCounts.kinetic_armor,
+          user.techCounts.energy_shield,
+          user.techCounts.missile_jammer,
+          user.id
+        ],
         function (err) {
           if (err) return reject(err);
           resolve();
