@@ -4,6 +4,7 @@ import React from 'react';
 import AuthenticatedLayout from '@/components/Layout/AuthenticatedLayout';
 import { messagesService, UnreadMessage } from '@/lib/client/services/messagesService';
 import { useTechCounts } from '@/lib/client/hooks/useTechCounts';
+import { useDefenseValues } from '@/lib/client/hooks/useDefenseValues';
 import { ServerAuthState } from '@/lib/server/serverSession';
 import './HomePage.css';
 
@@ -15,6 +16,32 @@ interface HomePageClientProps {
 const HomePageClient: React.FC<HomePageClientProps> = ({ auth, initialMessages }) => {
   // Messages are pre-loaded from server - no client-side fetching needed
   const { techCounts, weapons, defenses, isLoading: techLoading, error: techError } = useTechCounts();
+  const { defenseValues, isLoading: defenseLoading, error: defenseError } = useDefenseValues();
+
+  // Calculate color based on percentage (0% = red, 50% = yellow, 100% = green)
+  const getDefenseColor = (current: number, max: number): string => {
+    if (max === 0) return '#4caf50'; // Green if no max (shouldn't happen)
+    
+    const percentage = current / max;
+    
+    if (percentage <= 0.5) {
+      // Red (0%) to Yellow (50%)
+      // Red: #f44336, Yellow: #ffeb3b
+      const ratio = percentage * 2; // 0 to 1
+      const r = 244;
+      const g = Math.round(67 + (235 - 67) * ratio);
+      const b = Math.round(54 + (59 - 54) * ratio);
+      return `rgb(${r}, ${g}, ${b})`;
+    } else {
+      // Yellow (50%) to Green (100%)
+      // Yellow: #ffeb3b, Green: #4caf50
+      const ratio = (percentage - 0.5) * 2; // 0 to 1
+      const r = Math.round(255 - (255 - 76) * ratio);
+      const g = Math.round(235 + (175 - 235) * ratio);
+      const b = Math.round(59 + (80 - 59) * ratio);
+      return `rgb(${r}, ${g}, ${b})`;
+    }
+  };
 
   return (
     <AuthenticatedLayout>
@@ -46,6 +73,75 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ auth, initialMessages }
                       </td>
                     </tr>
                   ))
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Defense Values Table */}
+          <div className="data-table-container defense-values-table-container">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th colSpan={3}>Defense Values</th>
+                </tr>
+              </thead>
+              <tbody>
+                {defenseLoading ? (
+                  <tr>
+                    <td colSpan={3} className="loading-cell">
+                      Loading defense values...
+                    </td>
+                  </tr>
+                ) : defenseError ? (
+                  <tr>
+                    <td colSpan={3} className="error-cell">
+                      Error: {defenseError}
+                    </td>
+                  </tr>
+                ) : defenseValues ? (
+                  <>
+                    {(defenseValues.hull.max > 0) && (
+                      <tr className="data-row">
+                        <td className="data-cell">{defenseValues.hull.name}</td>
+                        <td className="data-cell defense-value-cell" style={{ color: getDefenseColor(defenseValues.hull.current, defenseValues.hull.max) }}>
+                          {defenseValues.hull.current}
+                        </td>
+                        <td className="data-cell defense-value-cell">{defenseValues.hull.max}</td>
+                      </tr>
+                    )}
+                    {(defenseValues.armor.max > 0) && (
+                      <tr className="data-row">
+                        <td className="data-cell">{defenseValues.armor.name}</td>
+                        <td className="data-cell defense-value-cell" style={{ color: getDefenseColor(defenseValues.armor.current, defenseValues.armor.max) }}>
+                          {defenseValues.armor.current}
+                        </td>
+                        <td className="data-cell defense-value-cell">{defenseValues.armor.max}</td>
+                      </tr>
+                    )}
+                    {(defenseValues.shield.max > 0) && (
+                      <tr className="data-row">
+                        <td className="data-cell">{defenseValues.shield.name}</td>
+                        <td className="data-cell defense-value-cell" style={{ color: getDefenseColor(defenseValues.shield.current, defenseValues.shield.max) }}>
+                          {defenseValues.shield.current}
+                        </td>
+                        <td className="data-cell defense-value-cell">{defenseValues.shield.max}</td>
+                      </tr>
+                    )}
+                    {(defenseValues.hull.max === 0 && defenseValues.armor.max === 0 && defenseValues.shield.max === 0) && (
+                      <tr>
+                        <td colSpan={3} className="empty-cell">
+                          No defense systems built yet
+                        </td>
+                      </tr>
+                    )}
+                  </>
+                ) : (
+                  <tr>
+                    <td colSpan={3} className="empty-cell">
+                      No defense data available
+                    </td>
+                  </tr>
                 )}
               </tbody>
             </table>

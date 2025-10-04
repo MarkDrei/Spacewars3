@@ -196,6 +196,43 @@ const { buildQueue, buildItem, completeBuild } = useBuildQueue(isLoggedIn);
 const { techCounts, weapons, defenses } = useTechCounts(isLoggedIn);
 ```
 
+### `useDefenseValues`
+**Location**: `src/lib/client/hooks/useDefenseValues.ts`
+
+**Purpose**: Manages defense values (hull, armor, shield) with client-side regeneration.
+
+**Data Source**: `/api/ship-stats` endpoint
+
+**Data Provided**:
+- `defenseValues: DefenseValues | null` - Current defense values with regeneration
+- `isLoading: boolean` - Loading state
+- `error: string | null` - Error state
+- `refetch()` - Refresh data
+
+**Polling Behavior**:
+- **Server polling**: Every 5 seconds to sync server state
+- **Client-side regeneration**: Every 1 second for smooth UI updates
+- **Event listening**: Auto-refreshes on build completion events
+
+**Regeneration Logic**:
+- Values regenerate at 1 per second (hardcoded)
+- Current values are clamped at max values (no overflow)
+- Client interpolates between server updates for smooth UX
+
+**Events Listened**:
+- `BUILD_ITEM_COMPLETED` - Refresh when defense items are built
+- `BUILD_QUEUE_COMPLETED` - Refresh when queue completes
+
+**Usage Patterns**:
+```tsx
+// Defense values with regeneration
+const { defenseValues, isLoading, error } = useDefenseValues();
+
+// Access individual defense values
+const hullCurrent = defenseValues?.hull.current;
+const hullMax = defenseValues?.hull.max;
+```
+
 ---
 
 ## Performance Optimizations
@@ -288,7 +325,7 @@ useEffect(() => {
 - `GET /api/world` - Get world state and objects
 - `POST /api/navigate` - Move ship
 - `POST /api/collect` - Collect space objects
-- `GET /api/ship-stats` - Get ship statistics
+- `GET /api/ship-stats` - Get ship statistics and defense values
 
 ---
 
