@@ -2,6 +2,8 @@
 // Ship stats service for fetching current ship data
 // ---
 
+import { DefenseValues } from '@/shared/defenseValues';
+
 export interface ShipStatsResponse {
   x: number;
   y: number;
@@ -9,6 +11,7 @@ export interface ShipStatsResponse {
   angle: number;
   maxSpeed: number;
   last_position_update_ms: number;
+  defenseValues: DefenseValues;
 }
 
 export interface ShipStatsError {

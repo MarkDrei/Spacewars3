@@ -7,6 +7,7 @@ import { handleApiError, requireAuth, ApiError } from '@/lib/server/errors';
 import { createEmptyContext } from '@/lib/server/typedLocks';
 import { User } from '@/lib/server/user';
 import { World } from '@/lib/server/world';
+import { TechFactory } from '@/lib/server/TechFactory';
 
 export async function GET(request: NextRequest) {
   try {
@@ -39,11 +40,11 @@ export async function GET(request: NextRequest) {
             cacheManager.setUserUnsafe(user, userCtx);
             
             // Continue with ship stats logic
-            return getShipStats(world, user);
+            return await getShipStats(world, user);
           });
         } else {
           // Continue with ship stats logic directly
-          return getShipStats(world, user);
+          return await getShipStats(world, user);
         }
       });
     });
@@ -52,7 +53,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-function getShipStats(world: World, user: User): NextResponse {
+async function getShipStats(world: World, user: User): Promise<NextResponse> {
   // Update physics for all objects first
   const currentTime = Date.now();
   world.updatePhysics(currentTime);
@@ -70,13 +71,17 @@ function getShipStats(world: World, user: User): NextResponse {
   const afterburnerBonus = getResearchEffectFromTree(user.techTree, ResearchType.Afterburner);
   const maxSpeed = baseSpeed * (1 + afterburnerBonus / 100);
   
+  // Calculate defense values from cached user tech counts (no DB call needed)
+  const defenseValues = TechFactory.calculateDefenseValues(user.techCounts);
+  
   const responseData = {
     x: playerShip.x,
     y: playerShip.y,
     speed: playerShip.speed,
     angle: playerShip.angle,
     maxSpeed: maxSpeed,
-    last_position_update_ms: playerShip.last_position_update_ms
+    last_position_update_ms: playerShip.last_position_update_ms,
+    defenseValues
   };
   
   return NextResponse.json(responseData);

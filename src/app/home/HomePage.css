@@ -57,6 +57,19 @@
   color: var(--primary-green);
 }
 
+/* Defense Values Table - extends shared data-table styles */
+.defense-values-table-container {
+  margin-top: 2rem;
+}
+
+.defense-value-cell {
+  text-align: center;
+  font-weight: 600;
+  color: var(--primary-green);
+  width: 80px;
+  min-width: 80px;
+}
+
 /* Tech Counts Table - extends shared data-table styles */
 .tech-counts-table-container {
   margin-top: 2rem;
@@ -103,6 +116,15 @@
   
   .date-line {
     font-size: 0.75rem;
+  }
+
+  .defense-values-table-container {
+    margin-top: 1.5rem;
+  }
+
+  .defense-value-cell {
+    width: 60px;
+    min-width: 60px;
   }
 
   .tech-counts-table-container {
