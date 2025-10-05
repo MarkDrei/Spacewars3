@@ -298,8 +298,10 @@ describe('TechFactory.calculateDefenseValues', () => {
       energy_shield: 0,
       missile_jammer: 0
     };
+    
+    const currentValues = { hull: 0, armor: 0, shield: 0 };
 
-    const result = TechFactory.calculateDefenseValues(techCounts);
+    const result = TechFactory.calculateDefenseValues(techCounts, currentValues);
 
     expect(result.hull.current).toBe(0);
     expect(result.hull.max).toBe(0);
@@ -325,11 +327,14 @@ describe('TechFactory.calculateDefenseValues', () => {
       energy_shield: 0,
       missile_jammer: 0
     };
+    
+    // Current values from database (persisted)
+    const currentValues = { hull: 150, armor: 0, shield: 0 };
 
-    const result = TechFactory.calculateDefenseValues(techCounts);
+    const result = TechFactory.calculateDefenseValues(techCounts, currentValues);
 
     // Max = 100 × tech_count = 100 × 3 = 300
-    // Current = max / 2 = 150
+    // Current = from database = 150
     expect(result.hull.max).toBe(300);
     expect(result.hull.current).toBe(150);
     expect(result.hull.name).toBe('Ship Hull');
@@ -349,20 +354,23 @@ describe('TechFactory.calculateDefenseValues', () => {
       energy_shield: 3,
       missile_jammer: 0
     };
+    
+    // Current values from database (persisted)
+    const currentValues = { hull: 100, armor: 250, shield: 150 };
 
-    const result = TechFactory.calculateDefenseValues(techCounts);
+    const result = TechFactory.calculateDefenseValues(techCounts, currentValues);
 
-    // Hull: 2 × 100 = 200 max, 100 current
+    // Hull: 2 × 100 = 200 max, current from DB = 100
     expect(result.hull.max).toBe(200);
     expect(result.hull.current).toBe(100);
     expect(result.hull.name).toBe('Ship Hull');
 
-    // Armor: 5 × 100 = 500 max, 250 current
+    // Armor: 5 × 100 = 500 max, current from DB = 250
     expect(result.armor.max).toBe(500);
     expect(result.armor.current).toBe(250);
     expect(result.armor.name).toBe('Kinetic Armor');
 
-    // Shield: 3 × 100 = 300 max, 150 current
+    // Shield: 3 × 100 = 300 max, current from DB = 150
     expect(result.shield.max).toBe(300);
     expect(result.shield.current).toBe(150);
     expect(result.shield.name).toBe('Energy Shield');
@@ -381,18 +389,21 @@ describe('TechFactory.calculateDefenseValues', () => {
       energy_shield: 12,
       missile_jammer: 3
     };
+    
+    // Current values from database (persisted)
+    const currentValues = { hull: 500, armor: 400, shield: 600 };
 
-    const result = TechFactory.calculateDefenseValues(techCounts);
+    const result = TechFactory.calculateDefenseValues(techCounts, currentValues);
 
-    // Hull: 10 × 100 = 1000 max, 500 current
+    // Hull: 10 × 100 = 1000 max, current from DB = 500
     expect(result.hull.max).toBe(1000);
     expect(result.hull.current).toBe(500);
 
-    // Armor: 8 × 100 = 800 max, 400 current
+    // Armor: 8 × 100 = 800 max, current from DB = 400
     expect(result.armor.max).toBe(800);
     expect(result.armor.current).toBe(400);
 
-    // Shield: 12 × 100 = 1200 max, 600 current
+    // Shield: 12 × 100 = 1200 max, current from DB = 600
     expect(result.shield.max).toBe(1200);
     expect(result.shield.current).toBe(600);
 

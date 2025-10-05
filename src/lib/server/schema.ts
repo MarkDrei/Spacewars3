@@ -26,6 +26,12 @@ CREATE TABLE IF NOT EXISTS users (
   energy_shield INTEGER NOT NULL DEFAULT 5,
   missile_jammer INTEGER NOT NULL DEFAULT 0,
 
+  -- Defense current values (for persistence)
+  hull_current REAL NOT NULL DEFAULT 250.0,
+  armor_current REAL NOT NULL DEFAULT 250.0,
+  shield_current REAL NOT NULL DEFAULT 250.0,
+  defense_last_regen INTEGER NOT NULL DEFAULT 0,
+
   -- Build queue
   build_queue TEXT DEFAULT NULL,
   build_start_sec INTEGER DEFAULT NULL,
@@ -85,5 +91,13 @@ export const MIGRATE_ADD_TECH_COLUMNS = [
   'ALTER TABLE users ADD COLUMN build_start_sec INTEGER DEFAULT NULL'
 ];
 
+// Migration to add defense current values for persistence
+export const MIGRATE_ADD_DEFENSE_CURRENT = [
+  'ALTER TABLE users ADD COLUMN hull_current REAL NOT NULL DEFAULT 250.0',
+  'ALTER TABLE users ADD COLUMN armor_current REAL NOT NULL DEFAULT 250.0',
+  'ALTER TABLE users ADD COLUMN shield_current REAL NOT NULL DEFAULT 250.0',
+  'ALTER TABLE users ADD COLUMN defense_last_regen INTEGER NOT NULL DEFAULT 0'
+];
+
 // Optional: Version management for migrations
-export const SCHEMA_VERSION = 6;
+export const SCHEMA_VERSION = 8;

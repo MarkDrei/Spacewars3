@@ -68,9 +68,9 @@ function seedTestDatabase(db: sqlite3.Database): void {
     const techTreeJson = JSON.stringify(user.tech_tree);
     
     db.run(`
-      INSERT INTO users (username, password_hash, iron, last_updated, tech_tree, ship_id)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `, [user.username, hashedPassword, user.iron, Math.floor(now / 1000), techTreeJson, shipId]);
+      INSERT INTO users (username, password_hash, iron, last_updated, tech_tree, ship_id, hull_current, armor_current, shield_current, defense_last_regen)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [user.username, hashedPassword, user.iron, Math.floor(now / 1000), techTreeJson, shipId, 250.0, 250.0, 250.0, Math.floor(now / 1000)]);
     
   } catch (error) {
     console.error('❌ Error seeding test database:', error);

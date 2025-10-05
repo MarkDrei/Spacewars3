@@ -58,6 +58,10 @@ async function getShipStats(world: World, user: User): Promise<NextResponse> {
   const currentTime = Date.now();
   world.updatePhysics(currentTime);
   
+  // Update defense values based on elapsed time since last regen
+  const now = Math.floor(Date.now() / 1000);
+  user.updateDefenseValues(now);
+  
   // Find player's ship in the world
   const playerShips = world.getSpaceObjectsByType('player_ship');
   const playerShip = playerShips.find((ship) => ship.id === user.ship_id);
@@ -71,8 +75,13 @@ async function getShipStats(world: World, user: User): Promise<NextResponse> {
   const afterburnerBonus = getResearchEffectFromTree(user.techTree, ResearchType.Afterburner);
   const maxSpeed = baseSpeed * (1 + afterburnerBonus / 100);
   
-  // Calculate defense values from cached user tech counts (no DB call needed)
-  const defenseValues = TechFactory.calculateDefenseValues(user.techCounts);
+  // Calculate defense values using actual current values from database
+  const currentValues = {
+    hull: user.hullCurrent,
+    armor: user.armorCurrent,
+    shield: user.shieldCurrent
+  };
+  const defenseValues = TechFactory.calculateDefenseValues(user.techCounts, currentValues);
   
   const responseData = {
     x: playerShip.x,

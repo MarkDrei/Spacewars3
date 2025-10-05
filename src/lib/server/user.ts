@@ -14,6 +14,13 @@ class User {
   techTree: TechTree;
   ship_id?: number; // Optional ship ID for linking to player's ship
   techCounts: TechCounts; // Tech counts for weapons and defense
+  
+  // Defense current values (persisted)
+  hullCurrent: number;
+  armorCurrent: number;
+  shieldCurrent: number;
+  defenseLastRegen: number; // Timestamp in seconds for regeneration tracking
+  
   private saveCallback: SaveUserCallback;
 
   constructor(
@@ -25,6 +32,10 @@ class User {
     techTree: TechTree,
     saveCallback: SaveUserCallback,
     techCounts: TechCounts,
+    hullCurrent: number,
+    armorCurrent: number,
+    shieldCurrent: number,
+    defenseLastRegen: number,
     ship_id?: number
   ) {
     this.id = id;
@@ -34,6 +45,10 @@ class User {
     this.last_updated = last_updated;
     this.techTree = techTree;
     this.techCounts = techCounts;
+    this.hullCurrent = hullCurrent;
+    this.armorCurrent = armorCurrent;
+    this.shieldCurrent = shieldCurrent;
+    this.defenseLastRegen = defenseLastRegen;
     this.ship_id = ship_id;
     this.saveCallback = saveCallback;
   }
@@ -82,6 +97,29 @@ class User {
     }
     this.iron = iron;
     this.last_updated = now;
+  }
+
+  /**
+   * Update defense values based on elapsed time since last regeneration
+   * Regeneration rate: 1 point per second per defense type
+   * Capped at maximum values (cannot exceed)
+   */
+  updateDefenseValues(now: number): void {
+    const elapsed = now - this.defenseLastRegen;
+    if (elapsed <= 0) return;
+
+    // Calculate maximum values based on tech counts
+    const maxHull = this.techCounts.ship_hull * 100;
+    const maxArmor = this.techCounts.kinetic_armor * 100;
+    const maxShield = this.techCounts.energy_shield * 100;
+
+    // Apply regeneration (1 point/second), clamped at max
+    this.hullCurrent = Math.min(this.hullCurrent + elapsed, maxHull);
+    this.armorCurrent = Math.min(this.armorCurrent + elapsed, maxArmor);
+    this.shieldCurrent = Math.min(this.shieldCurrent + elapsed, maxShield);
+    
+    // Update last regeneration timestamp
+    this.defenseLastRegen = now;
   }
 
   async save(): Promise<void> {
@@ -136,6 +174,11 @@ class User {
       energy_shield: 5,
       missile_jammer: 0
     };
+    // Initialize defense values at max/2 (default tech counts * 100 / 2 = 250)
+    const hullCurrent = (defaultTechCounts.ship_hull * 100) / 2;
+    const armorCurrent = (defaultTechCounts.kinetic_armor * 100) / 2;
+    const shieldCurrent = (defaultTechCounts.energy_shield * 100) / 2;
+    
     return new User(
       0, // id will be set by DB
       username,
@@ -144,7 +187,11 @@ class User {
       now,
       createInitialTechTree(),
       saveCallback,
-      defaultTechCounts
+      defaultTechCounts,
+      hullCurrent,
+      armorCurrent,
+      shieldCurrent,
+      now // defenseLastRegen initialized to now
     );
   }
 }
