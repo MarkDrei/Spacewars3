@@ -12,7 +12,22 @@ import { createEmptyContext } from './typedLocks';
  */
 export function loadWorldFromDb(db: sqlite3.Database, saveCallback: SaveWorldCallback): Promise<World> {
   return new Promise((resolve, reject) => {
-    db.all('SELECT * FROM space_objects', [], (err, rows) => {
+    // Join with users table to get usernames for player ships
+    const query = `
+      SELECT 
+        so.id,
+        so.type,
+        so.x,
+        so.y,
+        so.speed,
+        so.angle,
+        so.last_position_update_ms,
+        u.username
+      FROM space_objects so
+      LEFT JOIN users u ON so.type = 'player_ship' AND so.id = u.ship_id
+    `;
+    
+    db.all(query, [], (err, rows) => {
       if (err) {
         reject(err);
         return;
@@ -26,9 +41,17 @@ export function loadWorldFromDb(db: sqlite3.Database, saveCallback: SaveWorldCal
         speed: number;
         angle: number;
         last_position_update_ms: number;
+        username: string | null;
       }>).map(row => ({
-        ...row,
-        type: row.type as SpaceObject['type']
+        id: row.id,
+        type: row.type as SpaceObject['type'],
+        x: row.x,
+        y: row.y,
+        speed: row.speed,
+        angle: row.angle,
+        last_position_update_ms: row.last_position_update_ms,
+        // Only include username for player ships
+        ...(row.type === 'player_ship' && row.username ? { username: row.username } : {})
       }));
 
       const world = new World(
