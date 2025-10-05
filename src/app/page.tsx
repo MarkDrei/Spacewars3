@@ -2,6 +2,9 @@ import { redirect } from 'next/navigation';
 import { isAuthenticated } from '@/lib/server/serverSession';
 import LoginPage from './login/page';
 
+// Force dynamic rendering because this page uses cookies for authentication
+export const dynamic = 'force-dynamic';
+
 export default async function RootPage() {
   // Check authentication server-side
   const authenticated = await isAuthenticated();

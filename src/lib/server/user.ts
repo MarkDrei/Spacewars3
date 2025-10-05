@@ -124,6 +124,18 @@ class User {
 
   static createNew(username: string, password_hash: string, saveCallback: SaveUserCallback): User {
     const now = Math.floor(Date.now() / 1000);
+    const defaultTechCounts: TechCounts = {
+      pulse_laser: 5,
+      auto_turret: 5,
+      plasma_lance: 0,
+      gauss_rifle: 0,
+      photon_torpedo: 0,
+      rocket_launcher: 0,
+      ship_hull: 5,
+      kinetic_armor: 5,
+      energy_shield: 5,
+      missile_jammer: 0
+    };
     return new User(
       0, // id will be set by DB
       username,
@@ -131,7 +143,8 @@ class User {
       0.0,
       now,
       createInitialTechTree(),
-      saveCallback
+      saveCallback,
+      defaultTechCounts
     );
   }
 }
