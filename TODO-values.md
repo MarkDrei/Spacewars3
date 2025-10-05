@@ -377,13 +377,453 @@ npm test -- --run   # All tests should pass
 
 ---
 
-## IMPLEMENTATION COMPLETE ✅
+## Phase 4: Defense Values Persistence (NEW - October 2025)
 
-**Status**: COMPLETED
+### Completed in Phase 1-3 Summary:
+✅ Backend defense value calculations (TechFactory)
+✅ Defense values in `/api/ship-stats` endpoint
+✅ Client-side defense display with 1/s regeneration
+✅ Visual display on home page with Name | Current | Max
+✅ Client-side regeneration clamped at max values
+✅ Build completion events trigger refresh
+
+### Current Limitations (Hardcoded):
+⚠️ Current values hardcoded at `max / 2` (not persisted)
+⚠️ Regeneration rate hardcoded at `1 per second`
+⚠️ Values reset to max/2 on page refresh
+⚠️ No server-side tracking of damage/repair
+
+---
+
+## Phase 4 Requirements
+
+### Goal
+Move defense current values from hardcoded frontend logic to proper backend persistence with:
+- Database storage of current hull/armor/shield values
+- Server-side regeneration tracking (1 point/second, capped at max)
+- Use existing typedCacheManager for cache-to-DB sync
+- Build completion increases both max and current by +100
+
+### Quick Reference - Confirmed Specifications
+
+| Aspect | Specification |
+|--------|---------------|
+| **DB Columns** | `hull_current`, `armor_current`, `shield_current`, `defense_last_regen` |
+| **Initial Values** | `current = max / 2` (e.g., 5 techs × 100 / 2 = 250) |
+| **Regeneration Rate** | 1 point per second per defense type |
+| **Regeneration Cap** | Stop at max (cannot exceed maximum value) |
+| **Build Completion** | Both max and current increase by +100 |
+| **Sync Mechanism** | Use existing typedCacheManager (no new code needed) |
+| **Migration** | Direct migration, no backward compatibility |
+| **Frontend** | Poll server every 1-2s, remove client-side regen |
+
+### Design Decisions ✅ CONFIRMED
+
+**Initial Values**:
+- New users: `current = max / 2` (half of maximum)
+- Existing users: ✅ **MIGRATE in DB** with `current = max / 2`
+- No backward compatibility needed
+
+**Regeneration**:
+- Rate: `1 point per second` per defense type
+- Cap: ✅ **Current cannot exceed max** (stop at max)
+- Tracking: Server-side in cached user data
+
+**Synchronization**:
+- ✅ **Use existing typedCacheManager** periodic sync mechanism
+- Already implements background persistence
+- Already handles cache-to-DB synchronization
+- No new sync mechanism needed
+
+**Build Completion**:
+- When defense tech completes: ✅ **Both max and current increase by +100** (the new tech's contribution)
+- Example: 5 hull techs (max=500, current=250) → build 1 more → (max=600, current=350)
+- Rationale: New tech adds capacity and is instantly available
+
+---
+
+### Task 14: Database Schema Update
+**File**: `src/lib/server/schema.ts`
+**Description**: Add columns for current defense values
+
+**Changes**:
+```typescript
+// Add to CREATE_USERS_TABLE:
+hull_current REAL NOT NULL DEFAULT 250.0,        -- Initial: 5 × 100 / 2
+armor_current REAL NOT NULL DEFAULT 250.0,       -- Initial: 5 × 100 / 2  
+shield_current REAL NOT NULL DEFAULT 250.0,      -- Initial: 5 × 100 / 2
+defense_last_regen INTEGER NOT NULL DEFAULT 0,   -- Timestamp for regen tracking
+
+// Add migration:
+MIGRATE_ADD_DEFENSE_CURRENT = [
+  'ALTER TABLE users ADD COLUMN hull_current REAL NOT NULL DEFAULT 250.0',
+  'ALTER TABLE users ADD COLUMN armor_current REAL NOT NULL DEFAULT 250.0',
+  'ALTER TABLE users ADD COLUMN shield_current REAL NOT NULL DEFAULT 250.0',
+  'ALTER TABLE users ADD COLUMN defense_last_regen INTEGER NOT NULL DEFAULT 0'
+]
+```
+
+**Testing**: Migration runs successfully on existing database
+
+---
+
+### Task 15: Update User Domain Model
+**File**: `src/lib/server/user.ts`
+**Description**: Add defense current values and regeneration logic to User class
+
+**Changes**:
+- Add properties: `hullCurrent`, `armorCurrent`, `shieldCurrent`, `defenseLastRegen`
+- Add method: `updateDefenseValues(now: number): void` - calculates regeneration since last update
+- Update `createNew()` to initialize defense values at max/2
+- Regeneration logic: `elapsed × 1 point/sec`, clamped at max
+
+**Implementation**:
+```typescript
+updateDefenseValues(now: number): void {
+  const elapsed = now - this.defenseLastRegen;
+  if (elapsed <= 0) return;
+
+  const maxHull = this.techCounts.ship_hull * 100;
+  const maxArmor = this.techCounts.kinetic_armor * 100;
+  const maxShield = this.techCounts.energy_shield * 100;
+
+  this.hullCurrent = Math.min(this.hullCurrent + elapsed, maxHull);
+  this.armorCurrent = Math.min(this.armorCurrent + elapsed, maxArmor);
+  this.shieldCurrent = Math.min(this.shieldCurrent + elapsed, maxShield);
+  this.defenseLastRegen = now;
+}
+```
+
+**Testing**: Unit tests for regeneration logic
+
+---
+
+### Task 16: Update TechFactory Calculations
+**File**: `src/lib/server/TechFactory.ts`
+**Description**: Use actual current values instead of hardcoded max/2
+
+**Changes**:
+```typescript
+static calculateDefenseValues(
+  techCounts: TechCounts,
+  currentValues: { hull: number; armor: number; shield: number }
+): DefenseValues {
+  return {
+    hull: {
+      name: 'Ship Hull',
+      current: currentValues.hull,  // From DB instead of max/2
+      max: techCounts.ship_hull * 100,
+      regenRate: 1
+    },
+    armor: {
+      name: 'Kinetic Armor',
+      current: currentValues.armor,  // From DB instead of max/2
+      max: techCounts.kinetic_armor * 100,
+      regenRate: 1
+    },
+    shield: {
+      name: 'Energy Shield',
+      current: currentValues.shield,  // From DB instead of max/2
+      max: techCounts.energy_shield * 100,
+      regenRate: 1
+    }
+  };
+}
+```
+
+**Testing**: Update existing unit tests to pass current values
+
+---
+
+### Task 17: Integrate Regeneration in Cache Manager
+**File**: `src/lib/server/typedCacheManager.ts`
+**Description**: Add defense regeneration to existing periodic sync
+
+**Changes**:
+- ✅ **Leverage existing background persistence** (already implemented)
+- In user operations, call `user.updateDefenseValues(now)` before any read/write
+- Existing periodic sync will handle DB persistence automatically
+- No new sync mechanism needed
+
+**Implementation Strategy**:
+- On user load from cache: Call `user.updateDefenseValues(now)` to apply regen since last update
+- Before any user operation: Ensure defense values are current
+- Existing typedCacheManager background sync handles DB persistence
+- No changes needed to sync timing/mechanism
+
+**Testing**: Verify regeneration works with existing cache sync
+
+---
+
+### Task 18: Update Ship Stats Endpoint
+**File**: `src/app/api/ship-stats/route.ts`
+**Description**: Pass actual current values to TechFactory
+
+**Changes**:
+```typescript
+// Before: const defenseValues = TechFactory.calculateDefenseValues(techCounts);
+// After:
+const currentValues = {
+  hull: user.hullCurrent,
+  armor: user.armorCurrent,
+  shield: user.shieldCurrent
+};
+const defenseValues = TechFactory.calculateDefenseValues(techCounts, currentValues);
+```
+
+**Testing**: API test verifies actual values returned
+
+---
+
+### Task 19: Update Build Completion Logic
+**File**: `src/lib/server/techRepo.ts`
+**Description**: Increase both max and current by +100 when defense tech completes
+
+**Changes**:
+In `processCompletedBuilds()`, after incrementing tech count:
+```typescript
+// If completed item is a defense tech, increase current by +100 (new tech contribution)
+if (item.itemType === 'defense') {
+  const now = Math.floor(Date.now() / 1000);
+  user.updateDefenseValues(now); // First apply any pending regen
+  
+  // Add the new tech's contribution (+100) to current value
+  if (item.itemKey === 'ship_hull') {
+    user.hullCurrent = Math.min(user.hullCurrent + 100, user.techCounts.ship_hull * 100);
+  } else if (item.itemKey === 'kinetic_armor') {
+    user.armorCurrent = Math.min(user.armorCurrent + 100, user.techCounts.kinetic_armor * 100);
+  } else if (item.itemKey === 'energy_shield') {
+    user.shieldCurrent = Math.min(user.shieldCurrent + 100, user.techCounts.energy_shield * 100);
+  }
+}
+```
+
+**Example**: 
+- Before build: hull techs = 5, max = 500, current = 250
+- After build: hull techs = 6, max = 600, current = 350 (+100)
+
+**Testing**: Test that completing defense tech increases current by +100
+
+---
+
+### Task 20: Update UserRepo Persistence
+**File**: `src/lib/server/userRepo.ts`
+**Description**: Load and save defense current values
+
+**Changes**:
+- In `getUserById()`: Load `hull_current`, `armor_current`, `shield_current`, `defense_last_regen`
+- In `saveUser()`: Persist defense current values
+- Handle migration for existing users (set to max/2 if null)
+
+**Testing**: Database operations test
+
+---
+
+### Task 21: Frontend Hook Update
+**File**: `src/lib/client/hooks/useDefenseValues.ts`
+**Description**: Remove client-side regeneration (now server-side)
+
+**Changes**:
+- Remove `useEffect` that does client-side regeneration
+- Keep polling every 1-2 seconds to get fresh values from server
+- Server now handles regeneration, client just displays
+
+**Rationale**: 
+- Server is now authoritative for current values
+- Frequent polling (every 1-2s) gives smooth updates
+- Eliminates client/server drift
+
+**Testing**: Verify smooth updates in browser
+
+---
+
+### Task 22: Update Tests
+**Files**: 
+- `src/__tests__/lib/TechFactory.test.ts`
+- `src/__tests__/lib/user-domain.test.ts` (NEW)
+- `src/__tests__/lib/techRepo.test.ts`
+
+**Description**: Update and add tests for new behavior
+
+**New Test Cases**:
+- `updateDefenseValues_elapsedTime_regeneratesCorrectly`
+- `updateDefenseValues_regenClamping_stopsAtMax`
+- `updateDefenseValues_noTime_noChange`
+- `processCompletedBuilds_defenseItem_increaseCurrentBy100` ✅ Updated
+- `calculateDefenseValues_usesActualCurrentValues`
+- `buildCompletion_defenseTech_currentClampedAtMax` ✅ New test for edge case
+
+**Testing**: All tests pass
+
+---
+
+### Task 23: Database Migration
+**Description**: ✅ **Direct migration for existing users** (no backward compatibility)
+
+**Steps**:
+1. Add new columns with default values
+2. Run UPDATE to set values for all existing users
+3. No NULL handling needed - all users get values immediately
+
+**Migration Strategy**:
+- ✅ **ALTER TABLE** to add columns with defaults
+- ✅ **UPDATE** existing users immediately (no backward compatibility)
+- All users start with `current = max / 2`
+- `defense_last_regen` set to current time
+
+**Migration Script**:
+```sql
+-- Add columns with defaults
+ALTER TABLE users ADD COLUMN hull_current REAL NOT NULL DEFAULT 250.0;
+ALTER TABLE users ADD COLUMN armor_current REAL NOT NULL DEFAULT 250.0;
+ALTER TABLE users ADD COLUMN shield_current REAL NOT NULL DEFAULT 250.0;
+ALTER TABLE users ADD COLUMN defense_last_regen INTEGER NOT NULL DEFAULT 0;
+
+-- Update existing users to max/2 based on their tech counts
+UPDATE users 
+SET 
+  hull_current = ship_hull * 50.0,
+  armor_current = kinetic_armor * 50.0,
+  shield_current = energy_shield * 50.0,
+  defense_last_regen = strftime('%s', 'now');
+```
+
+**Testing**: Migration runs without errors, all users have valid values
+
+---
+
+### Task 24: Integration Testing
+**Description**: End-to-end testing of persistence
+
+**Test Scenarios**:
+1. New user registration - defense values initialize at max/2
+2. Page refresh - defense values persist correctly
+3. Wait 10 seconds - values regenerate on server
+4. Complete defense tech - current sets to new max
+5. Logout and login - values preserved
+6. Multiple users - regeneration independent
+
+**Expected**: All scenarios work correctly
+
+---
+
+### Task 25: Documentation Update
+**Files**:
+- `.github/copilot-instructions.md`
+- `doc/hookArchitecture.md`
+- `TODO-values.md` (this file)
+
+**Changes**:
+- Document defense value persistence architecture
+- Update data flow diagrams
+- Document regeneration mechanics
+- Add troubleshooting guide
+
+**Testing**: Documentation review
+
+---
+
+## Implementation Order for Phase 4
+
+### Stage 1: Database & Domain (Tasks 14-16)
+1. Update schema with new columns
+2. Update User class with defense properties and regeneration
+3. Update TechFactory to use actual values
+4. Write unit tests
+
+### Stage 2: Backend Integration (Tasks 17-20)
+5. Integrate regeneration in cache manager
+6. Update ship-stats endpoint
+7. Update build completion logic
+8. Update UserRepo persistence
+9. Test backend thoroughly
+
+### Stage 3: Frontend & Testing (Tasks 21-25)
+10. Simplify frontend hook (remove client regen)
+11. Update all tests
+12. Run database migration
+13. Integration testing
+14. Documentation
+
+---
+
+## Success Criteria for Phase 4
+
+**Database**:
+- [ ] Defense current values stored in database
+- [ ] Migration successful for existing users
+- [ ] Values persist across sessions
+
+**Backend**:
+- [ ] Server-side regeneration working (1/s)
+- [ ] Periodic sync to database (every 10s)
+- [ ] Build completion sets defense to max
+- [ ] Values clamp at maximum correctly
+
+**Frontend**:
+- [ ] Client displays server values
+- [ ] Smooth updates via polling
+- [ ] No client-side regeneration
+- [ ] Build completion updates display
+
+**Testing**:
+- [ ] All unit tests pass
+- [ ] Integration tests pass
+- [ ] Manual testing successful
+- [ ] No regressions
+
+**Documentation**:
+- [ ] Architecture documented
+- [ ] Migration guide available
+- [ ] Troubleshooting documented
+
+---
+
+## Design Questions - RESOLVED ✅
+
+1. ✅ **Periodic Sync**: Use existing typedCacheManager mechanism (no changes needed)
+2. ✅ **Logout Behavior**: Handled by existing cache manager persistence
+3. ✅ **Migration Strategy**: All users migrate to max/2 immediately, no backward compatibility
+4. ✅ **Initial Values**: New users start at max/2 (250 for 5 default techs)
+5. ✅ **Regeneration Cap**: Stop at max (cannot exceed)
+6. ✅ **Build Completion**: Both max and current increase by +100
+7. **Cache Eviction**: Values persist to DB, reload on next access (existing behavior)
+8. **Combat System**: Future feature - will decrease current values in combat
+
+---
+
+## Phase 4 Implementation Summary
+
+### Ready to Implement ✅
+
+**Confirmed Requirements**:
+- ✅ Add 4 DB columns for defense current values
+- ✅ Server-side regeneration at 1 point/second
+- ✅ Use existing typedCacheManager sync
+- ✅ Build completion: +100 to current (and max increases naturally)
+- ✅ Direct migration: all users to max/2
+- ✅ No backward compatibility needed
+
+**Implementation Order**:
+1. **Database & Domain** (Tasks 14-16): Schema, User class, TechFactory
+2. **Backend Integration** (Tasks 17-20): Cache, endpoints, persistence
+3. **Frontend & Testing** (Tasks 21-25): Hook, tests, migration, docs
+
+**Estimated Effort**: ~4-6 hours
+- Database & Domain: ~2 hours
+- Backend Integration: ~2 hours  
+- Frontend & Testing: ~2 hours
+
+---
+
+## IMPLEMENTATION STATUS
+
+**Phase 1-3**: ✅ COMPLETED (2025-10-03)
+**Phase 4**: 📋 PLANNED (2025-10-05) - Ready to implement
+
 **Created**: 2025-09-29
-**Completed**: 2025-10-03
+**Last Updated**: 2025-10-05
 **Author**: GitHub Copilot
-**Total Time**: ~2 hours
 
 ### Summary of Changes
 
