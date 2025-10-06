@@ -77,8 +77,8 @@ export class OtherShipRenderer extends SpaceObjectRendererBase {
             // Save context for text rendering
             ctx.save();
             
-            // Reset rotation to draw text horizontally
-            ctx.rotate(-spaceObject.angle * (Math.PI / 180) - Math.PI / 2);
+            // Reset rotation to draw text horizontally (counter-rotate the ship's angle)
+            ctx.rotate(-spaceObject.angle * (Math.PI / 180));
             
             // Set text properties
             ctx.font = '12px Arial';
