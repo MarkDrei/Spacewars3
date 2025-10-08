@@ -50,7 +50,7 @@ describe('collectionService', () => {
       const result = await collectionService.collectObject(objectId);
 
       // Assert
-      expect(mockFetch).toHaveBeenCalledWith('/api/collect', {
+      expect(mockFetch).toHaveBeenCalledWith('/api/harvest', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

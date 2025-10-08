@@ -324,7 +324,7 @@ useEffect(() => {
 ### Game World Endpoints
 - `GET /api/world` - Get world state and objects
 - `POST /api/navigate` - Move ship
-- `POST /api/collect` - Collect space objects
+- `POST /api/harvest` - Collect space objects
 - `GET /api/ship-stats` - Get ship statistics and defense values
 
 ---

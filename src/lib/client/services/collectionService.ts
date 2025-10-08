@@ -23,7 +23,7 @@ export const collectionService = {
       const requestBody = JSON.stringify({ objectId });
       console.log(`📤 Request body: ${requestBody}`);
       
-      const response = await fetch('/api/collect', {
+      const response = await fetch('/api/harvest', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

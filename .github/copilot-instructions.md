@@ -22,7 +22,7 @@
 ## Project Structure
 - `src/app/`: Next.js App Router pages and API routes
   - `src/app/api/`: API routes for authentication and game logic
-    - Endpoints: `/collect`, `/login`, `/logout`, `/navigate`, `/register`, `/session`, `/ship-stats`, `/techtree`, `/trigger-research`, `/user-stats`, `/world`
+    - Endpoints: `/harvest`, `/login`, `/logout`, `/navigate`, `/register`, `/session`, `/ship-stats`, `/techtree`, `/trigger-research`, `/user-stats`, `/world`
   - `src/app/game/`: Game page component
   - `src/app/login/`: Login page component
   - `src/app/research/`: Research page component
