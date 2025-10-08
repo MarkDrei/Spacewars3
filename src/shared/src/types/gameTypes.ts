@@ -10,6 +10,7 @@ export interface SpaceObject {
   speed: number;
   angle: number;
   last_position_update_ms: number;
+  username?: string; // Optional: only present for player_ship type
 }
 
 export interface WorldData {
@@ -24,6 +25,7 @@ export interface WorldData {
 export interface PlayerShip extends SpaceObject {
   type: 'player_ship';
   userId: number;
+  username: string; // Required for player ships
 }
 
 export interface Asteroid extends SpaceObject {
