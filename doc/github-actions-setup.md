@@ -31,10 +31,16 @@ Runs after build-and-test succeeds:
 
 1. **Install Playwright** - Sets up browser automation tool
 2. **Build and start application** - Runs the Next.js production server
-3. **Capture screenshots** - Takes full-page screenshots of:
-   - Login page (`/login`)
-   - About page (`/about`)
-   - Home page (`/`)
+3. **Capture authenticated screenshots** - Uses a Playwright script to:
+   - Log in with default user (username: "a", password: "a")
+   - Wait for pages to fully load
+   - Take full-page screenshots of:
+     - Login page (before authentication)
+     - Game page (after login)
+     - About page
+     - Home page
+     - Research page
+     - Factory page
 4. **Upload artifacts** - Saves screenshots for 7 days for download and inspection
 
 ### 2. CI Status Badge
@@ -151,19 +157,23 @@ This means:
 
 ### Adjust Screenshot Pages
 
-Edit `.github/workflows/ci.yml`, lines 78-82:
+Edit `scripts/take-screenshots.js` to add or remove pages:
 
-```yaml
-- name: Capture screenshots
-  run: |
-    npx playwright screenshot http://localhost:3000/login screenshots/login.png --full-page
-    npx playwright screenshot http://localhost:3000/about screenshots/about.png --full-page
-    npx playwright screenshot http://localhost:3000/your-new-page screenshots/new-page.png --full-page
+```javascript
+// Add a new page screenshot
+console.log('Navigating to new page...');
+await page.goto('http://localhost:3000/your-new-page', { waitUntil: 'networkidle' });
+await page.waitForTimeout(2000);
+
+console.log('Taking screenshot of new page...');
+await page.screenshot({ path: 'screenshots/07-new-page.png', fullPage: true });
 ```
+
+Note: The script automatically logs in with user "a" and password "a" before taking screenshots of authenticated pages.
 
 ### Change Artifact Retention
 
-Edit `.github/workflows/ci.yml`, line 90:
+Edit `.github/workflows/ci.yml`, line 88:
 
 ```yaml
 retention-days: 30  # Keep screenshots for 30 days instead of 7
@@ -203,7 +213,9 @@ Edit `.github/workflows/ci.yml`, lines 33-35:
 
 - Check if the application started successfully (review logs)
 - Verify the application is listening on port 3000
-- Check for authentication requirements on pages
+- Check that the default user "a" with password "a" exists in the database
+- Review the Playwright script output in the workflow logs
+- Ensure pages load within the timeout period (2-3 seconds)
 
 ### Build failures?
 

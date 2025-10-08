@@ -75,11 +75,8 @@ jobs:
     - name: Create screenshots directory
       run: mkdir -p screenshots
 
-    - name: Capture screenshots
-      run: |
-        npx playwright screenshot http://localhost:3000/login screenshots/login.png --full-page
-        npx playwright screenshot http://localhost:3000/about screenshots/about.png --full-page
-        npx playwright screenshot http://localhost:3000 screenshots/home.png --full-page
+    - name: Capture screenshots with authentication
+      run: node scripts/take-screenshots.js
       continue-on-error: true
 
     - name: Upload screenshots
