@@ -268,28 +268,31 @@ export class TechFactory {
   }
 
   /**
-   * Calculate defense values (hull, armor, shield) based on tech counts
+   * Calculate defense values (hull, armor, shield) based on tech counts and current values
    * Max value = 100 × tech_count
-   * Current value = max / 2 (hardcoded for now, not persisted)
-   * Regen rate = 1 per second (hardcoded for now)
+   * Current value = from database (persisted)
+   * Regen rate = 1 per second (hardcoded)
    */
-  static calculateDefenseValues(techCounts: TechCounts): DefenseValues {
+  static calculateDefenseValues(
+    techCounts: TechCounts,
+    currentValues: { hull: number; armor: number; shield: number }
+  ): DefenseValues {
     return {
       hull: {
         name: 'Ship Hull',
-        current: (techCounts.ship_hull * 100) / 2,
+        current: currentValues.hull,
         max: techCounts.ship_hull * 100,
         regenRate: 1
       },
       armor: {
         name: 'Kinetic Armor',
-        current: (techCounts.kinetic_armor * 100) / 2,
+        current: currentValues.armor,
         max: techCounts.kinetic_armor * 100,
         regenRate: 1
       },
       shield: {
         name: 'Energy Shield',
-        current: (techCounts.energy_shield * 100) / 2,
+        current: currentValues.shield,
         max: techCounts.energy_shield * 100,
         regenRate: 1
       }

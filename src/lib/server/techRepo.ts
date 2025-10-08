@@ -241,6 +241,11 @@ export class TechRepo {
       }
 
       await this.updateTechCounts(userId, techCounts);
+      
+      // Update defense current values for completed defense items
+      // When a defense tech completes, increase current by +100 (capped at new max)
+      await this.updateDefenseCurrentValuesForCompletedBuilds(userId, completed, techCounts);
+      
       await this.updateBuildQueue(userId, remaining);
       
       // Send notifications for completed builds
@@ -258,6 +263,66 @@ export class TechRepo {
     }
 
     return { completed, remaining };
+  }
+
+  /**
+   * Update defense current values when defense items complete building
+   * Increases current by +100 (the new tech's contribution), capped at new max
+   */
+  private async updateDefenseCurrentValuesForCompletedBuilds(
+    userId: number, 
+    completed: BuildQueueItem[], 
+    updatedTechCounts: TechCounts
+  ): Promise<void> {
+    // Check if any defense items were completed
+    const defenseItems = completed.filter(item => item.itemType === 'defense');
+    if (defenseItems.length === 0) return;
+
+    // Get current defense values from database
+    const result = await new Promise<{ hull_current: number; armor_current: number; shield_current: number } | undefined>((resolve, reject) => {
+      this.db.get(
+        'SELECT hull_current, armor_current, shield_current FROM users WHERE id = ?',
+        [userId],
+        (err: Error | null, row: { hull_current: number; armor_current: number; shield_current: number } | undefined) => {
+          if (err) reject(err);
+          else resolve(row);
+        }
+      );
+    });
+
+    if (!result) {
+      console.warn(`No defense values found for user ${userId}`);
+      return;
+    }
+
+    let { hull_current, armor_current, shield_current } = result;
+
+    // For each completed defense item, increase current by +100 (capped at new max)
+    for (const item of defenseItems) {
+      const maxValue = updatedTechCounts[item.itemKey as keyof TechCounts] * 100;
+      
+      if (item.itemKey === 'ship_hull') {
+        hull_current = Math.min(hull_current + 100, maxValue);
+      } else if (item.itemKey === 'kinetic_armor') {
+        armor_current = Math.min(armor_current + 100, maxValue);
+      } else if (item.itemKey === 'energy_shield') {
+        shield_current = Math.min(shield_current + 100, maxValue);
+      }
+    }
+
+    // Update the database with new current values
+    await new Promise<void>((resolve, reject) => {
+      this.db.run(
+        `UPDATE users 
+         SET hull_current = ?, armor_current = ?, shield_current = ?
+         WHERE id = ?`,
+        [hull_current, armor_current, shield_current, userId],
+        (err: Error | null) => {
+          if (err) reject(err);
+          else resolve();
+        }
+      );
+    });
   }
 
   /**

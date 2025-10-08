@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { getShipStats } from '../services/shipStatsService';
-import { DefenseValues, DefenseValue } from '@/shared/defenseValues';
+import { DefenseValues } from '@/shared/defenseValues';
 import { globalEvents, EVENTS } from '../services/eventService';
 
 interface UseDefenseValuesReturn {
@@ -10,8 +10,10 @@ interface UseDefenseValuesReturn {
   refetch: () => void;
 }
 
-export const useDefenseValues = (pollInterval: number = 5000): UseDefenseValuesReturn => {
+export const useDefenseValues = (pollInterval: number = 2000): UseDefenseValuesReturn => {
+  // Server values fetched from API
   const [serverDefenseValues, setServerDefenseValues] = useState<DefenseValues | null>(null);
+  // Interpolated values displayed to user (updated multiple times per second)
   const [displayDefenseValues, setDisplayDefenseValues] = useState<DefenseValues | null>(null);
   const [lastServerUpdate, setLastServerUpdate] = useState<number>(Date.now());
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -19,9 +21,7 @@ export const useDefenseValues = (pollInterval: number = 5000): UseDefenseValuesR
   
   // Use ref to track if component is mounted (for cleanup)
   const isMountedRef = useRef<boolean>(true);
-  
-  // Use ref to track if regen interval is already started
-  const regenIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const interpolationIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const fetchDefenseValues = useCallback(async (retryCount: number = 0) => {
     try {
@@ -42,10 +42,10 @@ export const useDefenseValues = (pollInterval: number = 5000): UseDefenseValuesR
         return;
       }
       
-      // Update server data
+      // Update server defense values and timestamp
       setServerDefenseValues(result.defenseValues);
-      setLastServerUpdate(Date.now());
       setDisplayDefenseValues(result.defenseValues);
+      setLastServerUpdate(Date.now());
       setIsLoading(false);
     } catch {
       if (isMountedRef.current) {
@@ -61,33 +61,33 @@ export const useDefenseValues = (pollInterval: number = 5000): UseDefenseValuesR
     }
   }, []); // Empty dependency array since fetchDefenseValues doesn't depend on any changing values
 
-  // Update displayed defense values based on time elapsed and regen rate
-  const updateDisplayDefenseValues = useCallback(() => {
-    // Only update if we have valid server data
-    if (serverDefenseValues && !error) {
-      const nowMs = Date.now();
-      const secondsElapsed = (nowMs - lastServerUpdate) / 1000;
+  // Interpolation function to smoothly update display values between server polls
+  const updateDisplayValues = useCallback(() => {
+    if (!serverDefenseValues || error) return;
 
-      // Helper function to calculate regenerated value (clamped at max)
-      const regenValue = (defense: DefenseValue): DefenseValue => {
-        const serverCurrent = defense.current;
-        const regenAmount = secondsElapsed * defense.regenRate;
-        const newCurrent = Math.min(serverCurrent + regenAmount, defense.max);
-        
-        return {
-          ...defense,
-          current: Math.floor(newCurrent) // Ensure integer display
-        };
-      };
+    const now = Date.now();
+    const secondsElapsed = (now - lastServerUpdate) / 1000;
 
-      const newValues: DefenseValues = {
-        hull: regenValue(serverDefenseValues.hull),
-        armor: regenValue(serverDefenseValues.armor),
-        shield: regenValue(serverDefenseValues.shield)
-      };
+    // Calculate interpolated values based on time elapsed since last server update
+    const interpolateValue = (defense: { current: number; max: number; regenRate: number }) => {
+      const interpolated = defense.current + (secondsElapsed * defense.regenRate);
+      return Math.min(Math.floor(interpolated), defense.max);
+    };
 
-      setDisplayDefenseValues(newValues);
-    }
+    setDisplayDefenseValues({
+      hull: {
+        ...serverDefenseValues.hull,
+        current: interpolateValue(serverDefenseValues.hull)
+      },
+      armor: {
+        ...serverDefenseValues.armor,
+        current: interpolateValue(serverDefenseValues.armor)
+      },
+      shield: {
+        ...serverDefenseValues.shield,
+        current: interpolateValue(serverDefenseValues.shield)
+      }
+    });
   }, [serverDefenseValues, lastServerUpdate, error]);
 
   useEffect(() => {
@@ -96,7 +96,7 @@ export const useDefenseValues = (pollInterval: number = 5000): UseDefenseValuesR
     // Initial fetch (auth guaranteed by server component)
     fetchDefenseValues();
     
-    // Set up server polling
+    // Set up server polling to get authoritative values
     const serverInterval = setInterval(fetchDefenseValues, pollInterval);
     
     // Listen for build completion events to refresh defense values
@@ -112,34 +112,35 @@ export const useDefenseValues = (pollInterval: number = 5000): UseDefenseValuesR
     return () => {
       isMountedRef.current = false;
       clearInterval(serverInterval);
-      if (regenIntervalRef.current) {
-        clearInterval(regenIntervalRef.current);
-        regenIntervalRef.current = null;
+      if (interpolationIntervalRef.current) {
+        clearInterval(interpolationIntervalRef.current);
       }
       globalEvents.off(EVENTS.BUILD_ITEM_COMPLETED, handleBuildCompleted);
       globalEvents.off(EVENTS.BUILD_QUEUE_COMPLETED, handleBuildCompleted);
     };
   }, [pollInterval, fetchDefenseValues]);
 
-  // Start regen interval after data is loaded
+  // Set up smooth interpolation updates (multiple times per second)
   useEffect(() => {
     if (isLoading || error || !serverDefenseValues) {
       return;
     }
-    
-    // Only start interval if not already started
-    if (!regenIntervalRef.current) {
-      // Update every second for smooth regeneration
-      regenIntervalRef.current = setInterval(updateDisplayDefenseValues, 1000);
+
+    // Update display values immediately
+    updateDisplayValues();
+
+    // Set up interval to update display values smoothly (10 times per second)
+    if (!interpolationIntervalRef.current) {
+      interpolationIntervalRef.current = setInterval(updateDisplayValues, 100);
     }
-    
+
     return () => {
-      if (regenIntervalRef.current) {
-        clearInterval(regenIntervalRef.current);
-        regenIntervalRef.current = null;
+      if (interpolationIntervalRef.current) {
+        clearInterval(interpolationIntervalRef.current);
+        interpolationIntervalRef.current = null;
       }
     };
-  }, [isLoading, error, serverDefenseValues, updateDisplayDefenseValues]);
+  }, [isLoading, error, serverDefenseValues, updateDisplayValues]);
 
   return {
     defenseValues: displayDefenseValues,

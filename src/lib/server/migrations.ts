@@ -81,10 +81,26 @@ export const migrations: Migration[] = [
     down: [
       'ALTER TABLE users DROP COLUMN ship_hull'
     ]
+  },
+  {
+    version: 5,
+    name: 'add_defense_current_values',
+    up: [
+      'ALTER TABLE users ADD COLUMN hull_current REAL NOT NULL DEFAULT 250.0',
+      'ALTER TABLE users ADD COLUMN armor_current REAL NOT NULL DEFAULT 250.0',
+      'ALTER TABLE users ADD COLUMN shield_current REAL NOT NULL DEFAULT 250.0',
+      'ALTER TABLE users ADD COLUMN defense_last_regen INTEGER NOT NULL DEFAULT 0'
+    ],
+    down: [
+      'ALTER TABLE users DROP COLUMN hull_current',
+      'ALTER TABLE users DROP COLUMN armor_current',
+      'ALTER TABLE users DROP COLUMN shield_current',
+      'ALTER TABLE users DROP COLUMN defense_last_regen'
+    ]
   }
   // Future migrations go here
   // {
-  //   version: 5,
+  //   version: 6,
   //   name: 'add_user_settings',
   //   up: ['ALTER TABLE users ADD COLUMN settings TEXT DEFAULT "{}"'],
   //   down: ['ALTER TABLE users DROP COLUMN settings']
@@ -180,6 +196,9 @@ export async function applyTechMigrations(db: import('sqlite3').Database): Promi
   
   // Apply ship_hull migration
   await applyShipHullMigration(db);
+  
+  // Apply defense current values migration
+  await applyDefenseCurrentValuesMigration(db);
 }
 
 /**
@@ -261,5 +280,56 @@ export async function applyShipHullMigration(db: import('sqlite3').Database): Pr
     console.log('✅ Ship hull migration completed');
   } catch (error) {
     console.error('❌ Error applying ship hull migration:', error);
+  }
+}
+
+/**
+ * Apply defense current values migration to the database
+ */
+export async function applyDefenseCurrentValuesMigration(db: import('sqlite3').Database): Promise<void> {
+  console.log('🔄 Checking for defense current values migration...');
+  
+  try {
+    const exists = await columnExists(db, 'users', 'hull_current');
+    if (exists) {
+      console.log('✅ Defense current value columns already exist');
+      return;
+    }
+    
+    console.log('🚀 Adding defense current value columns...');
+    
+    // Get defense current values migration
+    const defenseCurrentMigration = migrations.find(m => m.name === 'add_defense_current_values');
+    if (!defenseCurrentMigration) {
+      console.error('❌ Defense current values migration not found');
+      return;
+    }
+    
+    // Apply each migration statement
+    for (const statement of defenseCurrentMigration.up) {
+      await runMigrationStatement(db, statement);
+    }
+    
+    // After adding columns with defaults, update existing users to have current = max/2
+    console.log('🔄 Updating existing users defense values to max/2...');
+    await new Promise<void>((resolve, reject) => {
+      db.run(
+        `UPDATE users 
+         SET 
+           hull_current = ship_hull * 50.0,
+           armor_current = kinetic_armor * 50.0,
+           shield_current = energy_shield * 50.0,
+           defense_last_regen = last_updated
+         WHERE hull_current = 250.0`, // Only update rows that still have the default value
+        (err: Error | null) => {
+          if (err) reject(err);
+          else resolve();
+        }
+      );
+    });
+    
+    console.log('✅ Defense current values migration completed');
+  } catch (error) {
+    console.error('❌ Error applying defense current values migration:', error);
   }
 }
