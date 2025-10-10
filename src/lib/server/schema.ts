@@ -35,6 +35,9 @@ CREATE TABLE IF NOT EXISTS users (
   -- Build queue
   build_queue TEXT DEFAULT NULL,
   build_start_sec INTEGER DEFAULT NULL,
+
+  -- Ship appearance
+  ship_image_index INTEGER NOT NULL DEFAULT 1,
   
   FOREIGN KEY (ship_id) REFERENCES space_objects (id)
 )`;
@@ -99,5 +102,10 @@ export const MIGRATE_ADD_DEFENSE_CURRENT = [
   'ALTER TABLE users ADD COLUMN defense_last_regen INTEGER NOT NULL DEFAULT 0'
 ];
 
+// Migration to add ship image index
+export const MIGRATE_ADD_SHIP_IMAGE_INDEX = [
+  'ALTER TABLE users ADD COLUMN ship_image_index INTEGER NOT NULL DEFAULT 1'
+];
+
 // Optional: Version management for migrations
-export const SCHEMA_VERSION = 8;
+export const SCHEMA_VERSION = 9;

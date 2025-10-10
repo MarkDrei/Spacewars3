@@ -21,6 +21,9 @@ class User {
   shieldCurrent: number;
   defenseLastRegen: number; // Timestamp in seconds for regeneration tracking
   
+  // Ship appearance
+  shipImageIndex: number; // Index for ship image (1-5)
+  
   private saveCallback: SaveUserCallback;
 
   constructor(
@@ -36,6 +39,7 @@ class User {
     armorCurrent: number,
     shieldCurrent: number,
     defenseLastRegen: number,
+    shipImageIndex: number,
     ship_id?: number
   ) {
     this.id = id;
@@ -49,6 +53,7 @@ class User {
     this.armorCurrent = armorCurrent;
     this.shieldCurrent = shieldCurrent;
     this.defenseLastRegen = defenseLastRegen;
+    this.shipImageIndex = shipImageIndex;
     this.ship_id = ship_id;
     this.saveCallback = saveCallback;
   }

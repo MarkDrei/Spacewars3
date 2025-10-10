@@ -35,6 +35,8 @@ interface UserRow {
   armor_current: number;
   shield_current: number;
   defense_last_regen: number;
+  // Ship appearance
+  ship_image_index: number;
 }
 
 function userFromRow(row: UserRow, saveCallback: SaveUserCallback): User {
@@ -69,6 +71,9 @@ function userFromRow(row: UserRow, saveCallback: SaveUserCallback): User {
   const shieldCurrent = row.shield_current !== undefined ? row.shield_current : (techCounts.energy_shield * 100) / 2;
   const defenseLastRegen = row.defense_last_regen || row.last_updated;
   
+  // Extract ship image index, with fallback to 1 for migration
+  const shipImageIndex = row.ship_image_index !== undefined ? row.ship_image_index : 1;
+  
   return new User(
     row.id,
     row.username,
@@ -82,6 +87,7 @@ function userFromRow(row: UserRow, saveCallback: SaveUserCallback): User {
     armorCurrent,
     shieldCurrent,
     defenseLastRegen,
+    shipImageIndex,
     row.ship_id
   );
 }
@@ -170,8 +176,8 @@ async function createUserWithShip(db: sqlite3.Database, username: string, passwo
           const shipId = this.lastID;
           
           // Then create the user with the ship_id (with default defense values)
-          db.run('INSERT INTO users (username, password_hash, iron, last_updated, tech_tree, ship_id, hull_current, armor_current, shield_current, defense_last_regen) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', 
-            [username, password_hash, 0.0, now, JSON.stringify(techTree), shipId, 250.0, 250.0, 250.0, now], 
+          db.run('INSERT INTO users (username, password_hash, iron, last_updated, tech_tree, ship_id, hull_current, armor_current, shield_current, defense_last_regen, ship_image_index) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', 
+            [username, password_hash, 0.0, now, JSON.stringify(techTree), shipId, 250.0, 250.0, 250.0, now, 1], 
             async function (userErr) {
               if (userErr) return reject(userErr);
               
@@ -191,7 +197,7 @@ async function createUserWithShip(db: sqlite3.Database, username: string, passwo
                 energy_shield: 5,
                 missile_jammer: 0
               };
-              const user = new User(userId, username, password_hash, 0.0, now, techTree, saveCallback, defaultTechCounts, 250.0, 250.0, 250.0, now, shipId);
+              const user = new User(userId, username, password_hash, 0.0, now, techTree, saveCallback, defaultTechCounts, 250.0, 250.0, 250.0, now, 1, shipId);
               
               // Send welcome message to new user
               await sendMessageToUserCached(userId, `Welcome to Spacewars, ${username}! Your journey among the stars begins now. Navigate wisely and collect resources to upgrade your ship.`);
@@ -211,8 +217,8 @@ async function createUserWithShip(db: sqlite3.Database, username: string, passwo
       );
     } else {
       // Create user without ship (for testing, with default defense values)
-      db.run('INSERT INTO users (username, password_hash, iron, last_updated, tech_tree, hull_current, armor_current, shield_current, defense_last_regen) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', 
-        [username, password_hash, 0.0, now, JSON.stringify(techTree), 250.0, 250.0, 250.0, now], 
+      db.run('INSERT INTO users (username, password_hash, iron, last_updated, tech_tree, hull_current, armor_current, shield_current, defense_last_regen, ship_image_index) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', 
+        [username, password_hash, 0.0, now, JSON.stringify(techTree), 250.0, 250.0, 250.0, now, 1], 
         async function (err) {
           if (err) return reject(err);
           const id = this.lastID;
@@ -230,7 +236,7 @@ async function createUserWithShip(db: sqlite3.Database, username: string, passwo
             energy_shield: 5,
             missile_jammer: 0
           };
-          const user = new User(id, username, password_hash, 0.0, now, techTree, saveCallback, defaultTechCounts, 250.0, 250.0, 250.0, now);
+          const user = new User(id, username, password_hash, 0.0, now, techTree, saveCallback, defaultTechCounts, 250.0, 250.0, 250.0, now, 1);
           
           try {
             // Note: User creation doesn't need immediate caching since

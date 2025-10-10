@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import AuthenticatedLayout from '@/components/Layout/AuthenticatedLayout';
 import { ServerAuthState } from '@/lib/server/serverSession';
 import './ProfilePage.css';
@@ -9,20 +9,63 @@ interface ProfilePageClientProps {
   auth: ServerAuthState;
 }
 
+interface ProfileData {
+  username: string;
+  shipImageIndex: number;
+}
+
 const ProfilePageClient: React.FC<ProfilePageClientProps> = ({ auth }) => {
-  
-  // Dummy user data - in a real app, this would come from state management or API
-  const userStats = {
+  const [profileData, setProfileData] = useState<ProfileData>({
     username: auth.username,
-    level: 12,
-    totalScore: 15420,
-    gamesPlayed: 47,
-    shipwrecksCollected: 156,
-    escapePodsRescued: 23,
-    totalDistance: 892.5,
-    averageScore: 328,
-    bestScore: 1250,
-    playtime: '24h 35m'
+    shipImageIndex: 1
+  });
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+
+  // Fetch profile data on mount
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const response = await fetch('/api/profile');
+        if (response.ok) {
+          const data = await response.json();
+          setProfileData(data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch profile:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchProfile();
+  }, []);
+
+  const handleShipSelect = async (index: number) => {
+    setIsSaving(true);
+    setMessage(null);
+
+    try {
+      const response = await fetch('/api/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ shipImageIndex: index })
+      });
+
+      if (response.ok) {
+        setProfileData({ ...profileData, shipImageIndex: index });
+        setMessage({ type: 'success', text: 'Ship image updated successfully!' });
+        setTimeout(() => setMessage(null), 3000);
+      } else {
+        setMessage({ type: 'error', text: 'Failed to update ship image' });
+      }
+    } catch (error) {
+      console.error('Failed to update ship:', error);
+      setMessage({ type: 'error', text: 'Failed to update ship image' });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -33,77 +76,37 @@ const ProfilePageClient: React.FC<ProfilePageClientProps> = ({ auth }) => {
         
         <div className="profile-header">
           <div className="avatar">
-            <span className="avatar-text">{userStats.username.charAt(0)}</span>
+            <span className="avatar-text">{profileData.username.charAt(0)}</span>
           </div>
           <div className="player-info">
-            <h2>{userStats.username}</h2>
-            <p className="level">Level {userStats.level}</p>
-            <p className="total-score">Total Score: {userStats.totalScore.toLocaleString()}</p>
+            <h2>{profileData.username}</h2>
           </div>
         </div>
 
-        <div className="stats-grid">
-          <div className="stat-card">
-            <h3>Games Played</h3>
-            <p className="stat-value">{userStats.gamesPlayed}</p>
-          </div>
-          
-          <div className="stat-card">
-            <h3>Shipwrecks Collected</h3>
-            <p className="stat-value">{userStats.shipwrecksCollected}</p>
-          </div>
-          
-          <div className="stat-card">
-            <h3>Escape Pods Rescued</h3>
-            <p className="stat-value">{userStats.escapePodsRescued}</p>
-          </div>
-          
-          <div className="stat-card">
-            <h3>Total Distance</h3>
-            <p className="stat-value">{userStats.totalDistance} km</p>
-          </div>
-          
-          <div className="stat-card">
-            <h3>Average Score</h3>
-            <p className="stat-value">{userStats.averageScore}</p>
-          </div>
-          
-          <div className="stat-card">
-            <h3>Best Score</h3>
-            <p className="stat-value">{userStats.bestScore}</p>
-          </div>
-        </div>
-
-        <div className="achievements">
-          <h3>Recent Achievements</h3>
-          <div className="achievement-list">
-            <div className="achievement">
-              <span className="achievement-icon">🏆</span>
-              <div className="achievement-info">
-                <h4>Space Veteran</h4>
-                <p>Played 50 games</p>
-              </div>
+        <div className="ship-selection">
+          <h3>Select Your Ship</h3>
+          {message && (
+            <div className={`message ${message.type}`}>
+              {message.text}
             </div>
-            <div className="achievement">
-              <span className="achievement-icon">🚀</span>
-              <div className="achievement-info">
-                <h4>Long Distance Explorer</h4>
-                <p>Traveled over 800 km</p>
+          )}
+          <div className="ship-options">
+            {[1, 2, 3, 4, 5].map((index) => (
+              <div
+                key={index}
+                className={`ship-option ${profileData.shipImageIndex === index ? 'selected' : ''} ${isSaving ? 'disabled' : ''}`}
+                onClick={() => !isSaving && handleShipSelect(index)}
+              >
+                <img 
+                  src={`/assets/images/ship${index}.png`} 
+                  alt={`Ship ${index}`}
+                  className="ship-preview"
+                />
+                <span className="ship-label">Ship {index}</span>
+                {profileData.shipImageIndex === index && <span className="checkmark">✓</span>}
               </div>
-            </div>
-            <div className="achievement">
-              <span className="achievement-icon">⭐</span>
-              <div className="achievement-info">
-                <h4>Score Master</h4>
-                <p>Achieved score over 1000</p>
-              </div>
-            </div>
+            ))}
           </div>
-        </div>
-
-        <div className="playtime-info">
-          <h3>Playtime Statistics</h3>
-          <p>Total time in space: <strong>{userStats.playtime}</strong></p>
         </div>
         </div>
       </div>
