@@ -62,11 +62,8 @@ jobs:
         npm install playwright
         npx playwright install --with-deps chromium
 
-    - name: Build application
-      run: npm run build
-
-    - name: Start application
-      run: npm start &
+    - name: Start application in dev mode
+      run: npm run dev &
       env:
         PORT: 3000
 

@@ -30,7 +30,7 @@ Runs on every push and pull request to any branch:
 Runs after build-and-test succeeds:
 
 1. **Install Playwright** - Sets up browser automation tool
-2. **Build and start application** - Runs the Next.js production server
+2. **Start application** - Runs the Next.js development server
 3. **Capture authenticated screenshots** - Uses a Playwright script to:
    - Log in with default user (username: "a", password: "a")
    - Wait for pages to fully load
