@@ -46,7 +46,9 @@ describe('User stats API', () => {
     expect(response.status).toBe(200);
     // New user should have base iron rate, not 0
     expect(data.ironPerSecond).toBe(1);
-    expect(data.iron).toBe(0); // New user starts with 0 iron
+    // New user may have small amount of iron due to time elapsed since creation
+    expect(data.iron).toBeGreaterThanOrEqual(0);
+    expect(data.iron).toBeLessThan(10); // Should be small amount (< 10 seconds elapsed)
     expect(data.last_updated).toBeGreaterThan(0);
   });
 

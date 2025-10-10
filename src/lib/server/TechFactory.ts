@@ -20,6 +20,9 @@ export interface WeaponSpec {
   buildDurationMinutes: number;
   advantage: string;
   disadvantage: string;
+  // Battle system properties
+  damage: number; // actual damage per shot in battle
+  cooldown: number; // cooldown time in seconds between shots
 }
 
 export interface DefenseSpec {
@@ -59,7 +62,9 @@ export class TechFactory {
       armorDamageRatio: 20,
       buildDurationMinutes: 1,
       advantage: 'Cheap and good damage per second',
-      disadvantage: 'Low accuracy vs agile targets'
+      disadvantage: 'Low accuracy vs agile targets',
+      damage: 10, // 10 damage per shot
+      cooldown: 3 // fires every 3 seconds (fast)
     },
     pulse_laser: {
       name: 'Pulse Laser',
@@ -73,7 +78,9 @@ export class TechFactory {
       armorDamageRatio: 10,
       buildDurationMinutes: 2,
       advantage: 'High accuracy',
-      disadvantage: 'Low damage output'
+      disadvantage: 'Low damage output',
+      damage: 8, // 8 damage per shot
+      cooldown: 2 // fires every 2 seconds (very fast)
     },
     gauss_rifle: {
       name: 'Gauss Rifle',
@@ -87,7 +94,9 @@ export class TechFactory {
       armorDamageRatio: 90,
       buildDurationMinutes: 5,
       advantage: 'High impact; penetrates shields',
-      disadvantage: 'Low accuracy vs agile targets'
+      disadvantage: 'Low accuracy vs agile targets',
+      damage: 35, // 35 damage per shot
+      cooldown: 5 // fires every 5 seconds (medium)
     },
     plasma_lance: {
       name: 'Plasma Lance',
@@ -101,7 +110,9 @@ export class TechFactory {
       armorDamageRatio: 30,
       buildDurationMinutes: 5,
       advantage: 'Locally overheats shields and causes hull damage',
-      disadvantage: ''
+      disadvantage: '',
+      damage: 30, // 30 damage per shot
+      cooldown: 4 // fires every 4 seconds (medium-fast)
     },
     rocket_launcher: {
       name: 'Rocket Launcher',
@@ -115,7 +126,9 @@ export class TechFactory {
       armorDamageRatio: 60,
       buildDurationMinutes: 20,
       advantage: 'Guided; always hits unless ECM Jammer is active',
-      disadvantage: 'Susceptible to ECM jammers'
+      disadvantage: 'Susceptible to ECM jammers',
+      damage: 150, // 150 damage per shot (huge!)
+      cooldown: 10 // fires every 10 seconds (slow but powerful)
     },
     photon_torpedo: {
       name: 'Photon Torpedo',
@@ -129,7 +142,9 @@ export class TechFactory {
       armorDamageRatio: 10,
       buildDurationMinutes: 10,
       advantage: 'Heavy shield damage',
-      disadvantage: 'Slightly susceptible to ECM jammers'
+      disadvantage: 'Slightly susceptible to ECM jammers',
+      damage: 120, // 120 damage per shot (heavy)
+      cooldown: 8 // fires every 8 seconds (medium-slow)
     }
   };
 
