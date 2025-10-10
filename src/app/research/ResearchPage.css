@@ -298,12 +298,12 @@
 
 .tooltip-content.tooltip-top {
   bottom: 100%;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
 }
 
 .tooltip-content.tooltip-bottom {
   top: 100%;
-  margin-top: 8px;
+  margin-top: 4px;
 }
 
 .tooltip-table {

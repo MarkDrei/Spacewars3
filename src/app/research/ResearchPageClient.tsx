@@ -145,6 +145,7 @@ const CostTooltip: React.FC<{ research: ResearchDef; currentLevel: number }> = (
   const [position, setPosition] = useState<'top' | 'bottom'>('top');
   const tooltipRef = useRef<HTMLDivElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const hideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   // Calculate next 20 levels
   const futureData = [];
@@ -174,12 +175,29 @@ const CostTooltip: React.FC<{ research: ResearchDef; currentLevel: number }> = (
     }
   }, [show]);
   
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (hideTimeoutRef.current) {
+        clearTimeout(hideTimeoutRef.current);
+      }
+    };
+  }, []);
+  
   const handleMouseEnter = () => {
+    // Clear any pending hide timeout
+    if (hideTimeoutRef.current) {
+      clearTimeout(hideTimeoutRef.current);
+      hideTimeoutRef.current = null;
+    }
     setShow(true);
   };
   
   const handleMouseLeave = () => {
-    setShow(false);
+    // Delay hiding the tooltip by 300ms to allow mouse to reach it
+    hideTimeoutRef.current = setTimeout(() => {
+      setShow(false);
+    }, 300);
   };
   
   return (
