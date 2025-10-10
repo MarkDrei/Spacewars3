@@ -105,6 +105,15 @@ export function getDatabase(): sqlite3.Database {
       } else {
         console.log('✅ Connected to SQLite database at:', dbPath);
         
+        // Set PRAGMA synchronous = FULL to ensure data is written to disk immediately
+        db!.run('PRAGMA synchronous = FULL', (pragmaErr) => {
+          if (pragmaErr) {
+            console.error('⚠️ Warning: Failed to set PRAGMA synchronous:', pragmaErr);
+          } else {
+            console.log('💾 Database synchronous mode set to FULL');
+          }
+        });
+        
         if (!dbExists) {
           console.log('🆕 New database detected, initializing...');
           await initializeDatabase(db!);
