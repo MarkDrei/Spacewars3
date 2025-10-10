@@ -22,10 +22,8 @@ interface UserData {
   build_queue: string | null;
   build_start_sec: number | null;
   last_updated: number;
-  // Tech tree / Research levels
-  iron_harvesting: number;
-  ship_speed: number;
-  afterburner: number;
+  // Tech tree / Research levels - all research data
+  researches: Record<string, number>;
 }
 
 interface SpaceObject {
@@ -216,9 +214,17 @@ const AdminPage: React.FC = () => {
                     </td>
                     <td className="data-cell">
                       <div className="tech-counts">
-                        <span>Iron Harvest: {userData.iron_harvesting}</span>
-                        <span>Ship Speed: {userData.ship_speed}</span>
-                        <span>Afterburner: {userData.afterburner}</span>
+                        {Object.entries(userData.researches).length > 0 ? (
+                          Object.entries(userData.researches)
+                            .sort(([keyA], [keyB]) => keyA.localeCompare(keyB))
+                            .map(([key, value]) => (
+                              <span key={key} title={key}>
+                                {key.replace(/([A-Z])/g, ' $1').trim()}: {value}
+                              </span>
+                            ))
+                        ) : (
+                          <span className="empty">No research data</span>
+                        )}
                       </div>
                     </td>
                     <td className="data-cell">

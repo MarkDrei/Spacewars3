@@ -22,10 +22,8 @@ interface UserData {
   build_queue: string | null;
   build_start_sec: number | null;
   last_updated: number;
-  // Tech tree / Research levels
-  iron_harvesting: number;
-  ship_speed: number;
-  afterburner: number;
+  // Tech tree / Research levels - all research data
+  researches: Record<string, number>;
 }
 
 interface SpaceObject {
@@ -106,12 +104,21 @@ export async function GET(request: NextRequest) {
           missile_jammer: number;
           tech_tree: string;
         }>).map(row => {
-          // Parse tech tree to extract research levels
-          let techTree: Record<string, number> = {};
+          // Parse tech tree to extract ALL research levels
+          let researches: Record<string, number> = {};
           try {
-            techTree = row.tech_tree ? JSON.parse(row.tech_tree) : {};
-          } catch {
-            techTree = {};
+            if (row.tech_tree) {
+              const parsed = JSON.parse(row.tech_tree);
+              // Extract only numeric values (research levels), exclude activeResearch and other non-numeric fields
+              for (const [key, value] of Object.entries(parsed)) {
+                if (typeof value === 'number') {
+                  researches[key] = value;
+                }
+              }
+            }
+          } catch (e) {
+            console.error('Failed to parse tech_tree for user', row.id, e);
+            researches = {};
           }
           
           return {
@@ -131,10 +138,8 @@ export async function GET(request: NextRequest) {
             build_queue: row.build_queue,
             build_start_sec: row.build_start_sec,
             last_updated: row.last_updated,
-            // Extract research levels from tech_tree JSON
-            iron_harvesting: techTree['ironHarvesting'] || 0,
-            ship_speed: techTree['shipSpeed'] || 0,
-            afterburner: techTree['afterburner'] || 0
+            // All research levels from tech_tree JSON
+            researches
           };
         });
         

@@ -416,7 +416,9 @@ const ResearchPageClient: React.FC<ResearchPageClientProps> = ({ auth }) => {
     if (!research) return null;
 
     const key = researchTypeToKey[research.type];
-    const level = techTree[key];
+    const levelValue = techTree[key];
+    // Ensure level is a number (TypeScript safety check)
+    const level = typeof levelValue === 'number' ? levelValue : 0;
     const isActive = techTree.activeResearch?.type === research.type;
     const canUpgrade = !isAnyResearchActive && researchService.canAffordResearch(research, currentIron);
 

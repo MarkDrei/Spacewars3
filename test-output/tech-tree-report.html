@@ -1,0 +1,1555 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Tech Tree Report - Levels 1-50</title>
+  <meta charset="UTF-8">
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 40px;
+      background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%);
+      color: #e0e0e0;
+    }
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+    h1 {
+      color: #00d9ff;
+      text-align: center;
+      font-size: 2.5em;
+      margin-bottom: 10px;
+      text-shadow: 0 0 20px rgba(0, 217, 255, 0.5);
+    }
+    .subtitle {
+      text-align: center;
+      color: #888;
+      margin-bottom: 40px;
+    }
+    .tech-section {
+      margin-bottom: 60px;
+      background: rgba(26, 31, 58, 0.6);
+      border-radius: 12px;
+      padding: 30px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    }
+    .tech-header {
+      margin-bottom: 20px;
+      border-bottom: 2px solid #00d9ff;
+      padding-bottom: 15px;
+    }
+    .tech-name {
+      color: #00d9ff;
+      font-size: 2em;
+      margin: 0;
+    }
+    .tech-description {
+      color: #aaa;
+      margin-top: 8px;
+      font-size: 1.1em;
+    }
+    .tech-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin: 20px 0;
+      padding: 15px;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 8px;
+    }
+    .stat-box {
+      padding: 10px;
+    }
+    .stat-label {
+      color: #888;
+      font-size: 0.85em;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .stat-value {
+      color: #00d9ff;
+      font-size: 1.3em;
+      font-weight: bold;
+      margin-top: 5px;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 20px 0;
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    th {
+      background: linear-gradient(135deg, #1e3a5f 0%, #2a5a8f 100%);
+      color: #00d9ff;
+      padding: 15px 12px;
+      text-align: right;
+      font-weight: 600;
+      font-size: 0.95em;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    th:first-child {
+      text-align: center;
+    }
+    td {
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 12px;
+      text-align: right;
+      font-size: 0.95em;
+    }
+    td:first-child {
+      text-align: center;
+      font-weight: bold;
+      color: #00d9ff;
+    }
+    tr:hover {
+      background: rgba(0, 217, 255, 0.1);
+    }
+    tr.milestone {
+      background: rgba(0, 217, 255, 0.15);
+      font-weight: bold;
+    }
+    tr.milestone td {
+      border-top: 2px solid #00d9ff;
+      border-bottom: 2px solid #00d9ff;
+    }
+    .number {
+      font-family: 'Courier New', monospace;
+    }
+    .summary-box {
+      background: rgba(0, 217, 255, 0.1);
+      border-left: 4px solid #00d9ff;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 8px;
+    }
+    .summary-title {
+      color: #00d9ff;
+      font-size: 1.2em;
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+    .summary-text {
+      color: #ccc;
+      line-height: 1.6;
+    }
+    .duration-format {
+      color: #51cf66;
+    }
+    .cost-format {
+      color: #ffa94d;
+    }
+    .effect-format {
+      color: #d0bfff;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🚀 Tech Tree Progression Report</h1>
+    <p class="subtitle">Complete analysis of all technologies from Level 1 to Level 50<br>
+    Generated: 2025-10-10T20:21:57.069Z</p>
+
+    
+    <div class="tech-section">
+      <div class="tech-header">
+        <h2 class="tech-name">Iron Harvesting</h2>
+        <p class="tech-description">Determines how much iron is harvested per second.</p>
+      </div>
+
+      <div class="tech-stats">
+        <div class="stat-box">
+          <div class="stat-label">Starting Level</div>
+          <div class="stat-value">1</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Base Cost</div>
+          <div class="stat-value class="cost-format">100 iron</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Base Duration</div>
+          <div class="stat-value class="duration-format">10s</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Cost Multiplier</div>
+          <div class="stat-value">2x</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Effect Increase</div>
+          <div class="stat-value">×1.1</div>
+        </div>
+      </div>
+
+      <div class="summary-box">
+        <div class="summary-title">📊 Level 50 Summary</div>
+        <div class="summary-text">
+          <strong>Total Investment Required:</strong><br>
+          • <span class="cost-format">56,294,995,342,131,100 iron</span> (from level 1 to level 50)<br>
+          • <span class="duration-format">65156244608d 22h</span> total research time<br>
+          • <strong>Effect at Level 50:</strong> <span class="effect-format">106.72 iron/sec</span>
+        </div>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Level</th>
+            <th>Upgrade Cost<br><small>(to reach this level)</small></th>
+            <th>Upgrade Duration<br><small>(to reach this level)</small></th>
+            <th>Effect Value<br><small>(iron/sec)</small></th>
+            <th>Cumulative Cost<br><small>(from level 1)</small></th>
+            <th>Cumulative Duration<br><small>(from level 1)</small></th>
+          </tr>
+        </thead>
+        <tbody>
+          
+          <tr>
+            <td>1</td>
+            <td class="number cost-format">100</td>
+            <td class="number duration-format">10s</td>
+            <td class="number effect-format">1</td>
+            <td class="number cost-format">0</td>
+            <td class="number duration-format">0s</td>
+          </tr>
+          <tr>
+            <td>2</td>
+            <td class="number cost-format">100</td>
+            <td class="number duration-format">10s</td>
+            <td class="number effect-format">1.1</td>
+            <td class="number cost-format">100</td>
+            <td class="number duration-format">10s</td>
+          </tr>
+          <tr>
+            <td>3</td>
+            <td class="number cost-format">200</td>
+            <td class="number duration-format">20s</td>
+            <td class="number effect-format">1.21</td>
+            <td class="number cost-format">300</td>
+            <td class="number duration-format">30s</td>
+          </tr>
+          <tr>
+            <td>4</td>
+            <td class="number cost-format">400</td>
+            <td class="number duration-format">40s</td>
+            <td class="number effect-format">1.33</td>
+            <td class="number cost-format">700</td>
+            <td class="number duration-format">1m</td>
+          </tr>
+          <tr>
+            <td>5</td>
+            <td class="number cost-format">800</td>
+            <td class="number duration-format">1m</td>
+            <td class="number effect-format">1.46</td>
+            <td class="number cost-format">1,500</td>
+            <td class="number duration-format">2m</td>
+          </tr>
+          <tr>
+            <td>6</td>
+            <td class="number cost-format">1,600</td>
+            <td class="number duration-format">2m</td>
+            <td class="number effect-format">1.61</td>
+            <td class="number cost-format">3,100</td>
+            <td class="number duration-format">5m</td>
+          </tr>
+          <tr>
+            <td>7</td>
+            <td class="number cost-format">3,200</td>
+            <td class="number duration-format">5m</td>
+            <td class="number effect-format">1.77</td>
+            <td class="number cost-format">6,300</td>
+            <td class="number duration-format">10m</td>
+          </tr>
+          <tr>
+            <td>8</td>
+            <td class="number cost-format">6,400</td>
+            <td class="number duration-format">10m</td>
+            <td class="number effect-format">1.95</td>
+            <td class="number cost-format">12,700</td>
+            <td class="number duration-format">21m</td>
+          </tr>
+          <tr>
+            <td>9</td>
+            <td class="number cost-format">12,800</td>
+            <td class="number duration-format">21m</td>
+            <td class="number effect-format">2.14</td>
+            <td class="number cost-format">25,500</td>
+            <td class="number duration-format">42m</td>
+          </tr>
+          <tr class="milestone">
+            <td>10</td>
+            <td class="number cost-format">25,600</td>
+            <td class="number duration-format">42m</td>
+            <td class="number effect-format">2.36</td>
+            <td class="number cost-format">51,100</td>
+            <td class="number duration-format">1h 25m</td>
+          </tr>
+          <tr>
+            <td>11</td>
+            <td class="number cost-format">51,200</td>
+            <td class="number duration-format">1h 25m</td>
+            <td class="number effect-format">2.59</td>
+            <td class="number cost-format">102,300</td>
+            <td class="number duration-format">2h 50m</td>
+          </tr>
+          <tr>
+            <td>12</td>
+            <td class="number cost-format">102,400</td>
+            <td class="number duration-format">2h 50m</td>
+            <td class="number effect-format">2.85</td>
+            <td class="number cost-format">204,700</td>
+            <td class="number duration-format">5h 41m</td>
+          </tr>
+          <tr>
+            <td>13</td>
+            <td class="number cost-format">204,800</td>
+            <td class="number duration-format">5h 41m</td>
+            <td class="number effect-format">3.14</td>
+            <td class="number cost-format">409,500</td>
+            <td class="number duration-format">11h 22m</td>
+          </tr>
+          <tr>
+            <td>14</td>
+            <td class="number cost-format">409,600</td>
+            <td class="number duration-format">11h 22m</td>
+            <td class="number effect-format">3.45</td>
+            <td class="number cost-format">819,100</td>
+            <td class="number duration-format">22h 45m</td>
+          </tr>
+          <tr>
+            <td>15</td>
+            <td class="number cost-format">819,200</td>
+            <td class="number duration-format">22h 45m</td>
+            <td class="number effect-format">3.8</td>
+            <td class="number cost-format">1,638,300</td>
+            <td class="number duration-format">1d 21h</td>
+          </tr>
+          <tr>
+            <td>16</td>
+            <td class="number cost-format">1,638,400</td>
+            <td class="number duration-format">1d 21h</td>
+            <td class="number effect-format">4.18</td>
+            <td class="number cost-format">3,276,700</td>
+            <td class="number duration-format">3d 19h</td>
+          </tr>
+          <tr>
+            <td>17</td>
+            <td class="number cost-format">3,276,800</td>
+            <td class="number duration-format">3d 19h</td>
+            <td class="number effect-format">4.59</td>
+            <td class="number cost-format">6,553,500</td>
+            <td class="number duration-format">7d 14h</td>
+          </tr>
+          <tr>
+            <td>18</td>
+            <td class="number cost-format">6,553,600</td>
+            <td class="number duration-format">7d 14h</td>
+            <td class="number effect-format">5.05</td>
+            <td class="number cost-format">13,107,100</td>
+            <td class="number duration-format">15d 4h</td>
+          </tr>
+          <tr>
+            <td>19</td>
+            <td class="number cost-format">13,107,200</td>
+            <td class="number duration-format">15d 4h</td>
+            <td class="number effect-format">5.56</td>
+            <td class="number cost-format">26,214,300</td>
+            <td class="number duration-format">30d 8h</td>
+          </tr>
+          <tr class="milestone">
+            <td>20</td>
+            <td class="number cost-format">26,214,400</td>
+            <td class="number duration-format">30d 8h</td>
+            <td class="number effect-format">6.12</td>
+            <td class="number cost-format">52,428,700</td>
+            <td class="number duration-format">60d 16h</td>
+          </tr>
+          <tr>
+            <td>21</td>
+            <td class="number cost-format">52,428,800</td>
+            <td class="number duration-format">60d 16h</td>
+            <td class="number effect-format">6.73</td>
+            <td class="number cost-format">104,857,500</td>
+            <td class="number duration-format">121d 8h</td>
+          </tr>
+          <tr>
+            <td>22</td>
+            <td class="number cost-format">104,857,600</td>
+            <td class="number duration-format">121d 8h</td>
+            <td class="number effect-format">7.4</td>
+            <td class="number cost-format">209,715,100</td>
+            <td class="number duration-format">242d 17h</td>
+          </tr>
+          <tr>
+            <td>23</td>
+            <td class="number cost-format">209,715,200</td>
+            <td class="number duration-format">242d 17h</td>
+            <td class="number effect-format">8.14</td>
+            <td class="number cost-format">419,430,300</td>
+            <td class="number duration-format">485d 10h</td>
+          </tr>
+          <tr>
+            <td>24</td>
+            <td class="number cost-format">419,430,400</td>
+            <td class="number duration-format">485d 10h</td>
+            <td class="number effect-format">8.95</td>
+            <td class="number cost-format">838,860,700</td>
+            <td class="number duration-format">970d 21h</td>
+          </tr>
+          <tr>
+            <td>25</td>
+            <td class="number cost-format">838,860,800</td>
+            <td class="number duration-format">970d 21h</td>
+            <td class="number effect-format">9.85</td>
+            <td class="number cost-format">1,677,721,500</td>
+            <td class="number duration-format">1941d 19h</td>
+          </tr>
+          <tr>
+            <td>26</td>
+            <td class="number cost-format">1,677,721,600</td>
+            <td class="number duration-format">1941d 19h</td>
+            <td class="number effect-format">10.83</td>
+            <td class="number cost-format">3,355,443,100</td>
+            <td class="number duration-format">3883d 14h</td>
+          </tr>
+          <tr>
+            <td>27</td>
+            <td class="number cost-format">3,355,443,200</td>
+            <td class="number duration-format">3883d 14h</td>
+            <td class="number effect-format">11.92</td>
+            <td class="number cost-format">6,710,886,300</td>
+            <td class="number duration-format">7767d 5h</td>
+          </tr>
+          <tr>
+            <td>28</td>
+            <td class="number cost-format">6,710,886,400</td>
+            <td class="number duration-format">7767d 5h</td>
+            <td class="number effect-format">13.11</td>
+            <td class="number cost-format">13,421,772,700</td>
+            <td class="number duration-format">15534d 11h</td>
+          </tr>
+          <tr>
+            <td>29</td>
+            <td class="number cost-format">13,421,772,800</td>
+            <td class="number duration-format">15534d 11h</td>
+            <td class="number effect-format">14.42</td>
+            <td class="number cost-format">26,843,545,500</td>
+            <td class="number duration-format">31068d 22h</td>
+          </tr>
+          <tr class="milestone">
+            <td>30</td>
+            <td class="number cost-format">26,843,545,600</td>
+            <td class="number duration-format">31068d 22h</td>
+            <td class="number effect-format">15.86</td>
+            <td class="number cost-format">53,687,091,100</td>
+            <td class="number duration-format">62137d 20h</td>
+          </tr>
+          <tr>
+            <td>31</td>
+            <td class="number cost-format">53,687,091,200</td>
+            <td class="number duration-format">62137d 20h</td>
+            <td class="number effect-format">17.45</td>
+            <td class="number cost-format">107,374,182,300</td>
+            <td class="number duration-format">124275d 16h</td>
+          </tr>
+          <tr>
+            <td>32</td>
+            <td class="number cost-format">107,374,182,400</td>
+            <td class="number duration-format">124275d 16h</td>
+            <td class="number effect-format">19.19</td>
+            <td class="number cost-format">214,748,364,700</td>
+            <td class="number duration-format">248551d 8h</td>
+          </tr>
+          <tr>
+            <td>33</td>
+            <td class="number cost-format">214,748,364,800</td>
+            <td class="number duration-format">248551d 8h</td>
+            <td class="number effect-format">21.11</td>
+            <td class="number cost-format">429,496,729,500</td>
+            <td class="number duration-format">497102d 16h</td>
+          </tr>
+          <tr>
+            <td>34</td>
+            <td class="number cost-format">429,496,729,600</td>
+            <td class="number duration-format">497102d 16h</td>
+            <td class="number effect-format">23.23</td>
+            <td class="number cost-format">858,993,459,100</td>
+            <td class="number duration-format">994205d 9h</td>
+          </tr>
+          <tr>
+            <td>35</td>
+            <td class="number cost-format">858,993,459,200</td>
+            <td class="number duration-format">994205d 9h</td>
+            <td class="number effect-format">25.55</td>
+            <td class="number cost-format">1,717,986,918,300</td>
+            <td class="number duration-format">1988410d 18h</td>
+          </tr>
+          <tr>
+            <td>36</td>
+            <td class="number cost-format">1,717,986,918,400</td>
+            <td class="number duration-format">1988410d 18h</td>
+            <td class="number effect-format">28.1</td>
+            <td class="number cost-format">3,435,973,836,700</td>
+            <td class="number duration-format">3976821d 13h</td>
+          </tr>
+          <tr>
+            <td>37</td>
+            <td class="number cost-format">3,435,973,836,800</td>
+            <td class="number duration-format">3976821d 13h</td>
+            <td class="number effect-format">30.91</td>
+            <td class="number cost-format">6,871,947,673,500</td>
+            <td class="number duration-format">7953643d 3h</td>
+          </tr>
+          <tr>
+            <td>38</td>
+            <td class="number cost-format">6,871,947,673,600</td>
+            <td class="number duration-format">7953643d 3h</td>
+            <td class="number effect-format">34</td>
+            <td class="number cost-format">13,743,895,347,100</td>
+            <td class="number duration-format">15907286d 6h</td>
+          </tr>
+          <tr>
+            <td>39</td>
+            <td class="number cost-format">13,743,895,347,200</td>
+            <td class="number duration-format">15907286d 6h</td>
+            <td class="number effect-format">37.4</td>
+            <td class="number cost-format">27,487,790,694,300</td>
+            <td class="number duration-format">31814572d 13h</td>
+          </tr>
+          <tr class="milestone">
+            <td>40</td>
+            <td class="number cost-format">27,487,790,694,400</td>
+            <td class="number duration-format">31814572d 13h</td>
+            <td class="number effect-format">41.14</td>
+            <td class="number cost-format">54,975,581,388,700</td>
+            <td class="number duration-format">63629145d 3h</td>
+          </tr>
+          <tr>
+            <td>41</td>
+            <td class="number cost-format">54,975,581,388,800</td>
+            <td class="number duration-format">63629145d 3h</td>
+            <td class="number effect-format">45.26</td>
+            <td class="number cost-format">109,951,162,777,500</td>
+            <td class="number duration-format">127258290d 6h</td>
+          </tr>
+          <tr>
+            <td>42</td>
+            <td class="number cost-format">109,951,162,777,600</td>
+            <td class="number duration-format">127258290d 6h</td>
+            <td class="number effect-format">49.79</td>
+            <td class="number cost-format">219,902,325,555,100</td>
+            <td class="number duration-format">254516580d 12h</td>
+          </tr>
+          <tr>
+            <td>43</td>
+            <td class="number cost-format">219,902,325,555,200</td>
+            <td class="number duration-format">254516580d 12h</td>
+            <td class="number effect-format">54.76</td>
+            <td class="number cost-format">439,804,651,110,300</td>
+            <td class="number duration-format">509033161d 0h</td>
+          </tr>
+          <tr>
+            <td>44</td>
+            <td class="number cost-format">439,804,651,110,400</td>
+            <td class="number duration-format">509033161d 0h</td>
+            <td class="number effect-format">60.24</td>
+            <td class="number cost-format">879,609,302,220,700</td>
+            <td class="number duration-format">1018066322d 0h</td>
+          </tr>
+          <tr>
+            <td>45</td>
+            <td class="number cost-format">879,609,302,220,800</td>
+            <td class="number duration-format">1018066322d 0h</td>
+            <td class="number effect-format">66.26</td>
+            <td class="number cost-format">1,759,218,604,441,500</td>
+            <td class="number duration-format">2036132644d 0h</td>
+          </tr>
+          <tr>
+            <td>46</td>
+            <td class="number cost-format">1,759,218,604,441,600</td>
+            <td class="number duration-format">2036132644d 0h</td>
+            <td class="number effect-format">72.89</td>
+            <td class="number cost-format">3,518,437,208,883,100</td>
+            <td class="number duration-format">4072265288d 1h</td>
+          </tr>
+          <tr>
+            <td>47</td>
+            <td class="number cost-format">3,518,437,208,883,200</td>
+            <td class="number duration-format">4072265288d 1h</td>
+            <td class="number effect-format">80.18</td>
+            <td class="number cost-format">7,036,874,417,766,300</td>
+            <td class="number duration-format">8144530576d 2h</td>
+          </tr>
+          <tr>
+            <td>48</td>
+            <td class="number cost-format">7,036,874,417,766,400</td>
+            <td class="number duration-format">8144530576d 2h</td>
+            <td class="number effect-format">88.2</td>
+            <td class="number cost-format">14,073,748,835,532,700</td>
+            <td class="number duration-format">16289061152d 5h</td>
+          </tr>
+          <tr>
+            <td>49</td>
+            <td class="number cost-format">14,073,748,835,532,800</td>
+            <td class="number duration-format">16289061152d 5h</td>
+            <td class="number effect-format">97.02</td>
+            <td class="number cost-format">28,147,497,671,065,500</td>
+            <td class="number duration-format">32578122304d 11h</td>
+          </tr>
+          <tr class="milestone">
+            <td>50</td>
+            <td class="number cost-format">28,147,497,671,065,600</td>
+            <td class="number duration-format">32578122304d 11h</td>
+            <td class="number effect-format">106.72</td>
+            <td class="number cost-format">56,294,995,342,131,100</td>
+            <td class="number duration-format">65156244608d 22h</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="tech-section">
+      <div class="tech-header">
+        <h2 class="tech-name">Ship Speed</h2>
+        <p class="tech-description">Determines how fast your ship travels.</p>
+      </div>
+
+      <div class="tech-stats">
+        <div class="stat-box">
+          <div class="stat-label">Starting Level</div>
+          <div class="stat-value">1</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Base Cost</div>
+          <div class="stat-value class="cost-format">500 iron</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Base Duration</div>
+          <div class="stat-value class="duration-format">30s</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Cost Multiplier</div>
+          <div class="stat-value">2x</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Effect Increase</div>
+          <div class="stat-value">+5</div>
+        </div>
+      </div>
+
+      <div class="summary-box">
+        <div class="summary-title">📊 Level 50 Summary</div>
+        <div class="summary-text">
+          <strong>Total Investment Required:</strong><br>
+          • <span class="cost-format">281,474,976,710,655,500 iron</span> (from level 1 to level 50)<br>
+          • <span class="duration-format">195468733826d 20h</span> total research time<br>
+          • <strong>Effect at Level 50:</strong> <span class="effect-format">270 units</span>
+        </div>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Level</th>
+            <th>Upgrade Cost<br><small>(to reach this level)</small></th>
+            <th>Upgrade Duration<br><small>(to reach this level)</small></th>
+            <th>Effect Value<br><small>(units)</small></th>
+            <th>Cumulative Cost<br><small>(from level 1)</small></th>
+            <th>Cumulative Duration<br><small>(from level 1)</small></th>
+          </tr>
+        </thead>
+        <tbody>
+          
+          <tr>
+            <td>1</td>
+            <td class="number cost-format">500</td>
+            <td class="number duration-format">30s</td>
+            <td class="number effect-format">25</td>
+            <td class="number cost-format">0</td>
+            <td class="number duration-format">0s</td>
+          </tr>
+          <tr>
+            <td>2</td>
+            <td class="number cost-format">500</td>
+            <td class="number duration-format">30s</td>
+            <td class="number effect-format">30</td>
+            <td class="number cost-format">500</td>
+            <td class="number duration-format">30s</td>
+          </tr>
+          <tr>
+            <td>3</td>
+            <td class="number cost-format">1,000</td>
+            <td class="number duration-format">1m</td>
+            <td class="number effect-format">35</td>
+            <td class="number cost-format">1,500</td>
+            <td class="number duration-format">1m</td>
+          </tr>
+          <tr>
+            <td>4</td>
+            <td class="number cost-format">2,000</td>
+            <td class="number duration-format">2m</td>
+            <td class="number effect-format">40</td>
+            <td class="number cost-format">3,500</td>
+            <td class="number duration-format">3m</td>
+          </tr>
+          <tr>
+            <td>5</td>
+            <td class="number cost-format">4,000</td>
+            <td class="number duration-format">4m</td>
+            <td class="number effect-format">45</td>
+            <td class="number cost-format">7,500</td>
+            <td class="number duration-format">7m</td>
+          </tr>
+          <tr>
+            <td>6</td>
+            <td class="number cost-format">8,000</td>
+            <td class="number duration-format">8m</td>
+            <td class="number effect-format">50</td>
+            <td class="number cost-format">15,500</td>
+            <td class="number duration-format">15m</td>
+          </tr>
+          <tr>
+            <td>7</td>
+            <td class="number cost-format">16,000</td>
+            <td class="number duration-format">16m</td>
+            <td class="number effect-format">55</td>
+            <td class="number cost-format">31,500</td>
+            <td class="number duration-format">31m</td>
+          </tr>
+          <tr>
+            <td>8</td>
+            <td class="number cost-format">32,000</td>
+            <td class="number duration-format">32m</td>
+            <td class="number effect-format">60</td>
+            <td class="number cost-format">63,500</td>
+            <td class="number duration-format">1h 3m</td>
+          </tr>
+          <tr>
+            <td>9</td>
+            <td class="number cost-format">64,000</td>
+            <td class="number duration-format">1h 4m</td>
+            <td class="number effect-format">65</td>
+            <td class="number cost-format">127,500</td>
+            <td class="number duration-format">2h 7m</td>
+          </tr>
+          <tr class="milestone">
+            <td>10</td>
+            <td class="number cost-format">128,000</td>
+            <td class="number duration-format">2h 8m</td>
+            <td class="number effect-format">70</td>
+            <td class="number cost-format">255,500</td>
+            <td class="number duration-format">4h 15m</td>
+          </tr>
+          <tr>
+            <td>11</td>
+            <td class="number cost-format">256,000</td>
+            <td class="number duration-format">4h 16m</td>
+            <td class="number effect-format">75</td>
+            <td class="number cost-format">511,500</td>
+            <td class="number duration-format">8h 31m</td>
+          </tr>
+          <tr>
+            <td>12</td>
+            <td class="number cost-format">512,000</td>
+            <td class="number duration-format">8h 32m</td>
+            <td class="number effect-format">80</td>
+            <td class="number cost-format">1,023,500</td>
+            <td class="number duration-format">17h 3m</td>
+          </tr>
+          <tr>
+            <td>13</td>
+            <td class="number cost-format">1,024,000</td>
+            <td class="number duration-format">17h 4m</td>
+            <td class="number effect-format">85</td>
+            <td class="number cost-format">2,047,500</td>
+            <td class="number duration-format">1d 10h</td>
+          </tr>
+          <tr>
+            <td>14</td>
+            <td class="number cost-format">2,048,000</td>
+            <td class="number duration-format">1d 10h</td>
+            <td class="number effect-format">90</td>
+            <td class="number cost-format">4,095,500</td>
+            <td class="number duration-format">2d 20h</td>
+          </tr>
+          <tr>
+            <td>15</td>
+            <td class="number cost-format">4,096,000</td>
+            <td class="number duration-format">2d 20h</td>
+            <td class="number effect-format">95</td>
+            <td class="number cost-format">8,191,500</td>
+            <td class="number duration-format">5d 16h</td>
+          </tr>
+          <tr>
+            <td>16</td>
+            <td class="number cost-format">8,192,000</td>
+            <td class="number duration-format">5d 16h</td>
+            <td class="number effect-format">100</td>
+            <td class="number cost-format">16,383,500</td>
+            <td class="number duration-format">11d 9h</td>
+          </tr>
+          <tr>
+            <td>17</td>
+            <td class="number cost-format">16,384,000</td>
+            <td class="number duration-format">11d 9h</td>
+            <td class="number effect-format">105</td>
+            <td class="number cost-format">32,767,500</td>
+            <td class="number duration-format">22d 18h</td>
+          </tr>
+          <tr>
+            <td>18</td>
+            <td class="number cost-format">32,768,000</td>
+            <td class="number duration-format">22d 18h</td>
+            <td class="number effect-format">110</td>
+            <td class="number cost-format">65,535,500</td>
+            <td class="number duration-format">45d 12h</td>
+          </tr>
+          <tr>
+            <td>19</td>
+            <td class="number cost-format">65,536,000</td>
+            <td class="number duration-format">45d 12h</td>
+            <td class="number effect-format">115</td>
+            <td class="number cost-format">131,071,500</td>
+            <td class="number duration-format">91d 0h</td>
+          </tr>
+          <tr class="milestone">
+            <td>20</td>
+            <td class="number cost-format">131,072,000</td>
+            <td class="number duration-format">91d 0h</td>
+            <td class="number effect-format">120</td>
+            <td class="number cost-format">262,143,500</td>
+            <td class="number duration-format">182d 1h</td>
+          </tr>
+          <tr>
+            <td>21</td>
+            <td class="number cost-format">262,144,000</td>
+            <td class="number duration-format">182d 1h</td>
+            <td class="number effect-format">125</td>
+            <td class="number cost-format">524,287,500</td>
+            <td class="number duration-format">364d 2h</td>
+          </tr>
+          <tr>
+            <td>22</td>
+            <td class="number cost-format">524,288,000</td>
+            <td class="number duration-format">364d 2h</td>
+            <td class="number effect-format">130</td>
+            <td class="number cost-format">1,048,575,500</td>
+            <td class="number duration-format">728d 4h</td>
+          </tr>
+          <tr>
+            <td>23</td>
+            <td class="number cost-format">1,048,576,000</td>
+            <td class="number duration-format">728d 4h</td>
+            <td class="number effect-format">135</td>
+            <td class="number cost-format">2,097,151,500</td>
+            <td class="number duration-format">1456d 8h</td>
+          </tr>
+          <tr>
+            <td>24</td>
+            <td class="number cost-format">2,097,152,000</td>
+            <td class="number duration-format">1456d 8h</td>
+            <td class="number effect-format">140</td>
+            <td class="number cost-format">4,194,303,500</td>
+            <td class="number duration-format">2912d 17h</td>
+          </tr>
+          <tr>
+            <td>25</td>
+            <td class="number cost-format">4,194,304,000</td>
+            <td class="number duration-format">2912d 17h</td>
+            <td class="number effect-format">145</td>
+            <td class="number cost-format">8,388,607,500</td>
+            <td class="number duration-format">5825d 10h</td>
+          </tr>
+          <tr>
+            <td>26</td>
+            <td class="number cost-format">8,388,608,000</td>
+            <td class="number duration-format">5825d 10h</td>
+            <td class="number effect-format">150</td>
+            <td class="number cost-format">16,777,215,500</td>
+            <td class="number duration-format">11650d 20h</td>
+          </tr>
+          <tr>
+            <td>27</td>
+            <td class="number cost-format">16,777,216,000</td>
+            <td class="number duration-format">11650d 20h</td>
+            <td class="number effect-format">155</td>
+            <td class="number cost-format">33,554,431,500</td>
+            <td class="number duration-format">23301d 16h</td>
+          </tr>
+          <tr>
+            <td>28</td>
+            <td class="number cost-format">33,554,432,000</td>
+            <td class="number duration-format">23301d 16h</td>
+            <td class="number effect-format">160</td>
+            <td class="number cost-format">67,108,863,500</td>
+            <td class="number duration-format">46603d 9h</td>
+          </tr>
+          <tr>
+            <td>29</td>
+            <td class="number cost-format">67,108,864,000</td>
+            <td class="number duration-format">46603d 9h</td>
+            <td class="number effect-format">165</td>
+            <td class="number cost-format">134,217,727,500</td>
+            <td class="number duration-format">93206d 18h</td>
+          </tr>
+          <tr class="milestone">
+            <td>30</td>
+            <td class="number cost-format">134,217,728,000</td>
+            <td class="number duration-format">93206d 18h</td>
+            <td class="number effect-format">170</td>
+            <td class="number cost-format">268,435,455,500</td>
+            <td class="number duration-format">186413d 12h</td>
+          </tr>
+          <tr>
+            <td>31</td>
+            <td class="number cost-format">268,435,456,000</td>
+            <td class="number duration-format">186413d 12h</td>
+            <td class="number effect-format">175</td>
+            <td class="number cost-format">536,870,911,500</td>
+            <td class="number duration-format">372827d 0h</td>
+          </tr>
+          <tr>
+            <td>32</td>
+            <td class="number cost-format">536,870,912,000</td>
+            <td class="number duration-format">372827d 0h</td>
+            <td class="number effect-format">180</td>
+            <td class="number cost-format">1,073,741,823,500</td>
+            <td class="number duration-format">745654d 1h</td>
+          </tr>
+          <tr>
+            <td>33</td>
+            <td class="number cost-format">1,073,741,824,000</td>
+            <td class="number duration-format">745654d 1h</td>
+            <td class="number effect-format">185</td>
+            <td class="number cost-format">2,147,483,647,500</td>
+            <td class="number duration-format">1491308d 2h</td>
+          </tr>
+          <tr>
+            <td>34</td>
+            <td class="number cost-format">2,147,483,648,000</td>
+            <td class="number duration-format">1491308d 2h</td>
+            <td class="number effect-format">190</td>
+            <td class="number cost-format">4,294,967,295,500</td>
+            <td class="number duration-format">2982616d 4h</td>
+          </tr>
+          <tr>
+            <td>35</td>
+            <td class="number cost-format">4,294,967,296,000</td>
+            <td class="number duration-format">2982616d 4h</td>
+            <td class="number effect-format">195</td>
+            <td class="number cost-format">8,589,934,591,500</td>
+            <td class="number duration-format">5965232d 8h</td>
+          </tr>
+          <tr>
+            <td>36</td>
+            <td class="number cost-format">8,589,934,592,000</td>
+            <td class="number duration-format">5965232d 8h</td>
+            <td class="number effect-format">200</td>
+            <td class="number cost-format">17,179,869,183,500</td>
+            <td class="number duration-format">11930464d 17h</td>
+          </tr>
+          <tr>
+            <td>37</td>
+            <td class="number cost-format">17,179,869,184,000</td>
+            <td class="number duration-format">11930464d 17h</td>
+            <td class="number effect-format">205</td>
+            <td class="number cost-format">34,359,738,367,500</td>
+            <td class="number duration-format">23860929d 10h</td>
+          </tr>
+          <tr>
+            <td>38</td>
+            <td class="number cost-format">34,359,738,368,000</td>
+            <td class="number duration-format">23860929d 10h</td>
+            <td class="number effect-format">210</td>
+            <td class="number cost-format">68,719,476,735,500</td>
+            <td class="number duration-format">47721858d 20h</td>
+          </tr>
+          <tr>
+            <td>39</td>
+            <td class="number cost-format">68,719,476,736,000</td>
+            <td class="number duration-format">47721858d 20h</td>
+            <td class="number effect-format">215</td>
+            <td class="number cost-format">137,438,953,471,500</td>
+            <td class="number duration-format">95443717d 16h</td>
+          </tr>
+          <tr class="milestone">
+            <td>40</td>
+            <td class="number cost-format">137,438,953,472,000</td>
+            <td class="number duration-format">95443717d 16h</td>
+            <td class="number effect-format">220</td>
+            <td class="number cost-format">274,877,906,943,500</td>
+            <td class="number duration-format">190887435d 9h</td>
+          </tr>
+          <tr>
+            <td>41</td>
+            <td class="number cost-format">274,877,906,944,000</td>
+            <td class="number duration-format">190887435d 9h</td>
+            <td class="number effect-format">225</td>
+            <td class="number cost-format">549,755,813,887,500</td>
+            <td class="number duration-format">381774870d 18h</td>
+          </tr>
+          <tr>
+            <td>42</td>
+            <td class="number cost-format">549,755,813,888,000</td>
+            <td class="number duration-format">381774870d 18h</td>
+            <td class="number effect-format">230</td>
+            <td class="number cost-format">1,099,511,627,775,500</td>
+            <td class="number duration-format">763549741d 12h</td>
+          </tr>
+          <tr>
+            <td>43</td>
+            <td class="number cost-format">1,099,511,627,776,000</td>
+            <td class="number duration-format">763549741d 12h</td>
+            <td class="number effect-format">235</td>
+            <td class="number cost-format">2,199,023,255,551,500</td>
+            <td class="number duration-format">1527099483d 0h</td>
+          </tr>
+          <tr>
+            <td>44</td>
+            <td class="number cost-format">2,199,023,255,552,000</td>
+            <td class="number duration-format">1527099483d 0h</td>
+            <td class="number effect-format">240</td>
+            <td class="number cost-format">4,398,046,511,103,500</td>
+            <td class="number duration-format">3054198966d 1h</td>
+          </tr>
+          <tr>
+            <td>45</td>
+            <td class="number cost-format">4,398,046,511,104,000</td>
+            <td class="number duration-format">3054198966d 1h</td>
+            <td class="number effect-format">245</td>
+            <td class="number cost-format">8,796,093,022,207,500</td>
+            <td class="number duration-format">6108397932d 2h</td>
+          </tr>
+          <tr>
+            <td>46</td>
+            <td class="number cost-format">8,796,093,022,208,000</td>
+            <td class="number duration-format">6108397932d 2h</td>
+            <td class="number effect-format">250</td>
+            <td class="number cost-format">17,592,186,044,415,500</td>
+            <td class="number duration-format">12216795864d 4h</td>
+          </tr>
+          <tr>
+            <td>47</td>
+            <td class="number cost-format">17,592,186,044,416,000</td>
+            <td class="number duration-format">12216795864d 4h</td>
+            <td class="number effect-format">255</td>
+            <td class="number cost-format">35,184,372,088,831,500</td>
+            <td class="number duration-format">24433591728d 8h</td>
+          </tr>
+          <tr>
+            <td>48</td>
+            <td class="number cost-format">35,184,372,088,832,000</td>
+            <td class="number duration-format">24433591728d 8h</td>
+            <td class="number effect-format">260</td>
+            <td class="number cost-format">70,368,744,177,663,500</td>
+            <td class="number duration-format">48867183456d 17h</td>
+          </tr>
+          <tr>
+            <td>49</td>
+            <td class="number cost-format">70,368,744,177,664,000</td>
+            <td class="number duration-format">48867183456d 17h</td>
+            <td class="number effect-format">265</td>
+            <td class="number cost-format">140,737,488,355,327,500</td>
+            <td class="number duration-format">97734366913d 10h</td>
+          </tr>
+          <tr class="milestone">
+            <td>50</td>
+            <td class="number cost-format">140,737,488,355,328,000</td>
+            <td class="number duration-format">97734366913d 10h</td>
+            <td class="number effect-format">270</td>
+            <td class="number cost-format">281,474,976,710,655,500</td>
+            <td class="number duration-format">195468733826d 20h</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="tech-section">
+      <div class="tech-header">
+        <h2 class="tech-name">Afterburner</h2>
+        <p class="tech-description">Gives the spaceship a much higher speed (% speed increase).</p>
+      </div>
+
+      <div class="tech-stats">
+        <div class="stat-box">
+          <div class="stat-label">Starting Level</div>
+          <div class="stat-value">0</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Base Cost</div>
+          <div class="stat-value class="cost-format">5,000 iron</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Base Duration</div>
+          <div class="stat-value class="duration-format">2m</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Cost Multiplier</div>
+          <div class="stat-value">1.5x</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Effect Increase</div>
+          <div class="stat-value">×1.2</div>
+        </div>
+      </div>
+
+      <div class="summary-box">
+        <div class="summary-title">📊 Level 50 Summary</div>
+        <div class="summary-text">
+          <strong>Total Investment Required:</strong><br>
+          • <span class="cost-format">6,376,214,992,140.496 iron</span> (from level 0 to level 50)<br>
+          • <span class="duration-format">1771170d 19h</span> total research time<br>
+          • <strong>Effect at Level 50:</strong> <span class="effect-format">758,369.85 %</span>
+        </div>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Level</th>
+            <th>Upgrade Cost<br><small>(to reach this level)</small></th>
+            <th>Upgrade Duration<br><small>(to reach this level)</small></th>
+            <th>Effect Value<br><small>(%)</small></th>
+            <th>Cumulative Cost<br><small>(from level 0)</small></th>
+            <th>Cumulative Duration<br><small>(from level 0)</small></th>
+          </tr>
+        </thead>
+        <tbody>
+          
+          <tr>
+            <td>1</td>
+            <td class="number cost-format">5,000</td>
+            <td class="number duration-format">2m</td>
+            <td class="number effect-format">100</td>
+            <td class="number cost-format">5,000</td>
+            <td class="number duration-format">2m</td>
+          </tr>
+          <tr>
+            <td>2</td>
+            <td class="number cost-format">7,500</td>
+            <td class="number duration-format">3m</td>
+            <td class="number effect-format">120</td>
+            <td class="number cost-format">12,500</td>
+            <td class="number duration-format">5m</td>
+          </tr>
+          <tr>
+            <td>3</td>
+            <td class="number cost-format">11,250</td>
+            <td class="number duration-format">4m</td>
+            <td class="number effect-format">144</td>
+            <td class="number cost-format">23,750</td>
+            <td class="number duration-format">9m</td>
+          </tr>
+          <tr>
+            <td>4</td>
+            <td class="number cost-format">16,875</td>
+            <td class="number duration-format">6m</td>
+            <td class="number effect-format">172.8</td>
+            <td class="number cost-format">40,625</td>
+            <td class="number duration-format">16m</td>
+          </tr>
+          <tr>
+            <td>5</td>
+            <td class="number cost-format">25,312.5</td>
+            <td class="number duration-format">10m</td>
+            <td class="number effect-format">207.36</td>
+            <td class="number cost-format">65,937.5</td>
+            <td class="number duration-format">26m</td>
+          </tr>
+          <tr>
+            <td>6</td>
+            <td class="number cost-format">37,968.75</td>
+            <td class="number duration-format">15m</td>
+            <td class="number effect-format">248.83</td>
+            <td class="number cost-format">103,906.25</td>
+            <td class="number duration-format">41m</td>
+          </tr>
+          <tr>
+            <td>7</td>
+            <td class="number cost-format">56,953.125</td>
+            <td class="number duration-format">22m</td>
+            <td class="number effect-format">298.6</td>
+            <td class="number cost-format">160,859.375</td>
+            <td class="number duration-format">1h 4m</td>
+          </tr>
+          <tr>
+            <td>8</td>
+            <td class="number cost-format">85,429.688</td>
+            <td class="number duration-format">34m</td>
+            <td class="number effect-format">358.32</td>
+            <td class="number cost-format">246,289.063</td>
+            <td class="number duration-format">1h 38m</td>
+          </tr>
+          <tr>
+            <td>9</td>
+            <td class="number cost-format">128,144.531</td>
+            <td class="number duration-format">51m</td>
+            <td class="number effect-format">429.98</td>
+            <td class="number cost-format">374,433.594</td>
+            <td class="number duration-format">2h 29m</td>
+          </tr>
+          <tr class="milestone">
+            <td>10</td>
+            <td class="number cost-format">192,216.797</td>
+            <td class="number duration-format">1h 16m</td>
+            <td class="number effect-format">515.98</td>
+            <td class="number cost-format">566,650.391</td>
+            <td class="number duration-format">3h 46m</td>
+          </tr>
+          <tr>
+            <td>11</td>
+            <td class="number cost-format">288,325.195</td>
+            <td class="number duration-format">1h 55m</td>
+            <td class="number effect-format">619.17</td>
+            <td class="number cost-format">854,975.586</td>
+            <td class="number duration-format">5h 41m</td>
+          </tr>
+          <tr>
+            <td>12</td>
+            <td class="number cost-format">432,487.793</td>
+            <td class="number duration-format">2h 52m</td>
+            <td class="number effect-format">743.01</td>
+            <td class="number cost-format">1,287,463.379</td>
+            <td class="number duration-format">8h 34m</td>
+          </tr>
+          <tr>
+            <td>13</td>
+            <td class="number cost-format">648,731.689</td>
+            <td class="number duration-format">4h 19m</td>
+            <td class="number effect-format">891.61</td>
+            <td class="number cost-format">1,936,195.068</td>
+            <td class="number duration-format">12h 54m</td>
+          </tr>
+          <tr>
+            <td>14</td>
+            <td class="number cost-format">973,097.534</td>
+            <td class="number duration-format">6h 29m</td>
+            <td class="number effect-format">1,069.93</td>
+            <td class="number cost-format">2,909,292.603</td>
+            <td class="number duration-format">19h 23m</td>
+          </tr>
+          <tr>
+            <td>15</td>
+            <td class="number cost-format">1,459,646.301</td>
+            <td class="number duration-format">9h 43m</td>
+            <td class="number effect-format">1,283.92</td>
+            <td class="number cost-format">4,368,938.904</td>
+            <td class="number duration-format">1d 5h</td>
+          </tr>
+          <tr>
+            <td>16</td>
+            <td class="number cost-format">2,189,469.452</td>
+            <td class="number duration-format">14h 35m</td>
+            <td class="number effect-format">1,540.7</td>
+            <td class="number cost-format">6,558,408.356</td>
+            <td class="number duration-format">1d 19h</td>
+          </tr>
+          <tr>
+            <td>17</td>
+            <td class="number cost-format">3,284,204.178</td>
+            <td class="number duration-format">21h 53m</td>
+            <td class="number effect-format">1,848.84</td>
+            <td class="number cost-format">9,842,612.534</td>
+            <td class="number duration-format">2d 17h</td>
+          </tr>
+          <tr>
+            <td>18</td>
+            <td class="number cost-format">4,926,306.267</td>
+            <td class="number duration-format">1d 8h</td>
+            <td class="number effect-format">2,218.61</td>
+            <td class="number cost-format">14,768,918.8</td>
+            <td class="number duration-format">4d 2h</td>
+          </tr>
+          <tr>
+            <td>19</td>
+            <td class="number cost-format">7,389,459.4</td>
+            <td class="number duration-format">2d 1h</td>
+            <td class="number effect-format">2,662.33</td>
+            <td class="number cost-format">22,158,378.201</td>
+            <td class="number duration-format">6d 3h</td>
+          </tr>
+          <tr class="milestone">
+            <td>20</td>
+            <td class="number cost-format">11,084,189.1</td>
+            <td class="number duration-format">3d 1h</td>
+            <td class="number effect-format">3,194.8</td>
+            <td class="number cost-format">33,242,567.301</td>
+            <td class="number duration-format">9d 5h</td>
+          </tr>
+          <tr>
+            <td>21</td>
+            <td class="number cost-format">16,626,283.65</td>
+            <td class="number duration-format">4d 14h</td>
+            <td class="number effect-format">3,833.76</td>
+            <td class="number cost-format">49,868,850.951</td>
+            <td class="number duration-format">13d 20h</td>
+          </tr>
+          <tr>
+            <td>22</td>
+            <td class="number cost-format">24,939,425.476</td>
+            <td class="number duration-format">6d 22h</td>
+            <td class="number effect-format">4,600.51</td>
+            <td class="number cost-format">74,808,276.427</td>
+            <td class="number duration-format">20d 18h</td>
+          </tr>
+          <tr>
+            <td>23</td>
+            <td class="number cost-format">37,409,138.213</td>
+            <td class="number duration-format">10d 9h</td>
+            <td class="number effect-format">5,520.61</td>
+            <td class="number cost-format">112,217,414.64</td>
+            <td class="number duration-format">31d 4h</td>
+          </tr>
+          <tr>
+            <td>24</td>
+            <td class="number cost-format">56,113,707.32</td>
+            <td class="number duration-format">15d 14h</td>
+            <td class="number effect-format">6,624.74</td>
+            <td class="number cost-format">168,331,121.96</td>
+            <td class="number duration-format">46d 18h</td>
+          </tr>
+          <tr>
+            <td>25</td>
+            <td class="number cost-format">84,170,560.98</td>
+            <td class="number duration-format">23d 9h</td>
+            <td class="number effect-format">7,949.68</td>
+            <td class="number cost-format">252,501,682.94</td>
+            <td class="number duration-format">70d 3h</td>
+          </tr>
+          <tr>
+            <td>26</td>
+            <td class="number cost-format">126,255,841.47</td>
+            <td class="number duration-format">35d 1h</td>
+            <td class="number effect-format">9,539.62</td>
+            <td class="number cost-format">378,757,524.411</td>
+            <td class="number duration-format">105d 5h</td>
+          </tr>
+          <tr>
+            <td>27</td>
+            <td class="number cost-format">189,383,762.205</td>
+            <td class="number duration-format">52d 14h</td>
+            <td class="number effect-format">11,447.55</td>
+            <td class="number cost-format">568,141,286.616</td>
+            <td class="number duration-format">157d 19h</td>
+          </tr>
+          <tr>
+            <td>28</td>
+            <td class="number cost-format">284,075,643.308</td>
+            <td class="number duration-format">78d 21h</td>
+            <td class="number effect-format">13,737.06</td>
+            <td class="number cost-format">852,216,929.924</td>
+            <td class="number duration-format">236d 17h</td>
+          </tr>
+          <tr>
+            <td>29</td>
+            <td class="number cost-format">426,113,464.962</td>
+            <td class="number duration-format">118d 8h</td>
+            <td class="number effect-format">16,484.47</td>
+            <td class="number cost-format">1,278,330,394.886</td>
+            <td class="number duration-format">355d 2h</td>
+          </tr>
+          <tr class="milestone">
+            <td>30</td>
+            <td class="number cost-format">639,170,197.443</td>
+            <td class="number duration-format">177d 13h</td>
+            <td class="number effect-format">19,781.36</td>
+            <td class="number cost-format">1,917,500,592.329</td>
+            <td class="number duration-format">532d 15h</td>
+          </tr>
+          <tr>
+            <td>31</td>
+            <td class="number cost-format">958,755,296.164</td>
+            <td class="number duration-format">266d 7h</td>
+            <td class="number effect-format">23,737.63</td>
+            <td class="number cost-format">2,876,255,888.493</td>
+            <td class="number duration-format">798d 23h</td>
+          </tr>
+          <tr>
+            <td>32</td>
+            <td class="number cost-format">1,438,132,944.247</td>
+            <td class="number duration-format">399d 11h</td>
+            <td class="number effect-format">28,485.16</td>
+            <td class="number cost-format">4,314,388,832.74</td>
+            <td class="number duration-format">1198d 10h</td>
+          </tr>
+          <tr>
+            <td>33</td>
+            <td class="number cost-format">2,157,199,416.37</td>
+            <td class="number duration-format">599d 5h</td>
+            <td class="number effect-format">34,182.19</td>
+            <td class="number cost-format">6,471,588,249.11</td>
+            <td class="number duration-format">1797d 15h</td>
+          </tr>
+          <tr>
+            <td>34</td>
+            <td class="number cost-format">3,235,799,124.555</td>
+            <td class="number duration-format">898d 19h</td>
+            <td class="number effect-format">41,018.63</td>
+            <td class="number cost-format">9,707,387,373.665</td>
+            <td class="number duration-format">2696d 11h</td>
+          </tr>
+          <tr>
+            <td>35</td>
+            <td class="number cost-format">4,853,698,686.832</td>
+            <td class="number duration-format">1348d 5h</td>
+            <td class="number effect-format">49,222.35</td>
+            <td class="number cost-format">14,561,086,060.497</td>
+            <td class="number duration-format">4044d 17h</td>
+          </tr>
+          <tr>
+            <td>36</td>
+            <td class="number cost-format">7,280,548,030.249</td>
+            <td class="number duration-format">2022d 8h</td>
+            <td class="number effect-format">59,066.82</td>
+            <td class="number cost-format">21,841,634,090.746</td>
+            <td class="number duration-format">6067d 2h</td>
+          </tr>
+          <tr>
+            <td>37</td>
+            <td class="number cost-format">10,920,822,045.373</td>
+            <td class="number duration-format">3033d 13h</td>
+            <td class="number effect-format">70,880.19</td>
+            <td class="number cost-format">32,762,456,136.119</td>
+            <td class="number duration-format">9100d 16h</td>
+          </tr>
+          <tr>
+            <td>38</td>
+            <td class="number cost-format">16,381,233,068.059</td>
+            <td class="number duration-format">4550d 8h</td>
+            <td class="number effect-format">85,056.22</td>
+            <td class="number cost-format">49,143,689,204.178</td>
+            <td class="number duration-format">13651d 0h</td>
+          </tr>
+          <tr>
+            <td>39</td>
+            <td class="number cost-format">24,571,849,602.089</td>
+            <td class="number duration-format">6825d 12h</td>
+            <td class="number effect-format">102,067.47</td>
+            <td class="number cost-format">73,715,538,806.267</td>
+            <td class="number duration-format">20476d 12h</td>
+          </tr>
+          <tr class="milestone">
+            <td>40</td>
+            <td class="number cost-format">36,857,774,403.133</td>
+            <td class="number duration-format">10238d 6h</td>
+            <td class="number effect-format">122,480.96</td>
+            <td class="number cost-format">110,573,313,209.4</td>
+            <td class="number duration-format">30714d 19h</td>
+          </tr>
+          <tr>
+            <td>41</td>
+            <td class="number cost-format">55,286,661,604.7</td>
+            <td class="number duration-format">15357d 9h</td>
+            <td class="number effect-format">146,977.16</td>
+            <td class="number cost-format">165,859,974,814.1</td>
+            <td class="number duration-format">46072d 5h</td>
+          </tr>
+          <tr>
+            <td>42</td>
+            <td class="number cost-format">82,929,992,407.05</td>
+            <td class="number duration-format">23036d 2h</td>
+            <td class="number effect-format">176,372.59</td>
+            <td class="number cost-format">248,789,967,221.15</td>
+            <td class="number duration-format">69108d 7h</td>
+          </tr>
+          <tr>
+            <td>43</td>
+            <td class="number cost-format">124,394,988,610.575</td>
+            <td class="number duration-format">34554d 3h</td>
+            <td class="number effect-format">211,647.11</td>
+            <td class="number cost-format">373,184,955,831.725</td>
+            <td class="number duration-format">103662d 11h</td>
+          </tr>
+          <tr>
+            <td>44</td>
+            <td class="number cost-format">186,592,482,915.863</td>
+            <td class="number duration-format">51831d 5h</td>
+            <td class="number effect-format">253,976.53</td>
+            <td class="number cost-format">559,777,438,747.588</td>
+            <td class="number duration-format">155493d 17h</td>
+          </tr>
+          <tr>
+            <td>45</td>
+            <td class="number cost-format">279,888,724,373.794</td>
+            <td class="number duration-format">77746d 20h</td>
+            <td class="number effect-format">304,771.83</td>
+            <td class="number cost-format">839,666,163,121.382</td>
+            <td class="number duration-format">233240d 14h</td>
+          </tr>
+          <tr>
+            <td>46</td>
+            <td class="number cost-format">419,833,086,560.691</td>
+            <td class="number duration-format">116620d 7h</td>
+            <td class="number effect-format">365,726.2</td>
+            <td class="number cost-format">1,259,499,249,682.073</td>
+            <td class="number duration-format">349860d 21h</td>
+          </tr>
+          <tr>
+            <td>47</td>
+            <td class="number cost-format">629,749,629,841.037</td>
+            <td class="number duration-format">174930d 10h</td>
+            <td class="number effect-format">438,871.44</td>
+            <td class="number cost-format">1,889,248,879,523.11</td>
+            <td class="number duration-format">524791d 8h</td>
+          </tr>
+          <tr>
+            <td>48</td>
+            <td class="number cost-format">944,624,444,761.555</td>
+            <td class="number duration-format">262395d 16h</td>
+            <td class="number effect-format">526,645.73</td>
+            <td class="number cost-format">2,833,873,324,284.665</td>
+            <td class="number duration-format">787187d 0h</td>
+          </tr>
+          <tr>
+            <td>49</td>
+            <td class="number cost-format">1,416,936,667,142.333</td>
+            <td class="number duration-format">393593d 12h</td>
+            <td class="number effect-format">631,974.87</td>
+            <td class="number cost-format">4,250,809,991,426.998</td>
+            <td class="number duration-format">1180780d 13h</td>
+          </tr>
+          <tr class="milestone">
+            <td>50</td>
+            <td class="number cost-format">2,125,405,000,713.499</td>
+            <td class="number duration-format">590390d 6h</td>
+            <td class="number effect-format">758,369.85</td>
+            <td class="number cost-format">6,376,214,992,140.496</td>
+            <td class="number duration-format">1771170d 19h</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="summary-box" style="margin-top: 40px;">
+      <div class="summary-title">📈 Report Notes</div>
+      <div class="summary-text">
+        <ul style="margin: 10px 0; padding-left: 20px;">
+          <li><strong>Upgrade Cost:</strong> The iron cost required to upgrade TO that specific level</li>
+          <li><strong>Upgrade Duration:</strong> The time required to complete the upgrade TO that level</li>
+          <li><strong>Effect Value:</strong> The benefit provided at that level (e.g., iron/sec, speed, %)</li>
+          <li><strong>Cumulative Cost:</strong> Total iron invested from the starting level to reach this level</li>
+          <li><strong>Cumulative Duration:</strong> Total research time from the starting level to reach this level</li>
+          <li><strong>Milestone Rows:</strong> Levels ending in 0 (10, 20, 30, 40, 50) are highlighted for easy reference</li>
+        </ul>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    // Helper function to format duration (duplicated in JS for client-side use)
+    function formatDuration(seconds) {
+      if (seconds < 60) return seconds + 's';
+      const minutes = Math.floor(seconds / 60);
+      if (minutes < 60) return minutes + 'm';
+      const hours = Math.floor(minutes / 60);
+      const remainingMinutes = minutes % 60;
+      if (hours < 24) return hours + 'h ' + remainingMinutes + 'm';
+      const days = Math.floor(hours / 24);
+      const remainingHours = hours % 24;
+      return days + 'd ' + remainingHours + 'h';
+    }
+  </script>
+</body>
+</html>
+    
