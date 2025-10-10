@@ -59,6 +59,15 @@ export async function GET(request: NextRequest) {
       throw new ApiError(403, 'Admin access restricted to developers');
     }
     
+    // CRITICAL: Flush all cache data to database before reading
+    // This ensures the admin page shows current values, not stale cached data
+    const { getTypedCacheManager } = await import('@/lib/server/typedCacheManager');
+    const cacheManager = getTypedCacheManager();
+    if (cacheManager.isReady) {
+      await cacheManager.flushAllToDatabase();
+      console.log('✅ Cache flushed to database for admin query');
+    }
+    
     // Get all users data
     const users = await new Promise<UserData[]>((resolve, reject) => {
       db.all(`
