@@ -2,8 +2,8 @@
 // Battle Repository - Database operations for battles
 // ---
 
-import { getDatabase } from './database.js';
-import type { Battle, BattleRow, BattleStats, WeaponCooldowns, BattleEvent, battleRowToBattle } from '../../shared/battleTypes.js';
+import { getDatabase } from './database';
+import type { Battle, BattleRow, BattleStats, WeaponCooldowns, BattleEvent, battleRowToBattle } from '../../shared/battleTypes';
 
 /**
  * Battle Repository

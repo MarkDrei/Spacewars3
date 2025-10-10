@@ -5,6 +5,7 @@ import AuthenticatedLayout from '@/components/Layout/AuthenticatedLayout';
 import { messagesService, UnreadMessage } from '@/lib/client/services/messagesService';
 import { useTechCounts } from '@/lib/client/hooks/useTechCounts';
 import { useDefenseValues } from '@/lib/client/hooks/useDefenseValues';
+import { useBattleStatus } from '@/lib/client/hooks/useBattleStatus';
 import { ServerAuthState } from '@/lib/server/serverSession';
 import './HomePage.css';
 
@@ -17,6 +18,7 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ auth, initialMessages }
   // Messages are pre-loaded from server - no client-side fetching needed
   const { techCounts, weapons, defenses, isLoading: techLoading, error: techError } = useTechCounts();
   const { defenseValues, isLoading: defenseLoading, error: defenseError } = useDefenseValues();
+  const { battleStatus, isLoading: battleLoading, error: battleError } = useBattleStatus();
 
   // Calculate color based on percentage (0% = red, 50% = yellow, 100% = green)
   const getDefenseColor = (current: number, max: number): string => {
@@ -258,6 +260,60 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ auth, initialMessages }
               </tbody>
             </table>
           </div>
+
+          {/* Weapon Cooldowns Table - Only shown if in battle */}
+          {battleStatus?.inBattle && battleStatus.battle && (
+            <div className="data-table-container weapon-cooldowns-table-container">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th colSpan={3}>⚔️ Battle Active - Weapon Cooldowns</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Object.keys(battleStatus.battle.weaponCooldowns).length === 0 ? (
+                    <tr>
+                      <td colSpan={3} className="empty-cell">
+                        No weapons in this battle
+                      </td>
+                    </tr>
+                  ) : (
+                    Object.entries(battleStatus.battle.weaponCooldowns).map(([weaponType, lastFired]) => {
+                      const weapon = weapons[weaponType as keyof typeof weapons];
+                      const now = Math.floor(Date.now() / 1000);
+                      // Get cooldown from weapon stats in battle or use default 5s
+                      const weaponStats = battleStatus.battle?.myStats?.weapons?.[weaponType];
+                      const cooldownPeriod = weaponStats?.cooldown || (weapon && 'cooldown' in weapon ? (weapon as { cooldown: number }).cooldown : 5);
+                      const timeSinceFired = now - (lastFired || 0);
+                      const isReady = timeSinceFired >= cooldownPeriod;
+                      const timeRemaining = Math.max(0, cooldownPeriod - timeSinceFired);
+                      
+                      return (
+                        <tr key={weaponType} className="data-row">
+                          <td className="data-cell">{weapon?.name || weaponType}</td>
+                          <td className="data-cell cooldown-status-cell">
+                            {isReady ? (
+                              <span style={{ color: '#4caf50' }}>✓ Ready</span>
+                            ) : (
+                              <span style={{ color: '#ff9800' }}>{timeRemaining}s</span>
+                            )}
+                          </td>
+                          <td className="data-cell cooldown-info-cell">
+                            {cooldownPeriod}s cooldown
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                  <tr>
+                    <td colSpan={3} className="battle-info-cell">
+                      Battle #{battleStatus.battle.id} | {battleStatus.battle.isAttacker ? 'Attacking' : 'Defending'}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </div>
     </AuthenticatedLayout>

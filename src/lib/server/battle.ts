@@ -2,8 +2,8 @@
 // Battle Domain Logic - Core battle mechanics and calculations
 // ---
 
-import type { Battle, BattleStats, BattleEvent, WeaponCooldowns } from '../../shared/battleTypes.js';
-import { TechFactory } from './TechFactory.js';
+import type { Battle, BattleStats, BattleEvent, WeaponCooldowns } from '../../shared/battleTypes';
+import { TechFactory } from './TechFactory';
 
 /**
  * Battle class - Encapsulates battle state and combat mechanics

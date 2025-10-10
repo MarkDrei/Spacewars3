@@ -2,13 +2,13 @@
 // Battle Service - High-level battle operations
 // ---
 
-import { BattleRepo } from './battleRepo.js';
-import { BattleEngine } from './battle.js';
-import type { Battle, BattleStats, BattleEvent } from '../../shared/battleTypes.js';
-import type { User } from './user.js';
-import { TechFactory } from './TechFactory.js';
-import { getDatabase } from './database.js';
-import { ApiError } from './errors.js';
+import { BattleRepo } from './battleRepo';
+import { BattleEngine } from './battle';
+import type { Battle, BattleStats, BattleEvent } from '../../shared/battleTypes';
+import type { User } from './user';
+import { TechFactory } from './TechFactory';
+import { getDatabase } from './database';
+import { ApiError } from './errors';
 
 /**
  * Maximum distance to initiate battle (same as collection distance)

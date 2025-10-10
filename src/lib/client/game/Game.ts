@@ -91,11 +91,20 @@ export class Game {
           { width: this.world.getWidth(), height: this.world.getHeight() }
         );
         
-        if (distance <= 125 && hoveredObject.getType() !== 'player_ship') {
+        // Check if it's a player ship (attack) or collectible object
+        if (hoveredObject.getType() === 'player_ship') {
+          if (distance <= 100) {
+            // Player ship is in attack range - initiate battle
+            this.handleAttack(hoveredObject);
+          } else {
+            // Player ship is too far - use interception to get closer
+            this.handleInterception(hoveredObject);
+          }
+        } else if (distance <= 125) {
           // Object is close enough and collectible - try to collect it
           this.handleCollection(hoveredObject);
         } else {
-          // Object is too far or is a ship - use interception
+          // Object is too far - use interception
           this.handleInterception(hoveredObject);
         }
       } else {
@@ -242,6 +251,43 @@ export class Game {
       }
     } catch (error) {
       console.error('Failed to handle collection:', error);
+    }
+  }
+
+  private async handleAttack(targetObject: SpaceObjectOld): Promise<void> {
+    try {
+      const userId = targetObject.getUserId();
+      const objectType = targetObject.getType();
+      
+      console.log(`⚔️ Attempting to attack ${objectType} with user ID ${userId}`);
+      
+      if (typeof userId !== 'number' || isNaN(userId)) {
+        console.error(`❌ Invalid user ID: ${userId} (type: ${typeof userId})`);
+        return;
+      }
+      
+      const { attackPlayer } = await import('../services/attackService');
+      const result = await attackPlayer(userId);
+      
+      console.log(`⚔️ Attack API response:`, result);
+      
+      if (result.success && result.battle) {
+        console.log(`⚔️ Battle initiated! Battle ID: ${result.battle.id}`);
+        console.log(`⚔️ Attacker: ${result.battle.attackerId} vs Attackee: ${result.battle.attackeeId}`);
+        
+        // Trigger world data refresh to get updated state from server
+        if (this.refetchWorldData) {
+          console.log(`🔄 Triggering world data refresh...`);
+          this.refetchWorldData();
+        } else {
+          console.log(`⚠️ No refetch function available`);
+        }
+      } else {
+        console.error('⚔️ Failed to initiate battle:', result.error);
+        // Could show user feedback here (e.g., toast notification)
+      }
+    } catch (error) {
+      console.error('⚔️ Failed to handle attack:', error);
     }
   }
   

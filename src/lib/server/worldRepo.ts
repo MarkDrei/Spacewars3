@@ -14,7 +14,7 @@ export function loadWorldFromDb(db: sqlite3.Database, saveCallback: SaveWorldCal
   return new Promise((resolve, reject) => {
     // Join with users table to get usernames for player ships
     const query = `
-      SELECT 
+      SELECT
         so.id,
         so.type,
         so.x,
@@ -22,12 +22,11 @@ export function loadWorldFromDb(db: sqlite3.Database, saveCallback: SaveWorldCal
         so.speed,
         so.angle,
         so.last_position_update_ms,
-        u.username
+        u.username,
+        u.id as user_id
       FROM space_objects so
       LEFT JOIN users u ON so.type = 'player_ship' AND so.id = u.ship_id
-    `;
-    
-    db.all(query, [], (err, rows) => {
+    `;    db.all(query, [], (err, rows) => {
       if (err) {
         reject(err);
         return;
@@ -42,6 +41,7 @@ export function loadWorldFromDb(db: sqlite3.Database, saveCallback: SaveWorldCal
         angle: number;
         last_position_update_ms: number;
         username: string | null;
+        user_id: number | null;
       }>).map(row => ({
         id: row.id,
         type: row.type as SpaceObject['type'],
@@ -50,8 +50,11 @@ export function loadWorldFromDb(db: sqlite3.Database, saveCallback: SaveWorldCal
         speed: row.speed,
         angle: row.angle,
         last_position_update_ms: row.last_position_update_ms,
-        // Only include username for player ships
-        ...(row.type === 'player_ship' && row.username ? { username: row.username } : {})
+        // Only include username and userId for player ships
+        ...(row.type === 'player_ship' && row.username ? { 
+          username: row.username,
+          userId: row.user_id 
+        } : {})
       }));
 
       const world = new World(
