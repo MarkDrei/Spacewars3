@@ -73,7 +73,10 @@ export async function GET(request: NextRequest) {
       db.all(`
         SELECT 
           id, username, iron, last_updated,
-          tech_tree, build_queue, build_start_sec
+          build_queue, build_start_sec,
+          pulse_laser, auto_turret, plasma_lance, gauss_rifle,
+          photon_torpedo, rocket_launcher,
+          ship_hull, kinetic_armor, energy_shield, missile_jammer
         FROM users 
         ORDER BY id
       `, [], (err, rows) => {
@@ -84,32 +87,33 @@ export async function GET(request: NextRequest) {
           username: string;
           iron: number;
           last_updated: number;
-          tech_tree: string;
           build_queue: string | null;
           build_start_sec: number | null;
+          pulse_laser: number;
+          auto_turret: number;
+          plasma_lance: number;
+          gauss_rifle: number;
+          photon_torpedo: number;
+          rocket_launcher: number;
+          ship_hull: number;
+          kinetic_armor: number;
+          energy_shield: number;
+          missile_jammer: number;
         }>).map(row => {
-          // Parse tech tree to extract individual tech levels
-          let techTree: Record<string, number> = {};
-          try {
-            techTree = row.tech_tree ? JSON.parse(row.tech_tree) : {};
-          } catch {
-            techTree = {};
-          }
-          
           return {
             id: row.id,
             username: row.username,
             iron: row.iron,
-            pulse_laser: techTree['pulse_laser'] || 0,
-            auto_turret: techTree['auto_turret'] || 0,
-            plasma_lance: techTree['plasma_lance'] || 0,
-            gauss_rifle: techTree['gauss_rifle'] || 0,
-            photon_torpedo: techTree['photon_torpedo'] || 0,
-            rocket_launcher: techTree['rocket_launcher'] || 0,
-            ship_hull: techTree['ship_hull'] || 0,
-            kinetic_armor: techTree['kinetic_armor'] || 0,
-            energy_shield: techTree['energy_shield'] || 0,
-            missile_jammer: techTree['missile_jammer'] || 0,
+            pulse_laser: row.pulse_laser || 0,
+            auto_turret: row.auto_turret || 0,
+            plasma_lance: row.plasma_lance || 0,
+            gauss_rifle: row.gauss_rifle || 0,
+            photon_torpedo: row.photon_torpedo || 0,
+            rocket_launcher: row.rocket_launcher || 0,
+            ship_hull: row.ship_hull || 0,
+            kinetic_armor: row.kinetic_armor || 0,
+            energy_shield: row.energy_shield || 0,
+            missile_jammer: row.missile_jammer || 0,
             build_queue: row.build_queue,
             build_start_sec: row.build_start_sec,
             last_updated: row.last_updated
