@@ -22,6 +22,10 @@ interface UserData {
   build_queue: string | null;
   build_start_sec: number | null;
   last_updated: number;
+  // Tech tree / Research levels
+  iron_harvesting: number;
+  ship_speed: number;
+  afterburner: number;
 }
 
 interface SpaceObject {
@@ -76,7 +80,8 @@ export async function GET(request: NextRequest) {
           build_queue, build_start_sec,
           pulse_laser, auto_turret, plasma_lance, gauss_rifle,
           photon_torpedo, rocket_launcher,
-          ship_hull, kinetic_armor, energy_shield, missile_jammer
+          ship_hull, kinetic_armor, energy_shield, missile_jammer,
+          tech_tree
         FROM users 
         ORDER BY id
       `, [], (err, rows) => {
@@ -99,7 +104,16 @@ export async function GET(request: NextRequest) {
           kinetic_armor: number;
           energy_shield: number;
           missile_jammer: number;
+          tech_tree: string;
         }>).map(row => {
+          // Parse tech tree to extract research levels
+          let techTree: Record<string, number> = {};
+          try {
+            techTree = row.tech_tree ? JSON.parse(row.tech_tree) : {};
+          } catch {
+            techTree = {};
+          }
+          
           return {
             id: row.id,
             username: row.username,
@@ -116,7 +130,11 @@ export async function GET(request: NextRequest) {
             missile_jammer: row.missile_jammer || 0,
             build_queue: row.build_queue,
             build_start_sec: row.build_start_sec,
-            last_updated: row.last_updated
+            last_updated: row.last_updated,
+            // Extract research levels from tech_tree JSON
+            iron_harvesting: techTree['ironHarvesting'] || 0,
+            ship_speed: techTree['shipSpeed'] || 0,
+            afterburner: techTree['afterburner'] || 0
           };
         });
         

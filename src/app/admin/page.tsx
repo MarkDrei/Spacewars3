@@ -22,6 +22,10 @@ interface UserData {
   build_queue: string | null;
   build_start_sec: number | null;
   last_updated: number;
+  // Tech tree / Research levels
+  iron_harvesting: number;
+  ship_speed: number;
+  afterburner: number;
 }
 
 interface SpaceObject {
@@ -176,6 +180,7 @@ const AdminPage: React.FC = () => {
                   <th>Iron</th>
                   <th>Weapons</th>
                   <th>Defenses</th>
+                  <th>Research</th>
                   <th>Build Queue</th>
                   <th>Created</th>
                 </tr>
@@ -207,6 +212,13 @@ const AdminPage: React.FC = () => {
                         <span>Kinetic: {userData.kinetic_armor}</span>
                         <span>Energy: {userData.energy_shield}</span>
                         <span>Missile: {userData.missile_jammer}</span>
+                      </div>
+                    </td>
+                    <td className="data-cell">
+                      <div className="tech-counts">
+                        <span>Iron Harvest: {userData.iron_harvesting}</span>
+                        <span>Ship Speed: {userData.ship_speed}</span>
+                        <span>Afterburner: {userData.afterburner}</span>
                       </div>
                     </td>
                     <td className="data-cell">
