@@ -7,14 +7,14 @@ export class RadarRenderer {
         // Draw outer circle
         ctx.beginPath();
         ctx.arc(centerX, centerY, maxRadius, 0, Math.PI * 2);
-        ctx.strokeStyle = '#8b0000';  // Dark red for rings
-        ctx.lineWidth = 1;
+        ctx.strokeStyle = '#4caf50';  // Green for rings
+        ctx.lineWidth = 2;
         ctx.stroke();
 
         // Draw inner circle at 125 distance
         ctx.beginPath();
         ctx.arc(centerX, centerY, 125, 0, Math.PI * 2);
-        ctx.strokeStyle = '#8b0000';  // Dark red for rings
+        ctx.strokeStyle = '#4caf50';  // Green for rings
         ctx.lineWidth = 1;
         ctx.stroke();
 
@@ -26,7 +26,7 @@ export class RadarRenderer {
         const useScreenEdges = false; // Hardcoded boolean - true for screen edges, false for center crossing
         
         // Draw horizontal and vertical lines
-        ctx.strokeStyle = '#8b0000';  // Dark red for lines
+        ctx.strokeStyle = '#4caf50';  // Green for lines
         ctx.lineWidth = 1;
         
         if (useScreenEdges) {
@@ -64,7 +64,7 @@ export class RadarRenderer {
         const innerExclusionZone = 70;
 
         ctx.font = '12px Arial';
-        ctx.fillStyle = '#ff0000';
+        ctx.fillStyle = '#4caf50';
 
         if (useScreenEdges) {
             // Draw X coordinates along bottom edge (above the line)
