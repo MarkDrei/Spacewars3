@@ -103,7 +103,7 @@ const researchHierarchy: ResearchCategory[] = [
     name: 'Ship',
     nodes: [
       {
-        type: 'ShipSpeed' as ResearchType,
+        type: 'shipSpeed' as ResearchType,
         children: [
           { type: 'afterburnerSpeedIncrease' as ResearchType },
           { type: 'afterburnerDuration' as ResearchType },
