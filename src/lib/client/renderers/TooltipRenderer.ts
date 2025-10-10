@@ -42,34 +42,28 @@ export class TooltipRenderer {
         // Get object information
         const tooltipText = this.getTooltipTextForObject(hoveredObject, ship);
         
-        // Draw tooltip background with improved styling
-        const padding = 8;
+        // Draw tooltip background
+        const padding = 5;
         const lineHeight = 20;
-        const tooltipWidth = 190;
+        const tooltipWidth = 180;
         const tooltipHeight = tooltipText.length * lineHeight + padding * 2;
         
         // Position tooltip to avoid going off-screen
         const tooltipX = Math.min(screenX + 30, this.canvas.width - tooltipWidth - 5);
         const tooltipY = Math.min(screenY - tooltipHeight - 10, this.canvas.height - tooltipHeight - 5);
         
-        // Draw tooltip background with gradient
-        const gradient = this.ctx.createLinearGradient(tooltipX, tooltipY, tooltipX, tooltipY + tooltipHeight);
-        gradient.addColorStop(0, 'rgba(0, 20, 40, 0.95)');
-        gradient.addColorStop(1, 'rgba(0, 10, 20, 0.95)');
-        this.ctx.fillStyle = gradient;
+        // Draw tooltip background
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
         this.ctx.fillRect(tooltipX, tooltipY, tooltipWidth, tooltipHeight);
         
-        // Draw tooltip border with glow effect
-        this.ctx.strokeStyle = '#00ddaa';
-        this.ctx.lineWidth = 2;
-        this.ctx.shadowBlur = 8;
-        this.ctx.shadowColor = '#00ddaa';
+        // Draw tooltip border
+        this.ctx.strokeStyle = '#4caf50';
+        this.ctx.lineWidth = 1;
         this.ctx.strokeRect(tooltipX, tooltipY, tooltipWidth, tooltipHeight);
-        this.ctx.shadowBlur = 0;
         
         // Draw tooltip text
         this.ctx.fillStyle = '#ffffff';
-        this.ctx.font = 'bold 13px monospace';
+        this.ctx.font = '14px Arial';
         this.ctx.textAlign = 'left';
         
         tooltipText.forEach((line, index) => {
