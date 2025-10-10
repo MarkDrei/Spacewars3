@@ -169,6 +169,8 @@
 /* Research Categories */
 .research-category {
   margin-bottom: 2rem;
+  position: relative;
+  overflow: visible;
 }
 
 .category-heading {
@@ -181,7 +183,8 @@
 }
 
 .data-table-container {
-  /* Remove previous styles that applied to single table */
+  overflow: visible;
+  position: relative;
 }
 
 .data-table {
@@ -189,7 +192,7 @@
   border-collapse: collapse;
   background-color: #1e1e1e;
   border-radius: 8px;
-  overflow: hidden;
+  overflow: visible;
   border: 1px solid rgba(76, 175, 80, 0.3);
 }
 
@@ -210,6 +213,7 @@
 .data-row {
   background-color: #1e1e1e;
   transition: background-color 0.2s ease, opacity 0.2s ease;
+  position: relative;
 }
 
 .data-row:hover:not(.disabled) {
@@ -252,10 +256,16 @@
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   color: #e0e0e0;
   vertical-align: middle;
+  position: relative;
+  overflow: visible;
 }
 
 .data-cell:not(:last-child) {
   border-right: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.action-cell {
+  overflow: visible;
 }
 
 /* Tooltip styles */
@@ -318,6 +328,7 @@
 @media (max-width: 1024px) {
   .data-table-container {
     overflow-x: auto;
+    overflow-y: visible;
   }
   
   .data-table {
