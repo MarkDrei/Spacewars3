@@ -214,6 +214,69 @@ describe('Tech Tree Report Generation', () => {
     .effect-format {
       color: #d0bfff;
     }
+    .nav-menu {
+      background: rgba(26, 31, 58, 0.8);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 40px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+      position: sticky;
+      top: 20px;
+      z-index: 100;
+    }
+    .nav-title {
+      color: #00d9ff;
+      font-size: 1.2em;
+      font-weight: bold;
+      margin-bottom: 15px;
+      text-align: center;
+    }
+    .nav-links {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+    .nav-link {
+      color: #00d9ff;
+      text-decoration: none;
+      padding: 10px 20px;
+      background: rgba(0, 217, 255, 0.1);
+      border-radius: 8px;
+      border: 1px solid #00d9ff;
+      transition: all 0.3s ease;
+      font-weight: 500;
+    }
+    .nav-link:hover {
+      background: rgba(0, 217, 255, 0.2);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 217, 255, 0.3);
+    }
+    .back-to-top {
+      position: fixed;
+      bottom: 30px;
+      right: 30px;
+      background: #00d9ff;
+      color: #0a0e27;
+      border: none;
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      font-size: 1.5em;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(0, 217, 255, 0.4);
+      transition: all 0.3s ease;
+      opacity: 0;
+      visibility: hidden;
+    }
+    .back-to-top.visible {
+      opacity: 1;
+      visibility: visible;
+    }
+    .back-to-top:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 6px 16px rgba(0, 217, 255, 0.6);
+    }
   </style>
 </head>
 <body>
@@ -222,13 +285,23 @@ describe('Tech Tree Report Generation', () => {
     <p class="subtitle">Complete analysis of all technologies from Level 1 to Level 50<br>
     Generated: ${new Date().toISOString()}</p>
 
+    <nav class="nav-menu">
+      <div class="nav-title">📑 Quick Navigation</div>
+      <div class="nav-links">
+        ${techData
+          .map((tech) => `<a href="#${tech.research.type}" class="nav-link">${tech.research.name}</a>`)
+          .join('')}
+        <a href="#notes" class="nav-link">Report Notes</a>
+      </div>
+    </nav>
+
     ${techData
       .map((tech) => {
         const startLevel = tech.research.level;
         const level50Data = tech.levels[49]; // Index 49 = level 50
 
         return `
-    <div class="tech-section">
+    <div class="tech-section" id="${tech.research.type}">
       <div class="tech-header">
         <h2 class="tech-name">${tech.research.name}</h2>
         <p class="tech-description">${tech.research.description}</p>
@@ -299,7 +372,7 @@ describe('Tech Tree Report Generation', () => {
       })
       .join('')}
 
-    <div class="summary-box" style="margin-top: 40px;">
+    <div class="summary-box" id="notes" style="margin-top: 40px;">
       <div class="summary-title">📈 Report Notes</div>
       <div class="summary-text">
         <ul style="margin: 10px 0; padding-left: 20px;">
@@ -315,6 +388,38 @@ describe('Tech Tree Report Generation', () => {
 
   </div>
 
+  <button class="back-to-top" id="backToTop" onclick="window.scrollTo({top: 0, behavior: 'smooth'})">
+    ↑
+  </button>
+
+  <script>
+    // Show/hide back to top button based on scroll position
+    window.addEventListener('scroll', function() {
+      const backToTopBtn = document.getElementById('backToTop');
+      if (window.pageYOffset > 300) {
+        backToTopBtn.classList.add('visible');
+      } else {
+        backToTopBtn.classList.remove('visible');
+      }
+    });
+
+    // Smooth scroll for navigation links
+    document.querySelectorAll('.nav-link').forEach(link => {
+      link.addEventListener('click', function(e) {
+        e.preventDefault();
+        const targetId = this.getAttribute('href').substring(1);
+        const targetElement = document.getElementById(targetId);
+        if (targetElement) {
+          const offset = 80; // Offset for sticky nav
+          const targetPosition = targetElement.offsetTop - offset;
+          window.scrollTo({
+            top: targetPosition,
+            behavior: 'smooth'
+          });
+        }
+      });
+    });
+  </script>
   <script>
     // Helper function to format duration (duplicated in JS for client-side use)
     function formatDuration(seconds) {
