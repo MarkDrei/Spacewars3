@@ -2,6 +2,34 @@ interface TechTree {
   ironHarvesting: number;
   shipSpeed: number;
   afterburner: number;
+  // Projectile Weapons
+  projectileDamage: number;
+  projectileReloadRate: number;
+  projectileAccuracy: number;
+  projectileWeaponTier: number;
+  // Energy Weapons
+  energyDamage: number;
+  energyRechargeRate: number;
+  energyAccuracy: number;
+  energyWeaponTier: number;
+  // Defense
+  hullStrength: number;
+  repairSpeed: number;
+  armorEffectiveness: number;
+  shieldEffectiveness: number;
+  shieldRechargeRate: number;
+  // Ship
+  afterburnerSpeedIncrease: number;
+  afterburnerDuration: number;
+  teleport: number;
+  inventoryCapacity: number;
+  constructionSpeed: number;
+  // Spies
+  spyChance: number;
+  spySpeed: number;
+  spySabotageDamage: number;
+  counterintelligence: number;
+  stealIron: number;
   activeResearch?: {
     type: ResearchType;
     remainingDuration: number;
@@ -16,7 +44,7 @@ interface ResearchDef {
   baseUpgradeDuration: number;
   baseValue: number;
   upgradeCostIncrease: number;
-  baseValueIncrease: { type: 'constant' | 'factor'; value: number };
+  baseValueIncrease: { type: 'constant' | 'factor' | 'polynomial'; value: number };
   description: string;
   nextUpgradeCost: number;
   nextUpgradeDuration: number;
@@ -25,7 +53,38 @@ interface ResearchDef {
   unit: string;
 }
 
-type ResearchType = 'IronHarvesting' | 'ShipSpeed' | 'Afterburner';
+type ResearchType = 
+  | 'IronHarvesting' 
+  | 'ShipSpeed' 
+  | 'Afterburner'
+  // Projectile Weapons
+  | 'projectileDamage'
+  | 'projectileReloadRate'
+  | 'projectileAccuracy'
+  | 'projectileWeaponTier'
+  // Energy Weapons
+  | 'energyDamage'
+  | 'energyRechargeRate'
+  | 'energyAccuracy'
+  | 'energyWeaponTier'
+  // Defense
+  | 'hullStrength'
+  | 'repairSpeed'
+  | 'armorEffectiveness'
+  | 'shieldEffectiveness'
+  | 'shieldRechargeRate'
+  // Ship
+  | 'afterburnerSpeedIncrease'
+  | 'afterburnerDuration'
+  | 'teleport'
+  | 'inventoryCapacity'
+  | 'constructionSpeed'
+  // Spies
+  | 'spyChance'
+  | 'spySpeed'
+  | 'spySabotageDamage'
+  | 'counterintelligence'
+  | 'stealIron';
 
 interface TechtreeResponse {
   techTree: TechTree;
