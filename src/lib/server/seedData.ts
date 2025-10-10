@@ -46,7 +46,39 @@ export const DEFAULT_USERS: SeedUser[] = [
     username: 'a',
     password: 'a',
     iron: 1000,
-    tech_tree: { ironHarvesting: 1, shipSpeed: 1, afterburner: 0 },
+    tech_tree: { 
+      ironHarvesting: 1, 
+      shipSpeed: 1, 
+      afterburner: 0,
+      // Projectile Weapons
+      projectileDamage: 1,
+      projectileReloadRate: 1,
+      projectileAccuracy: 1,
+      projectileWeaponTier: 0,
+      // Energy Weapons
+      energyDamage: 1,
+      energyRechargeRate: 1,
+      energyAccuracy: 1,
+      energyWeaponTier: 0,
+      // Defense
+      hullStrength: 1,
+      repairSpeed: 1,
+      armorEffectiveness: 1,
+      shieldEffectiveness: 1,
+      shieldRechargeRate: 1,
+      // Ship
+      afterburnerSpeedIncrease: 1,
+      afterburnerDuration: 1,
+      teleport: 0,
+      inventoryCapacity: 1,
+      constructionSpeed: 1,
+      // Spies
+      spyChance: 0,
+      spySpeed: 0,
+      spySabotageDamage: 0,
+      counterintelligence: 0,
+      stealIron: 0
+    },
     ship: {
       x: 250, // Center of 500x500 world
       y: 250,
@@ -59,7 +91,39 @@ export const DEFAULT_USERS: SeedUser[] = [
     username: 'dummy',
     password: 'dummy',
     iron: 0,
-    tech_tree: { ironHarvesting: 1, shipSpeed: 1, afterburner: 0 },
+    tech_tree: { 
+      ironHarvesting: 1, 
+      shipSpeed: 1, 
+      afterburner: 0,
+      // Projectile Weapons
+      projectileDamage: 1,
+      projectileReloadRate: 1,
+      projectileAccuracy: 1,
+      projectileWeaponTier: 0,
+      // Energy Weapons
+      energyDamage: 1,
+      energyRechargeRate: 1,
+      energyAccuracy: 1,
+      energyWeaponTier: 0,
+      // Defense
+      hullStrength: 1,
+      repairSpeed: 1,
+      armorEffectiveness: 1,
+      shieldEffectiveness: 1,
+      shieldRechargeRate: 1,
+      // Ship
+      afterburnerSpeedIncrease: 1,
+      afterburnerDuration: 1,
+      teleport: 0,
+      inventoryCapacity: 1,
+      constructionSpeed: 1,
+      // Spies
+      spyChance: 0,
+      spySpeed: 0,
+      spySabotageDamage: 0,
+      counterintelligence: 0,
+      stealIron: 0
+    },
     ship: {
       x: 350,
       y: 350,

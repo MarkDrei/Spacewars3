@@ -41,7 +41,10 @@ function userFromRow(row: UserRow, saveCallback: SaveUserCallback): User {
   // Parse techTree from JSON, fallback to initial if missing or invalid
   let techTree;
   try {
-    techTree = row.tech_tree ? JSON.parse(row.tech_tree) : createInitialTechTree();
+    const parsedTree = row.tech_tree ? JSON.parse(row.tech_tree) : createInitialTechTree();
+    // Merge with initial tree to ensure all new fields have default values
+    const initialTree = createInitialTechTree();
+    techTree = { ...initialTree, ...parsedTree };
   } catch {
     techTree = createInitialTechTree();
   }

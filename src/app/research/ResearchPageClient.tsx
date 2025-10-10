@@ -8,10 +8,38 @@ import { globalEvents, EVENTS } from '@/lib/client/services/eventService';
 import { ServerAuthState } from '@/lib/server/serverSession';
 import './ResearchPage.css';
 
-const researchTypeToKey = {
+const researchTypeToKey: Record<ResearchType, keyof TechTree> = {
   IronHarvesting: 'ironHarvesting',
   ShipSpeed: 'shipSpeed',
   Afterburner: 'afterburner',
+  // Projectile Weapons
+  projectileDamage: 'projectileDamage',
+  projectileReloadRate: 'projectileReloadRate',
+  projectileAccuracy: 'projectileAccuracy',
+  projectileWeaponTier: 'projectileWeaponTier',
+  // Energy Weapons
+  energyDamage: 'energyDamage',
+  energyRechargeRate: 'energyRechargeRate',
+  energyAccuracy: 'energyAccuracy',
+  energyWeaponTier: 'energyWeaponTier',
+  // Defense
+  hullStrength: 'hullStrength',
+  repairSpeed: 'repairSpeed',
+  armorEffectiveness: 'armorEffectiveness',
+  shieldEffectiveness: 'shieldEffectiveness',
+  shieldRechargeRate: 'shieldRechargeRate',
+  // Ship
+  afterburnerSpeedIncrease: 'afterburnerSpeedIncrease',
+  afterburnerDuration: 'afterburnerDuration',
+  teleport: 'teleport',
+  inventoryCapacity: 'inventoryCapacity',
+  constructionSpeed: 'constructionSpeed',
+  // Spies
+  spyChance: 'spyChance',
+  spySpeed: 'spySpeed',
+  spySabotageDamage: 'spySabotageDamage',
+  counterintelligence: 'counterintelligence',
+  stealIron: 'stealIron',
 } as const;
 
 interface ResearchPageClientProps {
