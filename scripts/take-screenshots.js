@@ -26,12 +26,15 @@ async function takeScreenshots() {
     await page.fill('input[name="username"]', 'a');
     await page.fill('input[name="password"]', 'a');
     
-    // Click the sign in button
-    await page.click('button[type="submit"]');
+    // Click the sign in button and wait for navigation
+    console.log('Submitting login form...');
+    const [response] = await Promise.all([
+      page.waitForNavigation({ timeout: 30000 }),
+      page.click('button[type="submit"]')
+    ]);
     
-    // Wait for navigation to complete
-    console.log('Waiting for navigation after login...');
-    await page.waitForURL('**/game', { timeout: 10000 });
+    console.log(`Navigated to: ${page.url()}`);
+    console.log(`Response status: ${response?.status()}`);
     
     // Wait for the page to fully load
     await page.waitForTimeout(3000);
