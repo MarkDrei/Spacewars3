@@ -85,6 +85,52 @@ describe('getResearchEffect', () => {
     expect(getResearchEffect(AllResearches[ResearchType.ShipSpeed], 3)).toBeCloseTo(35);
     expect(getResearchEffect(AllResearches[ResearchType.ShipSpeed], 4)).toBeCloseTo(40);
   });
+
+  test('getResearchEffect_polynomialIncrease_appliesFormula', () => {
+    // Test polynomial growth formula: baseValue * (1 + (0.1 * (1.5 * level - 1.5)) ^ 1.4)
+    // For level 1: baseValue * 1 = baseValue
+    // For level 2: baseValue * (1 + (0.1 * 1.5) ^ 1.4) = baseValue * ~1.070
+    // For level 3: baseValue * (1 + (0.1 * 3.0) ^ 1.4) = baseValue * ~1.185
+    expect(getResearchEffect(AllResearches[ResearchType.ProjectileAccuracy], 1)).toBeCloseTo(70, 1);
+    expect(getResearchEffect(AllResearches[ResearchType.ProjectileAccuracy], 2)).toBeCloseTo(74.92, 1);
+    expect(getResearchEffect(AllResearches[ResearchType.ProjectileAccuracy], 3)).toBeCloseTo(82.97, 1);
+  });
+
+  test('getResearchEffect_newProjectileWeapons_calculatesCorrectly', () => {
+    expect(getResearchEffect(AllResearches[ResearchType.ProjectileDamage], 1)).toBeCloseTo(50);
+    expect(getResearchEffect(AllResearches[ResearchType.ProjectileDamage], 2)).toBeCloseTo(57.5);
+    expect(getResearchEffect(AllResearches[ResearchType.ProjectileReloadRate], 1)).toBeCloseTo(10);
+    expect(getResearchEffect(AllResearches[ResearchType.ProjectileReloadRate], 2)).toBeCloseTo(20);
+  });
+
+  test('getResearchEffect_newEnergyWeapons_calculatesCorrectly', () => {
+    expect(getResearchEffect(AllResearches[ResearchType.EnergyDamage], 1)).toBeCloseTo(60);
+    expect(getResearchEffect(AllResearches[ResearchType.EnergyDamage], 2)).toBeCloseTo(69);
+    expect(getResearchEffect(AllResearches[ResearchType.EnergyRechargeRate], 1)).toBeCloseTo(15);
+    expect(getResearchEffect(AllResearches[ResearchType.EnergyRechargeRate], 2)).toBeCloseTo(30);
+  });
+
+  test('getResearchEffect_newDefenseResearches_calculatesCorrectly', () => {
+    expect(getResearchEffect(AllResearches[ResearchType.HullStrength], 1)).toBeCloseTo(100);
+    expect(getResearchEffect(AllResearches[ResearchType.HullStrength], 2)).toBeCloseTo(120);
+    expect(getResearchEffect(AllResearches[ResearchType.ShieldRechargeRate], 1)).toBeCloseTo(10);
+    expect(getResearchEffect(AllResearches[ResearchType.ShieldRechargeRate], 2)).toBeCloseTo(15);
+  });
+
+  test('getResearchEffect_newShipResearches_calculatesCorrectly', () => {
+    expect(getResearchEffect(AllResearches[ResearchType.InventoryCapacity], 1)).toBeCloseTo(100);
+    expect(getResearchEffect(AllResearches[ResearchType.InventoryCapacity], 2)).toBeCloseTo(120);
+    expect(getResearchEffect(AllResearches[ResearchType.Teleport], 0)).toBeCloseTo(0);
+    expect(getResearchEffect(AllResearches[ResearchType.Teleport], 1)).toBeCloseTo(100);
+  });
+
+  test('getResearchEffect_newSpyResearches_calculatesCorrectly', () => {
+    expect(getResearchEffect(AllResearches[ResearchType.SpySabotageDamage], 0)).toBeCloseTo(0);
+    expect(getResearchEffect(AllResearches[ResearchType.SpySabotageDamage], 1)).toBeCloseTo(50);
+    expect(getResearchEffect(AllResearches[ResearchType.SpySabotageDamage], 2)).toBeCloseTo(62.5);
+    expect(getResearchEffect(AllResearches[ResearchType.StealIron], 1)).toBeCloseTo(100);
+    expect(getResearchEffect(AllResearches[ResearchType.StealIron], 2)).toBeCloseTo(130);
+  });
 });
 
 describe('getResearchUpgradeDurationFromTree', () => {
