@@ -142,6 +142,9 @@ interface ResearchPageClientProps {
 // Tooltip component for showing next 20 levels
 const CostTooltip: React.FC<{ research: ResearchDef; currentLevel: number }> = ({ research, currentLevel }) => {
   const [show, setShow] = useState(false);
+  const [position, setPosition] = useState<'top' | 'bottom'>('top');
+  const tooltipRef = useRef<HTMLDivElement>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
   
   // Calculate next 20 levels
   const futureData = [];
@@ -154,15 +157,46 @@ const CostTooltip: React.FC<{ research: ResearchDef; currentLevel: number }> = (
     futureData.push({ level, cost, effect });
   }
   
+  // Check position when tooltip is shown
+  useEffect(() => {
+    if (show && wrapperRef.current) {
+      const rect = wrapperRef.current.getBoundingClientRect();
+      const tooltipHeight = 400; // max-height of tooltip
+      const spaceAbove = rect.top;
+      const spaceBelow = window.innerHeight - rect.bottom;
+      
+      // If not enough space above, show below
+      if (spaceAbove < tooltipHeight && spaceBelow > spaceAbove) {
+        setPosition('bottom');
+      } else {
+        setPosition('top');
+      }
+    }
+  }, [show]);
+  
+  const handleMouseEnter = () => {
+    setShow(true);
+  };
+  
+  const handleMouseLeave = () => {
+    setShow(false);
+  };
+  
   return (
     <div 
+      ref={wrapperRef}
       className="tooltip-wrapper"
-      onMouseEnter={() => setShow(true)}
-      onMouseLeave={() => setShow(false)}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
     >
       <span className="tooltip-trigger">ℹ️</span>
       {show && (
-        <div className="tooltip-content">
+        <div 
+          ref={tooltipRef}
+          className={`tooltip-content tooltip-${position}`}
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
+        >
           <table className="tooltip-table">
             <thead>
               <tr>

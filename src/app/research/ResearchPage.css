@@ -283,9 +283,7 @@
 
 .tooltip-content {
   position: absolute;
-  bottom: 100%;
   right: 0;
-  margin-bottom: 8px;
   background-color: #2d2d2d;
   border: 2px solid var(--primary-green);
   border-radius: 8px;
@@ -295,6 +293,17 @@
   max-height: 400px;
   overflow-y: auto;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  pointer-events: auto;
+}
+
+.tooltip-content.tooltip-top {
+  bottom: 100%;
+  margin-bottom: 8px;
+}
+
+.tooltip-content.tooltip-bottom {
+  top: 100%;
+  margin-top: 8px;
 }
 
 .tooltip-table {
