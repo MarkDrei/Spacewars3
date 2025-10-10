@@ -399,6 +399,36 @@ export class TypedCacheManager {
     });
   }
 
+  /**
+   * Force flush all dirty data to database
+   * Useful for ensuring data is persisted before reading directly from DB
+   */
+  async flushAllToDatabase(): Promise<void> {
+    const emptyCtx = createEmptyContext();
+    
+    console.log('🔄 Flushing all dirty data to database...');
+    
+    // Persist dirty users
+    if (this.dirtyUsers.size > 0) {
+      console.log(`💾 Flushing ${this.dirtyUsers.size} dirty user(s)`);
+      await this.persistDirtyUsers(emptyCtx);
+    }
+    
+    // Persist dirty messages
+    if (this.dirtyMessages.size > 0) {
+      console.log(`💾 Flushing ${this.dirtyMessages.size} dirty message user(s)`);
+      await this.persistDirtyMessages(emptyCtx);
+    }
+    
+    // Persist dirty world data
+    if (this.worldDirty) {
+      console.log('💾 Flushing world data');
+      await this.persistDirtyWorld(emptyCtx);
+    }
+    
+    console.log('✅ All dirty data flushed to database');
+  }
+
   // ============================================
   // MESSAGE CACHE OPERATIONS
   // ============================================
@@ -628,6 +658,92 @@ export class TypedCacheManager {
   }
 
   /**
+   * Manually persist all dirty users to database
+   */
+  async persistDirtyUsers<CurrentLevel extends number>(
+    context: LockContext<any, CurrentLevel>
+  ): Promise<void> {
+    await this.userLock.acquire(context, async (userCtx) => {
+      await this.databaseLock.write(userCtx, async () => {
+        const dirtyUserIds = Array.from(this.dirtyUsers);
+        
+        if (dirtyUserIds.length === 0) {
+          return;
+        }
+        
+        console.log(`💾 Persisting ${dirtyUserIds.length} dirty user(s) to database...`);
+        
+        for (const userId of dirtyUserIds) {
+          const user = this.users.get(userId);
+          if (user) {
+            await this.persistUserToDb(user);
+          }
+        }
+        
+        this.dirtyUsers.clear();
+        console.log('✅ Dirty users persisted to database');
+      });
+    });
+  }
+
+  /**
+   * Persist a single user to database
+   */
+  private async persistUserToDb(user: User): Promise<void> {
+    if (!this.db) throw new Error('Database not initialized');
+    
+    return new Promise<void>((resolve, reject) => {
+      this.db!.run(
+        `UPDATE users SET 
+          iron = ?, 
+          last_updated = ?, 
+          tech_tree = ?, 
+          ship_id = ?,
+          pulse_laser = ?,
+          auto_turret = ?,
+          plasma_lance = ?,
+          gauss_rifle = ?,
+          photon_torpedo = ?,
+          rocket_launcher = ?,
+          ship_hull = ?,
+          kinetic_armor = ?,
+          energy_shield = ?,
+          missile_jammer = ?,
+          hull_current = ?,
+          armor_current = ?,
+          shield_current = ?,
+          defense_last_regen = ?
+        WHERE id = ?`,
+        [
+          user.iron, 
+          user.last_updated, 
+          JSON.stringify(user.techTree), 
+          user.ship_id,
+          user.techCounts.pulse_laser,
+          user.techCounts.auto_turret,
+          user.techCounts.plasma_lance,
+          user.techCounts.gauss_rifle,
+          user.techCounts.photon_torpedo,
+          user.techCounts.rocket_launcher,
+          user.techCounts.ship_hull,
+          user.techCounts.kinetic_armor,
+          user.techCounts.energy_shield,
+          user.techCounts.missile_jammer,
+          user.hullCurrent,
+          user.armorCurrent,
+          user.shieldCurrent,
+          user.defenseLastRegen,
+          user.id
+        ],
+        function (err) {
+          if (err) return reject(err);
+          resolve();
+        }
+      );
+    });
+  }
+
+  /**
    * Manually persist all dirty messages to database
    * TODO: Integrate with background persistence system
    */
@@ -708,22 +824,23 @@ export class TypedCacheManager {
   private async backgroundPersist(): Promise<void> {
     const emptyCtx = createEmptyContext();
     
+    // Persist dirty users
+    if (this.dirtyUsers.size > 0) {
+      console.log(`💾 Background persisting ${this.dirtyUsers.size} dirty user(s)`);
+      await this.persistDirtyUsers(emptyCtx);
+    }
+
     // Persist dirty messages
     if (this.dirtyMessages.size > 0) {
       console.log(`💾 Background persisting ${this.dirtyMessages.size} dirty message user(s)`);
       await this.persistDirtyMessages(emptyCtx);
     }
 
-    // Persist dirty world data (CRITICAL FIX!)
+    // Persist dirty world data
     if (this.worldDirty) {
       console.log('💾 Background persisting world data...');
       await this.persistDirtyWorld(emptyCtx);
     }
-
-    // Note: User persistence should also be added here when implemented
-    // if (this.dirtyUsers.size > 0) {
-    //   await this.persistDirtyUsers(emptyCtx);
-    // }
   }
 
   /**
@@ -739,6 +856,11 @@ export class TypedCacheManager {
       this.stopBackgroundPersistence();
       
       // Final persist of any dirty data
+      if (this.dirtyUsers.size > 0) {
+        console.log('💾 Final persist of dirty users before shutdown');
+        await this.persistDirtyUsers(emptyCtx);
+      }
+      
       if (this.dirtyMessages.size > 0) {
         console.log('💾 Final persist of dirty messages before shutdown');
         await this.persistDirtyMessages(emptyCtx);
