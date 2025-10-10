@@ -14,6 +14,23 @@ export class RadarRenderer {
         ctx.stroke();
         ctx.shadowBlur = 0;
 
+        // Draw middle range ring at 250 distance
+        if (maxRadius > 250) {
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, 250, 0, Math.PI * 2);
+            ctx.strokeStyle = '#00aa66';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([8, 8]);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            
+            // Add distance label
+            ctx.fillStyle = '#00ff88';
+            ctx.font = 'bold 10px monospace';
+            ctx.textAlign = 'center';
+            ctx.fillText('250', centerX + 250 * Math.cos(Math.PI / 4), centerY - 250 * Math.sin(Math.PI / 4) - 5);
+        }
+
         // Draw inner circle at 125 distance with label
         ctx.beginPath();
         ctx.arc(centerX, centerY, 125, 0, Math.PI * 2);

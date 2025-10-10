@@ -12,13 +12,29 @@ export class HUDRenderer {
     drawHUD(ship: Ship): void {
         const padding = 15;
         const panelWidth = 180;
-        const panelHeight = 120;
+        const panelHeight = 140;
         
         // Draw ship info panel at top-left (outside clipped area)
         this.drawShipInfoPanel(ship, padding, padding, panelWidth, panelHeight);
         
         // Draw heading compass at top-right
         this.drawHeadingCompass(ship, this.canvas.width - padding - 100, padding, 100);
+        
+        // Draw subtle scan lines for sci-fi effect
+        this.drawScanLines();
+    }
+    
+    private drawScanLines(): void {
+        // Draw subtle horizontal scan lines across the entire canvas
+        this.ctx.strokeStyle = 'rgba(0, 255, 170, 0.03)';
+        this.ctx.lineWidth = 1;
+        
+        for (let y = 0; y < this.canvas.height; y += 4) {
+            this.ctx.beginPath();
+            this.ctx.moveTo(0, y);
+            this.ctx.lineTo(this.canvas.width, y);
+            this.ctx.stroke();
+        }
     }
 
     private drawShipInfoPanel(ship: Ship, x: number, y: number, width: number, height: number): void {
@@ -65,12 +81,46 @@ export class HUDRenderer {
         this.ctx.fillText(`${Math.round(ship.getX())}, ${Math.round(ship.getY())}`, x + 90, currentY);
         currentY += lineHeight;
         
-        // Speed
+        // Speed with bar indicator
         this.ctx.fillStyle = '#aaaaaa';
         this.ctx.fillText('Speed:', x + 10, currentY);
         this.ctx.fillStyle = '#ffffff';
         this.ctx.fillText(`${ship.getSpeed().toFixed(1)} u/s`, x + 90, currentY);
         currentY += lineHeight;
+        
+        // Speed bar (assume max speed is around 10 for display purposes)
+        const barWidth = width - 20;
+        const barHeight = 6;
+        const barX = x + 10;
+        const barY = currentY - 10;
+        const maxSpeedDisplay = 10;
+        const speedPercent = Math.min(ship.getSpeed() / maxSpeedDisplay, 1);
+        
+        // Draw bar background
+        this.ctx.fillStyle = 'rgba(50, 50, 50, 0.8)';
+        this.ctx.fillRect(barX, barY, barWidth, barHeight);
+        
+        // Draw bar fill with gradient
+        if (speedPercent > 0) {
+            const barGradient = this.ctx.createLinearGradient(barX, barY, barX + barWidth * speedPercent, barY);
+            barGradient.addColorStop(0, '#00ff88');
+            barGradient.addColorStop(1, '#00ccff');
+            this.ctx.fillStyle = barGradient;
+            this.ctx.fillRect(barX, barY, barWidth * speedPercent, barHeight);
+            
+            // Add glow effect
+            this.ctx.shadowBlur = 5;
+            this.ctx.shadowColor = '#00ff88';
+            this.ctx.fillRect(barX, barY, barWidth * speedPercent, barHeight);
+            this.ctx.shadowBlur = 0;
+        }
+        
+        // Draw bar border
+        this.ctx.strokeStyle = '#00aa88';
+        this.ctx.lineWidth = 1;
+        this.ctx.strokeRect(barX, barY, barWidth, barHeight);
+        
+        currentY += lineHeight - 5;
         
         // Heading
         this.ctx.fillStyle = '#aaaaaa';
