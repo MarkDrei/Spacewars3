@@ -4,19 +4,30 @@ export class RadarRenderer {
     drawRadar(ctx: CanvasRenderingContext2D, centerX: number, centerY: number, ship: Ship): void {
         const maxRadius = Math.min(centerX, centerY);
 
-        // Draw outer circle
+        // Draw outer circle with glow effect
         ctx.beginPath();
         ctx.arc(centerX, centerY, maxRadius, 0, Math.PI * 2);
-        ctx.strokeStyle = '#8b0000';  // Dark red for rings
-        ctx.lineWidth = 1;
+        ctx.strokeStyle = '#00ff88';  // Cyan-green for outer ring
+        ctx.lineWidth = 2;
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = '#00ff88';
         ctx.stroke();
+        ctx.shadowBlur = 0;
 
-        // Draw inner circle at 125 distance
+        // Draw inner circle at 125 distance with label
         ctx.beginPath();
         ctx.arc(centerX, centerY, 125, 0, Math.PI * 2);
-        ctx.strokeStyle = '#8b0000';  // Dark red for rings
-        ctx.lineWidth = 1;
+        ctx.strokeStyle = '#00aa66';  // Darker cyan-green
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([5, 5]);
         ctx.stroke();
+        ctx.setLineDash([]);
+        
+        // Add distance label for inner ring
+        ctx.fillStyle = '#00ff88';
+        ctx.font = 'bold 11px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('125', centerX + 125 * Math.cos(Math.PI / 4), centerY - 125 * Math.sin(Math.PI / 4) - 5);
 
         // Draw crosshairs and coordinates
         this.drawCrosshairsAndCoordinates(ctx, centerX, centerY, maxRadius, ship);
@@ -25,9 +36,11 @@ export class RadarRenderer {
     private drawCrosshairsAndCoordinates(ctx: CanvasRenderingContext2D, centerX: number, centerY: number, maxRadius: number, ship: Ship): void {
         const useScreenEdges = false; // Hardcoded boolean - true for screen edges, false for center crossing
         
-        // Draw horizontal and vertical lines
-        ctx.strokeStyle = '#8b0000';  // Dark red for lines
-        ctx.lineWidth = 1;
+        // Draw horizontal and vertical lines with improved styling
+        ctx.strokeStyle = '#00dd77';  // Cyan-green for lines
+        ctx.lineWidth = 1.5;
+        ctx.shadowBlur = 5;
+        ctx.shadowColor = '#00dd77';
         
         if (useScreenEdges) {
             // Draw lines at screen edges
@@ -56,15 +69,18 @@ export class RadarRenderer {
             ctx.lineTo(centerX, centerY + maxRadius);
             ctx.stroke();
         }
+        ctx.shadowBlur = 0;
 
-        // Draw coordinates
+        // Draw coordinates with improved styling
         const shipX = ship.getX();
         const shipY = ship.getY();
         const coordinateDistance = 400;
         const innerExclusionZone = 70;
 
-        ctx.font = '12px Arial';
-        ctx.fillStyle = '#ff0000';
+        ctx.font = 'bold 12px monospace';
+        ctx.fillStyle = '#00ffaa';
+        ctx.shadowBlur = 3;
+        ctx.shadowColor = '#000000';
 
         if (useScreenEdges) {
             // Draw X coordinates along bottom edge (above the line)
