@@ -35,6 +35,9 @@ interface UserRow {
   armor_current: number;
   shield_current: number;
   defense_last_regen: number;
+  // Battle state
+  in_battle?: number; // SQLite stores boolean as 0/1
+  current_battle_id?: number | null;
 }
 
 function userFromRow(row: UserRow, saveCallback: SaveUserCallback): User {
@@ -69,6 +72,10 @@ function userFromRow(row: UserRow, saveCallback: SaveUserCallback): User {
   const shieldCurrent = row.shield_current !== undefined ? row.shield_current : (techCounts.energy_shield * 100) / 2;
   const defenseLastRegen = row.defense_last_regen || row.last_updated;
   
+  // Extract battle state, with fallback for migration
+  const inBattle = row.in_battle ? row.in_battle === 1 : false;
+  const currentBattleId = row.current_battle_id || null;
+  
   return new User(
     row.id,
     row.username,
@@ -82,6 +89,8 @@ function userFromRow(row: UserRow, saveCallback: SaveUserCallback): User {
     armorCurrent,
     shieldCurrent,
     defenseLastRegen,
+    inBattle,
+    currentBattleId,
     row.ship_id
   );
 }
@@ -191,7 +200,7 @@ async function createUserWithShip(db: sqlite3.Database, username: string, passwo
                 energy_shield: 5,
                 missile_jammer: 0
               };
-              const user = new User(userId, username, password_hash, 0.0, now, techTree, saveCallback, defaultTechCounts, 250.0, 250.0, 250.0, now, shipId);
+              const user = new User(userId, username, password_hash, 0.0, now, techTree, saveCallback, defaultTechCounts, 250.0, 250.0, 250.0, now, false, null, shipId);
               
               // Send welcome message to new user
               await sendMessageToUserCached(userId, `Welcome to Spacewars, ${username}! Your journey among the stars begins now. Navigate wisely and collect resources to upgrade your ship.`);
@@ -230,7 +239,7 @@ async function createUserWithShip(db: sqlite3.Database, username: string, passwo
             energy_shield: 5,
             missile_jammer: 0
           };
-          const user = new User(id, username, password_hash, 0.0, now, techTree, saveCallback, defaultTechCounts, 250.0, 250.0, 250.0, now);
+          const user = new User(id, username, password_hash, 0.0, now, techTree, saveCallback, defaultTechCounts, 250.0, 250.0, 250.0, now, false, null);
           
           try {
             // Note: User creation doesn't need immediate caching since
@@ -269,7 +278,9 @@ export function saveUserToDb(db: sqlite3.Database): SaveUserCallback {
           hull_current = ?,
           armor_current = ?,
           shield_current = ?,
-          defense_last_regen = ?
+          defense_last_regen = ?,
+          in_battle = ?,
+          current_battle_id = ?
         WHERE id = ?`,
         [
           user.iron, 
@@ -290,6 +301,8 @@ export function saveUserToDb(db: sqlite3.Database): SaveUserCallback {
           user.armorCurrent,
           user.shieldCurrent,
           user.defenseLastRegen,
+          user.inBattle ? 1 : 0,
+          user.currentBattleId,
           user.id
         ],
         function (err) {

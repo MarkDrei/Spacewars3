@@ -4,6 +4,7 @@ import { sessionOptions, SessionData } from '@/lib/server/session';
 import { requireAuth, handleApiError, validateRequired, ApiError } from '@/lib/server/errors';
 import { TechRepo } from '@/lib/server/techRepo';
 import { TechFactory } from '@/lib/server/TechFactory';
+import { getDatabase } from '@/lib/server/database';
 
 /**
  * POST /api/build-item
@@ -33,7 +34,8 @@ export async function POST(request: NextRequest) {
       throw new ApiError(400, `Unknown ${itemType}: ${itemKey}`);
     }
     
-    const techRepo = new TechRepo();
+    const db = await getDatabase();
+    const techRepo = new TechRepo(db);
     
     // Check if user has enough iron
     const userIron = await techRepo.getIron(session.userId!);

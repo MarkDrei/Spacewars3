@@ -22,8 +22,8 @@ export interface UnreadMessage {
 export class MessagesRepo {
   private db: sqlite3.Database;
 
-  constructor(database?: sqlite3.Database) {
-    this.db = database || getDatabase();
+  constructor(database: sqlite3.Database) {
+    this.db = database;
   }
 
   /**

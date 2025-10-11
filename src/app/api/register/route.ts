@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
     validateRequired(username, 'username');
     validateRequired(password, 'password');
     
-    const db = getDatabase();
+    const db = await getDatabase();
     
     // Hash password with automatic salt generation
     const hash = await bcrypt.hash(password, 10);

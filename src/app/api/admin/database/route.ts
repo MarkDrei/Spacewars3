@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
     requireAuth(session.userId);
     
     // Get user data to check username for admin access
-    const db = getDatabase();
+    const db = await getDatabase();
     const userData = await getUserById(db, session.userId!);
     if (!userData) {
       throw new ApiError(404, 'User not found');

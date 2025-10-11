@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ loggedIn: false });
     }
     
-    const db = getDatabase();
+    const db = await getDatabase();
     
     const userRow = await new Promise<{ username: string; ship_id: number } | undefined>((resolve, reject) => {
       db.get(

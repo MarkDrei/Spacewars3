@@ -255,19 +255,20 @@ async function getUserShipId(userId: number): Promise<number> {
 
 /**
  * Initiate a battle between two users
+ * NOTE: Caller should check battle state via user.inBattle before calling this
  */
 export async function initiateBattle(
   attacker: User,
   attackee: User
 ): Promise<Battle> {
-  // Validation: Check if either user is already in battle
-  const attackerBattle = await BattleRepo.getOngoingBattleForUser(attacker.id);
-  if (attackerBattle) {
+  console.log(`⚔️ initiateBattle: Starting battle between ${attacker.username} and ${attackee.username}`);
+  
+  // Validation: Check battle state from user objects (no DB access needed)
+  if (attacker.inBattle) {
     throw new ApiError(400, 'You are already in a battle');
   }
   
-  const attackeeBattle = await BattleRepo.getOngoingBattleForUser(attackee.id);
-  if (attackeeBattle) {
+  if (attackee.inBattle) {
     throw new ApiError(400, 'Target is already in a battle');
   }
   
@@ -276,6 +277,7 @@ export async function initiateBattle(
     throw new ApiError(400, 'Both users must have ships to battle');
   }
   
+  console.log(`⚔️ initiateBattle: Getting ship positions...`);
   // Validation: Check distance
   const attackerPos = await getShipPosition(attacker.ship_id);
   const attackeePos = await getShipPosition(attackee.ship_id);
@@ -295,6 +297,7 @@ export async function initiateBattle(
     throw new ApiError(400, `Target is too far away (${distance.toFixed(1)} units, max ${BATTLE_RANGE})`);
   }
   
+  console.log(`⚔️ initiateBattle: Creating battle stats...`);
   // Create battle stats snapshots
   const attackerStats = createBattleStats(attacker);
   const attackeeStats = createBattleStats(attackee);
@@ -304,10 +307,12 @@ export async function initiateBattle(
     throw new ApiError(400, 'You need at least one weapon to attack');
   }
   
+  console.log(`⚔️ initiateBattle: Setting ship speeds to 0...`);
   // Set both ships' speeds to 0
   await setShipSpeed(attacker.ship_id, 0);
   await setShipSpeed(attackee.ship_id, 0);
   
+  console.log(`⚔️ initiateBattle: Creating battle in database...`);
   // Create battle in database
   const battle = await BattleRepo.createBattle(
     attacker.id,
@@ -316,6 +321,7 @@ export async function initiateBattle(
     attackeeStats
   );
   
+  console.log(`⚔️ initiateBattle: Updating user battle states...`);
   // Update users' battle state
   await updateUserBattleState(attacker.id, true, battle.id);
   await updateUserBattleState(attackee.id, true, battle.id);

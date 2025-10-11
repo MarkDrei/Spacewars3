@@ -23,7 +23,8 @@ export function loadWorldFromDb(db: sqlite3.Database, saveCallback: SaveWorldCal
         so.angle,
         so.last_position_update_ms,
         u.username,
-        u.id as user_id
+        u.id as user_id,
+        u.in_battle
       FROM space_objects so
       LEFT JOIN users u ON so.type = 'player_ship' AND so.id = u.ship_id
     `;    db.all(query, [], (err, rows) => {
@@ -42,12 +43,14 @@ export function loadWorldFromDb(db: sqlite3.Database, saveCallback: SaveWorldCal
         last_position_update_ms: number;
         username: string | null;
         user_id: number | null;
+        in_battle: number | null;
       }>).map(row => ({
         id: row.id,
         type: row.type as SpaceObject['type'],
         x: row.x,
         y: row.y,
-        speed: row.speed,
+        // Force speed to 0 if player is in battle
+        speed: (row.type === 'player_ship' && row.in_battle) ? 0 : row.speed,
         angle: row.angle,
         last_position_update_ms: row.last_position_update_ms,
         // Only include username and userId for player ships

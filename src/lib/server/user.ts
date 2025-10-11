@@ -21,6 +21,10 @@ class User {
   shieldCurrent: number;
   defenseLastRegen: number; // Timestamp in seconds for regeneration tracking
   
+  // Battle state (persisted)
+  inBattle: boolean;
+  currentBattleId: number | null;
+  
   private saveCallback: SaveUserCallback;
 
   constructor(
@@ -36,6 +40,8 @@ class User {
     armorCurrent: number,
     shieldCurrent: number,
     defenseLastRegen: number,
+    inBattle: boolean,
+    currentBattleId: number | null,
     ship_id?: number
   ) {
     this.id = id;
@@ -49,6 +55,8 @@ class User {
     this.armorCurrent = armorCurrent;
     this.shieldCurrent = shieldCurrent;
     this.defenseLastRegen = defenseLastRegen;
+    this.inBattle = inBattle;
+    this.currentBattleId = currentBattleId;
     this.ship_id = ship_id;
     this.saveCallback = saveCallback;
   }
@@ -191,7 +199,9 @@ class User {
       hullCurrent,
       armorCurrent,
       shieldCurrent,
-      now // defenseLastRegen initialized to now
+      now, // defenseLastRegen initialized to now
+      false, // inBattle
+      null // currentBattleId
     );
   }
 }

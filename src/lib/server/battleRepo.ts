@@ -31,14 +31,16 @@ export class BattleRepo {
           attacker_weapon_cooldowns,
           attackee_weapon_cooldowns,
           attacker_start_stats,
-          attackee_start_stats
-        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+          attackee_start_stats,
+          battle_log
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       `;
 
       const attackerCooldowns = JSON.stringify({});
       const attackeeCooldowns = JSON.stringify({});
       const attackerStats = JSON.stringify(attackerStartStats);
       const attackeeStats = JSON.stringify(attackeeStartStats);
+      const battleLog = JSON.stringify([]);
 
       db.run(
         query,
@@ -49,7 +51,8 @@ export class BattleRepo {
           attackerCooldowns,
           attackeeCooldowns,
           attackerStats,
-          attackeeStats
+          attackeeStats,
+          battleLog
         ],
         function (err) {
           if (err) {

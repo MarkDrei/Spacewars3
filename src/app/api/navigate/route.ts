@@ -78,6 +78,11 @@ async function performNavigationLogic(
   cacheManager: TypedCacheManager,
   userCtx: UserContext
 ): Promise<NextResponse> {
+  // Check if user is in battle - cannot navigate while in battle
+  if (user.inBattle) {
+    throw new ApiError(400, 'Cannot navigate while in battle');
+  }
+  
   // Update physics for all objects first
   const currentTime = Date.now();
   world.updatePhysics(currentTime);

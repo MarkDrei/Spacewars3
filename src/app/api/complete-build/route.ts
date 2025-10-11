@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
     
     console.log(`🔓 Cheat mode authorized for developer: ${userData.username}`);
     
-    const techRepo = new TechRepo();
+    const techRepo = new TechRepo(db);
     
     // Get current build queue
     const buildQueue = await techRepo.getBuildQueue(session.userId!);

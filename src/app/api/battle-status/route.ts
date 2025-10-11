@@ -25,7 +25,21 @@ export async function GET(request: NextRequest) {
     console.log(`🔍 Battle Status API: Checking battle for user ${session.userId}`);
     
     // Check if user has an ongoing battle
-    const battle = await BattleRepo.getOngoingBattleForUser(session.userId!);
+    // Handle case where battles table might not exist yet (graceful degradation)
+    let battle;
+    try {
+      battle = await BattleRepo.getOngoingBattleForUser(session.userId!);
+    } catch (dbError) {
+      // If table doesn't exist, just return not in battle
+      const errorMessage = dbError instanceof Error ? dbError.message : String(dbError);
+      if (errorMessage.includes('no such table: battles')) {
+        console.log(`⚠️ Battles table doesn't exist yet, returning not in battle`);
+        return NextResponse.json({
+          inBattle: false
+        });
+      }
+      throw dbError; // Re-throw if it's a different error
+    }
     
     if (!battle) {
       return NextResponse.json({

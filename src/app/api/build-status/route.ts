@@ -3,6 +3,7 @@ import { getIronSession } from 'iron-session';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { requireAuth, handleApiError } from '@/lib/server/errors';
 import { TechRepo } from '@/lib/server/techRepo';
+import { getDatabase } from '@/lib/server/database';
 
 /**
  * GET /api/build-status
@@ -13,7 +14,8 @@ export async function GET(request: NextRequest) {
     const session = await getIronSession<SessionData>(request, NextResponse.json({}), sessionOptions);
     requireAuth(session.userId);
     
-    const techRepo = new TechRepo();
+    const db = await getDatabase();
+    const techRepo = new TechRepo(db);
     
     console.log(`🔧 Build status requested for user: ${session.userId}`);
     

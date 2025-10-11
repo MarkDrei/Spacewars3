@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
     validateRequired(username, 'username');
     validateRequired(password, 'password');
     
-    const db = getDatabase();
+    const db = await getDatabase();
     const user = await getUserByUsername(db, username);
     
     if (!user) {

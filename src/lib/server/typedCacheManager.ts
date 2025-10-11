@@ -148,7 +148,7 @@ export class TypedCacheManager {
       console.log('🚀 Initializing typed cache manager...');
 
       // Initialize database connection
-      this.db = getDatabase();
+      this.db = await getDatabase();
       console.log('✅ Database connected');
 
       // Load world data

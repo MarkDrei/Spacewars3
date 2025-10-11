@@ -35,6 +35,10 @@ CREATE TABLE IF NOT EXISTS users (
   -- Build queue
   build_queue TEXT DEFAULT NULL,
   build_start_sec INTEGER DEFAULT NULL,
+
+  -- Battle state
+  in_battle INTEGER NOT NULL DEFAULT 0,
+  current_battle_id INTEGER DEFAULT NULL,
   
   FOREIGN KEY (ship_id) REFERENCES space_objects (id)
 )`;
@@ -60,10 +64,31 @@ CREATE TABLE IF NOT EXISTS messages (
   FOREIGN KEY (recipient_id) REFERENCES users (id)
 )`;
 
+export const CREATE_BATTLES_TABLE = `
+CREATE TABLE IF NOT EXISTS battles (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  attacker_id INTEGER NOT NULL,
+  attackee_id INTEGER NOT NULL,
+  battle_start_time INTEGER NOT NULL,
+  battle_end_time INTEGER DEFAULT NULL,
+  winner_id INTEGER DEFAULT NULL,
+  loser_id INTEGER DEFAULT NULL,
+  attacker_start_stats TEXT NOT NULL, -- JSON: { hull, armor, shield, weapons: {...} }
+  attackee_start_stats TEXT NOT NULL, -- JSON: { hull, armor, shield, weapons: {...} }
+  attacker_weapon_cooldowns TEXT NOT NULL, -- JSON: { pulse_laser: timestamp, ... }
+  attackee_weapon_cooldowns TEXT NOT NULL, -- JSON: { pulse_laser: timestamp, ... }
+  battle_log TEXT NOT NULL, -- JSON array of battle events
+  FOREIGN KEY (attacker_id) REFERENCES users (id),
+  FOREIGN KEY (attackee_id) REFERENCES users (id),
+  FOREIGN KEY (winner_id) REFERENCES users (id),
+  FOREIGN KEY (loser_id) REFERENCES users (id)
+)`;
+
 export const CREATE_TABLES = [
   CREATE_SPACE_OBJECTS_TABLE,
   CREATE_USERS_TABLE,
-  CREATE_MESSAGES_TABLE
+  CREATE_MESSAGES_TABLE,
+  CREATE_BATTLES_TABLE
 ];
 
 // Migration to rename column
@@ -99,5 +124,11 @@ export const MIGRATE_ADD_DEFENSE_CURRENT = [
   'ALTER TABLE users ADD COLUMN defense_last_regen INTEGER NOT NULL DEFAULT 0'
 ];
 
+// Migration to add battle state columns
+export const MIGRATE_ADD_BATTLE_STATE = [
+  'ALTER TABLE users ADD COLUMN in_battle INTEGER NOT NULL DEFAULT 0',
+  'ALTER TABLE users ADD COLUMN current_battle_id INTEGER DEFAULT NULL'
+];
+
 // Optional: Version management for migrations
-export const SCHEMA_VERSION = 8;
+export const SCHEMA_VERSION = 9;

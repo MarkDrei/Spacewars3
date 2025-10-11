@@ -97,6 +97,18 @@ export const migrations: Migration[] = [
       'ALTER TABLE users DROP COLUMN shield_current',
       'ALTER TABLE users DROP COLUMN defense_last_regen'
     ]
+  },
+  {
+    version: 6,
+    name: 'add_battle_state',
+    up: [
+      'ALTER TABLE users ADD COLUMN in_battle INTEGER NOT NULL DEFAULT 0',
+      'ALTER TABLE users ADD COLUMN current_battle_id INTEGER DEFAULT NULL'
+    ],
+    down: [
+      'ALTER TABLE users DROP COLUMN in_battle',
+      'ALTER TABLE users DROP COLUMN current_battle_id'
+    ]
   }
   // Future migrations go here
   // {
@@ -199,6 +211,9 @@ export async function applyTechMigrations(db: import('sqlite3').Database): Promi
   
   // Apply defense current values migration
   await applyDefenseCurrentValuesMigration(db);
+  
+  // Apply battle state migration
+  await applyBattleStateMigration(db);
 }
 
 /**
@@ -331,5 +346,38 @@ export async function applyDefenseCurrentValuesMigration(db: import('sqlite3').D
     console.log('✅ Defense current values migration completed');
   } catch (error) {
     console.error('❌ Error applying defense current values migration:', error);
+  }
+}
+
+/**
+ * Apply battle state migration to the database
+ */
+export async function applyBattleStateMigration(db: import('sqlite3').Database): Promise<void> {
+  console.log('🔄 Checking for battle state migration...');
+  
+  try {
+    const exists = await columnExists(db, 'users', 'in_battle');
+    if (exists) {
+      console.log('✅ Battle state columns already exist');
+      return;
+    }
+    
+    console.log('🚀 Adding battle state columns...');
+    
+    // Get battle state migration
+    const battleStateMigration = migrations.find(m => m.name === 'add_battle_state');
+    if (!battleStateMigration) {
+      console.error('❌ Battle state migration not found');
+      return;
+    }
+    
+    // Apply each migration statement
+    for (const statement of battleStateMigration.up) {
+      await runMigrationStatement(db, statement);
+    }
+    
+    console.log('✅ Battle state migration completed');
+  } catch (error) {
+    console.error('❌ Error applying battle state migration:', error);
   }
 }

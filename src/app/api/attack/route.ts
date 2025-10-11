@@ -7,8 +7,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getIronSession } from 'iron-session';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, ApiError, requireAuth } from '@/lib/server/errors';
-import { getTypedCacheManager } from '@/lib/server/typedCacheManager';
-import { createEmptyContext } from '@/lib/server/typedLocks';
 import { initiateBattle } from '@/lib/server/battleService';
 import { getDatabase } from '@/lib/server/database';
 import { getUserById } from '@/lib/server/userRepo';
@@ -41,44 +39,26 @@ export async function POST(request: NextRequest) {
     
     console.log(`⚔️ Attack API: User ${session.userId} attacking user ${targetUserId}`);
     
-    // Get cache manager and initialize
-    const cacheManager = getTypedCacheManager();
-    await cacheManager.initialize();
+    // Load both users directly from database
+    // Do NOT hold locks while calling initiateBattle as it needs to access the database
+    console.log(`⚔️ Step 1: Getting database...`);
+    const db = await getDatabase();
+    console.log(`⚔️ Step 2: Database obtained, loading attacker...`);
     
-    // Create empty context for lock acquisition
-    const emptyCtx = createEmptyContext();
+    const attacker = await getUserById(db, session.userId!);
+    if (!attacker) {
+      throw new ApiError(404, 'Attacker not found');
+    }
+    console.log(`⚔️ Step 3: Attacker loaded, loading target...`);
     
-    // Execute with user lock
-    const battle = await cacheManager.withUserLock(emptyCtx, async (userCtx) => {
-      // Get attacker from cache
-      let attacker = cacheManager.getUserUnsafe(session.userId!, userCtx);
-      
-      if (!attacker) {
-        // Load attacker from database
-        const db = await getDatabase();
-        attacker = await getUserById(db, session.userId!);
-        if (!attacker) {
-          throw new ApiError(404, 'Attacker not found');
-        }
-        cacheManager.setUserUnsafe(attacker, userCtx);
-      }
-      
-      // Get target from cache
-      let target = cacheManager.getUserUnsafe(targetUserId, userCtx);
-      
-      if (!target) {
-        // Load target from database
-        const db = await getDatabase();
-        target = await getUserById(db, targetUserId);
-        if (!target) {
-          throw new ApiError(404, 'Target user not found');
-        }
-        cacheManager.setUserUnsafe(target, userCtx);
-      }
-      
-      // Initiate the battle
-      return await initiateBattle(attacker, target);
-    });
+    const target = await getUserById(db, targetUserId);
+    if (!target) {
+      throw new ApiError(404, 'Target user not found');
+    }
+    console.log(`⚔️ Step 4: Target loaded, initiating battle...`);
+    
+    // Initiate the battle - this will handle its own locking internally
+    const battle = await initiateBattle(attacker, target);
     
     console.log(`✅ Battle ${battle.id} initiated successfully`);
     

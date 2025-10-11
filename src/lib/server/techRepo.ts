@@ -16,8 +16,8 @@ export interface BuildQueueItem {
 export class TechRepo {
   private db: sqlite3.Database;
 
-  constructor(database?: sqlite3.Database) {
-    this.db = database || getDatabase();
+  constructor(database: sqlite3.Database) {
+    this.db = database;
   }
 
   /**

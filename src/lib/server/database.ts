@@ -7,6 +7,7 @@ import { applyTechMigrations } from './migrations';
 
 let db: sqlite3.Database | null = null;
 let isInitializing = false;
+let initializationPromise: Promise<sqlite3.Database> | null = null;
 
 // Test database management
 let testDb: sqlite3.Database | null = null;
@@ -77,14 +78,24 @@ function seedTestDatabase(db: sqlite3.Database): void {
   }
 }
 
-export function getDatabase(): sqlite3.Database {
+export async function getDatabase(): Promise<sqlite3.Database> {
   // Use in-memory database for tests
   if (process.env.NODE_ENV === 'test') {
     return initializeTestDatabase();
   }
 
-  // Production database logic (unchanged)
-  if (!db && !isInitializing) {
+  // If database is already initialized, return it immediately
+  if (db) {
+    return db;
+  }
+
+  // If initialization is in progress, wait for it
+  if (initializationPromise) {
+    return initializationPromise;
+  }
+
+  // Start initialization
+  initializationPromise = new Promise<sqlite3.Database>((resolve, reject) => {
     isInitializing = true;
     const dbDir = path.join(process.cwd(), 'database');
     const dbPath = path.join(dbDir, 'users.db');
@@ -101,19 +112,24 @@ export function getDatabase(): sqlite3.Database {
       if (err) {
         console.error('❌ Error opening database:', err);
         isInitializing = false;
-        throw err;
-      } else {
-        console.log('✅ Connected to SQLite database at:', dbPath);
-        
-        // Set PRAGMA synchronous = FULL to ensure data is written to disk immediately
-        db!.run('PRAGMA synchronous = FULL', (pragmaErr) => {
-          if (pragmaErr) {
-            console.error('⚠️ Warning: Failed to set PRAGMA synchronous:', pragmaErr);
-          } else {
-            console.log('💾 Database synchronous mode set to FULL');
-          }
-        });
-        
+        initializationPromise = null;
+        db = null;
+        reject(err);
+        return;
+      }
+      
+      console.log('✅ Connected to SQLite database at:', dbPath);
+      
+      // Set PRAGMA synchronous = FULL to ensure data is written to disk immediately
+      db!.run('PRAGMA synchronous = FULL', (pragmaErr) => {
+        if (pragmaErr) {
+          console.error('⚠️ Warning: Failed to set PRAGMA synchronous:', pragmaErr);
+        } else {
+          console.log('💾 Database synchronous mode set to FULL');
+        }
+      });
+      
+      try {
         if (!dbExists) {
           console.log('🆕 New database detected, initializing...');
           await initializeDatabase(db!);
@@ -123,18 +139,19 @@ export function getDatabase(): sqlite3.Database {
         }
         
         isInitializing = false;
+        // Don't clear initializationPromise - it's still valid
+        resolve(db!);
+      } catch (initError) {
+        console.error('❌ Database initialization failed:', initError);
+        isInitializing = false;
+        initializationPromise = null;
+        db = null;
+        reject(initError);
       }
     });
-  }
-  
-  // Wait for initialization to complete if it's happening
-  if (isInitializing) {
-    // Return a promise that resolves when initialization is done
-    // For now, we'll return the db reference which will be ready shortly
-    return db!;
-  }
-  
-  return db!;
+  });
+
+  return initializationPromise;
 }
 
 async function initializeDatabase(database: sqlite3.Database): Promise<void> {
