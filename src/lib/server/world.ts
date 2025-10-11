@@ -14,6 +14,10 @@ export interface SpaceObject {
   angle: number;
   last_position_update_ms: number;
   username?: string; // Optional: only present for player_ship type
+  // Afterburner state (only for player_ship)
+  afterburner_boosted_speed?: number | null;
+  afterburner_cooldown_end_ms?: number | null;
+  afterburner_old_max_speed?: number | null;
 }
 
 export interface WorldData {

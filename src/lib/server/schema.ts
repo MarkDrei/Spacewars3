@@ -47,7 +47,10 @@ CREATE TABLE IF NOT EXISTS space_objects (
   y REAL NOT NULL,
   speed REAL NOT NULL DEFAULT 0.0,
   angle REAL NOT NULL DEFAULT 0.0,
-  last_position_update_ms REAL NOT NULL
+  last_position_update_ms REAL NOT NULL,
+  afterburner_boosted_speed REAL DEFAULT NULL,
+  afterburner_cooldown_end_ms INTEGER DEFAULT NULL,
+  afterburner_old_max_speed REAL DEFAULT NULL
 )`;
 
 export const CREATE_MESSAGES_TABLE = `
@@ -99,5 +102,12 @@ export const MIGRATE_ADD_DEFENSE_CURRENT = [
   'ALTER TABLE users ADD COLUMN defense_last_regen INTEGER NOT NULL DEFAULT 0'
 ];
 
+// Migration to add afterburner columns to space_objects
+export const MIGRATE_ADD_AFTERBURNER_COLUMNS = [
+  'ALTER TABLE space_objects ADD COLUMN afterburner_boosted_speed REAL DEFAULT NULL',
+  'ALTER TABLE space_objects ADD COLUMN afterburner_cooldown_end_ms INTEGER DEFAULT NULL',
+  'ALTER TABLE space_objects ADD COLUMN afterburner_old_max_speed REAL DEFAULT NULL'
+];
+
 // Optional: Version management for migrations
-export const SCHEMA_VERSION = 8;
+export const SCHEMA_VERSION = 9;

@@ -292,7 +292,7 @@ export const AllResearches: Record<ResearchType, Research> = {
     level: 1,
     baseUpgradeCost: 1500,
     baseUpgradeDuration: 90,
-    baseValue: 5,
+    baseValue: 60,
     upgradeCostIncrease: 1.9,
     baseValueIncrease: { type: 'constant', value: 2 },
     description: 'Increases duration of afterburner boost.',
