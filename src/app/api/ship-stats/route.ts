@@ -83,6 +83,16 @@ async function getShipStats(world: World, user: User): Promise<NextResponse> {
   };
   const defenseValues = TechFactory.calculateDefenseValues(user.techCounts, currentValues);
   
+  // Calculate afterburner status
+  const afterburnerLevel = user.techTree.afterburner;
+  const isAfterburnerActive = playerShip.afterburner_cooldown_end_ms !== null && 
+                               playerShip.afterburner_cooldown_end_ms !== undefined &&
+                               playerShip.afterburner_cooldown_end_ms > currentTime;
+  const afterburnerCooldownRemainingMs = isAfterburnerActive && playerShip.afterburner_cooldown_end_ms 
+    ? playerShip.afterburner_cooldown_end_ms - currentTime 
+    : 0;
+  const canActivateAfterburner = afterburnerLevel > 0 && !isAfterburnerActive;
+  
   const responseData = {
     x: playerShip.x,
     y: playerShip.y,
@@ -90,7 +100,13 @@ async function getShipStats(world: World, user: User): Promise<NextResponse> {
     angle: playerShip.angle,
     maxSpeed: maxSpeed,
     last_position_update_ms: playerShip.last_position_update_ms,
-    defenseValues
+    defenseValues,
+    afterburner: {
+      isActive: isAfterburnerActive,
+      cooldownRemainingMs: afterburnerCooldownRemainingMs,
+      canActivate: canActivateAfterburner,
+      researchLevel: afterburnerLevel
+    }
   };
   
   return NextResponse.json(responseData);

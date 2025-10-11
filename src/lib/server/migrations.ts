@@ -97,14 +97,22 @@ export const migrations: Migration[] = [
       'ALTER TABLE users DROP COLUMN shield_current',
       'ALTER TABLE users DROP COLUMN defense_last_regen'
     ]
+  },
+  {
+    version: 6,
+    name: 'add_afterburner_columns',
+    up: [
+      'ALTER TABLE space_objects ADD COLUMN afterburner_boosted_speed REAL DEFAULT NULL',
+      'ALTER TABLE space_objects ADD COLUMN afterburner_cooldown_end_ms INTEGER DEFAULT NULL',
+      'ALTER TABLE space_objects ADD COLUMN afterburner_old_max_speed REAL DEFAULT NULL'
+    ],
+    down: [
+      'ALTER TABLE space_objects DROP COLUMN afterburner_boosted_speed',
+      'ALTER TABLE space_objects DROP COLUMN afterburner_cooldown_end_ms',
+      'ALTER TABLE space_objects DROP COLUMN afterburner_old_max_speed'
+    ]
   }
   // Future migrations go here
-  // {
-  //   version: 6,
-  //   name: 'add_user_settings',
-  //   up: ['ALTER TABLE users ADD COLUMN settings TEXT DEFAULT "{}"'],
-  //   down: ['ALTER TABLE users DROP COLUMN settings']
-  // }
 ];
 
 export function getCurrentVersion(): number {
@@ -199,6 +207,9 @@ export async function applyTechMigrations(db: import('sqlite3').Database): Promi
   
   // Apply defense current values migration
   await applyDefenseCurrentValuesMigration(db);
+  
+  // Apply afterburner columns migration
+  await applyAfterburnerColumnsMigration(db);
 }
 
 /**
@@ -331,5 +342,38 @@ export async function applyDefenseCurrentValuesMigration(db: import('sqlite3').D
     console.log('✅ Defense current values migration completed');
   } catch (error) {
     console.error('❌ Error applying defense current values migration:', error);
+  }
+}
+
+/**
+ * Apply afterburner columns migration to the space_objects table
+ */
+export async function applyAfterburnerColumnsMigration(db: import('sqlite3').Database): Promise<void> {
+  console.log('🔄 Checking for afterburner columns migration...');
+  
+  try {
+    const exists = await columnExists(db, 'space_objects', 'afterburner_boosted_speed');
+    if (exists) {
+      console.log('✅ Afterburner columns already exist');
+      return;
+    }
+    
+    console.log('🚀 Adding afterburner columns...');
+    
+    // Get afterburner columns migration
+    const afterburnerMigration = migrations.find(m => m.name === 'add_afterburner_columns');
+    if (!afterburnerMigration) {
+      console.error('❌ Afterburner columns migration not found');
+      return;
+    }
+    
+    // Apply each migration statement
+    for (const statement of afterburnerMigration.up) {
+      await runMigrationStatement(db, statement);
+    }
+    
+    console.log('✅ Afterburner columns migration completed');
+  } catch (error) {
+    console.error('❌ Error applying afterburner columns migration:', error);
   }
 }
