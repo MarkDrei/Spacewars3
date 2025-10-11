@@ -7,6 +7,7 @@ import { initGame, Game } from '@/lib/client/game/Game';
 import { useWorldData } from '@/lib/client/hooks/useWorldData';
 import { navigateShip } from '@/lib/client/services/navigationService';
 import { getShipStats } from '@/lib/client/services/shipStatsService';
+import { triggerAfterburner } from '@/lib/client/services/afterburnerService';
 import { ServerAuthState } from '@/lib/server/serverSession';
 
 interface GamePageClientProps {
@@ -23,6 +24,9 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
   const [speedInput, setSpeedInput] = useState<string>('0');
   const [isSettingAngle, setIsSettingAngle] = useState(false);
   const [isSettingSpeed, setIsSettingSpeed] = useState(false);
+  const [isTriggeringAfterburner, setIsTriggeringAfterburner] = useState(false);
+  const [afterburnerCooldown, setAfterburnerCooldown] = useState<number>(0);
+  const [canActivateAfterburner, setCanActivateAfterburner] = useState(false);
   // Auth is guaranteed by server, so pass true and use auth.shipId
   const { worldData, isLoading, error, refetch } = useWorldData(3000);
 
@@ -215,6 +219,66 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
     }
   };
 
+  const handleAfterburner = async () => {
+    if (isTriggeringAfterburner) return;
+    
+    setIsTriggeringAfterburner(true);
+    try {
+      const result = await triggerAfterburner();
+      
+      if ('error' in result) {
+        console.error('Failed to trigger afterburner:', result.error);
+        alert(result.error);
+        return;
+      }
+      
+      // Refresh world data to get updated ship state
+      if (refetch) {
+        refetch();
+      }
+      
+      // Update afterburner cooldown state
+      const cooldownMs = result.afterburner.cooldownEndMs - Date.now();
+      setAfterburnerCooldown(cooldownMs);
+      setCanActivateAfterburner(false);
+      
+      // Update input fields after successful activation
+      setTimeout(updateInputFieldsFromShip, 100);
+    } catch (error) {
+      console.error('❌ [CLIENT] Failed to trigger afterburner:', error);
+    } finally {
+      setIsTriggeringAfterburner(false);
+    }
+  };
+
+  // Update afterburner status periodically
+  useEffect(() => {
+    const updateAfterburnerStatus = async () => {
+      try {
+        const shipStats = await getShipStats();
+        
+        if ('error' in shipStats) {
+          return;
+        }
+        
+        if (shipStats.afterburner) {
+          setCanActivateAfterburner(shipStats.afterburner.canActivate);
+          setAfterburnerCooldown(shipStats.afterburner.cooldownRemainingMs);
+        }
+      } catch (error) {
+        // Silently fail - this is just for UI updates
+      }
+    };
+
+    // Update immediately
+    updateAfterburnerStatus();
+
+    // Update every second
+    const interval = setInterval(updateAfterburnerStatus, 1000);
+    
+    return () => clearInterval(interval);
+  }, [worldData]);
+
   // Show loading or error states
   if (isLoading) {
     return (
@@ -304,6 +368,27 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
                 disabled={isSettingMaxSpeed}
               >
                 {isSettingMaxSpeed ? 'Setting Max Speed...' : 'Set Max Speed'}
+              </button>
+            </div>
+            
+            <div className="control-row">
+              <button 
+                className="afterburner-button btn-primary"
+                onClick={handleAfterburner}
+                disabled={isTriggeringAfterburner || !canActivateAfterburner}
+                style={{
+                  width: '100%',
+                  backgroundColor: canActivateAfterburner ? '#ff6600' : '#666',
+                  cursor: canActivateAfterburner ? 'pointer' : 'not-allowed'
+                }}
+              >
+                {isTriggeringAfterburner 
+                  ? 'Activating Afterburner...' 
+                  : afterburnerCooldown > 0 
+                    ? `Afterburner (Cooldown: ${Math.ceil(afterburnerCooldown / 1000)}s)`
+                    : canActivateAfterburner
+                      ? '🔥 Activate Afterburner'
+                      : 'Afterburner (Not Researched)'}
               </button>
             </div>
           </div>
