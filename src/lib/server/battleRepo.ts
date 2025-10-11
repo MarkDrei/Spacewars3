@@ -17,7 +17,9 @@ export class BattleRepo {
     attackerId: number,
     attackeeId: number,
     attackerStartStats: BattleStats,
-    attackeeStartStats: BattleStats
+    attackeeStartStats: BattleStats,
+    attackerInitialCooldowns: WeaponCooldowns,
+    attackeeInitialCooldowns: WeaponCooldowns
   ): Promise<Battle> {
     const db = await getDatabase();
     const now = Math.floor(Date.now() / 1000);
@@ -36,8 +38,8 @@ export class BattleRepo {
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       `;
 
-      const attackerCooldowns = JSON.stringify({});
-      const attackeeCooldowns = JSON.stringify({});
+      const attackerCooldowns = JSON.stringify(attackerInitialCooldowns);
+      const attackeeCooldowns = JSON.stringify(attackeeInitialCooldowns);
       const attackerStats = JSON.stringify(attackerStartStats);
       const attackeeStats = JSON.stringify(attackeeStartStats);
       const battleLog = JSON.stringify([]);
@@ -377,6 +379,77 @@ export class BattleRepo {
           reject(parseError);
         }
       });
+    });
+  }
+
+  /**
+   * Update weapon cooldown for a specific weapon
+   */
+  static async setWeaponCooldown(
+    battleId: number,
+    userId: number,
+    weaponType: string,
+    cooldownTimestamp: number
+  ): Promise<void> {
+    const battle = await this.getBattle(battleId);
+    
+    if (!battle) {
+      throw new Error('Battle not found');
+    }
+    
+    const isAttacker = battle.attackerId === userId;
+    const cooldowns = isAttacker ? battle.attackerWeaponCooldowns : battle.attackeeWeaponCooldowns;
+    
+    // Update cooldown
+    cooldowns[weaponType] = cooldownTimestamp;
+    
+    // Save to database
+    const db = await getDatabase();
+    const column = isAttacker ? 'attacker_weapon_cooldowns' : 'attackee_weapon_cooldowns';
+    
+    return new Promise((resolve, reject) => {
+      db.run(
+        `UPDATE battles SET ${column} = ? WHERE id = ?`,
+        [JSON.stringify(cooldowns), battleId],
+        (err) => {
+          if (err) {
+            reject(err);
+            return;
+          }
+          resolve();
+        }
+      );
+    });
+  }
+
+  /**
+   * Update battle stats (defense values) for both players
+   */
+  static async updateBattleStats(
+    battleId: number,
+    attackerStats: BattleStats,
+    attackeeStats: BattleStats
+  ): Promise<void> {
+    const db = await getDatabase();
+    
+    return new Promise((resolve, reject) => {
+      db.run(
+        `UPDATE battles 
+         SET attacker_start_stats = ?, attackee_start_stats = ?
+         WHERE id = ?`,
+        [
+          JSON.stringify(attackerStats),
+          JSON.stringify(attackeeStats),
+          battleId
+        ],
+        (err) => {
+          if (err) {
+            reject(err);
+            return;
+          }
+          resolve();
+        }
+      );
     });
   }
 }

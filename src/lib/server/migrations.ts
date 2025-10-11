@@ -109,6 +109,18 @@ export const migrations: Migration[] = [
       'ALTER TABLE users DROP COLUMN in_battle',
       'ALTER TABLE users DROP COLUMN current_battle_id'
     ]
+  },
+  {
+    version: 7,
+    name: 'add_battle_end_stats',
+    up: [
+      'ALTER TABLE battles ADD COLUMN attacker_end_stats TEXT DEFAULT NULL',
+      'ALTER TABLE battles ADD COLUMN attackee_end_stats TEXT DEFAULT NULL'
+    ],
+    down: [
+      'ALTER TABLE battles DROP COLUMN attacker_end_stats',
+      'ALTER TABLE battles DROP COLUMN attackee_end_stats'
+    ]
   }
   // Future migrations go here
   // {
@@ -214,6 +226,9 @@ export async function applyTechMigrations(db: import('sqlite3').Database): Promi
   
   // Apply battle state migration
   await applyBattleStateMigration(db);
+  
+  // Apply battle end stats migration
+  await applyBattleEndStatsMigration(db);
 }
 
 /**
@@ -379,5 +394,38 @@ export async function applyBattleStateMigration(db: import('sqlite3').Database):
     console.log('✅ Battle state migration completed');
   } catch (error) {
     console.error('❌ Error applying battle state migration:', error);
+  }
+}
+
+/**
+ * Apply battle end stats migration to the database
+ */
+export async function applyBattleEndStatsMigration(db: import('sqlite3').Database): Promise<void> {
+  console.log('🔄 Checking for battle end stats migration...');
+  
+  try {
+    const exists = await columnExists(db, 'battles', 'attacker_end_stats');
+    if (exists) {
+      console.log('✅ Battle end stats columns already exist');
+      return;
+    }
+    
+    console.log('🚀 Adding battle end stats columns...');
+    
+    // Get battle end stats migration
+    const battleEndStatsMigration = migrations.find(m => m.name === 'add_battle_end_stats');
+    if (!battleEndStatsMigration) {
+      console.error('❌ Battle end stats migration not found');
+      return;
+    }
+    
+    // Apply each migration statement
+    for (const statement of battleEndStatsMigration.up) {
+      await runMigrationStatement(db, statement);
+    }
+    
+    console.log('✅ Battle end stats migration completed');
+  } catch (error) {
+    console.error('❌ Error applying battle end stats migration:', error);
   }
 }

@@ -4,7 +4,7 @@
 
 import { BattleRepo } from './battleRepo';
 import { BattleEngine } from './battle';
-import type { Battle, BattleStats, BattleEvent } from '../../shared/battleTypes';
+import type { Battle, BattleStats, BattleEvent, WeaponCooldowns } from '../../shared/battleTypes';
 import type { User } from './user';
 import { TechFactory } from './TechFactory';
 import { getDatabase } from './database';
@@ -307,18 +307,34 @@ export async function initiateBattle(
     throw new ApiError(400, 'You need at least one weapon to attack');
   }
   
+  console.log(`⚔️ initiateBattle: Initializing weapon cooldowns...`);
+  // Initialize weapon cooldowns - all weapons start ready to fire (cooldown = 0)
+  const attackerCooldowns: WeaponCooldowns = {};
+  const attackeeCooldowns: WeaponCooldowns = {};
+  
+  // Set cooldown to 0 (ready to fire immediately) for all weapons
+  Object.keys(attackerStats.weapons).forEach(weaponName => {
+    attackerCooldowns[weaponName] = 0;
+  });
+  
+  Object.keys(attackeeStats.weapons).forEach(weaponName => {
+    attackeeCooldowns[weaponName] = 0;
+  });
+  
   console.log(`⚔️ initiateBattle: Setting ship speeds to 0...`);
   // Set both ships' speeds to 0
   await setShipSpeed(attacker.ship_id, 0);
   await setShipSpeed(attackee.ship_id, 0);
   
   console.log(`⚔️ initiateBattle: Creating battle in database...`);
-  // Create battle in database
+  // Create battle in database with initial cooldowns
   const battle = await BattleRepo.createBattle(
     attacker.id,
     attackee.id,
     attackerStats,
-    attackeeStats
+    attackeeStats,
+    attackerCooldowns,
+    attackeeCooldowns
   );
   
   console.log(`⚔️ initiateBattle: Updating user battle states...`);

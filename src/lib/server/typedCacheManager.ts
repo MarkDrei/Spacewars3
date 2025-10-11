@@ -158,6 +158,9 @@ export class TypedCacheManager {
       // Start background persistence if enabled
       this.startBackgroundPersistence();
 
+      // Start battle scheduler
+      this.startBattleScheduler();
+
       this.isInitialized = true;
       console.log('✅ Typed cache manager initialization complete');
     });
@@ -816,6 +819,18 @@ export class TypedCacheManager {
       this.persistenceTimer = null;
       console.log('⏹️ Background persistence stopped');
     }
+  }
+
+  /**
+   * Start battle scheduler
+   */
+  private startBattleScheduler(): void {
+    // Import dynamically to avoid circular dependencies
+    import('./battleScheduler').then(({ startBattleScheduler }) => {
+      startBattleScheduler(1000); // Process battles every 1 second
+    }).catch(error => {
+      console.error('❌ Failed to start battle scheduler:', error);
+    });
   }
 
   /**

@@ -75,6 +75,8 @@ CREATE TABLE IF NOT EXISTS battles (
   loser_id INTEGER DEFAULT NULL,
   attacker_start_stats TEXT NOT NULL, -- JSON: { hull, armor, shield, weapons: {...} }
   attackee_start_stats TEXT NOT NULL, -- JSON: { hull, armor, shield, weapons: {...} }
+  attacker_end_stats TEXT DEFAULT NULL, -- JSON: final stats when battle ends
+  attackee_end_stats TEXT DEFAULT NULL, -- JSON: final stats when battle ends
   attacker_weapon_cooldowns TEXT NOT NULL, -- JSON: { pulse_laser: timestamp, ... }
   attackee_weapon_cooldowns TEXT NOT NULL, -- JSON: { pulse_laser: timestamp, ... }
   battle_log TEXT NOT NULL, -- JSON array of battle events
