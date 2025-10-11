@@ -53,6 +53,7 @@ class World {
   updatePhysics(currentTime: number): void {
     // Check if any player ships have afterburner cooldowns that expire during this update
     const playerShips = this.getSpaceObjectsByType('player_ship');
+    let hasActiveCooldownExpiring = false;
     
     for (const ship of playerShips) {
       // Check if ship has an active afterburner cooldown
@@ -64,23 +65,22 @@ class World {
         if (oldUpdateTime < ship.afterburner_cooldown_end_ms && 
             currentTime >= ship.afterburner_cooldown_end_ms) {
           
+          hasActiveCooldownExpiring = true;
+          
           // Cooldown ends during this update - split the physics calculation
           console.log(`⏱️ Afterburner cooldown ending for ship ${ship.id} at ${ship.afterburner_cooldown_end_ms}`);
           
-          // Step 1: Update physics up to cooldown end time
-          const cooldownObjects = this.spaceObjects.map(obj => 
-            obj.id === ship.id ? { ...obj } : obj
-          );
-          const updatedToEnd = updateAllObjectPositions(
-            cooldownObjects,
+          // Step 1: Update physics up to cooldown end time for all objects
+          this.spaceObjects = updateAllObjectPositions(
+            this.spaceObjects,
             ship.afterburner_cooldown_end_ms,
             this.worldSize
           );
           
+          // Step 2: Restore speed at cooldown end
           // Find the ship in the updated objects
-          const shipAtEnd = updatedToEnd.find(obj => obj.id === ship.id);
+          const shipAtEnd = this.spaceObjects.find(obj => obj.id === ship.id);
           if (shipAtEnd) {
-            // Step 2: Restore speed at cooldown end
             // If current speed is higher than old max speed, restore to old max speed
             // If current speed is already lower, keep it as is
             const oldMaxSpeed = ship.afterburner_old_max_speed || 0;
@@ -95,27 +95,29 @@ class World {
             shipAtEnd.afterburner_boosted_speed = null;
             shipAtEnd.afterburner_cooldown_end_ms = null;
             shipAtEnd.afterburner_old_max_speed = null;
-            
-            // Step 3: Continue physics from cooldown end to current time
-            this.spaceObjects = updateAllObjectPositions(
-              updatedToEnd,
-              currentTime,
-              this.worldSize
-            );
           }
           
-          // Skip normal update for this ship as we've handled it specially
-          continue;
+          // Step 3: Continue physics from cooldown end to current time for all objects
+          this.spaceObjects = updateAllObjectPositions(
+            this.spaceObjects,
+            currentTime,
+            this.worldSize
+          );
+          
+          // We've already done the full update, so return early
+          return;
         }
       }
     }
     
-    // Normal physics update for all objects (including ships without active cooldowns)
-    this.spaceObjects = updateAllObjectPositions(
-      this.spaceObjects,
-      currentTime,
-      this.worldSize
-    );
+    // Normal physics update for all objects if no cooldown expired during this update
+    if (!hasActiveCooldownExpiring) {
+      this.spaceObjects = updateAllObjectPositions(
+        this.spaceObjects,
+        currentTime,
+        this.worldSize
+      );
+    }
   }
 
   /**
