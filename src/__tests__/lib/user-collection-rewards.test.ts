@@ -5,19 +5,26 @@ import { createInitialTechTree } from '@/lib/server/techtree';
 // Mock save callback
 const mockSaveCallback = vi.fn().mockResolvedValue(undefined);
 
+// Helper function to create a test user
+const createTestUser = (id: number, username: string, iron: number) => {
+  return new User(
+    id,
+    username,
+    'password_hash',
+    iron,
+    Date.now(),
+    createInitialTechTree(),
+    mockSaveCallback,
+    { pulse_laser: 0, auto_turret: 0, plasma_lance: 0, gauss_rifle: 0, photon_torpedo: 0, rocket_launcher: 0, ship_hull: 5, kinetic_armor: 5, energy_shield: 5, missile_jammer: 0 },
+    250, 250, 250, Date.now(), 1
+  );
+};
+
 describe('User Collection Rewards', () => {
   
   test('collected_asteroid_awardsRandomIronBetween50And250', () => {
     // Arrange
-    const user = new User(
-      1,
-      'testuser',
-      'password_hash',
-      1000, // initial iron
-      Date.now(),
-      createInitialTechTree(),
-      mockSaveCallback
-    );
+    const user = createTestUser(1, 'testuser', 1000);
     
     const initialIron = user.iron;
 
@@ -33,15 +40,7 @@ describe('User Collection Rewards', () => {
 
   test('collected_shipwreck_awardsRandomIronBetween50And1000', () => {
     // Arrange
-    const user = new User(
-      2,
-      'testuser2',
-      'password_hash',
-      500, // initial iron
-      Date.now(),
-      createInitialTechTree(),
-      mockSaveCallback
-    );
+    const user = createTestUser(2, 'testuser2', 500);
     
     const initialIron = user.iron;
 
@@ -57,15 +56,7 @@ describe('User Collection Rewards', () => {
 
   test('collected_escapePod_awardsNoIron', () => {
     // Arrange
-    const user = new User(
-      3,
-      'testuser3',
-      'password_hash',
-      750, // initial iron
-      Date.now(),
-      createInitialTechTree(),
-      mockSaveCallback
-    );
+    const user = createTestUser(3, 'testuser3', 750);
     
     const initialIron = user.iron;
 
@@ -78,15 +69,7 @@ describe('User Collection Rewards', () => {
 
   test('collected_multipleAsteroids_awardsVariousAmounts', () => {
     // Arrange
-    const user = new User(
-      4,
-      'testuser4',
-      'password_hash',
-      0, // start with no iron
-      Date.now(),
-      createInitialTechTree(),
-      mockSaveCallback
-    );
+    const user = createTestUser(4, 'testuser4', 0);
     
     const rewards: number[] = [];
 
@@ -111,15 +94,7 @@ describe('User Collection Rewards', () => {
 
   test('collected_multipleShipwrecks_awardsVariousAmounts', () => {
     // Arrange
-    const user = new User(
-      5,
-      'testuser5',
-      'password_hash',
-      0, // start with no iron
-      Date.now(),
-      createInitialTechTree(),
-      mockSaveCallback
-    );
+    const user = createTestUser(5, 'testuser5', 0);
     
     const rewards: number[] = [];
 
@@ -144,15 +119,7 @@ describe('User Collection Rewards', () => {
 
   test('collected_mixedObjects_awardsCorrectAmounts', () => {
     // Arrange
-    const user = new User(
-      6,
-      'testuser6',
-      'password_hash',
-      100, // initial iron
-      Date.now(),
-      createInitialTechTree(),
-      mockSaveCallback
-    );
+    const user = createTestUser(6, 'testuser6', 100);
     
     const initialIron = user.iron;
 
@@ -185,15 +152,7 @@ describe('User Collection Rewards', () => {
 
   test('collected_unknownObjectType_awardsNoIron', () => {
     // Arrange
-    const user = new User(
-      7,
-      'testuser7',
-      'password_hash',
-      200,
-      Date.now(),
-      createInitialTechTree(),
-      mockSaveCallback
-    );
+    const user = createTestUser(7, 'testuser7', 200);
     
     const initialIron = user.iron;
     const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});

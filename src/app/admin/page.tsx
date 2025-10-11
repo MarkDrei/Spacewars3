@@ -22,6 +22,7 @@ interface UserData {
   build_queue: string | null;
   build_start_sec: number | null;
   last_updated: number;
+  ship_image_index: number;
   // Tech tree / Research levels - all research data
   researches: Record<string, number>;
 }
@@ -176,6 +177,7 @@ const AdminPage: React.FC = () => {
                   <th>ID</th>
                   <th>Username</th>
                   <th>Iron</th>
+                  <th>Ship Image</th>
                   <th>Weapons</th>
                   <th>Defenses</th>
                   <th>Research</th>
@@ -194,6 +196,11 @@ const AdminPage: React.FC = () => {
                       </span>
                     </td>
                     <td className="data-cell">{userData.iron.toLocaleString()}</td>
+                    <td className="data-cell">
+                      <span className="ship-image-index">
+                        🚀 Ship {userData.ship_image_index}
+                      </span>
+                    </td>
                     <td className="data-cell">
                       <div className="tech-counts">
                         <span>Pulse: {userData.pulse_laser}</span>

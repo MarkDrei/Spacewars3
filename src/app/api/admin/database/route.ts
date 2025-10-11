@@ -22,6 +22,7 @@ interface UserData {
   build_queue: string | null;
   build_start_sec: number | null;
   last_updated: number;
+  ship_image_index: number;
   // Tech tree / Research levels - all research data
   researches: Record<string, number>;
 }
@@ -79,6 +80,7 @@ export async function GET(request: NextRequest) {
           pulse_laser, auto_turret, plasma_lance, gauss_rifle,
           photon_torpedo, rocket_launcher,
           ship_hull, kinetic_armor, energy_shield, missile_jammer,
+          ship_image_index,
           tech_tree
         FROM users 
         ORDER BY id
@@ -102,6 +104,7 @@ export async function GET(request: NextRequest) {
           kinetic_armor: number;
           energy_shield: number;
           missile_jammer: number;
+          ship_image_index: number;
           tech_tree: string;
         }>).map(row => {
           // Parse tech tree to extract ALL research levels
@@ -138,6 +141,7 @@ export async function GET(request: NextRequest) {
             build_queue: row.build_queue,
             build_start_sec: row.build_start_sec,
             last_updated: row.last_updated,
+            ship_image_index: row.ship_image_index || 1,
             // All research levels from tech_tree JSON
             researches
           };

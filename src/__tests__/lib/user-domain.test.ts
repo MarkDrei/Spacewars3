@@ -31,7 +31,8 @@ describe('User.updateStats with IronHarvesting research progression', () => {
       250, // hullCurrent
       250, // armorCurrent
       250, // shieldCurrent
-      1000 // defenseLastRegen
+      1000, // defenseLastRegen
+      1 // shipImageIndex
     );
   });
 
@@ -212,7 +213,8 @@ describe('User getter methods', () => {
       250, // hullCurrent
       250, // armorCurrent
       250, // shieldCurrent
-      1000 // defenseLastRegen
+      1000, // defenseLastRegen
+      1 // shipImageIndex
     );
   });
 
@@ -296,7 +298,8 @@ describe('User.updateDefenseValues with regeneration', () => {
       100, // hullCurrent (below max)
       200, // armorCurrent (below max)
       300, // shieldCurrent (below max)
-      1000 // defenseLastRegen
+      1000, // defenseLastRegen
+      1 // shipImageIndex
     );
   });
 

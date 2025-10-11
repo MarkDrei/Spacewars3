@@ -97,6 +97,16 @@ export const migrations: Migration[] = [
       'ALTER TABLE users DROP COLUMN shield_current',
       'ALTER TABLE users DROP COLUMN defense_last_regen'
     ]
+  },
+  {
+    version: 6,
+    name: 'add_ship_image_index',
+    up: [
+      'ALTER TABLE users ADD COLUMN ship_image_index INTEGER NOT NULL DEFAULT 1'
+    ],
+    down: [
+      'ALTER TABLE users DROP COLUMN ship_image_index'
+    ]
   }
   // Future migrations go here
   // {
@@ -199,6 +209,9 @@ export async function applyTechMigrations(db: import('sqlite3').Database): Promi
   
   // Apply defense current values migration
   await applyDefenseCurrentValuesMigration(db);
+  
+  // Apply ship image index migration
+  await applyShipImageIndexMigration(db);
 }
 
 /**
@@ -331,5 +344,38 @@ export async function applyDefenseCurrentValuesMigration(db: import('sqlite3').D
     console.log('✅ Defense current values migration completed');
   } catch (error) {
     console.error('❌ Error applying defense current values migration:', error);
+  }
+}
+
+/**
+ * Apply ship image index migration to the database
+ */
+export async function applyShipImageIndexMigration(db: import('sqlite3').Database): Promise<void> {
+  console.log('🔄 Checking for ship image index migration...');
+  
+  try {
+    const exists = await columnExists(db, 'users', 'ship_image_index');
+    if (exists) {
+      console.log('✅ Ship image index column already exists');
+      return;
+    }
+    
+    console.log('🚀 Adding ship_image_index column...');
+    
+    // Get ship image index migration
+    const shipImageIndexMigration = migrations.find(m => m.name === 'add_ship_image_index');
+    if (!shipImageIndexMigration) {
+      console.error('❌ Ship image index migration not found');
+      return;
+    }
+    
+    // Apply each migration statement
+    for (const statement of shipImageIndexMigration.up) {
+      await runMigrationStatement(db, statement);
+    }
+    
+    console.log('✅ Ship image index migration completed');
+  } catch (error) {
+    console.error('❌ Error applying ship image index migration:', error);
   }
 }

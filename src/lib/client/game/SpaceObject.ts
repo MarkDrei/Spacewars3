@@ -95,4 +95,8 @@ export abstract class SpaceObjectOld {
     getHoverRadius(): number {
         return SpaceObjectOld.HOVER_RADIUS;
     }
+
+    getShipImageIndex(): number | undefined {
+        return this.serverData.shipImageIndex;
+    }
 } 

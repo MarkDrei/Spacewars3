@@ -712,7 +712,8 @@ export class TypedCacheManager {
           hull_current = ?,
           armor_current = ?,
           shield_current = ?,
-          defense_last_regen = ?
+          defense_last_regen = ?,
+          ship_image_index = ?
         WHERE id = ?`,
         [
           user.iron, 
@@ -733,6 +734,7 @@ export class TypedCacheManager {
           user.armorCurrent,
           user.shieldCurrent,
           user.defenseLastRegen,
+          user.shipImageIndex,
           user.id
         ],
         function (err) {
