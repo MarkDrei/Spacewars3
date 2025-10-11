@@ -23,11 +23,23 @@ export class GameRenderer {
         this.ctx = ctx;
         this.canvas = canvas;
         this.world = world;
-        this.playerShipRenderer = new PlayerShipRenderer();
+        // Get initial ship image index from ship
+        const ship = world.getShip();
+        const shipImageIndex = ship.getShipImageIndex() || 1;
+        this.playerShipRenderer = new PlayerShipRenderer(shipImageIndex);
         this.radarRenderer = new RadarRenderer();
         this.tooltipRenderer = new TooltipRenderer(canvas);
         this.collectiblesRenderer = new SpaceObjectsRenderer(ctx, canvas);
         this.targetingLineRenderer = new TargetingLineRenderer(ctx);
+    }
+
+    /**
+     * Update the ship image when world data changes (e.g., after user changes ship on profile page)
+     */
+    updateShipImage(): void {
+        const ship = this.world.getShip();
+        const shipImageIndex = ship.getShipImageIndex() || 1;
+        this.playerShipRenderer.updateShipImage(shipImageIndex);
     }
 
     drawBackground(): void {
@@ -171,7 +183,9 @@ export class GameRenderer {
             );
         }
         
-        // Draw player's ship in the center
+        // Update ship image if needed, then draw player's ship in the center
+        const shipImageIndex = ship.getShipImageIndex() || 1;
+        this.playerShipRenderer.updateShipImage(shipImageIndex);
         this.playerShipRenderer.drawPlayerShip(
             this.ctx,
             centerX,

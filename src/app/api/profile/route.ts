@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getIronSession } from 'iron-session';
-import { getTypedCacheManager } from '@/lib/server/typedCacheManager';
+import { getTypedCacheManager, sendMessageToUserCached } from '@/lib/server/typedCacheManager';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth, ApiError } from '@/lib/server/errors';
 import { createEmptyContext } from '@/lib/server/typedLocks';
@@ -75,8 +75,16 @@ export async function PUT(request: NextRequest) {
           cacheManager.setUserUnsafe(user, userCtx);
           
           // Update ship image index
+          const oldShipImageIndex = user.shipImageIndex;
           user.shipImageIndex = shipImageIndex;
           await cacheManager.updateUserUnsafe(user, userCtx);
+          
+          // Send notification message if ship changed
+          if (oldShipImageIndex !== shipImageIndex) {
+            sendMessageToUserCached(user.id, `Your ship appearance has been updated to Ship ${shipImageIndex}.`).catch((error: Error) => {
+              console.error('Failed to send ship change notification:', error);
+            });
+          }
           
           return NextResponse.json({
             username: user.username,
@@ -86,8 +94,16 @@ export async function PUT(request: NextRequest) {
       }
       
       // Update ship image index
+      const oldShipImageIndex = user.shipImageIndex;
       user.shipImageIndex = shipImageIndex;
       await cacheManager.updateUserUnsafe(user, userCtx);
+      
+      // Send notification message if ship changed
+      if (oldShipImageIndex !== shipImageIndex) {
+        sendMessageToUserCached(user.id, `Your ship appearance has been updated to Ship ${shipImageIndex}.`).catch((error: Error) => {
+          console.error('Failed to send ship change notification:', error);
+        });
+      }
       
       return NextResponse.json({
         username: user.username,

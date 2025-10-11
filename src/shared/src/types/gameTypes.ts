@@ -11,6 +11,7 @@ export interface SpaceObject {
   angle: number;
   last_position_update_ms: number;
   username?: string; // Optional: only present for player_ship type
+  shipImageIndex?: number; // Optional: only present for player_ship type
 }
 
 export interface WorldData {

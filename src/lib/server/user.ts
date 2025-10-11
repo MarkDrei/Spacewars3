@@ -196,7 +196,8 @@ class User {
       hullCurrent,
       armorCurrent,
       shieldCurrent,
-      now // defenseLastRegen initialized to now
+      now, // defenseLastRegen initialized to now
+      1 // shipImageIndex - default to ship 1
     );
   }
 }

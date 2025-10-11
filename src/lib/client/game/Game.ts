@@ -256,12 +256,14 @@ export class Game {
   }
 
   /**
-   * Update the game world with server data
+   * Update the game world with new server data
    */
   public updateWorldData(worldData: WorldData, playerShipId?: number): void {
     this.world.updateFromServerData(worldData, playerShipId);
     // Update the local player ship reference
     this.ship = this.world.getShip();
+    // Update ship image in case user changed it on profile page
+    this.renderer.updateShipImage();
   }
 
   /**

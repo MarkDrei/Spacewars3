@@ -13,6 +13,7 @@ describe('TechFactory.calculateWeaponDamage', () => {
     gauss_rifle: 2,
     photon_torpedo: 1,
     rocket_launcher: 1,
+    ship_hull: 5,
     kinetic_armor: 5,
     energy_shield: 5,
     missile_jammer: 0
@@ -250,6 +251,7 @@ describe('TechFactory utility methods', () => {
       gauss_rifle: 0,
       photon_torpedo: 0,
       rocket_launcher: 0,
+      ship_hull: 5,
       kinetic_armor: 5,
       energy_shield: 3,
       missile_jammer: 1
