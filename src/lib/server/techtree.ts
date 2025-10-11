@@ -10,6 +10,34 @@ export enum ResearchType {
   IronHarvesting = 'IronHarvesting',
   ShipSpeed = 'shipSpeed',
   Afterburner = 'Afterburner',
+  // Projectile Weapons
+  ProjectileDamage = 'projectileDamage',
+  ProjectileReloadRate = 'projectileReloadRate',
+  ProjectileAccuracy = 'projectileAccuracy',
+  ProjectileWeaponTier = 'projectileWeaponTier',
+  // Energy Weapons
+  EnergyDamage = 'energyDamage',
+  EnergyRechargeRate = 'energyRechargeRate',
+  EnergyAccuracy = 'energyAccuracy',
+  EnergyWeaponTier = 'energyWeaponTier',
+  // Defense
+  HullStrength = 'hullStrength',
+  RepairSpeed = 'repairSpeed',
+  ArmorEffectiveness = 'armorEffectiveness',
+  ShieldEffectiveness = 'shieldEffectiveness',
+  ShieldRechargeRate = 'shieldRechargeRate',
+  // Ship
+  AfterburnerSpeedIncrease = 'afterburnerSpeedIncrease',
+  AfterburnerDuration = 'afterburnerDuration',
+  Teleport = 'teleport',
+  InventoryCapacity = 'inventoryCapacity',
+  ConstructionSpeed = 'constructionSpeed',
+  // Spies
+  SpyChance = 'spyChance',
+  SpySpeed = 'spySpeed',
+  SpySabotageDamage = 'spySabotageDamage',
+  Counterintelligence = 'counterintelligence',
+  StealIron = 'stealIron',
 }
 
 /**
@@ -23,7 +51,7 @@ export interface Research {
   baseUpgradeDuration: number; // in seconds
   baseValue: number; // base value for this research (e.g. iron/sec, speed)
   upgradeCostIncrease: number; // multiplier for cost increase per level
-  baseValueIncrease: { type: 'constant' | 'factor'; value: number }; // how the effect increases per level
+  baseValueIncrease: { type: 'constant' | 'factor' | 'polynomial'; value: number }; // how the effect increases per level
   description: string;
   treeKey: keyof TechTree; // Add this property
   unit: string; // Unit for the research effect, e.g., 'iron/sec', '%'
@@ -72,6 +100,310 @@ export const AllResearches: Record<ResearchType, Research> = {
     treeKey: 'afterburner',
     unit: '%',
   },
+  // Projectile Weapons
+  [ResearchType.ProjectileDamage]: {
+    type: ResearchType.ProjectileDamage,
+    name: 'Projectile Damage',
+    level: 1,
+    baseUpgradeCost: 1000,
+    baseUpgradeDuration: 60,
+    baseValue: 50,
+    upgradeCostIncrease: 2.0,
+    baseValueIncrease: { type: 'factor', value: 1.15 },
+    description: 'Increases damage output of projectile weapons.',
+    treeKey: 'projectileDamage',
+    unit: 'damage',
+  },
+  [ResearchType.ProjectileReloadRate]: {
+    type: ResearchType.ProjectileReloadRate,
+    name: 'Projectile Reload Rate',
+    level: 1,
+    baseUpgradeCost: 800,
+    baseUpgradeDuration: 50,
+    baseValue: 10,
+    upgradeCostIncrease: 1.8,
+    baseValueIncrease: { type: 'constant', value: 10 },
+    description: 'Reduces reload time for projectile weapons.',
+    treeKey: 'projectileReloadRate',
+    unit: '%',
+  },
+  [ResearchType.ProjectileAccuracy]: {
+    type: ResearchType.ProjectileAccuracy,
+    name: 'Projectile Accuracy',
+    level: 1,
+    baseUpgradeCost: 1200,
+    baseUpgradeDuration: 70,
+    baseValue: 70,
+    upgradeCostIncrease: 1.9,
+    baseValueIncrease: { type: 'polynomial', value: 0.1 },
+    description: 'Improves accuracy of projectile weapons.',
+    treeKey: 'projectileAccuracy',
+    unit: '%',
+  },
+  [ResearchType.ProjectileWeaponTier]: {
+    type: ResearchType.ProjectileWeaponTier,
+    name: 'Projectile Weapon Tier',
+    level: 0,
+    baseUpgradeCost: 5000,
+    baseUpgradeDuration: 180,
+    baseValue: 1,
+    upgradeCostIncrease: 2.5,
+    baseValueIncrease: { type: 'constant', value: 1 },
+    description: 'Unlocks higher tier projectile weapons.',
+    treeKey: 'projectileWeaponTier',
+    unit: 'tier',
+  },
+  // Energy Weapons
+  [ResearchType.EnergyDamage]: {
+    type: ResearchType.EnergyDamage,
+    name: 'Energy Damage',
+    level: 1,
+    baseUpgradeCost: 1100,
+    baseUpgradeDuration: 65,
+    baseValue: 60,
+    upgradeCostIncrease: 2.0,
+    baseValueIncrease: { type: 'factor', value: 1.15 },
+    description: 'Increases damage output of energy weapons.',
+    treeKey: 'energyDamage',
+    unit: 'damage',
+  },
+  [ResearchType.EnergyRechargeRate]: {
+    type: ResearchType.EnergyRechargeRate,
+    name: 'Energy Recharge Rate',
+    level: 1,
+    baseUpgradeCost: 900,
+    baseUpgradeDuration: 55,
+    baseValue: 15,
+    upgradeCostIncrease: 1.8,
+    baseValueIncrease: { type: 'constant', value: 15 },
+    description: 'Increases recharge rate of energy weapons.',
+    treeKey: 'energyRechargeRate',
+    unit: '%',
+  },
+  [ResearchType.EnergyAccuracy]: {
+    type: ResearchType.EnergyAccuracy,
+    name: 'Energy Accuracy',
+    level: 1,
+    baseUpgradeCost: 1300,
+    baseUpgradeDuration: 75,
+    baseValue: 65,
+    upgradeCostIncrease: 1.9,
+    baseValueIncrease: { type: 'polynomial', value: 0.1 },
+    description: 'Improves accuracy of energy weapons.',
+    treeKey: 'energyAccuracy',
+    unit: '%',
+  },
+  [ResearchType.EnergyWeaponTier]: {
+    type: ResearchType.EnergyWeaponTier,
+    name: 'Energy Weapon Tier',
+    level: 0,
+    baseUpgradeCost: 5500,
+    baseUpgradeDuration: 200,
+    baseValue: 1,
+    upgradeCostIncrease: 2.5,
+    baseValueIncrease: { type: 'constant', value: 1 },
+    description: 'Unlocks higher tier energy weapons.',
+    treeKey: 'energyWeaponTier',
+    unit: 'tier',
+  },
+  // Defense
+  [ResearchType.HullStrength]: {
+    type: ResearchType.HullStrength,
+    name: 'Hull Strength',
+    level: 1,
+    baseUpgradeCost: 1500,
+    baseUpgradeDuration: 90,
+    baseValue: 100,
+    upgradeCostIncrease: 2.2,
+    baseValueIncrease: { type: 'factor', value: 1.2 },
+    description: 'Increases hull strength of your ship.',
+    treeKey: 'hullStrength',
+    unit: 'HP',
+  },
+  [ResearchType.RepairSpeed]: {
+    type: ResearchType.RepairSpeed,
+    name: 'Repair Speed',
+    level: 1,
+    baseUpgradeCost: 1000,
+    baseUpgradeDuration: 60,
+    baseValue: 5,
+    upgradeCostIncrease: 2.0,
+    baseValueIncrease: { type: 'polynomial', value: 0.1 },
+    description: 'Increases repair speed for hull, armor and engine.',
+    treeKey: 'repairSpeed',
+    unit: 'HP/sec',
+  },
+  [ResearchType.ArmorEffectiveness]: {
+    type: ResearchType.ArmorEffectiveness,
+    name: 'Armor Effectiveness',
+    level: 1,
+    baseUpgradeCost: 1800,
+    baseUpgradeDuration: 100,
+    baseValue: 20,
+    upgradeCostIncrease: 2.1,
+    baseValueIncrease: { type: 'polynomial', value: 0.1 },
+    description: 'Increases armor damage reduction.',
+    treeKey: 'armorEffectiveness',
+    unit: '%',
+  },
+  [ResearchType.ShieldEffectiveness]: {
+    type: ResearchType.ShieldEffectiveness,
+    name: 'Shield Effectiveness',
+    level: 1,
+    baseUpgradeCost: 1600,
+    baseUpgradeDuration: 95,
+    baseValue: 25,
+    upgradeCostIncrease: 2.1,
+    baseValueIncrease: { type: 'polynomial', value: 0.1 },
+    description: 'Increases shield damage reduction.',
+    treeKey: 'shieldEffectiveness',
+    unit: '%',
+  },
+  [ResearchType.ShieldRechargeRate]: {
+    type: ResearchType.ShieldRechargeRate,
+    name: 'Shield Recharge Rate',
+    level: 1,
+    baseUpgradeCost: 1200,
+    baseUpgradeDuration: 70,
+    baseValue: 10,
+    upgradeCostIncrease: 1.9,
+    baseValueIncrease: { type: 'constant', value: 5 },
+    description: 'Increases shield recharge rate.',
+    treeKey: 'shieldRechargeRate',
+    unit: 'HP/sec',
+  },
+  // Ship
+  [ResearchType.AfterburnerSpeedIncrease]: {
+    type: ResearchType.AfterburnerSpeedIncrease,
+    name: 'Afterburner Speed',
+    level: 1,
+    baseUpgradeCost: 2000,
+    baseUpgradeDuration: 120,
+    baseValue: 50,
+    upgradeCostIncrease: 2.0,
+    baseValueIncrease: { type: 'constant', value: 10 },
+    description: 'Increases speed boost from afterburner.',
+    treeKey: 'afterburnerSpeedIncrease',
+    unit: '%',
+  },
+  [ResearchType.AfterburnerDuration]: {
+    type: ResearchType.AfterburnerDuration,
+    name: 'Afterburner Duration',
+    level: 1,
+    baseUpgradeCost: 1500,
+    baseUpgradeDuration: 90,
+    baseValue: 5,
+    upgradeCostIncrease: 1.9,
+    baseValueIncrease: { type: 'constant', value: 2 },
+    description: 'Increases duration of afterburner boost.',
+    treeKey: 'afterburnerDuration',
+    unit: 'seconds',
+  },
+  [ResearchType.Teleport]: {
+    type: ResearchType.Teleport,
+    name: 'Teleport',
+    level: 0,
+    baseUpgradeCost: 10000,
+    baseUpgradeDuration: 300,
+    baseValue: 100,
+    upgradeCostIncrease: 3.0,
+    baseValueIncrease: { type: 'factor', value: 1.3 },
+    description: 'Unlocks and improves teleport range.',
+    treeKey: 'teleport',
+    unit: 'units',
+  },
+  [ResearchType.InventoryCapacity]: {
+    type: ResearchType.InventoryCapacity,
+    name: 'Inventory Capacity',
+    level: 1,
+    baseUpgradeCost: 800,
+    baseUpgradeDuration: 45,
+    baseValue: 100,
+    upgradeCostIncrease: 1.7,
+    baseValueIncrease: { type: 'factor', value: 1.2 },
+    description: 'Increases iron storage capacity.',
+    treeKey: 'inventoryCapacity',
+    unit: 'iron',
+  },
+  [ResearchType.ConstructionSpeed]: {
+    type: ResearchType.ConstructionSpeed,
+    name: 'Construction Speed',
+    level: 1,
+    baseUpgradeCost: 1400,
+    baseUpgradeDuration: 80,
+    baseValue: 10,
+    upgradeCostIncrease: 2.0,
+    baseValueIncrease: { type: 'polynomial', value: 0.1 },
+    description: 'Reduces construction time for buildings and ships.',
+    treeKey: 'constructionSpeed',
+    unit: '%',
+  },
+  // Spies
+  [ResearchType.SpyChance]: {
+    type: ResearchType.SpyChance,
+    name: 'Spy Chance',
+    level: 0,
+    baseUpgradeCost: 2500,
+    baseUpgradeDuration: 150,
+    baseValue: 10,
+    upgradeCostIncrease: 2.5,
+    baseValueIncrease: { type: 'polynomial', value: 0.1 },
+    description: 'Increases chance of successful spy missions.',
+    treeKey: 'spyChance',
+    unit: '%',
+  },
+  [ResearchType.SpySpeed]: {
+    type: ResearchType.SpySpeed,
+    name: 'Spy Speed',
+    level: 0,
+    baseUpgradeCost: 2000,
+    baseUpgradeDuration: 120,
+    baseValue: 60,
+    upgradeCostIncrease: 2.3,
+    baseValueIncrease: { type: 'constant', value: -10 },
+    description: 'Reduces time required for spy missions.',
+    treeKey: 'spySpeed',
+    unit: 'seconds',
+  },
+  [ResearchType.SpySabotageDamage]: {
+    type: ResearchType.SpySabotageDamage,
+    name: 'Spy Sabotage',
+    level: 0,
+    baseUpgradeCost: 3000,
+    baseUpgradeDuration: 180,
+    baseValue: 50,
+    upgradeCostIncrease: 2.5,
+    baseValueIncrease: { type: 'factor', value: 1.25 },
+    description: 'Increases damage dealt by sabotage missions.',
+    treeKey: 'spySabotageDamage',
+    unit: 'damage',
+  },
+  [ResearchType.Counterintelligence]: {
+    type: ResearchType.Counterintelligence,
+    name: 'Counterintelligence',
+    level: 0,
+    baseUpgradeCost: 2800,
+    baseUpgradeDuration: 160,
+    baseValue: 15,
+    upgradeCostIncrease: 2.5,
+    baseValueIncrease: { type: 'polynomial', value: 0.1 },
+    description: 'Reduces chance of enemy spy success.',
+    treeKey: 'counterintelligence',
+    unit: '%',
+  },
+  [ResearchType.StealIron]: {
+    type: ResearchType.StealIron,
+    name: 'Steal Iron',
+    level: 0,
+    baseUpgradeCost: 3500,
+    baseUpgradeDuration: 200,
+    baseValue: 100,
+    upgradeCostIncrease: 2.7,
+    baseValueIncrease: { type: 'factor', value: 1.3 },
+    description: 'Increases amount of iron stolen by spies.',
+    treeKey: 'stealIron',
+    unit: 'iron',
+  },
 };
 
 /**
@@ -83,6 +415,34 @@ export interface TechTree {
   ironHarvesting: number; // level
   shipSpeed: number;   // level
   afterburner: number;    // level
+  // Projectile Weapons
+  projectileDamage: number;
+  projectileReloadRate: number;
+  projectileAccuracy: number;
+  projectileWeaponTier: number;
+  // Energy Weapons
+  energyDamage: number;
+  energyRechargeRate: number;
+  energyAccuracy: number;
+  energyWeaponTier: number;
+  // Defense
+  hullStrength: number;
+  repairSpeed: number;
+  armorEffectiveness: number;
+  shieldEffectiveness: number;
+  shieldRechargeRate: number;
+  // Ship
+  afterburnerSpeedIncrease: number;
+  afterburnerDuration: number;
+  teleport: number;
+  inventoryCapacity: number;
+  constructionSpeed: number;
+  // Spies
+  spyChance: number;
+  spySpeed: number;
+  spySabotageDamage: number;
+  counterintelligence: number;
+  stealIron: number;
   /**
    * The research currently being upgraded, if any.
    * Contains the type and remaining duration in seconds.
@@ -99,6 +459,34 @@ export function createInitialTechTree(): TechTree {
     ironHarvesting: AllResearches[ResearchType.IronHarvesting].level,
     shipSpeed: AllResearches[ResearchType.ShipSpeed].level,
     afterburner: AllResearches[ResearchType.Afterburner].level,
+    // Projectile Weapons
+    projectileDamage: AllResearches[ResearchType.ProjectileDamage].level,
+    projectileReloadRate: AllResearches[ResearchType.ProjectileReloadRate].level,
+    projectileAccuracy: AllResearches[ResearchType.ProjectileAccuracy].level,
+    projectileWeaponTier: AllResearches[ResearchType.ProjectileWeaponTier].level,
+    // Energy Weapons
+    energyDamage: AllResearches[ResearchType.EnergyDamage].level,
+    energyRechargeRate: AllResearches[ResearchType.EnergyRechargeRate].level,
+    energyAccuracy: AllResearches[ResearchType.EnergyAccuracy].level,
+    energyWeaponTier: AllResearches[ResearchType.EnergyWeaponTier].level,
+    // Defense
+    hullStrength: AllResearches[ResearchType.HullStrength].level,
+    repairSpeed: AllResearches[ResearchType.RepairSpeed].level,
+    armorEffectiveness: AllResearches[ResearchType.ArmorEffectiveness].level,
+    shieldEffectiveness: AllResearches[ResearchType.ShieldEffectiveness].level,
+    shieldRechargeRate: AllResearches[ResearchType.ShieldRechargeRate].level,
+    // Ship
+    afterburnerSpeedIncrease: AllResearches[ResearchType.AfterburnerSpeedIncrease].level,
+    afterburnerDuration: AllResearches[ResearchType.AfterburnerDuration].level,
+    teleport: AllResearches[ResearchType.Teleport].level,
+    inventoryCapacity: AllResearches[ResearchType.InventoryCapacity].level,
+    constructionSpeed: AllResearches[ResearchType.ConstructionSpeed].level,
+    // Spies
+    spyChance: AllResearches[ResearchType.SpyChance].level,
+    spySpeed: AllResearches[ResearchType.SpySpeed].level,
+    spySabotageDamage: AllResearches[ResearchType.SpySabotageDamage].level,
+    counterintelligence: AllResearches[ResearchType.Counterintelligence].level,
+    stealIron: AllResearches[ResearchType.StealIron].level,
   };
 }
 
@@ -111,6 +499,57 @@ function getResearchLevelFromTree(tree: TechTree, type: ResearchType): number {
       return tree.shipSpeed;
     case ResearchType.Afterburner:
       return tree.afterburner;
+    // Projectile Weapons
+    case ResearchType.ProjectileDamage:
+      return tree.projectileDamage;
+    case ResearchType.ProjectileReloadRate:
+      return tree.projectileReloadRate;
+    case ResearchType.ProjectileAccuracy:
+      return tree.projectileAccuracy;
+    case ResearchType.ProjectileWeaponTier:
+      return tree.projectileWeaponTier;
+    // Energy Weapons
+    case ResearchType.EnergyDamage:
+      return tree.energyDamage;
+    case ResearchType.EnergyRechargeRate:
+      return tree.energyRechargeRate;
+    case ResearchType.EnergyAccuracy:
+      return tree.energyAccuracy;
+    case ResearchType.EnergyWeaponTier:
+      return tree.energyWeaponTier;
+    // Defense
+    case ResearchType.HullStrength:
+      return tree.hullStrength;
+    case ResearchType.RepairSpeed:
+      return tree.repairSpeed;
+    case ResearchType.ArmorEffectiveness:
+      return tree.armorEffectiveness;
+    case ResearchType.ShieldEffectiveness:
+      return tree.shieldEffectiveness;
+    case ResearchType.ShieldRechargeRate:
+      return tree.shieldRechargeRate;
+    // Ship
+    case ResearchType.AfterburnerSpeedIncrease:
+      return tree.afterburnerSpeedIncrease;
+    case ResearchType.AfterburnerDuration:
+      return tree.afterburnerDuration;
+    case ResearchType.Teleport:
+      return tree.teleport;
+    case ResearchType.InventoryCapacity:
+      return tree.inventoryCapacity;
+    case ResearchType.ConstructionSpeed:
+      return tree.constructionSpeed;
+    // Spies
+    case ResearchType.SpyChance:
+      return tree.spyChance;
+    case ResearchType.SpySpeed:
+      return tree.spySpeed;
+    case ResearchType.SpySabotageDamage:
+      return tree.spySabotageDamage;
+    case ResearchType.Counterintelligence:
+      return tree.counterintelligence;
+    case ResearchType.StealIron:
+      return tree.stealIron;
     default:
       throw new Error('Unknown research type');
   }
@@ -141,7 +580,11 @@ export function getResearchUpgradeDuration(research: Research, level: number): n
 
 /**
  * Returns the effect value for a given research and level.
- * Applies the baseValueIncrease logic (factor or constant) for each level above the research's starting level.
+ * Applies the baseValueIncrease logic (factor, constant, or polynomial) for each level above the research's starting level.
+ * Formulas:
+ * - constant: baseValue + (constant * (level - 1))
+ * - factor: baseValue * (factor ^ (level - 1))
+ * - polynomial: baseValue + baseValue * (value * (1.5 * level - 1.5)) ^ 1.4
  */
 export function getResearchEffect(research: Research, level: number): number {
   if (level === 0) return 0; // At level 0, the effect is always 0
@@ -149,9 +592,16 @@ export function getResearchEffect(research: Research, level: number): number {
   if (increase.type === 'factor') {
     // Effect = baseValue * (factor ^ (level - 1))
     return research.baseValue * Math.pow(increase.value, level - 1);
-  } else {
+  } else if (increase.type === 'constant') {
     // Effect = baseValue + (constant * (level - 1))
     return research.baseValue + increase.value * (level - 1);
+  } else {
+    // polynomial: Effect = baseValue + baseValue * (value * (1.5 * level - 1.5)) ^ 1.4
+    // This is the "in between" formula: 1 + (0.1 * (1.5x - 1.5)) ^ 1.4
+    // For level 1: 1 + (0.1 * 0) ^ 1.4 = 1
+    // For level 2: 1 + (0.1 * 1.5) ^ 1.4 = 1 + 0.15^1.4 ≈ 1.047
+    const multiplier = 1 + Math.pow(increase.value * (1.5 * level - 1.5), 1.4);
+    return research.baseValue * multiplier;
   }
 }
 
@@ -209,6 +659,80 @@ export function updateTechTree(tree: TechTree, timeSeconds: number): void {
         break;
       case ResearchType.Afterburner:
         tree.afterburner += 1;
+        break;
+      // Projectile Weapons
+      case ResearchType.ProjectileDamage:
+        tree.projectileDamage += 1;
+        break;
+      case ResearchType.ProjectileReloadRate:
+        tree.projectileReloadRate += 1;
+        break;
+      case ResearchType.ProjectileAccuracy:
+        tree.projectileAccuracy += 1;
+        break;
+      case ResearchType.ProjectileWeaponTier:
+        tree.projectileWeaponTier += 1;
+        break;
+      // Energy Weapons
+      case ResearchType.EnergyDamage:
+        tree.energyDamage += 1;
+        break;
+      case ResearchType.EnergyRechargeRate:
+        tree.energyRechargeRate += 1;
+        break;
+      case ResearchType.EnergyAccuracy:
+        tree.energyAccuracy += 1;
+        break;
+      case ResearchType.EnergyWeaponTier:
+        tree.energyWeaponTier += 1;
+        break;
+      // Defense
+      case ResearchType.HullStrength:
+        tree.hullStrength += 1;
+        break;
+      case ResearchType.RepairSpeed:
+        tree.repairSpeed += 1;
+        break;
+      case ResearchType.ArmorEffectiveness:
+        tree.armorEffectiveness += 1;
+        break;
+      case ResearchType.ShieldEffectiveness:
+        tree.shieldEffectiveness += 1;
+        break;
+      case ResearchType.ShieldRechargeRate:
+        tree.shieldRechargeRate += 1;
+        break;
+      // Ship
+      case ResearchType.AfterburnerSpeedIncrease:
+        tree.afterburnerSpeedIncrease += 1;
+        break;
+      case ResearchType.AfterburnerDuration:
+        tree.afterburnerDuration += 1;
+        break;
+      case ResearchType.Teleport:
+        tree.teleport += 1;
+        break;
+      case ResearchType.InventoryCapacity:
+        tree.inventoryCapacity += 1;
+        break;
+      case ResearchType.ConstructionSpeed:
+        tree.constructionSpeed += 1;
+        break;
+      // Spies
+      case ResearchType.SpyChance:
+        tree.spyChance += 1;
+        break;
+      case ResearchType.SpySpeed:
+        tree.spySpeed += 1;
+        break;
+      case ResearchType.SpySabotageDamage:
+        tree.spySabotageDamage += 1;
+        break;
+      case ResearchType.Counterintelligence:
+        tree.counterintelligence += 1;
+        break;
+      case ResearchType.StealIron:
+        tree.stealIron += 1;
         break;
       default:
         throw new Error('Unknown research type');

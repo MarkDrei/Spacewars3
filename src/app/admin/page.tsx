@@ -22,6 +22,8 @@ interface UserData {
   build_queue: string | null;
   build_start_sec: number | null;
   last_updated: number;
+  // Tech tree / Research levels - all research data
+  researches: Record<string, number>;
 }
 
 interface SpaceObject {
@@ -176,6 +178,7 @@ const AdminPage: React.FC = () => {
                   <th>Iron</th>
                   <th>Weapons</th>
                   <th>Defenses</th>
+                  <th>Research</th>
                   <th>Build Queue</th>
                   <th>Created</th>
                 </tr>
@@ -207,6 +210,21 @@ const AdminPage: React.FC = () => {
                         <span>Kinetic: {userData.kinetic_armor}</span>
                         <span>Energy: {userData.energy_shield}</span>
                         <span>Missile: {userData.missile_jammer}</span>
+                      </div>
+                    </td>
+                    <td className="data-cell">
+                      <div className="tech-counts">
+                        {Object.entries(userData.researches).length > 0 ? (
+                          Object.entries(userData.researches)
+                            .sort(([keyA], [keyB]) => keyA.localeCompare(keyB))
+                            .map(([key, value]) => (
+                              <span key={key} title={key}>
+                                {key.replace(/([A-Z])/g, ' $1').trim()}: {value}
+                              </span>
+                            ))
+                        ) : (
+                          <span className="empty">No research data</span>
+                        )}
                       </div>
                     </td>
                     <td className="data-cell">
