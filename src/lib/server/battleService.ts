@@ -115,10 +115,15 @@ async function getShipPosition(shipId: number): Promise<{ x: number; y: number }
 
 /**
  * Set ship speed to 0
+ * 
+ * TECHNICAL DEBT: This bypasses TypedCacheManager world cache.
+ * Should use cache manager's world write operations.
+ * See TechnicalDebt.md for details.
  */
 async function setShipSpeed(shipId: number, speed: number): Promise<void> {
   const db = await getDatabase();
   
+  // TODO: Refactor to use TypedCacheManager.withWorldWrite()
   return new Promise((resolve, reject) => {
     db.run(
       'UPDATE space_objects SET speed = ? WHERE id = ?',
@@ -136,10 +141,15 @@ async function setShipSpeed(shipId: number, speed: number): Promise<void> {
 
 /**
  * Update user's battle state in database
+ * 
+ * TECHNICAL DEBT: This bypasses TypedCacheManager.
+ * Should use cache-first architecture.
+ * See TechnicalDebt.md for details.
  */
 async function updateUserBattleState(userId: number, inBattle: boolean, battleId: number | null): Promise<void> {
   const db = await getDatabase();
   
+  // TODO: Refactor to use TypedCacheManager.withUserLock()
   return new Promise((resolve, reject) => {
     db.run(
       'UPDATE users SET in_battle = ?, current_battle_id = ? WHERE id = ?',
@@ -256,6 +266,11 @@ async function getUserShipId(userId: number): Promise<number> {
 /**
  * Initiate a battle between two users
  * NOTE: Caller should check battle state via user.inBattle before calling this
+ * 
+ * TECHNICAL DEBT: This function performs multiple direct DB writes
+ * bypassing TypedCacheManager (setShipSpeed, updateUserBattleState).
+ * Should be refactored to use cache-first architecture.
+ * See TechnicalDebt.md for details.
  */
 export async function initiateBattle(
   attacker: User,

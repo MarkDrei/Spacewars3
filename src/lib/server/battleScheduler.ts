@@ -4,7 +4,7 @@
 
 import { BattleRepo } from './battleRepo';
 import { BattleEngine } from './battle';
-import type { BattleEvent } from '../../shared/battleTypes';
+import type { Battle, BattleEvent } from '../../shared/battleTypes';
 import { TechFactory } from './TechFactory';
 import { MessagesRepo } from './messagesRepo';
 import { getDatabase } from './database';
@@ -20,11 +20,17 @@ async function createMessage(userId: number, message: string): Promise<void> {
 
 /**
  * Helper to update user's battle state
+ * 
+ * TECHNICAL DEBT: This bypasses TypedCacheManager and writes directly to DB.
+ * Should be refactored to use cache-first architecture.
+ * See TechnicalDebt.md for details.
  */
 async function updateUserBattleState(userId: number, inBattle: boolean, battleId: number | null): Promise<void> {
   const db = await getDatabase();
   
-  return new Promise((resolve, reject) => {
+  // TODO: Refactor to use TypedCacheManager instead of direct DB write
+  // Update database
+  await new Promise<void>((resolve, reject) => {
     db.run(
       'UPDATE users SET in_battle = ?, current_battle_id = ? WHERE id = ?',
       [inBattle ? 1 : 0, battleId, userId],
@@ -37,6 +43,32 @@ async function updateUserBattleState(userId: number, inBattle: boolean, battleId
       }
     );
   });
+  
+  // Also update cache if user is cached by directly loading from DB
+  try {
+    const { getTypedCacheManager } = await import('./typedCacheManager');
+    const { createEmptyContext } = await import('./typedLocks');
+    const cacheManager = await getTypedCacheManager();
+    await cacheManager.initialize();
+    
+    const emptyCtx = createEmptyContext();
+    
+    // Use withUserLock to safely update cached user
+    await cacheManager.withUserLock(emptyCtx, async (userCtx) => {
+      // Force load from database and update cache
+      await cacheManager.withDatabaseRead(userCtx, async (dbCtx) => {
+        const freshUser = await cacheManager.loadUserFromDbUnsafe(userId, dbCtx);
+        if (freshUser) {
+          // Update cache with fresh data
+          cacheManager.setUserUnsafe(freshUser, userCtx);
+          console.log(`✅ Updated battle state in cache for user ${userId}: inBattle=${freshUser.inBattle}`);
+        }
+      });
+    });
+  } catch (error) {
+    console.error(`⚠️ Failed to update cache for user ${userId}:`, error);
+    // Don't throw - database update succeeded, cache refresh is best-effort
+  }
 }
 
 /**
@@ -122,7 +154,7 @@ async function processBattleRound(battleId: number): Promise<void> {
  * Fire a weapon and apply damage
  */
 async function fireWeapon(
-  battle: any,
+  battle: Battle,
   attackerId: number,
   defenderId: number,
   weaponType: string,
@@ -177,8 +209,9 @@ async function fireWeapon(
     await createMessage(attackerId, `Your ${weaponType.replace(/_/g, ' ')} fired ${shotsPerSalvo} shot(s) but all missed!`);
     await createMessage(defenderId, `Enemy ${weaponType.replace(/_/g, ' ')} fired ${shotsPerSalvo} shot(s) but all missed!`);
     
-    // Update cooldown
-    await BattleRepo.setWeaponCooldown(battle.id, attackerId, weaponType, currentTime);
+    // Update cooldown - set to when weapon will be ready next
+    const nextReadyTime = currentTime + (weaponSpec.cooldown || 5);
+    await BattleRepo.setWeaponCooldown(battle.id, attackerId, weaponType, nextReadyTime);
     
     return;
   }
@@ -186,6 +219,13 @@ async function fireWeapon(
   // Calculate damage
   const damagePerHit = weaponSpec.damage || 10;
   const totalDamage = hits * damagePerHit;
+  
+  // Store defense values BEFORE damage
+  const defensesBefore = {
+    shield: Math.round(defenderStats.shield.current),
+    armor: Math.round(defenderStats.armor.current),
+    hull: Math.round(defenderStats.hull.current)
+  };
   
   // Apply damage to defender's defenses
   let remainingDamage = totalDamage;
@@ -214,6 +254,13 @@ async function fireWeapon(
     remainingDamage -= hullDamage;
   }
   
+  // Store defense values AFTER damage
+  const defensesAfter = {
+    shield: Math.round(defenderStats.shield.current),
+    armor: Math.round(defenderStats.armor.current),
+    hull: Math.round(defenderStats.hull.current)
+  };
+  
   // Update battle stats in database
   if (isAttacker) {
     await BattleRepo.updateBattleStats(battle.id, attackerStats, defenderStats);
@@ -240,15 +287,28 @@ async function fireWeapon(
   
   await BattleRepo.addBattleEvent(battle.id, hitEvent, battle);
   
+  // Format defense status
+  const formatDefense = (name: string, before: number, after: number, damage: number): string => {
+    if (damage === 0) return '';
+    return `${name}: ${before} → ${after}`;
+  };
+  
+  const defenseChanges = [
+    formatDefense('Shield', defensesBefore.shield, defensesAfter.shield, shieldDamage),
+    formatDefense('Armor', defensesBefore.armor, defensesAfter.armor, armorDamage),
+    formatDefense('Hull', defensesBefore.hull, defensesAfter.hull, hullDamage)
+  ].filter(s => s).join(', ');
+  
   // Send detailed messages to both players
-  const attackerMessage = `Your ${weaponType.replace(/_/g, ' ')} fired ${shotsPerSalvo} shot(s), **${hits} hit** for **${totalDamage} damage**! (Shield: -${shieldDamage}, Armor: -${armorDamage}, Hull: -${hullDamage})`;
-  const defenderMessage = `Enemy ${weaponType.replace(/_/g, ' ')} fired ${shotsPerSalvo} shot(s), **${hits} hit** you for **${totalDamage} damage**! (Shield: -${shieldDamage}, Armor: -${armorDamage}, Hull: -${hullDamage})`;
+  const attackerMessage = `⚔️ Your **${weaponType.replace(/_/g, ' ')}** fired ${shotsPerSalvo} shot(s), **${hits} hit** for **${totalDamage} damage**! Enemy: ${defenseChanges}`;
+  const defenderMessage = `🛡️ Enemy **${weaponType.replace(/_/g, ' ')}** fired ${shotsPerSalvo} shot(s), **${hits} hit** you for **${totalDamage} damage**! Your defenses: ${defenseChanges}`;
   
   await createMessage(attackerId, attackerMessage);
   await createMessage(defenderId, defenderMessage);
   
-  // Update cooldown
-  await BattleRepo.setWeaponCooldown(battle.id, attackerId, weaponType, currentTime);
+  // Update cooldown - set to when weapon will be ready next
+  const nextReadyTime = currentTime + (weaponSpec.cooldown || 5);
+  await BattleRepo.setWeaponCooldown(battle.id, attackerId, weaponType, nextReadyTime);
   
   console.log(`⚔️ Battle ${battle.id}: User ${attackerId} ${weaponType} - ${hits}/${shotsPerSalvo} hits, ${totalDamage} damage`);
 }
@@ -274,9 +334,11 @@ async function endBattle(battleId: number, winnerId: number): Promise<void> {
     battle.attackeeStartStats
   );
   
-  // Clear battle state for both users
+  // Clear battle state for both users in database
   await updateUserBattleState(battle.attackerId, false, null);
   await updateUserBattleState(battle.attackeeId, false, null);
+  
+  console.log(`⚔️ Cleared battle state for users ${battle.attackerId} and ${battle.attackeeId}`);
   
   // Send victory/defeat messages
   await createMessage(winnerId, `🎉 **Victory!** You won the battle!`);

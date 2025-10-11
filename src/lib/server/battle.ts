@@ -29,15 +29,10 @@ export class BattleEngine {
     const isAttacker = this.battle.attackerId === userId;
     const cooldowns = isAttacker ? this.battle.attackerWeaponCooldowns : this.battle.attackeeWeaponCooldowns;
     
-    const lastFired = cooldowns[weaponType] || 0;
-    const weaponSpec = TechFactory.getWeaponSpec(weaponType);
+    const nextReadyTime = cooldowns[weaponType] || 0;
     
-    if (!weaponSpec) {
-      return false;
-    }
-
-    const cooldownPeriod = weaponSpec.cooldown || 5; // Default 5 seconds if not specified
-    return (currentTime - lastFired) >= cooldownPeriod;
+    // Cooldown stores "next ready time" - weapon is ready if current time >= that
+    return currentTime >= nextReadyTime;
   }
 
   /**

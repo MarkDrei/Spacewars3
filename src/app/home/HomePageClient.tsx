@@ -20,6 +20,27 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ auth, initialMessages }
   const { defenseValues, isLoading: defenseLoading, error: defenseError } = useDefenseValues();
   const { battleStatus, isLoading: battleLoading, error: battleError } = useBattleStatus();
 
+  // Use battle stats for defense values if in battle, otherwise use regular defense values
+  const displayDefenseValues = battleStatus?.inBattle && battleStatus.battle?.myStats 
+    ? {
+        hull: { 
+          name: 'Hull', 
+          current: Math.round(battleStatus.battle.myStats.hull.current), 
+          max: battleStatus.battle.myStats.hull.max 
+        },
+        armor: { 
+          name: 'Armor', 
+          current: Math.round(battleStatus.battle.myStats.armor.current), 
+          max: battleStatus.battle.myStats.armor.max 
+        },
+        shield: { 
+          name: 'Shield', 
+          current: Math.round(battleStatus.battle.myStats.shield.current), 
+          max: battleStatus.battle.myStats.shield.max 
+        }
+      }
+    : defenseValues;
+
   // Calculate color based on percentage (0% = red, 50% = yellow, 100% = green)
   const getDefenseColor = (current: number, max: number): string => {
     if (max === 0) return '#4caf50'; // Green if no max (shouldn't happen)
@@ -141,36 +162,36 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ auth, initialMessages }
                       Error: {defenseError}
                     </td>
                   </tr>
-                ) : defenseValues ? (
+                ) : displayDefenseValues ? (
                   <>
-                    {(defenseValues.hull.max > 0) && (
+                    {(displayDefenseValues.hull.max > 0) && (
                       <tr className="data-row">
-                        <td className="data-cell">{defenseValues.hull.name}</td>
-                        <td className="data-cell defense-value-cell" style={{ color: getDefenseColor(defenseValues.hull.current, defenseValues.hull.max) }}>
-                          {defenseValues.hull.current}
+                        <td className="data-cell">{displayDefenseValues.hull.name}</td>
+                        <td className="data-cell defense-value-cell" style={{ color: getDefenseColor(displayDefenseValues.hull.current, displayDefenseValues.hull.max) }}>
+                          {displayDefenseValues.hull.current}
                         </td>
-                        <td className="data-cell defense-value-cell">{defenseValues.hull.max}</td>
+                        <td className="data-cell defense-value-cell">{displayDefenseValues.hull.max}</td>
                       </tr>
                     )}
-                    {(defenseValues.armor.max > 0) && (
+                    {(displayDefenseValues.armor.max > 0) && (
                       <tr className="data-row">
-                        <td className="data-cell">{defenseValues.armor.name}</td>
-                        <td className="data-cell defense-value-cell" style={{ color: getDefenseColor(defenseValues.armor.current, defenseValues.armor.max) }}>
-                          {defenseValues.armor.current}
+                        <td className="data-cell">{displayDefenseValues.armor.name}</td>
+                        <td className="data-cell defense-value-cell" style={{ color: getDefenseColor(displayDefenseValues.armor.current, displayDefenseValues.armor.max) }}>
+                          {displayDefenseValues.armor.current}
                         </td>
-                        <td className="data-cell defense-value-cell">{defenseValues.armor.max}</td>
+                        <td className="data-cell defense-value-cell">{displayDefenseValues.armor.max}</td>
                       </tr>
                     )}
-                    {(defenseValues.shield.max > 0) && (
+                    {(displayDefenseValues.shield.max > 0) && (
                       <tr className="data-row">
-                        <td className="data-cell">{defenseValues.shield.name}</td>
-                        <td className="data-cell defense-value-cell" style={{ color: getDefenseColor(defenseValues.shield.current, defenseValues.shield.max) }}>
-                          {defenseValues.shield.current}
+                        <td className="data-cell">{displayDefenseValues.shield.name}</td>
+                        <td className="data-cell defense-value-cell" style={{ color: getDefenseColor(displayDefenseValues.shield.current, displayDefenseValues.shield.max) }}>
+                          {displayDefenseValues.shield.current}
                         </td>
-                        <td className="data-cell defense-value-cell">{defenseValues.shield.max}</td>
+                        <td className="data-cell defense-value-cell">{displayDefenseValues.shield.max}</td>
                       </tr>
                     )}
-                    {(defenseValues.hull.max === 0 && defenseValues.armor.max === 0 && defenseValues.shield.max === 0) && (
+                    {(displayDefenseValues.hull.max === 0 && displayDefenseValues.armor.max === 0 && displayDefenseValues.shield.max === 0) && (
                       <tr>
                         <td colSpan={3} className="empty-cell">
                           No defense systems built yet
