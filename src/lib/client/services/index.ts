@@ -9,3 +9,6 @@ export type { NavigateRequest, NavigateResponse } from './navigationService';
 
 export { getShipStats } from './shipStatsService';
 export type { ShipStatsResponse, ShipStatsError } from './shipStatsService';
+
+export { getTeleportStats, teleportShip } from './teleportService';
+export type { TeleportStatsResponse, TeleportRequest, TeleportResponse, TeleportError } from './teleportService';
