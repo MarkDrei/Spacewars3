@@ -80,10 +80,10 @@ async function performAfterburnerLogic(
     throw new ApiError(404, 'Player ship not found');
   }
   
-  // Check if afterburner research is available (level > 0)
-  const afterburnerLevel = user.techTree.afterburner;
-  if (afterburnerLevel === 0) {
-    throw new ApiError(400, 'Afterburner not researched. Research Afterburner first.');
+  // Check if afterburner research is available (duration level > 0)
+  const afterburnerDurationLevel = user.techTree.afterburnerDuration;
+  if (afterburnerDurationLevel === 0) {
+    throw new ApiError(400, 'Afterburner not researched. Research Afterburner Duration first.');
   }
   
   // Check if afterburner is already active

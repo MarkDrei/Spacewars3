@@ -9,7 +9,6 @@
 export enum ResearchType {
   IronHarvesting = 'IronHarvesting',
   ShipSpeed = 'shipSpeed',
-  Afterburner = 'Afterburner',
   // Projectile Weapons
   ProjectileDamage = 'projectileDamage',
   ProjectileReloadRate = 'projectileReloadRate',
@@ -86,19 +85,6 @@ export const AllResearches: Record<ResearchType, Research> = {
     description: 'Determines how fast your ship travels.',
     treeKey: 'shipSpeed',
     unit: 'units',
-  },
-  [ResearchType.Afterburner]: {
-    type: ResearchType.Afterburner,
-    name: 'Afterburner',
-    level: 0,
-    baseUpgradeCost: 5000,
-    baseUpgradeDuration: 120,
-    baseValue: 100,
-    upgradeCostIncrease: 1.5,
-    baseValueIncrease: { type: 'factor', value: 1.2 },
-    description: 'Gives the spaceship a much higher speed (% speed increase).',
-    treeKey: 'afterburner',
-    unit: '%',
   },
   // Projectile Weapons
   [ResearchType.ProjectileDamage]: {
@@ -277,8 +263,8 @@ export const AllResearches: Record<ResearchType, Research> = {
     type: ResearchType.AfterburnerSpeedIncrease,
     name: 'Afterburner Speed',
     level: 1,
-    baseUpgradeCost: 2000,
-    baseUpgradeDuration: 120,
+    baseUpgradeCost: 10,
+    baseUpgradeDuration: 10,
     baseValue: 50,
     upgradeCostIncrease: 2.0,
     baseValueIncrease: { type: 'constant', value: 10 },
@@ -289,13 +275,13 @@ export const AllResearches: Record<ResearchType, Research> = {
   [ResearchType.AfterburnerDuration]: {
     type: ResearchType.AfterburnerDuration,
     name: 'Afterburner Duration',
-    level: 1,
-    baseUpgradeCost: 1500,
-    baseUpgradeDuration: 90,
-    baseValue: 60,
+    level: 0,
+    baseUpgradeCost: 10,
+    baseUpgradeDuration: 10,
+    baseValue: 30,
     upgradeCostIncrease: 1.9,
     baseValueIncrease: { type: 'constant', value: 2 },
-    description: 'Increases duration of afterburner boost.',
+    description: 'Unlocks and increases duration of afterburner boost.',
     treeKey: 'afterburnerDuration',
     unit: 'seconds',
   },
@@ -414,7 +400,6 @@ export const AllResearches: Record<ResearchType, Research> = {
 export interface TechTree {
   ironHarvesting: number; // level
   shipSpeed: number;   // level
-  afterburner: number;    // level
   // Projectile Weapons
   projectileDamage: number;
   projectileReloadRate: number;
@@ -458,7 +443,6 @@ export function createInitialTechTree(): TechTree {
   return {
     ironHarvesting: AllResearches[ResearchType.IronHarvesting].level,
     shipSpeed: AllResearches[ResearchType.ShipSpeed].level,
-    afterburner: AllResearches[ResearchType.Afterburner].level,
     // Projectile Weapons
     projectileDamage: AllResearches[ResearchType.ProjectileDamage].level,
     projectileReloadRate: AllResearches[ResearchType.ProjectileReloadRate].level,
@@ -497,8 +481,6 @@ function getResearchLevelFromTree(tree: TechTree, type: ResearchType): number {
       return tree.ironHarvesting;
     case ResearchType.ShipSpeed:
       return tree.shipSpeed;
-    case ResearchType.Afterburner:
-      return tree.afterburner;
     // Projectile Weapons
     case ResearchType.ProjectileDamage:
       return tree.projectileDamage;
@@ -656,9 +638,6 @@ export function updateTechTree(tree: TechTree, timeSeconds: number): void {
         break;
       case ResearchType.ShipSpeed:
         tree.shipSpeed += 1;
-        break;
-      case ResearchType.Afterburner:
-        tree.afterburner += 1;
         break;
       // Projectile Weapons
       case ResearchType.ProjectileDamage:
