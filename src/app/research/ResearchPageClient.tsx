@@ -246,6 +246,7 @@ const ResearchPageClient: React.FC<ResearchPageClientProps> = ({ auth }) => {
   const [remaining, setRemaining] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isTriggering, setIsTriggering] = useState<boolean>(false);
+  const [isCompletingResearch, setIsCompletingResearch] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -322,6 +323,35 @@ const ResearchPageClient: React.FC<ResearchPageClientProps> = ({ auth }) => {
       console.error('Error triggering research:', err);
     } finally {
       setIsTriggering(false);
+    }
+  };
+
+  // Complete research (cheat mode)
+  const handleCompleteResearch = async () => {
+    if (!techTree || !techTree.activeResearch || isCompletingResearch) return;
+
+    setIsCompletingResearch(true);
+    setError(null);
+
+    try {
+      const result = await researchService.completeResearch();
+
+      if ('error' in result) {
+        setError(result.error);
+        return;
+      }
+
+      // Refresh data after successful completion
+      await fetchData();
+      
+      // Emit event to update iron in StatusHeader if needed
+      globalEvents.emit(EVENTS.RESEARCH_TRIGGERED);
+
+    } catch (err) {
+      setError('Failed to complete research');
+      console.error('Error completing research:', err);
+    } finally {
+      setIsCompletingResearch(false);
     }
   };
 
@@ -509,6 +539,19 @@ const ResearchPageClient: React.FC<ResearchPageClientProps> = ({ auth }) => {
           {error && (
             <div className="error-message">
               {error}
+            </div>
+          )}
+
+          {/* Cheat Mode Button */}
+          {isAnyResearchActive && (
+            <div className="cheat-section">
+              <button
+                className="cheat-button"
+                onClick={handleCompleteResearch}
+                disabled={isCompletingResearch}
+              >
+                {isCompletingResearch ? 'Completing...' : '⚡ Complete Research (Cheat)'}
+              </button>
             </div>
           )}
 

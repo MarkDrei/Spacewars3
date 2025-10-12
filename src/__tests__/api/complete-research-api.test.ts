@@ -148,7 +148,6 @@ describe('Complete Research API (Cheat Mode)', () => {
       sessionCookie!
     );
     const triggerResponse = await triggerResearchPOST(triggerRequest);
-    const triggerData = await triggerResponse.json();
     
     expect(triggerResponse.status).toBe(200);
 
