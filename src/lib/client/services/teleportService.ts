@@ -54,8 +54,8 @@ export async function getTeleportStats(): Promise<TeleportStatsResponse | Telepo
     const data = await response.json();
     
     // Extract teleport info from tech tree
-    const teleportLevel = data.teleport || 0;
-    const teleportRange = data.effects?.teleport || 0;
+    const teleportLevel = data.techTree?.teleport || 0;
+    const teleportRange = data.researches?.teleport?.currentEffect || 0;
     
     return {
       level: teleportLevel,
