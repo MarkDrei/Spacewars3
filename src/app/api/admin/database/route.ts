@@ -34,6 +34,9 @@ interface SpaceObject {
   speed: number;
   angle: number;
   last_position_update_ms: number;
+  afterburner_boosted_speed: number | null;
+  afterburner_cooldown_end_ms: number | null;
+  afterburner_old_max_speed: number | null;
 }
 
 interface AdminData {
@@ -150,7 +153,8 @@ export async function GET(request: NextRequest) {
     // Get all space objects
     const spaceObjects = await new Promise<SpaceObject[]>((resolve, reject) => {
       db.all(`
-        SELECT id, x, y, type, speed, angle, last_position_update_ms
+        SELECT id, x, y, type, speed, angle, last_position_update_ms,
+               afterburner_boosted_speed, afterburner_cooldown_end_ms, afterburner_old_max_speed
         FROM space_objects 
         ORDER BY id
       `, [], (err, rows) => {

@@ -17,25 +17,25 @@ describe('getResearchUpgradeCost', () => {
   test('getResearchUpgradeCost_levelIsStartLevel_returnsBaseCost', () => {
     expect(getResearchUpgradeCost(AllResearches[ResearchType.IronHarvesting], 1)).toBe(100);
     expect(getResearchUpgradeCost(AllResearches[ResearchType.ShipSpeed], 1)).toBe(500);
-    expect(getResearchUpgradeCost(AllResearches[ResearchType.Afterburner], 0)).toBe(5000);
+    expect(getResearchUpgradeCost(AllResearches[ResearchType.AfterburnerDuration], 0)).toBe(10);
   });
 
   test('getResearchUpgradeCost_levelIsOneAboveStartLevel_returnsBaseCost', () => {
     expect(getResearchUpgradeCost(AllResearches[ResearchType.IronHarvesting], 2)).toBe(100);
     expect(getResearchUpgradeCost(AllResearches[ResearchType.ShipSpeed], 2)).toBe(500);
-    expect(getResearchUpgradeCost(AllResearches[ResearchType.Afterburner], 1)).toBe(5000);
+    expect(getResearchUpgradeCost(AllResearches[ResearchType.AfterburnerDuration], 1)).toBe(10);
   });
 
   test('getResearchUpgradeCost_levelIsTwoAboveStartLevel_appliesIncrease', () => {
     expect(getResearchUpgradeCost(AllResearches[ResearchType.IronHarvesting], 3)).toBe(200);
     expect(getResearchUpgradeCost(AllResearches[ResearchType.ShipSpeed], 3)).toBe(1000);
-    expect(getResearchUpgradeCost(AllResearches[ResearchType.Afterburner], 2)).toBe(7500);
+    expect(getResearchUpgradeCost(AllResearches[ResearchType.AfterburnerDuration], 2)).toBe(19);
   });
 
   test('getResearchUpgradeCost_levelIsThreeAboveStartLevel_appliesIncreaseSquared', () => {
     expect(getResearchUpgradeCost(AllResearches[ResearchType.IronHarvesting], 4)).toBe(400);
     expect(getResearchUpgradeCost(AllResearches[ResearchType.ShipSpeed], 4)).toBe(2000);
-    expect(getResearchUpgradeCost(AllResearches[ResearchType.Afterburner], 3)).toBe(11250);
+    expect(getResearchUpgradeCost(AllResearches[ResearchType.AfterburnerDuration], 3)).toBeCloseTo(36.1);
   });
 });
 
@@ -43,25 +43,25 @@ describe('getResearchUpgradeDuration', () => {
   test('getResearchUpgradeDuration_levelIsStartLevel_returnsBaseDuration', () => {
     expect(getResearchUpgradeDuration(AllResearches[ResearchType.IronHarvesting], 1)).toBe(10);
     expect(getResearchUpgradeDuration(AllResearches[ResearchType.ShipSpeed], 1)).toBe(30);
-    expect(getResearchUpgradeDuration(AllResearches[ResearchType.Afterburner], 0)).toBe(120);
+    expect(getResearchUpgradeDuration(AllResearches[ResearchType.AfterburnerDuration], 0)).toBe(10);
   });
 
   test('getResearchUpgradeDuration_levelIsOneAboveStartLevel_returnsBaseDuration', () => {
     expect(getResearchUpgradeDuration(AllResearches[ResearchType.IronHarvesting], 2)).toBe(10);
     expect(getResearchUpgradeDuration(AllResearches[ResearchType.ShipSpeed], 2)).toBe(30);
-    expect(getResearchUpgradeDuration(AllResearches[ResearchType.Afterburner], 1)).toBe(120);
+    expect(getResearchUpgradeDuration(AllResearches[ResearchType.AfterburnerDuration], 1)).toBe(10);
   });
 
   test('getResearchUpgradeDuration_levelIsTwoAboveStartLevel_appliesIncrease', () => {
     expect(getResearchUpgradeDuration(AllResearches[ResearchType.IronHarvesting], 3)).toBe(20);
     expect(getResearchUpgradeDuration(AllResearches[ResearchType.ShipSpeed], 3)).toBe(60);
-    expect(getResearchUpgradeDuration(AllResearches[ResearchType.Afterburner], 2)).toBe(180);
+    expect(getResearchUpgradeDuration(AllResearches[ResearchType.AfterburnerDuration], 2)).toBe(19);
   });
 
   test('getResearchUpgradeDuration_levelIsThreeAboveStartLevel_appliesIncreaseSquared', () => {
     expect(getResearchUpgradeDuration(AllResearches[ResearchType.IronHarvesting], 4)).toBe(40);
     expect(getResearchUpgradeDuration(AllResearches[ResearchType.ShipSpeed], 4)).toBe(120);
-    expect(getResearchUpgradeDuration(AllResearches[ResearchType.Afterburner], 3)).toBe(270);
+    expect(getResearchUpgradeDuration(AllResearches[ResearchType.AfterburnerDuration], 3)).toBeCloseTo(36.1);
   });
 });
 
@@ -69,15 +69,15 @@ describe('getResearchEffect', () => {
   test('getResearchEffect_levelIsStartLevel_returnsBaseValue', () => {
     expect(getResearchEffect(AllResearches[ResearchType.IronHarvesting], 1)).toBeCloseTo(1);
     expect(getResearchEffect(AllResearches[ResearchType.ShipSpeed], 1)).toBeCloseTo(25);
-    expect(getResearchEffect(AllResearches[ResearchType.Afterburner], 0)).toBeCloseTo(0);
-    expect(getResearchEffect(AllResearches[ResearchType.Afterburner], 1)).toBeCloseTo(100); // Added test for level 1
+    expect(getResearchEffect(AllResearches[ResearchType.AfterburnerDuration], 0)).toBeCloseTo(0);
+    expect(getResearchEffect(AllResearches[ResearchType.AfterburnerDuration], 1)).toBeCloseTo(30); // baseValue is 30 seconds
   });
 
   test('getResearchEffect_factorIncrease_appliesExponent', () => {
     expect(getResearchEffect(AllResearches[ResearchType.IronHarvesting], 2)).toBeCloseTo(1.1);
     expect(getResearchEffect(AllResearches[ResearchType.IronHarvesting], 3)).toBeCloseTo(1.21);
-    expect(getResearchEffect(AllResearches[ResearchType.Afterburner], 2)).toBeCloseTo(120);
-    expect(getResearchEffect(AllResearches[ResearchType.Afterburner], 3)).toBeCloseTo(144);
+    expect(getResearchEffect(AllResearches[ResearchType.AfterburnerDuration], 2)).toBeCloseTo(32); // 30 + 2
+    expect(getResearchEffect(AllResearches[ResearchType.AfterburnerDuration], 3)).toBeCloseTo(34); // 30 + 2 + 2
   });
 
   test('getResearchEffect_constantIncrease_appliesAddition', () => {
@@ -138,17 +138,17 @@ describe('getResearchUpgradeDurationFromTree', () => {
     const tree = createInitialTechTree();
     expect(getResearchUpgradeDurationFromTree(tree, ResearchType.IronHarvesting)).toBe(10);
     expect(getResearchUpgradeDurationFromTree(tree, ResearchType.ShipSpeed)).toBe(30);
-    expect(getResearchUpgradeDurationFromTree(tree, ResearchType.Afterburner)).toBe(120);
+    expect(getResearchUpgradeDurationFromTree(tree, ResearchType.AfterburnerDuration)).toBe(10); // level 0, base duration 10
   });
 
   test('getResearchUpgradeDurationFromTree_treeWithIncreasedLevels_returnsScaledDurations', () => {
     const tree = createInitialTechTree();
     tree.ironHarvesting = 4;
     tree.shipSpeed = 4;
-    tree.afterburner = 3;
+    tree.afterburnerDuration = 3;
     expect(getResearchUpgradeDurationFromTree(tree, ResearchType.IronHarvesting)).toBe(40);
     expect(getResearchUpgradeDurationFromTree(tree, ResearchType.ShipSpeed)).toBe(120);
-    expect(getResearchUpgradeDurationFromTree(tree, ResearchType.Afterburner)).toBe(270);
+    expect(getResearchUpgradeDurationFromTree(tree, ResearchType.AfterburnerDuration)).toBeCloseTo(36.1);
   });
 });
 
@@ -157,17 +157,17 @@ describe('getResearchEffectFromTree', () => {
     const tree = createInitialTechTree();
     expect(getResearchEffectFromTree(tree, ResearchType.IronHarvesting)).toBeCloseTo(1);
     expect(getResearchEffectFromTree(tree, ResearchType.ShipSpeed)).toBeCloseTo(25);
-    expect(getResearchEffectFromTree(tree, ResearchType.Afterburner)).toBeCloseTo(0);
+    expect(getResearchEffectFromTree(tree, ResearchType.AfterburnerDuration)).toBeCloseTo(0); // level 0 = no afterburner
   });
 
   test('getResearchEffectFromTree_treeWithIncreasedLevels_returnsScaledEffects', () => {
     const tree = createInitialTechTree();
     tree.ironHarvesting = 3;
     tree.shipSpeed = 4;
-    tree.afterburner = 2;
+    tree.afterburnerDuration = 2;
     expect(getResearchEffectFromTree(tree, ResearchType.IronHarvesting)).toBeCloseTo(1.21);
     expect(getResearchEffectFromTree(tree, ResearchType.ShipSpeed)).toBeCloseTo(40);
-    expect(getResearchEffectFromTree(tree, ResearchType.Afterburner)).toBeCloseTo(120);
+    expect(getResearchEffectFromTree(tree, ResearchType.AfterburnerDuration)).toBeCloseTo(32); // 30 + 2
   });
 });
 
@@ -246,7 +246,7 @@ describe('getActiveResearch', () => {
 
   test('getActiveResearch_afterUpdateTechTree_returnsUndefinedIfCompleted', () => {
     const tree = createInitialTechTree();
-    triggerResearch(tree, ResearchType.Afterburner);
+    triggerResearch(tree, ResearchType.AfterburnerDuration);
     updateTechTree(tree, 9999); // complete it
     expect(getActiveResearch(tree)).toBeUndefined();
   });

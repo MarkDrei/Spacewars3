@@ -72,8 +72,7 @@ async function getShipStats(world: World, user: User): Promise<NextResponse> {
   
   // Calculate max speed from tech tree
   const baseSpeed = getResearchEffectFromTree(user.techTree, ResearchType.ShipSpeed);
-  const afterburnerBonus = getResearchEffectFromTree(user.techTree, ResearchType.Afterburner);
-  const maxSpeed = baseSpeed * (1 + afterburnerBonus / 100);
+  const maxSpeed = baseSpeed; // Max speed is just base speed (afterburner is temporary boost)
   
   // Calculate defense values using actual current values from database
   const currentValues = {
@@ -83,6 +82,17 @@ async function getShipStats(world: World, user: User): Promise<NextResponse> {
   };
   const defenseValues = TechFactory.calculateDefenseValues(user.techCounts, currentValues);
   
+  // Calculate afterburner status (based on duration research)
+  // Fallback to 0 if afterburnerDuration doesn't exist (old database)
+  const afterburnerDurationLevel = user.techTree.afterburnerDuration ?? 0;
+  const isAfterburnerActive = playerShip.afterburner_cooldown_end_ms !== null && 
+                               playerShip.afterburner_cooldown_end_ms !== undefined &&
+                               playerShip.afterburner_cooldown_end_ms > currentTime;
+  const afterburnerCooldownRemainingMs = isAfterburnerActive && playerShip.afterburner_cooldown_end_ms 
+    ? playerShip.afterburner_cooldown_end_ms - currentTime 
+    : 0;
+  const canActivateAfterburner = afterburnerDurationLevel > 0 && !isAfterburnerActive;
+  
   const responseData = {
     x: playerShip.x,
     y: playerShip.y,
@@ -90,7 +100,13 @@ async function getShipStats(world: World, user: User): Promise<NextResponse> {
     angle: playerShip.angle,
     maxSpeed: maxSpeed,
     last_position_update_ms: playerShip.last_position_update_ms,
-    defenseValues
+    defenseValues,
+    afterburner: {
+      isActive: isAfterburnerActive,
+      cooldownRemainingMs: afterburnerCooldownRemainingMs,
+      canActivate: canActivateAfterburner,
+      researchLevel: afterburnerDurationLevel
+    }
   };
   
   return NextResponse.json(responseData);
