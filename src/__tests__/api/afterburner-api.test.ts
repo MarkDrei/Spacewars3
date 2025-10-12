@@ -75,7 +75,7 @@ describe('Afterburner API', () => {
     await cacheManager.withUserLock(emptyCtx, async (userCtx) => {
       const user = cacheManager.getUserUnsafe(1, userCtx);
       if (user) {
-        user.techTree.afterburner = 1; // Enable afterburner
+        user.techTree.afterburnerDuration = 1; // Enable afterburner
         cacheManager.setUserUnsafe(user, userCtx);
       }
     });
@@ -116,7 +116,7 @@ describe('Afterburner API', () => {
     await cacheManager.withUserLock(emptyCtx, async (userCtx) => {
       const user = cacheManager.getUserUnsafe(1, userCtx);
       if (user) {
-        user.techTree.afterburner = 1;
+        user.techTree.afterburnerDuration = 1;
         cacheManager.setUserUnsafe(user, userCtx);
       }
     });
@@ -157,7 +157,7 @@ describe('Afterburner API', () => {
     await cacheManager.withUserLock(emptyCtx, async (userCtx) => {
       const user = cacheManager.getUserUnsafe(1, userCtx);
       if (user) {
-        user.techTree.afterburner = 1;
+        user.techTree.afterburnerDuration = 1;
         cacheManager.setUserUnsafe(user, userCtx);
       }
     });

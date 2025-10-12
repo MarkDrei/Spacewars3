@@ -56,7 +56,6 @@ interface ResearchDef {
 type ResearchType = 
   | 'IronHarvesting' 
   | 'ShipSpeed' 
-  | 'Afterburner'
   // Projectile Weapons
   | 'projectileDamage'
   | 'projectileReloadRate'
@@ -208,8 +207,8 @@ class ResearchService {
    */
   calculateMaxSpeed(researches: Record<ResearchType, ResearchDef>): number {
     const baseSpeed = researches.ShipSpeed.currentEffect;
-    const afterburnerBonus = researches.Afterburner.currentEffect;
-    return baseSpeed * (1 + afterburnerBonus / 100);
+    // Max speed is just base speed (afterburner is a temporary boost, not permanent)
+    return baseSpeed;
   }
 }
 
