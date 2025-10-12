@@ -142,6 +142,48 @@
   min-width: 140px;
 }
 
+/* Teleport Controls */
+.teleport-controls {
+  border-top: 1px solid #333;
+  padding-top: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.teleport-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+}
+
+.teleport-label {
+  color: white;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.teleport-stats {
+  color: #aaa;
+  font-size: 0.85rem;
+}
+
+.teleport-button {
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  min-width: 180px;
+  transition: all 0.3s ease;
+}
+
+.teleport-button.btn-warning {
+  background-color: #ff9800;
+  border-color: #ff9800;
+}
+
+.teleport-button.btn-warning:hover {
+  background-color: #f57c00;
+  border-color: #f57c00;
+}
+
 /* Debug Toggle Switch */
 .debug-toggle-container {
   display: flex;
