@@ -34,6 +34,9 @@ interface SpaceObject {
   speed: number;
   angle: number;
   last_position_update_ms: number;
+  afterburner_boosted_speed: number | null;
+  afterburner_cooldown_end_ms: number | null;
+  afterburner_old_max_speed: number | null;
 }
 
 interface AdminData {
@@ -265,6 +268,7 @@ const AdminPage: React.FC = () => {
                   <th>Type</th>
                   <th>Speed</th>
                   <th>Angle</th>
+                  <th>Afterburner</th>
                   <th>Last Update</th>
                 </tr>
               </thead>
@@ -282,6 +286,17 @@ const AdminPage: React.FC = () => {
                     </td>
                     <td className="data-cell">{obj.speed.toFixed(2)}</td>
                     <td className="data-cell">{obj.angle.toFixed(1)}°</td>
+                    <td className="data-cell">
+                      {obj.afterburner_cooldown_end_ms !== null ? (
+                        <div className="tech-counts">
+                          <span>Boosted: {obj.afterburner_boosted_speed?.toFixed(2) ?? 'N/A'}</span>
+                          <span>Cooldown: {new Date(obj.afterburner_cooldown_end_ms).toLocaleTimeString()}</span>
+                          <span>Old Max: {obj.afterburner_old_max_speed?.toFixed(2) ?? 'N/A'}</span>
+                        </div>
+                      ) : (
+                        <span className="empty">Inactive</span>
+                      )}
+                    </td>
                     <td className="data-cell">
                       {new Date(obj.last_position_update_ms).toLocaleString()}
                     </td>
