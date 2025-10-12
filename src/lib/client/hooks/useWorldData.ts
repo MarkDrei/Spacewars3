@@ -8,6 +8,7 @@ interface UseWorldDataReturn {
   isLoading: boolean;
   error: string | null;
   refetch: () => void;
+  lastUpdateTime: number | null;
 }
 
 interface WorldDataState extends WorldData {
@@ -15,17 +16,11 @@ interface WorldDataState extends WorldData {
   roundTripTime?: number;
 }
 
-interface UseWorldDataReturn {
-  worldData: WorldData | null;
-  isLoading: boolean;
-  error: string | null;
-  refetch: () => void;
-}
-
 export const useWorldData = (pollInterval: number = 3000): UseWorldDataReturn => {
   const [worldData, setWorldData] = useState<WorldDataState | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [lastUpdateTime, setLastUpdateTime] = useState<number | null>(null);
   
   // Use ref to track if component is mounted (for cleanup)
   const isMountedRef = useRef<boolean>(true);
@@ -88,6 +83,7 @@ export const useWorldData = (pollInterval: number = 3000): UseWorldDataReturn =>
       };
       
       setWorldData(worldDataWithTiming);
+      setLastUpdateTime(result.data.responseReceivedAt);
       setIsLoading(false);
       
       // console.log('🌍 World data updated:', {
@@ -148,6 +144,7 @@ export const useWorldData = (pollInterval: number = 3000): UseWorldDataReturn =>
     worldData, // Return worldData directly - optimistic updates are already applied in setInterval
     isLoading,
     error,
-    refetch: fetchWorldData
+    refetch: fetchWorldData,
+    lastUpdateTime
   };
 };

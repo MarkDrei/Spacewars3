@@ -1,0 +1,86 @@
+.data-age-indicator {
+  display: flex;
+  justify-content: center;
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.age-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s ease;
+}
+
+.age-label {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.8rem;
+}
+
+.age-value {
+  font-weight: 600;
+  font-family: 'Courier New', monospace;
+  min-width: 50px;
+  text-align: right;
+}
+
+/* Color states based on data freshness */
+.age-badge.fresh {
+  background: linear-gradient(135deg, rgba(76, 175, 80, 0.25), rgba(76, 175, 80, 0.15));
+  border-color: rgba(76, 175, 80, 0.4);
+}
+
+.age-badge.fresh .age-value {
+  color: #4caf50;
+}
+
+.age-badge.moderate {
+  background: linear-gradient(135deg, rgba(255, 193, 7, 0.25), rgba(255, 193, 7, 0.15));
+  border-color: rgba(255, 193, 7, 0.4);
+}
+
+.age-badge.moderate .age-value {
+  color: #ffc107;
+}
+
+.age-badge.stale {
+  background: linear-gradient(135deg, rgba(244, 67, 54, 0.25), rgba(244, 67, 54, 0.15));
+  border-color: rgba(244, 67, 54, 0.4);
+  animation: pulse-warning 2s ease-in-out infinite;
+}
+
+.age-badge.stale .age-value {
+  color: #f44336;
+}
+
+@keyframes pulse-warning {
+  0%, 100% {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  }
+  50% {
+    box-shadow: 0 2px 12px rgba(244, 67, 54, 0.4);
+  }
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .age-badge {
+    font-size: 0.8rem;
+    padding: 0.3rem 0.6rem;
+  }
+  
+  .age-label {
+    font-size: 0.75rem;
+  }
+  
+  .age-value {
+    min-width: 45px;
+  }
+}
