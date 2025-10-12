@@ -512,9 +512,9 @@ function getResearchLevelFromTree(tree: TechTree, type: ResearchType): number {
       return tree.shieldRechargeRate;
     // Ship
     case ResearchType.AfterburnerSpeedIncrease:
-      return tree.afterburnerSpeedIncrease;
+      return tree.afterburnerSpeedIncrease ?? 1; // Default to level 1
     case ResearchType.AfterburnerDuration:
-      return tree.afterburnerDuration;
+      return tree.afterburnerDuration ?? 0; // Default to level 0 (not researched)
     case ResearchType.Teleport:
       return tree.teleport;
     case ResearchType.InventoryCapacity:

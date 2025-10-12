@@ -81,7 +81,8 @@ async function performAfterburnerLogic(
   }
   
   // Check if afterburner research is available (duration level > 0)
-  const afterburnerDurationLevel = user.techTree.afterburnerDuration;
+  // Fallback to 0 if afterburnerDuration doesn't exist (old database)
+  const afterburnerDurationLevel = user.techTree.afterburnerDuration ?? 0;
   if (afterburnerDurationLevel === 0) {
     throw new ApiError(400, 'Afterburner not researched. Research Afterburner Duration first.');
   }

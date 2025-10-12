@@ -83,7 +83,8 @@ async function getShipStats(world: World, user: User): Promise<NextResponse> {
   const defenseValues = TechFactory.calculateDefenseValues(user.techCounts, currentValues);
   
   // Calculate afterburner status (based on duration research)
-  const afterburnerDurationLevel = user.techTree.afterburnerDuration;
+  // Fallback to 0 if afterburnerDuration doesn't exist (old database)
+  const afterburnerDurationLevel = user.techTree.afterburnerDuration ?? 0;
   const isAfterburnerActive = playerShip.afterburner_cooldown_end_ms !== null && 
                                playerShip.afterburner_cooldown_end_ms !== undefined &&
                                playerShip.afterburner_cooldown_end_ms > currentTime;
