@@ -45,6 +45,43 @@
   background-color: var(--primary-green-hover);
 }
 
+/* Cheat Mode Section */
+.cheat-section {
+  margin: 1.5rem 0;
+  padding: 1rem;
+  background: rgba(255, 193, 7, 0.1);
+  border: 1px solid rgba(255, 193, 7, 0.3);
+  border-radius: 8px;
+  text-align: center;
+}
+
+.cheat-button {
+  background: linear-gradient(135deg, #ffc107, #ff9800);
+  color: #000;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-width: 200px;
+}
+
+.cheat-button:hover:not(:disabled) {
+  background: linear-gradient(135deg, #ff9800, #f57c00);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 193, 7, 0.3);
+}
+
+.cheat-button:disabled {
+  background: #666;
+  color: #999;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
 /* Research Table */
 .research-table-container {
   background-color: #1e1e1e;

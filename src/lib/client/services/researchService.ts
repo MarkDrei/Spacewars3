@@ -100,6 +100,14 @@ interface TriggerResearchResponse {
   message?: string;
 }
 
+interface CompleteResearchResponse {
+  success: boolean;
+  message?: string;
+  completedResearch?: {
+    type: ResearchType;
+  };
+}
+
 class ResearchService {
   private baseUrl = process.env.NODE_ENV === 'production' 
     ? 'https://spacewars3.onrender.com/api' 
@@ -155,6 +163,34 @@ class ResearchService {
       return { success: true, message: data.message };
     } catch (error) {
       console.error('Network error during triggerResearch:', error);
+      return { error: 'Network error' };
+    }
+  }
+
+  /**
+   * Complete active research (cheat mode for developers)
+   */
+  async completeResearch(): Promise<CompleteResearchResponse | { error: string }> {
+    try {
+      const response = await fetch(`${this.baseUrl}/complete-research`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include'
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        return { 
+          error: errorData.error || `Server error: ${response.status}` 
+        };
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Network error during completeResearch:', error);
       return { error: 'Network error' };
     }
   }
@@ -223,5 +259,6 @@ export type {
   ResearchType,
   TechtreeResponse,
   TriggerResearchRequest,
-  TriggerResearchResponse
+  TriggerResearchResponse,
+  CompleteResearchResponse
 };
