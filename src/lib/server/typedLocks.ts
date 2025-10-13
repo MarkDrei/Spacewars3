@@ -29,6 +29,7 @@ export type WorldLevel = 1;
 export type UserLevel = 2;
 export type MessageReadLevel = 2.4;  // Read operations on messages
 export type MessageWriteLevel = 2.5; // Write operations on messages (higher than read)
+export type BattleLevel = 2.8;       // Battle operations (between Message Write and Database)
 export type DatabaseLevel = 3;
 
 // Type helper to check if new lock level is valid (must be > current max level)
@@ -38,8 +39,8 @@ type CanAcquire<NewLevel extends number, CurrentLevel extends number> =
     : NewLevel extends CurrentLevel 
       ? false 
       : [NewLevel, CurrentLevel] extends [number, number]
-        ? NewLevel extends 0 | 1 | 2 | 2.4 | 2.5 | 3
-          ? CurrentLevel extends 0 | 1 | 2 | 2.4 | 2.5 | 3
+        ? NewLevel extends 0 | 1 | 2 | 2.4 | 2.5 | 2.8 | 3
+          ? CurrentLevel extends 0 | 1 | 2 | 2.4 | 2.5 | 2.8 | 3
             ? NewLevel extends 0
               ? CurrentLevel extends never ? true : false
               : NewLevel extends 1
@@ -50,9 +51,11 @@ type CanAcquire<NewLevel extends number, CurrentLevel extends number> =
                     ? CurrentLevel extends 0 | 1 | 2 | never ? true : false
                     : NewLevel extends 2.5
                       ? CurrentLevel extends 0 | 1 | 2 | 2.4 | never ? true : false
-                      : NewLevel extends 3
+                      : NewLevel extends 2.8
                         ? CurrentLevel extends 0 | 1 | 2 | 2.4 | 2.5 | never ? true : false
-                        : false
+                        : NewLevel extends 3
+                          ? CurrentLevel extends 0 | 1 | 2 | 2.4 | 2.5 | 2.8 | never ? true : false
+                          : false
           : false
         : false
       : false;

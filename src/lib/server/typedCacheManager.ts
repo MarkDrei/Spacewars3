@@ -14,6 +14,7 @@ import {
   type UserLevel,
   type MessageReadLevel,
   type MessageWriteLevel,
+  type BattleLevel,
   type DatabaseLevel,
   createEmptyContext
 } from './typedLocks';
@@ -23,6 +24,8 @@ import { getDatabase } from './database';
 import { Message, UnreadMessage } from './messagesRepo';
 import { loadWorldFromDb, saveWorldToDb } from './worldRepo';
 import { getUserByIdFromDb, getUserByUsernameFromDb } from './userRepo';
+import type { Battle } from '../../shared/battleTypes';
+import { BattleRepo } from './battleRepo';
 import sqlite3 from 'sqlite3';
 
 // Type aliases for lock contexts to improve readability and avoid 'any'
@@ -30,12 +33,14 @@ import sqlite3 from 'sqlite3';
 type WorldReadContext = LockContext<Locked<'world:read'>, CacheLevel | WorldLevel>;
 type WorldWriteContext = LockContext<Locked<'world:write'>, CacheLevel | WorldLevel>;
 type UserContext = LockContext<Locked<'user'>, CacheLevel | WorldLevel | UserLevel>;
-type DatabaseReadContext = LockContext<Locked<'database:read'>, CacheLevel | WorldLevel | UserLevel | DatabaseLevel>;
-type DatabaseWriteContext = LockContext<Locked<'database:write'>, CacheLevel | WorldLevel | UserLevel | DatabaseLevel>;
+type BattleContext = LockContext<Locked<'battle'>, CacheLevel | WorldLevel | UserLevel | BattleLevel>;
+type DatabaseReadContext = LockContext<Locked<'database:read'>, CacheLevel | WorldLevel | UserLevel | BattleLevel | DatabaseLevel>;
+type DatabaseWriteContext = LockContext<Locked<'database:write'>, CacheLevel | WorldLevel | UserLevel | BattleLevel | DatabaseLevel>;
 
 // Context type for data access methods - accepts any context that provides the required lock
-type WorldAccessContext = WorldReadContext | WorldWriteContext | UserContext | DatabaseReadContext | DatabaseWriteContext;
-type UserAccessContext = UserContext | DatabaseReadContext | DatabaseWriteContext;
+type WorldAccessContext = WorldReadContext | WorldWriteContext | UserContext | BattleContext | DatabaseReadContext | DatabaseWriteContext;
+type UserAccessContext = UserContext | BattleContext | DatabaseReadContext | DatabaseWriteContext;
+type BattleAccessContext = BattleContext | DatabaseReadContext | DatabaseWriteContext;
 type DatabaseAccessContext = DatabaseReadContext | DatabaseWriteContext;
 
 // Cache configuration interface
@@ -50,14 +55,18 @@ export interface TypedCacheStats {
   userCacheSize: number;
   usernameCacheSize: number;
   messageCacheSize: number;
+  battleCacheSize: number;
   worldCacheHits: number;
   worldCacheMisses: number;
   userCacheHits: number;
   userCacheMisses: number;
   messageCacheHits: number;
   messageCacheMisses: number;
+  battleCacheHits: number;
+  battleCacheMisses: number;
   dirtyUsers: number;
   dirtyMessages: number;
+  dirtyBattles: number;
   worldDirty: boolean;
 }
 
@@ -102,16 +111,19 @@ export class TypedCacheManager {
   private worldLock = new TypedReadWriteLock('world', 1 as WorldLevel, 1 as WorldLevel);
   private userLock = new TypedMutex('user', 2 as UserLevel);
   private messageLock = new TypedReadWriteLock('message', 2.4 as MessageReadLevel, 2.5 as MessageWriteLevel);
+  private battleLock = new TypedMutex('battle', 2.8 as BattleLevel);
   private databaseLock = new TypedReadWriteLock('database', 3 as DatabaseLevel, 3 as DatabaseLevel);
 
   // In-memory cache storage
   private users: Map<number, User> = new Map();
   private world: World | null = null;
   private userMessages: Map<number, Message[]> = new Map(); // userId -> messages
+  private battles: Map<number, Battle> = new Map(); // battleId -> battle
   private usernameToUserId: Map<string, number> = new Map(); // username -> userId mapping
   private dirtyUsers: Set<number> = new Set();
   private worldDirty: boolean = false;
   private dirtyMessages: Set<number> = new Set(); // userIds with dirty messages
+  private dirtyBattles: Set<number> = new Set(); // battleIds with dirty battles
 
   // Statistics
   private stats = {
@@ -120,7 +132,9 @@ export class TypedCacheManager {
     userCacheHits: 0,
     userCacheMisses: 0,
     messageCacheHits: 0,
-    messageCacheMisses: 0
+    messageCacheMisses: 0,
+    battleCacheHits: 0,
+    battleCacheMisses: 0
   };
 
   /**
@@ -389,14 +403,18 @@ export class TypedCacheManager {
         userCacheSize: this.users.size,
         usernameCacheSize: this.usernameToUserId.size,
         messageCacheSize: this.userMessages.size,
+        battleCacheSize: this.battles.size,
         worldCacheHits: this.stats.worldCacheHits,
         worldCacheMisses: this.stats.worldCacheMisses,
         userCacheHits: this.stats.userCacheHits,
         userCacheMisses: this.stats.userCacheMisses,
         messageCacheHits: this.stats.messageCacheHits,
         messageCacheMisses: this.stats.messageCacheMisses,
+        battleCacheHits: this.stats.battleCacheHits,
+        battleCacheMisses: this.stats.battleCacheMisses,
         dirtyUsers: this.dirtyUsers.size,
         dirtyMessages: this.dirtyMessages.size,
+        dirtyBattles: this.dirtyBattles.size,
         worldDirty: this.worldDirty
       };
     });
@@ -421,6 +439,12 @@ export class TypedCacheManager {
     if (this.dirtyMessages.size > 0) {
       console.log(`💾 Flushing ${this.dirtyMessages.size} dirty message user(s)`);
       await this.persistDirtyMessages(emptyCtx);
+    }
+    
+    // Persist dirty battles
+    if (this.dirtyBattles.size > 0) {
+      console.log(`💾 Flushing ${this.dirtyBattles.size} dirty battle(s)`);
+      await this.persistDirtyBattles(emptyCtx);
     }
     
     // Persist dirty world data
@@ -766,6 +790,142 @@ export class TypedCacheManager {
     });
   }
 
+  // ============================================
+  // BATTLE CACHE OPERATIONS
+  // ============================================
+
+  /**
+   * Acquire battle lock for operations
+   */
+  async withBattleLock<T, CurrentLevel extends number>(
+    context: LockContext<any, CurrentLevel>,
+    fn: (ctx: BattleContext) => Promise<T>
+  ): Promise<T> {
+    return await this.battleLock.acquire(context, fn);
+  }
+
+  /**
+   * Get battle from cache without acquiring locks (requires battle lock context)
+   * UNSAFE: Requires battle lock context already acquired
+   */
+  getBattleUnsafe(battleId: number, _context: BattleAccessContext): Battle | null {
+    const battle = this.battles.get(battleId);
+    if (battle) {
+      this.stats.battleCacheHits++;
+      return battle;
+    }
+    this.stats.battleCacheMisses++;
+    return null;
+  }
+
+  /**
+   * Set battle in cache without acquiring locks (requires battle lock context)
+   * UNSAFE: Requires battle lock context already acquired
+   */
+  setBattleUnsafe(battle: Battle, _context: BattleAccessContext): void {
+    this.battles.set(battle.id, battle);
+    this.dirtyBattles.add(battle.id);
+  }
+
+  /**
+   * Load battle from database without acquiring locks (requires database read lock context)
+   */
+  async loadBattleFromDbUnsafe(battleId: number, _context: DatabaseAccessContext): Promise<Battle | null> {
+    if (!this.db) throw new Error('Database not initialized');
+    return await BattleRepo.getBattle(battleId);
+  }
+
+  /**
+   * Load battle from database if not in cache (proper lock ordering)
+   */
+  async loadBattleIfNeeded(battleId: number): Promise<Battle | null> {
+    const emptyCtx = createEmptyContext();
+    
+    return await this.withBattleLock(emptyCtx, async (battleCtx: BattleContext) => {
+      let battle = this.getBattleUnsafe(battleId, battleCtx);
+      if (battle) {
+        return battle;
+      }
+
+      // Load from database
+      return await this.withDatabaseRead(battleCtx, async (dbCtx: DatabaseReadContext) => {
+        console.log(`🔄 Battle ${battleId} cache miss, loading from database...`);
+        battle = await this.loadBattleFromDbUnsafe(battleId, dbCtx);
+        if (battle) {
+          this.setBattleUnsafe(battle, battleCtx);
+        }
+        return battle;
+      });
+    });
+  }
+
+  /**
+   * Persist a single battle to database
+   */
+  private async persistBattleToDb(battle: Battle): Promise<void> {
+    if (!this.db) throw new Error('Database not initialized');
+    
+    return new Promise((resolve, reject) => {
+      const query = `
+        UPDATE battles 
+        SET attacker_weapon_cooldowns = ?,
+            attackee_weapon_cooldowns = ?,
+            attacker_start_stats = ?,
+            attackee_start_stats = ?,
+            attacker_end_stats = ?,
+            attackee_end_stats = ?,
+            battle_log = ?,
+            battle_end_time = ?,
+            winner_id = ?,
+            loser_id = ?
+        WHERE id = ?
+      `;
+      
+      this.db.run(
+        query,
+        [
+          JSON.stringify(battle.attackerWeaponCooldowns),
+          JSON.stringify(battle.attackeeWeaponCooldowns),
+          JSON.stringify(battle.attackerStartStats),
+          JSON.stringify(battle.attackeeStartStats),
+          battle.attackerEndStats ? JSON.stringify(battle.attackerEndStats) : null,
+          battle.attackeeEndStats ? JSON.stringify(battle.attackeeEndStats) : null,
+          JSON.stringify(battle.battleLog),
+          battle.battleEndTime,
+          battle.winnerId,
+          battle.loserId,
+          battle.id
+        ],
+        function (err) {
+          if (err) return reject(err);
+          resolve();
+        }
+      );
+    });
+  }
+
+  /**
+   * Manually persist all dirty battles to database
+   */
+  async persistDirtyBattles<CurrentLevel extends number>(
+    context: LockContext<any, CurrentLevel>
+  ): Promise<void> {
+    await this.battleLock.acquire(context, async (battleCtx) => {
+      await this.databaseLock.write(battleCtx, async () => {
+        const dirtyBattleIds = Array.from(this.dirtyBattles);
+        
+        for (const battleId of dirtyBattleIds) {
+          const battle = this.battles.get(battleId);
+          if (battle) {
+            await this.persistBattleToDb(battle);
+          }
+        }
+        
+        this.dirtyBattles.clear();
+      });
+    });
+  }
+
   /**
    * Manually persist dirty world data to database
    */
@@ -851,6 +1011,12 @@ export class TypedCacheManager {
       await this.persistDirtyMessages(emptyCtx);
     }
 
+    // Persist dirty battles
+    if (this.dirtyBattles.size > 0) {
+      console.log(`💾 Background persisting ${this.dirtyBattles.size} dirty battle(s)`);
+      await this.persistDirtyBattles(emptyCtx);
+    }
+
     // Persist dirty world data
     if (this.worldDirty) {
       console.log('💾 Background persisting world data...');
@@ -879,6 +1045,11 @@ export class TypedCacheManager {
       if (this.dirtyMessages.size > 0) {
         console.log('💾 Final persist of dirty messages before shutdown');
         await this.persistDirtyMessages(emptyCtx);
+      }
+      
+      if (this.dirtyBattles.size > 0) {
+        console.log('💾 Final persist of dirty battles before shutdown');
+        await this.persistDirtyBattles(emptyCtx);
       }
       
       // Final persist of dirty world data before shutdown
