@@ -95,26 +95,49 @@ function formatValue(value: any, maxLength: number = 100): string {
   }
   
   let str = String(value);
+  const originalStr = str;
   
   // Try to parse as JSON for pretty printing
   if (str.startsWith('{') || str.startsWith('[')) {
     try {
       const parsed = JSON.parse(str);
-      str = JSON.stringify(parsed, null, 2);
-      if (str.length > maxLength) {
-        str = str.substring(0, maxLength) + '...';
+      const prettyJson = JSON.stringify(parsed, null, 2);
+      const isTruncated = prettyJson.length > maxLength;
+      
+      if (isTruncated) {
+        const truncated = prettyJson.substring(0, maxLength) + '...';
+        const fullContent = escapeHtml(prettyJson);
+        const truncatedContent = escapeHtml(truncated);
+        return `<pre class="json expandable" onclick="showModal('${escapeForAttribute(fullContent)}')" title="Click to view full content">${truncatedContent}</pre>`;
+      } else {
+        return `<pre class="json">${escapeHtml(prettyJson)}</pre>`;
       }
-      return `<pre class="json">${escapeHtml(str)}</pre>`;
     } catch (e) {
-      // Not valid JSON, continue
+      // Not valid JSON, continue with string handling
     }
   }
   
+  // Handle long strings
   if (str.length > maxLength) {
-    str = str.substring(0, maxLength) + '...';
+    const truncated = str.substring(0, maxLength) + '...';
+    const fullContent = escapeHtml(originalStr);
+    const truncatedContent = escapeHtml(truncated);
+    return `<span class="string expandable" onclick="showModal('${escapeForAttribute(fullContent)}')" title="Click to view full content">${truncatedContent}</span>`;
   }
   
   return `<span class="string">${escapeHtml(str)}</span>`;
+}
+
+/**
+ * Escape content for use in HTML attribute
+ */
+function escapeForAttribute(text: string): string {
+  return text
+    .replace(/\\/g, '\\\\')
+    .replace(/'/g, "\\'")
+    .replace(/"/g, '&quot;')
+    .replace(/\n/g, '\\n')
+    .replace(/\r/g, '\\r');
 }
 
 /**
@@ -462,6 +485,149 @@ async function generateHtml(db: sqlite3.Database): Promise<string> {
       border-radius: 6px;
     }
     
+    .expandable {
+      cursor: pointer;
+      position: relative;
+    }
+    
+    .expandable:hover {
+      opacity: 0.8;
+      background: #e9ecef !important;
+    }
+    
+    .expandable::after {
+      content: '🔍';
+      position: absolute;
+      top: 5px;
+      right: 5px;
+      font-size: 0.8em;
+      opacity: 0.5;
+    }
+    
+    /* Modal styles */
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0,0,0,0.7);
+      animation: fadeIn 0.2s;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    
+    .modal-content {
+      position: relative;
+      background-color: white;
+      margin: 5% auto;
+      padding: 0;
+      width: 90%;
+      max-width: 1000px;
+      max-height: 80vh;
+      border-radius: 8px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+      animation: slideDown 0.3s;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    @keyframes slideDown {
+      from {
+        transform: translateY(-50px);
+        opacity: 0;
+      }
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+    
+    .modal-header {
+      padding: 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border-radius: 8px 8px 0 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .modal-header h2 {
+      margin: 0;
+      font-size: 1.5em;
+    }
+    
+    .close {
+      color: white;
+      font-size: 35px;
+      font-weight: bold;
+      cursor: pointer;
+      line-height: 1;
+      transition: all 0.2s;
+    }
+    
+    .close:hover {
+      transform: scale(1.2);
+      text-shadow: 0 0 10px rgba(255,255,255,0.8);
+    }
+    
+    .modal-body {
+      padding: 20px;
+      overflow-y: auto;
+      flex: 1;
+    }
+    
+    .modal-body pre {
+      background: #282c34;
+      color: #abb2bf;
+      padding: 20px;
+      border-radius: 6px;
+      overflow-x: auto;
+      font-family: 'Courier New', monospace;
+      font-size: 0.9em;
+      line-height: 1.6;
+      margin: 0;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+    
+    .modal-footer {
+      padding: 15px 20px;
+      background: #f8f9fa;
+      border-radius: 0 0 8px 8px;
+      text-align: right;
+    }
+    
+    .copy-btn {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 1em;
+      transition: all 0.2s;
+    }
+    
+    .copy-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+    
+    .copy-btn:active {
+      transform: translateY(0);
+    }
+    
+    .copy-btn.copied {
+      background: #28a745;
+    }
+    
     footer {
       text-align: center;
       padding: 30px;
@@ -470,6 +636,51 @@ async function generateHtml(db: sqlite3.Database): Promise<string> {
       font-size: 0.9em;
     }
   </style>
+  <script>
+    function showModal(content) {
+      const modal = document.getElementById('contentModal');
+      const modalBody = document.getElementById('modalBody');
+      modalBody.innerHTML = '<pre>' + content + '</pre>';
+      modal.style.display = 'block';
+      document.body.style.overflow = 'hidden';
+    }
+    
+    function closeModal() {
+      const modal = document.getElementById('contentModal');
+      modal.style.display = 'none';
+      document.body.style.overflow = 'auto';
+    }
+    
+    function copyContent() {
+      const modalBody = document.getElementById('modalBody');
+      const text = modalBody.textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        const btn = document.querySelector('.copy-btn');
+        const originalText = btn.textContent;
+        btn.textContent = '✓ Copied!';
+        btn.classList.add('copied');
+        setTimeout(() => {
+          btn.textContent = originalText;
+          btn.classList.remove('copied');
+        }, 2000);
+      });
+    }
+    
+    // Close modal when clicking outside
+    window.onclick = function(event) {
+      const modal = document.getElementById('contentModal');
+      if (event.target == modal) {
+        closeModal();
+      }
+    }
+    
+    // Close modal with Escape key
+    document.addEventListener('keydown', function(event) {
+      if (event.key === 'Escape') {
+        closeModal();
+      }
+    });
+  </script>
 </head>
 <body>
   <div class="container">
@@ -492,6 +703,22 @@ async function generateHtml(db: sqlite3.Database): Promise<string> {
       <p>Generated by Spacewars3 Database Export Tool</p>
       <p>Spacewars Ironcore © 2025</p>
     </footer>
+  </div>
+  
+  <!-- Modal for full content display -->
+  <div id="contentModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>📄 Full Content</h2>
+        <span class="close" onclick="closeModal()">&times;</span>
+      </div>
+      <div class="modal-body" id="modalBody">
+        <!-- Content will be inserted here -->
+      </div>
+      <div class="modal-footer">
+        <button class="copy-btn" onclick="copyContent()">📋 Copy to Clipboard</button>
+      </div>
+    </div>
   </div>
 </body>
 </html>`;
