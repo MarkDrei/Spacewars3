@@ -1,5 +1,50 @@
 # Technical Debt
 
+## ⚠️ Cache Lock Deadlock in API Routes [IDENTIFIED & FIXED 2025-10-13]
+
+**Priority**: **CRITICAL - FIXED**  
+**Identified**: 2025-10-13  
+**Fixed**: 2025-10-13  
+**Component**: API Routes (harvest, world, user-stats)
+
+### Problem
+
+After implementing the cache-first architecture, API routes that acquire locks (world, user) and then call `sendMessageToUserCached()` would **deadlock** because:
+
+1. API route acquires locks: `worldWrite` (level 1) → `user` (level 2)
+2. Within the lock context, code calls `sendMessageToUserCached()`
+3. `sendMessageToUserCached()` creates an **empty lock context** and tries to acquire `messageLock.write` (level 2.5) and `databaseLock.write` (level 3)
+4. **Deadlock occurs**: The same thread tries to acquire new locks while already holding locks, and our TypedMutex implementation doesn't support reentrant locks
+
+### Symptoms
+
+- API endpoints (`/api/harvest`, `/api/world`, `/api/user-stats`) hang for 20 seconds before timing out
+- Harvest operations get stuck indefinitely
+- No errors logged, just timeouts
+
+### Root Cause
+
+The TypedMutex and TypedReadWriteLock implementations in `typedLocks.ts` do **not support reentrant locks** (same thread acquiring the same lock multiple times). When `sendMessageToUserCached()` is called from within a lock context, it creates a new empty context and tries to acquire locks from scratch, causing the calling thread to wait for locks it already holds.
+
+### Solution
+
+**Move message sending outside the lock context**:
+- In `harvest/route.ts`: Collect notification details while holding locks, but send the message **after** all locks are released
+- Pattern: Return notification data from the locked function, then send the message after the lock context exits
+
+### Files Fixed
+
+- `src/app/api/harvest/route.ts` - Message sending moved outside lock context
+
+### Prevention
+
+When calling functions that acquire locks:
+1. **Never call lock-acquiring functions from within a lock context** unless you pass the current context
+2. For async operations like notifications, collect the data within locks but execute outside
+3. Functions that need locks should accept a `LockContext` parameter, not create empty contexts
+
+---
+
 ## ✅ Battle System - Cache Bypass Issue [RESOLVED 2025-10-13]
 
 **Priority**: ~~High~~ **COMPLETE**  
