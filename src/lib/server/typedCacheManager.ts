@@ -399,7 +399,7 @@ export class TypedCacheManager {
    * Perform database read operations with proper locking
    */
   async withDatabaseRead<T>(
-    context: LockContext<any, CacheLevel | WorldLevel | UserLevel | never>,
+    context: LockContext<any, CacheLevel | WorldLevel | UserLevel | BattleLevel | never>,
     fn: (ctx: DatabaseReadContext) => Promise<T>
   ): Promise<T> {
     return await this.databaseLock.read(context, fn);
@@ -409,7 +409,7 @@ export class TypedCacheManager {
    * Perform database write operations with proper locking
    */
   async withDatabaseWrite<T>(
-    context: LockContext<any, CacheLevel | WorldLevel | UserLevel | never>,
+    context: LockContext<any, CacheLevel | WorldLevel | UserLevel | BattleLevel | never>,
     fn: (ctx: DatabaseWriteContext) => Promise<T>
   ): Promise<T> {
     return await this.databaseLock.write(context, fn);
@@ -893,7 +893,7 @@ export class TypedCacheManager {
    */
   async withBattleLock<T, CurrentLevel extends number>(
     context: LockContext<any, CurrentLevel>,
-    fn: (ctx: BattleContext) => Promise<T>
+    fn: (ctx: LockContext<Locked<'battle'>, BattleLevel | CurrentLevel>) => Promise<T>
   ): Promise<T> {
     return await this.battleLock.acquire(context, fn);
   }
@@ -975,7 +975,7 @@ export class TypedCacheManager {
         WHERE id = ?
       `;
       
-      this.db.run(
+      this.db!.run(
         query,
         [
           JSON.stringify(battle.attackerWeaponCooldowns),
