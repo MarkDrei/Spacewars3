@@ -115,36 +115,47 @@ async function getShipPosition(shipId: number): Promise<{ x: number; y: number }
 
 /**
  * Set ship speed using cache manager
+ * @param context Lock context from caller (use createEmptyContext() at entry points only)
  */
-async function setShipSpeed(shipId: number, speed: number): Promise<void> {
+async function setShipSpeed(
+  shipId: number,
+  speed: number,
+  context?: import('./typedLocks').LockContext<any, any>
+): Promise<void> {
   const { getTypedCacheManager } = await import('./typedCacheManager');
   const { createEmptyContext } = await import('./typedLocks');
   
   const cacheManager = getTypedCacheManager();
   await cacheManager.initialize();
   
-  const emptyCtx = createEmptyContext();
+  const ctx = context || createEmptyContext();
   
   // Use world write lock to update ship speed
-  await cacheManager.withWorldWrite(emptyCtx, async (worldCtx) => {
+  await cacheManager.withWorldWrite(ctx, async (worldCtx) => {
     cacheManager.setShipSpeedUnsafe(shipId, speed, worldCtx);
   });
 }
 
 /**
  * Update user's battle state using cache manager
+ * @param context Lock context from caller (use createEmptyContext() at entry points only)
  */
-async function updateUserBattleState(userId: number, inBattle: boolean, battleId: number | null): Promise<void> {
+async function updateUserBattleState(
+  userId: number,
+  inBattle: boolean,
+  battleId: number | null,
+  context?: import('./typedLocks').LockContext<any, any>
+): Promise<void> {
   const { getTypedCacheManager } = await import('./typedCacheManager');
   const { createEmptyContext } = await import('./typedLocks');
   
   const cacheManager = getTypedCacheManager();
   await cacheManager.initialize();
   
-  const emptyCtx = createEmptyContext();
+  const ctx = context || createEmptyContext();
   
   // Use user lock to update battle state
-  await cacheManager.withUserLock(emptyCtx, async (userCtx) => {
+  await cacheManager.withUserLock(ctx, async (userCtx) => {
     cacheManager.setUserBattleStateUnsafe(userId, inBattle, battleId, userCtx);
   });
 }
@@ -179,30 +190,13 @@ function generateTeleportPosition(
 
 /**
  * Teleport ship to new position using cache manager
+ * @param context Lock context from caller (use createEmptyContext() at entry points only)
  */
-async function teleportShip(shipId: number, x: number, y: number): Promise<void> {
-  const { getTypedCacheManager } = await import('./typedCacheManager');
-  const { createEmptyContext } = await import('./typedLocks');
-  
-  const cacheManager = getTypedCacheManager();
-  await cacheManager.initialize();
-  
-  const emptyCtx = createEmptyContext();
-  
-  // Use world write lock to teleport ship
-  await cacheManager.withWorldWrite(emptyCtx, async (worldCtx) => {
-    cacheManager.teleportShipUnsafe(shipId, x, y, worldCtx);
-  });
-}
-
-/**
- * Update user's defense values using cache manager
- */
-async function updateUserDefense(
-  userId: number,
-  hull: number,
-  armor: number,
-  shield: number
+async function teleportShip(
+  shipId: number,
+  x: number,
+  y: number,
+  context?: import('./typedLocks').LockContext<any, any>
 ): Promise<void> {
   const { getTypedCacheManager } = await import('./typedCacheManager');
   const { createEmptyContext } = await import('./typedLocks');
@@ -210,10 +204,35 @@ async function updateUserDefense(
   const cacheManager = getTypedCacheManager();
   await cacheManager.initialize();
   
-  const emptyCtx = createEmptyContext();
+  const ctx = context || createEmptyContext();
+  
+  // Use world write lock to teleport ship
+  await cacheManager.withWorldWrite(ctx, async (worldCtx) => {
+    cacheManager.teleportShipUnsafe(shipId, x, y, worldCtx);
+  });
+}
+
+/**
+ * Update user's defense values using cache manager
+ * @param context Lock context from caller (use createEmptyContext() at entry points only)
+ */
+async function updateUserDefense(
+  userId: number,
+  hull: number,
+  armor: number,
+  shield: number,
+  context?: import('./typedLocks').LockContext<any, any>
+): Promise<void> {
+  const { getTypedCacheManager } = await import('./typedCacheManager');
+  const { createEmptyContext } = await import('./typedLocks');
+  
+  const cacheManager = getTypedCacheManager();
+  await cacheManager.initialize();
+  
+  const ctx = context || createEmptyContext();
   
   // Use user lock to update defense values
-  await cacheManager.withUserLock(emptyCtx, async (userCtx) => {
+  await cacheManager.withUserLock(ctx, async (userCtx) => {
     cacheManager.setUserDefenseUnsafe(userId, hull, armor, shield, userCtx);
   });
 }

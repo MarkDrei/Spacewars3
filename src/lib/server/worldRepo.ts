@@ -74,16 +74,17 @@ export function loadWorldFromDb(db: sqlite3.Database, saveCallback: SaveWorldCal
 
 /**
  * Load world data via cache manager (cache-aware public function)
+ * @param context Lock context from caller (use createEmptyContext() at entry points only)
  */
-export async function loadWorld(): Promise<World> {
+export async function loadWorld(
+  context: LockContext<any, any> = createEmptyContext()
+): Promise<World> {
   // Use typed cache manager for cache-aware access
   const cacheManager = getTypedCacheManager();
   await cacheManager.initialize();
   
-  const emptyCtx = createEmptyContext();
-  
   // Use world read lock to ensure consistent access
-  return await cacheManager.withWorldRead(emptyCtx, async (worldCtx) => {
+  return await cacheManager.withWorldRead(context, async (worldCtx) => {
     // Get world data safely (we have world read lock)
     return cacheManager.getWorldUnsafe(worldCtx);
   });
@@ -120,16 +121,19 @@ export function saveWorldToDb(db: sqlite3.Database): SaveWorldCallback {
 
 /**
  * Delete a space object using cache manager
+ * @param context Lock context from caller (use createEmptyContext() at entry points only)
  */
-export async function deleteSpaceObject(db: sqlite3.Database, objectId: number): Promise<void> {
+export async function deleteSpaceObject(
+  db: sqlite3.Database,
+  objectId: number,
+  context: LockContext<any, any> = createEmptyContext()
+): Promise<void> {
   // Use cache manager to delete the object
   const cacheManager = getTypedCacheManager();
   await cacheManager.initialize();
   
-  const emptyCtx = createEmptyContext();
-  
   // Use world write lock to delete the object
-  await cacheManager.withWorldWrite(emptyCtx, async (worldCtx) => {
+  await cacheManager.withWorldWrite(context, async (worldCtx) => {
     cacheManager.deleteSpaceObjectUnsafe(objectId, worldCtx);
   });
   
@@ -140,8 +144,13 @@ export async function deleteSpaceObject(db: sqlite3.Database, objectId: number):
 /**
  * Insert a new space object into database and update cache
  * NOTE: This requires DB write first to get the object ID
+ * @param context Lock context from caller (use createEmptyContext() at entry points only)
  */
-export async function insertSpaceObject(db: sqlite3.Database, obj: Omit<SpaceObject, 'id'>): Promise<number> {
+export async function insertSpaceObject(
+  db: sqlite3.Database,
+  obj: Omit<SpaceObject, 'id'>,
+  context: LockContext<any, any> = createEmptyContext()
+): Promise<number> {
   // First insert into database to get the ID
   const objectId = await new Promise<number>((resolve, reject) => {
     db.run(
@@ -162,11 +171,10 @@ export async function insertSpaceObject(db: sqlite3.Database, obj: Omit<SpaceObj
     const cacheManager = getTypedCacheManager();
     await cacheManager.initialize();
     
-    const emptyCtx = createEmptyContext();
     const newObj = { ...obj, id: objectId } as SpaceObject;
     
     // Use world write lock to add the object to cache
-    await cacheManager.withWorldWrite(emptyCtx, async (worldCtx) => {
+    await cacheManager.withWorldWrite(context, async (worldCtx) => {
       const world = cacheManager.getWorldUnsafe(worldCtx);
       world.spaceObjects.push(newObj);
       // Don't mark as dirty since we just wrote to DB

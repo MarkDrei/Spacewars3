@@ -20,18 +20,24 @@ async function createMessage(userId: number, message: string): Promise<void> {
 
 /**
  * Helper to update user's battle state using cache manager
+ * @param context Lock context from caller (use createEmptyContext() at entry points only)
  */
-async function updateUserBattleState(userId: number, inBattle: boolean, battleId: number | null): Promise<void> {
+async function updateUserBattleState(
+  userId: number,
+  inBattle: boolean,
+  battleId: number | null,
+  context?: import('./typedLocks').LockContext<any, any>
+): Promise<void> {
   const { getTypedCacheManager } = await import('./typedCacheManager');
   const { createEmptyContext } = await import('./typedLocks');
   
   const cacheManager = getTypedCacheManager();
   await cacheManager.initialize();
   
-  const emptyCtx = createEmptyContext();
+  const ctx = context || createEmptyContext();
   
   // Use user lock to update battle state
-  await cacheManager.withUserLock(emptyCtx, async (userCtx) => {
+  await cacheManager.withUserLock(ctx, async (userCtx) => {
     cacheManager.setUserBattleStateUnsafe(userId, inBattle, battleId, userCtx);
   });
 }

@@ -117,15 +117,21 @@ export function getUserByUsernameFromDb(db: sqlite3.Database, username: string, 
 }
 
 // Cache-aware public functions
-export async function getUserById(db: sqlite3.Database, id: number): Promise<User | null> {
+/**
+ * Get user by ID (cached)
+ * @param context Lock context from caller (use createEmptyContext() at entry points only)
+ */
+export async function getUserById(
+  db: sqlite3.Database,
+  id: number,
+  context: LockContext<any, any> = createEmptyContext()
+): Promise<User | null> {
   // Use typed cache manager for cache-aware access
   const cacheManager = getTypedCacheManager();
   await cacheManager.initialize();
   
-  const emptyCtx = createEmptyContext();
-  
   // Use user lock to ensure consistent access
-  return await cacheManager.withUserLock(emptyCtx, async (userCtx) => {
+  return await cacheManager.withUserLock(context, async (userCtx) => {
     // Try to get from cache first
     let user = cacheManager.getUserUnsafe(id, userCtx);
     
@@ -145,12 +151,20 @@ export async function getUserById(db: sqlite3.Database, id: number): Promise<Use
   });
 }
 
-export async function getUserByUsername(db: sqlite3.Database, username: string): Promise<User | null> {
+/**
+ * Get user by username (cached)
+ * @param context Lock context from caller (use createEmptyContext() at entry points only)
+ */
+export async function getUserByUsername(
+  db: sqlite3.Database,
+  username: string,
+  context: LockContext<any, any> = createEmptyContext()
+): Promise<User | null> {
   // Use typed cache manager for cache-aware username lookup
   const cacheManager = getTypedCacheManager();
   await cacheManager.initialize();
   
-  return await cacheManager.getUserByUsername(username);
+  return await cacheManager.getUserByUsername(username, context);
 }
 
 export function createUser(db: sqlite3.Database, username: string, password_hash: string, saveCallback: SaveUserCallback): Promise<User> {
