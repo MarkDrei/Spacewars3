@@ -8,9 +8,10 @@
     "start": "next start",
     "lint": "next lint",
     "test": "vitest",
-  "ci": "npm run lint && npm test -- --run && npm run build",
+    "ci": "npm run lint && npm test -- --run && npm run build",
     "test:ui": "vitest --ui",
-    "test:run": "vitest run"
+    "test:run": "vitest run",
+    "export-db": "npx tsx scripts/export-database-to-html.ts"
   },
   "dependencies": {
     "@types/bcrypt": "^6.0.0",

@@ -39,3 +39,6 @@ next-env.d.ts
 
 # database
 database/*.db
+database/*.db-journal
+database/*.db-wal
+database/*.db-shm

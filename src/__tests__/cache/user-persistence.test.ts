@@ -12,7 +12,7 @@ describe('User Persistence to Database', () => {
 
   it('userPersistence_dirtyUserModified_persitsToDatabase', async () => {
     // Arrange: Create a test user
-    const db = getDatabase();
+    const db = await getDatabase();
     const saveCallback = saveUserToDb(db);
     const user = await createUser(db, 'testuser_persist', 'hashedpass', saveCallback);
     const initialIron = user.iron;
@@ -63,7 +63,7 @@ describe('User Persistence to Database', () => {
 
   it('userPersistence_shutdownPersist_flushesUsers', async () => {
     // Arrange: Create a test user
-    const db = getDatabase();
+    const db = await getDatabase();
     const saveCallback = saveUserToDb(db);
     const user = await createUser(db, 'testuser_shutdown_persist', 'hashedpass', saveCallback);
     
