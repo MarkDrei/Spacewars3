@@ -114,54 +114,38 @@ async function getShipPosition(shipId: number): Promise<{ x: number; y: number }
 }
 
 /**
- * Set ship speed to 0
- * 
- * TECHNICAL DEBT: This bypasses TypedCacheManager world cache.
- * Should use cache manager's world write operations.
- * See TechnicalDebt.md for details.
+ * Set ship speed using cache manager
  */
 async function setShipSpeed(shipId: number, speed: number): Promise<void> {
-  const db = await getDatabase();
+  const { getTypedCacheManager } = await import('./typedCacheManager');
+  const { createEmptyContext } = await import('./typedLocks');
   
-  // TODO: Refactor to use TypedCacheManager.withWorldWrite()
-  return new Promise((resolve, reject) => {
-    db.run(
-      'UPDATE space_objects SET speed = ? WHERE id = ?',
-      [speed, shipId],
-      (err) => {
-        if (err) {
-          reject(err);
-          return;
-        }
-        resolve();
-      }
-    );
+  const cacheManager = getTypedCacheManager();
+  await cacheManager.initialize();
+  
+  const emptyCtx = createEmptyContext();
+  
+  // Use world write lock to update ship speed
+  await cacheManager.withWorldWrite(emptyCtx, async (worldCtx) => {
+    cacheManager.setShipSpeedUnsafe(shipId, speed, worldCtx);
   });
 }
 
 /**
- * Update user's battle state in database
- * 
- * TECHNICAL DEBT: This bypasses TypedCacheManager.
- * Should use cache-first architecture.
- * See TechnicalDebt.md for details.
+ * Update user's battle state using cache manager
  */
 async function updateUserBattleState(userId: number, inBattle: boolean, battleId: number | null): Promise<void> {
-  const db = await getDatabase();
+  const { getTypedCacheManager } = await import('./typedCacheManager');
+  const { createEmptyContext } = await import('./typedLocks');
   
-  // TODO: Refactor to use TypedCacheManager.withUserLock()
-  return new Promise((resolve, reject) => {
-    db.run(
-      'UPDATE users SET in_battle = ?, current_battle_id = ? WHERE id = ?',
-      [inBattle ? 1 : 0, battleId, userId],
-      (err) => {
-        if (err) {
-          reject(err);
-          return;
-        }
-        resolve();
-      }
-    );
+  const cacheManager = getTypedCacheManager();
+  await cacheManager.initialize();
+  
+  const emptyCtx = createEmptyContext();
+  
+  // Use user lock to update battle state
+  await cacheManager.withUserLock(emptyCtx, async (userCtx) => {
+    cacheManager.setUserBattleStateUnsafe(userId, inBattle, battleId, userCtx);
   });
 }
 
@@ -194,29 +178,25 @@ function generateTeleportPosition(
 }
 
 /**
- * Teleport ship to new position
+ * Teleport ship to new position using cache manager
  */
 async function teleportShip(shipId: number, x: number, y: number): Promise<void> {
-  const db = await getDatabase();
-  const now = Date.now();
+  const { getTypedCacheManager } = await import('./typedCacheManager');
+  const { createEmptyContext } = await import('./typedLocks');
   
-  return new Promise((resolve, reject) => {
-    db.run(
-      'UPDATE space_objects SET x = ?, y = ?, speed = 0, last_position_update_ms = ? WHERE id = ?',
-      [x, y, now, shipId],
-      (err) => {
-        if (err) {
-          reject(err);
-          return;
-        }
-        resolve();
-      }
-    );
+  const cacheManager = getTypedCacheManager();
+  await cacheManager.initialize();
+  
+  const emptyCtx = createEmptyContext();
+  
+  // Use world write lock to teleport ship
+  await cacheManager.withWorldWrite(emptyCtx, async (worldCtx) => {
+    cacheManager.teleportShipUnsafe(shipId, x, y, worldCtx);
   });
 }
 
 /**
- * Update user's defense values in database
+ * Update user's defense values using cache manager
  */
 async function updateUserDefense(
   userId: number,
@@ -224,21 +204,17 @@ async function updateUserDefense(
   armor: number,
   shield: number
 ): Promise<void> {
-  const db = await getDatabase();
-  const now = Math.floor(Date.now() / 1000);
+  const { getTypedCacheManager } = await import('./typedCacheManager');
+  const { createEmptyContext } = await import('./typedLocks');
   
-  return new Promise((resolve, reject) => {
-    db.run(
-      'UPDATE users SET hull_current = ?, armor_current = ?, shield_current = ?, defense_last_regen = ? WHERE id = ?',
-      [hull, armor, shield, now, userId],
-      (err) => {
-        if (err) {
-          reject(err);
-          return;
-        }
-        resolve();
-      }
-    );
+  const cacheManager = getTypedCacheManager();
+  await cacheManager.initialize();
+  
+  const emptyCtx = createEmptyContext();
+  
+  // Use user lock to update defense values
+  await cacheManager.withUserLock(emptyCtx, async (userCtx) => {
+    cacheManager.setUserDefenseUnsafe(userId, hull, armor, shield, userCtx);
   });
 }
 
