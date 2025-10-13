@@ -19,7 +19,7 @@ import {
   createEmptyContext
 } from './typedLocks';
 import { User } from './user';
-import { World } from './world';
+import { World, type SpaceObject } from './world';
 import { getDatabase } from './database';
 import { Message, UnreadMessage } from './messagesRepo';
 import { loadWorldFromDb, saveWorldToDb } from './worldRepo';
@@ -254,6 +254,68 @@ export class TypedCacheManager {
     this.worldDirty = true;
   }
 
+  /**
+   * Update ship speed without acquiring locks (requires world write lock context)
+   */
+  setShipSpeedUnsafe(shipId: number, speed: number, _context: WorldAccessContext): void {
+    if (!this.world) {
+      throw new Error('World not loaded - call initialize() first');
+    }
+    
+    const ship = this.world.getSpaceObject(shipId);
+    if (ship) {
+      ship.speed = speed;
+      ship.last_position_update_ms = Date.now();
+      this.worldDirty = true;
+    }
+  }
+
+  /**
+   * Teleport ship without acquiring locks (requires world write lock context)
+   */
+  teleportShipUnsafe(shipId: number, x: number, y: number, _context: WorldAccessContext): void {
+    if (!this.world) {
+      throw new Error('World not loaded - call initialize() first');
+    }
+    
+    const ship = this.world.getSpaceObject(shipId);
+    if (ship) {
+      ship.x = x;
+      ship.y = y;
+      ship.speed = 0;
+      ship.last_position_update_ms = Date.now();
+      this.worldDirty = true;
+    }
+  }
+
+  /**
+   * Delete space object without acquiring locks (requires world write lock context)
+   */
+  deleteSpaceObjectUnsafe(objectId: number, _context: WorldAccessContext): void {
+    if (!this.world) {
+      throw new Error('World not loaded - call initialize() first');
+    }
+    
+    this.world.spaceObjects = this.world.spaceObjects.filter(obj => obj.id !== objectId);
+    this.worldDirty = true;
+  }
+
+  /**
+   * Insert space object without acquiring locks (requires world write lock context)
+   * Returns the new object's ID (will be assigned after DB insert)
+   */
+  insertSpaceObjectUnsafe(obj: Omit<SpaceObject, 'id'>, _context: WorldAccessContext): void {
+    if (!this.world) {
+      throw new Error('World not loaded - call initialize() first');
+    }
+    
+    // Note: ID will be assigned by database, so we use a temporary negative ID
+    // The caller should refresh from DB after insert to get the real ID
+    const tempObj = { ...obj, id: -1 };
+    this.world.spaceObjects.push(tempObj as SpaceObject);
+    this.worldDirty = true;
+  }
+
   // ===== LEVEL 2: USER OPERATIONS =====
 
   /**
@@ -297,6 +359,38 @@ export class TypedCacheManager {
     this.users.set(user.id, user);
     this.usernameToUserId.set(user.username, user.id); // Update username mapping
     this.dirtyUsers.add(user.id); // Mark as dirty for persistence
+  }
+
+  /**
+   * Update user battle state without acquiring locks (requires user lock context)
+   */
+  setUserBattleStateUnsafe(userId: number, inBattle: boolean, battleId: number | null, _context: UserAccessContext): void {
+    const user = this.users.get(userId);
+    if (user) {
+      user.inBattle = inBattle;
+      user.currentBattleId = battleId;
+      this.dirtyUsers.add(userId);
+    }
+  }
+
+  /**
+   * Update user defense values without acquiring locks (requires user lock context)
+   */
+  setUserDefenseUnsafe(
+    userId: number,
+    hull: number,
+    armor: number,
+    shield: number,
+    _context: UserAccessContext
+  ): void {
+    const user = this.users.get(userId);
+    if (user) {
+      user.hullCurrent = hull;
+      user.armorCurrent = armor;
+      user.shieldCurrent = shield;
+      user.defenseLastRegen = Math.floor(Date.now() / 1000);
+      this.dirtyUsers.add(userId);
+    }
   }
 
   // ===== LEVEL 3: DATABASE OPERATIONS =====
