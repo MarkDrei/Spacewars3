@@ -705,3 +705,6 @@ export class TypedCacheManagerV2 {
 export function getTypedCacheManagerV2(): TypedCacheManagerV2 {
   return TypedCacheManagerV2.getInstance();
 }
+
+// Default export for convenience
+export default TypedCacheManagerV2;
