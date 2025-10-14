@@ -114,54 +114,45 @@ async function getShipPosition(shipId: number): Promise<{ x: number; y: number }
 }
 
 /**
- * Set ship speed to 0
- * 
- * TECHNICAL DEBT: This bypasses TypedCacheManager world cache.
- * Should use cache manager's world write operations.
- * See TechnicalDebt.md for details.
+ * Set ship speed using cache manager
+ * @param context Lock context from caller (REQUIRED - no default)
  */
-async function setShipSpeed(shipId: number, speed: number): Promise<void> {
-  const db = await getDatabase();
+async function setShipSpeed(
+  shipId: number,
+  speed: number,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  context: import('./ironGuardSystem').LockContext<any, any>
+): Promise<void> {
+  const { getTypedCacheManager } = await import('./typedCacheManager');
   
-  // TODO: Refactor to use TypedCacheManager.withWorldWrite()
-  return new Promise((resolve, reject) => {
-    db.run(
-      'UPDATE space_objects SET speed = ? WHERE id = ?',
-      [speed, shipId],
-      (err) => {
-        if (err) {
-          reject(err);
-          return;
-        }
-        resolve();
-      }
-    );
+  const cacheManager = getTypedCacheManager();
+  await cacheManager.initialize();
+  
+  // Use world write lock to update ship speed
+  await cacheManager.withWorldWrite(context, async (worldCtx) => {
+    cacheManager.setShipSpeedUnsafe(shipId, speed, worldCtx);
   });
 }
 
 /**
- * Update user's battle state in database
- * 
- * TECHNICAL DEBT: This bypasses TypedCacheManager.
- * Should use cache-first architecture.
- * See TechnicalDebt.md for details.
+ * Update user's battle state using cache manager
+ * @param context Lock context from caller (REQUIRED - no default)
  */
-async function updateUserBattleState(userId: number, inBattle: boolean, battleId: number | null): Promise<void> {
-  const db = await getDatabase();
+async function updateUserBattleState(
+  userId: number,
+  inBattle: boolean,
+  battleId: number | null,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  context: import('./ironGuardSystem').LockContext<any, any>
+): Promise<void> {
+  const { getTypedCacheManager } = await import('./typedCacheManager');
   
-  // TODO: Refactor to use TypedCacheManager.withUserLock()
-  return new Promise((resolve, reject) => {
-    db.run(
-      'UPDATE users SET in_battle = ?, current_battle_id = ? WHERE id = ?',
-      [inBattle ? 1 : 0, battleId, userId],
-      (err) => {
-        if (err) {
-          reject(err);
-          return;
-        }
-        resolve();
-      }
-    );
+  const cacheManager = getTypedCacheManager();
+  await cacheManager.initialize();
+  
+  // Use user lock to update battle state
+  await cacheManager.withUserLock(context, async (userCtx) => {
+    cacheManager.setUserBattleStateUnsafe(userId, inBattle, battleId, userCtx);
   });
 }
 
@@ -194,51 +185,47 @@ function generateTeleportPosition(
 }
 
 /**
- * Teleport ship to new position
+ * Teleport ship to new position using cache manager
+ * @param context Lock context from caller (REQUIRED - no default)
  */
-async function teleportShip(shipId: number, x: number, y: number): Promise<void> {
-  const db = await getDatabase();
-  const now = Date.now();
+async function teleportShip(
+  shipId: number,
+  x: number,
+  y: number,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  context: import('./ironGuardSystem').LockContext<any, any>
+): Promise<void> {
+  const { getTypedCacheManager } = await import('./typedCacheManager');
   
-  return new Promise((resolve, reject) => {
-    db.run(
-      'UPDATE space_objects SET x = ?, y = ?, speed = 0, last_position_update_ms = ? WHERE id = ?',
-      [x, y, now, shipId],
-      (err) => {
-        if (err) {
-          reject(err);
-          return;
-        }
-        resolve();
-      }
-    );
+  const cacheManager = getTypedCacheManager();
+  await cacheManager.initialize();
+  
+  // Use world write lock to teleport ship
+  await cacheManager.withWorldWrite(context, async (worldCtx) => {
+    cacheManager.teleportShipUnsafe(shipId, x, y, worldCtx);
   });
 }
 
 /**
- * Update user's defense values in database
+ * Update user's defense values using cache manager
+ * @param context Lock context from caller (REQUIRED - no default)
  */
 async function updateUserDefense(
   userId: number,
   hull: number,
   armor: number,
-  shield: number
+  shield: number,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  context: import('./ironGuardSystem').LockContext<any, any>
 ): Promise<void> {
-  const db = await getDatabase();
-  const now = Math.floor(Date.now() / 1000);
+  const { getTypedCacheManager } = await import('./typedCacheManager');
   
-  return new Promise((resolve, reject) => {
-    db.run(
-      'UPDATE users SET hull_current = ?, armor_current = ?, shield_current = ?, defense_last_regen = ? WHERE id = ?',
-      [hull, armor, shield, now, userId],
-      (err) => {
-        if (err) {
-          reject(err);
-          return;
-        }
-        resolve();
-      }
-    );
+  const cacheManager = getTypedCacheManager();
+  await cacheManager.initialize();
+  
+  // Use user lock to update defense values
+  await cacheManager.withUserLock(context, async (userCtx) => {
+    cacheManager.setUserDefenseUnsafe(userId, hull, armor, shield, userCtx);
   });
 }
 
@@ -277,6 +264,10 @@ export async function initiateBattle(
   attackee: User
 ): Promise<Battle> {
   console.log(`⚔️ initiateBattle: Starting battle between ${attacker.username} and ${attackee.username}`);
+  
+  // Create empty context at entry point
+  const { createEmptyContext } = await import('./ironGuardSystem');
+  const emptyCtx = createEmptyContext();
   
   // Validation: Check battle state from user objects (no DB access needed)
   if (attacker.inBattle) {
@@ -338,8 +329,8 @@ export async function initiateBattle(
   
   console.log(`⚔️ initiateBattle: Setting ship speeds to 0...`);
   // Set both ships' speeds to 0
-  await setShipSpeed(attacker.ship_id, 0);
-  await setShipSpeed(attackee.ship_id, 0);
+  await setShipSpeed(attacker.ship_id, 0, emptyCtx);
+  await setShipSpeed(attackee.ship_id, 0, emptyCtx);
   
   console.log(`⚔️ initiateBattle: Creating battle in database...`);
   // Create battle in database with initial cooldowns
@@ -354,8 +345,8 @@ export async function initiateBattle(
   
   console.log(`⚔️ initiateBattle: Updating user battle states...`);
   // Update users' battle state
-  await updateUserBattleState(attacker.id, true, battle.id);
-  await updateUserBattleState(attackee.id, true, battle.id);
+  await updateUserBattleState(attacker.id, true, battle.id, emptyCtx);
+  await updateUserBattleState(attackee.id, true, battle.id, emptyCtx);
   
   // Log battle start event
   const startEvent: BattleEvent = {
@@ -427,6 +418,9 @@ export async function resolveBattle(
   battleId: number,
   winnerId: number
 ): Promise<void> {
+  // Create empty context at entry point
+  const { createEmptyContext } = await import('./ironGuardSystem');
+  const emptyCtx = createEmptyContext();
   const battle = await BattleRepo.getBattle(battleId);
   
   if (!battle) {
@@ -453,21 +447,23 @@ export async function resolveBattle(
   );
   
   // Clear battle state for both users
-  await updateUserBattleState(battle.attackerId, false, null);
-  await updateUserBattleState(battle.attackeeId, false, null);
+  await updateUserBattleState(battle.attackerId, false, null, emptyCtx);
+  await updateUserBattleState(battle.attackeeId, false, null, emptyCtx);
   
   // Update defense values in users table
   await updateUserDefense(
     battle.attackerId,
     attackerEndStats.hull.current,
     attackerEndStats.armor.current,
-    attackerEndStats.shield.current
+    attackerEndStats.shield.current,
+    emptyCtx
   );
   await updateUserDefense(
     battle.attackeeId,
     attackeeEndStats.hull.current,
     attackeeEndStats.armor.current,
-    attackeeEndStats.shield.current
+    attackeeEndStats.shield.current,
+    emptyCtx
   );
   
   // Get ship IDs for teleportation
@@ -484,7 +480,7 @@ export async function resolveBattle(
       MIN_TELEPORT_DISTANCE
     );
     
-    await teleportShip(loserShipId, teleportPos.x, teleportPos.y);
+    await teleportShip(loserShipId, teleportPos.x, teleportPos.y, emptyCtx);
     
     console.log(`⚔️ Battle ${battleId} ended: Winner ${winnerId}, Loser ${loserId} teleported to (${teleportPos.x.toFixed(0)}, ${teleportPos.y.toFixed(0)})`);
   }

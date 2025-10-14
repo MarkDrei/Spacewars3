@@ -4,7 +4,7 @@ import { calculateToroidalDistance } from '@shared/physics';
 import { getTypedCacheManager, TypedCacheManager, sendMessageToUserCached } from '@/lib/server/typedCacheManager';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth, ApiError } from '@/lib/server/errors';
-import { createEmptyContext, LockContext, Locked, CacheLevel, WorldLevel, UserLevel } from '@/lib/server/typedLocks';
+import { createEmptyContext, LockContext, Locked, CacheLevel, WorldLevel, UserLevel } from '@/lib/server/ironGuardSystem';
 import { User } from '@/lib/server/user';
 import { World } from '@/lib/server/world';
 
@@ -53,7 +53,10 @@ export async function POST(request: NextRequest) {
     
     // Execute collection with compile-time guaranteed deadlock-free lock ordering:
     // World Write (1) → User (2) → Database Read (3) if needed
-    return await cacheManager.withWorldWrite(emptyCtx, async (worldCtx) => {
+    let notificationMessage: string | null = null;
+    let userId: number | null = null;
+    
+    const result = await cacheManager.withWorldWrite(emptyCtx, async (worldCtx) => {
       return await cacheManager.withUserLock(worldCtx, async (userCtx) => {
         // Get world data safely (we have world write lock)
         const world = cacheManager.getWorldUnsafe(userCtx);
@@ -73,14 +76,31 @@ export async function POST(request: NextRequest) {
             cacheManager.setUserUnsafe(user, userCtx);
             
             // Continue with collection logic
-            return await performCollectionLogic(world, user, objectId, cacheManager, userCtx);
+            const resultData = await performCollectionLogic(world, user, objectId, cacheManager, userCtx);
+            notificationMessage = resultData.notification;
+            userId = resultData.userId;
+            return resultData.response;
           });
         } else {
           // Continue with collection logic directly
-          return await performCollectionLogic(world, user, objectId, cacheManager, userCtx);
+          const resultData = await performCollectionLogic(world, user, objectId, cacheManager, userCtx);
+          notificationMessage = resultData.notification;
+          userId = resultData.userId;
+          return resultData.response;
         }
       });
     });
+    
+    // Send notification AFTER releasing all locks to avoid deadlock
+    // Use fresh empty context for fire-and-forget operation
+    if (notificationMessage && userId) {
+      const notifyCtx = createEmptyContext();
+      sendMessageToUserCached(userId, notificationMessage, notifyCtx).catch((error: Error) => {
+        console.error('❌ Failed to send collection notification:', error);
+      });
+    }
+    
+    return result;
   } catch (error) {
     console.log(`❌ Collection API error:`, error);
     return handleApiError(error);
@@ -97,7 +117,7 @@ async function performCollectionLogic(
   objectId: number,
   cacheManager: TypedCacheManager,
   userCtx: UserContext
-): Promise<NextResponse> {
+): Promise<{ response: NextResponse; notification: string; userId: number }> {
   // Update physics for all objects first
   const currentTime = Date.now();
   world.updatePhysics(currentTime);
@@ -155,20 +175,19 @@ async function performCollectionLogic(
     notificationMessage = `Successfully collected ${targetObject.type.replace('_', ' ')}.`;
   }
   
-  console.log(`📝 Creating notification for user ${user.id}: "${notificationMessage}"`);
+  console.log(`📝 Notification prepared for user ${user.id}: "${notificationMessage}"`);
   
-  // Send notification to user (async, doesn't block response)
-  // Using FIXED cached operations (deadlock resolved)
-  sendMessageToUserCached(user.id, notificationMessage).catch((error: Error) => {
-    console.error('❌ Failed to send collection notification:', error);
-  });
-  
-  return NextResponse.json({ 
-    success: true, 
-    distance,
-    ironReward,
-    totalIron: user.iron,
-    objectType: targetObject.type,
-    message: 'Collection completed successfully'
-  });
+  // Return response with notification to be sent after locks are released
+  return {
+    response: NextResponse.json({ 
+      success: true, 
+      distance,
+      ironReward,
+      totalIron: user.iron,
+      objectType: targetObject.type,
+      message: 'Collection completed successfully'
+    }),
+    notification: notificationMessage,
+    userId: user.id
+  };
 }

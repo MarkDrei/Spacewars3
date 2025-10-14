@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { TypedReadWriteLock, createEmptyContext, MessageReadLevel, MessageWriteLevel } from '@/lib/server/typedLocks';
+import { TypedReadWriteLock, createEmptyContext, MessageReadLevel, MessageWriteLevel } from '@/lib/server/ironGuardSystem';
 
 describe('Enhanced Type System Deadlock Prevention', () => {
   

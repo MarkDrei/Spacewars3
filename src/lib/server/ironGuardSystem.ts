@@ -1,7 +1,99 @@
-// ---
-// TypeScript Compile-Time Deadlock Prevention System
-// Phase 1: Core Type System and Typed Lock Classes
-// ---
+/**
+ * IronGuard: Compile-Time Deadlock Prevention System for Spacewars
+ * 
+ * This system uses TypeScript's type system to enforce lock ordering at compile time,
+ * preventing deadlocks before the code even runs.
+ * 
+ * ## Core Concepts
+ * 
+ * 1. **Lock Levels**: Numeric hierarchy (0 < 1 < 2 < 2.4 < 2.5 < 2.8 < 3)
+ * 2. **Lock Context**: Tracks what locks are currently held
+ * 3. **Compile-Time Validation**: TypeScript rejects invalid lock acquisition
+ * 4. **Context Threading**: Contexts passed through function calls maintain safety
+ * 
+ * ## Usage Pattern
+ * 
+ * ### Entry Points (API Routes, Background Jobs)
+ * 
+ * ```typescript
+ * export async function POST(request: NextRequest) {
+ *   const emptyCtx = createEmptyContext();  // ✅ Create at entry point
+ *   
+ *   // Pass context through to all operations
+ *   return await performOperation(emptyCtx, userId, data);
+ * }
+ * ```
+ * 
+ * ### Internal Functions (Business Logic)
+ * 
+ * ```typescript
+ * // CORRECT: Accept context parameter with specific constraint
+ * async function performOperation<CurrentLevel extends number>(
+ *   context: ValidUserLockContext<CurrentLevel>,  // ✅ Type-safe constraint
+ *   userId: number,
+ *   data: any
+ * ): Promise<Result> {
+ *   // Thread context through lock acquisition
+ *   return await cacheManager.withUserLock(context, async (userCtx) => {
+ *     // userCtx now has user lock + any previous locks
+ *     await helperFunction(userCtx, userId);  // ✅ Thread through
+ *   });
+ * }
+ * 
+ * // WRONG: Using 'any' breaks type safety
+ * async function badFunction(
+ *   context: LockContext<any, any>,  // ❌ Disables compile-time checks!
+ *   userId: number
+ * ): Promise<Result> {
+ *   // TypeScript can't validate lock ordering
+ * }
+ * ```
+ * 
+ * ### Acquiring Locks in Order
+ * 
+ * ```typescript
+ * const emptyCtx = createEmptyContext();
+ * 
+ * // Correct order: Cache(0) → World(1) → User(2) → Database(3)
+ * await cacheManager.withWorldWrite(emptyCtx, async (worldCtx) => {
+ *   // worldCtx: has world write lock
+ *   
+ *   await cacheManager.withUserLock(worldCtx, async (userCtx) => {
+ *     // userCtx: has world + user locks
+ *     
+ *     await cacheManager.withDatabaseRead(userCtx, async (dbCtx) => {
+ *       // dbCtx: has world + user + database locks
+ *       // ✅ Valid ordering!
+ *     });
+ *   });
+ * });
+ * 
+ * // Wrong order: Would cause compile error
+ * await cacheManager.withDatabaseRead(emptyCtx, async (dbCtx) => {
+ *   await cacheManager.withUserLock(dbCtx, async (userCtx) => {
+ *     // ❌ COMPILE ERROR: Cannot acquire level 2 after level 3
+ *   });
+ * });
+ * ```
+ * 
+ * ## Lock Hierarchy
+ * 
+ * ```
+ * 0   → Cache Management
+ * 1   → World (Read/Write)
+ * 2   → User
+ * 2.4 → Message Read
+ * 2.5 → Message Write
+ * 2.8 → Battle
+ * 3   → Database (Read/Write)
+ * ```
+ * 
+ * Rules:
+ * - Always acquire locks in increasing order
+ * - Can skip levels (0 → 2 is valid)
+ * - Cannot acquire lower level after higher level
+ * - Cannot acquire same level twice
+ */
 
 // Phantom type brands for lock state and level tracking
 declare const LockBrand: unique symbol;
@@ -29,17 +121,19 @@ export type WorldLevel = 1;
 export type UserLevel = 2;
 export type MessageReadLevel = 2.4;  // Read operations on messages
 export type MessageWriteLevel = 2.5; // Write operations on messages (higher than read)
+export type BattleLevel = 2.8;       // Battle operations (between Message Write and Database)
 export type DatabaseLevel = 3;
 
 // Type helper to check if new lock level is valid (must be > current max level)
-type CanAcquire<NewLevel extends number, CurrentLevel extends number> = 
+// Exported for use in ironGuardTypes.ts constraint definitions
+export type CanAcquire<NewLevel extends number, CurrentLevel extends number> = 
   CurrentLevel extends never 
     ? true 
     : NewLevel extends CurrentLevel 
       ? false 
       : [NewLevel, CurrentLevel] extends [number, number]
-        ? NewLevel extends 0 | 1 | 2 | 2.4 | 2.5 | 3
-          ? CurrentLevel extends 0 | 1 | 2 | 2.4 | 2.5 | 3
+        ? NewLevel extends 0 | 1 | 2 | 2.4 | 2.5 | 2.8 | 3
+          ? CurrentLevel extends 0 | 1 | 2 | 2.4 | 2.5 | 2.8 | 3
             ? NewLevel extends 0
               ? CurrentLevel extends never ? true : false
               : NewLevel extends 1
@@ -50,9 +144,11 @@ type CanAcquire<NewLevel extends number, CurrentLevel extends number> =
                     ? CurrentLevel extends 0 | 1 | 2 | never ? true : false
                     : NewLevel extends 2.5
                       ? CurrentLevel extends 0 | 1 | 2 | 2.4 | never ? true : false
-                      : NewLevel extends 3
+                      : NewLevel extends 2.8
                         ? CurrentLevel extends 0 | 1 | 2 | 2.4 | 2.5 | never ? true : false
-                        : false
+                        : NewLevel extends 3
+                          ? CurrentLevel extends 0 | 1 | 2 | 2.4 | 2.5 | 2.8 | never ? true : false
+                          : false
           : false
         : false
       : false;
@@ -76,6 +172,7 @@ export class TypedMutex<Name extends string, LockLevel extends number> {
    * @returns Promise with result, or compilation error if lock order violated
    */
   async acquire<T, CurrentLevel extends number>(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     context: LockContext<any, CurrentLevel>,
     fn: (ctx: LockContext<Locked<Name>, LockLevel | CurrentLevel>) => Promise<T>
   ): Promise<T> {
@@ -88,6 +185,7 @@ export class TypedMutex<Name extends string, LockLevel extends number> {
         try {
           // Create new context with this lock added
           const lockedContext = {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             _state: 'locked' as any,
             _maxLevel: (Math.max(
               typeof context._maxLevel === 'number' ? context._maxLevel : -1,
@@ -152,6 +250,7 @@ export class TypedReadWriteLock<Name extends string, ReadLevel extends number, W
    * Uses ReadLevel for validation - prevents acquiring read lock after write lock
    */
   async read<T, CurrentLevel extends number>(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     context: LockContext<any, CurrentLevel>,
     fn: (ctx: LockContext<Locked<`${Name}:read`>, ReadLevel | CurrentLevel>) => Promise<T>
   ): Promise<T> {
@@ -164,6 +263,7 @@ export class TypedReadWriteLock<Name extends string, ReadLevel extends number, W
         this.readers++;
         try {
           const lockedContext = {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             _state: 'locked:read' as any,
             _maxLevel: (Math.max(
               typeof context._maxLevel === 'number' ? context._maxLevel : -1,
@@ -195,6 +295,7 @@ export class TypedReadWriteLock<Name extends string, ReadLevel extends number, W
    * Uses WriteLevel for validation - higher than ReadLevel to prevent deadlock
    */
   async write<T, CurrentLevel extends number>(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     context: LockContext<any, CurrentLevel>,
     fn: (ctx: LockContext<Locked<`${Name}:write`>, WriteLevel | CurrentLevel>) => Promise<T>
   ): Promise<T> {
@@ -207,6 +308,7 @@ export class TypedReadWriteLock<Name extends string, ReadLevel extends number, W
         this.writer = true;
         try {
           const lockedContext = {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             _state: 'locked:write' as any,
             _maxLevel: (Math.max(
               typeof context._maxLevel === 'number' ? context._maxLevel : -1,
@@ -260,15 +362,18 @@ export class TypedReadWriteLock<Name extends string, ReadLevel extends number, W
 
 // Helper type for context requirements
 export type RequireContext<RequiredLock extends string> = 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   LockContext<Locked<RequiredLock>, any>;
 
 // Helper type for context with specific level or lower
 export type RequireLevel<MaxLevel extends number> = 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   LockContext<any, MaxLevel>;
 
 // Export for testing and debugging
 export function createEmptyContext(): EmptyContext {
   return {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     _state: 'unlocked' as any,
     _maxLevel: undefined as never
   } as EmptyContext;

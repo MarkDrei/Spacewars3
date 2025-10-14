@@ -5,7 +5,7 @@
 import sqlite3 from 'sqlite3';
 import { World, SpaceObject, SaveWorldCallback } from './world';
 import { getTypedCacheManager } from './typedCacheManager';
-import { createEmptyContext } from './typedLocks';
+import { createEmptyContext, type LockContext } from './ironGuardSystem';
 
 /**
  * Load world data from database (used internally by cache manager)
@@ -74,16 +74,18 @@ export function loadWorldFromDb(db: sqlite3.Database, saveCallback: SaveWorldCal
 
 /**
  * Load world data via cache manager (cache-aware public function)
+ * @param context Lock context from caller (REQUIRED - no default)
  */
-export async function loadWorld(): Promise<World> {
+export async function loadWorld(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  context: LockContext<any, any>
+): Promise<World> {
   // Use typed cache manager for cache-aware access
   const cacheManager = getTypedCacheManager();
   await cacheManager.initialize();
   
-  const emptyCtx = createEmptyContext();
-  
   // Use world read lock to ensure consistent access
-  return await cacheManager.withWorldRead(emptyCtx, async (worldCtx) => {
+  return await cacheManager.withWorldRead(context, async (worldCtx) => {
     // Get world data safely (we have world read lock)
     return cacheManager.getWorldUnsafe(worldCtx);
   });
@@ -119,38 +121,40 @@ export function saveWorldToDb(db: sqlite3.Database): SaveWorldCallback {
 }
 
 /**
- * Delete a space object from database and update cache
+ * Delete a space object using cache manager
+ * @param context Lock context from caller (REQUIRED - no default)
  */
-export async function deleteSpaceObject(db: sqlite3.Database, objectId: number): Promise<void> {
-  // First delete from database
-  await new Promise<void>((resolve, reject) => {
-    db.run('DELETE FROM space_objects WHERE id = ?', [objectId], (err) => {
-      if (err) {
-        reject(err);
-      } else {
-        resolve();
-      }
-    });
+export async function deleteSpaceObject(
+  db: sqlite3.Database,
+  objectId: number,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  context: LockContext<any, any>
+): Promise<void> {
+  // Use cache manager to delete the object
+  const cacheManager = getTypedCacheManager();
+  await cacheManager.initialize();
+  
+  // Use world write lock to delete the object
+  await cacheManager.withWorldWrite(context, async (worldCtx) => {
+    cacheManager.deleteSpaceObjectUnsafe(objectId, worldCtx);
   });
-
-  // Then update cache by refreshing the world
-  try {
-    // Force cache refresh by reinitializing the world data
-    const cacheManager = getTypedCacheManager();
-    await cacheManager.initialize();
-    // Note: The cache manager will automatically reload world data on next access
-    // since these operations modify the database directly
-  } catch (cacheErr) {
-    console.error('Failed to refresh world cache after object deletion:', cacheErr);
-    // Don't throw here as the database operation succeeded
-  }
+  
+  // Note: The cache manager will persist the change to DB via background persistence
+  // or when flushAllToDatabase() is called
 }
 
 /**
  * Insert a new space object into database and update cache
+ * NOTE: This requires DB write first to get the object ID
+ * @param context Lock context from caller (REQUIRED - no default)
  */
-export async function insertSpaceObject(db: sqlite3.Database, obj: Omit<SpaceObject, 'id'>): Promise<number> {
-  // First insert into database
+export async function insertSpaceObject(
+  db: sqlite3.Database,
+  obj: Omit<SpaceObject, 'id'>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  context: LockContext<any, any>
+): Promise<number> {
+  // First insert into database to get the ID
   const objectId = await new Promise<number>((resolve, reject) => {
     db.run(
       'INSERT INTO space_objects (type, x, y, speed, angle, last_position_update_ms) VALUES (?, ?, ?, ?, ?, ?)',
@@ -165,15 +169,21 @@ export async function insertSpaceObject(db: sqlite3.Database, obj: Omit<SpaceObj
     );
   });
 
-  // Then update cache by refreshing the world
+  // Then update cache with the new object including its ID
   try {
-    // Force cache refresh by reinitializing the world data
     const cacheManager = getTypedCacheManager();
     await cacheManager.initialize();
-    // Note: The cache manager will automatically reload world data on next access
-    // since these operations modify the database directly
+    
+    const newObj = { ...obj, id: objectId } as SpaceObject;
+    
+    // Use world write lock to add the object to cache
+    await cacheManager.withWorldWrite(context, async (worldCtx) => {
+      const world = cacheManager.getWorldUnsafe(worldCtx);
+      world.spaceObjects.push(newObj);
+      // Don't mark as dirty since we just wrote to DB
+    });
   } catch (cacheErr) {
-    console.error('Failed to refresh world cache after object insertion:', cacheErr);
+    console.error('Failed to update world cache after object insertion:', cacheErr);
     // Don't throw here as the database operation succeeded
   }
 

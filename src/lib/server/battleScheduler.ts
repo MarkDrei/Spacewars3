@@ -19,56 +19,25 @@ async function createMessage(userId: number, message: string): Promise<void> {
 }
 
 /**
- * Helper to update user's battle state
- * 
- * TECHNICAL DEBT: This bypasses TypedCacheManager and writes directly to DB.
- * Should be refactored to use cache-first architecture.
- * See TechnicalDebt.md for details.
+ * Helper to update user's battle state using cache manager
+ * @param context Lock context from caller (REQUIRED - no default)
  */
-async function updateUserBattleState(userId: number, inBattle: boolean, battleId: number | null): Promise<void> {
-  const db = await getDatabase();
+async function updateUserBattleState(
+  userId: number,
+  inBattle: boolean,
+  battleId: number | null,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  context: import('./ironGuardSystem').LockContext<any, any>
+): Promise<void> {
+  const { getTypedCacheManager } = await import('./typedCacheManager');
   
-  // TODO: Refactor to use TypedCacheManager instead of direct DB write
-  // Update database
-  await new Promise<void>((resolve, reject) => {
-    db.run(
-      'UPDATE users SET in_battle = ?, current_battle_id = ? WHERE id = ?',
-      [inBattle ? 1 : 0, battleId, userId],
-      (err) => {
-        if (err) {
-          reject(err);
-          return;
-        }
-        resolve();
-      }
-    );
+  const cacheManager = getTypedCacheManager();
+  await cacheManager.initialize();
+  
+  // Use user lock to update battle state
+  await cacheManager.withUserLock(context, async (userCtx) => {
+    cacheManager.setUserBattleStateUnsafe(userId, inBattle, battleId, userCtx);
   });
-  
-  // Also update cache if user is cached by directly loading from DB
-  try {
-    const { getTypedCacheManager } = await import('./typedCacheManager');
-    const { createEmptyContext } = await import('./typedLocks');
-    const cacheManager = await getTypedCacheManager();
-    await cacheManager.initialize();
-    
-    const emptyCtx = createEmptyContext();
-    
-    // Use withUserLock to safely update cached user
-    await cacheManager.withUserLock(emptyCtx, async (userCtx) => {
-      // Force load from database and update cache
-      await cacheManager.withDatabaseRead(userCtx, async (dbCtx) => {
-        const freshUser = await cacheManager.loadUserFromDbUnsafe(userId, dbCtx);
-        if (freshUser) {
-          // Update cache with fresh data
-          cacheManager.setUserUnsafe(freshUser, userCtx);
-          console.log(`✅ Updated battle state in cache for user ${userId}: inBattle=${freshUser.inBattle}`);
-        }
-      });
-    });
-  } catch (error) {
-    console.error(`⚠️ Failed to update cache for user ${userId}:`, error);
-    // Don't throw - database update succeeded, cache refresh is best-effort
-  }
 }
 
 /**
@@ -317,6 +286,10 @@ async function fireWeapon(
  * End a battle and clean up
  */
 async function endBattle(battleId: number, winnerId: number): Promise<void> {
+  // Create empty context at entry point
+  const { createEmptyContext } = await import('./ironGuardSystem');
+  const emptyCtx = createEmptyContext();
+  
   const battle = await BattleRepo.getBattle(battleId);
   
   if (!battle) {
@@ -335,8 +308,8 @@ async function endBattle(battleId: number, winnerId: number): Promise<void> {
   );
   
   // Clear battle state for both users in database
-  await updateUserBattleState(battle.attackerId, false, null);
-  await updateUserBattleState(battle.attackeeId, false, null);
+  await updateUserBattleState(battle.attackerId, false, null, emptyCtx);
+  await updateUserBattleState(battle.attackeeId, false, null, emptyCtx);
   
   console.log(`⚔️ Cleared battle state for users ${battle.attackerId} and ${battle.attackeeId}`);
   
