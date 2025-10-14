@@ -435,11 +435,11 @@ export class TypedCacheManager {
 
   /**
    * Load user from database if not in cache (proper lock ordering)
-   * @param context Lock context from caller (use createEmptyContext() at entry points only)
+   * @param context Lock context from caller (REQUIRED - no default)
    */
   async loadUserIfNeeded(
     userId: number,
-    context: LockContext<any, any> = createEmptyContext()
+    context: LockContext<any, any>
   ): Promise<User | null> {
     return await this.withUserLock(context, async (userCtx: UserContext) => {
       let user = this.getUserUnsafe(userId, userCtx);
@@ -461,11 +461,11 @@ export class TypedCacheManager {
 
   /**
    * Get user by username (with caching)
-   * @param context Lock context from caller (use createEmptyContext() at entry points only)
+   * @param context Lock context from caller (REQUIRED - no default)
    */
   async getUserByUsername(
     username: string,
-    context: LockContext<any, any> = createEmptyContext()
+    context: LockContext<any, any>
   ): Promise<User | null> {
     return await this.withUserLock(context, async (userCtx: UserContext) => {
       // Check username cache first
@@ -935,11 +935,11 @@ export class TypedCacheManager {
 
   /**
    * Load battle from database if not in cache (proper lock ordering)
-   * @param context Lock context from caller (use createEmptyContext() at entry points only)
+   * @param context Lock context from caller (REQUIRED - no default)
    */
   async loadBattleIfNeeded(
     battleId: number,
-    context: LockContext<any, any> = createEmptyContext()
+    context: LockContext<any, any>
   ): Promise<Battle | null> {
     return await this.withBattleLock(context, async (battleCtx: BattleContext) => {
       let battle = this.getBattleUnsafe(battleId, battleCtx);
@@ -1172,12 +1172,12 @@ export function getTypedCacheManager(config?: TypedCacheConfig): TypedCacheManag
 // Convenience functions for message operations
 /**
  * Send a message to a user (cached)
- * @param context Lock context from caller (use createEmptyContext() at entry points only)
+ * @param context Lock context from caller (REQUIRED - no default)
  */
 export async function sendMessageToUserCached(
   userId: number,
   message: string,
-  context: LockContext<any, any> = createEmptyContext()
+  context: LockContext<any, any>
 ): Promise<number> {
   const cacheManager = getTypedCacheManager();
   
@@ -1191,11 +1191,11 @@ export async function sendMessageToUserCached(
 
 /**
  * Get and mark messages as read for a user (cached)
- * @param context Lock context from caller (use createEmptyContext() at entry points only)
+ * @param context Lock context from caller (REQUIRED - no default)
  */
 export async function getUserMessagesCached(
   userId: number,
-  context: LockContext<any, any> = createEmptyContext()
+  context: LockContext<any, any>
 ): Promise<UnreadMessage[]> {
   const cacheManager = getTypedCacheManager();
   
@@ -1209,11 +1209,11 @@ export async function getUserMessagesCached(
 
 /**
  * Get unread message count for a user (cached)
- * @param context Lock context from caller (use createEmptyContext() at entry points only)
+ * @param context Lock context from caller (REQUIRED - no default)
  */
 export async function getUserMessageCountCached(
   userId: number,
-  context: LockContext<any, any> = createEmptyContext()
+  context: LockContext<any, any>
 ): Promise<number> {
   const cacheManager = getTypedCacheManager();
   

@@ -153,7 +153,8 @@ describe('Phase 2: Typed Cache Manager', () => {
       await manager.initialize();
 
       // This method internally uses proper lock ordering
-      const user = await manager.loadUserIfNeeded(999); // Non-existent user
+      const emptyCtx = createEmptyContext();
+      const user = await manager.loadUserIfNeeded(999, emptyCtx); // Non-existent user
       expect(user).toBeNull();
     });
   });
@@ -220,7 +221,7 @@ describe('Phase 2: Typed Cache Manager', () => {
           await new Promise(resolve => setTimeout(resolve, 10));
           return 'user-1';
         }),
-        manager.loadUserIfNeeded(999),
+        manager.loadUserIfNeeded(999, emptyCtx),
         manager.getStats()
       ];
 

@@ -119,12 +119,12 @@ export function getUserByUsernameFromDb(db: sqlite3.Database, username: string, 
 // Cache-aware public functions
 /**
  * Get user by ID (cached)
- * @param context Lock context from caller (use createEmptyContext() at entry points only)
+ * @param context Lock context from caller (REQUIRED - no default)
  */
 export async function getUserById(
   db: sqlite3.Database,
   id: number,
-  context: LockContext<any, any> = createEmptyContext()
+  context: LockContext<any, any>
 ): Promise<User | null> {
   // Use typed cache manager for cache-aware access
   const cacheManager = getTypedCacheManager();
@@ -153,12 +153,12 @@ export async function getUserById(
 
 /**
  * Get user by username (cached)
- * @param context Lock context from caller (use createEmptyContext() at entry points only)
+ * @param context Lock context from caller (REQUIRED - no default)
  */
 export async function getUserByUsername(
   db: sqlite3.Database,
   username: string,
-  context: LockContext<any, any> = createEmptyContext()
+  context: LockContext<any, any>
 ): Promise<User | null> {
   // Use typed cache manager for cache-aware username lookup
   const cacheManager = getTypedCacheManager();
@@ -216,8 +216,10 @@ async function createUserWithShip(db: sqlite3.Database, username: string, passwo
               };
               const user = new User(userId, username, password_hash, 0.0, now, techTree, saveCallback, defaultTechCounts, 250.0, 250.0, 250.0, now, false, null, shipId);
               
-              // Send welcome message to new user
-              await sendMessageToUserCached(userId, `Welcome to Spacewars, ${username}! Your journey among the stars begins now. Navigate wisely and collect resources to upgrade your ship.`);
+              // Send welcome message to new user (fire-and-forget with empty context)
+              const { createEmptyContext } = await import('./typedLocks');
+              const emptyCtx = createEmptyContext();
+              await sendMessageToUserCached(userId, `Welcome to Spacewars, ${username}! Your journey among the stars begins now. Navigate wisely and collect resources to upgrade your ship.`, emptyCtx);
               
               try {
                 // Note: User creation doesn't need immediate caching since

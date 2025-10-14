@@ -92,8 +92,10 @@ export async function POST(request: NextRequest) {
     });
     
     // Send notification AFTER releasing all locks to avoid deadlock
+    // Use fresh empty context for fire-and-forget operation
     if (notificationMessage && userId) {
-      sendMessageToUserCached(userId, notificationMessage).catch((error: Error) => {
+      const notifyCtx = createEmptyContext();
+      sendMessageToUserCached(userId, notificationMessage, notifyCtx).catch((error: Error) => {
         console.error('❌ Failed to send collection notification:', error);
       });
     }

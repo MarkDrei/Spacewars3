@@ -329,6 +329,10 @@ export class TechRepo {
    * Send notifications for completed build items
    */
   private async sendBuildCompletionNotifications(userId: number, completed: BuildQueueItem[]): Promise<void> {
+    // Import lock context utilities for fire-and-forget message sending
+    const { createEmptyContext } = await import('./typedLocks');
+    const emptyCtx = createEmptyContext();
+    
     for (const item of completed) {
       try {
         // Get tech spec to create a more informative message
@@ -340,7 +344,7 @@ export class TechRepo {
         const message = `🔧 Construction complete: ${itemName} (${itemTypeLabel}) is now ready for deployment!`;
         
         console.log(`📝 Sending build completion notification to user ${userId}: "${message}"`);
-        await sendMessageToUserCached(userId, message);
+        await sendMessageToUserCached(userId, message, emptyCtx);
       } catch (error) {
         console.error(`❌ Failed to send notification for completed ${item.itemType} ${item.itemKey}:`, error);
         // Continue with other notifications even if one fails

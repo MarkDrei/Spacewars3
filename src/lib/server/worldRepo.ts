@@ -74,10 +74,10 @@ export function loadWorldFromDb(db: sqlite3.Database, saveCallback: SaveWorldCal
 
 /**
  * Load world data via cache manager (cache-aware public function)
- * @param context Lock context from caller (use createEmptyContext() at entry points only)
+ * @param context Lock context from caller (REQUIRED - no default)
  */
 export async function loadWorld(
-  context: LockContext<any, any> = createEmptyContext()
+  context: LockContext<any, any>
 ): Promise<World> {
   // Use typed cache manager for cache-aware access
   const cacheManager = getTypedCacheManager();
@@ -121,12 +121,12 @@ export function saveWorldToDb(db: sqlite3.Database): SaveWorldCallback {
 
 /**
  * Delete a space object using cache manager
- * @param context Lock context from caller (use createEmptyContext() at entry points only)
+ * @param context Lock context from caller (REQUIRED - no default)
  */
 export async function deleteSpaceObject(
   db: sqlite3.Database,
   objectId: number,
-  context: LockContext<any, any> = createEmptyContext()
+  context: LockContext<any, any>
 ): Promise<void> {
   // Use cache manager to delete the object
   const cacheManager = getTypedCacheManager();
@@ -144,12 +144,12 @@ export async function deleteSpaceObject(
 /**
  * Insert a new space object into database and update cache
  * NOTE: This requires DB write first to get the object ID
- * @param context Lock context from caller (use createEmptyContext() at entry points only)
+ * @param context Lock context from caller (REQUIRED - no default)
  */
 export async function insertSpaceObject(
   db: sqlite3.Database,
   obj: Omit<SpaceObject, 'id'>,
-  context: LockContext<any, any> = createEmptyContext()
+  context: LockContext<any, any>
 ): Promise<number> {
   // First insert into database to get the ID
   const objectId = await new Promise<number>((resolve, reject) => {

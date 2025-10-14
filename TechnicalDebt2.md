@@ -138,13 +138,17 @@ async function sendMessage(
 - [x] Fire-and-forget operations (messages) use default empty context
 - [x] Compile-time type checking works correctly
 
-### Phase 7: Remove Default Parameters (Optional - Skipped)
+### Phase 7: Remove Default Parameters (In Progress)
 
-- [ ] Once all callers are updated, remove default parameters
-- [ ] Make context parameters required
+- [ ] Remove default parameters from cache manager methods
+- [ ] Remove default parameters from repository layer
+- [ ] Remove default parameters from service layer
+- [ ] Update all callers to explicitly pass contexts
+- [ ] Fix any lock order violations discovered
+- [ ] Make context parameters strictly required
 - [ ] Force compile-time validation everywhere
 
-**Status**: Skipped for now. Current implementation with optional parameters provides backward compatibility while enabling the lock threading architecture. Phase 7 would be a breaking change that forces strict compile-time validation with no fallback.
+**Status**: In progress. Removing all default parameters to enforce compile-time context threading. This ensures the type system can validate lock ordering everywhere with no fallback.
 
 ### Phase 8: Testing & Validation ✅
 

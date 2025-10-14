@@ -31,7 +31,11 @@ export async function getServerAuth(): Promise<ServerAuthState | null> {
       await cacheManager.initialize();
     }
     
-    const user = await cacheManager.loadUserIfNeeded(session.userId);
+    // Create empty context at entry point (middleware)
+    const { createEmptyContext } = await import('./typedLocks');
+    const emptyCtx = createEmptyContext();
+    
+    const user = await cacheManager.loadUserIfNeeded(session.userId, emptyCtx);
 
     if (!user) {
       // User doesn't exist in database (deleted user with valid session)
