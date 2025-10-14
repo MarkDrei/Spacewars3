@@ -51,7 +51,12 @@ export async function GET(request: NextRequest) {
     
     // Get user data to check username for admin access
     const db = await getDatabase();
-    const userData = await getUserById(db, session.userId!);
+    
+    // Import lock context utilities
+    const { createEmptyContext } = await import('@/lib/server/typedLocks');
+    const emptyCtx = createEmptyContext();
+    
+    const userData = await getUserById(db, session.userId!, emptyCtx);
     if (!userData) {
       throw new ApiError(404, 'User not found');
     }

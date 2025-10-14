@@ -45,13 +45,17 @@ export async function POST(request: NextRequest) {
     const db = await getDatabase();
     console.log(`⚔️ Step 2: Database obtained, loading attacker...`);
     
-    const attacker = await getUserById(db, session.userId!);
+    // Import lock context utilities
+    const { createEmptyContext } = await import('@/lib/server/typedLocks');
+    const emptyCtx = createEmptyContext();
+    
+    const attacker = await getUserById(db, session.userId!, emptyCtx);
     if (!attacker) {
       throw new ApiError(404, 'Attacker not found');
     }
     console.log(`⚔️ Step 3: Attacker loaded, loading target...`);
     
-    const target = await getUserById(db, targetUserId);
+    const target = await getUserById(db, targetUserId, emptyCtx);
     if (!target) {
       throw new ApiError(404, 'Target user not found');
     }

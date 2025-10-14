@@ -129,11 +129,14 @@ async function sendMessage(
 - [x] All helper functions now accept optional context parameter
 - [x] Updated: `setShipSpeed()`, `updateUserBattleState()`, `teleportShip()`, `updateUserDefense()`
 
-### Phase 6: Refactor API Routes
+### Phase 6: Refactor API Routes ✅
 
-- [ ] Update all API routes to pass contexts through call stack
-- [ ] Remove intermediate `createEmptyContext()` calls
-- [ ] Verify compile-time type checking works
+- [x] Update all API routes to pass contexts through call stack
+- [x] Added empty context creation at entry points
+- [x] Updated 4 API routes: admin/database, login, attack, complete-build
+- [x] Verified all calls to context-aware functions pass contexts
+- [x] Fire-and-forget operations (messages) use default empty context
+- [x] Compile-time type checking works correctly
 
 ### Phase 7: Remove Default Parameters
 
@@ -360,16 +363,69 @@ export async function doWork(userId: number): Promise<Result> {
 - [ ] `src/lib/server/battleScheduler.ts`
   - [ ] Update helper functions
 
-#### Phase 6: API Routes
-- [ ] `src/app/api/harvest/route.ts`
-- [ ] `src/app/api/world/route.ts`
-- [ ] `src/app/api/user-stats/route.ts`
-- [ ] All other API routes
+#### Phase 6: API Routes ✅
+- [x] `src/app/api/harvest/route.ts` - Already fixed (message sending after locks)
+- [x] `src/app/api/admin/database/route.ts` - Added context for getUserById
+- [x] `src/app/api/login/route.ts` - Added context for getUserByUsername
+- [x] `src/app/api/attack/route.ts` - Added context for getUserById (2 calls)
+- [x] `src/app/api/complete-build/route.ts` - Added context for getUserById
+- [x] All other API routes verified - using defaults correctly
 
 #### Phase 7: Remove Defaults
 - [ ] Remove all default parameters
 - [ ] Make context required everywhere
 - [ ] Update documentation
+
+---
+
+## Phase 6 Implementation Summary
+
+**Completed**: 2025-10-14
+
+### API Routes Updated
+
+1. **admin/database/route.ts** - Added empty context for getUserById at entry point
+2. **login/route.ts** - Added empty context for getUserByUsername at entry point  
+3. **attack/route.ts** - Added empty context for getUserById calls (attacker & target)
+4. **complete-build/route.ts** - Added empty context for getUserById at entry point
+
+### Pattern Applied
+
+```typescript
+// At API route entry point
+export async function POST(request: NextRequest) {
+  // ... session validation ...
+  
+  const db = await getDatabase();
+  
+  // Create empty context at entry point
+  const { createEmptyContext } = await import('@/lib/server/typedLocks');
+  const emptyCtx = createEmptyContext();
+  
+  // Pass context to functions that need it
+  const user = await getUserById(db, userId, emptyCtx);
+  
+  // ... rest of logic ...
+}
+```
+
+### Fire-and-Forget Operations
+
+Functions like `sendMessageToUserCached()` that are called after locks are released continue to use the default empty context parameter:
+
+```typescript
+// After releasing locks, fire-and-forget with default context
+sendMessageToUserCached(userId, message).catch(console.error);
+// Internally uses: context: LockContext<any, any> = createEmptyContext()
+```
+
+### Verification
+
+- ✅ All entry points create empty context
+- ✅ All context-aware functions receive contexts
+- ✅ Fire-and-forget operations use default contexts
+- ✅ No intermediate empty context creation in call chains
+- ✅ Type system can now track lock state through call stack
 
 ---
 
@@ -381,11 +437,12 @@ export async function doWork(userId: number): Promise<Result> {
 - ❌ Unclear lock requirements
 - ❌ Hidden dependencies
 
-### After
-- ✅ Deadlocks caught at compile time
-- ✅ Type system enforces safety
+### After (Phases 3-6 Complete)
+- ✅ Contexts threaded through call stack
+- ✅ Type system tracks lock state
 - ✅ Clear lock requirements in signatures
 - ✅ Explicit dependencies
+- ⚠️ Optional parameters allow fallback (Phase 7 will make required)
 
 ---
 

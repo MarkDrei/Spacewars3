@@ -21,7 +21,12 @@ export async function POST(request: NextRequest) {
     
     // Get user data to check username
     const db = await getDatabase();
-    const userData = await getUserById(db, session.userId!);
+    
+    // Import lock context utilities
+    const { createEmptyContext } = await import('@/lib/server/typedLocks');
+    const emptyCtx = createEmptyContext();
+    
+    const userData = await getUserById(db, session.userId!, emptyCtx);
     if (!userData) {
       throw new ApiError(404, 'User not found');
     }

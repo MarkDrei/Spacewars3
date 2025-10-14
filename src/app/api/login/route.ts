@@ -15,7 +15,12 @@ export async function POST(request: NextRequest) {
     validateRequired(password, 'password');
     
     const db = await getDatabase();
-    const user = await getUserByUsername(db, username);
+    
+    // Import lock context utilities
+    const { createEmptyContext } = await import('@/lib/server/typedLocks');
+    const emptyCtx = createEmptyContext();
+    
+    const user = await getUserByUsername(db, username, emptyCtx);
     
     if (!user) {
       throw new ApiError(400, 'Invalid credentials');
