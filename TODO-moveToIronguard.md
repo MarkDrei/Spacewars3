@@ -143,30 +143,36 @@ npm test -- lockHelpers                  # ✅ 23/23 tests pass
 
 ---
 
-### Phase 4: Migrate Repository Layer (One at a Time)
+### Phase 4: Migrate Repository Layer (One at a Time) 🔄 IN PROGRESS
 **Goal**: Update repository functions to use new lock system
 
 #### Tasks (per repository):
-1. [ ] Migrate `worldRepo.ts`:
-   - Update function signatures: `<THeld extends readonly LockLevel[]>`
-   - Change context parameters: `ValidWorldLockContext<THeld>`
-   - Update lock acquisitions to use helpers
-   - Update tests: `world-api.test.ts`
+1. [x] Migrate `worldRepo.ts` → `worldRepoV2.ts`: ✅ COMPLETE
+   - Public functions: `loadWorld()`, `deleteSpaceObject()`, `insertSpaceObject()`, `getWorldWithContext()`
+   - Pattern established for remaining repos
+   - TypeScript compiles ✅
+   - Pattern: Create empty context, use lock helpers
 
-2. [ ] Migrate `userRepo.ts`:
-   - Update function signatures
-   - Change context parameters: `ValidUserLockContext<THeld>`
-   - Update tests: `user-*.test.ts`
+2. [ ] Migrate `userRepo.ts` → `userRepoV2.ts`: 📝 READY TO IMPLEMENT
+   - Functions: `getUserById()`, `getUserByUsername()`, `createUser()`, `updateUser()`
+   - Lock requirement: USER(30) → DATABASE(60) for loads
+   - Estimated: 1.5 hours
 
-3. [ ] Migrate `messagesRepo.ts`:
-   - Update function signatures
-   - Change context parameters: `ValidMessageReadLockContext<THeld>` / `ValidMessageWriteLockContext<THeld>`
-   - Update tests: `messages-api.test.ts`
+3. [ ] Migrate `messagesRepo.ts` → `messagesRepoV2.ts`: 📝 READY TO IMPLEMENT
+   - Functions: `getMessagesForUser()`, `markMessageAsRead()`, `sendMessage()`
+   - Lock requirements: MESSAGE_READ(40), MESSAGE_WRITE(41)
+   - May need message operations in TypedCacheManagerV2
+   - Estimated: 2 hours
 
-4. [ ] Migrate `battleRepo.ts`:
-   - Update function signatures
-   - Change context parameters: `ValidBattleLockContext<THeld>`
-   - Update tests: `battle-*.test.ts`
+4. [ ] Migrate `battleRepo.ts` → `battleRepoV2.ts`: 📝 READY TO IMPLEMENT
+   - Functions: `getBattle()`, `createBattle()`, `updateBattle()`
+   - Lock requirement: BATTLE(50)
+   - Estimated: 2 hours
+
+5. [ ] Migrate `techRepo.ts` → `techRepoV2.ts`: 📝 READY TO IMPLEMENT
+   - Functions: `getTechTree()`, `updateTechTree()`
+   - Lock requirement: USER(30) (tech is user-specific)
+   - Estimated: 1 hour
 
 **Quality Check After Each Repository**:
 ```bash
@@ -175,7 +181,11 @@ npx tsc --noEmit                   # Should compile
 npm run lint                       # Should pass
 ```
 
-**Estimated Time**: 2-3 hours per repository = 8-12 hours total
+**Progress**: 1/5 repositories complete (20%)
+**Time Spent**: ~1 hour
+**Estimated Remaining**: 6.5 hours
+
+**Implementation Guide**: See `PHASE_4_IMPLEMENTATION_GUIDE.md` for detailed patterns and examples
 
 ---
 
