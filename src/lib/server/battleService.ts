@@ -115,47 +115,41 @@ async function getShipPosition(shipId: number): Promise<{ x: number; y: number }
 
 /**
  * Set ship speed using cache manager
- * @param context Lock context from caller (use createEmptyContext() at entry points only)
+ * @param context Lock context from caller (REQUIRED - no default)
  */
 async function setShipSpeed(
   shipId: number,
   speed: number,
-  context?: import('./typedLocks').LockContext<any, any>
+  context: import('./typedLocks').LockContext<any, any>
 ): Promise<void> {
   const { getTypedCacheManager } = await import('./typedCacheManager');
-  const { createEmptyContext } = await import('./typedLocks');
   
   const cacheManager = getTypedCacheManager();
   await cacheManager.initialize();
   
-  const ctx = context || createEmptyContext();
-  
   // Use world write lock to update ship speed
-  await cacheManager.withWorldWrite(ctx, async (worldCtx) => {
+  await cacheManager.withWorldWrite(context, async (worldCtx) => {
     cacheManager.setShipSpeedUnsafe(shipId, speed, worldCtx);
   });
 }
 
 /**
  * Update user's battle state using cache manager
- * @param context Lock context from caller (use createEmptyContext() at entry points only)
+ * @param context Lock context from caller (REQUIRED - no default)
  */
 async function updateUserBattleState(
   userId: number,
   inBattle: boolean,
   battleId: number | null,
-  context?: import('./typedLocks').LockContext<any, any>
+  context: import('./typedLocks').LockContext<any, any>
 ): Promise<void> {
   const { getTypedCacheManager } = await import('./typedCacheManager');
-  const { createEmptyContext } = await import('./typedLocks');
   
   const cacheManager = getTypedCacheManager();
   await cacheManager.initialize();
   
-  const ctx = context || createEmptyContext();
-  
   // Use user lock to update battle state
-  await cacheManager.withUserLock(ctx, async (userCtx) => {
+  await cacheManager.withUserLock(context, async (userCtx) => {
     cacheManager.setUserBattleStateUnsafe(userId, inBattle, battleId, userCtx);
   });
 }
@@ -190,49 +184,43 @@ function generateTeleportPosition(
 
 /**
  * Teleport ship to new position using cache manager
- * @param context Lock context from caller (use createEmptyContext() at entry points only)
+ * @param context Lock context from caller (REQUIRED - no default)
  */
 async function teleportShip(
   shipId: number,
   x: number,
   y: number,
-  context?: import('./typedLocks').LockContext<any, any>
+  context: import('./typedLocks').LockContext<any, any>
 ): Promise<void> {
   const { getTypedCacheManager } = await import('./typedCacheManager');
-  const { createEmptyContext } = await import('./typedLocks');
   
   const cacheManager = getTypedCacheManager();
   await cacheManager.initialize();
   
-  const ctx = context || createEmptyContext();
-  
   // Use world write lock to teleport ship
-  await cacheManager.withWorldWrite(ctx, async (worldCtx) => {
+  await cacheManager.withWorldWrite(context, async (worldCtx) => {
     cacheManager.teleportShipUnsafe(shipId, x, y, worldCtx);
   });
 }
 
 /**
  * Update user's defense values using cache manager
- * @param context Lock context from caller (use createEmptyContext() at entry points only)
+ * @param context Lock context from caller (REQUIRED - no default)
  */
 async function updateUserDefense(
   userId: number,
   hull: number,
   armor: number,
   shield: number,
-  context?: import('./typedLocks').LockContext<any, any>
+  context: import('./typedLocks').LockContext<any, any>
 ): Promise<void> {
   const { getTypedCacheManager } = await import('./typedCacheManager');
-  const { createEmptyContext } = await import('./typedLocks');
   
   const cacheManager = getTypedCacheManager();
   await cacheManager.initialize();
   
-  const ctx = context || createEmptyContext();
-  
   // Use user lock to update defense values
-  await cacheManager.withUserLock(ctx, async (userCtx) => {
+  await cacheManager.withUserLock(context, async (userCtx) => {
     cacheManager.setUserDefenseUnsafe(userId, hull, armor, shield, userCtx);
   });
 }
@@ -272,6 +260,10 @@ export async function initiateBattle(
   attackee: User
 ): Promise<Battle> {
   console.log(`⚔️ initiateBattle: Starting battle between ${attacker.username} and ${attackee.username}`);
+  
+  // Create empty context at entry point
+  const { createEmptyContext } = await import('./typedLocks');
+  const emptyCtx = createEmptyContext();
   
   // Validation: Check battle state from user objects (no DB access needed)
   if (attacker.inBattle) {
@@ -333,8 +325,8 @@ export async function initiateBattle(
   
   console.log(`⚔️ initiateBattle: Setting ship speeds to 0...`);
   // Set both ships' speeds to 0
-  await setShipSpeed(attacker.ship_id, 0);
-  await setShipSpeed(attackee.ship_id, 0);
+  await setShipSpeed(attacker.ship_id, 0, emptyCtx);
+  await setShipSpeed(attackee.ship_id, 0, emptyCtx);
   
   console.log(`⚔️ initiateBattle: Creating battle in database...`);
   // Create battle in database with initial cooldowns
@@ -349,8 +341,8 @@ export async function initiateBattle(
   
   console.log(`⚔️ initiateBattle: Updating user battle states...`);
   // Update users' battle state
-  await updateUserBattleState(attacker.id, true, battle.id);
-  await updateUserBattleState(attackee.id, true, battle.id);
+  await updateUserBattleState(attacker.id, true, battle.id, emptyCtx);
+  await updateUserBattleState(attackee.id, true, battle.id, emptyCtx);
   
   // Log battle start event
   const startEvent: BattleEvent = {
@@ -422,6 +414,9 @@ export async function resolveBattle(
   battleId: number,
   winnerId: number
 ): Promise<void> {
+  // Create empty context at entry point
+  const { createEmptyContext } = await import('./typedLocks');
+  const emptyCtx = createEmptyContext();
   const battle = await BattleRepo.getBattle(battleId);
   
   if (!battle) {
@@ -448,21 +443,23 @@ export async function resolveBattle(
   );
   
   // Clear battle state for both users
-  await updateUserBattleState(battle.attackerId, false, null);
-  await updateUserBattleState(battle.attackeeId, false, null);
+  await updateUserBattleState(battle.attackerId, false, null, emptyCtx);
+  await updateUserBattleState(battle.attackeeId, false, null, emptyCtx);
   
   // Update defense values in users table
   await updateUserDefense(
     battle.attackerId,
     attackerEndStats.hull.current,
     attackerEndStats.armor.current,
-    attackerEndStats.shield.current
+    attackerEndStats.shield.current,
+    emptyCtx
   );
   await updateUserDefense(
     battle.attackeeId,
     attackeeEndStats.hull.current,
     attackeeEndStats.armor.current,
-    attackeeEndStats.shield.current
+    attackeeEndStats.shield.current,
+    emptyCtx
   );
   
   // Get ship IDs for teleportation
@@ -479,7 +476,7 @@ export async function resolveBattle(
       MIN_TELEPORT_DISTANCE
     );
     
-    await teleportShip(loserShipId, teleportPos.x, teleportPos.y);
+    await teleportShip(loserShipId, teleportPos.x, teleportPos.y, emptyCtx);
     
     console.log(`⚔️ Battle ${battleId} ended: Winner ${winnerId}, Loser ${loserId} teleported to (${teleportPos.x.toFixed(0)}, ${teleportPos.y.toFixed(0)})`);
   }

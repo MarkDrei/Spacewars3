@@ -20,24 +20,21 @@ async function createMessage(userId: number, message: string): Promise<void> {
 
 /**
  * Helper to update user's battle state using cache manager
- * @param context Lock context from caller (use createEmptyContext() at entry points only)
+ * @param context Lock context from caller (REQUIRED - no default)
  */
 async function updateUserBattleState(
   userId: number,
   inBattle: boolean,
   battleId: number | null,
-  context?: import('./typedLocks').LockContext<any, any>
+  context: import('./typedLocks').LockContext<any, any>
 ): Promise<void> {
   const { getTypedCacheManager } = await import('./typedCacheManager');
-  const { createEmptyContext } = await import('./typedLocks');
   
   const cacheManager = getTypedCacheManager();
   await cacheManager.initialize();
   
-  const ctx = context || createEmptyContext();
-  
   // Use user lock to update battle state
-  await cacheManager.withUserLock(ctx, async (userCtx) => {
+  await cacheManager.withUserLock(context, async (userCtx) => {
     cacheManager.setUserBattleStateUnsafe(userId, inBattle, battleId, userCtx);
   });
 }
@@ -288,6 +285,10 @@ async function fireWeapon(
  * End a battle and clean up
  */
 async function endBattle(battleId: number, winnerId: number): Promise<void> {
+  // Create empty context at entry point
+  const { createEmptyContext } = await import('./typedLocks');
+  const emptyCtx = createEmptyContext();
+  
   const battle = await BattleRepo.getBattle(battleId);
   
   if (!battle) {
@@ -306,8 +307,8 @@ async function endBattle(battleId: number, winnerId: number): Promise<void> {
   );
   
   // Clear battle state for both users in database
-  await updateUserBattleState(battle.attackerId, false, null);
-  await updateUserBattleState(battle.attackeeId, false, null);
+  await updateUserBattleState(battle.attackerId, false, null, emptyCtx);
+  await updateUserBattleState(battle.attackeeId, false, null, emptyCtx);
   
   console.log(`⚔️ Cleared battle state for users ${battle.attackerId} and ${battle.attackeeId}`);
   
