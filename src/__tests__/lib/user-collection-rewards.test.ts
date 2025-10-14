@@ -16,7 +16,9 @@ describe('User Collection Rewards', () => {
       1000, // initial iron
       Date.now(),
       createInitialTechTree(),
-      mockSaveCallback
+      mockSaveCallback,
+      { pulse_laser: 0, auto_turret: 0, plasma_lance: 0, gauss_rifle: 0, photon_torpedo: 0, rocket_launcher: 0, kinetic_armor: 0, energy_shield: 0, missile_jammer: 0, ship_hull: 0 },
+      100, 100, 100, Math.floor(Date.now()/1000), false, null, 1
     );
     
     const initialIron = user.iron;
@@ -40,7 +42,9 @@ describe('User Collection Rewards', () => {
       500, // initial iron
       Date.now(),
       createInitialTechTree(),
-      mockSaveCallback
+      mockSaveCallback,
+      { pulse_laser: 0, auto_turret: 0, plasma_lance: 0, gauss_rifle: 0, photon_torpedo: 0, rocket_launcher: 0, kinetic_armor: 0, energy_shield: 0, missile_jammer: 0, ship_hull: 0 },
+      100, 100, 100, Math.floor(Date.now()/1000), false, null
     );
     
     const initialIron = user.iron;
@@ -64,7 +68,9 @@ describe('User Collection Rewards', () => {
       750, // initial iron
       Date.now(),
       createInitialTechTree(),
-      mockSaveCallback
+      mockSaveCallback,
+      { pulse_laser: 0, auto_turret: 0, plasma_lance: 0, gauss_rifle: 0, photon_torpedo: 0, rocket_launcher: 0, kinetic_armor: 0, energy_shield: 0, missile_jammer: 0, ship_hull: 0 },
+      100, 100, 100, Math.floor(Date.now()/1000), false, null
     );
     
     const initialIron = user.iron;
@@ -85,7 +91,9 @@ describe('User Collection Rewards', () => {
       0, // start with no iron
       Date.now(),
       createInitialTechTree(),
-      mockSaveCallback
+      mockSaveCallback,
+      { pulse_laser: 0, auto_turret: 0, plasma_lance: 0, gauss_rifle: 0, photon_torpedo: 0, rocket_launcher: 0, kinetic_armor: 0, energy_shield: 0, missile_jammer: 0, ship_hull: 0 },
+      100, 100, 100, Math.floor(Date.now()/1000), false, null
     );
     
     const rewards: number[] = [];
@@ -118,7 +126,9 @@ describe('User Collection Rewards', () => {
       0, // start with no iron
       Date.now(),
       createInitialTechTree(),
-      mockSaveCallback
+      mockSaveCallback,
+      { pulse_laser: 0, auto_turret: 0, plasma_lance: 0, gauss_rifle: 0, photon_torpedo: 0, rocket_launcher: 0, kinetic_armor: 0, energy_shield: 0, missile_jammer: 0, ship_hull: 0 },
+      100, 100, 100, Math.floor(Date.now()/1000), false, null
     );
     
     const rewards: number[] = [];
@@ -151,7 +161,9 @@ describe('User Collection Rewards', () => {
       100, // initial iron
       Date.now(),
       createInitialTechTree(),
-      mockSaveCallback
+      mockSaveCallback,
+      { pulse_laser: 0, auto_turret: 0, plasma_lance: 0, gauss_rifle: 0, photon_torpedo: 0, rocket_launcher: 0, kinetic_armor: 0, energy_shield: 0, missile_jammer: 0, ship_hull: 0 },
+      100, 100, 100, Math.floor(Date.now()/1000), false, null
     );
     
     const initialIron = user.iron;
@@ -192,7 +204,9 @@ describe('User Collection Rewards', () => {
       200,
       Date.now(),
       createInitialTechTree(),
-      mockSaveCallback
+      mockSaveCallback,
+      { pulse_laser: 0, auto_turret: 0, plasma_lance: 0, gauss_rifle: 0, photon_torpedo: 0, rocket_launcher: 0, kinetic_armor: 0, energy_shield: 0, missile_jammer: 0, ship_hull: 0 },
+      100, 100, 100, Math.floor(Date.now()/1000), false, null
     );
     
     const initialIron = user.iron;

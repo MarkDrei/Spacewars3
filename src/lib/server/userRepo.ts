@@ -6,7 +6,7 @@ import sqlite3 from 'sqlite3';
 import { User, SaveUserCallback } from './user';
 import { createInitialTechTree } from './techtree';
 import { getTypedCacheManager } from './typedCacheManager';
-import { createEmptyContext } from './typedLocks';
+import { createEmptyContext, type LockContext } from './ironGuardSystem';
 import { sendMessageToUserCached } from './typedCacheManager';
 import { TechCounts } from './TechFactory';
 
@@ -124,6 +124,7 @@ export function getUserByUsernameFromDb(db: sqlite3.Database, username: string, 
 export async function getUserById(
   db: sqlite3.Database,
   id: number,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   context: LockContext<any, any>
 ): Promise<User | null> {
   // Use typed cache manager for cache-aware access
@@ -158,6 +159,7 @@ export async function getUserById(
 export async function getUserByUsername(
   db: sqlite3.Database,
   username: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   context: LockContext<any, any>
 ): Promise<User | null> {
   // Use typed cache manager for cache-aware username lookup
@@ -217,7 +219,7 @@ async function createUserWithShip(db: sqlite3.Database, username: string, passwo
               const user = new User(userId, username, password_hash, 0.0, now, techTree, saveCallback, defaultTechCounts, 250.0, 250.0, 250.0, now, false, null, shipId);
               
               // Send welcome message to new user (fire-and-forget with empty context)
-              const { createEmptyContext } = await import('./typedLocks');
+              const { createEmptyContext } = await import('./ironGuardSystem');
               const emptyCtx = createEmptyContext();
               await sendMessageToUserCached(userId, `Welcome to Spacewars, ${username}! Your journey among the stars begins now. Navigate wisely and collect resources to upgrade your ship.`, emptyCtx);
               

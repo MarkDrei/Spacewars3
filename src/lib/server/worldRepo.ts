@@ -5,7 +5,7 @@
 import sqlite3 from 'sqlite3';
 import { World, SpaceObject, SaveWorldCallback } from './world';
 import { getTypedCacheManager } from './typedCacheManager';
-import { createEmptyContext } from './typedLocks';
+import { createEmptyContext, type LockContext } from './ironGuardSystem';
 
 /**
  * Load world data from database (used internally by cache manager)
@@ -77,6 +77,7 @@ export function loadWorldFromDb(db: sqlite3.Database, saveCallback: SaveWorldCal
  * @param context Lock context from caller (REQUIRED - no default)
  */
 export async function loadWorld(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   context: LockContext<any, any>
 ): Promise<World> {
   // Use typed cache manager for cache-aware access
@@ -126,6 +127,7 @@ export function saveWorldToDb(db: sqlite3.Database): SaveWorldCallback {
 export async function deleteSpaceObject(
   db: sqlite3.Database,
   objectId: number,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   context: LockContext<any, any>
 ): Promise<void> {
   // Use cache manager to delete the object
@@ -149,6 +151,7 @@ export async function deleteSpaceObject(
 export async function insertSpaceObject(
   db: sqlite3.Database,
   obj: Omit<SpaceObject, 'id'>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   context: LockContext<any, any>
 ): Promise<number> {
   // First insert into database to get the ID

@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
     const db = await getDatabase();
     
     // Import lock context utilities
-    const { createEmptyContext } = await import('@/lib/server/typedLocks');
+    const { createEmptyContext } = await import('@/lib/server/ironGuardSystem');
     const emptyCtx = createEmptyContext();
     
     const userData = await getUserById(db, session.userId!, emptyCtx);

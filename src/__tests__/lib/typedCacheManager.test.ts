@@ -9,7 +9,7 @@ import {
   getTypedCacheManager,
   type TypedCacheConfig 
 } from '../../lib/server/typedCacheManager';
-import { createEmptyContext } from '../../lib/server/typedLocks';
+import { createEmptyContext } from '../../lib/server/ironGuardSystem';
 
 describe('Phase 2: Typed Cache Manager', () => {
   

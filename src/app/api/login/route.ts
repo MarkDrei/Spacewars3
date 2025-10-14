@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
     const db = await getDatabase();
     
     // Import lock context utilities
-    const { createEmptyContext } = await import('@/lib/server/typedLocks');
+    const { createEmptyContext } = await import('@/lib/server/ironGuardSystem');
     const emptyCtx = createEmptyContext();
     
     const user = await getUserByUsername(db, username, emptyCtx);

@@ -3,7 +3,7 @@ import { getIronSession } from 'iron-session';
 import { getTypedCacheManager, TypedCacheManager } from '@/lib/server/typedCacheManager';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth, ApiError } from '@/lib/server/errors';
-import { createEmptyContext, LockContext, Locked, CacheLevel, WorldLevel, UserLevel } from '@/lib/server/typedLocks';
+import { createEmptyContext, LockContext, Locked, CacheLevel, WorldLevel, UserLevel } from '@/lib/server/ironGuardSystem';
 import { User } from '@/lib/server/user';
 
 // Type aliases for cleaner code

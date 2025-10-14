@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
     console.log(`⚔️ Step 2: Database obtained, loading attacker...`);
     
     // Import lock context utilities
-    const { createEmptyContext } = await import('@/lib/server/typedLocks');
+    const { createEmptyContext } = await import('@/lib/server/ironGuardSystem');
     const emptyCtx = createEmptyContext();
     
     const attacker = await getUserById(db, session.userId!, emptyCtx);

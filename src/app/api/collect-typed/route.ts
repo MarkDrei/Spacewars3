@@ -9,7 +9,7 @@ import { calculateToroidalDistance } from '@shared/physics';
 import { getTypedCacheManager, type TypedCacheManager } from '@/lib/server/typedCacheManager';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth, ApiError } from '@/lib/server/errors';
-import { createEmptyContext } from '@/lib/server/typedLocks';
+import { createEmptyContext } from '@/lib/server/ironGuardSystem';
 import type { User } from '@/lib/server/user';
 import type { World } from '@/lib/server/world';
 

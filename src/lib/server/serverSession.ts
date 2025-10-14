@@ -32,7 +32,7 @@ export async function getServerAuth(): Promise<ServerAuthState | null> {
     }
     
     // Create empty context at entry point (middleware)
-    const { createEmptyContext } = await import('./typedLocks');
+    const { createEmptyContext } = await import('./ironGuardSystem');
     const emptyCtx = createEmptyContext();
     
     const user = await cacheManager.loadUserIfNeeded(session.userId, emptyCtx);

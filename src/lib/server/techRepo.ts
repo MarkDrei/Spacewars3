@@ -330,7 +330,7 @@ export class TechRepo {
    */
   private async sendBuildCompletionNotifications(userId: number, completed: BuildQueueItem[]): Promise<void> {
     // Import lock context utilities for fire-and-forget message sending
-    const { createEmptyContext } = await import('./typedLocks');
+    const { createEmptyContext } = await import('./ironGuardSystem');
     const emptyCtx = createEmptyContext();
     
     for (const item of completed) {

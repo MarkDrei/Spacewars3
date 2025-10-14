@@ -17,7 +17,7 @@ import {
   type BattleLevel,
   type DatabaseLevel,
   createEmptyContext
-} from './typedLocks';
+} from './ironGuardSystem';
 import { User } from './user';
 import { World, type SpaceObject } from './world';
 import { getDatabase } from './database';
@@ -439,6 +439,7 @@ export class TypedCacheManager {
    */
   async loadUserIfNeeded(
     userId: number,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     context: LockContext<any, any>
   ): Promise<User | null> {
     return await this.withUserLock(context, async (userCtx: UserContext) => {
@@ -465,6 +466,7 @@ export class TypedCacheManager {
    */
   async getUserByUsername(
     username: string,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     context: LockContext<any, any>
   ): Promise<User | null> {
     return await this.withUserLock(context, async (userCtx: UserContext) => {
@@ -939,6 +941,7 @@ export class TypedCacheManager {
    */
   async loadBattleIfNeeded(
     battleId: number,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     context: LockContext<any, any>
   ): Promise<Battle | null> {
     return await this.withBattleLock(context, async (battleCtx: BattleContext) => {
@@ -1177,6 +1180,7 @@ export function getTypedCacheManager(config?: TypedCacheConfig): TypedCacheManag
 export async function sendMessageToUserCached(
   userId: number,
   message: string,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   context: LockContext<any, any>
 ): Promise<number> {
   const cacheManager = getTypedCacheManager();
@@ -1195,6 +1199,7 @@ export async function sendMessageToUserCached(
  */
 export async function getUserMessagesCached(
   userId: number,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   context: LockContext<any, any>
 ): Promise<UnreadMessage[]> {
   const cacheManager = getTypedCacheManager();
@@ -1213,6 +1218,7 @@ export async function getUserMessagesCached(
  */
 export async function getUserMessageCountCached(
   userId: number,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   context: LockContext<any, any>
 ): Promise<number> {
   const cacheManager = getTypedCacheManager();

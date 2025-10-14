@@ -26,7 +26,8 @@ async function updateUserBattleState(
   userId: number,
   inBattle: boolean,
   battleId: number | null,
-  context: import('./typedLocks').LockContext<any, any>
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  context: import('./ironGuardSystem').LockContext<any, any>
 ): Promise<void> {
   const { getTypedCacheManager } = await import('./typedCacheManager');
   
@@ -286,7 +287,7 @@ async function fireWeapon(
  */
 async function endBattle(battleId: number, winnerId: number): Promise<void> {
   // Create empty context at entry point
-  const { createEmptyContext } = await import('./typedLocks');
+  const { createEmptyContext } = await import('./ironGuardSystem');
   const emptyCtx = createEmptyContext();
   
   const battle = await BattleRepo.getBattle(battleId);

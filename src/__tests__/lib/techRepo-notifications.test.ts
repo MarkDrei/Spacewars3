@@ -80,15 +80,18 @@ describe('TechRepo - Build Completion Notifications', () => {
     expect(mockSendMessageToUserCached).toHaveBeenCalledOnce();
     expect(mockSendMessageToUserCached).toHaveBeenCalledWith(
       testUserId,
-      expect.stringContaining('🔧 Construction complete')
+      expect.stringContaining('🔧 Construction complete'),
+      expect.anything() // context parameter
     );
     expect(mockSendMessageToUserCached).toHaveBeenCalledWith(
       testUserId,
-      expect.stringContaining('Pulse Laser')
+      expect.stringContaining('Pulse Laser'),
+      expect.anything() // context parameter
     );
     expect(mockSendMessageToUserCached).toHaveBeenCalledWith(
       testUserId,
-      expect.stringContaining('weapon')
+      expect.stringContaining('weapon'),
+      expect.anything() // context parameter
     );
   });
 
@@ -116,11 +119,13 @@ describe('TechRepo - Build Completion Notifications', () => {
     expect(mockSendMessageToUserCached).toHaveBeenCalledOnce();
     expect(mockSendMessageToUserCached).toHaveBeenCalledWith(
       testUserId,
-      expect.stringContaining('🔧 Construction complete')
+      expect.stringContaining('🔧 Construction complete'),
+      expect.anything() // context parameter
     );
     expect(mockSendMessageToUserCached).toHaveBeenCalledWith(
       testUserId,
-      expect.stringContaining('defense system')
+      expect.stringContaining('defense system'),
+      expect.anything() // context parameter
     );
   });
 
@@ -160,9 +165,9 @@ describe('TechRepo - Build Completion Notifications', () => {
     // Check each notification was sent with correct content
     const calls = mockSendMessageToUserCached.mock.calls;
     expect(calls).toEqual(expect.arrayContaining([
-      [testUserId, expect.stringContaining('Pulse Laser')],
-      [testUserId, expect.stringContaining('Kinetic Armor')],
-      [testUserId, expect.stringContaining('Auto Turret')]
+      [testUserId, expect.stringContaining('Pulse Laser'), expect.anything()],
+      [testUserId, expect.stringContaining('Kinetic Armor'), expect.anything()],
+      [testUserId, expect.stringContaining('Auto Turret'), expect.anything()]
     ]));
   });
 
@@ -197,7 +202,8 @@ describe('TechRepo - Build Completion Notifications', () => {
     expect(mockSendMessageToUserCached).toHaveBeenCalledOnce();
     expect(mockSendMessageToUserCached).toHaveBeenCalledWith(
       testUserId,
-      expect.stringContaining('Pulse Laser')
+      expect.stringContaining('Pulse Laser'),
+      expect.anything() // context parameter
     );
   });
 

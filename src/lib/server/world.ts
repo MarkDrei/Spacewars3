@@ -118,7 +118,9 @@ class World {
     
     // Remove from database
     const { deleteSpaceObject } = await import('./worldRepo');
-    await deleteSpaceObject(this.db, objectId);
+    const { createEmptyContext } = await import('./ironGuardSystem');
+    const emptyCtx = createEmptyContext();
+    await deleteSpaceObject(this.db, objectId, emptyCtx);
     
     // Spawn a new object to replace the collected one
     await this.spawnRandomObject();
@@ -167,7 +169,9 @@ class World {
 
     // Insert into database and get the new ID
     const { insertSpaceObject } = await import('./worldRepo');
-    const newId = await insertSpaceObject(this.db, newObject);
+    const { createEmptyContext } = await import('./ironGuardSystem');
+    const emptyCtx = createEmptyContext();
+    const newId = await insertSpaceObject(this.db, newObject, emptyCtx);
     
     // Add to world with the database-assigned ID
     this.spaceObjects.push({

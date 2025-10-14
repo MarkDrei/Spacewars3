@@ -120,7 +120,8 @@ async function getShipPosition(shipId: number): Promise<{ x: number; y: number }
 async function setShipSpeed(
   shipId: number,
   speed: number,
-  context: import('./typedLocks').LockContext<any, any>
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  context: import('./ironGuardSystem').LockContext<any, any>
 ): Promise<void> {
   const { getTypedCacheManager } = await import('./typedCacheManager');
   
@@ -141,7 +142,8 @@ async function updateUserBattleState(
   userId: number,
   inBattle: boolean,
   battleId: number | null,
-  context: import('./typedLocks').LockContext<any, any>
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  context: import('./ironGuardSystem').LockContext<any, any>
 ): Promise<void> {
   const { getTypedCacheManager } = await import('./typedCacheManager');
   
@@ -190,7 +192,8 @@ async function teleportShip(
   shipId: number,
   x: number,
   y: number,
-  context: import('./typedLocks').LockContext<any, any>
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  context: import('./ironGuardSystem').LockContext<any, any>
 ): Promise<void> {
   const { getTypedCacheManager } = await import('./typedCacheManager');
   
@@ -212,7 +215,8 @@ async function updateUserDefense(
   hull: number,
   armor: number,
   shield: number,
-  context: import('./typedLocks').LockContext<any, any>
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  context: import('./ironGuardSystem').LockContext<any, any>
 ): Promise<void> {
   const { getTypedCacheManager } = await import('./typedCacheManager');
   
@@ -262,7 +266,7 @@ export async function initiateBattle(
   console.log(`⚔️ initiateBattle: Starting battle between ${attacker.username} and ${attackee.username}`);
   
   // Create empty context at entry point
-  const { createEmptyContext } = await import('./typedLocks');
+  const { createEmptyContext } = await import('./ironGuardSystem');
   const emptyCtx = createEmptyContext();
   
   // Validation: Check battle state from user objects (no DB access needed)
@@ -415,7 +419,7 @@ export async function resolveBattle(
   winnerId: number
 ): Promise<void> {
   // Create empty context at entry point
-  const { createEmptyContext } = await import('./typedLocks');
+  const { createEmptyContext } = await import('./ironGuardSystem');
   const emptyCtx = createEmptyContext();
   const battle = await BattleRepo.getBattle(battleId);
   

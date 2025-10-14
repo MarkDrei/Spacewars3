@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
     console.log('📬 Messages API: Using FIXED cached operations...');
     // Get and mark unread messages as read (using FIXED cached operations)
     // Import and create empty context at entry point
-    const { createEmptyContext } = await import('@/lib/server/typedLocks');
+    const { createEmptyContext } = await import('@/lib/server/ironGuardSystem');
     const emptyCtx = createEmptyContext();
     const unreadMessages = await getUserMessagesCached(session.userId!, emptyCtx);
     

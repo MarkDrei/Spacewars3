@@ -15,7 +15,7 @@ import {
   type TestValidWorldToUser,
   type TestInvalidUserToWorld,
   type TestInvalidSameLevel
-} from '../../lib/server/typedLocks';
+} from '../../lib/server/ironGuardSystem';
 
 describe('Phase 1: Typed Locks Core System', () => {
   
@@ -114,7 +114,7 @@ describe('Phase 1: Typed Locks Core System', () => {
 
   describe('TypedReadWriteLock Functionality', () => {
     test('typedReadWriteLock_concurrentReads_allowedSimultaneously', async () => {
-      const worldLock = new TypedReadWriteLock('world-test', 1 as WorldLevel);
+      const worldLock = new TypedReadWriteLock('world-test', 1 as WorldLevel, 1 as WorldLevel);
       const emptyCtx = createEmptyContext();
       let concurrentReads = 0;
       let maxConcurrentReads = 0;
@@ -146,7 +146,7 @@ describe('Phase 1: Typed Locks Core System', () => {
     });
 
     test('typedReadWriteLock_writeExcludesReads_worksCorrectly', async () => {
-      const worldLock = new TypedReadWriteLock('world-test', 1 as WorldLevel);
+      const worldLock = new TypedReadWriteLock('world-test', 1 as WorldLevel, 1 as WorldLevel);
       const emptyCtx = createEmptyContext();
       const executionOrder: string[] = [];
 
@@ -192,7 +192,7 @@ describe('Phase 1: Typed Locks Core System', () => {
     });
 
     test('typedReadWriteLock_lockStatistics_trackCorrectly', async () => {
-      const rwLock = new TypedReadWriteLock('stats-test', 1 as WorldLevel);
+      const rwLock = new TypedReadWriteLock('stats-test', 1 as WorldLevel, 1 as WorldLevel);
       const emptyCtx = createEmptyContext();
 
       const initialStats = rwLock.getStats();
