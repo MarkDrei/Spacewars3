@@ -43,19 +43,22 @@ DatabaseLevel = 3               →  LOCK_DATABASE = 60
 **Goal**: Install reference IronGuard alongside current system without breaking anything
 
 #### Tasks:
-1. [ ] Copy `ironGuard/ironGuardSystem.ts` → `src/lib/server/ironGuardV2.ts`
+1. [x] Copy `ironGuard/ironGuardSystem.ts` → `src/lib/server/ironGuardV2.ts`
    - Update lock level type: `type LockLevel = 10 | 20 | 30 | 40 | 41 | 50 | 60;`
    - Add Spacewars lock constants
    - Keep all reference type machinery (`Contains`, `CanAcquire`, etc.)
+   - Added `release()` method for try/finally pattern
 
-2. [ ] Copy `ironGuard/ironGuardTypes.ts` → `src/lib/server/ironGuardTypesV2.ts`
+2. [x] Copy `ironGuard/ironGuardTypes.ts` → `src/lib/server/ironGuardTypesV2.ts`
    - Adapt `ValidLock3Context` pattern for Spacewars locks
+   - Create: `ValidCacheLockContext<THeld>` (added, not in original plan)
    - Create: `ValidWorldLockContext<THeld>`
    - Create: `ValidUserLockContext<THeld>`
    - Create: `ValidMessageReadLockContext<THeld>`
    - Create: `ValidMessageWriteLockContext<THeld>`
    - Create: `ValidBattleLockContext<THeld>`
    - Create: `ValidDatabaseLockContext<THeld>`
+   - Note: Simplified validation - TypeScript doesn't support numeric comparison in types
 
 3. [ ] Create `src/lib/server/typedCacheManagerV2.ts` (skeleton only)
    - Import from ironGuardV2
