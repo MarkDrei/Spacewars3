@@ -5,7 +5,7 @@
 
 import { describe, expect, test, beforeEach, afterEach } from 'vitest';
 import { TypedCacheManager, getTypedCacheManager } from '../../lib/server/typedCacheManager';
-import { createEmptyContext } from '../../lib/server/typedLocks';
+import { createEmptyContext } from '../../lib/server/ironGuard';
 
 describe('Phase 3: Typed API Lock Ordering System', () => {
   
