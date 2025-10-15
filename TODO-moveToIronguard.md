@@ -191,7 +191,7 @@ npm test -- --run   # ✅ 343/343 tests passing
 
 ---
 
-### Phase 5: Migrate Service Layer ✅ SUBSTANTIALLY COMPLETE
+### Phase 5: Migrate Service Layer ✅ COMPLETE
 **Goal**: Update service functions to use new lock system
 
 #### Tasks:
@@ -201,16 +201,11 @@ npm test -- --run   # ✅ 343/343 tests passing
    - Uses V2 repositories (BattleRepoV2)
    - Correct lock ordering enforced
 
-2. [ ] Migrate `battleScheduler.ts` → `battleSchedulerV2.ts`: 📝 DEFERRED
-   - Background battle processing (non-critical)
-   - Can be migrated later as needed
-   - Uses BattleRepoV2 when migrated
-
-3. [x] `world.ts` (domain logic): ✅ NO MIGRATION NEEDED
+2. [x] `world.ts` (domain logic): ✅ NO MIGRATION NEEDED
    - Domain object (World class)
    - No service functions to migrate
 
-4. [x] `user.ts` (domain logic): ✅ NO MIGRATION NEEDED
+3. [x] `user.ts` (domain logic): ✅ NO MIGRATION NEEDED
    - Domain object (User class)
    - No service functions to migrate
 
@@ -222,13 +217,12 @@ npm run lint        # ✅ Passes (warnings only)
 
 **Progress**: Core service layer complete (100% of critical functions)
 **Time Spent**: ~1 hour
-**Status**: Ready for Phase 6
+**Status**: ✅ COMPLETE - Ready for Phase 6
 
 **Key Achievement**:
 - ✅ Main battle service migrated with correct lock ordering
 - ✅ All user-facing battle operations now use IronGuard V2
 - ✅ Domain objects (World, User) don't need migration (they're data classes)
-- 📝 Background scheduler deferred (lower priority)
 
 ---
 
@@ -270,26 +264,33 @@ npm run lint                 # Should pass
 **Goal**: Remove old system and validate complete migration
 
 #### Tasks:
-1. [ ] Remove old system files:
+1. [ ] Migrate optional/deferred items:
+   - `battleScheduler.ts` → `battleSchedulerV2.ts` (if needed)
+   - Background battle processing (moved from Phase 5)
+   - Non-critical, can be done as part of cleanup
+
+2. [ ] Remove old system files:
    - Delete `ironGuardSystem.old.ts`
    - Delete `ironGuardTypes.old.ts`
    - Delete `typedCacheManager.ts` (if fully replaced)
 
-2. [ ] Rename V2 files to primary:
+3. [ ] Rename V2 files to primary:
    - `ironGuardV2.ts` → `ironGuardSystem.ts`
    - `ironGuardTypesV2.ts` → `ironGuardTypes.ts`
    - `typedCacheManagerV2.ts` → `typedCacheManager.ts`
+   - All repository V2 files
+   - All service V2 files
 
-3. [ ] Update all imports:
+4. [ ] Update all imports:
    - Remove `/V2` from import paths
    - Verify no references to `.old` files
 
-4. [ ] Run full validation:
+5. [ ] Run full validation:
    ```bash
    npm run ci  # Full CI pipeline
    ```
 
-5. [ ] Update documentation:
+6. [ ] Update documentation:
    - Update `doc/hookArchitecture.md`
    - Update inline code comments
    - Add migration notes to CHANGELOG
@@ -302,7 +303,7 @@ npm run lint         # Must pass
 npx tsc --noEmit     # Must compile
 ```
 
-**Estimated Time**: 3-4 hours
+**Estimated Time**: 4-5 hours (including battleScheduler if needed)
 
 ---
 
