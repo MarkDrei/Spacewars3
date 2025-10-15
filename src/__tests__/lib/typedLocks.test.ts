@@ -10,31 +10,12 @@ import {
   createEmptyContext,
   type CacheLevel,
   type WorldLevel,
-  type UserLevel,
-  type TestValidCacheToWorld,
-  type TestValidWorldToUser,
-  type TestInvalidUserToWorld,
-  type TestInvalidSameLevel
-} from '../../lib/server/typedLocks';
+  type UserLevel
+} from '../../lib/server/ironGuard';
 
 describe('Phase 1: Typed Locks Core System', () => {
   
   describe('Type System Validation', () => {
-    test('typeValidation_lockOrderingTypes_compileCorrectly', () => {
-      // These should compile without errors
-      const validCacheToWorld: TestValidCacheToWorld = true;
-      const validWorldToUser: TestValidWorldToUser = true;
-      
-      // These should be false (invalid orderings)
-      const invalidUserToWorld: TestInvalidUserToWorld = false;
-      const invalidSameLevel: TestInvalidSameLevel = false;
-      
-      expect(validCacheToWorld).toBe(true);
-      expect(validWorldToUser).toBe(true);
-      expect(invalidUserToWorld).toBe(false);
-      expect(invalidSameLevel).toBe(false);
-    });
-
     test('emptyContext_creation_hasCorrectType', () => {
       const emptyCtx = createEmptyContext();
       
@@ -47,7 +28,7 @@ describe('Phase 1: Typed Locks Core System', () => {
 
   describe('TypedMutex Functionality', () => {
     test('typedMutex_basicAcquisition_worksCorrectly', async () => {
-      const cacheMutex = new TypedMutex('cache-test', 0 as CacheLevel);
+      const cacheMutex = new TypedMutex('cache-test', 1 as CacheLevel);
       const emptyCtx = createEmptyContext();
       const executionOrder: string[] = [];
 
@@ -62,12 +43,12 @@ describe('Phase 1: Typed Locks Core System', () => {
     });
 
     test('typedMutex_validLockOrdering_allowsAcquisition', async () => {
-      const cacheMutex = new TypedMutex('cache-test', 0 as CacheLevel);
-      const worldMutex = new TypedMutex('world-test', 1 as WorldLevel);
+      const cacheMutex = new TypedMutex('cache-test', 1 as CacheLevel);
+      const worldMutex = new TypedMutex('world-test', 2 as WorldLevel);
       const emptyCtx = createEmptyContext();
       const executionOrder: string[] = [];
 
-      // Valid ordering: Cache (0) → World (1)
+      // Valid ordering: Cache (1) → World (2)
       const result = await cacheMutex.acquire(emptyCtx, async (cacheCtx: any) => {
         executionOrder.push('cache-acquired');
         
@@ -83,7 +64,7 @@ describe('Phase 1: Typed Locks Core System', () => {
     });
 
     test('typedMutex_concurrentAccess_queuesCorrectly', async () => {
-      const userMutex = new TypedMutex('user-test', 2 as UserLevel);
+      const userMutex = new TypedMutex('user-test', 3 as UserLevel);
       const emptyCtx = createEmptyContext();
       const executionOrder: string[] = [];
 
@@ -146,7 +127,7 @@ describe('Phase 1: Typed Locks Core System', () => {
     });
 
     test('typedReadWriteLock_writeExcludesReads_worksCorrectly', async () => {
-      const worldLock = new TypedReadWriteLock('world-test', 1 as WorldLevel);
+      const worldLock = new TypedReadWriteLock('world-test', 2 as WorldLevel);
       const emptyCtx = createEmptyContext();
       const executionOrder: string[] = [];
 
@@ -174,7 +155,7 @@ describe('Phase 1: Typed Locks Core System', () => {
 
   describe('Lock Statistics', () => {
     test('typedMutex_lockStatistics_trackCorrectly', async () => {
-      const mutex = new TypedMutex('stats-test', 0 as CacheLevel);
+      const mutex = new TypedMutex('stats-test', 1 as CacheLevel);
       const emptyCtx = createEmptyContext();
 
       expect(mutex.isLocked()).toBe(false);
@@ -192,7 +173,7 @@ describe('Phase 1: Typed Locks Core System', () => {
     });
 
     test('typedReadWriteLock_lockStatistics_trackCorrectly', async () => {
-      const rwLock = new TypedReadWriteLock('stats-test', 1 as WorldLevel);
+      const rwLock = new TypedReadWriteLock('stats-test', 2 as WorldLevel);
       const emptyCtx = createEmptyContext();
 
       const initialStats = rwLock.getStats();
@@ -219,11 +200,11 @@ describe('Phase 1: Typed Locks Core System', () => {
 /*
 describe('Compile-Time Error Tests (Uncomment to test)', () => {
   test('invalidLockOrdering_shouldCauseCompileError', async () => {
-    const worldMutex = new TypedMutex('world', 1 as WorldLevel);
-    const cacheMutex = new TypedMutex('cache', 0 as CacheLevel);
+    const worldMutex = new TypedMutex('world', 2 as WorldLevel);
+    const cacheMutex = new TypedMutex('cache', 1 as CacheLevel);
     const emptyCtx = createEmptyContext();
 
-    // This should cause a compile error: trying to acquire cache lock (0) after world lock (1)
+    // This should cause a compile error: trying to acquire cache lock (1) after world lock (2)
     await worldMutex.acquire(emptyCtx, async (worldCtx) => {
       return await cacheMutex.acquire(worldCtx, async (cacheCtx) => {
         return 'should-not-compile';

@@ -4,7 +4,7 @@ import { getTypedCacheManager } from '@/lib/server/typedCacheManager';
 import { AllResearches, getResearchUpgradeCost, getResearchUpgradeDuration, getResearchEffect, ResearchType } from '@/lib/server/techtree';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth, ApiError } from '@/lib/server/errors';
-import { createEmptyContext } from '@/lib/server/typedLocks';
+import { createEmptyContext } from '@/lib/server/ironGuard';
 import { User } from '@/lib/server/user';
 
 export async function GET(request: NextRequest) {
