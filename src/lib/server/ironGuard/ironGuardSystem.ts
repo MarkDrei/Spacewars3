@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * IronGuard: Unbreakable Compile-Time Lock Protection System
  * 

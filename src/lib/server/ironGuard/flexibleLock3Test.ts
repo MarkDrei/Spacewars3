@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Advanced example: Type-safe function composition with lock constraints
  * 

@@ -3,10 +3,11 @@ import { getIronSession } from 'iron-session';
 import { getTypedCacheManager, TypedCacheManager } from '@/lib/server/typedCacheManager';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth, ApiError } from '@/lib/server/errors';
-import { createEmptyContext, LockContext, Locked, CacheLevel, WorldLevel, UserLevel } from '@/lib/server/ironGuard';
+import { createEmptyContext, LockContext, Locked } from '@/lib/server/ironGuard';
 import { User } from '@/lib/server/user';
 
 // Type aliases for cleaner code
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type UserContext = LockContext<Locked<'user'>, any>;
 
 export async function GET(request: NextRequest) {

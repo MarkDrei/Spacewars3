@@ -34,8 +34,11 @@ The concepts from this reference implementation have been integrated into the ma
 
 The project has successfully transitioned from `typedLocks.ts` to the ironGuard system with the following mappings:
 
-- CacheLevel (0) → Lock Level 1
-- WorldLevel (1) → Lock Level 2
-- UserLevel (2) → Lock Level 3
-- MessageReadLevel (2.4) → Lock Level 4
-- MessageWriteLevel/DatabaseLevel (2.5/3) → Lock Level 5
+- CacheLevel (0) → Lock Level 10
+- WorldLevel (1) → Lock Level 20
+- UserLevel (2) → Lock Level 30
+- MessageReadLevel (2.4) → Lock Level 40
+- MessageWriteLevel (2.5) → Lock Level 41
+- DatabaseLevel (3) → Lock Level 50
+
+**Note**: Lock levels use a spaced numbering scheme to allow room for future enhancements between existing levels.

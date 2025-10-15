@@ -22,12 +22,14 @@ The Spacewars3 project has successfully transitioned from the `typedLocks.ts` sy
 
 | Component | Old Level | New Level | Notes |
 |-----------|-----------|-----------|-------|
-| Cache Management | 0 | 1 | Highest priority (acquired first) |
-| World Operations | 1 | 2 | Second level |
-| User Operations | 2 | 3 | Third level |
-| Message Read | 2.4 | 4 | Fourth level |
-| Message Write | 2.5 | 5 | Lowest priority |
-| Database | 3 | 5 | Merged with Message Write |
+| Cache Management | 0 | 10 | Highest priority (acquired first) |
+| World Operations | 1 | 20 | Second level |
+| User Operations | 2 | 30 | Third level |
+| Message Read | 2.4 | 40 | Fourth level |
+| Message Write | 2.5 | 41 | Unique value, separate from Database |
+| Database | 3 | 50 | Unique value with room for expansion |
+
+**Note**: Lock levels now use a spaced numbering scheme (10, 20, 30, 40, 41, 50) to allow room for future enhancements between existing levels.
 
 ## Files Modified
 

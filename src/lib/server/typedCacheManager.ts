@@ -28,10 +28,15 @@ import sqlite3 from 'sqlite3';
 // Type aliases for lock contexts to improve readability and avoid 'any'
 // Note: In ironGuard, lock levels are tracked as arrays
 // These are the minimal lock levels - actual contexts may have additional locks
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type WorldReadContext = LockContext<Locked<'world:read'>, any>;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type WorldWriteContext = LockContext<Locked<'world:write'>, any>;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type UserContext = LockContext<Locked<'user'>, any>;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type DatabaseReadContext = LockContext<Locked<'database:read'>, any>;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type DatabaseWriteContext = LockContext<Locked<'database:write'>, any>;
 
 // Context type for data access methods - accepts any context that provides the required lock
@@ -99,11 +104,11 @@ export class TypedCacheManager {
   private persistenceTimer: NodeJS.Timeout | null = null;
 
   // Typed locks with explicit level assignment
-  private cacheManagementLock = new TypedMutex('cache-mgmt', 1 as CacheLevel);
-  private worldLock = new TypedReadWriteLock('world', 2 as WorldLevel, 2 as WorldLevel);
-  private userLock = new TypedMutex('user', 3 as UserLevel);
-  private messageLock = new TypedReadWriteLock('message', 4 as MessageReadLevel, 5 as MessageWriteLevel);
-  private databaseLock = new TypedReadWriteLock('database', 5 as DatabaseLevel, 5 as DatabaseLevel);
+  private cacheManagementLock = new TypedMutex('cache-mgmt', 10 as CacheLevel);
+  private worldLock = new TypedReadWriteLock('world', 20 as WorldLevel, 20 as WorldLevel);
+  private userLock = new TypedMutex('user', 30 as UserLevel);
+  private messageLock = new TypedReadWriteLock('message', 40 as MessageReadLevel, 41 as MessageWriteLevel);
+  private databaseLock = new TypedReadWriteLock('database', 50 as DatabaseLevel, 50 as DatabaseLevel);
 
   // In-memory cache storage
   private users: Map<number, User> = new Map();
@@ -196,6 +201,7 @@ export class TypedCacheManager {
    */
   async withCacheManagement<T>(
     context: EmptyContext,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     fn: (ctx: any) => Promise<T>
   ): Promise<T> {
     return await this.cacheManagementLock.acquire(context, fn);
@@ -206,6 +212,7 @@ export class TypedCacheManager {
   /**
    * Perform world read operations with proper locking
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async withWorldRead<T>(
     context: LockContext<any, any>,
     fn: (ctx: WorldReadContext) => Promise<T>
@@ -216,6 +223,7 @@ export class TypedCacheManager {
   /**
    * Perform world write operations with proper locking
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async withWorldWrite<T>(
     context: LockContext<any, any>,
     fn: (ctx: WorldWriteContext) => Promise<T>
@@ -247,6 +255,7 @@ export class TypedCacheManager {
   /**
    * Perform user operations with proper locking (single lock for ALL users)
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async withUserLock<T>(
     context: LockContext<any, any>,
     fn: (ctx: UserContext) => Promise<T>
@@ -292,6 +301,7 @@ export class TypedCacheManager {
   /**
    * Perform database read operations with proper locking
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async withDatabaseRead<T>(
     context: LockContext<any, any>,
     fn: (ctx: DatabaseReadContext) => Promise<T>
@@ -302,6 +312,7 @@ export class TypedCacheManager {
   /**
    * Perform database write operations with proper locking
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async withDatabaseWrite<T>(
     context: LockContext<any, any>,
     fn: (ctx: DatabaseWriteContext) => Promise<T>
@@ -466,6 +477,7 @@ export class TypedCacheManager {
   /**
    * Get messages for a user from cache or database
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async getMessagesForUser(
     context: LockContext<any, any>,
     userId: number
@@ -478,6 +490,7 @@ export class TypedCacheManager {
   /**
    * Get unread messages for a user and mark as read
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async getAndMarkUnreadMessages(
     context: LockContext<any, any>,
     userId: number
@@ -512,6 +525,7 @@ export class TypedCacheManager {
   /**
    * Create a new message for a user
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async createMessage(
     context: LockContext<any, any>,
     userId: number,
@@ -547,6 +561,7 @@ export class TypedCacheManager {
   /**
    * Get count of unread messages for a user (from cache)
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async getUnreadMessageCount(
     context: LockContext<any, any>,
     userId: number
@@ -560,6 +575,7 @@ export class TypedCacheManager {
   /**
    * Delete old read messages (cleanup operation)
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async deleteOldReadMessages(
     context: LockContext<any, any>,
     olderThanDays = 30
@@ -665,7 +681,7 @@ export class TypedCacheManager {
   /**
    * Manually persist all dirty users to database
    */
-  async persistDirtyUsers<CurrentLevel extends number>(
+  async persistDirtyUsers<_CurrentLevel extends number>(
     context: LockContext<any, any>
   ): Promise<void> {
     await this.userLock.acquire(context, async (userCtx) => {
@@ -752,7 +768,7 @@ export class TypedCacheManager {
    * Manually persist all dirty messages to database
    * TODO: Integrate with background persistence system
    */
-  async persistDirtyMessages<CurrentLevel extends number>(
+  async persistDirtyMessages<_CurrentLevel extends number>(
     context: LockContext<any, any>
   ): Promise<void> {
     await this.messageLock.write(context, async (messageCtx) => {
@@ -771,7 +787,7 @@ export class TypedCacheManager {
   /**
    * Manually persist dirty world data to database
    */
-  async persistDirtyWorld<CurrentLevel extends number>(
+  async persistDirtyWorld<_CurrentLevel extends number>(
     context: LockContext<any, any>
   ): Promise<void> {
     await this.worldLock.write(context, async (worldCtx) => {

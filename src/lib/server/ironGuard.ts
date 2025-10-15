@@ -4,29 +4,30 @@
  * This system replaces the old typedLocks.ts with a simpler, more maintainable approach.
  * 
  * Rules:
- * - Locks have numeric levels (1, 2, 3, 4, 5)
- * - You can skip locks (1→3 is legal, or directly acquire 3)
+ * - Locks have numeric levels with gaps for future enhancements
+ * - You can skip locks (10→30 is legal, or directly acquire 30)
  * - Once you hold a lock, you can only acquire higher level locks
  * - You can pass lock contexts to functions with compile-time validation
  * 
- * Lock Level Mapping (from old system):
- * - Level 1: Cache Management (was CacheLevel = 0)
- * - Level 2: World Operations (was WorldLevel = 1)
- * - Level 3: User Operations (was UserLevel = 2)
- * - Level 4: Message Read (was MessageReadLevel = 2.4)
- * - Level 5: Message Write & Database (was MessageWriteLevel = 2.5 / DatabaseLevel = 3)
+ * Lock Level Mapping:
+ * - Level 10: Cache Management
+ * - Level 20: World Operations
+ * - Level 30: User Operations
+ * - Level 40: Message Read
+ * - Level 41: Message Write
+ * - Level 50: Database (unique value)
  */
 
 // Type definitions for lock levels
-export type LockLevel = 1 | 2 | 3 | 4 | 5;
+export type LockLevel = 10 | 20 | 30 | 40 | 41 | 50;
 
 // Lock level constants for backwards compatibility
-export type CacheLevel = 1;
-export type WorldLevel = 2;
-export type UserLevel = 3;
-export type MessageReadLevel = 4;
-export type MessageWriteLevel = 5;
-export type DatabaseLevel = 5;
+export type CacheLevel = 10;
+export type WorldLevel = 20;
+export type UserLevel = 30;
+export type MessageReadLevel = 40;
+export type MessageWriteLevel = 41;
+export type DatabaseLevel = 50;
 
 // Lock state phantom types for compatibility
 declare const LockBrand: unique symbol;
@@ -46,17 +47,19 @@ type CanAcquire<THeld extends readonly LockLevel[], TLock extends LockLevel> =
     ? false  // Already held
     : THeld extends readonly []
       ? true  // No locks held, can acquire any
-      : THeld extends readonly [1, ...any[]]
-        ? TLock extends 1 ? false : true  // Have 1, can acquire 2-5
-        : THeld extends readonly [2, ...any[]] 
-          ? TLock extends 1 | 2 ? false : true  // Have 2, can acquire 3-5
-          : THeld extends readonly [3, ...any[]]
-            ? TLock extends 1 | 2 | 3 ? false : true  // Have 3, can acquire 4-5
-            : THeld extends readonly [4, ...any[]]
-              ? TLock extends 1 | 2 | 3 | 4 ? false : true  // Have 4, can acquire 5
-              : THeld extends readonly [5, ...any[]]
-                ? false  // Have 5, can't acquire anything higher
-                : true;  // Fallback
+      : THeld extends readonly [10, ...readonly LockLevel[]]
+        ? TLock extends 10 ? false : true  // Have 10, can acquire 20-50
+        : THeld extends readonly [20, ...readonly LockLevel[]] 
+          ? TLock extends 10 | 20 ? false : true  // Have 20, can acquire 30-50
+          : THeld extends readonly [30, ...readonly LockLevel[]]
+            ? TLock extends 10 | 20 | 30 ? false : true  // Have 30, can acquire 40-50
+            : THeld extends readonly [40, ...readonly LockLevel[]]
+              ? TLock extends 10 | 20 | 30 | 40 ? false : true  // Have 40, can acquire 41, 50
+              : THeld extends readonly [41, ...readonly LockLevel[]]
+                ? TLock extends 10 | 20 | 30 | 40 | 41 ? false : true  // Have 41, can acquire 50
+                : THeld extends readonly [50, ...readonly LockLevel[]]
+                  ? false  // Have 50, can't acquire anything higher
+                  : true;  // Fallback
 
 /**
  * Lock context that tracks currently held locks
@@ -72,6 +75,7 @@ export class LockContext<
 
   constructor(state: State, heldLocks: THeldLocks) {
     this._state = state;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     this._maxLevel = (heldLocks.length > 0 ? Math.max(...heldLocks) : undefined) as any;
     this.heldLocks = heldLocks;
   }
@@ -98,8 +102,10 @@ export class LockContext<
     }
     
     return new LockContext(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       `locked:${name}` as any,
       [...this.heldLocks, lock] as const
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ) as any;
   }
 
@@ -107,6 +113,7 @@ export class LockContext<
    * Check if a specific lock is held
    */
   hasLock<TLock extends LockLevel>(lock: TLock): Contains<THeldLocks, TLock> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return this.heldLocks.includes(lock) as any;
   }
 
@@ -123,12 +130,14 @@ export class LockContext<
 }
 
 // Base context (no locks held)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type EmptyContext = LockContext<any, any>;
 
 /**
  * Create an empty lock context (starting point for all lock acquisitions)
  */
 export function createEmptyContext(): EmptyContext {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return new LockContext<Unlocked, readonly []>('unlocked' as any, [] as const) as any;
 }
 
@@ -152,9 +161,11 @@ export class TypedMutex<Name extends string, LockLevelNum extends LockLevel> {
    * Type system ensures proper lock ordering
    */
   async acquire<THeld extends readonly LockLevel[], T>(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     context: LockContext<any, THeld>,
     fn: (ctx: LockContext<Locked<Name>, readonly [...THeld, LockLevelNum]>) => Promise<T>
   ): Promise<T> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const ctx = context as LockContext<any, THeld>;
     
     // Runtime check for lock ordering
@@ -171,6 +182,7 @@ export class TypedMutex<Name extends string, LockLevelNum extends LockLevel> {
     
     try {
       // Execute the function with the new context
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       return await fn(newContext as any);
     } finally {
       // Release the lock
@@ -248,9 +260,11 @@ export class TypedReadWriteLock<
    * Acquire a read lock
    */
   async read<THeld extends readonly LockLevel[], T>(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     context: LockContext<any, THeld>,
     fn: (ctx: LockContext<Locked<`${Name}:read`>, readonly [...THeld, ReadLevelNum]>) => Promise<T>
   ): Promise<T> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const ctx = context as LockContext<any, THeld>;
     
     // Runtime check for lock ordering
@@ -263,9 +277,11 @@ export class TypedReadWriteLock<
     await this.lockRead();
     
     // Create new context
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const newContext = ctx.acquire(this.readLevel, `${this.name}:read` as any);
     
     try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       return await fn(newContext as any);
     } finally {
       this.unlockRead();
@@ -276,9 +292,11 @@ export class TypedReadWriteLock<
    * Acquire a write lock
    */
   async write<THeld extends readonly LockLevel[], T>(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     context: LockContext<any, THeld>,
     fn: (ctx: LockContext<Locked<`${Name}:write`>, readonly [...THeld, WriteLevelNum]>) => Promise<T>
   ): Promise<T> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const ctx = context as LockContext<any, THeld>;
     
     // Runtime check for lock ordering
@@ -291,9 +309,11 @@ export class TypedReadWriteLock<
     await this.lockWrite();
     
     // Create new context
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const newContext = ctx.acquire(this.writeLevel, `${this.name}:write` as any);
     
     try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       return await fn(newContext as any);
     } finally {
       this.unlockWrite();
@@ -381,10 +401,12 @@ export class TypedReadWriteLock<
 
 // Helper type for context requirements
 export type RequireContext<RequiredLock extends string> = 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   LockContext<Locked<RequiredLock>, any>;
 
 // Helper type for context with specific level or lower
-export type RequireLevel<MaxLevel extends number> = 
+export type RequireLevel<_MaxLevel extends number> = 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
   LockContext<any, any>;
 
 // Export type for backwards compatibility
