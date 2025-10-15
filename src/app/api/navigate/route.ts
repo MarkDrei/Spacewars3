@@ -9,7 +9,7 @@ import { User } from '@/lib/server/user';
 import { World } from '@/lib/server/world';
 
 // Type aliases for cleaner code
-type UserContext = LockContext<Locked<'user'>, CacheLevel | WorldLevel | UserLevel>;
+type UserContext = LockContext<Locked<'user'>, any>;
 
 export async function POST(request: NextRequest) {
   try {

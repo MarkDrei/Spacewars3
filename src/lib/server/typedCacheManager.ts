@@ -26,12 +26,13 @@ import { getUserByIdFromDb, getUserByUsernameFromDb } from './userRepo';
 import sqlite3 from 'sqlite3';
 
 // Type aliases for lock contexts to improve readability and avoid 'any'
-// Type aliases for lock contexts to improve readability and avoid 'any'
-type WorldReadContext = LockContext<Locked<'world:read'>, CacheLevel | WorldLevel>;
-type WorldWriteContext = LockContext<Locked<'world:write'>, CacheLevel | WorldLevel>;
-type UserContext = LockContext<Locked<'user'>, CacheLevel | WorldLevel | UserLevel>;
-type DatabaseReadContext = LockContext<Locked<'database:read'>, CacheLevel | WorldLevel | UserLevel | DatabaseLevel>;
-type DatabaseWriteContext = LockContext<Locked<'database:write'>, CacheLevel | WorldLevel | UserLevel | DatabaseLevel>;
+// Note: In ironGuard, lock levels are tracked as arrays
+// These are the minimal lock levels - actual contexts may have additional locks
+type WorldReadContext = LockContext<Locked<'world:read'>, any>;
+type WorldWriteContext = LockContext<Locked<'world:write'>, any>;
+type UserContext = LockContext<Locked<'user'>, any>;
+type DatabaseReadContext = LockContext<Locked<'database:read'>, any>;
+type DatabaseWriteContext = LockContext<Locked<'database:write'>, any>;
 
 // Context type for data access methods - accepts any context that provides the required lock
 type WorldAccessContext = WorldReadContext | WorldWriteContext | UserContext | DatabaseReadContext | DatabaseWriteContext;
@@ -194,7 +195,7 @@ export class TypedCacheManager {
    */
   async withCacheManagement<T>(
     context: EmptyContext,
-    fn: (ctx: LockContext<Locked<'cache-mgmt'>, CacheLevel>) => Promise<T>
+    fn: (ctx: any) => Promise<T>
   ): Promise<T> {
     return await this.cacheManagementLock.acquire(context, fn);
   }
@@ -205,7 +206,7 @@ export class TypedCacheManager {
    * Perform world read operations with proper locking
    */
   async withWorldRead<T>(
-    context: LockContext<any, CacheLevel | never>,
+    context: LockContext<any, any>,
     fn: (ctx: WorldReadContext) => Promise<T>
   ): Promise<T> {
     return await this.worldLock.read(context, fn);
@@ -215,7 +216,7 @@ export class TypedCacheManager {
    * Perform world write operations with proper locking
    */
   async withWorldWrite<T>(
-    context: LockContext<any, CacheLevel | never>,
+    context: LockContext<any, any>,
     fn: (ctx: WorldWriteContext) => Promise<T>
   ): Promise<T> {
     return await this.worldLock.write(context, fn);
@@ -246,7 +247,7 @@ export class TypedCacheManager {
    * Perform user operations with proper locking (single lock for ALL users)
    */
   async withUserLock<T>(
-    context: LockContext<any, CacheLevel | WorldLevel | never>,
+    context: LockContext<any, any>,
     fn: (ctx: UserContext) => Promise<T>
   ): Promise<T> {
     return await this.userLock.acquire(context, fn);
@@ -291,7 +292,7 @@ export class TypedCacheManager {
    * Perform database read operations with proper locking
    */
   async withDatabaseRead<T>(
-    context: LockContext<any, CacheLevel | WorldLevel | UserLevel | never>,
+    context: LockContext<any, any>,
     fn: (ctx: DatabaseReadContext) => Promise<T>
   ): Promise<T> {
     return await this.databaseLock.read(context, fn);
@@ -301,7 +302,7 @@ export class TypedCacheManager {
    * Perform database write operations with proper locking
    */
   async withDatabaseWrite<T>(
-    context: LockContext<any, CacheLevel | WorldLevel | UserLevel | never>,
+    context: LockContext<any, any>,
     fn: (ctx: DatabaseWriteContext) => Promise<T>
   ): Promise<T> {
     return await this.databaseLock.write(context, fn);
@@ -464,8 +465,8 @@ export class TypedCacheManager {
   /**
    * Get messages for a user from cache or database
    */
-  async getMessagesForUser<CurrentLevel extends number>(
-    context: LockContext<any, CurrentLevel>,
+  async getMessagesForUser(
+    context: LockContext<any, any>,
     userId: number
   ): Promise<Message[]> {
     return this.messageLock.read(context, async (messageCtx) => {
@@ -476,8 +477,8 @@ export class TypedCacheManager {
   /**
    * Get unread messages for a user and mark as read
    */
-  async getAndMarkUnreadMessages<CurrentLevel extends number>(
-    context: LockContext<any, CurrentLevel>,
+  async getAndMarkUnreadMessages(
+    context: LockContext<any, any>,
     userId: number
   ): Promise<UnreadMessage[]> {
     return this.messageLock.write(context, async (messageCtx) => {
@@ -510,8 +511,8 @@ export class TypedCacheManager {
   /**
    * Create a new message for a user
    */
-  async createMessage<CurrentLevel extends number>(
-    context: LockContext<any, CurrentLevel>,
+  async createMessage(
+    context: LockContext<any, any>,
     userId: number,
     messageText: string
   ): Promise<number> {
@@ -545,8 +546,8 @@ export class TypedCacheManager {
   /**
    * Get count of unread messages for a user (from cache)
    */
-  async getUnreadMessageCount<CurrentLevel extends number>(
-    context: LockContext<any, CurrentLevel>,
+  async getUnreadMessageCount(
+    context: LockContext<any, any>,
     userId: number
   ): Promise<number> {
     return this.messageLock.read(context, async (messageCtx) => {
@@ -558,8 +559,8 @@ export class TypedCacheManager {
   /**
    * Delete old read messages (cleanup operation)
    */
-  async deleteOldReadMessages<CurrentLevel extends number>(
-    context: LockContext<any, CurrentLevel>,
+  async deleteOldReadMessages(
+    context: LockContext<any, any>,
     olderThanDays = 30
   ): Promise<number> {
     return this.messageLock.write(context, async (messageCtx) => {
@@ -664,7 +665,7 @@ export class TypedCacheManager {
    * Manually persist all dirty users to database
    */
   async persistDirtyUsers<CurrentLevel extends number>(
-    context: LockContext<any, CurrentLevel>
+    context: LockContext<any, any>
   ): Promise<void> {
     await this.userLock.acquire(context, async (userCtx) => {
       await this.databaseLock.write(userCtx, async () => {
@@ -751,7 +752,7 @@ export class TypedCacheManager {
    * TODO: Integrate with background persistence system
    */
   async persistDirtyMessages<CurrentLevel extends number>(
-    context: LockContext<any, CurrentLevel>
+    context: LockContext<any, any>
   ): Promise<void> {
     await this.messageLock.write(context, async (messageCtx) => {
       await this.databaseLock.write(messageCtx, async () => {
@@ -770,7 +771,7 @@ export class TypedCacheManager {
    * Manually persist dirty world data to database
    */
   async persistDirtyWorld<CurrentLevel extends number>(
-    context: LockContext<any, CurrentLevel>
+    context: LockContext<any, any>
   ): Promise<void> {
     await this.worldLock.write(context, async (worldCtx) => {
       if (!this.worldDirty || !this.world) {

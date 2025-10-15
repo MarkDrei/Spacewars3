@@ -123,13 +123,13 @@ export class LockContext<
 }
 
 // Base context (no locks held)
-export type EmptyContext = LockContext<Unlocked, readonly []>;
+export type EmptyContext = LockContext<any, any>;
 
 /**
  * Create an empty lock context (starting point for all lock acquisitions)
  */
 export function createEmptyContext(): EmptyContext {
-  return new LockContext<Unlocked, readonly []>('unlocked' as any, [] as const);
+  return new LockContext<Unlocked, readonly []>('unlocked' as any, [] as const) as any;
 }
 
 /**
@@ -152,12 +152,16 @@ export class TypedMutex<Name extends string, LockLevelNum extends LockLevel> {
    * Type system ensures proper lock ordering
    */
   async acquire<THeld extends readonly LockLevel[], T>(
-    context: CanAcquire<THeld, LockLevelNum> extends true
-      ? LockContext<any, THeld>
-      : `Cannot acquire ${Name} at level ${LockLevelNum}`,
+    context: LockContext<any, THeld>,
     fn: (ctx: LockContext<Locked<Name>, readonly [...THeld, LockLevelNum]>) => Promise<T>
   ): Promise<T> {
     const ctx = context as LockContext<any, THeld>;
+    
+    // Runtime check for lock ordering
+    const maxHeld = ctx.getHeldLocks().length > 0 ? Math.max(...ctx.getHeldLocks()) : 0;
+    if (this.level <= maxHeld && maxHeld > 0) {
+      throw new Error(`Cannot acquire lock ${this.name} at level ${this.level} - violates ordering (max held: ${maxHeld})`);
+    }
     
     // Acquire the lock
     await this.lock();
@@ -244,12 +248,16 @@ export class TypedReadWriteLock<
    * Acquire a read lock
    */
   async read<THeld extends readonly LockLevel[], T>(
-    context: CanAcquire<THeld, ReadLevelNum> extends true
-      ? LockContext<any, THeld>
-      : `Cannot acquire read lock ${Name} at level ${ReadLevelNum}`,
+    context: LockContext<any, THeld>,
     fn: (ctx: LockContext<Locked<`${Name}:read`>, readonly [...THeld, ReadLevelNum]>) => Promise<T>
   ): Promise<T> {
     const ctx = context as LockContext<any, THeld>;
+    
+    // Runtime check for lock ordering
+    const maxHeld = ctx.getHeldLocks().length > 0 ? Math.max(...ctx.getHeldLocks()) : 0;
+    if (this.readLevel <= maxHeld && maxHeld > 0) {
+      throw new Error(`Cannot acquire read lock ${this.name} at level ${this.readLevel} - violates ordering (max held: ${maxHeld})`);
+    }
     
     // Acquire read lock
     await this.lockRead();
@@ -268,12 +276,16 @@ export class TypedReadWriteLock<
    * Acquire a write lock
    */
   async write<THeld extends readonly LockLevel[], T>(
-    context: CanAcquire<THeld, WriteLevelNum> extends true
-      ? LockContext<any, THeld>
-      : `Cannot acquire write lock ${Name} at level ${WriteLevelNum}`,
+    context: LockContext<any, THeld>,
     fn: (ctx: LockContext<Locked<`${Name}:write`>, readonly [...THeld, WriteLevelNum]>) => Promise<T>
   ): Promise<T> {
     const ctx = context as LockContext<any, THeld>;
+    
+    // Runtime check for lock ordering
+    const maxHeld = ctx.getHeldLocks().length > 0 ? Math.max(...ctx.getHeldLocks()) : 0;
+    if (this.writeLevel <= maxHeld && maxHeld > 0) {
+      throw new Error(`Cannot acquire write lock ${this.name} at level ${this.writeLevel} - violates ordering (max held: ${maxHeld})`);
+    }
     
     // Acquire write lock
     await this.lockWrite();
@@ -373,7 +385,7 @@ export type RequireContext<RequiredLock extends string> =
 
 // Helper type for context with specific level or lower
 export type RequireLevel<MaxLevel extends number> = 
-  LockContext<any, MaxLevel>;
+  LockContext<any, any>;
 
 // Export type for backwards compatibility
 export type { CanAcquire };

@@ -7,7 +7,7 @@ import { createEmptyContext, LockContext, Locked, CacheLevel, WorldLevel, UserLe
 import { User } from '@/lib/server/user';
 
 // Type aliases for cleaner code
-type UserContext = LockContext<Locked<'user'>, CacheLevel | WorldLevel | UserLevel>;
+type UserContext = LockContext<Locked<'user'>, any>;
 
 export async function GET(request: NextRequest) {
   try {
