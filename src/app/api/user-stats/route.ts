@@ -3,7 +3,7 @@ import { getIronSession } from 'iron-session';
 import { getTypedCacheManager, TypedCacheManager } from '@/lib/server/typedCacheManager';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth, ApiError } from '@/lib/server/errors';
-import { createEmptyContext, LockContext, Locked, CacheLevel, WorldLevel, UserLevel } from '@/lib/server/typedLocks';
+import { createEmptyLockContext, LockContext, Locked, CacheLevel, WorldLevel, UserLevel } from '@/lib/server/ironGuard';
 import { User } from '@/lib/server/user';
 
 // Type aliases for cleaner code
@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     await cacheManager.initialize();
     
     // Create empty context for lock acquisition
-    const emptyCtx = createEmptyContext();
+    const emptyCtx = createEmptyLockContext();
     
     // Execute with user lock (user-specific operation)
     return await cacheManager.withUserLock(emptyCtx, async (userCtx) => {

@@ -4,7 +4,7 @@ import { getTypedCacheManager, TypedCacheManager } from '@/lib/server/typedCache
 import { getResearchEffectFromTree, ResearchType } from '@/lib/server/techtree';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth, ApiError } from '@/lib/server/errors';
-import { createEmptyContext, LockContext, Locked, CacheLevel, WorldLevel, UserLevel } from '@/lib/server/typedLocks';
+import { createEmptyLockContext, LockContext, Locked, CacheLevel, WorldLevel, UserLevel } from '@/lib/server/ironGuard';
 import { User } from '@/lib/server/user';
 import { World } from '@/lib/server/world';
 
@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
     await cacheManager.initialize();
     
     // Create empty context for lock acquisition
-    const emptyCtx = createEmptyContext();
+    const emptyCtx = createEmptyLockContext();
     
     // Execute navigation with compile-time guaranteed deadlock-free lock ordering:
     // World Write (1) → User (2) → Database Read (3) if needed

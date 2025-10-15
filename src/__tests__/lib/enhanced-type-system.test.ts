@@ -1,21 +1,21 @@
 import { describe, it, expect } from 'vitest';
-import { TypedReadWriteLock, createEmptyContext, MessageReadLevel, MessageWriteLevel } from '@/lib/server/typedLocks';
+import { AsyncReadWriteLock, createEmptyLockContext, LOCK_MESSAGE_READ, LOCK_MESSAGE_WRITE } from '@/lib/server/ironGuard';
 
 describe('Enhanced Type System Deadlock Prevention', () => {
   
   it('should allow valid lock acquisition patterns', async () => {
-    const messageLock = new TypedReadWriteLock('message', 2.4 as MessageReadLevel, 2.5 as MessageWriteLevel);
-    const emptyCtx = createEmptyContext();
+    const messageLock = new AsyncReadWriteLock('message', 2.4 as LOCK_MESSAGE_READ, 2.5 as LOCK_MESSAGE_WRITE);
+    const emptyCtx = createEmptyLockContext();
     
     // ✅ This should work: Read operations
-    const readResult = await messageLock.read(emptyCtx, async () => {
+    const readResult = await messageLock.acquireRead(emptyCtx, async () => {
       return 'read operation successful';
     });
     
     expect(readResult).toBe('read operation successful');
     
     // ✅ This should work: Write operations
-    const writeResult = await messageLock.write(emptyCtx, async () => {
+    const writeResult = await messageLock.acquireWrite(emptyCtx, async () => {
       return 'write operation successful';
     });
     
@@ -23,13 +23,13 @@ describe('Enhanced Type System Deadlock Prevention', () => {
   });
 
   it('should prevent read-after-write deadlock at compile time', async () => {
-    const messageLock = new TypedReadWriteLock('message', 2.4 as MessageReadLevel, 2.5 as MessageWriteLevel);
-    const emptyCtx = createEmptyContext();
+    const messageLock = new AsyncReadWriteLock('message', 2.4 as LOCK_MESSAGE_READ, 2.5 as LOCK_MESSAGE_WRITE);
+    const emptyCtx = createEmptyLockContext();
     
     // ✅ This should work: Write operation alone
-    const writeResult = await messageLock.write(emptyCtx, async () => {
+    const writeResult = await messageLock.acquireWrite(emptyCtx, async () => {
       // ❌ The following would cause a compile-time error if uncommented:
-      // return messageLock.read(writeCtx, async (readCtx) => {
+      // return messageLock.acquireRead(writeCtx, async (readCtx) => {
       //   return 'this would deadlock';
       // });
       
@@ -44,7 +44,7 @@ describe('Enhanced Type System Deadlock Prevention', () => {
     // This test demonstrates that the type system prevents problematic patterns
     // The actual prevention happens at compile time, so this test documents the behavior
     
-    const messageLock = new TypedReadWriteLock('message', 2.4 as MessageReadLevel, 2.5 as MessageWriteLevel);
+    const messageLock = new AsyncReadWriteLock('message', 2.4 as LOCK_MESSAGE_READ, 2.5 as LOCK_MESSAGE_WRITE);
     
     // These type assertions prove the enhanced system works:
     expect(messageLock).toBeDefined();
@@ -55,17 +55,17 @@ describe('Enhanced Type System Deadlock Prevention', () => {
   });
 
   it('should allow read-to-write upgrade (forward direction)', async () => {
-    const messageLock = new TypedReadWriteLock('message', 2.4 as MessageReadLevel, 2.5 as MessageWriteLevel);
-    const emptyCtx = createEmptyContext();
+    const messageLock = new AsyncReadWriteLock('message', 2.4 as LOCK_MESSAGE_READ, 2.5 as LOCK_MESSAGE_WRITE);
+    const emptyCtx = createEmptyLockContext();
     
     // ✅ This pattern should work: Read first, then write (forward progression)
-    const readResult = await messageLock.read(emptyCtx, async () => {
+    const readResult = await messageLock.acquireRead(emptyCtx, async () => {
       // Could potentially do write operations here if needed
       // (though in practice this might have runtime contention)
       return 'read operation';
     });
     
-    const writeResult = await messageLock.write(emptyCtx, async () => {
+    const writeResult = await messageLock.acquireWrite(emptyCtx, async () => {
       return 'write operation';
     });
     
@@ -79,12 +79,12 @@ describe('Enhanced Type System Deadlock Prevention', () => {
  * 
  * // ❌ This would fail at compile time:
  * async function badPattern() {
- *   const messageLock = new TypedReadWriteLock('message', 2.4 as MessageReadLevel, 2.5 as MessageWriteLevel);
- *   const emptyCtx = createEmptyContext();
+ *   const messageLock = new AsyncReadWriteLock('message', 2.4 as LOCK_MESSAGE_READ, 2.5 as LOCK_MESSAGE_WRITE);
+ *   const emptyCtx = createEmptyLockContext();
  *   
- *   return messageLock.write(emptyCtx, async (writeCtx) => {
+ *   return messageLock.acquireWrite(emptyCtx, async (writeCtx) => {
  *     // TypeScript error: CanAcquire<2.4, 2.5> = false
- *     return messageLock.read(writeCtx, async (readCtx) => {
+ *     return messageLock.acquireRead(writeCtx, async (readCtx) => {
  *       return 'deadlock prevented by types!';
  *     });
  *   });

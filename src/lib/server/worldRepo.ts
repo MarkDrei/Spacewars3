@@ -5,7 +5,7 @@
 import sqlite3 from 'sqlite3';
 import { World, SpaceObject, SaveWorldCallback } from './world';
 import { getTypedCacheManager } from './typedCacheManager';
-import { createEmptyContext } from './typedLocks';
+import { createEmptyLockContext } from './ironGuard';
 
 /**
  * Load world data from database (used internally by cache manager)
@@ -80,7 +80,7 @@ export async function loadWorld(): Promise<World> {
   const cacheManager = getTypedCacheManager();
   await cacheManager.initialize();
   
-  const emptyCtx = createEmptyContext();
+  const emptyCtx = createEmptyLockContext();
   
   // Use world read lock to ensure consistent access
   return await cacheManager.withWorldRead(emptyCtx, async (worldCtx) => {

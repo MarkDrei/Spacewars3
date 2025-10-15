@@ -9,7 +9,7 @@ import {
   getTypedCacheManager,
   type TypedCacheConfig 
 } from '../../lib/server/typedCacheManager';
-import { createEmptyContext } from '../../lib/server/typedLocks';
+import { createEmptyLockContext } from '../../lib/server/ironGuard';
 
 describe('Phase 2: Typed Cache Manager', () => {
   
@@ -64,7 +64,7 @@ describe('Phase 2: Typed Cache Manager', () => {
   describe('Lock Ordering Validation', () => {
     test('typedLockOrdering_validSequence_allowsExecution', async () => {
       const manager = getTypedCacheManager();
-      const emptyCtx = createEmptyContext();
+      const emptyCtx = createEmptyLockContext();
       const executionOrder: string[] = [];
 
       // Valid ordering: Cache Management (0) → World Write (1) → User (2) → Database Read (3)
@@ -91,7 +91,7 @@ describe('Phase 2: Typed Cache Manager', () => {
 
     test('typedLockOrdering_skippingLevels_allowsExecution', async () => {
       const manager = getTypedCacheManager();
-      const emptyCtx = createEmptyContext();
+      const emptyCtx = createEmptyLockContext();
       const executionOrder: string[] = [];
 
       // Valid: Skip world level, go directly Cache (0) → User (2)
@@ -110,7 +110,7 @@ describe('Phase 2: Typed Cache Manager', () => {
 
     test('typedLockOrdering_worldAndUserSeparately_allowsExecution', async () => {
       const manager = getTypedCacheManager();
-      const emptyCtx = createEmptyContext();
+      const emptyCtx = createEmptyLockContext();
       const executionOrder: string[] = [];
 
       // Valid: World operations separately from user operations
@@ -132,7 +132,7 @@ describe('Phase 2: Typed Cache Manager', () => {
     test('unsafeMethods_requireProperContext_enforceCompileTimeSafety', async () => {
       const manager = getTypedCacheManager();
       await manager.initialize();
-      const emptyCtx = createEmptyContext();
+      const emptyCtx = createEmptyLockContext();
 
       // These operations require proper lock contexts (compile-time enforced)
       await manager.withWorldRead(emptyCtx, async (worldCtx) => {
@@ -204,7 +204,7 @@ describe('Phase 2: Typed Cache Manager', () => {
     test('concurrentOperations_properLockOrdering_noDeadlocks', async () => {
       const manager = getTypedCacheManager();
       await manager.initialize();
-      const emptyCtx = createEmptyContext();
+      const emptyCtx = createEmptyLockContext();
 
       // Start multiple concurrent operations
       const operations = [
