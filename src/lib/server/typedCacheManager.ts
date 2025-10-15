@@ -16,7 +16,7 @@ import {
   type MessageWriteLevel,
   type DatabaseLevel,
   createEmptyContext
-} from './typedLocks';
+} from './ironGuard';
 import { User } from './user';
 import { World } from './world';
 import { getDatabase } from './database';
@@ -98,11 +98,11 @@ export class TypedCacheManager {
   private persistenceTimer: NodeJS.Timeout | null = null;
 
   // Typed locks with explicit level assignment
-  private cacheManagementLock = new TypedMutex('cache-mgmt', 0 as CacheLevel);
-  private worldLock = new TypedReadWriteLock('world', 1 as WorldLevel, 1 as WorldLevel);
-  private userLock = new TypedMutex('user', 2 as UserLevel);
-  private messageLock = new TypedReadWriteLock('message', 2.4 as MessageReadLevel, 2.5 as MessageWriteLevel);
-  private databaseLock = new TypedReadWriteLock('database', 3 as DatabaseLevel, 3 as DatabaseLevel);
+  private cacheManagementLock = new TypedMutex('cache-mgmt', 1 as CacheLevel);
+  private worldLock = new TypedReadWriteLock('world', 2 as WorldLevel, 2 as WorldLevel);
+  private userLock = new TypedMutex('user', 3 as UserLevel);
+  private messageLock = new TypedReadWriteLock('message', 4 as MessageReadLevel, 5 as MessageWriteLevel);
+  private databaseLock = new TypedReadWriteLock('database', 5 as DatabaseLevel, 5 as DatabaseLevel);
 
   // In-memory cache storage
   private users: Map<number, User> = new Map();

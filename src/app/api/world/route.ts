@@ -3,7 +3,7 @@ import { getIronSession } from 'iron-session';
 import { getTypedCacheManager } from '@/lib/server/typedCacheManager';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth } from '@/lib/server/errors';
-import { createEmptyContext } from '@/lib/server/typedLocks';
+import { createEmptyContext } from '@/lib/server/ironGuard';
 
 export async function GET(request: NextRequest) {
   try {
