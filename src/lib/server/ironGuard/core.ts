@@ -100,15 +100,15 @@ export class LockContext<THeldLocks extends readonly LockLevel[] = readonly []> 
     
     // Runtime validation
     if (this.heldLocks.includes(lock)) {
-      return `Lock ${lock} already held` as any;
+      return `Lock ${lock} already held` as never;
     }
     
     const maxHeld = Math.max(0, ...this.heldLocks);
     if (lock <= maxHeld && maxHeld > 0) {
-      return `Cannot acquire lock ${lock} - violates ordering (max held: ${maxHeld})` as any;
+      return `Cannot acquire lock ${lock} - violates ordering (max held: ${maxHeld})` as never;
     }
     
-    return new LockContext([...this.heldLocks, lock] as const) as any;
+    return new LockContext([...this.heldLocks, lock] as const) as never;
   }
 
   // Use a lock - must be currently held
@@ -120,18 +120,18 @@ export class LockContext<THeldLocks extends readonly LockLevel[] = readonly []> 
     : `Lock ${TLock} not held` {
     
     if (!this.heldLocks.includes(lock)) {
-      return `Lock ${lock} not held` as any;
+      return `Lock ${lock} not held` as never;
     }
     
     operation();
-    return undefined as any;
+    return undefined as never;
   }
 
   // Check if a specific lock is held
   hasLock<TLock extends LockLevel>(
     lock: TLock
   ): Contains<THeldLocks, TLock> {
-    return this.heldLocks.includes(lock) as any;
+    return this.heldLocks.includes(lock) as Contains<THeldLocks, TLock>;
   }
 
   getHeldLocks(): THeldLocks {

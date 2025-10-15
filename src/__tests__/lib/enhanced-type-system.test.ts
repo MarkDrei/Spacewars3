@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { AsyncReadWriteLock, createEmptyContext, MessageReadLevel, MessageWriteLevel, LOCK_MESSAGE_READ, LOCK_MESSAGE_WRITE } from '@/lib/server/ironGuard';
+import { AsyncReadWriteLock, createEmptyContext, LOCK_MESSAGE_READ, LOCK_MESSAGE_WRITE } from '@/lib/server/ironGuard';
 
 describe('Enhanced Type System Deadlock Prevention', () => {
   

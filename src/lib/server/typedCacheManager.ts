@@ -30,13 +30,13 @@ import { getUserByIdFromDb, getUserByUsernameFromDb } from './userRepo';
 import sqlite3 from 'sqlite3';
 
 // Type aliases for lock contexts to improve readability
-type WorldReadContext = LockContext<readonly [...any[], WorldLevel]>;
-type WorldWriteContext = LockContext<readonly [...any[], WorldLevel]>;
-type UserContext = LockContext<readonly [...any[], UserLevel]>;
-type MessageReadContext = LockContext<readonly [...any[], MessageReadLevel]>;
-type MessageWriteContext = LockContext<readonly [...any[], MessageWriteLevel]>;
-type DatabaseReadContext = LockContext<readonly [...any[], DatabaseLevel]>;
-type DatabaseWriteContext = LockContext<readonly [...any[], DatabaseLevel]>;
+type WorldReadContext = LockContext<readonly [WorldLevel, ...never[]]>;
+type WorldWriteContext = LockContext<readonly [WorldLevel, ...never[]]>;
+type UserContext = LockContext<readonly [UserLevel, ...never[]]>;
+type _MessageReadContext = LockContext<readonly [MessageReadLevel, ...never[]]>;
+type _MessageWriteContext = LockContext<readonly [MessageWriteLevel, ...never[]]>;
+type DatabaseReadContext = LockContext<readonly [DatabaseLevel, ...never[]]>;
+type DatabaseWriteContext = LockContext<readonly [DatabaseLevel, ...never[]]>;
 
 // Context type for data access methods - accepts any context that provides the required lock
 type WorldAccessContext = WorldReadContext | WorldWriteContext | UserContext | DatabaseReadContext | DatabaseWriteContext;

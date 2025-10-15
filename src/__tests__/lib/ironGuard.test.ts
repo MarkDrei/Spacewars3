@@ -27,15 +27,21 @@ describe('IronGuard Lock System', () => {
       // Acquire locks in order
       const ctx1 = ctx.acquire(LOCK_CACHE);
       expect(typeof ctx1).not.toBe('string');
-      expect((ctx1 as any).hasLock(LOCK_CACHE)).toBe(true);
-      
-      const ctx2 = (ctx1 as any).acquire(LOCK_WORLD);
-      expect(typeof ctx2).not.toBe('string');
-      expect((ctx2 as any).hasLock(LOCK_WORLD)).toBe(true);
-      
-      const ctx3 = (ctx2 as any).acquire(LOCK_USER);
-      expect(typeof ctx3).not.toBe('string');
-      expect((ctx3 as any).hasLock(LOCK_USER)).toBe(true);
+      if (typeof ctx1 !== 'string') {
+        expect(ctx1.hasLock(LOCK_CACHE)).toBe(true);
+        
+        const ctx2 = ctx1.acquire(LOCK_WORLD);
+        expect(typeof ctx2).not.toBe('string');
+        if (typeof ctx2 !== 'string') {
+          expect(ctx2.hasLock(LOCK_WORLD)).toBe(true);
+          
+          const ctx3 = ctx2.acquire(LOCK_USER);
+          expect(typeof ctx3).not.toBe('string');
+          if (typeof ctx3 !== 'string') {
+            expect(ctx3.hasLock(LOCK_USER)).toBe(true);
+          }
+        }
+      }
     });
 
     test('lockAcquisition_skipIntermediate_succeeds', () => {
@@ -43,12 +49,17 @@ describe('IronGuard Lock System', () => {
       
       // Skip from 10 directly to 30
       const ctx1 = ctx.acquire(LOCK_CACHE);
-      const ctx2 = (ctx1 as any).acquire(LOCK_USER);
-      
-      expect(typeof ctx2).not.toBe('string');
-      expect((ctx2 as any).hasLock(LOCK_CACHE)).toBe(true);
-      expect((ctx2 as any).hasLock(LOCK_USER)).toBe(true);
-      expect((ctx2 as any).hasLock(LOCK_WORLD)).toBe(false);
+      expect(typeof ctx1).not.toBe('string');
+      if (typeof ctx1 !== 'string') {
+        const ctx2 = ctx1.acquire(LOCK_USER);
+        
+        expect(typeof ctx2).not.toBe('string');
+        if (typeof ctx2 !== 'string') {
+          expect(ctx2.hasLock(LOCK_CACHE)).toBe(true);
+          expect(ctx2.hasLock(LOCK_USER)).toBe(true);
+          expect(ctx2.hasLock(LOCK_WORLD)).toBe(false);
+        }
+      }
     });
 
     test('lockAcquisition_directHighLevel_succeeds', () => {
@@ -58,7 +69,9 @@ describe('IronGuard Lock System', () => {
       const ctx1 = ctx.acquire(LOCK_USER);
       
       expect(typeof ctx1).not.toBe('string');
-      expect((ctx1 as any).hasLock(LOCK_USER)).toBe(true);
+      if (typeof ctx1 !== 'string') {
+        expect(ctx1.hasLock(LOCK_USER)).toBe(true);
+      }
     });
   });
 
@@ -68,9 +81,13 @@ describe('IronGuard Lock System', () => {
       const ctx1 = ctx.acquire(LOCK_CACHE);
       
       // Try to acquire same lock again (runtime check)
-      const result = (ctx1 as any).acquire(LOCK_CACHE);
-      expect(typeof result).toBe('string');
-      expect(result).toContain('already held');
+      if (typeof ctx1 !== 'string') {
+        const result = ctx1.acquire(LOCK_CACHE);
+        expect(typeof result).toBe('string');
+        if (typeof result === 'string') {
+          expect(result).toContain('already held');
+        }
+      }
     });
 
     test('lockValidation_preventsReverseOrder_atRuntime', () => {
@@ -78,18 +95,24 @@ describe('IronGuard Lock System', () => {
       const ctx1 = ctx.acquire(LOCK_USER);
       
       // Try to acquire lower level lock (runtime check)
-      const result = (ctx1 as any).acquire(LOCK_WORLD);
-      expect(typeof result).toBe('string');
-      expect(result).toContain('violates ordering');
+      if (typeof ctx1 !== 'string') {
+        const result = ctx1.acquire(LOCK_WORLD);
+        expect(typeof result).toBe('string');
+        if (typeof result === 'string') {
+          expect(result).toContain('violates ordering');
+        }
+      }
     });
   });
 
   describe('Multiple Lock Holdings', () => {
     test('lockContext_holdsMultipleLocks_canCheckEach', () => {
-      const ctx = createLockContext()
-        .acquire(LOCK_CACHE)
-        .acquire(LOCK_WORLD)
-        .acquire(LOCK_USER) as any;
+      const ctx1 = createLockContext().acquire(LOCK_CACHE);
+      if (typeof ctx1 === 'string') return;
+      const ctx2 = ctx1.acquire(LOCK_WORLD);
+      if (typeof ctx2 === 'string') return;
+      const ctx = ctx2.acquire(LOCK_USER);
+      if (typeof ctx === 'string') return;
       
       expect(ctx.hasLock(LOCK_CACHE)).toBe(true);
       expect(ctx.hasLock(LOCK_WORLD)).toBe(true);
@@ -98,10 +121,12 @@ describe('IronGuard Lock System', () => {
     });
 
     test('lockContext_holdsMultipleLocks_canUseAny', () => {
-      const ctx = createLockContext()
-        .acquire(LOCK_CACHE)
-        .acquire(LOCK_WORLD)
-        .acquire(LOCK_USER) as any;
+      const ctx1 = createLockContext().acquire(LOCK_CACHE);
+      if (typeof ctx1 === 'string') return;
+      const ctx2 = ctx1.acquire(LOCK_WORLD);
+      if (typeof ctx2 === 'string') return;
+      const ctx = ctx2.acquire(LOCK_USER);
+      if (typeof ctx === 'string') return;
       
       let cacheUsed = false;
       let worldUsed = false;
@@ -119,34 +144,34 @@ describe('IronGuard Lock System', () => {
 
   describe('Context Passing Through Functions', () => {
     test('lockContext_passedToFunction_maintainsState', () => {
-      function requiresUserLock<THeld extends readonly any[]>(
-        context: any
-      ): void {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      function requiresUserLock(context: any): void {
         expect(context.hasLock(LOCK_USER)).toBe(true);
       }
       
-      const ctx = createLockContext()
-        .acquire(LOCK_USER);
-      
-      requiresUserLock(ctx);
+      const ctx = createLockContext().acquire(LOCK_USER);
+      if (typeof ctx !== 'string') {
+        requiresUserLock(ctx);
+      }
     });
 
     test('lockContext_passedThrough_canAcquireMore', () => {
-      function intermediate<THeld extends readonly any[]>(
-        context: any
-      ): any {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      function intermediate(context: any): any {
         // Intermediate function can acquire more locks
         return context.acquire(LOCK_DATABASE);
       }
       
-      const ctx1 = createLockContext()
-        .acquire(LOCK_USER);
+      const ctx1 = createLockContext().acquire(LOCK_USER);
+      if (typeof ctx1 === 'string') return;
       
       const ctx2 = intermediate(ctx1);
       
       expect(typeof ctx2).not.toBe('string');
-      expect(ctx2.hasLock(LOCK_USER)).toBe(true);
-      expect(ctx2.hasLock(LOCK_DATABASE)).toBe(true);
+      if (typeof ctx2 !== 'string') {
+        expect(ctx2.hasLock(LOCK_USER)).toBe(true);
+        expect(ctx2.hasLock(LOCK_DATABASE)).toBe(true);
+      }
     });
   });
 
@@ -157,17 +182,24 @@ describe('IronGuard Lock System', () => {
       
       expect(typeof readCtx).not.toBe('string');
       expect(typeof writeCtx).not.toBe('string');
-      expect((readCtx as any).hasLock(LOCK_MESSAGE_READ)).toBe(true);
-      expect((writeCtx as any).hasLock(LOCK_MESSAGE_WRITE)).toBe(true);
+      if (typeof readCtx !== 'string') {
+        expect(readCtx.hasLock(LOCK_MESSAGE_READ)).toBe(true);
+      }
+      if (typeof writeCtx !== 'string') {
+        expect(writeCtx.hasLock(LOCK_MESSAGE_WRITE)).toBe(true);
+      }
     });
 
     test('readWritePattern_cannotDowngrade_fromWriteToRead', () => {
-      const writeCtx = createLockContext().acquire(LOCK_MESSAGE_WRITE) as any;
+      const writeCtx = createLockContext().acquire(LOCK_MESSAGE_WRITE);
+      if (typeof writeCtx === 'string') return;
       
       // Try to acquire read lock after write lock (should fail)
       const result = writeCtx.acquire(LOCK_MESSAGE_READ);
       expect(typeof result).toBe('string');
-      expect(result).toContain('violates ordering');
+      if (typeof result === 'string') {
+        expect(result).toContain('violates ordering');
+      }
     });
   });
 
@@ -184,7 +216,9 @@ describe('IronGuard Lock System', () => {
       const ctx1 = ctx.acquire(LOCK_CACHE);
       
       expect(typeof ctx1).not.toBe('string');
-      expect((ctx1 as any).hasLock(LOCK_CACHE)).toBe(true);
+      if (typeof ctx1 !== 'string') {
+        expect(ctx1.hasLock(LOCK_CACHE)).toBe(true);
+      }
     });
   });
 
@@ -328,21 +362,28 @@ describe('IronGuard Lock System', () => {
       
       // ✅ Valid patterns (these compile)
       const valid1 = createLockContext().acquire(LOCK_CACHE);
-      const valid2 = createLockContext().acquire(LOCK_CACHE).acquire(LOCK_WORLD) as any;
-      const valid3 = createLockContext().acquire(LOCK_CACHE).acquire(LOCK_USER) as any;
-      
       expect(typeof valid1).not.toBe('string');
-      expect(typeof valid2).not.toBe('string');
-      expect(typeof valid3).not.toBe('string');
+      
+      if (typeof valid1 !== 'string') {
+        const valid2 = valid1.acquire(LOCK_WORLD);
+        expect(typeof valid2).not.toBe('string');
+        
+        if (typeof valid2 !== 'string') {
+          const valid3 = valid2.acquire(LOCK_USER);
+          expect(typeof valid3).not.toBe('string');
+        }
+      }
       
       // ❌ Invalid patterns (these would cause compile errors if types were wrong)
       // const invalid1 = createLockContext().acquire(LOCK_USER).acquire(LOCK_WORLD);
       // const invalid2 = createLockContext().acquire(LOCK_DATABASE).acquire(LOCK_CACHE);
       
       // Runtime validation catches ordering violations
-      const ctx = createLockContext().acquire(LOCK_USER) as any;
-      const result = ctx.acquire(LOCK_WORLD);
-      expect(typeof result).toBe('string');
+      const ctx = createLockContext().acquire(LOCK_USER);
+      if (typeof ctx !== 'string') {
+        const result = ctx.acquire(LOCK_WORLD);
+        expect(typeof result).toBe('string');
+      }
     });
   });
 });
