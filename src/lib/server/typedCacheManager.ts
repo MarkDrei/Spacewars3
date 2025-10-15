@@ -175,8 +175,9 @@ export class TypedCacheManager {
     
     const emptyCtx = createEmptyContext();
     
-    await this.databaseLock.read(emptyCtx, async (dbCtx: DatabaseReadContext) => {
-      await this.worldLock.write(dbCtx, async () => {
+    // Correct lock ordering: World (2) -> Database (5)
+    await this.worldLock.write(emptyCtx, async (worldCtx: WorldWriteContext) => {
+      await this.databaseLock.read(worldCtx, async () => {
         console.log('🌍 Loading world data from database...');
         this.world = await loadWorldFromDb(this.db!, async () => {
           this.worldDirty = true;
