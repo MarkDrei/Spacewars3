@@ -4,6 +4,8 @@
  * Type aliases and helpers for lock level validation and context requirements
  */
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import type { LockContext, Contains } from './core';
 
 // Lock level type - only these values are allowed

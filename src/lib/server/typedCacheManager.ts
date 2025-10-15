@@ -10,8 +10,6 @@ import {
   type CacheLevel,
   type WorldLevel,
   type UserLevel,
-  type MessageReadLevel,
-  type MessageWriteLevel,
   type DatabaseLevel,
   type LockLevel,
   AsyncMutex,
@@ -30,14 +28,6 @@ import { Message, UnreadMessage } from './messagesRepo';
 import { loadWorldFromDb, saveWorldToDb } from './worldRepo';
 import { getUserByIdFromDb, getUserByUsernameFromDb } from './userRepo';
 import sqlite3 from 'sqlite3';
-
-// Type aliases for lock contexts to improve readability
-type CacheContext = LockContext<readonly [CacheLevel]>;
-type WorldReadContext = LockContext<readonly [CacheLevel, WorldLevel] | readonly [WorldLevel]>;
-type WorldWriteContext = LockContext<readonly [CacheLevel, WorldLevel] | readonly [WorldLevel]>;
-type UserContext = LockContext<readonly [CacheLevel, WorldLevel, UserLevel] | readonly [WorldLevel, UserLevel] | readonly [UserLevel]>;
-type DatabaseReadContext = LockContext<readonly [CacheLevel, WorldLevel, UserLevel, DatabaseLevel] | readonly [WorldLevel, UserLevel, DatabaseLevel] | readonly [UserLevel, DatabaseLevel] | readonly [DatabaseLevel]>;
-type DatabaseWriteContext = DatabaseReadContext;
 
 // Context type for data access methods - accepts any context that has the required lock
 type WorldAccessContext = LockContext<readonly LockLevel[]>;

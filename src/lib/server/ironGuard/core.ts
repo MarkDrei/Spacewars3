@@ -8,6 +8,8 @@
  * - You can pass lock contexts to functions with compile-time validation
  */
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import type { LockLevel } from './types';
 
 // Check if a lock is in the held locks array
