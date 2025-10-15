@@ -47,7 +47,7 @@ async function updateUserBattleState(userId: number, inBattle: boolean, battleId
   // Also update cache if user is cached by directly loading from DB
   try {
     const { getTypedCacheManager } = await import('./typedCacheManager');
-    const { createEmptyContext } = await import('./typedLocks');
+    const { createEmptyContext } = await import('./ironGuard');
     const cacheManager = await getTypedCacheManager();
     await cacheManager.initialize();
     

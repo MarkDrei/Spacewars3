@@ -6,7 +6,7 @@ import sqlite3 from 'sqlite3';
 import { User, SaveUserCallback } from './user';
 import { createInitialTechTree } from './techtree';
 import { getTypedCacheManager } from './typedCacheManager';
-import { createEmptyContext } from './typedLocks';
+import { createEmptyContext } from './ironGuard';
 import { sendMessageToUserCached } from './typedCacheManager';
 import { TechCounts } from './TechFactory';
 

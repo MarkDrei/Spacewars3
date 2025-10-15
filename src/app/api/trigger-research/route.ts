@@ -4,7 +4,7 @@ import { getTypedCacheManager, TypedCacheManager } from '@/lib/server/typedCache
 import { AllResearches, getResearchUpgradeCost, ResearchType, triggerResearch, TechTree } from '@/lib/server/techtree';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth, validateRequired, ApiError } from '@/lib/server/errors';
-import { createEmptyContext, LockContext, Locked, CacheLevel, WorldLevel, UserLevel } from '@/lib/server/typedLocks';
+import { createEmptyContext, LockContext, CacheLevel, WorldLevel, UserLevel } from '@/lib/server/ironGuard';
 import { User } from '@/lib/server/user';
 
 // Type aliases for cleaner code
