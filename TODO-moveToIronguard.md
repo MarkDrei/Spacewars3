@@ -191,26 +191,28 @@ npm test -- --run   # ✅ 343/343 tests passing
 
 ---
 
-### Phase 5: Migrate Service Layer
+### Phase 5: Migrate Service Layer 🔄 IN PROGRESS
 **Goal**: Update service functions to use new lock system
 
 #### Tasks:
-1. [ ] Migrate `battleService.ts`:
-   - Update all function signatures
-   - Change context parameters to use ValidXLockContext<THeld>
-   - Update lock acquisitions
+1. [x] Migrate `battleService.ts` → `battleServiceV2.ts`: ✅ COMPLETE
+   - Functions: `initiateBattle()`, `updateBattle()`, `resolveBattle()`
+   - Lock patterns: WORLD(20) → USER(30) for user/ship updates
+   - Uses V2 repositories (BattleRepoV2)
+   - Correct lock ordering enforced
 
-2. [ ] Migrate `battleScheduler.ts`:
+2. [ ] Migrate `battleScheduler.ts` → `battleSchedulerV2.ts`:
+   - Background battle processing
    - Update function signatures
    - Update lock acquisitions
 
 3. [ ] Migrate `world.ts` (domain logic):
-   - Update function signatures
-   - Update lock acquisitions
+   - World physics and domain operations
+   - May not need migration (mostly used internally)
 
 4. [ ] Migrate `user.ts` (domain logic):
-   - Update function signatures
-   - Update lock acquisitions
+   - User domain operations  
+   - May not need migration (mostly used internally)
 
 **Quality Check After Each Service**:
 ```bash
@@ -219,7 +221,9 @@ npx tsc --noEmit            # Should compile
 npm run lint                # Should pass
 ```
 
-**Estimated Time**: 3-4 hours per service = 12-16 hours total
+**Progress**: 1/2 services complete (battleScheduler may be optional)
+**Time Spent**: ~1 hour
+**Estimated Remaining**: 1-2 hours
 
 ---
 
