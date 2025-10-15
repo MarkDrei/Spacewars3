@@ -9,7 +9,7 @@ import { calculateToroidalDistance } from '@shared/physics';
 import { getTypedCacheManager, type TypedCacheManager } from '@/lib/server/typedCacheManager';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth, ApiError } from '@/lib/server/errors';
-import { createEmptyContext } from '@/lib/server/typedLocks';
+import { createEmptyLockContext } from '@/lib/server/ironGuard';
 import type { User } from '@/lib/server/user';
 import type { World } from '@/lib/server/world';
 
@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
     console.log(`✅ [TYPED] Typed cache manager initialized`);
     
     // Create empty context for lock acquisition
-    const emptyCtx = createEmptyContext();
+    const emptyCtx = createEmptyLockContext();
     console.log(`🏁 [TYPED] Starting collection with compile-time safe lock ordering`);
     
     // Execute collection with compile-time guaranteed deadlock-free lock ordering:

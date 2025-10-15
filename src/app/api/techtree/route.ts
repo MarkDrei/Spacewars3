@@ -4,7 +4,7 @@ import { getTypedCacheManager } from '@/lib/server/typedCacheManager';
 import { AllResearches, getResearchUpgradeCost, getResearchUpgradeDuration, getResearchEffect, ResearchType } from '@/lib/server/techtree';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth, ApiError } from '@/lib/server/errors';
-import { createEmptyContext } from '@/lib/server/typedLocks';
+import { createEmptyLockContext } from '@/lib/server/ironGuard';
 import { User } from '@/lib/server/user';
 
 export async function GET(request: NextRequest) {
@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
     await cacheManager.initialize();
     
     // Create empty context for lock acquisition
-    const emptyCtx = createEmptyContext();
+    const emptyCtx = createEmptyLockContext();
     
     // Execute with user read lock (read-only user operation)
     return await cacheManager.withUserLock(emptyCtx, async (userCtx) => {

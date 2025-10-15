@@ -4,7 +4,7 @@ import { getTypedCacheManager } from '@/lib/server/typedCacheManager';
 import { getResearchEffectFromTree, ResearchType } from '@/lib/server/techtree';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth, ApiError } from '@/lib/server/errors';
-import { createEmptyContext } from '@/lib/server/typedLocks';
+import { createEmptyLockContext } from '@/lib/server/ironGuard';
 import { User } from '@/lib/server/user';
 import { World } from '@/lib/server/world';
 import { TechFactory } from '@/lib/server/TechFactory';
@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     await cacheManager.initialize();
     
     // Create empty context for lock acquisition
-    const emptyCtx = createEmptyContext();
+    const emptyCtx = createEmptyLockContext();
     
     // Execute with world read and user locks (read both world and user)
     return await cacheManager.withWorldRead(emptyCtx, async (worldCtx) => {

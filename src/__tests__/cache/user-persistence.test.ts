@@ -23,8 +23,8 @@ describe('User Persistence to Database', () => {
     await cacheManager.initialize();
     
     // Load user into cache
-    const { createEmptyContext } = await import('@/lib/server/typedLocks');
-    const emptyCtx = createEmptyContext();
+    const { createEmptyLockContext } = await import('@/lib/server/ironGuard');
+    const emptyCtx = createEmptyLockContext();
     
     await cacheManager.withUserLock(emptyCtx, async (userCtx) => {
       // Set user in cache
@@ -72,8 +72,8 @@ describe('User Persistence to Database', () => {
     await cacheManager.initialize();
     
     // Load user into cache
-    const { createEmptyContext } = await import('@/lib/server/typedLocks');
-    const emptyCtx = createEmptyContext();
+    const { createEmptyLockContext } = await import('@/lib/server/ironGuard');
+    const emptyCtx = createEmptyLockContext();
     
     await cacheManager.withUserLock(emptyCtx, async (userCtx) => {
       cacheManager.setUserUnsafe(user, userCtx);

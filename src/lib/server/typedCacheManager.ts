@@ -1,22 +1,28 @@
 // ---
 // TypeScript Compile-Time Deadlock Prevention System
 // Phase 2: Simplified Typed Cache Manager 
+// Migrated to IronGuard Lock System
 // ---
 
 import { 
-  TypedMutex, 
-  TypedReadWriteLock, 
-  type LockContext, 
-  type EmptyContext, 
-  type Locked,
+  LockContext,
+  createEmptyLockContext,
   type CacheLevel,
   type WorldLevel,
   type UserLevel,
   type MessageReadLevel,
   type MessageWriteLevel,
   type DatabaseLevel,
-  createEmptyContext
-} from './typedLocks';
+  type LockLevel,
+  AsyncMutex,
+  AsyncReadWriteLock,
+  LOCK_CACHE,
+  LOCK_WORLD,
+  LOCK_USER,
+  LOCK_MESSAGE_READ,
+  LOCK_MESSAGE_WRITE,
+  LOCK_DATABASE
+} from './ironGuard';
 import { User } from './user';
 import { World } from './world';
 import { getDatabase } from './database';
@@ -25,18 +31,18 @@ import { loadWorldFromDb, saveWorldToDb } from './worldRepo';
 import { getUserByIdFromDb, getUserByUsernameFromDb } from './userRepo';
 import sqlite3 from 'sqlite3';
 
-// Type aliases for lock contexts to improve readability and avoid 'any'
-// Type aliases for lock contexts to improve readability and avoid 'any'
-type WorldReadContext = LockContext<Locked<'world:read'>, CacheLevel | WorldLevel>;
-type WorldWriteContext = LockContext<Locked<'world:write'>, CacheLevel | WorldLevel>;
-type UserContext = LockContext<Locked<'user'>, CacheLevel | WorldLevel | UserLevel>;
-type DatabaseReadContext = LockContext<Locked<'database:read'>, CacheLevel | WorldLevel | UserLevel | DatabaseLevel>;
-type DatabaseWriteContext = LockContext<Locked<'database:write'>, CacheLevel | WorldLevel | UserLevel | DatabaseLevel>;
+// Type aliases for lock contexts to improve readability
+type CacheContext = LockContext<readonly [CacheLevel]>;
+type WorldReadContext = LockContext<readonly [CacheLevel, WorldLevel] | readonly [WorldLevel]>;
+type WorldWriteContext = LockContext<readonly [CacheLevel, WorldLevel] | readonly [WorldLevel]>;
+type UserContext = LockContext<readonly [CacheLevel, WorldLevel, UserLevel] | readonly [WorldLevel, UserLevel] | readonly [UserLevel]>;
+type DatabaseReadContext = LockContext<readonly [CacheLevel, WorldLevel, UserLevel, DatabaseLevel] | readonly [WorldLevel, UserLevel, DatabaseLevel] | readonly [UserLevel, DatabaseLevel] | readonly [DatabaseLevel]>;
+type DatabaseWriteContext = DatabaseReadContext;
 
-// Context type for data access methods - accepts any context that provides the required lock
-type WorldAccessContext = WorldReadContext | WorldWriteContext | UserContext | DatabaseReadContext | DatabaseWriteContext;
-type UserAccessContext = UserContext | DatabaseReadContext | DatabaseWriteContext;
-type DatabaseAccessContext = DatabaseReadContext | DatabaseWriteContext;
+// Context type for data access methods - accepts any context that has the required lock
+type WorldAccessContext = LockContext<readonly LockLevel[]>;
+type UserAccessContext = LockContext<readonly LockLevel[]>;
+type DatabaseAccessContext = LockContext<readonly LockLevel[]>;
 
 // Cache configuration interface
 export interface TypedCacheConfig {
@@ -97,12 +103,12 @@ export class TypedCacheManager {
   private isInitialized = false;
   private persistenceTimer: NodeJS.Timeout | null = null;
 
-  // Typed locks with explicit level assignment
-  private cacheManagementLock = new TypedMutex('cache-mgmt', 0 as CacheLevel);
-  private worldLock = new TypedReadWriteLock('world', 1 as WorldLevel, 1 as WorldLevel);
-  private userLock = new TypedMutex('user', 2 as UserLevel);
-  private messageLock = new TypedReadWriteLock('message', 2.4 as MessageReadLevel, 2.5 as MessageWriteLevel);
-  private databaseLock = new TypedReadWriteLock('database', 3 as DatabaseLevel, 3 as DatabaseLevel);
+  // IronGuard locks with explicit level assignment
+  private cacheManagementLock = new AsyncMutex('cache-mgmt', LOCK_CACHE);
+  private worldLock = new AsyncReadWriteLock('world', LOCK_WORLD, LOCK_WORLD);
+  private userLock = new AsyncMutex('user', LOCK_USER);
+  private messageLock = new AsyncReadWriteLock('message', LOCK_MESSAGE_READ, LOCK_MESSAGE_WRITE);
+  private databaseLock = new AsyncReadWriteLock('database', LOCK_DATABASE, LOCK_DATABASE);
 
   // In-memory cache storage
   private users: Map<number, User> = new Map();
@@ -138,7 +144,7 @@ export class TypedCacheManager {
       return;
     }
 
-    const emptyCtx = createEmptyContext();
+    const emptyCtx = createEmptyLockContext();
     
     await this.cacheManagementLock.acquire(emptyCtx, async () => {
       if (this.isInitialized) {
@@ -172,10 +178,11 @@ export class TypedCacheManager {
   private async initializeWorld(): Promise<void> {
     if (!this.db) throw new Error('Database not initialized');
     
-    const emptyCtx = createEmptyContext();
+    const emptyCtx = createEmptyLockContext();
     
-    await this.databaseLock.read(emptyCtx, async (dbCtx: DatabaseReadContext) => {
-      await this.worldLock.write(dbCtx, async () => {
+    // Correct lock ordering: World (20) → Database (40)
+    await this.worldLock.acquireWrite(emptyCtx, async (worldCtx) => {
+      await this.databaseLock.acquireRead(worldCtx, async () => {
         console.log('🌍 Loading world data from database...');
         this.world = await loadWorldFromDb(this.db!, async () => {
           this.worldDirty = true;
@@ -187,38 +194,38 @@ export class TypedCacheManager {
     });
   }
 
-  // ===== LEVEL 0: CACHE MANAGEMENT OPERATIONS =====
+  // ===== LEVEL 10: CACHE MANAGEMENT OPERATIONS =====
 
   /**
    * Perform cache management operations with proper locking
    */
-  async withCacheManagement<T>(
-    context: EmptyContext,
-    fn: (ctx: LockContext<Locked<'cache-mgmt'>, CacheLevel>) => Promise<T>
+  async withCacheManagement<T, THeld extends readonly LockLevel[]>(
+    context: LockContext<THeld>,
+    fn: (ctx: LockContext<readonly [...THeld, CacheLevel]>) => Promise<T>
   ): Promise<T> {
     return await this.cacheManagementLock.acquire(context, fn);
   }
 
-  // ===== LEVEL 1: WORLD OPERATIONS =====
+  // ===== LEVEL 20: WORLD OPERATIONS =====
 
   /**
    * Perform world read operations with proper locking
    */
-  async withWorldRead<T>(
-    context: LockContext<any, CacheLevel | never>,
-    fn: (ctx: WorldReadContext) => Promise<T>
+  async withWorldRead<T, THeld extends readonly LockLevel[]>(
+    context: LockContext<THeld>,
+    fn: (ctx: LockContext<readonly [...THeld, WorldLevel]>) => Promise<T>
   ): Promise<T> {
-    return await this.worldLock.read(context, fn);
+    return await this.worldLock.acquireRead(context, fn);
   }
 
   /**
    * Perform world write operations with proper locking
    */
-  async withWorldWrite<T>(
-    context: LockContext<any, CacheLevel | never>,
-    fn: (ctx: WorldWriteContext) => Promise<T>
+  async withWorldWrite<T, THeld extends readonly LockLevel[]>(
+    context: LockContext<THeld>,
+    fn: (ctx: LockContext<readonly [...THeld, WorldLevel]>) => Promise<T>
   ): Promise<T> {
-    return await this.worldLock.write(context, fn);
+    return await this.worldLock.acquireWrite(context, fn);
   }
 
   /**
@@ -240,14 +247,14 @@ export class TypedCacheManager {
     this.worldDirty = true;
   }
 
-  // ===== LEVEL 2: USER OPERATIONS =====
+  // ===== LEVEL 30: USER OPERATIONS =====
 
   /**
    * Perform user operations with proper locking (single lock for ALL users)
    */
-  async withUserLock<T>(
-    context: LockContext<any, CacheLevel | WorldLevel | never>,
-    fn: (ctx: UserContext) => Promise<T>
+  async withUserLock<T, THeld extends readonly LockLevel[]>(
+    context: LockContext<THeld>,
+    fn: (ctx: LockContext<readonly [...THeld, UserLevel]>) => Promise<T>
   ): Promise<T> {
     return await this.userLock.acquire(context, fn);
   }
@@ -285,26 +292,26 @@ export class TypedCacheManager {
     this.dirtyUsers.add(user.id); // Mark as dirty for persistence
   }
 
-  // ===== LEVEL 3: DATABASE OPERATIONS =====
+  // ===== LEVEL 40: DATABASE OPERATIONS =====
 
   /**
    * Perform database read operations with proper locking
    */
-  async withDatabaseRead<T>(
-    context: LockContext<any, CacheLevel | WorldLevel | UserLevel | never>,
-    fn: (ctx: DatabaseReadContext) => Promise<T>
+  async withDatabaseRead<T, THeld extends readonly LockLevel[]>(
+    context: LockContext<THeld>,
+    fn: (ctx: LockContext<readonly [...THeld, DatabaseLevel]>) => Promise<T>
   ): Promise<T> {
-    return await this.databaseLock.read(context, fn);
+    return await this.databaseLock.acquireRead(context, fn);
   }
 
   /**
    * Perform database write operations with proper locking
    */
-  async withDatabaseWrite<T>(
-    context: LockContext<any, CacheLevel | WorldLevel | UserLevel | never>,
-    fn: (ctx: DatabaseWriteContext) => Promise<T>
+  async withDatabaseWrite<T, THeld extends readonly LockLevel[]>(
+    context: LockContext<THeld>,
+    fn: (ctx: LockContext<readonly [...THeld, DatabaseLevel]>) => Promise<T>
   ): Promise<T> {
-    return await this.databaseLock.write(context, fn);
+    return await this.databaseLock.acquireWrite(context, fn);
   }
 
   /**
@@ -329,16 +336,16 @@ export class TypedCacheManager {
    * Load user from database if not in cache (proper lock ordering)
    */
   async loadUserIfNeeded(userId: number): Promise<User | null> {
-    const emptyCtx = createEmptyContext();
+    const emptyCtx = createEmptyLockContext();
     
-    return await this.withUserLock(emptyCtx, async (userCtx: UserContext) => {
+    return await this.withUserLock(emptyCtx, async (userCtx) => {
       let user = this.getUserUnsafe(userId, userCtx);
       if (user) {
         return user;
       }
 
       // Load from database
-      return await this.withDatabaseRead(userCtx, async (dbCtx: DatabaseReadContext) => {
+      return await this.withDatabaseRead(userCtx, async (dbCtx) => {
         console.log(`🔄 User ${userId} cache miss, loading from database...`);
         user = await this.loadUserFromDbUnsafe(userId, dbCtx);
         if (user) {
@@ -353,7 +360,7 @@ export class TypedCacheManager {
    * Get user by username (with caching)
    */
   async getUserByUsername(username: string): Promise<User | null> {
-    const emptyCtx = createEmptyContext();
+    const emptyCtx = createEmptyLockContext();
     
     return await this.withUserLock(emptyCtx, async (userCtx: UserContext) => {
       // Check username cache first
@@ -382,7 +389,7 @@ export class TypedCacheManager {
    * Get cache statistics
    */
   async getStats(): Promise<TypedCacheStats> {
-    const emptyCtx = createEmptyContext();
+    const emptyCtx = createEmptyLockContext();
     
     return await this.withUserLock(emptyCtx, async (_userCtx: UserContext) => {
       return {
@@ -407,7 +414,7 @@ export class TypedCacheManager {
    * Useful for ensuring data is persisted before reading directly from DB
    */
   async flushAllToDatabase(): Promise<void> {
-    const emptyCtx = createEmptyContext();
+    const emptyCtx = createEmptyLockContext();
     
     console.log('🔄 Flushing all dirty data to database...');
     
@@ -441,7 +448,7 @@ export class TypedCacheManager {
    * UNSAFE: Requires message lock context already acquired
    */
   private async getMessagesForUserUnsafe(
-    messageCtx: LockContext<any, any>,
+    messageCtx: LockContext<readonly LockLevel[]>,
     userId: number
   ): Promise<Message[]> {
     // Check cache first
@@ -452,7 +459,7 @@ export class TypedCacheManager {
 
     // Cache miss - load from database
     this.stats.messageCacheMisses++;
-    return this.databaseLock.read(messageCtx, async () => {
+    return this.databaseLock.acquireRead(messageCtx, async () => {
       if (!this.db) throw new Error('Database not initialized');
       
       const messages = await this.loadMessagesFromDb(userId);
@@ -464,11 +471,11 @@ export class TypedCacheManager {
   /**
    * Get messages for a user from cache or database
    */
-  async getMessagesForUser<CurrentLevel extends number>(
-    context: LockContext<any, CurrentLevel>,
+  async getMessagesForUser<THeld extends readonly LockLevel[]>(
+    context: LockContext<THeld>,
     userId: number
   ): Promise<Message[]> {
-    return this.messageLock.read(context, async (messageCtx) => {
+    return this.messageLock.acquireRead(context, async (messageCtx) => {
       return this.getMessagesForUserUnsafe(messageCtx, userId);
     });
   }
@@ -476,11 +483,11 @@ export class TypedCacheManager {
   /**
    * Get unread messages for a user and mark as read
    */
-  async getAndMarkUnreadMessages<CurrentLevel extends number>(
-    context: LockContext<any, CurrentLevel>,
+  async getAndMarkUnreadMessages<THeld extends readonly LockLevel[]>(
+    context: LockContext<THeld>,
     userId: number
   ): Promise<UnreadMessage[]> {
-    return this.messageLock.write(context, async (messageCtx) => {
+    return this.messageLock.acquireWrite(context, async (messageCtx) => {
       // Get all messages for user (using unsafe version to avoid deadlock)
       const allMessages = await this.getMessagesForUserUnsafe(messageCtx, userId);
       
@@ -510,13 +517,13 @@ export class TypedCacheManager {
   /**
    * Create a new message for a user
    */
-  async createMessage<CurrentLevel extends number>(
-    context: LockContext<any, CurrentLevel>,
+  async createMessage<THeld extends readonly LockLevel[]>(
+    context: LockContext<THeld>,
     userId: number,
     messageText: string
   ): Promise<number> {
-    return this.messageLock.write(context, async (messageCtx) => {
-      return this.databaseLock.write(messageCtx, async () => {
+    return this.messageLock.acquireWrite(context, async (messageCtx) => {
+      return this.databaseLock.acquireWrite(messageCtx, async () => {
         if (!this.db) throw new Error('Database not initialized');
         
         // Create message in database first to get ID
@@ -545,11 +552,11 @@ export class TypedCacheManager {
   /**
    * Get count of unread messages for a user (from cache)
    */
-  async getUnreadMessageCount<CurrentLevel extends number>(
-    context: LockContext<any, CurrentLevel>,
+  async getUnreadMessageCount<THeld extends readonly LockLevel[]>(
+    context: LockContext<THeld>,
     userId: number
   ): Promise<number> {
-    return this.messageLock.read(context, async (messageCtx) => {
+    return this.messageLock.acquireRead(context, async (messageCtx) => {
       const messages = await this.getMessagesForUserUnsafe(messageCtx, userId);
       return messages.filter(msg => !msg.is_read).length;
     });
@@ -558,12 +565,12 @@ export class TypedCacheManager {
   /**
    * Delete old read messages (cleanup operation)
    */
-  async deleteOldReadMessages<CurrentLevel extends number>(
-    context: LockContext<any, CurrentLevel>,
+  async deleteOldReadMessages<THeld extends readonly LockLevel[]>(
+    context: LockContext<THeld>,
     olderThanDays = 30
   ): Promise<number> {
-    return this.messageLock.write(context, async (messageCtx) => {
-      return this.databaseLock.write(messageCtx, async () => {
+    return this.messageLock.acquireWrite(context, async (messageCtx) => {
+      return this.databaseLock.acquireWrite(messageCtx, async () => {
         if (!this.db) throw new Error('Database not initialized');
         
         const cutoffTime = Math.floor(Date.now() / 1000) - (olderThanDays * 24 * 60 * 60);
@@ -663,11 +670,11 @@ export class TypedCacheManager {
   /**
    * Manually persist all dirty users to database
    */
-  async persistDirtyUsers<CurrentLevel extends number>(
-    context: LockContext<any, CurrentLevel>
+  async persistDirtyUsers<THeld extends readonly LockLevel[]>(
+    context: LockContext<THeld>
   ): Promise<void> {
     await this.userLock.acquire(context, async (userCtx) => {
-      await this.databaseLock.write(userCtx, async () => {
+      await this.databaseLock.acquireWrite(userCtx, async () => {
         const dirtyUserIds = Array.from(this.dirtyUsers);
         
         if (dirtyUserIds.length === 0) {
@@ -750,11 +757,11 @@ export class TypedCacheManager {
    * Manually persist all dirty messages to database
    * TODO: Integrate with background persistence system
    */
-  async persistDirtyMessages<CurrentLevel extends number>(
-    context: LockContext<any, CurrentLevel>
+  async persistDirtyMessages<THeld extends readonly LockLevel[]>(
+    context: LockContext<THeld>
   ): Promise<void> {
-    await this.messageLock.write(context, async (messageCtx) => {
-      await this.databaseLock.write(messageCtx, async () => {
+    await this.messageLock.acquireWrite(context, async (messageCtx) => {
+      await this.databaseLock.acquireWrite(messageCtx, async () => {
         const dirtyUserIds = Array.from(this.dirtyMessages);
         
         for (const userId of dirtyUserIds) {
@@ -769,15 +776,15 @@ export class TypedCacheManager {
   /**
    * Manually persist dirty world data to database
    */
-  async persistDirtyWorld<CurrentLevel extends number>(
-    context: LockContext<any, CurrentLevel>
+  async persistDirtyWorld<THeld extends readonly LockLevel[]>(
+    context: LockContext<THeld>
   ): Promise<void> {
-    await this.worldLock.write(context, async (worldCtx) => {
+    await this.worldLock.acquireWrite(context, async (worldCtx) => {
       if (!this.worldDirty || !this.world) {
         return; // Nothing to persist
       }
 
-      await this.databaseLock.write(worldCtx, async () => {
+      await this.databaseLock.acquireWrite(worldCtx, async () => {
         if (!this.db) throw new Error('Database not initialized');
         
         console.log('💾 Persisting world data to database...');
@@ -837,7 +844,7 @@ export class TypedCacheManager {
    * Background persistence operation
    */
   private async backgroundPersist(): Promise<void> {
-    const emptyCtx = createEmptyContext();
+    const emptyCtx = createEmptyLockContext();
     
     // Persist dirty users
     if (this.dirtyUsers.size > 0) {
@@ -862,7 +869,7 @@ export class TypedCacheManager {
    * Shutdown the cache manager
    */
   async shutdown(): Promise<void> {
-    const emptyCtx = createEmptyContext();
+    const emptyCtx = createEmptyLockContext();
     
     await this.withCacheManagement(emptyCtx, async () => {
       console.log('🔄 Shutting down typed cache manager...');
@@ -907,7 +914,7 @@ export async function sendMessageToUserCached(userId: number, message: string): 
     await cacheManager.initialize();
   }
   
-  const emptyCtx = createEmptyContext();
+  const emptyCtx = createEmptyLockContext();
   return await cacheManager.createMessage(emptyCtx, userId, message);
 }
 
@@ -919,7 +926,7 @@ export async function getUserMessagesCached(userId: number): Promise<UnreadMessa
     await cacheManager.initialize();
   }
   
-  const emptyCtx = createEmptyContext();
+  const emptyCtx = createEmptyLockContext();
   return await cacheManager.getAndMarkUnreadMessages(emptyCtx, userId);
 }
 
@@ -931,6 +938,6 @@ export async function getUserMessageCountCached(userId: number): Promise<number>
     await cacheManager.initialize();
   }
   
-  const emptyCtx = createEmptyContext();
+  const emptyCtx = createEmptyLockContext();
   return await cacheManager.getUnreadMessageCount(emptyCtx, userId);
 }

@@ -6,7 +6,7 @@ import sqlite3 from 'sqlite3';
 import { User, SaveUserCallback } from './user';
 import { createInitialTechTree } from './techtree';
 import { getTypedCacheManager } from './typedCacheManager';
-import { createEmptyContext } from './typedLocks';
+import { createEmptyLockContext } from './ironGuard';
 import { sendMessageToUserCached } from './typedCacheManager';
 import { TechCounts } from './TechFactory';
 
@@ -122,7 +122,7 @@ export async function getUserById(db: sqlite3.Database, id: number): Promise<Use
   const cacheManager = getTypedCacheManager();
   await cacheManager.initialize();
   
-  const emptyCtx = createEmptyContext();
+  const emptyCtx = createEmptyLockContext();
   
   // Use user lock to ensure consistent access
   return await cacheManager.withUserLock(emptyCtx, async (userCtx) => {

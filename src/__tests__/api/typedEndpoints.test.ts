@@ -5,7 +5,7 @@
 
 import { describe, expect, test, beforeEach, afterEach } from 'vitest';
 import { TypedCacheManager, getTypedCacheManager } from '../../lib/server/typedCacheManager';
-import { createEmptyContext } from '../../lib/server/typedLocks';
+import { createEmptyLockContext } from '../../lib/server/ironGuard';
 
 describe('Phase 3: Typed API Lock Ordering System', () => {
   
@@ -30,7 +30,7 @@ describe('Phase 3: Typed API Lock Ordering System', () => {
       const manager = getTypedCacheManager();
       await manager.initialize();
       
-      const emptyCtx = createEmptyContext();
+      const emptyCtx = createEmptyLockContext();
       const executionOrder: string[] = [];
       
       // Simulate collection API pattern: World Write → User → Database Read
@@ -101,7 +101,7 @@ describe('Phase 3: Typed API Lock Ordering System', () => {
       const manager = getTypedCacheManager();
       await manager.initialize();
       
-      const emptyCtx = createEmptyContext();
+      const emptyCtx = createEmptyLockContext();
       const executionOrder: string[] = [];
       
       // Simulate navigation API pattern: World Write → User
@@ -144,7 +144,7 @@ describe('Phase 3: Typed API Lock Ordering System', () => {
       const manager = getTypedCacheManager();
       await manager.initialize();
       
-      const emptyCtx = createEmptyContext();
+      const emptyCtx = createEmptyLockContext();
       const executionOrder: string[] = [];
       
       // Simulate read-only API pattern: World Read → User
@@ -188,7 +188,7 @@ describe('Phase 3: Typed API Lock Ordering System', () => {
       const manager = getTypedCacheManager();
       await manager.initialize();
       
-      const emptyCtx = createEmptyContext();
+      const emptyCtx = createEmptyLockContext();
       
       // Start multiple concurrent API-like operations
       const operations = [
@@ -232,7 +232,7 @@ describe('Phase 3: Typed API Lock Ordering System', () => {
       const manager = getTypedCacheManager();
       await manager.initialize();
       
-      const emptyCtx = createEmptyContext();
+      const emptyCtx = createEmptyLockContext();
       
       // Create many concurrent operations simulating high API load
       const operations = Array.from({ length: 10 }, (_, i) => {
@@ -282,7 +282,7 @@ describe('Phase 3: Typed API Lock Ordering System', () => {
       const manager = getTypedCacheManager();
       await manager.initialize();
       
-      const emptyCtx = createEmptyContext();
+      const emptyCtx = createEmptyLockContext();
       
       // These operations should compile correctly (proper lock contexts)
       await manager.withWorldWrite(emptyCtx, async (worldCtx) => {
