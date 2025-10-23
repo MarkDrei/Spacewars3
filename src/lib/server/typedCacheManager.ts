@@ -4,17 +4,25 @@
 // ---
 
 import { 
-  TypedMutex, 
-  TypedReadWriteLock, 
-  type LockContext, 
-  type EmptyContext, 
-  type Locked,
+  createLockContext,
+  type LockContext as IronGuardLockContext,
+  CACHE_LOCK,
+  WORLD_LOCK,
+  USER_LOCK,
+  MESSAGE_LOCK,
+  DATABASE_LOCK,
   type CacheLevel,
   type WorldLevel,
   type UserLevel,
   type MessageReadLevel,
   type MessageWriteLevel,
   type DatabaseLevel,
+  // Import some backward compatibility helpers for the remaining methods
+  TypedMutex,
+  TypedReadWriteLock,
+  type LockContext,
+  type EmptyContext,
+  type Locked,
   createEmptyContext
 } from './typedLocks';
 import { User } from './user';
@@ -25,13 +33,13 @@ import { loadWorldFromDb, saveWorldToDb } from './worldRepo';
 import { getUserByIdFromDb, getUserByUsernameFromDb } from './userRepo';
 import sqlite3 from 'sqlite3';
 
-// Type aliases for lock contexts to improve readability and avoid 'any'
-// Type aliases for lock contexts to improve readability and avoid 'any'
-type WorldReadContext = LockContext<Locked<'world:read'>, CacheLevel | WorldLevel>;
-type WorldWriteContext = LockContext<Locked<'world:write'>, CacheLevel | WorldLevel>;
-type UserContext = LockContext<Locked<'user'>, CacheLevel | WorldLevel | UserLevel>;
-type DatabaseReadContext = LockContext<Locked<'database:read'>, CacheLevel | WorldLevel | UserLevel | DatabaseLevel>;
-type DatabaseWriteContext = LockContext<Locked<'database:write'>, CacheLevel | WorldLevel | UserLevel | DatabaseLevel>;
+// Type aliases for IronGuard lock contexts
+type CacheContext = IronGuardLockContext<readonly [typeof CACHE_LOCK]>;
+type WorldReadContext = IronGuardLockContext<readonly [typeof WORLD_LOCK]> | IronGuardLockContext<readonly [typeof CACHE_LOCK, typeof WORLD_LOCK]>;
+type WorldWriteContext = IronGuardLockContext<readonly [typeof WORLD_LOCK]> | IronGuardLockContext<readonly [typeof CACHE_LOCK, typeof WORLD_LOCK]>;
+type UserContext = IronGuardLockContext<readonly [typeof USER_LOCK]> | IronGuardLockContext<readonly [typeof CACHE_LOCK, typeof USER_LOCK]> | IronGuardLockContext<readonly [typeof WORLD_LOCK, typeof USER_LOCK]> | IronGuardLockContext<readonly [typeof CACHE_LOCK, typeof WORLD_LOCK, typeof USER_LOCK]>;
+type DatabaseReadContext = IronGuardLockContext<readonly [typeof DATABASE_LOCK]> | IronGuardLockContext<readonly [typeof USER_LOCK, typeof DATABASE_LOCK]> | IronGuardLockContext<readonly [typeof WORLD_LOCK, typeof USER_LOCK, typeof DATABASE_LOCK]> | IronGuardLockContext<readonly [typeof CACHE_LOCK, typeof WORLD_LOCK, typeof USER_LOCK, typeof DATABASE_LOCK]>;
+type DatabaseWriteContext = IronGuardLockContext<readonly [typeof DATABASE_LOCK]> | IronGuardLockContext<readonly [typeof USER_LOCK, typeof DATABASE_LOCK]> | IronGuardLockContext<readonly [typeof WORLD_LOCK, typeof USER_LOCK, typeof DATABASE_LOCK]> | IronGuardLockContext<readonly [typeof CACHE_LOCK, typeof WORLD_LOCK, typeof USER_LOCK, typeof DATABASE_LOCK]>;
 
 // Context type for data access methods - accepts any context that provides the required lock
 type WorldAccessContext = WorldReadContext | WorldWriteContext | UserContext | DatabaseReadContext | DatabaseWriteContext;
@@ -97,12 +105,13 @@ export class TypedCacheManager {
   private isInitialized = false;
   private persistenceTimer: NodeJS.Timeout | null = null;
 
-  // Typed locks with explicit level assignment
-  private cacheManagementLock = new TypedMutex('cache-mgmt', 0 as CacheLevel);
-  private worldLock = new TypedReadWriteLock('world', 1 as WorldLevel, 1 as WorldLevel);
-  private userLock = new TypedMutex('user', 2 as UserLevel);
-  private messageLock = new TypedReadWriteLock('message', 2.4 as MessageReadLevel, 2.5 as MessageWriteLevel);
-  private databaseLock = new TypedReadWriteLock('database', 3 as DatabaseLevel, 3 as DatabaseLevel);
+  // IronGuard lock contexts - no instance needed for new methods
+  // Legacy wrapper instances for methods not yet converted
+  private cacheManagementLock = new TypedMutex('cache-mgmt', CACHE_LOCK as any);
+  private userLock = new TypedMutex('user', USER_LOCK as any);
+  private messageLock = new TypedReadWriteLock('message', MESSAGE_LOCK as any);
+  private databaseLock = new TypedReadWriteLock('database', DATABASE_LOCK as any);
+  private worldLock = new TypedReadWriteLock('world', WORLD_LOCK as any);
 
   // In-memory cache storage
   private users: Map<number, User> = new Map();
@@ -138,9 +147,10 @@ export class TypedCacheManager {
       return;
     }
 
-    const emptyCtx = createEmptyContext();
+    const emptyCtx = createLockContext();
     
-    await this.cacheManagementLock.acquire(emptyCtx, async () => {
+    const cacheCtx = await emptyCtx.acquireWrite(CACHE_LOCK);
+    try {
       if (this.isInitialized) {
         return; // Double-check inside lock
       }
@@ -163,7 +173,9 @@ export class TypedCacheManager {
 
       this.isInitialized = true;
       console.log('✅ Typed cache manager initialization complete');
-    });
+    } finally {
+      cacheCtx.dispose();
+    }
   }
 
   /**
@@ -172,10 +184,12 @@ export class TypedCacheManager {
   private async initializeWorld(): Promise<void> {
     if (!this.db) throw new Error('Database not initialized');
     
-    const emptyCtx = createEmptyContext();
+    const emptyCtx = createLockContext();
     
-    await this.databaseLock.read(emptyCtx, async (dbCtx: DatabaseReadContext) => {
-      await this.worldLock.write(dbCtx, async () => {
+    const worldCtx = await emptyCtx.acquireWrite(WORLD_LOCK);
+    try {
+      const dbCtx = await worldCtx.acquireRead(DATABASE_LOCK);
+      try {
         console.log('🌍 Loading world data from database...');
         this.world = await loadWorldFromDb(this.db!, async () => {
           this.worldDirty = true;
@@ -183,14 +197,18 @@ export class TypedCacheManager {
         this.worldDirty = false;
         this.stats.worldCacheMisses++;
         console.log('🌍 World data cached in memory');
-      });
-    });
+      } finally {
+        dbCtx.dispose();
+      }
+    } finally {
+      worldCtx.dispose();
+    }
   }
 
-  // ===== LEVEL 0: CACHE MANAGEMENT OPERATIONS =====
+  // ===== LEVEL 1: WORLD OPERATIONS =====
 
   /**
-   * Perform cache management operations with proper locking
+   * Perform cache management operations with proper locking (legacy compatibility)
    */
   async withCacheManagement<T>(
     context: EmptyContext,
@@ -199,10 +217,26 @@ export class TypedCacheManager {
     return await this.cacheManagementLock.acquire(context, fn);
   }
 
-  // ===== LEVEL 1: WORLD OPERATIONS =====
+  /**
+   * Acquire world read lock and return context for chaining
+   */
+  async acquireWorldRead(
+    context: IronGuardLockContext<readonly []>
+  ): Promise<WorldReadContext> {
+    return await context.acquireRead(WORLD_LOCK) as WorldReadContext;
+  }
 
   /**
-   * Perform world read operations with proper locking
+   * Acquire world write lock and return context for chaining
+   */
+  async acquireWorldWrite(
+    context: IronGuardLockContext<readonly []>
+  ): Promise<WorldWriteContext> {
+    return await context.acquireWrite(WORLD_LOCK) as WorldWriteContext;
+  }
+
+  /**
+   * Legacy compatibility: Perform world read operations with proper locking
    */
   async withWorldRead<T>(
     context: LockContext<any, CacheLevel | never>,
@@ -212,7 +246,7 @@ export class TypedCacheManager {
   }
 
   /**
-   * Perform world write operations with proper locking
+   * Legacy compatibility: Perform world write operations with proper locking
    */
   async withWorldWrite<T>(
     context: LockContext<any, CacheLevel | never>,
@@ -243,7 +277,16 @@ export class TypedCacheManager {
   // ===== LEVEL 2: USER OPERATIONS =====
 
   /**
-   * Perform user operations with proper locking (single lock for ALL users)
+   * Acquire user lock and return context for chaining
+   */
+  async acquireUserLock(
+    context: IronGuardLockContext<readonly []> | WorldReadContext | WorldWriteContext
+  ): Promise<UserContext> {
+    return await context.acquireWrite(USER_LOCK) as UserContext;
+  }
+
+  /**
+   * Legacy compatibility: Perform user operations with proper locking (single lock for ALL users)
    */
   async withUserLock<T>(
     context: LockContext<any, CacheLevel | WorldLevel | never>,
@@ -288,7 +331,25 @@ export class TypedCacheManager {
   // ===== LEVEL 3: DATABASE OPERATIONS =====
 
   /**
-   * Perform database read operations with proper locking
+   * Acquire database read lock and return context for chaining
+   */
+  async acquireDatabaseRead(
+    context: IronGuardLockContext<readonly []> | WorldReadContext | WorldWriteContext | UserContext
+  ): Promise<DatabaseReadContext> {
+    return await context.acquireRead(DATABASE_LOCK) as DatabaseReadContext;
+  }
+
+  /**
+   * Acquire database write lock and return context for chaining
+   */
+  async acquireDatabaseWrite(
+    context: IronGuardLockContext<readonly []> | WorldReadContext | WorldWriteContext | UserContext
+  ): Promise<DatabaseWriteContext> {
+    return await context.acquireWrite(DATABASE_LOCK) as DatabaseWriteContext;
+  }
+
+  /**
+   * Legacy compatibility: Perform database read operations with proper locking
    */
   async withDatabaseRead<T>(
     context: LockContext<any, CacheLevel | WorldLevel | UserLevel | never>,
@@ -298,7 +359,7 @@ export class TypedCacheManager {
   }
 
   /**
-   * Perform database write operations with proper locking
+   * Legacy compatibility: Perform database write operations with proper locking
    */
   async withDatabaseWrite<T>(
     context: LockContext<any, CacheLevel | WorldLevel | UserLevel | never>,
@@ -329,33 +390,40 @@ export class TypedCacheManager {
    * Load user from database if not in cache (proper lock ordering)
    */
   async loadUserIfNeeded(userId: number): Promise<User | null> {
-    const emptyCtx = createEmptyContext();
+    const emptyCtx = createLockContext();
     
-    return await this.withUserLock(emptyCtx, async (userCtx: UserContext) => {
+    const userCtx = await this.acquireUserLock(emptyCtx);
+    try {
       let user = this.getUserUnsafe(userId, userCtx);
       if (user) {
         return user;
       }
 
       // Load from database
-      return await this.withDatabaseRead(userCtx, async (dbCtx: DatabaseReadContext) => {
+      const dbCtx = await this.acquireDatabaseRead(userCtx);
+      try {
         console.log(`🔄 User ${userId} cache miss, loading from database...`);
         user = await this.loadUserFromDbUnsafe(userId, dbCtx);
         if (user) {
           this.setUserUnsafe(user, userCtx);
         }
         return user;
-      });
-    });
+      } finally {
+        dbCtx.dispose();
+      }
+    } finally {
+      userCtx.dispose();
+    }
   }
 
   /**
    * Get user by username (with caching)
    */
   async getUserByUsername(username: string): Promise<User | null> {
-    const emptyCtx = createEmptyContext();
+    const emptyCtx = createLockContext();
     
-    return await this.withUserLock(emptyCtx, async (userCtx: UserContext) => {
+    const userCtx = await this.acquireUserLock(emptyCtx);
+    try {
       // Check username cache first
       const cachedUserId = this.usernameToUserId.get(username);
       if (cachedUserId) {
@@ -368,23 +436,29 @@ export class TypedCacheManager {
       
       // Cache miss - load from database
       console.log(`🔍 Username "${username}" cache miss, loading from database`);
-      return await this.withDatabaseRead(userCtx, async (dbCtx: DatabaseReadContext) => {
+      const dbCtx = await this.acquireDatabaseRead(userCtx);
+      try {
         const user = await this.loadUserByUsernameFromDbUnsafe(username, dbCtx);
         if (user) {
           this.setUserUnsafe(user, userCtx);
         }
         return user;
-      });
-    });
+      } finally {
+        dbCtx.dispose();
+      }
+    } finally {
+      userCtx.dispose();
+    }
   }
 
   /**
    * Get cache statistics
    */
   async getStats(): Promise<TypedCacheStats> {
-    const emptyCtx = createEmptyContext();
+    const emptyCtx = createLockContext();
     
-    return await this.withUserLock(emptyCtx, async (_userCtx: UserContext) => {
+    const userCtx = await this.acquireUserLock(emptyCtx);
+    try {
       return {
         userCacheSize: this.users.size,
         usernameCacheSize: this.usernameToUserId.size,
@@ -399,7 +473,9 @@ export class TypedCacheManager {
         dirtyMessages: this.dirtyMessages.size,
         worldDirty: this.worldDirty
       };
-    });
+    } finally {
+      userCtx.dispose();
+    }
   }
 
   /**
@@ -407,7 +483,7 @@ export class TypedCacheManager {
    * Useful for ensuring data is persisted before reading directly from DB
    */
   async flushAllToDatabase(): Promise<void> {
-    const emptyCtx = createEmptyContext();
+    const emptyCtx = createLockContext();
     
     console.log('🔄 Flushing all dirty data to database...');
     
