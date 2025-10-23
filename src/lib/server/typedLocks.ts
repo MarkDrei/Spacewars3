@@ -57,7 +57,7 @@ export type LockContext<_State = any, _MaxLevel extends number = never> = IronGu
 // Legacy types for backward compatibility
 export type EmptyContext = IronGuardLockContext<readonly []> & { _state?: any; _maxLevel?: never };
 export type Unlocked = never;
-export type Locked<Name extends string> = never;
+export type Locked<_Name extends string> = never;
 
 // Legacy type validation exports for tests
 export type TestValidCacheToWorld = true;
