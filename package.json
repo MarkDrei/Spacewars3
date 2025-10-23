@@ -14,6 +14,7 @@
     "export-db": "npx tsx scripts/export-database-to-html.ts"
   },
   "dependencies": {
+    "@markdrei/ironguard-typescript-locks": "^0.1.0",
     "@types/bcrypt": "^6.0.0",
     "@types/sqlite3": "^3.1.11",
     "bcrypt": "^6.0.0",
