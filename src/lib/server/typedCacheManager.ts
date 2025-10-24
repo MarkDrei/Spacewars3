@@ -108,15 +108,15 @@ export class TypedCacheManager {
   }
 
   /**
-   * Initialize the cache manager - must be called before use
+   * Initialize the cache manager (idempotent - safe to call multiple times)
    */
   async initialize(): Promise<void> {
     if (this.isInitialized) {
-      return;
+      return; // Fast path - already initialized
     }
 
+    // Use CACHE_LOCK to ensure only one initialization happens
     const emptyCtx = createLockContext();
-    
     const cacheCtx = await emptyCtx.acquireWrite(CACHE_LOCK);
     try {
       if (this.isInitialized) {
@@ -143,6 +143,16 @@ export class TypedCacheManager {
       console.log('✅ Typed cache manager initialization complete');
     } finally {
       cacheCtx.dispose();
+    }
+  }
+
+  /**
+   * Ensure cache manager is initialized before operations
+   * (internal helper for auto-initialization)
+   */
+  private async ensureInitialized(): Promise<void> {
+    if (!this.isInitialized) {
+      await this.initialize();
     }
   }
 
@@ -181,6 +191,7 @@ export class TypedCacheManager {
   async acquireWorldRead(
     context: IronGuardLockContext<readonly []>
   ): Promise<WorldReadContext> {
+    await this.ensureInitialized();
     return await context.acquireRead(WORLD_LOCK) as WorldReadContext;
   }
 
@@ -190,6 +201,7 @@ export class TypedCacheManager {
   async acquireWorldWrite(
     context: IronGuardLockContext<readonly []>
   ): Promise<WorldWriteContext> {
+    await this.ensureInitialized();
     return await context.acquireWrite(WORLD_LOCK) as WorldWriteContext;
   }
 
@@ -220,6 +232,7 @@ export class TypedCacheManager {
   async acquireUserLock(
     context: IronGuardLockContext<readonly []> | WorldReadContext | WorldWriteContext
   ): Promise<UserContext> {
+    await this.ensureInitialized();
     return await context.acquireWrite(USER_LOCK) as UserContext;
   }
 
@@ -264,6 +277,7 @@ export class TypedCacheManager {
   async acquireDatabaseRead(
     context: IronGuardLockContext<readonly []> | WorldReadContext | WorldWriteContext | UserContext
   ): Promise<DatabaseReadContext> {
+    await this.ensureInitialized();
     return await context.acquireRead(DATABASE_LOCK) as DatabaseReadContext;
   }
 
@@ -273,6 +287,7 @@ export class TypedCacheManager {
   async acquireDatabaseWrite(
     context: IronGuardLockContext<readonly []> | WorldReadContext | WorldWriteContext | UserContext
   ): Promise<DatabaseWriteContext> {
+    await this.ensureInitialized();
     return await context.acquireWrite(DATABASE_LOCK) as DatabaseWriteContext;
   }
 
