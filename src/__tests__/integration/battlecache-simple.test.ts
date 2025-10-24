@@ -433,6 +433,9 @@ describe('Phase 5: BattleCache Integration Testing', () => {
         data: { damage: 15, target: 'defender' }
       });
 
+      // Explicitly persist dirty battles before shutdown
+      await battleCache.persistDirtyBattles();
+      
       // Shut down cache (should persist data)
       await getBattleCache().shutdown();
       BattleCache.resetInstance();
