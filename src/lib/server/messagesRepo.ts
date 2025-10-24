@@ -11,6 +11,7 @@ export interface Message {
   created_at: number; // Unix timestamp in seconds
   is_read: boolean;
   message: string;
+  isPending?: boolean; // Flag for messages not yet persisted to DB
 }
 
 export interface UnreadMessage {
