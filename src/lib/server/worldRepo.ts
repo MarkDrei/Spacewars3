@@ -78,7 +78,6 @@ export function loadWorldFromDb(db: sqlite3.Database, saveCallback: SaveWorldCal
 export async function loadWorld(): Promise<World> {
   // Use typed cache manager for cache-aware access
   const cacheManager = getTypedCacheManager();
-  await cacheManager.initialize();
   
   const emptyCtx = createEmptyContext();
   
@@ -135,9 +134,9 @@ export async function deleteSpaceObject(db: sqlite3.Database, objectId: number):
 
   // Then update cache by refreshing the world
   try {
-    // Force cache refresh by reinitializing the world data
+    // Note: The cache manager will automatically reload world data on next access
+    // since these operations modify the database directly
     const cacheManager = getTypedCacheManager();
-    await cacheManager.initialize();
     // Note: The cache manager will automatically reload world data on next access
     // since these operations modify the database directly
   } catch (cacheErr) {
@@ -167,9 +166,9 @@ export async function insertSpaceObject(db: sqlite3.Database, obj: Omit<SpaceObj
 
   // Then update cache by refreshing the world
   try {
-    // Force cache refresh by reinitializing the world data
+    // Note: The cache manager will automatically reload world data on next access
+    // since these operations modify the database directly
     const cacheManager = getTypedCacheManager();
-    await cacheManager.initialize();
     // Note: The cache manager will automatically reload world data on next access
     // since these operations modify the database directly
   } catch (cacheErr) {

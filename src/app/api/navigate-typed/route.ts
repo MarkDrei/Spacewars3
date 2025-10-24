@@ -28,10 +28,9 @@ export async function POST(request: NextRequest) {
     
     console.log(`🧭 [TYPED] Navigation API called - speed: ${speed}, angle: ${angle} by user: ${session.userId}`);
     
-    // Get typed cache manager singleton and initialize
+    // Get typed cache manager singleton
     const cacheManager = getTypedCacheManager();
-    await cacheManager.initialize();
-    console.log(`✅ [TYPED] Typed cache manager initialized for navigation`);
+    console.log(`✅ [TYPED] Typed cache manager ready for navigation`);
     
     // Create empty context for lock acquisition
     const emptyCtx = createEmptyContext();

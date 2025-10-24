@@ -12,9 +12,8 @@ export async function GET(request: NextRequest) {
 
     // console.log(`🌍 World data request - userId: ${session.userId}`);
 
-    // Get typed cache manager singleton and initialize
+    // Get typed cache manager singleton
     const cacheManager = getTypedCacheManager();
-    await cacheManager.initialize();
     
     // Create empty context for lock acquisition
     const emptyCtx = createEmptyContext();

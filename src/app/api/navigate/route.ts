@@ -24,9 +24,8 @@ export async function POST(request: NextRequest) {
       throw new ApiError(400, 'Must provide speed and/or angle');
     }
     
-    // Get typed cache manager singleton and initialize
+    // Get typed cache manager singleton
     const cacheManager = getTypedCacheManager();
-    await cacheManager.initialize();
     
     // Create empty context for lock acquisition
     const emptyCtx = createEmptyContext();

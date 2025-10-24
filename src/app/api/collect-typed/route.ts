@@ -43,12 +43,9 @@ export async function POST(request: NextRequest) {
       throw new ApiError(400, 'Missing or invalid object ID');
     }
     
-    // Get typed cache manager singleton and initialize
+    // Get typed cache manager singleton
     const cacheManager = getTypedCacheManager();
     console.log(`📋 [TYPED] Typed cache manager obtained`);
-    
-    await cacheManager.initialize();
-    console.log(`✅ [TYPED] Typed cache manager initialized`);
     
     // Create empty context for lock acquisition
     const emptyCtx = createEmptyContext();

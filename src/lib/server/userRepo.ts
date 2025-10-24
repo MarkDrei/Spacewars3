@@ -120,7 +120,6 @@ export function getUserByUsernameFromDb(db: sqlite3.Database, username: string, 
 export async function getUserById(db: sqlite3.Database, id: number): Promise<User | null> {
   // Use typed cache manager for cache-aware access
   const cacheManager = getTypedCacheManager();
-  await cacheManager.initialize();
   
   const emptyCtx = createEmptyContext();
   
@@ -148,7 +147,6 @@ export async function getUserById(db: sqlite3.Database, id: number): Promise<Use
 export async function getUserByUsername(db: sqlite3.Database, username: string): Promise<User | null> {
   // Use typed cache manager for cache-aware username lookup
   const cacheManager = getTypedCacheManager();
-  await cacheManager.initialize();
   
   return await cacheManager.getUserByUsername(username);
 }

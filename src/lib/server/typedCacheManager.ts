@@ -377,6 +377,10 @@ export class TypedCacheManager {
    * Load user from database if not in cache (proper lock ordering)
    */
   async loadUserIfNeeded(userId: number): Promise<User | null> {
+    if (!this.isInitialized) {
+      await this.initialize();
+    }
+    
     const emptyCtx = createLockContext();
     
     const userCtx = await this.acquireUserLock(emptyCtx);
@@ -407,6 +411,10 @@ export class TypedCacheManager {
    * Get user by username (with caching)
    */
   async getUserByUsername(username: string): Promise<User | null> {
+    if (!this.isInitialized) {
+      await this.initialize();
+    }
+    
     const emptyCtx = createLockContext();
     
     const userCtx = await this.acquireUserLock(emptyCtx);
@@ -442,6 +450,10 @@ export class TypedCacheManager {
    * Get cache statistics
    */
   async getStats(): Promise<TypedCacheStats> {
+    if (!this.isInitialized) {
+      await this.initialize();
+    }
+    
     const emptyCtx = createLockContext();
     
     const userCtx = await this.acquireUserLock(emptyCtx);
@@ -466,6 +478,10 @@ export class TypedCacheManager {
    * Useful for ensuring data is persisted before reading directly from DB
    */
   async flushAllToDatabase(): Promise<void> {
+    if (!this.isInitialized) {
+      await this.initialize();
+    }
+    
     const emptyCtx = createLockContext();
     
     console.log('🔄 Flushing all dirty data to database...');
