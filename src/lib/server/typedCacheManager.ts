@@ -157,6 +157,18 @@ export class TypedCacheManager {
   }
 
   /**
+   * Get database connection (for BattleCache and other components)
+   * Returns the database connection after ensuring initialization
+   */
+  async getDatabaseConnection(): Promise<sqlite3.Database> {
+    await this.ensureInitialized();
+    if (!this.db) {
+      throw new Error('Database not initialized');
+    }
+    return this.db;
+  }
+
+  /**
    * Load world data from database into cache
    */
   private async initializeWorld(): Promise<void> {

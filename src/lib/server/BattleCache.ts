@@ -83,7 +83,7 @@ export class BattleCache {
 
       if (!BattleCache.instance.initialized) {
         // Import here to avoid circular dependency
-        const { getDatabase } = await import('./database.js');
+        const { getDatabase } = await import('./database');
         const db = await getDatabase();
         await BattleCache.instance.initialize(db);
       }
@@ -311,6 +311,42 @@ export class BattleCache {
     return active;
   }
 
+  /**
+   * Get list of dirty battle IDs
+   */
+  getDirtyBattleIds(): number[] {
+    return Array.from(this.dirtyBattles);
+  }
+
+  /**
+   * Get cache statistics
+   */
+  getStats(): {
+    cachedBattles: number;
+    activeBattles: number;
+    dirtyBattles: number;
+  } {
+    let activeCount = 0;
+    for (const battle of this.battles.values()) {
+      if (battle.battleEndTime === null) {
+        activeCount++;
+      }
+    }
+
+    return {
+      cachedBattles: this.battles.size,
+      activeBattles: activeCount,
+      dirtyBattles: this.dirtyBattles.size
+    };
+  }
+
+  /**
+   * Persist all dirty battles to database (public async version)
+   */
+  async persistDirtyBattles(): Promise<void> {
+    await this.persistDirtyBattlesInternal();
+  }
+
   // ========================================
   // Database Operations
   // ========================================
@@ -520,16 +556,16 @@ export class BattleCache {
     }
 
     this.persistenceTimer = setInterval(() => {
-      this.persistDirtyBattles().catch((err) => {
+      this.persistDirtyBattlesInternal().catch((err) => {
         console.error('Error persisting dirty battles:', err);
       });
     }, this.PERSISTENCE_INTERVAL_MS);
   }
 
   /**
-   * Persist all dirty battles to database (async)
+   * Persist all dirty battles to database (async, internal)
    */
-  private async persistDirtyBattles(): Promise<void> {
+  private async persistDirtyBattlesInternal(): Promise<void> {
     if (this.dirtyBattles.size === 0) {
       return;
     }
