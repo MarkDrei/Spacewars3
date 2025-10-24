@@ -6,6 +6,10 @@ import { createTestDatabase } from '../helpers/testDatabase';
 
 describe('BattleCache Debug Tests', () => {
   beforeEach(async () => {
+    // Import and reset the test database
+    const { resetTestDatabase } = await import('../../lib/server/database');
+    resetTestDatabase();
+    
     await createTestDatabase();
     
     // Reset all caches to clean state

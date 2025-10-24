@@ -13,6 +13,10 @@ import type { BattleStats, WeaponCooldowns } from '../../shared/battleTypes';
 describe('Phase 5: BattleCache Integration Testing', () => {
   
   beforeEach(async () => {
+    // Import and reset the test database
+    const { resetTestDatabase } = await import('../../lib/server/database');
+    resetTestDatabase();
+    
     await createTestDatabase();
     
     // Reset all caches to clean state
@@ -35,6 +39,11 @@ describe('Phase 5: BattleCache Integration Testing', () => {
       const battleCache = getBattleCache();
       const cacheManager = getTypedCacheManager();
       await cacheManager.initialize();
+
+      // Initialize BattleCache manually for tests
+      // Initialize BattleCache manually for tests
+      const db = await cacheManager.getDatabaseConnection();
+      await battleCache.initialize(db);
 
       // Use test user IDs (created by createTestDatabase)
       const attackerId = 1;
@@ -99,6 +108,11 @@ describe('Phase 5: BattleCache Integration Testing', () => {
       const cacheManager = getTypedCacheManager();
       await cacheManager.initialize();
 
+      // Initialize BattleCache manually for tests
+      // Initialize BattleCache manually for tests
+      const db = await cacheManager.getDatabaseConnection();
+      await battleCache.initialize(db);
+
       const attackerId = 1;
       const defenderId = 2;
 
@@ -147,6 +161,11 @@ describe('Phase 5: BattleCache Integration Testing', () => {
       const cacheManager = getTypedCacheManager();
       await cacheManager.initialize();
 
+      // Initialize BattleCache manually for tests
+      const battleCache = getBattleCache();
+      const db = await cacheManager.getDatabaseConnection();
+      await battleCache.initialize(db);
+
       const attackerId = 1;
       const defenderId = 2;
 
@@ -188,6 +207,11 @@ describe('Phase 5: BattleCache Integration Testing', () => {
     it('battleCache_getActiveBattles_returnsAllActive', async () => {
       const cacheManager = getTypedCacheManager();
       await cacheManager.initialize();
+
+      // Initialize BattleCache manually for tests
+      const battleCache = getBattleCache();
+      const db = await cacheManager.getDatabaseConnection();
+      await battleCache.initialize(db);
 
       const stats: BattleStats = {
         hull: { current: 100, max: 100 },
@@ -241,6 +265,11 @@ describe('Phase 5: BattleCache Integration Testing', () => {
       const cacheManager = getTypedCacheManager();
       await cacheManager.initialize();
 
+      // Initialize BattleCache manually for tests
+      // Initialize BattleCache manually for tests
+      const db = await cacheManager.getDatabaseConnection();
+      await battleCache.initialize(db);
+
       const stats: BattleStats = {
         hull: { current: 100, max: 100 },
         armor: { current: 50, max: 50 },
@@ -282,6 +311,11 @@ describe('Phase 5: BattleCache Integration Testing', () => {
       const battleCache = getBattleCache();
       const cacheManager = getTypedCacheManager();
       await cacheManager.initialize();
+
+      // Initialize BattleCache manually for tests
+      // Initialize BattleCache manually for tests
+      const db = await cacheManager.getDatabaseConnection();
+      await battleCache.initialize(db);
 
       const stats: BattleStats = {
         hull: { current: 100, max: 100 },
@@ -364,6 +398,11 @@ describe('Phase 5: BattleCache Integration Testing', () => {
     it('battleCache_persistence_maintainsData', async () => {
       const cacheManager = getTypedCacheManager();
       await cacheManager.initialize();
+
+      // Initialize BattleCache manually for tests
+      const battleCache = getBattleCache();
+      const db = await cacheManager.getDatabaseConnection();
+      await battleCache.initialize(db);
 
       const stats: BattleStats = {
         hull: { current: 100, max: 100 },

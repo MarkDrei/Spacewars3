@@ -16,6 +16,10 @@ import type { Battle, BattleStats, WeaponCooldowns } from '../../shared/battleTy
 describe('Phase 5: End-to-End Battle Flow with BattleCache', () => {
   
   beforeEach(async () => {
+    // Import and reset the test database
+    const { resetTestDatabase } = await import('../../lib/server/database');
+    resetTestDatabase();
+    
     await createTestDatabase();
     
     // Reset all caches to clean state
@@ -34,6 +38,11 @@ describe('Phase 5: End-to-End Battle Flow with BattleCache', () => {
       const battleCache = getBattleCache();
       const cacheManager = getTypedCacheManager();
       await cacheManager.initialize();
+
+      // Initialize BattleCache manually for tests
+      // Initialize BattleCache manually for tests
+      const db = await cacheManager.getDatabaseConnection();
+      await battleCache.initialize(db);
 
       // Create test sessions (this creates users with ships)
       const attackerSession = await createAuthenticatedSession('attacker');
@@ -209,6 +218,11 @@ describe('Phase 5: End-to-End Battle Flow with BattleCache', () => {
       const cacheManager = getTypedCacheManager();
       await cacheManager.initialize();
 
+      // Initialize BattleCache manually for tests
+      const battleCache = getBattleCache();
+      const db = await cacheManager.getDatabaseConnection();
+      await battleCache.initialize(db);
+
       // Use test user IDs (created by createTestDatabase)
       const user1Id = 1;
       const user2Id = 2;
@@ -252,6 +266,11 @@ describe('Phase 5: End-to-End Battle Flow with BattleCache', () => {
       // Test multiple concurrent battles with proper cache separation
       const cacheManager = getTypedCacheManager();
       await cacheManager.initialize();
+
+      // Initialize BattleCache manually for tests
+      const battleCache = getBattleCache();
+      const db = await cacheManager.getDatabaseConnection();
+      await battleCache.initialize(db);
 
       // Use first 4 test users
       const userIds = [1, 2, 3, 4];
@@ -305,6 +324,11 @@ describe('Phase 5: End-to-End Battle Flow with BattleCache', () => {
       const cache = getBattleCache();
       const cacheManager = getTypedCacheManager();
       await cacheManager.initialize();
+
+      // Initialize BattleCache manually for tests
+      const battleCache = getBattleCache();
+      const db = await cacheManager.getDatabaseConnection();
+      await battleCache.initialize(db);
 
       // Use test users
       const user1Id = 1;
@@ -378,6 +402,11 @@ describe('Phase 5: End-to-End Battle Flow with BattleCache', () => {
       const cache = getBattleCache();
       const cacheManager = getTypedCacheManager();
       await cacheManager.initialize();
+
+      // Initialize BattleCache manually for tests
+      const battleCache = getBattleCache();
+      const db = await cacheManager.getDatabaseConnection();
+      await battleCache.initialize(db);
 
       // Use test users
       const user1Id = 1;
