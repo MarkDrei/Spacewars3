@@ -1,455 +1,356 @@
 // ---
-// Battle Repository - Database operations for battles
+// Battle Repository - Cache-first operations for battles
+// Converted from static class to exported functions using BattleCache
 // ---
 
+import type { Battle, BattleStats, BattleEvent, WeaponCooldowns } from '../../shared/battleTypes';
+import { getBattleCache } from './BattleCache';
 import { getDatabase } from './database';
-import type { Battle, BattleRow, BattleStats, WeaponCooldowns, BattleEvent, battleRowToBattle } from '../../shared/battleTypes';
 
 /**
- * Battle Repository
- * Handles all database operations for the battle system
+ * Get a battle by ID
+ * Uses BattleCache first, falls back to database
  */
-export class BattleRepo {
-  /**
-   * Create a new battle
-   */
-  static async createBattle(
-    attackerId: number,
-    attackeeId: number,
-    attackerStartStats: BattleStats,
-    attackeeStartStats: BattleStats,
-    attackerInitialCooldowns: WeaponCooldowns,
-    attackeeInitialCooldowns: WeaponCooldowns
-  ): Promise<Battle> {
-    const db = await getDatabase();
-    const now = Math.floor(Date.now() / 1000);
+export async function getBattle(battleId: number): Promise<Battle | null> {
+  const battleCache = getBattleCache();
+  return await battleCache.loadBattleIfNeeded(battleId);
+}
 
-    return new Promise((resolve, reject) => {
-      const query = `
-        INSERT INTO battles (
-          attacker_id,
-          attackee_id,
-          battle_start_time,
-          attacker_weapon_cooldowns,
-          attackee_weapon_cooldowns,
-          attacker_start_stats,
-          attackee_start_stats,
-          battle_log
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-      `;
+/**
+ * Get ongoing battle for a user
+ * Uses BattleCache for active battles
+ */
+export async function getOngoingBattleForUser(userId: number): Promise<Battle | null> {
+  const battleCache = getBattleCache();
+  return await battleCache.getOngoingBattleForUser(userId);
+}
 
-      const attackerCooldowns = JSON.stringify(attackerInitialCooldowns);
-      const attackeeCooldowns = JSON.stringify(attackeeInitialCooldowns);
-      const attackerStats = JSON.stringify(attackerStartStats);
-      const attackeeStats = JSON.stringify(attackeeStartStats);
-      const battleLog = JSON.stringify([]);
+/**
+ * Get all active battles
+ * Uses BattleCache for in-memory active battles
+ */
+export async function getActiveBattles(): Promise<Battle[]> {
+  const battleCache = getBattleCache();
+  return await battleCache.getActiveBattles();
+}
 
-      db.run(
-        query,
-        [
+/**
+ * Create a new battle
+ * Creates battle in database and stores in BattleCache
+ */
+export async function createBattle(
+  attackerId: number,
+  attackeeId: number,
+  attackerStartStats: BattleStats,
+  attackeeStartStats: BattleStats,
+  attackerInitialCooldowns: WeaponCooldowns,
+  attackeeInitialCooldowns: WeaponCooldowns
+): Promise<Battle> {
+  const db = await getDatabase();
+  const now = Math.floor(Date.now() / 1000);
+
+  return new Promise((resolve, reject) => {
+    const query = `
+      INSERT INTO battles (
+        attacker_id,
+        attackee_id,
+        battle_start_time,
+        attacker_weapon_cooldowns,
+        attackee_weapon_cooldowns,
+        attacker_start_stats,
+        attackee_start_stats,
+        battle_log
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `;
+
+    const attackerCooldowns = JSON.stringify(attackerInitialCooldowns);
+    const attackeeCooldowns = JSON.stringify(attackeeInitialCooldowns);
+    const attackerStats = JSON.stringify(attackerStartStats);
+    const attackeeStats = JSON.stringify(attackeeStartStats);
+    const battleLog = JSON.stringify([]);
+
+    db.run(
+      query,
+      [
+        attackerId,
+        attackeeId,
+        now,
+        attackerCooldowns,
+        attackeeCooldowns,
+        attackerStats,
+        attackeeStats,
+        battleLog
+      ],
+      function (err) {
+        if (err) {
+          reject(err);
+          return;
+        }
+
+        // Create battle object with generated ID
+        const battle: Battle = {
+          id: this.lastID,
           attackerId,
           attackeeId,
-          now,
-          attackerCooldowns,
-          attackeeCooldowns,
-          attackerStats,
-          attackeeStats,
-          battleLog
-        ],
-        function (err) {
-          if (err) {
-            reject(err);
-            return;
-          }
+          battleStartTime: now,
+          battleEndTime: null,
+          winnerId: null,
+          loserId: null,
+          attackerWeaponCooldowns: attackerInitialCooldowns,
+          attackeeWeaponCooldowns: attackeeInitialCooldowns,
+          attackerStartStats,
+          attackeeStartStats,
+          attackerEndStats: null,
+          attackeeEndStats: null,
+          battleLog: []
+        };
 
-          // Fetch the created battle
-          BattleRepo.getBattle(this.lastID)
-            .then(battle => {
-              if (!battle) {
-                reject(new Error('Failed to retrieve created battle'));
-                return;
-              }
-              resolve(battle);
-            })
-            .catch(reject);
-        }
-      );
-    });
-  }
+        // Store in BattleCache
+        const battleCache = getBattleCache();
+        battleCache.setBattleUnsafe(battle);
 
-  /**
-   * Get a battle by ID
-   */
-  static async getBattle(battleId: number): Promise<Battle | null> {
-    const db = await getDatabase();
-
-    return new Promise((resolve, reject) => {
-      const query = `SELECT * FROM battles WHERE id = ?`;
-
-      db.get<BattleRow>(query, [battleId], (err, row) => {
-        if (err) {
-          reject(err);
-          return;
-        }
-
-        if (!row) {
-          resolve(null);
-          return;
-        }
-
-        try {
-          const battle: Battle = {
-            id: row.id,
-            attackerId: row.attacker_id,
-            attackeeId: row.attackee_id,
-            battleStartTime: row.battle_start_time,
-            battleEndTime: row.battle_end_time,
-            winnerId: row.winner_id,
-            loserId: row.loser_id,
-            attackerWeaponCooldowns: JSON.parse(row.attacker_weapon_cooldowns),
-            attackeeWeaponCooldowns: JSON.parse(row.attackee_weapon_cooldowns),
-            attackerStartStats: JSON.parse(row.attacker_start_stats),
-            attackeeStartStats: JSON.parse(row.attackee_start_stats),
-            attackerEndStats: row.attacker_end_stats ? JSON.parse(row.attacker_end_stats) : null,
-            attackeeEndStats: row.attackee_end_stats ? JSON.parse(row.attackee_end_stats) : null,
-            battleLog: JSON.parse(row.battle_log),
-          };
-          resolve(battle);
-        } catch (parseError) {
-          reject(parseError);
-        }
-      });
-    });
-  }
-
-  /**
-   * Get ongoing battle for a user (either as attacker or attackee)
-   */
-  static async getOngoingBattleForUser(userId: number): Promise<Battle | null> {
-    const db = await getDatabase();
-
-    return new Promise((resolve, reject) => {
-      const query = `
-        SELECT * FROM battles 
-        WHERE (attacker_id = ? OR attackee_id = ?)
-        AND battle_end_time IS NULL
-        LIMIT 1
-      `;
-
-      db.get<BattleRow>(query, [userId, userId], (err, row) => {
-        if (err) {
-          reject(err);
-          return;
-        }
-
-        if (!row) {
-          resolve(null);
-          return;
-        }
-
-        try {
-          const battle: Battle = {
-            id: row.id,
-            attackerId: row.attacker_id,
-            attackeeId: row.attackee_id,
-            battleStartTime: row.battle_start_time,
-            battleEndTime: row.battle_end_time,
-            winnerId: row.winner_id,
-            loserId: row.loser_id,
-            attackerWeaponCooldowns: JSON.parse(row.attacker_weapon_cooldowns),
-            attackeeWeaponCooldowns: JSON.parse(row.attackee_weapon_cooldowns),
-            attackerStartStats: JSON.parse(row.attacker_start_stats),
-            attackeeStartStats: JSON.parse(row.attackee_start_stats),
-            attackerEndStats: row.attacker_end_stats ? JSON.parse(row.attacker_end_stats) : null,
-            attackeeEndStats: row.attackee_end_stats ? JSON.parse(row.attackee_end_stats) : null,
-            battleLog: JSON.parse(row.battle_log),
-          };
-          resolve(battle);
-        } catch (parseError) {
-          reject(parseError);
-        }
-      });
-    });
-  }
-
-  /**
-   * Update weapon cooldowns for a player in a battle
-   */
-  static async updateWeaponCooldowns(
-    battleId: number,
-    userId: number,
-    battle: Battle
-  ): Promise<void> {
-    const db = await getDatabase();
-
-    return new Promise((resolve, reject) => {
-      // Determine if user is attacker or attackee
-      const isAttacker = battle.attackerId === userId;
-      const column = isAttacker ? 'attacker_weapon_cooldowns' : 'attackee_weapon_cooldowns';
-      const cooldowns = isAttacker ? battle.attackerWeaponCooldowns : battle.attackeeWeaponCooldowns;
-
-      const query = `UPDATE battles SET ${column} = ? WHERE id = ?`;
-
-      db.run(query, [JSON.stringify(cooldowns), battleId], (err) => {
-        if (err) {
-          reject(err);
-          return;
-        }
-        resolve();
-      });
-    });
-  }
-
-  /**
-   * Add an event to the battle log
-   */
-  static async addBattleEvent(battleId: number, event: BattleEvent, battle: Battle): Promise<void> {
-    const db = await getDatabase();
-
-    return new Promise((resolve, reject) => {
-      const updatedLog = [...battle.battleLog, event];
-      const query = `UPDATE battles SET battle_log = ? WHERE id = ?`;
-
-      db.run(query, [JSON.stringify(updatedLog), battleId], (err) => {
-        if (err) {
-          reject(err);
-          return;
-        }
-        resolve();
-      });
-    });
-  }
-
-  /**
-   * Update defense values during battle
-   */
-  static async updateBattleDefenses(
-    battleId: number,
-    userId: number,
-    battle: Battle
-  ): Promise<void> {
-    const db = await getDatabase();
-
-    return new Promise((resolve, reject) => {
-      // Determine if user is attacker or attackee
-      const isAttacker = battle.attackerId === userId;
-      const column = isAttacker ? 'attacker_start_stats' : 'attackee_start_stats';
-      const stats = isAttacker ? battle.attackerStartStats : battle.attackeeStartStats;
-
-      const query = `UPDATE battles SET ${column} = ? WHERE id = ?`;
-
-      db.run(query, [JSON.stringify(stats), battleId], (err) => {
-        if (err) {
-          reject(err);
-          return;
-        }
-        resolve();
-      });
-    });
-  }
-
-  /**
-   * End a battle with final outcome
-   */
-  static async endBattle(
-    battleId: number,
-    winnerId: number,
-    loserId: number,
-    attackerEndStats: BattleStats,
-    attackeeEndStats: BattleStats
-  ): Promise<void> {
-    const db = await getDatabase();
-    const now = Math.floor(Date.now() / 1000);
-
-    return new Promise((resolve, reject) => {
-      const query = `
-        UPDATE battles 
-        SET battle_end_time = ?,
-            winner_id = ?,
-            loser_id = ?,
-            attacker_end_stats = ?,
-            attackee_end_stats = ?
-        WHERE id = ?
-      `;
-
-      db.run(
-        query,
-        [
-          now,
-          winnerId,
-          loserId,
-          JSON.stringify(attackerEndStats),
-          JSON.stringify(attackeeEndStats),
-          battleId
-        ],
-        (err) => {
-          if (err) {
-            reject(err);
-            return;
-          }
-          resolve();
-        }
-      );
-    });
-  }
-
-  /**
-   * Get all battles for a user (for battle history)
-   */
-  static async getBattlesForUser(userId: number, limit: number = 10): Promise<Battle[]> {
-    const db = await getDatabase();
-
-    return new Promise((resolve, reject) => {
-      const query = `
-        SELECT * FROM battles 
-        WHERE attacker_id = ? OR attackee_id = ?
-        ORDER BY battle_start_time DESC
-        LIMIT ?
-      `;
-
-      db.all<BattleRow>(query, [userId, userId, limit], (err, rows) => {
-        if (err) {
-          reject(err);
-          return;
-        }
-
-        try {
-          const battles = rows.map(row => ({
-            id: row.id,
-            attackerId: row.attacker_id,
-            attackeeId: row.attackee_id,
-            battleStartTime: row.battle_start_time,
-            battleEndTime: row.battle_end_time,
-            winnerId: row.winner_id,
-            loserId: row.loser_id,
-            attackerWeaponCooldowns: JSON.parse(row.attacker_weapon_cooldowns),
-            attackeeWeaponCooldowns: JSON.parse(row.attackee_weapon_cooldowns),
-            attackerStartStats: JSON.parse(row.attacker_start_stats),
-            attackeeStartStats: JSON.parse(row.attackee_start_stats),
-            attackerEndStats: row.attacker_end_stats ? JSON.parse(row.attacker_end_stats) : null,
-            attackeeEndStats: row.attackee_end_stats ? JSON.parse(row.attackee_end_stats) : null,
-            battleLog: JSON.parse(row.battle_log),
-          }));
-          resolve(battles);
-        } catch (parseError) {
-          reject(parseError);
-        }
-      });
-    });
-  }
-
-  /**
-   * Get all active battles
-   */
-  static async getActiveBattles(): Promise<Battle[]> {
-    const db = await getDatabase();
-
-    return new Promise((resolve, reject) => {
-      const query = `
-        SELECT * FROM battles 
-        WHERE battle_end_time IS NULL
-        ORDER BY battle_start_time DESC
-      `;
-
-      db.all<BattleRow>(query, [], (err, rows) => {
-        if (err) {
-          reject(err);
-          return;
-        }
-
-        try {
-          const battles = rows.map(row => ({
-            id: row.id,
-            attackerId: row.attacker_id,
-            attackeeId: row.attackee_id,
-            battleStartTime: row.battle_start_time,
-            battleEndTime: row.battle_end_time,
-            winnerId: row.winner_id,
-            loserId: row.loser_id,
-            attackerWeaponCooldowns: JSON.parse(row.attacker_weapon_cooldowns),
-            attackeeWeaponCooldowns: JSON.parse(row.attackee_weapon_cooldowns),
-            attackerStartStats: JSON.parse(row.attacker_start_stats),
-            attackeeStartStats: JSON.parse(row.attackee_start_stats),
-            attackerEndStats: row.attacker_end_stats ? JSON.parse(row.attacker_end_stats) : null,
-            attackeeEndStats: row.attackee_end_stats ? JSON.parse(row.attackee_end_stats) : null,
-            battleLog: JSON.parse(row.battle_log),
-          }));
-          resolve(battles);
-        } catch (parseError) {
-          reject(parseError);
-        }
-      });
-    });
-  }
-
-  /**
-   * Update weapon cooldown for a specific weapon
-   */
-  static async setWeaponCooldown(
-    battleId: number,
-    userId: number,
-    weaponType: string,
-    cooldownTimestamp: number
-  ): Promise<void> {
-    const battle = await this.getBattle(battleId);
-    
-    if (!battle) {
-      throw new Error('Battle not found');
-    }
-    
-    const isAttacker = battle.attackerId === userId;
-    const cooldowns = isAttacker ? battle.attackerWeaponCooldowns : battle.attackeeWeaponCooldowns;
-    
-    // Update cooldown
-    cooldowns[weaponType] = cooldownTimestamp;
-    
-    // Save to database
-    const db = await getDatabase();
-    const column = isAttacker ? 'attacker_weapon_cooldowns' : 'attackee_weapon_cooldowns';
-    
-    return new Promise((resolve, reject) => {
-      db.run(
-        `UPDATE battles SET ${column} = ? WHERE id = ?`,
-        [JSON.stringify(cooldowns), battleId],
-        (err) => {
-          if (err) {
-            reject(err);
-            return;
-          }
-          resolve();
-        }
-      );
-    });
-  }
-
-  /**
-   * Update battle stats (defense values) for both players
-   */
-  static async updateBattleStats(
-    battleId: number,
-    attackerStats: BattleStats,
-    attackeeStats: BattleStats
-  ): Promise<void> {
-    const db = await getDatabase();
-    
-    return new Promise((resolve, reject) => {
-      db.run(
-        `UPDATE battles 
-         SET attacker_start_stats = ?, attackee_start_stats = ?
-         WHERE id = ?`,
-        [
-          JSON.stringify(attackerStats),
-          JSON.stringify(attackeeStats),
-          battleId
-        ],
-        (err) => {
-          if (err) {
-            reject(err);
-            return;
-          }
-          resolve();
-        }
-      );
-    });
-  }
+        resolve(battle);
+      }
+    );
+  });
 }
+
+/**
+ * Update weapon cooldowns for a battle
+ * Updates both database and cache
+ */
+export async function updateWeaponCooldowns(
+  battleId: number,
+  userId: number,
+  weaponCooldowns: WeaponCooldowns
+): Promise<void> {
+  const battleCache = getBattleCache();
+  
+  // Get battle from cache
+  const battle = battleCache.getBattleUnsafe(battleId);
+  if (!battle) {
+    throw new Error(`Battle ${battleId} not found in cache`);
+  }
+
+  // Update cooldowns
+  if (userId === battle.attackerId) {
+    battle.attackerWeaponCooldowns = weaponCooldowns;
+  } else if (userId === battle.attackeeId) {
+    battle.attackeeWeaponCooldowns = weaponCooldowns;
+  } else {
+    throw new Error(`User ${userId} is not part of battle ${battleId}`);
+  }
+
+  // Mark battle as dirty for persistence
+  battleCache.updateBattleUnsafe(battle);
+}
+
+/**
+ * Add a battle event to the battle log
+ */
+export async function addBattleEvent(battleId: number, event: BattleEvent): Promise<void> {
+  const battleCache = getBattleCache();
+  
+  // Get battle from cache
+  const battle = battleCache.getBattleUnsafe(battleId);
+  if (!battle) {
+    throw new Error(`Battle ${battleId} not found in cache`);
+  }
+
+  // Add event to log
+  battle.battleLog.push(event);
+
+  // Mark battle as dirty for persistence
+  battleCache.updateBattleUnsafe(battle);
+}
+
+/**
+ * Update battle defense values
+ */
+export async function updateBattleDefenses(
+  battleId: number,
+  attackerEndStats: BattleStats | null,
+  attackeeEndStats: BattleStats | null
+): Promise<void> {
+  const battleCache = getBattleCache();
+  
+  // Get battle from cache
+  const battle = battleCache.getBattleUnsafe(battleId);
+  if (!battle) {
+    throw new Error(`Battle ${battleId} not found in cache`);
+  }
+
+  // Update defense stats
+  if (attackerEndStats) {
+    battle.attackerEndStats = attackerEndStats;
+  }
+  if (attackeeEndStats) {
+    battle.attackeeEndStats = attackeeEndStats;
+  }
+
+  // Mark battle as dirty for persistence
+  battleCache.updateBattleUnsafe(battle);
+}
+
+/**
+ * End a battle
+ * Updates battle in cache and persists immediately
+ */
+export async function endBattle(
+  battleId: number,
+  winnerId: number,
+  loserId: number,
+  attackerEndStats: BattleStats,
+  attackeeEndStats: BattleStats
+): Promise<void> {
+  const battleCache = getBattleCache();
+  
+  // Get battle from cache
+  const battle = battleCache.getBattleUnsafe(battleId);
+  if (!battle) {
+    throw new Error(`Battle ${battleId} not found in cache`);
+  }
+
+  // End battle
+  battle.battleEndTime = Date.now();
+  battle.winnerId = winnerId;
+  battle.loserId = loserId;
+  battle.attackerEndStats = attackerEndStats;
+  battle.attackeeEndStats = attackeeEndStats;
+
+  // Update battle in cache
+  battleCache.updateBattleUnsafe(battle);
+
+  // Remove from active battles (completed battles are not cached)
+  battleCache.deleteBattleUnsafe(battleId);
+}
+
+/**
+ * Get battles for a specific user (for history)
+ * Queries database directly as this is not cached
+ */
+export async function getBattlesForUser(userId: number): Promise<Battle[]> {
+  const db = await getDatabase();
+
+  return new Promise((resolve, reject) => {
+    const query = `
+      SELECT * FROM battles 
+      WHERE attacker_id = ? OR attackee_id = ?
+      ORDER BY battle_start_time DESC
+    `;
+
+    db.all(query, [userId, userId], (err, rows) => {
+      if (err) {
+        reject(err);
+        return;
+      }
+
+      const battles = (rows as {
+        id: number;
+        attacker_id: number;
+        attackee_id: number;
+        battle_start_time: number;
+        battle_end_time: number | null;
+        winner_id: number | null;
+        loser_id: number | null;
+        attacker_weapon_cooldowns: string;
+        attackee_weapon_cooldowns: string;
+        attacker_start_stats: string;
+        attackee_start_stats: string;
+        attacker_end_stats: string | null;
+        attackee_end_stats: string | null;
+        battle_log: string;
+      }[]).map(row => ({
+        id: row.id,
+        attackerId: row.attacker_id,
+        attackeeId: row.attackee_id,
+        battleStartTime: row.battle_start_time,
+        battleEndTime: row.battle_end_time,
+        winnerId: row.winner_id,
+        loserId: row.loser_id,
+        attackerWeaponCooldowns: JSON.parse(row.attacker_weapon_cooldowns),
+        attackeeWeaponCooldowns: JSON.parse(row.attackee_weapon_cooldowns),
+        attackerStartStats: JSON.parse(row.attacker_start_stats),
+        attackeeStartStats: JSON.parse(row.attackee_start_stats),
+        attackerEndStats: row.attacker_end_stats ? JSON.parse(row.attacker_end_stats) : null,
+        attackeeEndStats: row.attackee_end_stats ? JSON.parse(row.attackee_end_stats) : null,
+        battleLog: JSON.parse(row.battle_log)
+      }));
+
+      resolve(battles);
+    });
+  });
+}
+
+/**
+ * Set weapon cooldown for specific weapon
+ */
+export async function setWeaponCooldown(
+  battleId: number,
+  userId: number,
+  weaponType: string,
+  cooldown: number
+): Promise<void> {
+  const battleCache = getBattleCache();
+  
+  // Get battle from cache
+  const battle = battleCache.getBattleUnsafe(battleId);
+  if (!battle) {
+    throw new Error(`Battle ${battleId} not found in cache`);
+  }
+
+  // Update specific weapon cooldown
+  if (userId === battle.attackerId) {
+    battle.attackerWeaponCooldowns[weaponType] = cooldown;
+  } else if (userId === battle.attackeeId) {
+    battle.attackeeWeaponCooldowns[weaponType] = cooldown;
+  } else {
+    throw new Error(`User ${userId} is not part of battle ${battleId}`);
+  }
+
+  // Mark battle as dirty for persistence
+  battleCache.updateBattleUnsafe(battle);
+}
+
+/**
+ * Update battle stats for both players
+ */
+export async function updateBattleStats(
+  battleId: number,
+  attackerEndStats: BattleStats | null,
+  attackeeEndStats: BattleStats | null
+): Promise<void> {
+  const battleCache = getBattleCache();
+  
+  // Get battle from cache
+  const battle = battleCache.getBattleUnsafe(battleId);
+  if (!battle) {
+    throw new Error(`Battle ${battleId} not found in cache`);
+  }
+
+  // Update stats
+  if (attackerEndStats) {
+    battle.attackerEndStats = attackerEndStats;
+  }
+  if (attackeeEndStats) {
+    battle.attackeeEndStats = attackeeEndStats;
+  }
+
+  // Mark battle as dirty for persistence
+  battleCache.updateBattleUnsafe(battle);
+}
+
+// Backward compatibility - re-export as BattleRepo class for existing code
+export const BattleRepo = {
+  createBattle,
+  getBattle,
+  getOngoingBattleForUser,
+  updateWeaponCooldowns,
+  addBattleEvent,
+  updateBattleDefenses,
+  endBattle,
+  getBattlesForUser,
+  getActiveBattles,
+  setWeaponCooldown,
+  updateBattleStats
+};

@@ -33,6 +33,7 @@ const BATTLE_LOCK = {
  */
 export class BattleCache {
   private static instance: BattleCache | null = null;
+  private static initializationPromise: Promise<BattleCache> | null = null;
 
   // Storage
   private battles: Map<number, Battle> = new Map();
@@ -53,13 +54,44 @@ export class BattleCache {
   }
 
   /**
-   * Get singleton instance
+   * Get singleton instance (synchronous, but may not be fully initialized)
+   * Use getInitializedInstance() for guaranteed initialization
    */
   static getInstance(): BattleCache {
     if (!BattleCache.instance) {
       BattleCache.instance = new BattleCache();
     }
     return BattleCache.instance;
+  }
+
+  /**
+   * Get fully initialized singleton instance (async)
+   */
+  static async getInitializedInstance(): Promise<BattleCache> {
+    if (BattleCache.instance && BattleCache.instance.initialized) {
+      return BattleCache.instance;
+    }
+
+    if (BattleCache.initializationPromise) {
+      return BattleCache.initializationPromise;
+    }
+
+    BattleCache.initializationPromise = (async () => {
+      if (!BattleCache.instance) {
+        BattleCache.instance = new BattleCache();
+      }
+
+      if (!BattleCache.instance.initialized) {
+        // Import here to avoid circular dependency
+        const { getDatabase } = await import('./database.js');
+        const db = await getDatabase();
+        await BattleCache.instance.initialize(db);
+      }
+
+      return BattleCache.instance;
+    })();
+
+    return BattleCache.initializationPromise;
   }
 
   /**
@@ -70,6 +102,7 @@ export class BattleCache {
       BattleCache.instance.shutdown();
       BattleCache.instance = null;
     }
+    BattleCache.initializationPromise = null;
   }
 
   /**
@@ -92,11 +125,21 @@ export class BattleCache {
   }
 
   /**
-   * Ensure cache is initialized before operations
+   * Ensure cache is initialized before operations (sync version)
    */
   private ensureInitialized(): void {
     if (!this.initialized || !this.db) {
       throw new Error('BattleCache not initialized - call initialize() first');
+    }
+  }
+
+  /**
+   * Ensure cache is initialized before operations (async auto-initialization)
+   */
+  private async ensureInitializedAsync(): Promise<void> {
+    if (!this.initialized || !this.db) {
+      // Auto-initialize if not already done
+      await BattleCache.getInitializedInstance();
     }
   }
 
@@ -190,7 +233,7 @@ export class BattleCache {
    * Auto-acquires necessary locks
    */
   async loadBattleIfNeeded(battleId: number): Promise<Battle | null> {
-    this.ensureInitialized();
+    await this.ensureInitializedAsync();
 
     // Check cache first (no lock needed for read)
     const cached = this.battles.get(battleId);
@@ -223,7 +266,7 @@ export class BattleCache {
    * Returns null if user has no active battle
    */
   async getOngoingBattleForUser(userId: number): Promise<Battle | null> {
-    this.ensureInitialized();
+    await this.ensureInitializedAsync();
 
     // Check active battles index
     const battleId = this.activeBattlesByUser.get(userId);
@@ -255,7 +298,7 @@ export class BattleCache {
    * Get all active battles
    */
   async getActiveBattles(): Promise<Battle[]> {
-    this.ensureInitialized();
+    await this.ensureInitializedAsync();
 
     // Return all cached active battles
     const active: Battle[] = [];
@@ -577,4 +620,9 @@ export class BattleCache {
 // Export singleton getter
 export function getBattleCache(): BattleCache {
   return BattleCache.getInstance();
+}
+
+// Export async singleton getter (auto-initializing)
+export async function getBattleCacheInitialized(): Promise<BattleCache> {
+  return BattleCache.getInitializedInstance();
 }
