@@ -4,6 +4,7 @@ import fs from 'fs';
 import { CREATE_TABLES } from './schema';
 import { seedDatabase, DEFAULT_USERS, DEFAULT_SPACE_OBJECTS } from './seedData';
 import { applyTechMigrations } from './migrations';
+import { BattleCache } from './BattleCache';
 
 let db: sqlite3.Database | null = null;
 let isInitializing = false;
@@ -137,6 +138,12 @@ export async function getDatabase(): Promise<sqlite3.Database> {
           console.log('📊 Existing database detected, checking for migrations...');
           await applyTechMigrations(db!);
         }
+        
+        // Initialize BattleCache
+        console.log('⚔️ Initializing BattleCache...');
+        const battleCache = BattleCache.getInstance();
+        await battleCache.initialize(db!);
+        console.log('✅ BattleCache initialized');
         
         isInitializing = false;
         // Don't clear initializationPromise - it's still valid

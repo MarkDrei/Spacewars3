@@ -21,7 +21,7 @@ import sqlite3 from 'sqlite3';
 // Type aliases for IronGuard lock contexts
 type WorldReadContext = IronGuardLockContext<readonly [typeof WORLD_LOCK]> | IronGuardLockContext<readonly [typeof CACHE_LOCK, typeof WORLD_LOCK]>;
 type WorldWriteContext = IronGuardLockContext<readonly [typeof WORLD_LOCK]> | IronGuardLockContext<readonly [typeof CACHE_LOCK, typeof WORLD_LOCK]>;
-type UserContext = IronGuardLockContext<readonly [typeof USER_LOCK]> | IronGuardLockContext<readonly [typeof CACHE_LOCK, typeof USER_LOCK]> | IronGuardLockContext<readonly [typeof WORLD_LOCK, typeof USER_LOCK]> | IronGuardLockContext<readonly [typeof CACHE_LOCK, typeof WORLD_LOCK, typeof USER_LOCK]>;
+export type UserContext = IronGuardLockContext<readonly [typeof USER_LOCK]> | IronGuardLockContext<readonly [typeof CACHE_LOCK, typeof USER_LOCK]> | IronGuardLockContext<readonly [typeof WORLD_LOCK, typeof USER_LOCK]> | IronGuardLockContext<readonly [typeof CACHE_LOCK, typeof WORLD_LOCK, typeof USER_LOCK]>;
 type DatabaseReadContext = IronGuardLockContext<readonly [typeof DATABASE_LOCK]> | IronGuardLockContext<readonly [typeof USER_LOCK, typeof DATABASE_LOCK]> | IronGuardLockContext<readonly [typeof WORLD_LOCK, typeof USER_LOCK, typeof DATABASE_LOCK]> | IronGuardLockContext<readonly [typeof CACHE_LOCK, typeof WORLD_LOCK, typeof USER_LOCK, typeof DATABASE_LOCK]>;
 type DatabaseWriteContext = IronGuardLockContext<readonly [typeof DATABASE_LOCK]> | IronGuardLockContext<readonly [typeof USER_LOCK, typeof DATABASE_LOCK]> | IronGuardLockContext<readonly [typeof WORLD_LOCK, typeof USER_LOCK, typeof DATABASE_LOCK]> | IronGuardLockContext<readonly [typeof CACHE_LOCK, typeof WORLD_LOCK, typeof USER_LOCK, typeof DATABASE_LOCK]>;
 

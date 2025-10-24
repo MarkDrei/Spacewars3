@@ -6,7 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getIronSession } from 'iron-session';
 import { calculateToroidalDistance } from '@shared/physics';
-import { getTypedCacheManager, type TypedCacheManager } from '@/lib/server/typedCacheManager';
+import { getTypedCacheManager, type TypedCacheManager, type UserContext } from '@/lib/server/typedCacheManager';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth, ApiError } from '@/lib/server/errors';
 import { createLockContext } from '@/lib/server/typedLocks';
@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
 }
 
 /**
- * Perform the actual collection logic with proper lock context
+ * Perform the collection logic on the cached object
  * This function requires world write and user locks to be held
  */
 async function performCollectionLogic(
@@ -114,7 +114,7 @@ async function performCollectionLogic(
   user: User, 
   objectId: number,
   cacheManager: TypedCacheManager,
-  userCtx: Parameters<Parameters<TypedCacheManager['withUserLock']>[1]>[0]
+  userCtx: UserContext
 ): Promise<NextResponse> {
   console.log(`🎯 [TYPED] Starting collection logic with proper lock context`);
   
