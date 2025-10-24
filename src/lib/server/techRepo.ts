@@ -5,7 +5,7 @@
 import sqlite3 from 'sqlite3';
 import { TechCounts, TechFactory } from './TechFactory';
 import { getDatabase } from './database';
-import { sendMessageToUserCached } from './typedCacheManager';
+import { sendMessageToUser } from './MessageCache';
 
 export interface BuildQueueItem {
   itemKey: string;
@@ -340,7 +340,7 @@ export class TechRepo {
         const message = `🔧 Construction complete: ${itemName} (${itemTypeLabel}) is now ready for deployment!`;
         
         console.log(`📝 Sending build completion notification to user ${userId}: "${message}"`);
-        await sendMessageToUserCached(userId, message);
+        await sendMessageToUser(userId, message);
       } catch (error) {
         console.error(`❌ Failed to send notification for completed ${item.itemType} ${item.itemKey}:`, error);
         // Continue with other notifications even if one fails

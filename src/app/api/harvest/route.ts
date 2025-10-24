@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getIronSession } from 'iron-session';
 import { calculateToroidalDistance } from '@shared/physics';
-import { getTypedCacheManager, TypedCacheManager, sendMessageToUserCached } from '@/lib/server/typedCacheManager';
+import { getTypedCacheManager, TypedCacheManager } from '@/lib/server/typedCacheManager';
+import { sendMessageToUser } from '@/lib/server/MessageCache';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth, ApiError } from '@/lib/server/errors';
 import { createEmptyContext, LockContext, Locked, CacheLevel, WorldLevel, UserLevel } from '@/lib/server/typedLocks';
@@ -158,8 +159,7 @@ async function performCollectionLogic(
   console.log(`📝 Creating notification for user ${user.id}: "${notificationMessage}"`);
   
   // Send notification to user (async, doesn't block response)
-  // Using FIXED cached operations (deadlock resolved)
-  sendMessageToUserCached(user.id, notificationMessage).catch((error: Error) => {
+  sendMessageToUser(user.id, notificationMessage).catch((error: Error) => {
     console.error('❌ Failed to send collection notification:', error);
   });
   

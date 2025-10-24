@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getIronSession } from 'iron-session';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { requireAuth, handleApiError } from '@/lib/server/errors';
-import { getUserMessagesCached } from '@/lib/server/typedCacheManager';
+import { getUserMessages } from '@/lib/server/MessageCache';
 
 /**
  * GET /api/messages
@@ -21,9 +21,8 @@ export async function GET(request: NextRequest) {
     
     console.log(`📬 Messages requested by user: ${session.userId}`);
     
-    console.log('📬 Messages API: Using FIXED cached operations...');
-    // Get and mark unread messages as read (using FIXED cached operations)
-    const unreadMessages = await getUserMessagesCached(session.userId!);
+    // Get and mark unread messages as read
+    const unreadMessages = await getUserMessages(session.userId!);
     
     console.log(`📨 Retrieved ${unreadMessages.length} unread message(s) for user ${session.userId}`);
     console.log('📨 Messages data:', unreadMessages);

@@ -3,7 +3,11 @@
 // Uses IronGuard lock system with per-user locking
 // ---
 
-import { createLockContext } from '@markdrei/ironguard-typescript-locks';
+import {
+  createLockContext,
+  type ValidLock4Context,
+  type LockLevel
+} from '@markdrei/ironguard-typescript-locks';
 import { getDatabase } from './database';
 import type { Message, UnreadMessage } from './messagesRepo';
 import { MESSAGE_CACHE_LOCK, MESSAGE_DATA_LOCK } from './LockDefinitions';
@@ -124,7 +128,7 @@ export class MessageCache {
       // Cache miss - load from database
       this.stats.cacheMisses++;
       console.log(`📬 Loading messages for user ${userId} from database...`);
-      const messages = await this.loadMessagesFromDb(userId);
+      const messages = await this.loadMessagesFromDb(dataCtx, userId);
       this.userMessages.set(userId, messages);
       return [...messages];
     } finally {
@@ -150,7 +154,7 @@ export class MessageCache {
       if (!allMessages) {
         // Load from database
         console.log(`📬 Loading messages for user ${userId} from database...`);
-        allMessages = await this.loadMessagesFromDb(userId);
+        allMessages = await this.loadMessagesFromDb(dataCtx, userId);
         this.userMessages.set(userId, allMessages);
         this.stats.cacheMisses++;
       } else {
@@ -248,7 +252,7 @@ export class MessageCache {
       
       if (!messages) {
         // Load from database
-        messages = await this.loadMessagesFromDb(userId);
+        messages = await this.loadMessagesFromDb(dataCtx, userId);
         this.userMessages.set(userId, messages);
         this.stats.cacheMisses++;
       } else {
@@ -329,7 +333,7 @@ export class MessageCache {
       console.log(`📬 Persisting messages for ${dirtyUserIds.length} user(s) to database...`);
       
       for (const userId of dirtyUserIds) {
-        await this.persistMessagesForUser(userId);
+        await this.persistMessagesForUser(dataCtx, userId);
       }
       
       this.dirtyUsers.clear();
@@ -383,7 +387,10 @@ export class MessageCache {
   // PRIVATE METHODS
   // ============================================
 
-  private async loadMessagesFromDb(userId: number): Promise<Message[]> {
+  private async loadMessagesFromDb<THeld extends readonly LockLevel[]>(
+    context: ValidLock4Context<THeld> extends string ? never : ValidLock4Context<THeld>,
+    userId: number
+  ): Promise<Message[]> {
     if (!this.db) throw new Error('Database not initialized');
     
     return new Promise((resolve, reject) => {
@@ -446,7 +453,10 @@ export class MessageCache {
     });
   }
 
-  private async persistMessagesForUser(userId: number): Promise<void> {
+  private async persistMessagesForUser<THeld extends readonly LockLevel[]>(
+    context: ValidLock4Context<THeld> extends string ? never : ValidLock4Context<THeld>,
+    userId: number
+  ): Promise<void> {
     const messages = this.userMessages.get(userId);
     if (!messages || !this.db) return;
 

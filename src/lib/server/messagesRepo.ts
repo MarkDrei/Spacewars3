@@ -176,5 +176,3 @@ export class MessagesRepo {
   }
 }
 
-// Note: The sendMessageToUser helper function has been replaced with sendMessageToUserCached
-// from typedCacheManager.ts for better performance and consistency with the cache system.

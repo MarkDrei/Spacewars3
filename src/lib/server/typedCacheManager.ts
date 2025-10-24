@@ -27,7 +27,6 @@ import { World } from './world';
 import { getDatabase } from './database';
 import { loadWorldFromDb, saveWorldToDb } from './worldRepo';
 import { getUserByIdFromDb, getUserByUsernameFromDb } from './userRepo';
-import { getMessageCache } from './MessageCache';
 import sqlite3 from 'sqlite3';
 
 // Type aliases for IronGuard lock contexts
@@ -483,7 +482,8 @@ export class TypedCacheManager {
       await this.persistDirtyWorld(emptyCtx);
     }
     
-    // Flush messages via MessageCache
+    // Flush messages via MessageCache (imported dynamically to avoid circular dependencies)
+    const { getMessageCache } = await import('./MessageCache');
     const messageCache = getMessageCache();
     await messageCache.flushToDatabase();
     
@@ -700,8 +700,3 @@ export class TypedCacheManager {
 export function getTypedCacheManager(config?: TypedCacheConfig): TypedCacheManager {
   return TypedCacheManager.getInstance(config);
 }
-
-// Convenience functions for message operations (delegated to MessageCache)
-export { sendMessageToUser as sendMessageToUserCached } from './MessageCache';
-export { getUserMessages as getUserMessagesCached } from './MessageCache';
-export { getUserMessageCount as getUserMessageCountCached } from './MessageCache';

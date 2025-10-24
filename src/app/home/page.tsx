@@ -1,5 +1,5 @@
 import { requireAuth } from '@/lib/server/serverSession';
-import { getUserMessagesCached } from '@/lib/server/typedCacheManager';
+import { getUserMessages } from '@/lib/server/MessageCache';
 import HomePageClient from './HomePageClient';
 
 // Force dynamic rendering because this page uses cookies for authentication
@@ -10,7 +10,7 @@ export default async function HomePage() {
   const auth = await requireAuth();
   
   // Load messages on server-side to avoid double-loading and marking as read twice
-  const messages = await getUserMessagesCached(auth.userId);
+  const messages = await getUserMessages(auth.userId);
   
   // Pass authenticated user data and messages to client component
   return <HomePageClient auth={auth} initialMessages={messages} />;
