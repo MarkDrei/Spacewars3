@@ -4,7 +4,7 @@ import { getTypedCacheManager } from '@/lib/server/typedCacheManager';
 import { AllResearches, getResearchUpgradeCost, getResearchUpgradeDuration, getResearchEffect, ResearchType } from '@/lib/server/techtree';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth, ApiError } from '@/lib/server/errors';
-import { createEmptyContext } from '@/lib/server/typedLocks';
+import { createLockContext } from '@/lib/server/typedLocks';
 import { User } from '@/lib/server/user';
 
 export async function GET(request: NextRequest) {
@@ -16,16 +16,18 @@ export async function GET(request: NextRequest) {
     const cacheManager = getTypedCacheManager();
     
     // Create empty context for lock acquisition
-    const emptyCtx = createEmptyContext();
+    const emptyCtx = createLockContext();
     
-    // Execute with user read lock (read-only user operation)
-    return await cacheManager.withUserLock(emptyCtx, async (userCtx) => {
+    // Execute with user lock (read-only user operation)
+    const userCtx = await cacheManager.acquireUserLock(emptyCtx);
+    try {
       // Get user data safely (we have user lock)
       let user = cacheManager.getUserUnsafe(session.userId!, userCtx);
       
       if (!user) {
         // Load user from database if not in cache
-        return await cacheManager.withDatabaseRead(userCtx, async (dbCtx) => {
+        const dbCtx = await cacheManager.acquireDatabaseRead(userCtx);
+        try {
           user = await cacheManager.loadUserFromDbUnsafe(session.userId!, dbCtx);
           if (!user) {
             throw new ApiError(404, 'User not found');
@@ -33,15 +35,16 @@ export async function GET(request: NextRequest) {
           
           // Cache the loaded user
           cacheManager.setUserUnsafe(user, userCtx);
-          
-          // Return techtree data
-          return processTechTree(user);
-        });
-      } else {
-        // Return techtree data directly
-        return processTechTree(user);
+        } finally {
+          dbCtx.dispose();
+        }
       }
-    });
+      
+      // Return techtree data
+      return processTechTree(user);
+    } finally {
+      userCtx.dispose();
+    }
   } catch (error) {
     return handleApiError(error);
   }

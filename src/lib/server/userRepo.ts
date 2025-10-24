@@ -6,7 +6,7 @@ import sqlite3 from 'sqlite3';
 import { User, SaveUserCallback } from './user';
 import { createInitialTechTree } from './techtree';
 import { getTypedCacheManager } from './typedCacheManager';
-import { createEmptyContext } from './typedLocks';
+import { createLockContext } from './typedLocks';
 import { sendMessageToUser } from './MessageCache';
 import { TechCounts } from './TechFactory';
 
@@ -121,27 +121,32 @@ export async function getUserById(db: sqlite3.Database, id: number): Promise<Use
   // Use typed cache manager for cache-aware access
   const cacheManager = getTypedCacheManager();
   
-  const emptyCtx = createEmptyContext();
+  const emptyCtx = createLockContext();
   
   // Use user lock to ensure consistent access
-  return await cacheManager.withUserLock(emptyCtx, async (userCtx) => {
+  const userCtx = await cacheManager.acquireUserLock(emptyCtx);
+  try {
     // Try to get from cache first
     let user = cacheManager.getUserUnsafe(id, userCtx);
     
     if (!user) {
       // Load from database if not in cache
-      return await cacheManager.withDatabaseRead(userCtx, async (dbCtx) => {
+      const dbCtx = await cacheManager.acquireDatabaseRead(userCtx);
+      try {
         user = await cacheManager.loadUserFromDbUnsafe(id, dbCtx);
         if (user) {
           // Cache the loaded user
           cacheManager.setUserUnsafe(user, userCtx);
         }
-        return user;
-      });
+      } finally {
+        dbCtx.dispose();
+      }
     }
     
     return user;
-  });
+  } finally {
+    userCtx.dispose();
+  }
 }
 
 export async function getUserByUsername(db: sqlite3.Database, username: string): Promise<User | null> {

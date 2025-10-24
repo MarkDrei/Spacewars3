@@ -3,7 +3,7 @@ import { getIronSession } from 'iron-session';
 import { getTypedCacheManager } from '@/lib/server/typedCacheManager';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth } from '@/lib/server/errors';
-import { createEmptyContext } from '@/lib/server/typedLocks';
+import { createLockContext } from '@/lib/server/typedLocks';
 
 export async function GET(request: NextRequest) {
   try {
@@ -16,10 +16,11 @@ export async function GET(request: NextRequest) {
     const cacheManager = getTypedCacheManager();
     
     // Create empty context for lock acquisition
-    const emptyCtx = createEmptyContext();
+    const emptyCtx = createLockContext();
     
     // Execute with world write lock (we're modifying world state with physics)
-    return await cacheManager.withWorldWrite(emptyCtx, async (worldCtx) => {
+    const worldCtx = await cacheManager.acquireWorldWrite(emptyCtx);
+    try {
       // Get world data safely (we have world write lock)
       const world = cacheManager.getWorldUnsafe(worldCtx);
       
@@ -33,7 +34,9 @@ export async function GET(request: NextRequest) {
       // Return world data
       const worldData = world.getWorldData();
       return NextResponse.json(worldData);
-    });
+    } finally {
+      worldCtx.dispose();
+    }
   } catch (error) {
     return handleApiError(error);
   }

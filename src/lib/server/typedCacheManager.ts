@@ -1,6 +1,6 @@
 // ---
 // TypeScript Compile-Time Deadlock Prevention System
-// Phase 2: Simplified Typed Cache Manager 
+// Phase 2: Pure IronGuard Cache Manager 
 // ---
 
 import { 
@@ -9,18 +9,7 @@ import {
   CACHE_LOCK,
   WORLD_LOCK,
   USER_LOCK,
-  MESSAGE_LOCK,
-  DATABASE_LOCK,
-  type CacheLevel,
-  type WorldLevel,
-  type UserLevel,
-  // Import some backward compatibility helpers for the remaining methods
-  TypedMutex,
-  TypedReadWriteLock,
-  type LockContext,
-  type EmptyContext,
-  type Locked,
-  createEmptyContext
+  DATABASE_LOCK
 } from './typedLocks';
 import { User } from './user';
 import { World } from './world';
@@ -95,14 +84,6 @@ export class TypedCacheManager {
   private db: sqlite3.Database | null = null;
   private isInitialized = false;
   private persistenceTimer: NodeJS.Timeout | null = null;
-
-  // IronGuard lock contexts - no instance needed for new methods
-  // Legacy wrapper instances for methods not yet converted
-  private cacheManagementLock = new TypedMutex('cache-mgmt', CACHE_LOCK as any);
-  private userLock = new TypedMutex('user', USER_LOCK as any);
-  private messageLock = new TypedReadWriteLock('message', MESSAGE_LOCK as any);
-  private databaseLock = new TypedReadWriteLock('database', DATABASE_LOCK as any);
-  private worldLock = new TypedReadWriteLock('world', WORLD_LOCK as any);
 
   // In-memory cache storage
   private users: Map<number, User> = new Map();
@@ -195,16 +176,6 @@ export class TypedCacheManager {
   // ===== LEVEL 1: WORLD OPERATIONS =====
 
   /**
-   * Perform cache management operations with proper locking (legacy compatibility)
-   */
-  async withCacheManagement<T>(
-    context: EmptyContext,
-    fn: (ctx: LockContext<Locked<'cache-mgmt'>, CacheLevel>) => Promise<T>
-  ): Promise<T> {
-    return await this.cacheManagementLock.acquire(context, fn);
-  }
-
-  /**
    * Acquire world read lock and return context for chaining
    */
   async acquireWorldRead(
@@ -220,26 +191,6 @@ export class TypedCacheManager {
     context: IronGuardLockContext<readonly []>
   ): Promise<WorldWriteContext> {
     return await context.acquireWrite(WORLD_LOCK) as WorldWriteContext;
-  }
-
-  /**
-   * Legacy compatibility: Perform world read operations with proper locking
-   */
-  async withWorldRead<T>(
-    context: LockContext<any, CacheLevel | never>,
-    fn: (ctx: WorldReadContext) => Promise<T>
-  ): Promise<T> {
-    return await this.worldLock.read(context, fn);
-  }
-
-  /**
-   * Legacy compatibility: Perform world write operations with proper locking
-   */
-  async withWorldWrite<T>(
-    context: LockContext<any, CacheLevel | never>,
-    fn: (ctx: WorldWriteContext) => Promise<T>
-  ): Promise<T> {
-    return await this.worldLock.write(context, fn);
   }
 
   /**
@@ -270,16 +221,6 @@ export class TypedCacheManager {
     context: IronGuardLockContext<readonly []> | WorldReadContext | WorldWriteContext
   ): Promise<UserContext> {
     return await context.acquireWrite(USER_LOCK) as UserContext;
-  }
-
-  /**
-   * Legacy compatibility: Perform user operations with proper locking (single lock for ALL users)
-   */
-  async withUserLock<T>(
-    context: LockContext<any, CacheLevel | WorldLevel | never>,
-    fn: (ctx: UserContext) => Promise<T>
-  ): Promise<T> {
-    return await this.userLock.acquire(context, fn);
   }
 
   /**
@@ -333,26 +274,6 @@ export class TypedCacheManager {
     context: IronGuardLockContext<readonly []> | WorldReadContext | WorldWriteContext | UserContext
   ): Promise<DatabaseWriteContext> {
     return await context.acquireWrite(DATABASE_LOCK) as DatabaseWriteContext;
-  }
-
-  /**
-   * Legacy compatibility: Perform database read operations with proper locking
-   */
-  async withDatabaseRead<T>(
-    context: LockContext<any, CacheLevel | WorldLevel | UserLevel | never>,
-    fn: (ctx: DatabaseReadContext) => Promise<T>
-  ): Promise<T> {
-    return await this.databaseLock.read(context, fn);
-  }
-
-  /**
-   * Legacy compatibility: Perform database write operations with proper locking
-   */
-  async withDatabaseWrite<T>(
-    context: LockContext<any, CacheLevel | WorldLevel | UserLevel | never>,
-    fn: (ctx: DatabaseWriteContext) => Promise<T>
-  ): Promise<T> {
-    return await this.databaseLock.write(context, fn);
   }
 
   /**
@@ -482,20 +403,18 @@ export class TypedCacheManager {
       await this.initialize();
     }
     
-    const emptyCtx = createLockContext();
-    
     console.log('🔄 Flushing all dirty data to database...');
     
     // Persist dirty users
     if (this.dirtyUsers.size > 0) {
       console.log(`💾 Flushing ${this.dirtyUsers.size} dirty user(s)`);
-      await this.persistDirtyUsers(emptyCtx);
+      await this.persistDirtyUsers();
     }
     
     // Persist dirty world data
     if (this.worldDirty) {
       console.log('💾 Flushing world data');
-      await this.persistDirtyWorld(emptyCtx);
+      await this.persistDirtyWorld();
     }
     
     // Flush messages via MessageCache (imported dynamically to avoid circular dependencies)
@@ -509,11 +428,12 @@ export class TypedCacheManager {
   /**
    * Manually persist all dirty users to database
    */
-  async persistDirtyUsers<CurrentLevel extends number>(
-    context: LockContext<any, CurrentLevel>
-  ): Promise<void> {
-    await this.userLock.acquire(context, async (userCtx) => {
-      await this.databaseLock.write(userCtx, async () => {
+  private async persistDirtyUsers(): Promise<void> {
+    const emptyCtx = createLockContext();
+    const userCtx = await this.acquireUserLock(emptyCtx);
+    try {
+      const dbCtx = await this.acquireDatabaseWrite(userCtx);
+      try {
         const dirtyUserIds = Array.from(this.dirtyUsers);
         
         if (dirtyUserIds.length === 0) {
@@ -531,8 +451,12 @@ export class TypedCacheManager {
         
         this.dirtyUsers.clear();
         console.log('✅ Dirty users persisted to database');
-      });
-    });
+      } finally {
+        dbCtx.dispose();
+      }
+    } finally {
+      userCtx.dispose();
+    }
   }
 
   /**
@@ -597,15 +521,16 @@ export class TypedCacheManager {
   /**
    * Manually persist dirty world data to database
    */
-  async persistDirtyWorld<CurrentLevel extends number>(
-    context: LockContext<any, CurrentLevel>
-  ): Promise<void> {
-    await this.worldLock.write(context, async (worldCtx) => {
-      if (!this.worldDirty || !this.world) {
-        return; // Nothing to persist
-      }
+  private async persistDirtyWorld(): Promise<void> {
+    if (!this.worldDirty || !this.world) {
+      return; // Nothing to persist
+    }
 
-      await this.databaseLock.write(worldCtx, async () => {
+    const emptyCtx = createLockContext();
+    const worldCtx = await this.acquireWorldWrite(emptyCtx);
+    try {
+      const dbCtx = await this.acquireDatabaseWrite(worldCtx);
+      try {
         if (!this.db) throw new Error('Database not initialized');
         
         console.log('💾 Persisting world data to database...');
@@ -614,8 +539,12 @@ export class TypedCacheManager {
         
         this.worldDirty = false;
         console.log('✅ World data persisted to database');
-      });
-    });
+      } finally {
+        dbCtx.dispose();
+      }
+    } finally {
+      worldCtx.dispose();
+    }
   }
 
   /**
@@ -665,18 +594,16 @@ export class TypedCacheManager {
    * Background persistence operation
    */
   private async backgroundPersist(): Promise<void> {
-    const emptyCtx = createEmptyContext();
-    
     // Persist dirty users
     if (this.dirtyUsers.size > 0) {
       console.log(`💾 Background persisting ${this.dirtyUsers.size} dirty user(s)`);
-      await this.persistDirtyUsers(emptyCtx);
+      await this.persistDirtyUsers();
     }
 
     // Persist dirty world data
     if (this.worldDirty) {
       console.log('💾 Background persisting world data...');
-      await this.persistDirtyWorld(emptyCtx);
+      await this.persistDirtyWorld();
     }
     
     // Note: Messages are persisted by MessageCache independently
@@ -686,9 +613,9 @@ export class TypedCacheManager {
    * Shutdown the cache manager
    */
   async shutdown(): Promise<void> {
-    const emptyCtx = createEmptyContext();
-    
-    await this.withCacheManagement(emptyCtx, async () => {
+    const emptyCtx = createLockContext();
+    const cacheCtx = await emptyCtx.acquireWrite(CACHE_LOCK);
+    try {
       console.log('🔄 Shutting down typed cache manager...');
       
       // Stop background persistence
@@ -697,18 +624,20 @@ export class TypedCacheManager {
       // Final persist of any dirty data
       if (this.dirtyUsers.size > 0) {
         console.log('💾 Final persist of dirty users before shutdown');
-        await this.persistDirtyUsers(emptyCtx);
+        await this.persistDirtyUsers();
       }
       
       // Final persist of dirty world data before shutdown
       if (this.worldDirty) {
         console.log('💾 Final persist of world data before shutdown');
-        await this.persistDirtyWorld(emptyCtx);
+        await this.persistDirtyWorld();
       }
       
       this.isInitialized = false;
       console.log('✅ Typed cache manager shutdown complete');
-    });
+    } finally {
+      cacheCtx.dispose();
+    }
   }
 }
 

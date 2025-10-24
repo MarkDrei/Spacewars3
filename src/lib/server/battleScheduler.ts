@@ -47,23 +47,29 @@ async function updateUserBattleState(userId: number, inBattle: boolean, battleId
   // Also update cache if user is cached by directly loading from DB
   try {
     const { getTypedCacheManager } = await import('./typedCacheManager');
-    const { createEmptyContext } = await import('./typedLocks');
+    const { createLockContext } = await import('./typedLocks');
     const cacheManager = await getTypedCacheManager();
     
-    const emptyCtx = createEmptyContext();
+    const emptyCtx = createLockContext();
     
-    // Use withUserLock to safely update cached user
-    await cacheManager.withUserLock(emptyCtx, async (userCtx) => {
+    // Use acquireUserLock to safely update cached user
+    const userCtx = await cacheManager.acquireUserLock(emptyCtx);
+    try {
       // Force load from database and update cache
-      await cacheManager.withDatabaseRead(userCtx, async (dbCtx) => {
+      const dbCtx = await cacheManager.acquireDatabaseRead(userCtx);
+      try {
         const freshUser = await cacheManager.loadUserFromDbUnsafe(userId, dbCtx);
         if (freshUser) {
           // Update cache with fresh data
           cacheManager.setUserUnsafe(freshUser, userCtx);
           console.log(`✅ Updated battle state in cache for user ${userId}: inBattle=${freshUser.inBattle}`);
         }
-      });
-    });
+      } finally {
+        dbCtx.dispose();
+      }
+    } finally {
+      userCtx.dispose();
+    }
   } catch (error) {
     console.error(`⚠️ Failed to update cache for user ${userId}:`, error);
     // Don't throw - database update succeeded, cache refresh is best-effort

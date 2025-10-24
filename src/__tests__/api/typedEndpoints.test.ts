@@ -5,7 +5,7 @@
 
 import { describe, expect, test, beforeEach, afterEach } from 'vitest';
 import { TypedCacheManager, getTypedCacheManager } from '../../lib/server/typedCacheManager';
-import { createEmptyContext } from '../../lib/server/typedLocks';
+import { createLockContext } from '../../lib/server/typedLocks';
 
 describe('Phase 3: Typed API Lock Ordering System', () => {
   
@@ -30,14 +30,16 @@ describe('Phase 3: Typed API Lock Ordering System', () => {
       const manager = getTypedCacheManager();
       await manager.initialize();
       
-      const emptyCtx = createEmptyContext();
+      const ctx = createLockContext();
       const executionOrder: string[] = [];
       
       // Simulate collection API pattern: World Write → User → Database Read
-      const result = await manager.withWorldWrite(emptyCtx, async (worldCtx) => {
+      const worldCtx = await manager.acquireWorldWrite(ctx);
+      try {
         executionOrder.push('world-write-acquired');
         
-        return await manager.withUserLock(worldCtx, async (userCtx) => {
+        const userCtx = await manager.acquireUserLock(worldCtx);
+        try {
           executionOrder.push('user-lock-acquired');
           
           // Simulate accessing world data (safe - we have world write lock)
@@ -49,9 +51,12 @@ describe('Phase 3: Typed API Lock Ordering System', () => {
           const user = manager.getUserUnsafe(1, userCtx);
           executionOrder.push('user-data-accessed');
           
+          let result: string;
+          
           // Simulate database access if needed
           if (!user) {
-            return await manager.withDatabaseRead(userCtx, async (dbCtx) => {
+            const dbCtx = await manager.acquireDatabaseRead(userCtx);
+            try {
               executionOrder.push('database-read-acquired');
               
               // Simulate loading user from database
@@ -63,38 +68,44 @@ describe('Phase 3: Typed API Lock Ordering System', () => {
                 executionOrder.push('user-cached');
               }
               
-              return 'collection-with-db-load';
-            });
+              result = 'collection-with-db-load';
+            } finally {
+              dbCtx.dispose();
+            }
+          } else {
+            // Simulate updating data (safe - we have proper locks)
+            manager.updateUserUnsafe(user, userCtx);
+            manager.updateWorldUnsafe(world, userCtx);
+            executionOrder.push('data-updated');
+            
+            result = 'collection-success';
           }
           
-          // Simulate updating data (safe - we have proper locks)
-          manager.updateUserUnsafe(user, userCtx);
-          manager.updateWorldUnsafe(world, userCtx);
-          executionOrder.push('data-updated');
+          expect(result).toMatch(/collection-(success|with-db-load)/);
           
-          return 'collection-success';
-        });
-      });
-      
-      expect(result).toMatch(/collection-(success|with-db-load)/);
-      
-      // Verify execution order (may vary if database load was needed)
-      if (result === 'collection-success') {
-        expect(executionOrder).toEqual([
-          'world-write-acquired',
-          'user-lock-acquired', 
-          'world-data-accessed',
-          'user-data-accessed',
-          'data-updated'
-        ]);
-      } else {
-        // Database load path
-        expect(executionOrder).toContain('world-write-acquired');
-        expect(executionOrder).toContain('user-lock-acquired');
-        expect(executionOrder).toContain('database-read-acquired');
+          // Verify execution order (may vary if database load was needed)
+          if (result === 'collection-success') {
+            expect(executionOrder).toEqual([
+              'world-write-acquired',
+              'user-lock-acquired', 
+              'world-data-accessed',
+              'user-data-accessed',
+              'data-updated'
+            ]);
+          } else {
+            // Database load path
+            expect(executionOrder).toContain('world-write-acquired');
+            expect(executionOrder).toContain('user-lock-acquired');
+            expect(executionOrder).toContain('database-read-acquired');
+          }
+          
+          console.log('✅ Collection-like API pattern executed with proper lock ordering');
+        } finally {
+          userCtx.dispose();
+        }
+      } finally {
+        worldCtx.dispose();
       }
-      
-      console.log('✅ Collection-like API pattern executed with proper lock ordering');
     });
 
     test('apiPattern_navigationLikeOperation_executesWithProperLockOrdering', async () => {

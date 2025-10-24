@@ -9,7 +9,7 @@ import { calculateToroidalDistance } from '@shared/physics';
 import { getTypedCacheManager, type TypedCacheManager } from '@/lib/server/typedCacheManager';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth, ApiError } from '@/lib/server/errors';
-import { createEmptyContext } from '@/lib/server/typedLocks';
+import { createLockContext } from '@/lib/server/typedLocks';
 import type { User } from '@/lib/server/user';
 import type { World } from '@/lib/server/world';
 
@@ -42,21 +42,22 @@ export async function POST(request: NextRequest) {
       console.log(`❌ Invalid object ID: ${objectId}`);
       throw new ApiError(400, 'Missing or invalid object ID');
     }
-    
     // Get typed cache manager singleton
     const cacheManager = getTypedCacheManager();
     console.log(`📋 [TYPED] Typed cache manager obtained`);
     
     // Create empty context for lock acquisition
-    const emptyCtx = createEmptyContext();
+    const emptyCtx = createLockContext();
     console.log(`🏁 [TYPED] Starting collection with compile-time safe lock ordering`);
     
     // Execute collection with compile-time guaranteed deadlock-free lock ordering:
     // World Write (1) → User (2) → Database Read (3) if needed
-    return await cacheManager.withWorldWrite(emptyCtx, async (worldCtx) => {
+    const worldCtx = await cacheManager.acquireWorldWrite(emptyCtx);
+    try {
       console.log(`🌍 [TYPED] World write lock acquired`);
       
-      return await cacheManager.withUserLock(worldCtx, async (userCtx) => {
+      const userCtx = await cacheManager.acquireUserLock(worldCtx);
+      try {
         console.log(`👤 [TYPED] User lock acquired`);
         
         // Get world data safely (we have world write lock)
@@ -70,7 +71,8 @@ export async function POST(request: NextRequest) {
           // Load user from database if not in cache
           console.log(`🔄 [TYPED] User ${session.userId} not in cache, loading from database...`);
           
-          return await cacheManager.withDatabaseRead(userCtx, async (dbCtx) => {
+          const dbCtx = await cacheManager.acquireDatabaseRead(userCtx);
+          try {
             console.log(`💾 [TYPED] Database read lock acquired`);
             
             user = await cacheManager.loadUserFromDbUnsafe(session.userId!, dbCtx);
@@ -82,18 +84,21 @@ export async function POST(request: NextRequest) {
             // Cache the loaded user
             cacheManager.setUserUnsafe(user, userCtx);
             console.log(`✅ [TYPED] User loaded and cached: ${user.username} (ID: ${user.id})`);
-            
-            // Continue with collection logic
-            return await performCollectionLogic(world, user, objectId, cacheManager, userCtx);
-          });
+          } finally {
+            dbCtx.dispose();
+          }
         } else {
           console.log(`✅ [TYPED] User found in cache: ${user.username} (ID: ${user.id})`);
-          
-          // Continue with collection logic directly
-          return await performCollectionLogic(world, user, objectId, cacheManager, userCtx);
         }
-      });
-    });
+        
+        // Continue with collection logic
+        return await performCollectionLogic(world, user, objectId, cacheManager, userCtx);
+      } finally {
+        userCtx.dispose();
+      }
+    } finally {
+      worldCtx.dispose();
+    }
   } catch (error) {
     console.log(`❌ [TYPED] Collection API error:`, error);
     return handleApiError(error);
