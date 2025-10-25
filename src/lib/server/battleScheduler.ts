@@ -7,10 +7,34 @@ import { BattleEngine } from './battle';
 import type { Battle, BattleEvent } from '../../shared/battleTypes';
 import { TechFactory } from './TechFactory';
 import { MessagesRepo } from './messagesRepo';
+import { getBattleCache } from './BattleCache';
 import { getDatabase } from './database';
+import { getTypedCacheManager } from './typedCacheManager';
+import { createLockContext } from './typedLocks';
+
+/**
+ * Helper to update user's battle state via TypedCacheManager
+ * Uses proper cache delegation instead of direct DB access
+ */
+async function updateUserBattleState(userId: number, inBattle: boolean, battleId: number | null): Promise<void> {
+  const cacheManager = getTypedCacheManager();
+  const ctx = createLockContext();
+  const userCtx = await cacheManager.acquireUserLock(ctx);
+  try {
+    const user = cacheManager.getUserUnsafe(userId, userCtx);
+    if (user) {
+      user.inBattle = inBattle;
+      user.currentBattleId = battleId;
+      cacheManager.updateUserUnsafe(user, userCtx);
+    }
+  } finally {
+    userCtx.dispose();
+  }
+}
 
 /**
  * Helper to create a message for a user
+ * Already uses MessagesRepo which has proper cache integration
  */
 async function createMessage(userId: number, message: string): Promise<void> {
   const db = await getDatabase();
@@ -19,69 +43,13 @@ async function createMessage(userId: number, message: string): Promise<void> {
 }
 
 /**
- * Helper to update user's battle state
- * 
- * TECHNICAL DEBT: This bypasses TypedCacheManager and writes directly to DB.
- * Should be refactored to use cache-first architecture.
- * See TechnicalDebt.md for details.
- */
-async function updateUserBattleState(userId: number, inBattle: boolean, battleId: number | null): Promise<void> {
-  const db = await getDatabase();
-  
-  // TODO: Refactor to use TypedCacheManager instead of direct DB write
-  // Update database
-  await new Promise<void>((resolve, reject) => {
-    db.run(
-      'UPDATE users SET in_battle = ?, current_battle_id = ? WHERE id = ?',
-      [inBattle ? 1 : 0, battleId, userId],
-      (err) => {
-        if (err) {
-          reject(err);
-          return;
-        }
-        resolve();
-      }
-    );
-  });
-  
-  // Also update cache if user is cached by directly loading from DB
-  try {
-    const { getTypedCacheManager } = await import('./typedCacheManager');
-    const { createLockContext } = await import('./typedLocks');
-    const cacheManager = await getTypedCacheManager();
-    
-    const emptyCtx = createLockContext();
-    
-    // Use acquireUserLock to safely update cached user
-    const userCtx = await cacheManager.acquireUserLock(emptyCtx);
-    try {
-      // Force load from database and update cache
-      const dbCtx = await cacheManager.acquireDatabaseRead(userCtx);
-      try {
-        const freshUser = await cacheManager.loadUserFromDbUnsafe(userId, dbCtx);
-        if (freshUser) {
-          // Update cache with fresh data
-          cacheManager.setUserUnsafe(freshUser, userCtx);
-          console.log(`✅ Updated battle state in cache for user ${userId}: inBattle=${freshUser.inBattle}`);
-        }
-      } finally {
-        dbCtx.dispose();
-      }
-    } finally {
-      userCtx.dispose();
-    }
-  } catch (error) {
-    console.error(`⚠️ Failed to update cache for user ${userId}:`, error);
-    // Don't throw - database update succeeded, cache refresh is best-effort
-  }
-}
-
-/**
- * Process all active battles automatically
+ * Process all active battles automatically  
+ * Updated to use BattleCache instead of BattleRepo.getActiveBattles()
  */
 export async function processActiveBattles(): Promise<void> {
   try {
-    const activeBattles = await BattleRepo.getActiveBattles();
+    const battleCache = getBattleCache();
+    const activeBattles = await battleCache.getActiveBattles();
     
     if (activeBattles.length === 0) {
       return;
@@ -208,7 +176,7 @@ async function fireWeapon(
       }
     };
     
-    await BattleRepo.addBattleEvent(battle.id, missEvent, battle);
+    await BattleRepo.addBattleEvent(battle.id, missEvent);
     
     // Send message to both players
     await createMessage(attackerId, `Your ${weaponType.replace(/_/g, ' ')} fired ${shotsPerSalvo} shot(s) but all missed!`);
@@ -290,7 +258,7 @@ async function fireWeapon(
     }
   };
   
-  await BattleRepo.addBattleEvent(battle.id, hitEvent, battle);
+  await BattleRepo.addBattleEvent(battle.id, hitEvent);
   
   // Format defense status
   const formatDefense = (name: string, before: number, after: number, damage: number): string => {

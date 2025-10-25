@@ -8,26 +8,26 @@
 
 ## Overview
 
-The Spacewars application uses two independent cache manager implementations to optimize database access and ensure data consistency. This document analyzes their architecture, similarities, and differences.
+The Spacewars application uses three independent cache manager implementations to optimize database access and ensure data consistency. This document analyzes their architecture, similarities, and differences.
 
 ---
 
 ## Cache Manager Comparison Matrix
 
-| Aspect | TypedCacheManager | MessageCache |
-|--------|-------------------|--------------|
-| **Primary Purpose** | User data, world state, username mappings | User messages and notifications |
-| **Data Scope** | Multi-entity (User, World) | Single-entity (Messages) |
-| **Lock System** | **Pure IronGuard** ✅ | Pure IronGuard |
-| **Lock Hierarchy** | 4 levels (CACHE→WORLD→USER→DB) | 2 levels (CACHE→DATA) |
-| **Async Operations** | Background persistence only | Async creation + background persistence |
-| **Temporary IDs** | No | Yes (negative IDs) |
-| **Cache Structure** | Map<userId, User> + World singleton | Map<userId, Message[]> |
-| **Singleton Pattern** | ✅ Yes | ✅ Yes |
-| **Initialization** | Internal auto-init in methods (guarded, idempotent) | Internal auto-init in methods (guarded) |
-| **Init Cost** | First call: ~100-200ms, subsequent: <1ms | First call: ~10-20ms, subsequent: <1ms |
-| **Statistics Tracking** | Cache hits/misses per entity type | Cache hits/misses + pending writes |
-| **Background Timer** | 30s persistence interval | 30s persistence interval |
+| Aspect | TypedCacheManager | MessageCache | BattleCache |
+|--------|-------------------|--------------|-------------|
+| **Primary Purpose** | User data, world state, username mappings | User messages and notifications | Battle state and combat data |
+| **Data Scope** | Multi-entity (User, World) | Single-entity (Messages) | Single-entity (Battles) |
+| **Lock System** | **Pure IronGuard** ✅ | Pure IronGuard | **Pure IronGuard** ✅ |
+| **Lock Hierarchy** | 4 levels (CACHE→WORLD→USER→DB) | 2 levels (CACHE→DATA) | 4 levels (via TypedCacheManager + BATTLE) |
+| **Async Operations** | Background persistence only | Async creation + background persistence | Background persistence only |
+| **Temporary IDs** | No | Yes (negative IDs) | No |
+| **Cache Structure** | Map<userId, User> + World singleton | Map<userId, Message[]> | Map<battleId, Battle> + user→battle index |
+| **Singleton Pattern** | ✅ Yes | ✅ Yes | ✅ Yes |
+| **Initialization** | Internal auto-init in methods (guarded, idempotent) | Internal auto-init in methods (guarded) | **Mixed Strategy** (sync + async) |
+| **Init Cost** | First call: ~100-200ms, subsequent: <1ms | First call: ~10-20ms, subsequent: <1ms | First call: ~50-100ms, subsequent: <1ms |
+| **Statistics Tracking** | Cache hits/misses per entity type | Cache hits/misses + pending writes | No statistics (simple cache) |
+| **Background Timer** | 30s persistence interval | 30s persistence interval | 30s persistence interval |
 
 ---
 
@@ -255,9 +255,145 @@ async shutdown() {
 
 ---
 
+### 3. BattleCache
+
+**Location:** `src/lib/server/BattleCache.ts`
+
+#### 3.1 Architecture
+
+```
+BattleCache (Singleton)
+├── Configuration
+│   ├── persistenceIntervalMs: 30000
+│   └── enableAutoPersistence: true
+├── Storage
+│   ├── battles: Map<number, Battle>
+│   ├── activeBattlesByUser: Map<number, number>  // userId → battleId
+│   ├── dirtyBattles: Set<number>
+│   └── initializationPromise: Promise<BattleCache> | null
+├── Locks (Pure IronGuard via delegation)
+│   ├── Delegates to TypedCacheManager for User/World locks
+│   ├── BATTLE_LOCK (level 12) for battle-specific operations
+│   └── Uses DATABASE_LOCK via TypedCacheManager
+└── Operations
+    ├── Mixed API: Sync getInstance() + Async getInitializedInstance()
+    ├── High-level: Auto-initializing async methods
+    ├── Low-level: "Unsafe" methods requiring manual initialization
+    └── Background: Persistence with lock delegation
+```
+
+#### 3.2 Lock Hierarchy
+
+```
+CACHE_LOCK (1)
+    ↓
+WORLD_LOCK (2)
+    ↓
+USER_LOCK (3)
+    ↓
+BATTLE_LOCK (12) ← New lock level
+    ↓
+DATABASE_LOCK (5)
+```
+
+**Delegation Strategy:** BattleCache doesn't implement its own locks - it delegates to TypedCacheManager for all database and user operations, adding BATTLE_LOCK only for battle-specific consistency.
+
+#### 3.3 Key Features
+
+**Mixed Initialization Strategy:**
+- **Problem:** Database callbacks need synchronous access, but initialization is async
+- **Solution:** Dual API approach for backward compatibility
+
+```typescript
+// Synchronous for callback contexts
+static getInstance(): BattleCache {
+  if (!BattleCache.instance) {
+    BattleCache.instance = new BattleCache();
+  }
+  return BattleCache.instance; // May not be fully initialized
+}
+
+// Async with auto-initialization
+static async getInitializedInstance(): Promise<BattleCache> {
+  if (BattleCache.instance?.initialized) {
+    return BattleCache.instance;
+  }
+  
+  if (!BattleCache.initializationPromise) {
+    BattleCache.initializationPromise = (async () => {
+      const instance = BattleCache.getInstance();
+      const { getDatabase } = await import('./database.js');
+      await instance.initialize(await getDatabase());
+      return instance;
+    })();
+  }
+  
+  return BattleCache.initializationPromise;
+}
+```
+
+**Lock Delegation Pattern:**
+```typescript
+// Delegates database operations to TypedCacheManager
+async loadBattleIfNeeded(battleId: number): Promise<Battle | null> {
+  await this.ensureInitializedAsync();
+  
+  const cacheManager = getTypedCacheManager();
+  const ctx = createLockContext();
+  const dbCtx = await cacheManager.acquireDatabaseRead(ctx);
+  try {
+    const battle = await this.loadBattleFromDb(battleId);
+    // ... cache if active
+    return battle;
+  } finally {
+    dbCtx.dispose();
+  }
+}
+```
+
+**Example Usage:**
+```typescript
+// Pattern 1: High-level operations (auto-init)
+const activeBattles = await battleCache.getActiveBattles();
+// Auto-initializes if needed, returns immediately if already cached
+
+// Pattern 2: Database callback contexts (pre-init)
+export async function createBattle(...) {
+  await getBattleCacheInitialized(); // Pre-initialize
+  
+  db.run("INSERT INTO battles...", [], function(err) {
+    if (!err) {
+      // Safe - cache already initialized
+      getBattleCache().setBattleUnsafe(battle);
+    }
+  });
+}
+```
+
+#### 3.4 Persistence Strategy
+
+**Write-Behind Caching with Delegation:**
+1. Updates immediately modify in-memory cache
+2. Battle marked as "dirty" (added to `dirtyBattles`)
+3. Background timer (30s) flushes dirty data via TypedCacheManager locks
+4. Shutdown performs final synchronous flush
+
+**Database Operations:**
+```typescript
+async persistBattle(battle: Battle): Promise<void>
+  → INSERT/UPDATE battles SET attacker_id=?, ... WHERE id=?
+
+private async persistDirtyBattles(): Promise<void>
+  → Acquires DATABASE_LOCK via TypedCacheManager
+  → Persists all dirty battles
+  → Clears dirtyBattles set
+```
+
+---
+
 ## Architectural Similarities
 
-### ✅ Both Cache Managers Share:
+### ✅ All Three Cache Managers Share:
 
 1. **Singleton Pattern**
    ```typescript
@@ -273,24 +409,27 @@ async shutdown() {
    - Try-finally pattern for guaranteed cleanup
    - No callback-based wrappers - direct lock management
 
-3. **Internal Auto-Initialization Pattern**
+3. **Initialization Patterns**
+   - **TypedCacheManager & MessageCache:** Internal auto-init with idempotent guards
+   - **BattleCache:** Mixed strategy (sync + async) for callback compatibility
+   - **All:** First call expensive (~10-200ms), subsequent calls instant (<1ms)
+   - **Guard Pattern:** Prevents duplicate initialization attempts
+
    ```typescript
-   // Both use guarded initialization internally
+   // Standard pattern (TypedCacheManager & MessageCache)
    async initialize(): Promise<void> {
      if (this.isInitialized) return;  // Idempotent guard
      // ... initialization code
      this.isInitialized = true;
    }
    
-   // Public methods auto-initialize on first access
-   async publicMethod(): Promise<Result> {
-     if (!this.isInitialized) await this.initialize();
-     // ... actual work
+   // Mixed pattern (BattleCache)
+   static async getInitializedInstance(): Promise<BattleCache> {
+     if (BattleCache.instance?.initialized) return BattleCache.instance;
+     if (BattleCache.initializationPromise) return BattleCache.initializationPromise;
+     // ... async initialization with promise caching
    }
    ```
-   - **First call:** ~100-200ms (TypedCacheManager) or ~10-20ms (MessageCache)
-   - **Subsequent calls:** <1ms (guard check only)
-   - **API Design:** Clean - no explicit `initialize()` calls needed in client code
 
 4. **Background Persistence**
    ```typescript
@@ -303,15 +442,28 @@ async shutdown() {
 
 5. **Dirty Tracking**
    ```typescript
+   // TypedCacheManager & BattleCache
    private dirtyUsers: Set<number> = new Set();
+   private dirtyBattles: Set<number> = new Set();
+   
+   // MessageCache
+   private dirtyUsers: Set<number> = new Set();
+   private pendingWrites: Map<number, Promise<void>> = new Map();
    ```
-   - Track which users need persistence
+   - Track which entities need persistence
    - Clear after successful write
+   - MessageCache adds pending write tracking for async operations
 
 6. **Statistics Tracking**
    ```typescript
+   // TypedCacheManager & MessageCache
    private stats = {
      cacheHits: 0,
+     cacheMisses: 0
+   };
+   
+   // BattleCache: No statistics (simple cache)
+   ```
      cacheMisses: 0
    };
    ```
@@ -344,16 +496,16 @@ async shutdown() {
 
 #### 1. Lock System Implementation
 
-| TypedCacheManager | MessageCache |
-|-------------------|--------------|
-| **Pure IronGuard** ✅ | **Pure IronGuard** |
-| Direct `createLockContext()` usage | Direct `createLockContext()` usage |
-| Clean try-finally-dispose pattern | Clean try-finally-dispose pattern |
-| Migration completed October 2025 | Greenfield implementation |
+| TypedCacheManager | MessageCache | BattleCache |
+|-------------------|--------------|-------------|
+| **Pure IronGuard** ✅ | **Pure IronGuard** | **Pure IronGuard via Delegation** ✅ |
+| Direct `createLockContext()` usage | Direct `createLockContext()` usage | Delegates to TypedCacheManager |
+| Clean try-finally-dispose pattern | Clean try-finally-dispose pattern | Clean try-finally-dispose pattern |
+| Migration completed October 2025 | Greenfield implementation | Mixed strategy (October 2025) |
 
 **Code Example:**
 ```typescript
-// Both use identical Pure IronGuard pattern
+// TypedCacheManager & MessageCache: Direct IronGuard usage
 const ctx = createLockContext();
 const lockCtx = await ctx.acquireWrite(SOME_LOCK);
 try {
@@ -361,16 +513,31 @@ try {
 } finally {
   lockCtx.dispose();
 }
+
+// BattleCache: Delegation pattern
+async loadBattleIfNeeded(battleId: number): Promise<Battle | null> {
+  const cacheManager = getTypedCacheManager();
+  const ctx = createLockContext();
+  const dbCtx = await cacheManager.acquireDatabaseRead(ctx); // Delegate
+  try {
+    // ... work with delegated lock
+  } finally {
+    dbCtx.dispose();
+  }
+}
 ```
 
 #### 2. Initialization Model
 
-| TypedCacheManager | MessageCache |
-|-------------------|--------------|
-| **Internal Auto-Init (Refactored):** `initialize()` called internally by public methods | **Internal Auto-Init:** `initialize()` called on first operation |
-| First call loads world (~100-200ms), subsequent calls instant | First call connects DB (~10-20ms), subsequent calls instant |
-| Starts battle scheduler on first init | No external services |
+| TypedCacheManager | MessageCache | BattleCache |
+|-------------------|--------------|-------------|
+| **Internal Auto-Init (Refactored):** `initialize()` called internally by public methods | **Internal Auto-Init:** `initialize()` called on first operation | **Mixed Strategy:** Sync `getInstance()` + Async `getInitializedInstance()` |
+| First call loads world (~100-200ms), subsequent calls instant | First call connects DB (~10-20ms), subsequent calls instant | First call loads battles (~50-100ms), subsequent calls instant |
+| Starts battle scheduler on first init | No external services | No external services |
 
+**Initialization Strategies Explained:**
+
+**1. Internal Auto-Init Pattern (TypedCacheManager & MessageCache):**
 ```typescript
 // Both use identical internal auto-initialization pattern
 async initialize(): Promise<void> {
@@ -389,6 +556,101 @@ async loadUserIfNeeded(userId: number): Promise<User | null> {
   // ... rest of method
 }
 ```
+
+**2. Mixed Strategy (BattleCache):**
+
+**Problem:** Database callbacks require synchronous access, but initialization is async.
+
+```typescript
+// ❌ This doesn't work - callbacks can't await
+db.run("INSERT INTO battles...", [], function(err) {
+  if (!err) {
+    // ❌ This context is synchronous - no await possible
+    getBattleCache().setBattleUnsafe(battle); 
+  }
+});
+```
+
+**Solution:** Dual API approach:
+
+```typescript
+// Synchronous getInstance() - for callback contexts
+static getInstance(): BattleCache {
+  if (!BattleCache.instance) {
+    BattleCache.instance = new BattleCache();
+  }
+  return BattleCache.instance; // May not be initialized yet
+}
+
+// Async getInitializedInstance() - for normal operations  
+static async getInitializedInstance(): Promise<BattleCache> {
+  if (BattleCache.instance?.initialized) {
+    return BattleCache.instance;
+  }
+  
+  if (!BattleCache.initializationPromise) {
+    BattleCache.initializationPromise = (async () => {
+      const instance = BattleCache.getInstance();
+      const { getDatabase } = await import('./database.js');
+      await instance.initialize(await getDatabase());
+      return instance;
+    })();
+  }
+  
+  return BattleCache.initializationPromise;
+}
+
+// High-level methods use async auto-initialization
+async getActiveBattles(): Promise<Battle[]> {
+  await this.ensureInitializedAsync(); // Auto-init if needed
+  // ... rest of method
+}
+
+// Low-level "unsafe" methods require manual initialization
+setBattleUnsafe(battle: Battle): void {
+  this.ensureInitialized(); // Throws if not initialized
+  // ... rest of method
+}
+```
+
+**Usage Patterns:**
+
+```typescript
+// Pattern 1: Database callbacks (sync context)
+export async function createBattle(...) {
+  // Pre-initialize before callback context
+  await getBattleCacheInitialized(); 
+  
+  db.run("INSERT INTO battles...", [], function(err) {
+    if (!err) {
+      // Now safe - cache is already initialized
+      getBattleCache().setBattleUnsafe(battle);
+    }
+  });
+}
+
+// Pattern 2: High-level operations (async context)
+export async function getActiveBattles() {
+  const cache = await getBattleCacheInitialized(); // Auto-init
+  return cache.getActiveBattles(); // Also auto-initializes internally
+}
+```
+
+**Why Can't We Just "Wait" in getInstance()?**
+
+```typescript
+// ❌ This breaks the singleton pattern
+static async getInstance(): Promise<BattleCache> {
+  // ❌ getInstance() must be synchronous for callback compatibility
+  await this.initialize();
+  return this.instance;
+}
+
+// ❌ This would require changing all callers
+const cache = await BattleCache.getInstance(); // Breaks existing code
+```
+
+**Architecture Decision:** BattleCache uses a **compatibility-first approach** - keeping `getInstance()` synchronous for existing callback code while providing `getInitializedInstance()` for new async operations. This eliminates the need to refactor all database callback sites.
 
 **Clean Client Code:**
 ```typescript
@@ -665,34 +927,60 @@ shutdown(): Promise<void>
    - Evict inactive users' messages after threshold
    - Prevent unbounded memory growth
 
-### For Both
+### For BattleCache
+
+1. **Complete Auto-Initialization:**
+   - Consider refactoring all database callbacks to use async context
+   - Could eliminate the dual getInstance()/getInitializedInstance() pattern
+   - Reduce API surface complexity
+
+2. **Independent Lock Management:**
+   - Currently delegates all locks to TypedCacheManager
+   - Could implement own lock hierarchy for better isolation
+   - Reduce dependencies on TypedCacheManager
+
+3. **Statistics and Monitoring:**
+   - Add cache hit/miss tracking like other caches
+   - Monitor active battle count and persistence lag
+   - Export metrics for battle system performance
+
+### For All Three
 
 1. **Unified Configuration:**
    - Extract shared config (persistence interval, etc.)
-   - Centralized cache tuning
+   - Centralized cache tuning across all systems
 
 2. **Monitoring Integration:**
    - Export metrics to external monitoring
    - Track persistence lag, cache size, etc.
+   - Unified health dashboard
 
 3. **Health Checks:**
-   - Add `isHealthy()` method
+   - Add `isHealthy()` method to all caches
    - Check DB connection, pending write count, etc.
+   - System-wide cache status monitoring
 
 ---
 
 ## Conclusion
 
-Both cache managers successfully implement the core caching strategy with **Pure IronGuard lock safety**. As of October 2025, both systems use identical lock management patterns:
+All three cache managers successfully implement the core caching strategy with **Pure IronGuard lock safety**. As of October 2025, all systems use consistent lock management patterns:
 
 - **TypedCacheManager:** Mature, feature-rich, 100% Pure IronGuard (migration completed)
 - **MessageCache:** Modern, focused, optimized for async operations, Pure IronGuard
+- **BattleCache:** Mixed strategy, Pure IronGuard via delegation, callback-compatible
 
 The separation of concerns is justified:
 - ✅ Message operations don't block game state updates
-- ✅ Each cache has simpler lock hierarchy
-- ✅ Performance optimizations (async creation) without affecting other systems
-- ✅ Both use consistent, type-safe lock management
+- ✅ Battle operations don't interfere with user/world caching
+- ✅ Each cache has appropriate lock hierarchy for its domain
+- ✅ Performance optimizations (async creation, delegation) without affecting other systems
+- ✅ All use consistent, type-safe lock management
+
+**Initialization Strategy Summary:**
+- **Internal Auto-Init (TypedCacheManager, MessageCache):** Clean API, automatic initialization
+- **Mixed Strategy (BattleCache):** Backward compatibility for synchronous callbacks, async auto-init for new code
+- **Common Pattern:** First call expensive (~10-200ms), subsequent calls instant (<1ms)
 
 This architecture demonstrates successful completion of the **Strangler Fig Pattern** for incremental modernization while maintaining system stability. The legacy lock system has been completely removed, achieving:
 

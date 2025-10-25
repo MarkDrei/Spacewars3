@@ -5,7 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getIronSession } from 'iron-session';
-import { getTypedCacheManager, type TypedCacheManager } from '@/lib/server/typedCacheManager';
+import { getTypedCacheManager, type TypedCacheManager, type UserContext } from '@/lib/server/typedCacheManager';
 import { getResearchEffectFromTree, ResearchType } from '@/lib/server/techtree';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth, ApiError } from '@/lib/server/errors';
@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
 }
 
 /**
- * Perform the actual navigation logic with proper lock context
+ * Perform the navigation logic on the cached user and world
  * This function requires world write and user locks to be held
  */
 async function performNavigationLogic(
@@ -100,7 +100,7 @@ async function performNavigationLogic(
   speed: number | undefined,
   angle: number | undefined,
   cacheManager: TypedCacheManager,
-  userCtx: Parameters<Parameters<TypedCacheManager['withUserLock']>[1]>[0]
+  userCtx: UserContext
 ): Promise<NextResponse> {
   console.log(`🧭 [TYPED] Starting navigation logic with proper lock context`);
   

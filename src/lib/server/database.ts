@@ -4,6 +4,7 @@ import fs from 'fs';
 import { CREATE_TABLES } from './schema';
 import { seedDatabase, DEFAULT_USERS, DEFAULT_SPACE_OBJECTS } from './seedData';
 import { applyTechMigrations } from './migrations';
+import { BattleCache } from './BattleCache';
 
 let db: sqlite3.Database | null = null;
 let isInitializing = false;
@@ -42,36 +43,42 @@ function seedTestDatabase(db: sqlite3.Database): void {
   const now = Date.now();
   
   try {
-    // Create space objects first (including player ship)
-    let shipId: number | null = null;
+    let shipIdCounter = 0;
     
-    // Create ship for the default user
-    const user = DEFAULT_USERS[0];
-    db.run(`
-      INSERT INTO space_objects (type, x, y, speed, angle, last_position_update_ms)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `, ['player_ship', user.ship.x, user.ship.y, user.ship.speed, user.ship.angle, now]);
+    // Create ships and users for all DEFAULT_USERS
+    DEFAULT_USERS.forEach((user, index) => {
+      // Create ship for this user
+      db.run(`
+        INSERT INTO space_objects (type, x, y, speed, angle, last_position_update_ms)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `, ['player_ship', user.ship.x, user.ship.y, user.ship.speed, user.ship.angle, now]);
+      
+      shipIdCounter++;
+      const shipId = shipIdCounter; // Ships get sequential IDs starting from 1
+      
+      // Hash password (both 'a' and 'dummy' use same hash for test consistency)
+      const hashedPassword = '$2b$10$wjxntg6T2IBU42fmC1.sP.RxTQZlm3s2u8Ql7dnRXSwcW0hwZ5hFO';
+      const techTreeJson = JSON.stringify(user.tech_tree);
+      
+      // Get defense values from user or use defaults
+      const hullCurrent = user.defense?.hull_current ?? 250.0;
+      const armorCurrent = user.defense?.armor_current ?? 250.0;
+      const shieldCurrent = user.defense?.shield_current ?? 250.0;
+      
+      // Create user
+      db.run(`
+        INSERT INTO users (username, password_hash, iron, last_updated, tech_tree, ship_id, hull_current, armor_current, shield_current, defense_last_regen)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `, [user.username, hashedPassword, user.iron, Math.floor(now / 1000), techTreeJson, shipId, hullCurrent, armorCurrent, shieldCurrent, Math.floor(now / 1000)]);
+    });
     
-    // Get the ship ID (approximation for test - in real sync we'd need different approach)
-    shipId = 1; // First inserted object gets ID 1
-    
-    // Create other space objects
+    // Create other space objects (asteroids, shipwrecks, escape pods)
     DEFAULT_SPACE_OBJECTS.forEach((obj) => {
       db.run(`
         INSERT INTO space_objects (type, x, y, speed, angle, last_position_update_ms)
         VALUES (?, ?, ?, ?, ?, ?)
       `, [obj.type, obj.x, obj.y, obj.speed, obj.angle, now]);
     });
-    
-    // Create the default user with hashed password (sync version)
-    // Hash corresponds to password 'a' for test consistency
-    const hashedPassword = '$2b$10$wjxntg6T2IBU42fmC1.sP.RxTQZlm3s2u8Ql7dnRXSwcW0hwZ5hFO';
-    const techTreeJson = JSON.stringify(user.tech_tree);
-    
-    db.run(`
-      INSERT INTO users (username, password_hash, iron, last_updated, tech_tree, ship_id, hull_current, armor_current, shield_current, defense_last_regen)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `, [user.username, hashedPassword, user.iron, Math.floor(now / 1000), techTreeJson, shipId, 250.0, 250.0, 250.0, Math.floor(now / 1000)]);
     
   } catch (error) {
     console.error('❌ Error seeding test database:', error);
@@ -137,6 +144,12 @@ export async function getDatabase(): Promise<sqlite3.Database> {
           console.log('📊 Existing database detected, checking for migrations...');
           await applyTechMigrations(db!);
         }
+        
+        // Initialize BattleCache
+        console.log('⚔️ Initializing BattleCache...');
+        const battleCache = BattleCache.getInstance();
+        await battleCache.initialize(db!);
+        console.log('✅ BattleCache initialized');
         
         isInitializing = false;
         // Don't clear initializationPromise - it's still valid
