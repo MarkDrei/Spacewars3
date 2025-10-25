@@ -339,15 +339,15 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ auth, initialMessages }
                       </td>
                     </tr>
                   ) : (
-                    Object.entries(battleStatus.battle.weaponCooldowns).map(([weaponType, lastFired]) => {
+                    Object.entries(battleStatus.battle.weaponCooldowns).map(([weaponType, nextReadyTime]) => {
                       const weapon = weapons[weaponType as keyof typeof weapons];
                       const now = Math.floor(Date.now() / 1000);
-                      // Get cooldown from weapon stats in battle or use default 5s
+                      // Get cooldown period from weapon stats in battle or use default 5s
                       const weaponStats = battleStatus.battle?.myStats?.weapons?.[weaponType];
                       const cooldownPeriod = weaponStats?.cooldown || (weapon && 'cooldown' in weapon ? (weapon as { cooldown: number }).cooldown : 5);
-                      const timeSinceFired = now - (lastFired || 0);
-                      const isReady = timeSinceFired >= cooldownPeriod;
-                      const timeRemaining = Math.max(0, cooldownPeriod - timeSinceFired);
+                      // Cooldown timestamp is "next ready time" - weapon is ready when current time >= that
+                      const timeRemaining = Math.max(0, (nextReadyTime || 0) - now);
+                      const isReady = timeRemaining === 0;
                       
                       return (
                         <tr key={weaponType} className="data-row">
