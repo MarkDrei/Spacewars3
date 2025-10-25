@@ -148,18 +148,7 @@ export class MessageCache {
     const dataCtx = await ctx.acquireWrite(MESSAGE_DATA_LOCK);
     
     try {
-      // Get all messages (will load from DB if not cached)
-      let allMessages = this.userMessages.get(userId);
-      
-      if (!allMessages) {
-        // Load from database
-        console.log(`📬 Loading messages for user ${userId} from database...`);
-        allMessages = await this.loadMessagesFromDb(dataCtx, userId);
-        this.userMessages.set(userId, allMessages);
-        this.stats.cacheMisses++;
-      } else {
-        this.stats.cacheHits++;
-      }
+      const allMessages = await this.ensureMessagesLoaded(dataCtx, userId);
       
       // Filter unread and convert to UnreadMessage format
       const unreadMessages: UnreadMessage[] = allMessages
@@ -188,18 +177,7 @@ export class MessageCache {
     const dataCtx = await ctx.acquireWrite(MESSAGE_DATA_LOCK);
     
     try {
-      // Get all messages (will load from DB if not cached)
-      let allMessages = this.userMessages.get(userId);
-      
-      if (!allMessages) {
-        // Load from database
-        console.log(`📬 Loading messages for user ${userId} from database...`);
-        allMessages = await this.loadMessagesFromDb(dataCtx, userId);
-        this.userMessages.set(userId, allMessages);
-        this.stats.cacheMisses++;
-      } else {
-        this.stats.cacheHits++;
-      }
+      const allMessages = await this.ensureMessagesLoaded(dataCtx, userId);
       
       // Count unread messages
       let markedCount = 0;
@@ -475,6 +453,29 @@ export class MessageCache {
   // ============================================
   // PRIVATE METHODS
   // ============================================
+
+  /**
+   * Ensure messages are loaded for a user (from cache or DB)
+   * Helper method to reduce code duplication
+   */
+  private async ensureMessagesLoaded<THeld extends readonly LockLevel[]>(
+    context: ValidLock4Context<THeld> extends string ? never : ValidLock4Context<THeld>,
+    userId: number
+  ): Promise<Message[]> {
+    let allMessages = this.userMessages.get(userId);
+    
+    if (!allMessages) {
+      // Load from database
+      console.log(`📬 Loading messages for user ${userId} from database...`);
+      allMessages = await this.loadMessagesFromDb(context, userId);
+      this.userMessages.set(userId, allMessages);
+      this.stats.cacheMisses++;
+    } else {
+      this.stats.cacheHits++;
+    }
+    
+    return allMessages;
+  }
 
   private async loadMessagesFromDb<THeld extends readonly LockLevel[]>(
     context: ValidLock4Context<THeld> extends string ? never : ValidLock4Context<THeld>,
