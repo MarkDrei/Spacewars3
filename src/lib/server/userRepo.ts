@@ -6,8 +6,8 @@ import sqlite3 from 'sqlite3';
 import { User, SaveUserCallback } from './user';
 import { createInitialTechTree } from './techtree';
 import { getTypedCacheManager } from './typedCacheManager';
-import { createEmptyContext } from './typedLocks';
-import { sendMessageToUserCached } from './typedCacheManager';
+import { createLockContext } from './typedLocks';
+import { sendMessageToUser } from './MessageCache';
 import { TechCounts } from './TechFactory';
 
 interface UserRow {
@@ -120,35 +120,38 @@ export function getUserByUsernameFromDb(db: sqlite3.Database, username: string, 
 export async function getUserById(db: sqlite3.Database, id: number): Promise<User | null> {
   // Use typed cache manager for cache-aware access
   const cacheManager = getTypedCacheManager();
-  await cacheManager.initialize();
   
-  const emptyCtx = createEmptyContext();
+  const emptyCtx = createLockContext();
   
   // Use user lock to ensure consistent access
-  return await cacheManager.withUserLock(emptyCtx, async (userCtx) => {
+  const userCtx = await cacheManager.acquireUserLock(emptyCtx);
+  try {
     // Try to get from cache first
     let user = cacheManager.getUserUnsafe(id, userCtx);
     
     if (!user) {
       // Load from database if not in cache
-      return await cacheManager.withDatabaseRead(userCtx, async (dbCtx) => {
+      const dbCtx = await cacheManager.acquireDatabaseRead(userCtx);
+      try {
         user = await cacheManager.loadUserFromDbUnsafe(id, dbCtx);
         if (user) {
           // Cache the loaded user
           cacheManager.setUserUnsafe(user, userCtx);
         }
-        return user;
-      });
+      } finally {
+        dbCtx.dispose();
+      }
     }
     
     return user;
-  });
+  } finally {
+    userCtx.dispose();
+  }
 }
 
 export async function getUserByUsername(db: sqlite3.Database, username: string): Promise<User | null> {
   // Use typed cache manager for cache-aware username lookup
   const cacheManager = getTypedCacheManager();
-  await cacheManager.initialize();
   
   return await cacheManager.getUserByUsername(username);
 }
@@ -203,7 +206,7 @@ async function createUserWithShip(db: sqlite3.Database, username: string, passwo
               const user = new User(userId, username, password_hash, 0.0, now, techTree, saveCallback, defaultTechCounts, 250.0, 250.0, 250.0, now, false, null, shipId);
               
               // Send welcome message to new user
-              await sendMessageToUserCached(userId, `Welcome to Spacewars, ${username}! Your journey among the stars begins now. Navigate wisely and collect resources to upgrade your ship.`);
+              await sendMessageToUser(userId, `Welcome to Spacewars, ${username}! Your journey among the stars begins now. Navigate wisely and collect resources to upgrade your ship.`);
               
               try {
                 // Note: User creation doesn't need immediate caching since

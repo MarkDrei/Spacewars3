@@ -5,7 +5,7 @@
 import sqlite3 from 'sqlite3';
 import { World, SpaceObject, SaveWorldCallback } from './world';
 import { getTypedCacheManager } from './typedCacheManager';
-import { createEmptyContext } from './typedLocks';
+import { createLockContext } from './typedLocks';
 
 /**
  * Load world data from database (used internally by cache manager)
@@ -78,15 +78,17 @@ export function loadWorldFromDb(db: sqlite3.Database, saveCallback: SaveWorldCal
 export async function loadWorld(): Promise<World> {
   // Use typed cache manager for cache-aware access
   const cacheManager = getTypedCacheManager();
-  await cacheManager.initialize();
   
-  const emptyCtx = createEmptyContext();
+  const emptyCtx = createLockContext();
   
   // Use world read lock to ensure consistent access
-  return await cacheManager.withWorldRead(emptyCtx, async (worldCtx) => {
+  const worldCtx = await cacheManager.acquireWorldRead(emptyCtx);
+  try {
     // Get world data safely (we have world read lock)
     return cacheManager.getWorldUnsafe(worldCtx);
-  });
+  } finally {
+    worldCtx.dispose();
+  }
 }
 
 /**
@@ -135,9 +137,9 @@ export async function deleteSpaceObject(db: sqlite3.Database, objectId: number):
 
   // Then update cache by refreshing the world
   try {
-    // Force cache refresh by reinitializing the world data
+    // Note: The cache manager will automatically reload world data on next access
+    // since these operations modify the database directly
     const cacheManager = getTypedCacheManager();
-    await cacheManager.initialize();
     // Note: The cache manager will automatically reload world data on next access
     // since these operations modify the database directly
   } catch (cacheErr) {
@@ -167,9 +169,9 @@ export async function insertSpaceObject(db: sqlite3.Database, obj: Omit<SpaceObj
 
   // Then update cache by refreshing the world
   try {
-    // Force cache refresh by reinitializing the world data
+    // Note: The cache manager will automatically reload world data on next access
+    // since these operations modify the database directly
     const cacheManager = getTypedCacheManager();
-    await cacheManager.initialize();
     // Note: The cache manager will automatically reload world data on next access
     // since these operations modify the database directly
   } catch (cacheErr) {

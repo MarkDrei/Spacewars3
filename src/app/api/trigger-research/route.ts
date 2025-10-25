@@ -4,11 +4,11 @@ import { getTypedCacheManager, TypedCacheManager } from '@/lib/server/typedCache
 import { AllResearches, getResearchUpgradeCost, ResearchType, triggerResearch, TechTree } from '@/lib/server/techtree';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth, validateRequired, ApiError } from '@/lib/server/errors';
-import { createEmptyContext, LockContext, Locked, CacheLevel, WorldLevel, UserLevel } from '@/lib/server/typedLocks';
+import { createLockContext, type LockContext as IronGuardLockContext, USER_LOCK } from '@/lib/server/typedLocks';
 import { User } from '@/lib/server/user';
 
-// Type aliases for cleaner code
-type UserContext = LockContext<Locked<'user'>, CacheLevel | WorldLevel | UserLevel>;
+// Type alias for user context
+type UserContext = IronGuardLockContext<readonly [typeof USER_LOCK]>;
 
 export async function POST(request: NextRequest) {
   try {
@@ -26,21 +26,22 @@ export async function POST(request: NextRequest) {
     
     const researchType = type as ResearchType;
     
-    // Get typed cache manager singleton and initialize
+    // Get typed cache manager singleton
     const cacheManager = getTypedCacheManager();
-    await cacheManager.initialize();
     
     // Create empty context for lock acquisition
-    const emptyCtx = createEmptyContext();
+    const emptyCtx = createLockContext();
     
     // Execute with user lock (user-specific operation)
-    return await cacheManager.withUserLock(emptyCtx, async (userCtx) => {
+    const userCtx = await cacheManager.acquireUserLock(emptyCtx);
+    try {
       // Get user data safely (we have user lock)
       let user = cacheManager.getUserUnsafe(session.userId!, userCtx);
       
       if (!user) {
         // Load user from database if not in cache
-        return await cacheManager.withDatabaseRead(userCtx, async (dbCtx) => {
+        const dbCtx = await cacheManager.acquireDatabaseRead(userCtx);
+        try {
           user = await cacheManager.loadUserFromDbUnsafe(session.userId!, dbCtx);
           if (!user) {
             throw new ApiError(404, 'User not found');
@@ -48,15 +49,16 @@ export async function POST(request: NextRequest) {
           
           // Cache the loaded user
           cacheManager.setUserUnsafe(user, userCtx);
-          
-          // Continue with research logic
-          return performResearchTrigger(user, researchType, cacheManager, userCtx);
-        });
-      } else {
-        // Continue with research logic directly
-        return performResearchTrigger(user, researchType, cacheManager, userCtx);
+        } finally {
+          dbCtx.dispose();
+        }
       }
-    });
+      
+      // Continue with research logic
+      return performResearchTrigger(user, researchType, cacheManager, userCtx);
+    } finally {
+      userCtx.dispose();
+    }
   } catch (error) {
     return handleApiError(error);
   }

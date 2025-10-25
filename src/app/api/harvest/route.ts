@@ -1,15 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getIronSession } from 'iron-session';
 import { calculateToroidalDistance } from '@shared/physics';
-import { getTypedCacheManager, TypedCacheManager, sendMessageToUserCached } from '@/lib/server/typedCacheManager';
+import { getTypedCacheManager, TypedCacheManager } from '@/lib/server/typedCacheManager';
+import { sendMessageToUser } from '@/lib/server/MessageCache';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth, ApiError } from '@/lib/server/errors';
-import { createEmptyContext, LockContext, Locked, CacheLevel, WorldLevel, UserLevel } from '@/lib/server/typedLocks';
+import { createLockContext, type LockContext as IronGuardLockContext, USER_LOCK } from '@/lib/server/typedLocks';
 import { User } from '@/lib/server/user';
 import { World } from '@/lib/server/world';
 
-// Type aliases for cleaner code
-type UserContext = LockContext<Locked<'user'>, CacheLevel | WorldLevel | UserLevel>;
+// Type alias for user context
+type UserContext = IronGuardLockContext<readonly [typeof USER_LOCK]>;
 
 export async function POST(request: NextRequest) {
   try {
@@ -41,20 +42,19 @@ export async function POST(request: NextRequest) {
       throw new ApiError(400, 'Missing or invalid object ID');
     }
     
-    // Get typed cache manager singleton and initialize
+    // Get typed cache manager singleton
     const cacheManager = getTypedCacheManager();
     console.log(`📋 Typed cache manager obtained`);
     
-    await cacheManager.initialize();
-    console.log(`✅ Typed cache manager initialized`);
-    
     // Create empty context for lock acquisition
-    const emptyCtx = createEmptyContext();
+    const emptyCtx = createLockContext();
     
     // Execute collection with compile-time guaranteed deadlock-free lock ordering:
     // World Write (1) → User (2) → Database Read (3) if needed
-    return await cacheManager.withWorldWrite(emptyCtx, async (worldCtx) => {
-      return await cacheManager.withUserLock(worldCtx, async (userCtx) => {
+    const worldCtx = await cacheManager.acquireWorldWrite(emptyCtx);
+    try {
+      const userCtx = await cacheManager.acquireUserLock(worldCtx);
+      try {
         // Get world data safely (we have world write lock)
         const world = cacheManager.getWorldUnsafe(userCtx);
         
@@ -63,7 +63,8 @@ export async function POST(request: NextRequest) {
         
         if (!user) {
           // Load user from database if not in cache
-          return await cacheManager.withDatabaseRead(userCtx, async (dbCtx) => {
+          const dbCtx = await cacheManager.acquireDatabaseRead(userCtx);
+          try {
             user = await cacheManager.loadUserFromDbUnsafe(session.userId!, dbCtx);
             if (!user) {
               throw new ApiError(404, 'User not found');
@@ -71,16 +72,19 @@ export async function POST(request: NextRequest) {
             
             // Cache the loaded user
             cacheManager.setUserUnsafe(user, userCtx);
-            
-            // Continue with collection logic
-            return await performCollectionLogic(world, user, objectId, cacheManager, userCtx);
-          });
-        } else {
-          // Continue with collection logic directly
-          return await performCollectionLogic(world, user, objectId, cacheManager, userCtx);
+          } finally {
+            dbCtx.dispose();
+          }
         }
-      });
-    });
+        
+        // Continue with collection logic
+        return await performCollectionLogic(world, user, objectId, cacheManager, userCtx);
+      } finally {
+        userCtx.dispose();
+      }
+    } finally {
+      worldCtx.dispose();
+    }
   } catch (error) {
     console.log(`❌ Collection API error:`, error);
     return handleApiError(error);
@@ -158,8 +162,7 @@ async function performCollectionLogic(
   console.log(`📝 Creating notification for user ${user.id}: "${notificationMessage}"`);
   
   // Send notification to user (async, doesn't block response)
-  // Using FIXED cached operations (deadlock resolved)
-  sendMessageToUserCached(user.id, notificationMessage).catch((error: Error) => {
+  sendMessageToUser(user.id, notificationMessage).catch((error: Error) => {
     console.error('❌ Failed to send collection notification:', error);
   });
   

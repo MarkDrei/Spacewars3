@@ -1,15 +1,15 @@
 import { describe, test, expect, beforeEach, vi, afterEach } from 'vitest';
 import { TechRepo } from '@/lib/server/techRepo';
-import { sendMessageToUserCached } from '@/lib/server/typedCacheManager';
+import { sendMessageToUser } from '@/lib/server/MessageCache';
 import { createTestDatabase } from '../helpers/testDatabase';
 import sqlite3 from 'sqlite3';
 
 // Mock the notification system
-vi.mock('@/lib/server/typedCacheManager', () => ({
-  sendMessageToUserCached: vi.fn().mockResolvedValue(1)
+vi.mock('@/lib/server/MessageCache', () => ({
+  sendMessageToUser: vi.fn().mockResolvedValue(1)
 }));
 
-const mockSendMessageToUserCached = vi.mocked(sendMessageToUserCached);
+const mockSendMessageToUser = vi.mocked(sendMessageToUser);
 
 describe('TechRepo - Build Completion Notifications', () => {
   let testDb: sqlite3.Database;
@@ -77,16 +77,16 @@ describe('TechRepo - Build Completion Notifications', () => {
     expect(result.remaining).toHaveLength(0);
 
     // Assert - Notification was sent
-    expect(mockSendMessageToUserCached).toHaveBeenCalledOnce();
-    expect(mockSendMessageToUserCached).toHaveBeenCalledWith(
+    expect(mockSendMessageToUser).toHaveBeenCalledOnce();
+    expect(mockSendMessageToUser).toHaveBeenCalledWith(
       testUserId,
       expect.stringContaining('🔧 Construction complete')
     );
-    expect(mockSendMessageToUserCached).toHaveBeenCalledWith(
+    expect(mockSendMessageToUser).toHaveBeenCalledWith(
       testUserId,
       expect.stringContaining('Pulse Laser')
     );
-    expect(mockSendMessageToUserCached).toHaveBeenCalledWith(
+    expect(mockSendMessageToUser).toHaveBeenCalledWith(
       testUserId,
       expect.stringContaining('weapon')
     );
@@ -113,12 +113,12 @@ describe('TechRepo - Build Completion Notifications', () => {
     expect(result.completed[0].itemKey).toBe('kinetic_armor');
 
     // Assert - Notification was sent for defense
-    expect(mockSendMessageToUserCached).toHaveBeenCalledOnce();
-    expect(mockSendMessageToUserCached).toHaveBeenCalledWith(
+    expect(mockSendMessageToUser).toHaveBeenCalledOnce();
+    expect(mockSendMessageToUser).toHaveBeenCalledWith(
       testUserId,
       expect.stringContaining('🔧 Construction complete')
     );
-    expect(mockSendMessageToUserCached).toHaveBeenCalledWith(
+    expect(mockSendMessageToUser).toHaveBeenCalledWith(
       testUserId,
       expect.stringContaining('defense system')
     );
@@ -155,10 +155,10 @@ describe('TechRepo - Build Completion Notifications', () => {
     expect(result.remaining).toHaveLength(0);
 
     // Assert - Multiple notifications were sent
-    expect(mockSendMessageToUserCached).toHaveBeenCalledTimes(3);
+    expect(mockSendMessageToUser).toHaveBeenCalledTimes(3);
     
     // Check each notification was sent with correct content
-    const calls = mockSendMessageToUserCached.mock.calls;
+    const calls = mockSendMessageToUser.mock.calls;
     expect(calls).toEqual(expect.arrayContaining([
       [testUserId, expect.stringContaining('Pulse Laser')],
       [testUserId, expect.stringContaining('Kinetic Armor')],
@@ -194,8 +194,8 @@ describe('TechRepo - Build Completion Notifications', () => {
     expect(result.remaining[0].itemKey).toBe('auto_turret');
 
     // Assert - Only one notification sent (for completed item)
-    expect(mockSendMessageToUserCached).toHaveBeenCalledOnce();
-    expect(mockSendMessageToUserCached).toHaveBeenCalledWith(
+    expect(mockSendMessageToUser).toHaveBeenCalledOnce();
+    expect(mockSendMessageToUser).toHaveBeenCalledWith(
       testUserId,
       expect.stringContaining('Pulse Laser')
     );
@@ -222,12 +222,12 @@ describe('TechRepo - Build Completion Notifications', () => {
     expect(result.remaining).toHaveLength(1);
 
     // Assert - No notifications sent
-    expect(mockSendMessageToUserCached).not.toHaveBeenCalled();
+    expect(mockSendMessageToUser).not.toHaveBeenCalled();
   });
 
   test('processCompletedBuilds_notificationFails_continuesWithOtherNotifications', async () => {
     // Arrange - Multiple completed items, mock first notification to fail
-    mockSendMessageToUserCached
+    mockSendMessageToUser
       .mockRejectedValueOnce(new Error('Network error'))
       .mockResolvedValueOnce(2);
     
@@ -255,6 +255,6 @@ describe('TechRepo - Build Completion Notifications', () => {
     expect(result.remaining).toHaveLength(0);
 
     // Assert - Both notifications were attempted
-    expect(mockSendMessageToUserCached).toHaveBeenCalledTimes(2);
+    expect(mockSendMessageToUser).toHaveBeenCalledTimes(2);
   });
 });

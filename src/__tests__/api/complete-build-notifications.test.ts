@@ -1,24 +1,22 @@
 import { describe, test, expect, beforeEach, vi } from 'vitest';
 import { POST as completeBuildPOST } from '@/app/api/complete-build/route';
-import { sendMessageToUserCached } from '@/lib/server/typedCacheManager';
+import { sendMessageToUser } from '@/lib/server/MessageCache';
 import { createRequest } from '../helpers/apiTestHelpers';
 
-// Mock the entire typedCacheManager module to avoid dependency issues
-vi.mock('@/lib/server/typedCacheManager', async (importOriginal) => {
-  const actual = await importOriginal() as Record<string, unknown>;
-  return {
-    ...actual,
-    sendMessageToUserCached: vi.fn().mockResolvedValue(1),
-    getTypedCacheManager: vi.fn().mockReturnValue({
-      isReady: true,
+// Mock MessageCache
+vi.mock('@/lib/server/MessageCache', () => ({
+  getMessageCache: vi.fn().mockReturnValue({
+    initialize: vi.fn().mockResolvedValue(undefined),
+  }),
+  MessageCache: {
+    getInstance: vi.fn().mockReturnValue({
       initialize: vi.fn().mockResolvedValue(undefined),
-      createMessage: vi.fn().mockResolvedValue(1),
-      getUnreadMessages: vi.fn().mockResolvedValue([])
-    })
-  };
-});
+    }),
+  },
+  sendMessageToUser: vi.fn().mockResolvedValue(1),
+}));
 
-const mockSendMessageToUserCached = vi.mocked(sendMessageToUserCached);
+const mockSendMessageToUser = vi.mocked(sendMessageToUser);
 
 describe('Complete Build API - Notification Integration', () => {
   beforeEach(() => {
@@ -51,6 +49,6 @@ describe('Complete Build API - Notification Integration', () => {
     expect(response.status).toBe(401);
     
     // No notification should be sent for unauthenticated requests
-    expect(mockSendMessageToUserCached).not.toHaveBeenCalled();
+    expect(mockSendMessageToUser).not.toHaveBeenCalled();
   });
 });

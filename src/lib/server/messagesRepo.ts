@@ -11,6 +11,7 @@ export interface Message {
   created_at: number; // Unix timestamp in seconds
   is_read: boolean;
   message: string;
+  isPending?: boolean; // Flag for messages not yet persisted to DB
 }
 
 export interface UnreadMessage {
@@ -175,5 +176,3 @@ export class MessagesRepo {
   }
 }
 
-// Note: The sendMessageToUser helper function has been replaced with sendMessageToUserCached
-// from typedCacheManager.ts for better performance and consistency with the cache system.

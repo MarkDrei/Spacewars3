@@ -125,8 +125,8 @@ export const DEFAULT_USERS: SeedUser[] = [
       stealIron: 0
     },
     ship: {
-      x: 350,
-      y: 350,
+      x: 280, // 30 units from first user (distance = sqrt(30^2 + 30^2) ≈ 42.4, well within 100 unit range)
+      y: 280,
       speed: 0,
       angle: 0
     },

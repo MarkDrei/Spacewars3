@@ -26,11 +26,6 @@ export async function getServerAuth(): Promise<ServerAuthState | null> {
     // Use cache to validate user existence and get current data
     const cacheManager = getTypedCacheManager();
     
-    // Ensure cache manager is initialized before use
-    if (!cacheManager.isReady) {
-      await cacheManager.initialize();
-    }
-    
     const user = await cacheManager.loadUserIfNeeded(session.userId);
 
     if (!user) {

@@ -5,11 +5,11 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getIronSession } from 'iron-session';
-import { getTypedCacheManager, type TypedCacheManager } from '@/lib/server/typedCacheManager';
+import { getTypedCacheManager, type TypedCacheManager, type UserContext } from '@/lib/server/typedCacheManager';
 import { getResearchEffectFromTree, ResearchType } from '@/lib/server/techtree';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth, ApiError } from '@/lib/server/errors';
-import { createEmptyContext } from '@/lib/server/typedLocks';
+import { createLockContext } from '@/lib/server/typedLocks';
 import type { User } from '@/lib/server/user';
 import type { World } from '@/lib/server/world';
 
@@ -28,27 +28,27 @@ export async function POST(request: NextRequest) {
     
     console.log(`🧭 [TYPED] Navigation API called - speed: ${speed}, angle: ${angle} by user: ${session.userId}`);
     
-    // Get typed cache manager singleton and initialize
+    // Get typed cache manager singleton
     const cacheManager = getTypedCacheManager();
-    await cacheManager.initialize();
-    console.log(`✅ [TYPED] Typed cache manager initialized for navigation`);
+    console.log(`✅ [TYPED] Typed cache manager ready for navigation`);
     
     // Create empty context for lock acquisition
-    const emptyCtx = createEmptyContext();
+    const emptyCtx = createLockContext();
     console.log(`🏁 [TYPED] Starting navigation with compile-time safe lock ordering`);
     
     // Execute navigation with compile-time guaranteed deadlock-free lock ordering:
     // World Write (1) → User (2) → Database Read (3) if needed
-    return await cacheManager.withWorldWrite(emptyCtx, async (worldCtx) => {
+    const worldCtx = await cacheManager.acquireWorldWrite(emptyCtx);
+    try {
       console.log(`🌍 [TYPED] World write lock acquired for navigation`);
       
-      return await cacheManager.withUserLock(worldCtx, async (userCtx) => {
+      const userCtx = await cacheManager.acquireUserLock(worldCtx);
+      try {
         console.log(`👤 [TYPED] User lock acquired for navigation`);
         
         // Get world data safely (we have world write lock)
         const world = cacheManager.getWorldUnsafe(userCtx);
         console.log(`✅ [TYPED] World loaded with ${world.spaceObjects.length} objects`);
-        
         // Get user data safely (we have user lock)
         let user = cacheManager.getUserUnsafe(session.userId!, userCtx);
         
@@ -56,7 +56,8 @@ export async function POST(request: NextRequest) {
           // Load user from database if not in cache
           console.log(`🔄 [TYPED] User ${session.userId} not in cache, loading from database...`);
           
-          return await cacheManager.withDatabaseRead(userCtx, async (dbCtx) => {
+          const dbCtx = await cacheManager.acquireDatabaseRead(userCtx);
+          try {
             console.log(`💾 [TYPED] Database read lock acquired for user loading`);
             
             user = await cacheManager.loadUserFromDbUnsafe(session.userId!, dbCtx);
@@ -68,18 +69,21 @@ export async function POST(request: NextRequest) {
             // Cache the loaded user
             cacheManager.setUserUnsafe(user, userCtx);
             console.log(`✅ [TYPED] User loaded and cached: ${user.username} (ID: ${user.id})`);
-            
-            // Continue with navigation logic
-            return await performNavigationLogic(world, user, speed, angle, cacheManager, userCtx);
-          });
+          } finally {
+            dbCtx.dispose();
+          }
         } else {
           console.log(`✅ [TYPED] User found in cache: ${user.username} (ID: ${user.id})`);
-          
-          // Continue with navigation logic directly
-          return await performNavigationLogic(world, user, speed, angle, cacheManager, userCtx);
         }
-      });
-    });
+        
+        // Continue with navigation logic
+        return await performNavigationLogic(world, user, speed, angle, cacheManager, userCtx);
+      } finally {
+        userCtx.dispose();
+      }
+    } finally {
+      worldCtx.dispose();
+    }
   } catch (error) {
     console.log(`❌ [TYPED] Navigation API error:`, error);
     return handleApiError(error);
@@ -87,7 +91,7 @@ export async function POST(request: NextRequest) {
 }
 
 /**
- * Perform the actual navigation logic with proper lock context
+ * Perform the navigation logic on the cached user and world
  * This function requires world write and user locks to be held
  */
 async function performNavigationLogic(
@@ -96,7 +100,7 @@ async function performNavigationLogic(
   speed: number | undefined,
   angle: number | undefined,
   cacheManager: TypedCacheManager,
-  userCtx: Parameters<Parameters<TypedCacheManager['withUserLock']>[1]>[0]
+  userCtx: UserContext
 ): Promise<NextResponse> {
   console.log(`🧭 [TYPED] Starting navigation logic with proper lock context`);
   

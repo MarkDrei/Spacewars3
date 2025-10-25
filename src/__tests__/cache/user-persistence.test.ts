@@ -23,21 +23,27 @@ describe('User Persistence to Database', () => {
     await cacheManager.initialize();
     
     // Load user into cache
-    const { createEmptyContext } = await import('@/lib/server/typedLocks');
-    const emptyCtx = createEmptyContext();
+    const { createLockContext } = await import('@/lib/server/typedLocks');
+    const emptyCtx = createLockContext();
     
-    await cacheManager.withUserLock(emptyCtx, async (userCtx) => {
+    const userCtx = await cacheManager.acquireUserLock(emptyCtx);
+    try {
       // Set user in cache
       cacheManager.setUserUnsafe(user, userCtx);
-    });
+    } finally {
+      userCtx.dispose();
+    }
     
     // Act: Modify user data and mark as dirty
     user.iron = 1000;
     user.techCounts.pulse_laser = 10;
     
-    await cacheManager.withUserLock(emptyCtx, async (userCtx) => {
-      cacheManager.updateUserUnsafe(user, userCtx);
-    });
+    const userCtx2 = await cacheManager.acquireUserLock(emptyCtx);
+    try {
+      cacheManager.updateUserUnsafe(user, userCtx2);
+    } finally {
+      userCtx2.dispose();
+    }
     
     // Force flush to database
     await cacheManager.flushAllToDatabase();
@@ -72,20 +78,26 @@ describe('User Persistence to Database', () => {
     await cacheManager.initialize();
     
     // Load user into cache
-    const { createEmptyContext } = await import('@/lib/server/typedLocks');
-    const emptyCtx = createEmptyContext();
+    const { createLockContext } = await import('@/lib/server/typedLocks');
+    const emptyCtx = createLockContext();
     
-    await cacheManager.withUserLock(emptyCtx, async (userCtx) => {
+    const userCtx = await cacheManager.acquireUserLock(emptyCtx);
+    try {
       cacheManager.setUserUnsafe(user, userCtx);
-    });
+    } finally {
+      userCtx.dispose();
+    }
     
     // Act: Modify user and mark as dirty
     user.iron = 5000;
     user.techCounts.auto_turret = 15;
     
-    await cacheManager.withUserLock(emptyCtx, async (userCtx) => {
-      cacheManager.updateUserUnsafe(user, userCtx);
-    });
+    const userCtx2 = await cacheManager.acquireUserLock(emptyCtx);
+    try {
+      cacheManager.updateUserUnsafe(user, userCtx2);
+    } finally {
+      userCtx2.dispose();
+    }
     
     // Shutdown should persist dirty users
     await cacheManager.shutdown();
