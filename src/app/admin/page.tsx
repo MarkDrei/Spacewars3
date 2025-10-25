@@ -328,9 +328,11 @@ const AdminPage: React.FC = () => {
                       <span className="user-id">User #{battle.attackeeId}</span>
                     </td>
                     <td className="data-cell">
+                      {/* battleStartTime is Unix timestamp (seconds), needs * 1000 */}
                       {new Date(battle.battleStartTime * 1000).toLocaleString()}
                     </td>
                     <td className="data-cell">
+                      {/* battleEndTime is already in milliseconds (Date.now()) */}
                       {battle.battleEndTime ? (
                         new Date(battle.battleEndTime).toLocaleString()
                       ) : (
