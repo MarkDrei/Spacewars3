@@ -194,7 +194,7 @@ export async function updateBattleDefenses(
 
 /**
  * End a battle
- * Updates battle in cache and persists immediately
+ * Updates battle in cache, persists to database, then removes from cache
  */
 export async function endBattle(
   battleId: number,
@@ -218,10 +218,13 @@ export async function endBattle(
   battle.attackerEndStats = attackerEndStats;
   battle.attackeeEndStats = attackeeEndStats;
 
-  // Update battle in cache
+  // Update battle in cache (marks as dirty)
   battleCache.updateBattleUnsafe(battle);
 
-  // Remove from active battles (completed battles are not cached)
+  // Persist to database immediately before removing from cache
+  await battleCache.persistDirtyBattles();
+
+  // Remove from cache (completed battles are not kept in memory)
   battleCache.deleteBattleUnsafe(battleId);
 }
 
