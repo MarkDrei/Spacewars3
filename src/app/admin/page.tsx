@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import AuthenticatedLayout from '@/components/Layout/AuthenticatedLayout';
 import { useAuth } from '@/lib/client/hooks/useAuth';
+import type { Battle } from '@/shared/battleTypes';
 import './AdminPage.css';
 
 interface UserData {
@@ -39,8 +40,10 @@ interface SpaceObject {
 interface AdminData {
   users: UserData[];
   spaceObjects: SpaceObject[];
+  battles: Battle[];
   totalUsers: number;
   totalObjects: number;
+  totalBattles: number;
   timestamp: string;
 }
 
@@ -159,6 +162,10 @@ const AdminPage: React.FC = () => {
           <div className="stat-card">
             <h3>🌌 Space Objects</h3>
             <div className="stat-value">{adminData.totalObjects}</div>
+          </div>
+          <div className="stat-card">
+            <h3>⚔️ Total Battles</h3>
+            <div className="stat-value">{adminData.totalBattles}</div>
           </div>
           <div className="stat-card">
             <h3>🆔 Current User</h3>
@@ -284,6 +291,75 @@ const AdminPage: React.FC = () => {
                     <td className="data-cell">{obj.angle.toFixed(1)}°</td>
                     <td className="data-cell">
                       {new Date(obj.last_position_update_ms).toLocaleString()}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Battles Table */}
+        <div className="data-section">
+          <h2>⚔️ Battles Table</h2>
+          <div className="data-table-container">
+            <table className="data-table admin-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Attacker</th>
+                  <th>Attackee</th>
+                  <th>Start Time</th>
+                  <th>End Time</th>
+                  <th>Status</th>
+                  <th>Winner</th>
+                  <th>Loser</th>
+                  <th>Events</th>
+                </tr>
+              </thead>
+              <tbody>
+                {adminData.battles.map((battle) => (
+                  <tr key={battle.id} className="data-row">
+                    <td className="data-cell">{battle.id}</td>
+                    <td className="data-cell">
+                      <span className="user-id">User #{battle.attackerId}</span>
+                    </td>
+                    <td className="data-cell">
+                      <span className="user-id">User #{battle.attackeeId}</span>
+                    </td>
+                    <td className="data-cell">
+                      {new Date(battle.battleStartTime * 1000).toLocaleString()}
+                    </td>
+                    <td className="data-cell">
+                      {battle.battleEndTime ? (
+                        new Date(battle.battleEndTime).toLocaleString()
+                      ) : (
+                        <span className="ongoing">-</span>
+                      )}
+                    </td>
+                    <td className="data-cell">
+                      {battle.battleEndTime ? (
+                        <span className="status-ended">Ended</span>
+                      ) : (
+                        <span className="status-ongoing">Ongoing</span>
+                      )}
+                    </td>
+                    <td className="data-cell">
+                      {battle.winnerId ? (
+                        <span className="user-id">User #{battle.winnerId}</span>
+                      ) : (
+                        <span className="empty">-</span>
+                      )}
+                    </td>
+                    <td className="data-cell">
+                      {battle.loserId ? (
+                        <span className="user-id">User #{battle.loserId}</span>
+                      ) : (
+                        <span className="empty">-</span>
+                      )}
+                    </td>
+                    <td className="data-cell">
+                      <span className="event-count">{battle.battleLog.length}</span>
                     </td>
                   </tr>
                 ))}

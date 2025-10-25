@@ -4,6 +4,8 @@ import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth, ApiError } from '@/lib/server/errors';
 import { getDatabase } from '@/lib/server/database';
 import { getUserById } from '@/lib/server/userRepo';
+import { getAllBattles } from '@/lib/server/battleRepo';
+import type { Battle } from '@/shared/battleTypes';
 
 interface UserData {
   id: number;
@@ -39,8 +41,10 @@ interface SpaceObject {
 interface AdminData {
   users: UserData[];
   spaceObjects: SpaceObject[];
+  battles: Battle[];
   totalUsers: number;
   totalObjects: number;
+  totalBattles: number;
   timestamp: string;
 }
 
@@ -159,11 +163,16 @@ export async function GET(request: NextRequest) {
       });
     });
 
+    // Get all battles
+    const battles = await getAllBattles();
+
     const adminData: AdminData = {
       users,
       spaceObjects,
+      battles,
       totalUsers: users.length,
       totalObjects: spaceObjects.length,
+      totalBattles: battles.length,
       timestamp: new Date().toISOString()
     };
 
