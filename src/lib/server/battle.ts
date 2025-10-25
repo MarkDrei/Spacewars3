@@ -276,6 +276,13 @@ export class BattleEngine {
     const totalDamage = this.calculateDamage(weaponType, weaponData.count);
     const damageResult = this.applyDamage(targetUserId, totalDamage);
 
+    // Track total damage dealt by attacker/attackee
+    if (isAttacker) {
+      this.battle.attackerTotalDamage += totalDamage;
+    } else {
+      this.battle.attackeeTotalDamage += totalDamage;
+    }
+
     // Fire the weapon (update cooldown)
     this.fireWeapon(userId, weaponType, currentTime);
 

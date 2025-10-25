@@ -79,7 +79,9 @@ export async function GET(request: NextRequest) {
         myStats,
         opponentStats,
         weaponCooldowns,
-        battleLog: battle.battleLog
+        battleLog: battle.battleLog,
+        myTotalDamage: isAttacker ? battle.attackerTotalDamage : battle.attackeeTotalDamage,
+        opponentTotalDamage: isAttacker ? battle.attackeeTotalDamage : battle.attackerTotalDamage
       }
     });
     
