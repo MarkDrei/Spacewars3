@@ -12,6 +12,22 @@ export interface UnreadMessage {
 class MessagesService {
 
   /**
+   * Mark all messages as read for the current user
+   */
+  async markAllAsRead(): Promise<{ success: boolean; markedCount: number }> {
+    const response = await fetch('/api/messages/mark-read', {
+      method: 'POST',
+      credentials: 'include'
+    });
+    
+    if (!response.ok) {
+      throw new Error('Failed to mark messages as read');
+    }
+    
+    return response.json();
+  }
+
+  /**
    * Format timestamp for display
    */
   formatTime(timestamp: number): string {

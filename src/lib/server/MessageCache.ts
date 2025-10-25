@@ -137,7 +137,96 @@ export class MessageCache {
   }
 
   /**
+   * Get unread messages for a user without marking them as read
+   */
+  async getUnreadMessages(userId: number): Promise<UnreadMessage[]> {
+    if (!this.isInitialized) {
+      await this.initialize();
+    }
+
+    const ctx = createLockContext();
+    const dataCtx = await ctx.acquireWrite(MESSAGE_DATA_LOCK);
+    
+    try {
+      // Get all messages (will load from DB if not cached)
+      let allMessages = this.userMessages.get(userId);
+      
+      if (!allMessages) {
+        // Load from database
+        console.log(`📬 Loading messages for user ${userId} from database...`);
+        allMessages = await this.loadMessagesFromDb(dataCtx, userId);
+        this.userMessages.set(userId, allMessages);
+        this.stats.cacheMisses++;
+      } else {
+        this.stats.cacheHits++;
+      }
+      
+      // Filter unread and convert to UnreadMessage format
+      const unreadMessages: UnreadMessage[] = allMessages
+        .filter(msg => !msg.is_read)
+        .map(msg => ({
+          id: msg.id,
+          created_at: msg.created_at,
+          message: msg.message
+        }));
+
+      return unreadMessages;
+    } finally {
+      dataCtx.dispose();
+    }
+  }
+
+  /**
+   * Mark all unread messages as read for a user
+   */
+  async markAllMessagesAsRead(userId: number): Promise<number> {
+    if (!this.isInitialized) {
+      await this.initialize();
+    }
+
+    const ctx = createLockContext();
+    const dataCtx = await ctx.acquireWrite(MESSAGE_DATA_LOCK);
+    
+    try {
+      // Get all messages (will load from DB if not cached)
+      let allMessages = this.userMessages.get(userId);
+      
+      if (!allMessages) {
+        // Load from database
+        console.log(`📬 Loading messages for user ${userId} from database...`);
+        allMessages = await this.loadMessagesFromDb(dataCtx, userId);
+        this.userMessages.set(userId, allMessages);
+        this.stats.cacheMisses++;
+      } else {
+        this.stats.cacheHits++;
+      }
+      
+      // Count unread messages
+      let markedCount = 0;
+      
+      // Mark as read in cache
+      allMessages.forEach(msg => {
+        if (!msg.is_read) {
+          msg.is_read = true;
+          markedCount++;
+        }
+      });
+
+      // Mark user as dirty for persistence
+      if (markedCount > 0) {
+        this.dirtyUsers.add(userId);
+        console.log(`📬 Marked ${markedCount} message(s) as read for user ${userId}`);
+      }
+
+      return markedCount;
+    } finally {
+      dataCtx.dispose();
+    }
+  }
+
+  /**
    * Get unread messages for a user and mark them as read
+   * @deprecated Use getUnreadMessages() and markAllMessagesAsRead() separately
    */
   async getAndMarkUnreadMessages(userId: number): Promise<UnreadMessage[]> {
     if (!this.isInitialized) {
@@ -593,7 +682,12 @@ export async function sendMessageToUser(userId: number, message: string): Promis
 
 export async function getUserMessages(userId: number): Promise<UnreadMessage[]> {
   const cache = getMessageCache();
-  return await cache.getAndMarkUnreadMessages(userId);
+  return await cache.getUnreadMessages(userId);
+}
+
+export async function markUserMessagesAsRead(userId: number): Promise<number> {
+  const cache = getMessageCache();
+  return await cache.markAllMessagesAsRead(userId);
 }
 
 export async function getUserMessageCount(userId: number): Promise<number> {

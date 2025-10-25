@@ -15,10 +15,32 @@ interface HomePageClientProps {
 }
 
 const HomePageClient: React.FC<HomePageClientProps> = ({ auth, initialMessages }) => {
-  // Messages are pre-loaded from server - no client-side fetching needed
+  // Messages are pre-loaded from server - maintain in state for dynamic updates
+  const [messages, setMessages] = React.useState<UnreadMessage[]>(initialMessages);
+  const [isMarkingAsRead, setIsMarkingAsRead] = React.useState(false);
+  
   const { techCounts, weapons, defenses, isLoading: techLoading, error: techError } = useTechCounts();
   const { defenseValues, isLoading: defenseLoading, error: defenseError } = useDefenseValues();
   const { battleStatus, isLoading: battleLoading, error: battleError } = useBattleStatus();
+
+  // Handler for marking all messages as read
+  const handleMarkAllAsRead = async () => {
+    if (isMarkingAsRead || messages.length === 0) return;
+    
+    setIsMarkingAsRead(true);
+    try {
+      const result = await messagesService.markAllAsRead();
+      if (result.success) {
+        // Clear messages from display
+        setMessages([]);
+        console.log(`✅ Marked ${result.markedCount} message(s) as read`);
+      }
+    } catch (error) {
+      console.error('❌ Failed to mark messages as read:', error);
+    } finally {
+      setIsMarkingAsRead(false);
+    }
+  };
 
   // Use battle stats for defense values if in battle, otherwise use regular defense values
   const displayDefenseValues = battleStatus?.inBattle && battleStatus.battle?.myStats 
@@ -114,18 +136,50 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ auth, initialMessages }
             <table className="data-table">
               <thead>
                 <tr>
-                  <th colSpan={2}>Notifications</th>
+                  <th colSpan={2}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span>Notifications</span>
+                      {messages.length > 0 && (
+                        <button 
+                          onClick={handleMarkAllAsRead}
+                          disabled={isMarkingAsRead}
+                          style={{
+                            padding: '4px 12px',
+                            fontSize: '0.85rem',
+                            backgroundColor: isMarkingAsRead ? '#666' : '#4caf50',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '4px',
+                            cursor: isMarkingAsRead ? 'not-allowed' : 'pointer',
+                            transition: 'background-color 0.2s'
+                          }}
+                          onMouseEnter={(e) => {
+                            if (!isMarkingAsRead) {
+                              (e.target as HTMLButtonElement).style.backgroundColor = '#45a049';
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            if (!isMarkingAsRead) {
+                              (e.target as HTMLButtonElement).style.backgroundColor = '#4caf50';
+                            }
+                          }}
+                        >
+                          {isMarkingAsRead ? 'Marking...' : 'Mark All as Read'}
+                        </button>
+                      )}
+                    </div>
+                  </th>
                 </tr>
               </thead>
               <tbody>
-                {initialMessages.length === 0 ? (
+                {messages.length === 0 ? (
                   <tr>
                     <td colSpan={2} className="empty-cell">
                       No new messages
                     </td>
                   </tr>
                 ) : (
-                  initialMessages.map(message => (
+                  messages.map(message => (
                     <tr key={message.id} className="data-row">
                       <td className="time-cell">
                         <div className="time-line">{messagesService.formatTime(message.created_at)}</div>
