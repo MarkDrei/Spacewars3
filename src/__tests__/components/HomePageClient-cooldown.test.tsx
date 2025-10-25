@@ -9,7 +9,8 @@ import { describe, it, expect } from 'vitest';
 
 describe('HomePageClient - Weapon Cooldown Display Logic', () => {
   /**
-   * Test the cooldown calculation logic used in HomePageClient.tsx lines 342-367
+   * Test the cooldown calculation logic used in the weapons table section of HomePageClient.tsx
+   * (specifically the map over battleStatus.battle.weaponCooldowns)
    */
   it('should correctly calculate time remaining when cooldown is "next ready time"', () => {
     const now = 1000; // Current time in seconds
