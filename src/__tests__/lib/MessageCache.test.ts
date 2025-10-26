@@ -8,7 +8,8 @@ import {
   getMessageCache,
   sendMessageToUser,
   getUserMessages,
-  getUserMessageCount
+  getUserMessageCount,
+  markUserMessagesAsRead
 } from '../../lib/server/MessageCache';
 
 describe('MessageCache', () => {
@@ -85,24 +86,6 @@ describe('MessageCache', () => {
       const count = await cache.getUnreadMessageCount(1);
       
       expect(count).toBe(2);
-    });
-
-    test('getAndMarkUnreadMessages_returnsMessagesAndMarksRead', async () => {
-      const cache = getMessageCache();
-      await cache.initialize();
-
-      await cache.createMessage(1, 'Message 1');
-      await cache.createMessage(1, 'Message 2');
-      
-      const unreadMessages = await cache.getAndMarkUnreadMessages(1);
-      
-      expect(unreadMessages).toHaveLength(2);
-      expect(unreadMessages[0].message).toBe('Message 1'); // Oldest first (ascending)
-      expect(unreadMessages[1].message).toBe('Message 2');
-      
-      // Second call should return empty (already marked as read)
-      const unreadMessages2 = await cache.getAndMarkUnreadMessages(1);
-      expect(unreadMessages2).toHaveLength(0);
     });
   });
 
@@ -248,7 +231,7 @@ describe('MessageCache', () => {
       const tempId = await cache.createMessage(1, 'Test message');
       
       // Immediately mark as read (before async write completes)
-      await cache.getAndMarkUnreadMessages(1);
+      await cache.markAllMessagesAsRead(1);
       
       // Wait for async write to complete
       await cache.waitForPendingWrites();
@@ -291,7 +274,7 @@ describe('MessageCache', () => {
 
       // Create message and immediately mark as read
       await cache.createMessage(1, 'Test message');
-      await cache.getAndMarkUnreadMessages(1);
+      await cache.markAllMessagesAsRead(1);
       
       // Try to persist before async write completes
       // Should not fail even though message has temp ID
@@ -318,7 +301,7 @@ describe('MessageCache', () => {
       await cache.createMessage(testUserId2, 'Message 2');
       
       // Mark one as read
-      await cache.getAndMarkUnreadMessages(testUserId1);
+      await cache.markAllMessagesAsRead(testUserId1);
       
       // Shutdown should wait for pending writes and flush dirty users
       await cache.shutdown();
@@ -353,6 +336,133 @@ describe('MessageCache', () => {
       // Message should be in cache with real ID (success case)
       const messages = await cache.getMessagesForUser(1);
       expect(messages).toHaveLength(1);
+    });
+  });
+
+  describe('Separated Get and Mark Operations', () => {
+    test('getUnreadMessages_doesNotMarkAsRead', async () => {
+      const cache = getMessageCache();
+      await cache.initialize();
+
+      await cache.createMessage(1, 'Message 1');
+      await cache.createMessage(1, 'Message 2');
+      await cache.waitForPendingWrites();
+      
+      // Get unread messages
+      const unread1 = await cache.getUnreadMessages(1);
+      expect(unread1).toHaveLength(2);
+      
+      // Should still have 2 unread messages
+      const unread2 = await cache.getUnreadMessages(1);
+      expect(unread2).toHaveLength(2);
+      
+      // Count should still be 2
+      const count = await cache.getUnreadMessageCount(1);
+      expect(count).toBe(2);
+    });
+
+    test('markAllMessagesAsRead_marksAllAsRead', async () => {
+      const cache = getMessageCache();
+      await cache.initialize();
+
+      await cache.createMessage(1, 'Message 1');
+      await cache.createMessage(1, 'Message 2');
+      await cache.createMessage(1, 'Message 3');
+      await cache.waitForPendingWrites();
+      
+      // Verify 3 unread messages
+      const unread = await cache.getUnreadMessages(1);
+      expect(unread).toHaveLength(3);
+      
+      // Mark all as read
+      const markedCount = await cache.markAllMessagesAsRead(1);
+      expect(markedCount).toBe(3);
+      
+      // Should have no unread messages now
+      const unreadAfter = await cache.getUnreadMessages(1);
+      expect(unreadAfter).toHaveLength(0);
+      
+      const count = await cache.getUnreadMessageCount(1);
+      expect(count).toBe(0);
+    });
+
+    test('markAllMessagesAsRead_noUnreadMessages_returnsZero', async () => {
+      const cache = getMessageCache();
+      await cache.initialize();
+
+      // Mark non-existent messages as read
+      const markedCount = await cache.markAllMessagesAsRead(999);
+      expect(markedCount).toBe(0);
+    });
+
+    test('getUserMessages_doesNotMarkAsRead', async () => {
+      await sendMessageToUser(1, 'Message 1');
+      await sendMessageToUser(1, 'Message 2');
+      
+      const cache = getMessageCache();
+      await cache.waitForPendingWrites();
+      
+      // Get messages
+      const messages1 = await getUserMessages(1);
+      expect(messages1).toHaveLength(2);
+      
+      // Should still have 2 unread
+      const messages2 = await getUserMessages(1);
+      expect(messages2).toHaveLength(2);
+    });
+
+    test('getUnreadMessages_thenMarkAllAsRead_workflow', async () => {
+      const cache = getMessageCache();
+      await cache.initialize();
+
+      // Create messages
+      await cache.createMessage(1, 'Message 1');
+      await cache.createMessage(1, 'Message 2');
+      await cache.createMessage(1, 'Message 3');
+      await cache.waitForPendingWrites();
+      
+      // Step 1: Get unread messages to display
+      const unread = await cache.getUnreadMessages(1);
+      expect(unread).toHaveLength(3);
+      expect(unread[0].message).toBe('Message 1');
+      expect(unread[1].message).toBe('Message 2');
+      expect(unread[2].message).toBe('Message 3');
+      
+      // Step 2: User clicks "Mark All as Read"
+      const markedCount = await cache.markAllMessagesAsRead(1);
+      expect(markedCount).toBe(3);
+      
+      // Step 3: Verify no more unread messages
+      const unreadAfter = await cache.getUnreadMessages(1);
+      expect(unreadAfter).toHaveLength(0);
+    });
+
+    test('markAllMessagesAsRead_persistsToDB', async () => {
+      const cache1 = getMessageCache();
+      await cache1.initialize();
+
+      // Use unique user ID to avoid conflicts
+      const testUserId = 8888;
+
+      // Create messages
+      await cache1.createMessage(testUserId, 'Message 1');
+      await cache1.createMessage(testUserId, 'Message 2');
+      await cache1.waitForPendingWrites();
+      
+      // Mark as read
+      await cache1.markAllMessagesAsRead(testUserId);
+      await cache1.flushToDatabase();
+      
+      // Shutdown and reinitialize
+      await cache1.shutdown();
+      MessageCache.resetInstance();
+      
+      const cache2 = getMessageCache();
+      await cache2.initialize();
+      
+      // Should have no unread messages
+      const unread = await cache2.getUnreadMessages(testUserId);
+      expect(unread).toHaveLength(0);
     });
   });
 });

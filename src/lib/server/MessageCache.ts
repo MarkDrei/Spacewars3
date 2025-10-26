@@ -137,9 +137,9 @@ export class MessageCache {
   }
 
   /**
-   * Get unread messages for a user and mark them as read
+   * Get unread messages for a user
    */
-  async getAndMarkUnreadMessages(userId: number): Promise<UnreadMessage[]> {
+  async getUnreadMessages(userId: number): Promise<UnreadMessage[]> {
     if (!this.isInitialized) {
       await this.initialize();
     }
@@ -148,18 +148,7 @@ export class MessageCache {
     const dataCtx = await ctx.acquireWrite(MESSAGE_DATA_LOCK);
     
     try {
-      // Get all messages (will load from DB if not cached)
-      let allMessages = this.userMessages.get(userId);
-      
-      if (!allMessages) {
-        // Load from database
-        console.log(`📬 Loading messages for user ${userId} from database...`);
-        allMessages = await this.loadMessagesFromDb(dataCtx, userId);
-        this.userMessages.set(userId, allMessages);
-        this.stats.cacheMisses++;
-      } else {
-        this.stats.cacheHits++;
-      }
+      const allMessages = await this.ensureMessagesLoaded(dataCtx, userId);
       
       // Filter unread and convert to UnreadMessage format
       const unreadMessages: UnreadMessage[] = allMessages
@@ -170,20 +159,44 @@ export class MessageCache {
           message: msg.message
         }));
 
+      return unreadMessages;
+    } finally {
+      dataCtx.dispose();
+    }
+  }
+
+  /**
+   * Mark all unread messages as read for a user
+   */
+  async markAllMessagesAsRead(userId: number): Promise<number> {
+    if (!this.isInitialized) {
+      await this.initialize();
+    }
+
+    const ctx = createLockContext();
+    const dataCtx = await ctx.acquireWrite(MESSAGE_DATA_LOCK);
+    
+    try {
+      const allMessages = await this.ensureMessagesLoaded(dataCtx, userId);
+      
+      // Count unread messages
+      let markedCount = 0;
+      
       // Mark as read in cache
       allMessages.forEach(msg => {
         if (!msg.is_read) {
           msg.is_read = true;
+          markedCount++;
         }
       });
 
       // Mark user as dirty for persistence
-      if (unreadMessages.length > 0) {
+      if (markedCount > 0) {
         this.dirtyUsers.add(userId);
-        console.log(`📬 Marked ${unreadMessages.length} message(s) as read for user ${userId}`);
+        console.log(`📬 Marked ${markedCount} message(s) as read for user ${userId}`);
       }
 
-      return unreadMessages;
+      return markedCount;
     } finally {
       dataCtx.dispose();
     }
@@ -386,6 +399,29 @@ export class MessageCache {
   // ============================================
   // PRIVATE METHODS
   // ============================================
+
+  /**
+   * Ensure messages are loaded for a user (from cache or DB)
+   * Helper method to reduce code duplication
+   */
+  private async ensureMessagesLoaded<THeld extends readonly LockLevel[]>(
+    context: ValidLock4Context<THeld> extends string ? never : ValidLock4Context<THeld>,
+    userId: number
+  ): Promise<Message[]> {
+    let allMessages = this.userMessages.get(userId);
+    
+    if (!allMessages) {
+      // Load from database
+      console.log(`📬 Loading messages for user ${userId} from database...`);
+      allMessages = await this.loadMessagesFromDb(context, userId);
+      this.userMessages.set(userId, allMessages);
+      this.stats.cacheMisses++;
+    } else {
+      this.stats.cacheHits++;
+    }
+    
+    return allMessages;
+  }
 
   private async loadMessagesFromDb<THeld extends readonly LockLevel[]>(
     context: ValidLock4Context<THeld> extends string ? never : ValidLock4Context<THeld>,
@@ -593,7 +629,12 @@ export async function sendMessageToUser(userId: number, message: string): Promis
 
 export async function getUserMessages(userId: number): Promise<UnreadMessage[]> {
   const cache = getMessageCache();
-  return await cache.getAndMarkUnreadMessages(userId);
+  return await cache.getUnreadMessages(userId);
+}
+
+export async function markUserMessagesAsRead(userId: number): Promise<number> {
+  const cache = getMessageCache();
+  return await cache.markAllMessagesAsRead(userId);
 }
 
 export async function getUserMessageCount(userId: number): Promise<number> {
