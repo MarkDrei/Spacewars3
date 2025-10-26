@@ -143,6 +143,136 @@
   color: #66bb6a;
 }
 
+/* Battle History Styles */
+.battle-history {
+  background-color: #1e1e1e;
+  padding: 2rem;
+  border-radius: 8px;
+  margin-top: 2rem;
+}
+
+.battle-history h3 {
+  color: var(--primary-green);
+  margin: 0 0 1.5rem 0;
+  font-size: 1.5rem;
+}
+
+.loading-message,
+.no-battles-message {
+  text-align: center;
+  opacity: 0.7;
+  font-style: italic;
+  padding: 2rem 0;
+}
+
+.battle-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.battle-card {
+  background-color: #2d2d2d;
+  border-radius: 8px;
+  padding: 1.5rem;
+  border-left: 4px solid #666;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.battle-card:hover {
+  transform: translateX(4px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.battle-card.victory {
+  border-left-color: #66bb6a;
+}
+
+.battle-card.defeat {
+  border-left-color: #ef5350;
+}
+
+.battle-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.battle-result {
+  font-weight: bold;
+  font-size: 1.1rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 4px;
+}
+
+.battle-result.win {
+  color: #66bb6a;
+  background-color: rgba(102, 187, 106, 0.15);
+}
+
+.battle-result.loss {
+  color: #ef5350;
+  background-color: rgba(239, 83, 80, 0.15);
+}
+
+.battle-role {
+  font-size: 0.9rem;
+  opacity: 0.8;
+  padding: 0.25rem 0.75rem;
+  background-color: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+}
+
+.battle-details {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.battle-opponent {
+  font-size: 1.1rem;
+}
+
+.battle-opponent strong {
+  color: var(--primary-green);
+}
+
+.battle-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.75rem;
+  background-color: rgba(255, 255, 255, 0.03);
+  border-radius: 4px;
+}
+
+.stat-label {
+  font-size: 0.85rem;
+  opacity: 0.7;
+}
+
+.stat-item .stat-value {
+  font-size: 1.25rem;
+  font-weight: bold;
+  color: var(--primary-green);
+}
+
+.battle-time {
+  font-size: 0.85rem;
+  opacity: 0.6;
+  text-align: right;
+  margin-top: 0.5rem;
+}
+
 @media (max-width: 768px) {
   .profile-page {
     padding: 1rem 0.5rem;
@@ -166,5 +296,23 @@
   .achievements,
   .playtime-info {
     padding: 1.5rem;
+  }
+
+  .battle-history {
+    padding: 1.5rem;
+  }
+
+  .battle-card {
+    padding: 1rem;
+  }
+
+  .battle-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .battle-header {
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: flex-start;
   }
 }

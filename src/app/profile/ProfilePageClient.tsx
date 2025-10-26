@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import AuthenticatedLayout from '@/components/Layout/AuthenticatedLayout';
 import { ServerAuthState } from '@/lib/server/serverSession';
 import './ProfilePage.css';
@@ -9,7 +9,40 @@ interface ProfilePageClientProps {
   auth: ServerAuthState;
 }
 
+interface BattleHistoryItem {
+  id: number;
+  opponentUsername: string;
+  isAttacker: boolean;
+  didWin: boolean;
+  userDamage: number;
+  opponentDamage: number;
+  duration: number;
+  battleStartTime: number;
+  battleEndTime: number | null;
+}
+
 const ProfilePageClient: React.FC<ProfilePageClientProps> = ({ auth }) => {
+  const [battles, setBattles] = useState<BattleHistoryItem[]>([]);
+  const [isLoadingBattles, setIsLoadingBattles] = useState(true);
+  
+  // Fetch battle history on component mount
+  useEffect(() => {
+    const fetchBattles = async () => {
+      try {
+        const response = await fetch('/api/user-battles');
+        if (response.ok) {
+          const data = await response.json();
+          setBattles(data.battles || []);
+        }
+      } catch (error) {
+        console.error('Failed to fetch battle history:', error);
+      } finally {
+        setIsLoadingBattles(false);
+      }
+    };
+    
+    fetchBattles();
+  }, []);
   
   // Dummy user data - in a real app, this would come from state management or API
   const userStats = {
@@ -104,6 +137,56 @@ const ProfilePageClient: React.FC<ProfilePageClientProps> = ({ auth }) => {
         <div className="playtime-info">
           <h3>Playtime Statistics</h3>
           <p>Total time in space: <strong>{userStats.playtime}</strong></p>
+        </div>
+
+        {/* Battle History Section */}
+        <div className="battle-history">
+          <h3>Battle History</h3>
+          {isLoadingBattles ? (
+            <p className="loading-message">Loading battle history...</p>
+          ) : battles.length === 0 ? (
+            <p className="no-battles-message">No battles yet. Start your first battle!</p>
+          ) : (
+            <div className="battle-list">
+              {battles.map((battle) => (
+                <div 
+                  key={battle.id} 
+                  className={`battle-card ${battle.didWin ? 'victory' : 'defeat'}`}
+                >
+                  <div className="battle-header">
+                    <span className={`battle-result ${battle.didWin ? 'win' : 'loss'}`}>
+                      {battle.didWin ? '✓ Victory' : '✗ Defeat'}
+                    </span>
+                    <span className="battle-role">
+                      {battle.isAttacker ? 'Attacker' : 'Defender'}
+                    </span>
+                  </div>
+                  <div className="battle-details">
+                    <div className="battle-opponent">
+                      <strong>Opponent:</strong> {battle.opponentUsername}
+                    </div>
+                    <div className="battle-stats">
+                      <div className="stat-item">
+                        <span className="stat-label">Your Damage:</span>
+                        <span className="stat-value">{Math.round(battle.userDamage)}</span>
+                      </div>
+                      <div className="stat-item">
+                        <span className="stat-label">Opponent Damage:</span>
+                        <span className="stat-value">{Math.round(battle.opponentDamage)}</span>
+                      </div>
+                      <div className="stat-item">
+                        <span className="stat-label">Duration:</span>
+                        <span className="stat-value">{battle.duration}s</span>
+                      </div>
+                    </div>
+                    <div className="battle-time">
+                      {new Date(battle.battleStartTime * 1000).toLocaleString()}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
         </div>
       </div>
