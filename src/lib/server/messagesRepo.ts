@@ -108,7 +108,7 @@ export class MessagesRepo {
   }
 
   /**
-   * Get count of unread messages for a user (without marking them as read)
+   * Get count of unread messages for a user
    */
   getUnreadMessageCount(userId: number): Promise<number> {
     return new Promise((resolve, reject) => {

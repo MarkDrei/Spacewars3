@@ -137,7 +137,7 @@ export class MessageCache {
   }
 
   /**
-   * Get unread messages for a user without marking them as read
+   * Get unread messages for a user
    */
   async getUnreadMessages(userId: number): Promise<UnreadMessage[]> {
     if (!this.isInitialized) {
@@ -197,60 +197,6 @@ export class MessageCache {
       }
 
       return markedCount;
-    } finally {
-      dataCtx.dispose();
-    }
-  }
-
-  /**
-   * Get unread messages for a user and mark them as read
-   * @deprecated Use getUnreadMessages() and markAllMessagesAsRead() separately
-   */
-  async getAndMarkUnreadMessages(userId: number): Promise<UnreadMessage[]> {
-    if (!this.isInitialized) {
-      await this.initialize();
-    }
-
-    const ctx = createLockContext();
-    const dataCtx = await ctx.acquireWrite(MESSAGE_DATA_LOCK);
-    
-    try {
-      // Get all messages (will load from DB if not cached)
-      let allMessages = this.userMessages.get(userId);
-      
-      if (!allMessages) {
-        // Load from database
-        console.log(`📬 Loading messages for user ${userId} from database...`);
-        allMessages = await this.loadMessagesFromDb(dataCtx, userId);
-        this.userMessages.set(userId, allMessages);
-        this.stats.cacheMisses++;
-      } else {
-        this.stats.cacheHits++;
-      }
-      
-      // Filter unread and convert to UnreadMessage format
-      const unreadMessages: UnreadMessage[] = allMessages
-        .filter(msg => !msg.is_read)
-        .map(msg => ({
-          id: msg.id,
-          created_at: msg.created_at,
-          message: msg.message
-        }));
-
-      // Mark as read in cache
-      allMessages.forEach(msg => {
-        if (!msg.is_read) {
-          msg.is_read = true;
-        }
-      });
-
-      // Mark user as dirty for persistence
-      if (unreadMessages.length > 0) {
-        this.dirtyUsers.add(userId);
-        console.log(`📬 Marked ${unreadMessages.length} message(s) as read for user ${userId}`);
-      }
-
-      return unreadMessages;
     } finally {
       dataCtx.dispose();
     }

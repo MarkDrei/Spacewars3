@@ -87,24 +87,6 @@ describe('MessageCache', () => {
       
       expect(count).toBe(2);
     });
-
-    test('getAndMarkUnreadMessages_returnsMessagesAndMarksRead', async () => {
-      const cache = getMessageCache();
-      await cache.initialize();
-
-      await cache.createMessage(1, 'Message 1');
-      await cache.createMessage(1, 'Message 2');
-      
-      const unreadMessages = await cache.getAndMarkUnreadMessages(1);
-      
-      expect(unreadMessages).toHaveLength(2);
-      expect(unreadMessages[0].message).toBe('Message 1'); // Oldest first (ascending)
-      expect(unreadMessages[1].message).toBe('Message 2');
-      
-      // Second call should return empty (already marked as read)
-      const unreadMessages2 = await cache.getAndMarkUnreadMessages(1);
-      expect(unreadMessages2).toHaveLength(0);
-    });
   });
 
   describe('Convenience Functions', () => {
@@ -249,7 +231,7 @@ describe('MessageCache', () => {
       const tempId = await cache.createMessage(1, 'Test message');
       
       // Immediately mark as read (before async write completes)
-      await cache.getAndMarkUnreadMessages(1);
+      await cache.markAllMessagesAsRead(1);
       
       // Wait for async write to complete
       await cache.waitForPendingWrites();
@@ -292,7 +274,7 @@ describe('MessageCache', () => {
 
       // Create message and immediately mark as read
       await cache.createMessage(1, 'Test message');
-      await cache.getAndMarkUnreadMessages(1);
+      await cache.markAllMessagesAsRead(1);
       
       // Try to persist before async write completes
       // Should not fail even though message has temp ID
@@ -319,7 +301,7 @@ describe('MessageCache', () => {
       await cache.createMessage(testUserId2, 'Message 2');
       
       // Mark one as read
-      await cache.getAndMarkUnreadMessages(testUserId1);
+      await cache.markAllMessagesAsRead(testUserId1);
       
       // Shutdown should wait for pending writes and flush dirty users
       await cache.shutdown();
@@ -366,7 +348,7 @@ describe('MessageCache', () => {
       await cache.createMessage(1, 'Message 2');
       await cache.waitForPendingWrites();
       
-      // Get unread messages without marking as read
+      // Get unread messages
       const unread1 = await cache.getUnreadMessages(1);
       expect(unread1).toHaveLength(2);
       
@@ -420,7 +402,7 @@ describe('MessageCache', () => {
       const cache = getMessageCache();
       await cache.waitForPendingWrites();
       
-      // Get messages - should not mark as read
+      // Get messages
       const messages1 = await getUserMessages(1);
       expect(messages1).toHaveLength(2);
       
