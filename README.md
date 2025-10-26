@@ -1,5 +1,7 @@
 # Spacewars: Ironcore
 
+[![CI](https://github.com/MarkDrei/Spacewars3/actions/workflows/ci.yml/badge.svg)](https://github.com/MarkDrei/Spacewars3/actions/workflows/ci.yml)
+
 A 2D space exploration game with a toroidal world, featuring collectable objects, interception mechanics, and a radar system. Built with a **deadlock-free, compile-time safe lock system** for optimal performance and reliability.
 
 ## Overview
