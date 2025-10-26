@@ -10,6 +10,7 @@ import { TechFactory } from './TechFactory';
 import { ApiError } from './errors';
 import { getTypedCacheManager } from './typedCacheManager';
 import { createLockContext } from './typedLocks';
+import { getBattleCache } from './BattleCache';
 
 /**
  * Maximum distance to initiate battle (same as collection distance)
@@ -215,14 +216,30 @@ async function updateUserDefense(
   const ctx = createLockContext();
   const userCtx = await cacheManager.acquireUserLock(ctx);
   try {
-    const user = cacheManager.getUserUnsafe(userId, userCtx);
-    if (user) {
-      user.hullCurrent = hull;
-      user.armorCurrent = armor;
-      user.shieldCurrent = shield;
-      user.defenseLastRegen = Math.floor(Date.now() / 1000);
-      cacheManager.updateUserUnsafe(user, userCtx);
+    let user = cacheManager.getUserUnsafe(userId, userCtx);
+    
+    // Load user from DB if not in cache
+    if (!user) {
+      const dbCtx = await cacheManager.acquireDatabaseRead(userCtx);
+      try {
+        user = await cacheManager.loadUserFromDbUnsafe(userId, dbCtx);
+        if (!user) {
+          throw new Error(`User ${userId} not found`);
+        }
+        // Cache the loaded user
+        cacheManager.setUserUnsafe(user, userCtx);
+      } finally {
+        dbCtx.dispose();
+      }
     }
+    
+    // Update defense values and reset regeneration timer
+    user.hullCurrent = hull;
+    user.armorCurrent = armor;
+    user.shieldCurrent = shield;
+    user.defenseLastRegen = Math.floor(Date.now() / 1000);
+    
+    cacheManager.updateUserUnsafe(user, userCtx);
   } finally {
     userCtx.dispose();
   }
@@ -424,6 +441,12 @@ export async function updateBattle(battleId: number): Promise<Battle> {
   // Update weapon cooldowns
   await BattleRepo.updateWeaponCooldowns(battleId, battle.attackerId, battle.attackerWeaponCooldowns);
   await BattleRepo.updateWeaponCooldowns(battleId, battle.attackeeId, battle.attackeeWeaponCooldowns);
+  
+  // CRITICAL: Persist the modified battle stats back to cache
+  // BattleEngine modifies attackerStartStats/attackeeStartStats during combat
+  // We must save these changes or they'll be lost on next updateBattle() call
+  const battleCache = getBattleCache();
+  battleCache.updateBattleUnsafe(battle);
   
   // Apply battle damage to User objects in cache
   // The battle stats track damage dealt, but we need to update the actual User objects
