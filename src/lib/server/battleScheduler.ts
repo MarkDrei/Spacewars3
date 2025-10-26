@@ -6,9 +6,8 @@ import { BattleRepo } from './battleRepo';
 import { BattleEngine } from './battle';
 import type { Battle, BattleEvent } from '../../shared/battleTypes';
 import { TechFactory } from './TechFactory';
-import { MessagesRepo } from './messagesRepo';
+import { sendMessageToUser } from './MessageCache';
 import { getBattleCache } from './BattleCache';
-import { getDatabase } from './database';
 import { getTypedCacheManager } from './typedCacheManager';
 import { createLockContext } from './typedLocks';
 
@@ -33,13 +32,11 @@ async function updateUserBattleState(userId: number, inBattle: boolean, battleId
 }
 
 /**
- * Helper to create a message for a user
- * Already uses MessagesRepo which has proper cache integration
+ * Helper to create a message for a user via MessageCache
+ * Uses the cache system to ensure consistency
  */
 async function createMessage(userId: number, message: string): Promise<void> {
-  const db = await getDatabase();
-  const messagesRepo = new MessagesRepo(db);
-  await messagesRepo.createMessage(userId, message);
+  await sendMessageToUser(userId, message);
 }
 
 /**

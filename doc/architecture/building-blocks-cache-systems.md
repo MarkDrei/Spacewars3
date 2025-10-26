@@ -962,6 +962,126 @@ shutdown(): Promise<void>
 
 ---
 
+## Cache Consistency Issues (October 2025 Audit)
+
+### Issue 1: MessagesRepo bypassing MessageCache ✅ FIXED
+
+**Problem:** `battleScheduler.ts` created `MessagesRepo` instances directly, bypassing `MessageCache`.
+
+**Impact:** Messages created outside cache could cause inconsistency.
+
+**Resolution:** ✅ **FIXED** - `battleScheduler.ts` now uses `MessageCache.sendMessageToUser()`.
+
+---
+
+### Issue 2: TechRepo bypassing TypedCacheManager ❌ UNRESOLVED
+
+**Problem:** `TechRepo` directly reads/writes `users` table columns:
+- `tech_counts` (pulse_laser, auto_turret, etc.) 
+- `iron`
+- `build_queue` 
+- `defense_current` values
+
+**Impact:** Cache can have stale data. When `TechRepo` modifies user data:
+1. Changes written directly to DB
+2. TypedCacheManager's cached User becomes stale
+3. API routes reading from cache see old values
+
+**Current Usage:**
+- `src/app/api/build-item/route.ts` - Uses TechRepo for iron/queue operations
+- `src/app/api/build-status/route.ts` - Uses TechRepo to read build queue
+- `src/app/api/complete-build/route.ts` - Uses TechRepo to process builds
+
+**Root Cause:** 
+- User object is cached in TypedCacheManager (includes `iron`, `techCounts`, defense values)
+- Build queue is NOT cached (stored only in DB)
+- TechRepo doesn't coordinate with cache for cached fields
+
+**Recommended Fix:**
+
+**Phase 1: Make TechRepo cache-aware for iron/techCounts**
+```typescript
+// TechRepo should:
+async updateIron(userId: number, delta: number): Promise<void> {
+  const cacheManager = getTypedCacheManager();
+  const ctx = createLockContext();
+  const userCtx = await cacheManager.acquireUserLock(ctx);
+  try {
+    // Load user from cache
+    let user = cacheManager.getUserUnsafe(userId, userCtx);
+    if (!user) {
+      const dbCtx = await cacheManager.acquireDatabaseRead(userCtx);
+      try {
+        user = await cacheManager.loadUserFromDbUnsafe(userId, dbCtx);
+        if (user) cacheManager.setUserUnsafe(user, userCtx);
+      } finally {
+        dbCtx.dispose();
+      }
+    }
+    
+    // Modify in-memory
+    if (user) {
+      user.iron += delta;
+      user.last_updated = Math.floor(Date.now() / 1000);
+      
+      // Mark as dirty in cache (triggers persistence)
+      cacheManager.updateUserUnsafe(user, userCtx);
+    }
+  } finally {
+    userCtx.dispose();
+  }
+}
+```
+
+**Phase 2: Build queue operations remain DB-direct**
+- Build queue is not cached (rarely accessed, time-based)
+- TechRepo can continue direct DB access for `build_queue` field
+- No cache coordination needed
+
+**Phase 3: Add cache invalidation tests**
+```typescript
+test('techRepo_updateIron_invalidatesCache', async () => {
+  const techRepo = new TechRepo(db);
+  const cacheManager = getTypedCacheManager();
+  
+  // Load user into cache
+  const user1 = await cacheManager.loadUserIfNeeded(1);
+  expect(user1.iron).toBe(100);
+  
+  // Modify via TechRepo
+  await techRepo.updateIron(1, 50);
+  
+  // Cache should reflect change
+  const user2 = await cacheManager.loadUserIfNeeded(1);
+  expect(user2.iron).toBe(150); // Should NOT be stale!
+});
+```
+
+**Effort Estimate:**
+- Small refactor: ~2-3 hours
+- Update 5 TechRepo methods to use cache
+- Update API route tests
+- Add cache consistency tests
+
+---
+
+### Issue 3: Repository Access Not Restricted ⚠️ LOW PRIORITY
+
+**Problem:** `userRepo.ts` and `worldRepo.ts` export functions that could be used directly by API routes.
+
+**Current State:** 
+- These repos are currently ONLY used by TypedCacheManager ✅
+- But nothing prevents direct usage ❌
+
+**Recommended Fix:**
+- Rename to `userRepoInternal.ts` and `worldRepoInternal.ts`
+- Add JSDoc warning: `@internal - Only for use by TypedCacheManager`
+- Consider making functions non-exported (require import from cache manager)
+
+**Priority:** Low - no actual violations found, preventive measure
+
+---
+
 ## Conclusion
 
 All three cache managers successfully implement the core caching strategy with **Pure IronGuard lock safety**. As of October 2025, all systems use consistent lock management patterns:
@@ -969,6 +1089,12 @@ All three cache managers successfully implement the core caching strategy with *
 - **TypedCacheManager:** Mature, feature-rich, 100% Pure IronGuard (migration completed)
 - **MessageCache:** Modern, focused, optimized for async operations, Pure IronGuard
 - **BattleCache:** Mixed strategy, Pure IronGuard via delegation, callback-compatible
+
+**Cache Consistency Status:**
+- ✅ **Message operations:** Fixed - all go through MessageCache
+- ❌ **Tech operations:** Issue remains - TechRepo bypasses cache
+- ✅ **Battle operations:** No issues - BattleRepo uses BattleCache properly
+- ✅ **User/World operations:** No issues - only accessed via TypedCacheManager
 
 The separation of concerns is justified:
 - ✅ Message operations don't block game state updates
@@ -984,7 +1110,7 @@ The separation of concerns is justified:
 
 This architecture demonstrates successful completion of the **Strangler Fig Pattern** for incremental modernization while maintaining system stability. The legacy lock system has been completely removed, achieving:
 
-- **331 tests passing** (39 test files)
+- **368 tests passing** (44 test files)
 - **Zero compilation errors**
 - **Consistent IronGuard patterns** across entire codebase
 - **Improved code clarity** through explicit lock management
@@ -995,8 +1121,14 @@ This architecture demonstrates successful completion of the **Strangler Fig Patt
 1. ✅ TypedCacheManager migration to pure IronGuard (October 2025)
 2. ✅ All legacy lock wrappers removed (`withWorldRead/Write`, `withUserLock`, `withDatabaseRead/Write`)
 3. ✅ All API routes migrated to try-finally-dispose pattern
+4. ✅ battleScheduler fixed to use MessageCache (October 2025)
+
+**Remaining Work:**
+1. ❌ **HIGH PRIORITY:** Make TechRepo cache-aware for iron/techCounts operations
+2. ⚠️ **MEDIUM:** Add cache consistency integration tests
+3. ⚠️ **LOW:** Restrict direct access to userRepo/worldRepo functions
 
 **Next Steps:**
-1. Consider extracting shared base class or utilities
+1. Refactor TechRepo to coordinate with TypedCacheManager (estimated 2-3 hours)
 2. Add comprehensive cache metrics and monitoring
-3. Evaluate splitting TypedCacheManager into UserCache + WorldCache
+3. Consider extracting shared base class or utilities
