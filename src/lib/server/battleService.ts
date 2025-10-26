@@ -442,16 +442,22 @@ export async function resolveBattle(
   const attackeeEndStats = battle.attackeeEndStats ?? battle.attackeeStartStats;
   
   // Log battle end event BEFORE ending battle (battle must still be in cache)
-  const endEvent: BattleEvent = {
-    timestamp: Math.floor(Date.now() / 1000),
-    type: 'battle_ended',
-    actor: winnerId === battle.attackerId ? 'attacker' : 'attackee',
-    data: {
-      message: `Battle ended. Winner: User ${winnerId}`
-    }
-  };
-  
-  await BattleRepo.addBattleEvent(battleId, endEvent);
+  // If event logging fails, we still proceed with ending the battle to avoid inconsistent state
+  try {
+    const endEvent: BattleEvent = {
+      timestamp: Math.floor(Date.now() / 1000),
+      type: 'battle_ended',
+      actor: winnerId === battle.attackerId ? 'attacker' : 'attackee',
+      data: {
+        message: `Battle ended. Winner: User ${winnerId}`
+      }
+    };
+    
+    await BattleRepo.addBattleEvent(battleId, endEvent);
+  } catch (error) {
+    console.error(`⚠️ Failed to log battle end event for battle ${battleId}:`, error);
+    // Continue with battle resolution even if event logging fails
+  }
   
   // End the battle in database (this removes it from cache)
   await BattleRepo.endBattle(
