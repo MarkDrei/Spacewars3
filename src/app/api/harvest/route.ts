@@ -154,9 +154,9 @@ async function performCollectionLogic(
   // Create notification message for the collection
   let notificationMessage = '';
   if (ironReward > 0) {
-    notificationMessage = `Successfully collected ${targetObject.type.replace('_', ' ')} and received **${ironReward}** iron.`;
+    notificationMessage = `P: Successfully collected ${targetObject.type.replace('_', ' ')} and received **${ironReward}** iron.`;
   } else {
-    notificationMessage = `Successfully collected ${targetObject.type.replace('_', ' ')}.`;
+    notificationMessage = `P: Successfully collected ${targetObject.type.replace('_', ' ')}.`;
   }
   
   console.log(`📝 Creating notification for user ${user.id}: "${notificationMessage}"`);
