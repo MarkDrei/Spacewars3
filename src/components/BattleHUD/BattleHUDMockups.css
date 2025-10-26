@@ -1,0 +1,1517 @@
+/* Container and Selector */
+.hud-mockups-container {
+  padding: 2rem;
+  min-height: 100vh;
+  background: #0a0a0a;
+}
+
+.mockup-title {
+  text-align: center;
+  color: #fff;
+  font-size: 2rem;
+  margin-bottom: 2rem;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+}
+
+.design-selector {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+}
+
+.selector-btn {
+  padding: 0.75rem 1.5rem;
+  background: #1a1a1a;
+  border: 2px solid #333;
+  color: #888;
+  cursor: pointer;
+  transition: all 0.3s;
+  font-family: monospace;
+  font-size: 1rem;
+  text-transform: uppercase;
+}
+
+.selector-btn:hover {
+  border-color: #666;
+  color: #aaa;
+}
+
+.selector-btn.active {
+  background: #2a2a2a;
+  border-color: #0ff;
+  color: #0ff;
+  box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+}
+
+.hud-display {
+  width: 100%;
+  height: 50vh;
+  min-height: 400px;
+  background: #000;
+  border: 2px solid #333;
+  position: relative;
+  overflow: hidden;
+}
+
+/* DESIGN 1: MINIMALIST CLEAN INTERFACE */
+.hud-design-1 {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  background: linear-gradient(to bottom, #0a0a0a, #000);
+  padding: 2rem;
+  gap: 2rem;
+  font-family: 'Arial', sans-serif;
+}
+
+.d1-left,
+.d1-right {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.d1-center {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+}
+
+.d1-stat-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.d1-stat-group label {
+  color: #888;
+  font-size: 0.875rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.d1-bar {
+  position: relative;
+  height: 30px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+
+.d1-bar-fill {
+  height: 100%;
+  transition: width 0.3s;
+  position: relative;
+}
+
+.d1-hull {
+  background: linear-gradient(90deg, #e74c3c, #c0392b);
+}
+
+.d1-armor {
+  background: linear-gradient(90deg, #f39c12, #d68910);
+}
+
+.d1-shield {
+  background: linear-gradient(90deg, #3498db, #2980b9);
+}
+
+.d1-bar-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: bold;
+  text-shadow: 0 0 5px rgba(0, 0, 0, 0.8);
+  z-index: 1;
+  pointer-events: none;
+}
+
+.d1-crosshair {
+  width: 150px;
+  height: 150px;
+  border: 2px solid rgba(0, 255, 255, 0.5);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.d1-crosshair::before,
+.d1-crosshair::after {
+  content: '';
+  position: absolute;
+  background: rgba(0, 255, 255, 0.5);
+}
+
+.d1-crosshair::before {
+  width: 2px;
+  height: 100%;
+}
+
+.d1-crosshair::after {
+  width: 100%;
+  height: 2px;
+}
+
+.d1-crosshair-inner {
+  width: 60px;
+  height: 60px;
+  border: 1px solid rgba(0, 255, 255, 0.3);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.d1-lock-icon {
+  color: #0ff;
+  font-size: 2rem;
+  animation: pulse 1s infinite;
+}
+
+.d1-distance {
+  color: #0ff;
+  font-size: 1.25rem;
+  font-weight: bold;
+}
+
+.d1-weapon-status {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.d1-weapon-icon {
+  font-size: 3rem;
+  transition: all 0.3s;
+}
+
+.d1-weapon-icon.ready {
+  color: #2ecc71;
+  filter: drop-shadow(0 0 10px #2ecc71);
+  animation: pulse 0.5s infinite;
+}
+
+.d1-weapon-icon.cooldown {
+  color: #e74c3c;
+}
+
+.d1-weapon-label {
+  color: #fff;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.d1-enemy-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.d1-enemy-label {
+  color: #e74c3c;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.d1-enemy-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.d1-enemy-stat label {
+  color: #888;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+}
+
+.d1-enemy-bar {
+  height: 20px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+
+.d1-enemy-hull {
+  background: linear-gradient(90deg, #e74c3c, #c0392b);
+}
+
+.d1-enemy-shield {
+  background: linear-gradient(90deg, #9b59b6, #8e44ad);
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+/* DESIGN 2: RETRO TERMINAL STYLE */
+.hud-design-2 {
+  width: 100%;
+  height: 100%;
+  background: #000;
+  color: #0f0;
+  font-family: 'Courier New', monospace;
+  position: relative;
+  padding: 1.5rem;
+}
+
+.d2-scanlines {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 255, 0, 0.03) 0px,
+    transparent 1px,
+    transparent 2px,
+    rgba(0, 255, 0, 0.03) 3px
+  );
+  pointer-events: none;
+  z-index: 10;
+}
+
+.d2-content {
+  position: relative;
+  z-index: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.d2-header {
+  text-align: center;
+  font-size: 1.5rem;
+  font-weight: bold;
+  border: 2px solid #0f0;
+  padding: 0.5rem;
+  text-shadow: 0 0 10px #0f0;
+}
+
+.d2-blink {
+  animation: blink 1s infinite;
+}
+
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+.d2-main {
+  display: flex;
+  gap: 2rem;
+  flex: 1;
+}
+
+.d2-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.d2-section {
+  border: 1px solid #0f0;
+  padding: 1rem;
+  background: rgba(0, 255, 0, 0.02);
+}
+
+.d2-section-title {
+  font-weight: bold;
+  margin-bottom: 0.75rem;
+  text-shadow: 0 0 5px #0f0;
+}
+
+.d2-line {
+  font-size: 0.875rem;
+  line-height: 1.6;
+  white-space: nowrap;
+}
+
+.d2-radar {
+  width: 100%;
+  aspect-ratio: 1;
+  border: 2px solid #0f0;
+  border-radius: 50%;
+  position: relative;
+  box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
+}
+
+.d2-radar-grid {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.d2-radar-line {
+  position: absolute;
+  width: 100%;
+  height: 1px;
+  background: #0f0;
+  top: 50%;
+  left: 0;
+  transform-origin: center;
+  opacity: 0.3;
+}
+
+.d2-target-blip {
+  position: absolute;
+  top: 30%;
+  right: 30%;
+  color: #f00;
+  font-size: 1.5rem;
+  animation: blip 1s infinite;
+}
+
+@keyframes blip {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.5); opacity: 0.5; }
+}
+
+.d2-distance-display {
+  text-align: center;
+  font-weight: bold;
+  padding: 0.5rem;
+  border: 1px solid #0f0;
+  margin-top: 1rem;
+}
+
+/* DESIGN 3: MILITARY TACTICAL INTERFACE */
+.hud-design-3 {
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle at center, #1a2332 0%, #0a0f1a 100%);
+  position: relative;
+  padding: 2rem;
+  font-family: 'Arial', sans-serif;
+}
+
+.d3-corner {
+  position: absolute;
+  width: 40px;
+  height: 40px;
+  border: 2px solid #4a9eff;
+}
+
+.d3-top-left {
+  top: 10px;
+  left: 10px;
+  border-right: none;
+  border-bottom: none;
+}
+
+.d3-top-right {
+  top: 10px;
+  right: 10px;
+  border-left: none;
+  border-bottom: none;
+}
+
+.d3-bottom-left {
+  bottom: 10px;
+  left: 10px;
+  border-right: none;
+  border-top: none;
+}
+
+.d3-bottom-right {
+  bottom: 10px;
+  right: 10px;
+  border-left: none;
+  border-top: none;
+}
+
+.d3-top-bar {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+  padding: 0.5rem 2rem;
+  background: rgba(74, 158, 255, 0.1);
+  border: 1px solid #4a9eff;
+}
+
+.d3-status-indicator,
+.d3-mission-time,
+.d3-threat-level {
+  color: #4a9eff;
+  font-weight: bold;
+  text-transform: uppercase;
+  font-size: 0.875rem;
+}
+
+.d3-status-indicator.active {
+  color: #2ecc71;
+}
+
+.d3-threat-level {
+  color: #e74c3c;
+}
+
+.d3-main-grid {
+  display: flex;
+  gap: 2rem;
+  height: calc(100% - 80px);
+}
+
+.d3-left-panel,
+.d3-right-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.d3-center-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+}
+
+.d3-panel-title {
+  color: #4a9eff;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  margin-bottom: 0.5rem;
+  font-size: 0.875rem;
+  border-bottom: 2px solid #4a9eff;
+  padding-bottom: 0.25rem;
+}
+
+.d3-defense-item {
+  margin-bottom: 1rem;
+}
+
+.d3-defense-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  color: #fff;
+  font-size: 0.875rem;
+}
+
+.d3-icon {
+  color: #4a9eff;
+  font-size: 1.25rem;
+}
+
+.d3-value {
+  margin-left: auto;
+  font-weight: bold;
+}
+
+.d3-defense-bar {
+  height: 24px;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(74, 158, 255, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.d3-defense-fill {
+  height: 100%;
+  position: relative;
+  transition: width 0.3s;
+}
+
+.d3-bar-glow {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 20px;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.5));
+}
+
+.d3-hull-fill {
+  background: linear-gradient(90deg, #e74c3c, #c0392b);
+  box-shadow: 0 0 10px rgba(231, 76, 60, 0.5);
+}
+
+.d3-armor-fill {
+  background: linear-gradient(90deg, #f39c12, #d68910);
+  box-shadow: 0 0 10px rgba(243, 156, 18, 0.5);
+}
+
+.d3-shield-fill {
+  background: linear-gradient(90deg, #3498db, #2980b9);
+  box-shadow: 0 0 10px rgba(52, 152, 219, 0.5);
+}
+
+.d3-targeting-reticle {
+  width: 200px;
+  height: 200px;
+  position: relative;
+}
+
+.d3-reticle-ring {
+  position: absolute;
+  border: 2px solid #4a9eff;
+  border-radius: 50%;
+  animation: rotate 10s linear infinite;
+}
+
+.d3-outer-ring {
+  width: 100%;
+  height: 100%;
+  border-style: dashed;
+}
+
+.d3-middle-ring {
+  width: 70%;
+  height: 70%;
+  top: 15%;
+  left: 15%;
+  animation-duration: 7s;
+  animation-direction: reverse;
+}
+
+.d3-reticle-cross-h,
+.d3-reticle-cross-v {
+  position: absolute;
+  background: #4a9eff;
+}
+
+.d3-reticle-cross-h {
+  width: 100%;
+  height: 2px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.d3-reticle-cross-v {
+  width: 2px;
+  height: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.d3-lock-indicator {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+}
+
+.d3-lock-bracket {
+  position: absolute;
+  width: 30px;
+  height: 30px;
+  border: 3px solid #2ecc71;
+}
+
+.d3-lock-bracket.d3-tl {
+  top: 10%;
+  left: 10%;
+  border-right: none;
+  border-bottom: none;
+}
+
+.d3-lock-bracket.d3-tr {
+  top: 10%;
+  right: 10%;
+  border-left: none;
+  border-bottom: none;
+}
+
+.d3-lock-bracket.d3-bl {
+  bottom: 10%;
+  left: 10%;
+  border-right: none;
+  border-top: none;
+}
+
+.d3-lock-bracket.d3-br {
+  bottom: 10%;
+  right: 10%;
+  border-left: none;
+  border-top: none;
+}
+
+.d3-lock-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #2ecc71;
+  font-weight: bold;
+  font-size: 1rem;
+  animation: pulse 1s infinite;
+}
+
+.d3-range-info {
+  color: #4a9eff;
+  font-weight: bold;
+  font-size: 1.25rem;
+  margin-top: 1rem;
+}
+
+.d3-weapon-section {
+  display: flex;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+.d3-weapon-ready {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.d3-weapon-circle {
+  position: relative;
+  width: 60px;
+  height: 60px;
+  color: #666;
+}
+
+.d3-weapon-circle svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.d3-weapon-ready.ready .d3-weapon-circle {
+  color: #2ecc71;
+  filter: drop-shadow(0 0 10px #2ecc71);
+}
+
+.d3-weapon-icon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 2rem;
+}
+
+.d3-weapon-label {
+  color: #fff;
+  font-weight: bold;
+  text-transform: uppercase;
+  font-size: 0.875rem;
+}
+
+.d3-target-section {
+  padding: 1rem;
+  background: rgba(231, 76, 60, 0.1);
+  border: 1px solid #e74c3c;
+}
+
+.d3-target-title {
+  color: #e74c3c;
+  font-weight: bold;
+  text-transform: uppercase;
+  margin-bottom: 1rem;
+  font-size: 0.875rem;
+}
+
+.d3-target-stat {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  color: #fff;
+  font-size: 0.875rem;
+}
+
+.d3-target-stat span:first-child {
+  min-width: 50px;
+}
+
+.d3-target-bar {
+  flex: 1;
+  height: 16px;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  overflow: hidden;
+}
+
+.d3-target-fill {
+  height: 100%;
+  transition: width 0.3s;
+}
+
+.d3-target-hull {
+  background: linear-gradient(90deg, #e74c3c, #c0392b);
+}
+
+.d3-target-shield {
+  background: linear-gradient(90deg, #9b59b6, #8e44ad);
+}
+
+@keyframes rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* DESIGN 4: FUTURISTIC HOLOGRAPHIC */
+.hud-design-4 {
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle at center, #0a1628 0%, #000 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.d4-glow-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle at 50% 50%, rgba(0, 255, 255, 0.1) 0%, transparent 50%);
+  pointer-events: none;
+  animation: glow-pulse 3s infinite;
+}
+
+@keyframes glow-pulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+.d4-hexagon-grid {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: 
+    linear-gradient(30deg, transparent 24%, rgba(0, 255, 255, 0.05) 25%, rgba(0, 255, 255, 0.05) 26%, transparent 27%, transparent 74%, rgba(0, 255, 255, 0.05) 75%, rgba(0, 255, 255, 0.05) 76%, transparent 77%, transparent),
+    linear-gradient(150deg, transparent 24%, rgba(0, 255, 255, 0.05) 25%, rgba(0, 255, 255, 0.05) 26%, transparent 27%, transparent 74%, rgba(0, 255, 255, 0.05) 75%, rgba(0, 255, 255, 0.05) 76%, transparent 77%, transparent),
+    linear-gradient(90deg, transparent 24%, rgba(0, 255, 255, 0.05) 25%, rgba(0, 255, 255, 0.05) 26%, transparent 27%, transparent 74%, rgba(0, 255, 255, 0.05) 75%, rgba(0, 255, 255, 0.05) 76%, transparent 77%, transparent);
+  background-size: 80px 140px;
+  pointer-events: none;
+}
+
+.d4-layout {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  height: 100%;
+  padding: 2rem;
+  gap: 2rem;
+}
+
+.d4-side {
+  flex: 1;
+}
+
+.d4-center {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+}
+
+.d4-hologram-panel {
+  position: relative;
+  padding: 1.5rem;
+  background: rgba(0, 255, 255, 0.05);
+  border: 1px solid rgba(0, 255, 255, 0.3);
+  box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.d4-panel-glow {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: 1px solid rgba(0, 255, 255, 0.5);
+  pointer-events: none;
+  animation: panel-glow 2s infinite;
+}
+
+@keyframes panel-glow {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.7; }
+}
+
+.d4-stat-hologram {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.d4-stat-icon {
+  width: 40px;
+  height: 40px;
+  color: #0ff;
+  filter: drop-shadow(0 0 5px #0ff);
+}
+
+.d4-stat-info {
+  flex: 1;
+}
+
+.d4-stat-label {
+  color: #0ff;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 0.25rem;
+}
+
+.d4-stat-value {
+  color: #fff;
+  font-size: 1.5rem;
+  font-weight: bold;
+  margin-bottom: 0.5rem;
+}
+
+.d4-hologram-bar {
+  height: 8px;
+  background: rgba(0, 255, 255, 0.1);
+  border: 1px solid rgba(0, 255, 255, 0.3);
+  overflow: hidden;
+}
+
+.d4-hologram-fill {
+  height: 100%;
+  transition: width 0.3s;
+  position: relative;
+}
+
+.d4-hologram-fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 30px;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.8));
+  animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+  0%, 100% { opacity: 0; }
+  50% { opacity: 1; }
+}
+
+.d4-hull-glow {
+  background: linear-gradient(90deg, rgba(231, 76, 60, 0.8), rgba(231, 76, 60, 0.5));
+  box-shadow: 0 0 15px rgba(231, 76, 60, 0.8);
+}
+
+.d4-armor-glow {
+  background: linear-gradient(90deg, rgba(243, 156, 18, 0.8), rgba(243, 156, 18, 0.5));
+  box-shadow: 0 0 15px rgba(243, 156, 18, 0.8);
+}
+
+.d4-shield-glow {
+  background: linear-gradient(90deg, rgba(52, 152, 219, 0.8), rgba(52, 152, 219, 0.5));
+  box-shadow: 0 0 15px rgba(52, 152, 219, 0.8);
+}
+
+.d4-holographic-reticle {
+  width: 180px;
+  height: 180px;
+  position: relative;
+}
+
+.d4-reticle-outer,
+.d4-reticle-mid,
+.d4-reticle-inner {
+  position: absolute;
+  border: 2px solid #0ff;
+  border-radius: 50%;
+  box-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
+  animation: rotate 8s linear infinite;
+}
+
+.d4-reticle-outer {
+  width: 100%;
+  height: 100%;
+  border-style: dashed;
+}
+
+.d4-reticle-mid {
+  width: 70%;
+  height: 70%;
+  top: 15%;
+  left: 15%;
+  animation-duration: 6s;
+  animation-direction: reverse;
+}
+
+.d4-reticle-inner {
+  width: 40%;
+  height: 40%;
+  top: 30%;
+  left: 30%;
+  animation-duration: 4s;
+}
+
+.d4-lock-ring {
+  position: absolute;
+  width: 90%;
+  height: 90%;
+  top: 5%;
+  left: 5%;
+  border: 3px solid #2ecc71;
+  border-radius: 50%;
+  box-shadow: 0 0 30px rgba(46, 204, 113, 0.8);
+  animation: pulse 1s infinite;
+}
+
+.d4-lock-pulse {
+  position: absolute;
+  width: 50%;
+  height: 50%;
+  top: 25%;
+  left: 25%;
+  border: 2px solid #2ecc71;
+  border-radius: 50%;
+  animation: lock-pulse 1.5s infinite;
+}
+
+@keyframes lock-pulse {
+  0% { transform: scale(0.5); opacity: 1; }
+  100% { transform: scale(2); opacity: 0; }
+}
+
+.d4-distance-hologram {
+  color: #0ff;
+  font-size: 1.25rem;
+  font-weight: bold;
+  text-shadow: 0 0 10px #0ff;
+  letter-spacing: 0.1em;
+}
+
+.d4-weapon-hologram {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 2rem;
+}
+
+.d4-weapon-orb {
+  width: 80px;
+  height: 80px;
+  position: relative;
+}
+
+.d4-orb-core {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: radial-gradient(circle at center, rgba(231, 76, 60, 0.8), transparent);
+  border: 2px solid #e74c3c;
+}
+
+.d4-weapon-orb.d4-ready .d4-orb-core {
+  background: radial-gradient(circle at center, rgba(46, 204, 113, 0.8), transparent);
+  border-color: #2ecc71;
+  box-shadow: 0 0 30px rgba(46, 204, 113, 0.8);
+  animation: pulse 0.5s infinite;
+}
+
+.d4-orb-ring {
+  position: absolute;
+  width: 120%;
+  height: 120%;
+  top: -10%;
+  left: -10%;
+  border: 1px solid rgba(0, 255, 255, 0.5);
+  border-radius: 50%;
+  animation: rotate 3s linear infinite;
+}
+
+.d4-weapon-status-text {
+  color: #0ff;
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  text-align: center;
+}
+
+.d4-target-hologram {
+  padding: 1rem;
+  background: rgba(231, 76, 60, 0.1);
+  border: 1px solid rgba(231, 76, 60, 0.5);
+  box-shadow: 0 0 20px rgba(231, 76, 60, 0.3);
+}
+
+.d4-target-header {
+  color: #e74c3c;
+  font-weight: bold;
+  text-transform: uppercase;
+  margin-bottom: 1rem;
+  text-shadow: 0 0 10px #e74c3c;
+}
+
+.d4-target-data {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.d4-target-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #0ff;
+  font-size: 0.875rem;
+}
+
+.d4-target-row span:first-child {
+  min-width: 50px;
+}
+
+.d4-target-row span:last-child {
+  min-width: 40px;
+  text-align: right;
+}
+
+.d4-target-bar-container {
+  flex: 1;
+  height: 12px;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(0, 255, 255, 0.3);
+  overflow: hidden;
+}
+
+.d4-target-bar {
+  height: 100%;
+  transition: width 0.3s;
+}
+
+.d4-enemy-hull-glow {
+  background: linear-gradient(90deg, rgba(231, 76, 60, 0.8), rgba(231, 76, 60, 0.5));
+  box-shadow: 0 0 10px rgba(231, 76, 60, 0.8);
+}
+
+.d4-enemy-shield-glow {
+  background: linear-gradient(90deg, rgba(155, 89, 182, 0.8), rgba(155, 89, 182, 0.5));
+  box-shadow: 0 0 10px rgba(155, 89, 182, 0.8);
+}
+
+/* DESIGN 5: ORGANIC/ALIEN INTERFACE */
+.hud-design-5 {
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle at center, #1a0f0a 0%, #0a0505 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.d5-bio-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: 
+    radial-gradient(circle at 20% 30%, rgba(255, 100, 50, 0.05) 0%, transparent 40%),
+    radial-gradient(circle at 80% 70%, rgba(150, 50, 200, 0.05) 0%, transparent 40%);
+  animation: bio-pulse 4s infinite;
+  pointer-events: none;
+}
+
+@keyframes bio-pulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+.d5-container {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  height: 100%;
+  padding: 2rem;
+  gap: 2rem;
+}
+
+.d5-left-organism,
+.d5-right-organism {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.d5-center-eye {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+}
+
+.d5-bio-label {
+  color: #ff8844;
+  font-family: Georgia, serif;
+  text-transform: uppercase;
+  font-size: 0.875rem;
+  letter-spacing: 0.15em;
+  margin-bottom: 0.5rem;
+}
+
+.d5-bio-label.d5-small {
+  font-size: 0.75rem;
+  margin-bottom: 0.25rem;
+}
+
+.d5-bio-cell {
+  width: 100%;
+  height: 100px;
+  position: relative;
+  border-radius: 50%;
+  overflow: hidden;
+}
+
+.d5-cell-nucleus {
+  position: absolute;
+  width: 30px;
+  height: 30px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: rgba(255, 136, 68, 0.3);
+  border: 2px solid rgba(255, 136, 68, 0.5);
+  animation: nucleus-pulse 2s infinite;
+}
+
+@keyframes nucleus-pulse {
+  0%, 100% { transform: translate(-50%, -50%) scale(1); }
+  50% { transform: translate(-50%, -50%) scale(1.2); }
+}
+
+.d5-cell-membrane {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  transition: clip-path 0.5s;
+}
+
+.d5-hull-cell {
+  background: rgba(231, 76, 60, 0.1);
+  border: 2px solid rgba(231, 76, 60, 0.3);
+}
+
+.d5-hull-cell .d5-cell-membrane {
+  background: radial-gradient(circle at center, rgba(231, 76, 60, 0.6), rgba(231, 76, 60, 0.2));
+  box-shadow: 0 0 20px rgba(231, 76, 60, 0.5);
+}
+
+.d5-armor-cell {
+  background: rgba(243, 156, 18, 0.1);
+  border: 2px solid rgba(243, 156, 18, 0.3);
+}
+
+.d5-armor-cell .d5-cell-membrane {
+  background: radial-gradient(circle at center, rgba(243, 156, 18, 0.6), rgba(243, 156, 18, 0.2));
+  box-shadow: 0 0 20px rgba(243, 156, 18, 0.5);
+}
+
+.d5-shield-cell {
+  background: rgba(52, 152, 219, 0.1);
+  border: 2px solid rgba(52, 152, 219, 0.3);
+}
+
+.d5-shield-cell .d5-cell-membrane {
+  background: radial-gradient(circle at center, rgba(52, 152, 219, 0.6), rgba(52, 152, 219, 0.2));
+  box-shadow: 0 0 20px rgba(52, 152, 219, 0.5);
+}
+
+.d5-cell-content {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  z-index: 1;
+}
+
+.d5-cell-label {
+  color: #ff8844;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  margin-bottom: 0.25rem;
+}
+
+.d5-cell-value {
+  color: #fff;
+  font-size: 1.5rem;
+  font-weight: bold;
+}
+
+.d5-eye-outer {
+  width: 180px;
+  height: 180px;
+  border-radius: 50%;
+  background: radial-gradient(circle at center, rgba(150, 50, 200, 0.2), transparent);
+  border: 3px solid rgba(150, 50, 200, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  animation: eye-breathe 3s infinite;
+}
+
+@keyframes eye-breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+.d5-eye-iris {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 40%, rgba(200, 100, 255, 0.4), rgba(100, 50, 150, 0.6));
+  border: 2px solid rgba(150, 50, 200, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  box-shadow: inset 0 0 30px rgba(150, 50, 200, 0.5);
+}
+
+.d5-eye-pupil {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: radial-gradient(circle at center, #000, rgba(50, 20, 80, 0.8));
+  border: 2px solid rgba(150, 50, 200, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: pupil-dilate 2s infinite;
+}
+
+@keyframes pupil-dilate {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(0.9); }
+}
+
+.d5-eye-locked {
+  width: 30px;
+  height: 30px;
+  border: 2px solid #2ecc71;
+  border-radius: 50%;
+  animation: lock-flash 1s infinite;
+}
+
+@keyframes lock-flash {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.2); }
+}
+
+.d5-eye-veins {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+}
+
+.d5-distance-organic {
+  color: #ff8844;
+  font-size: 1.25rem;
+  font-weight: bold;
+  font-family: Georgia, serif;
+}
+
+.d5-weapon-organism {
+  display: flex;
+  justify-content: center;
+  padding: 2rem;
+}
+
+.d5-weapon-core {
+  width: 100px;
+  height: 100px;
+  position: relative;
+  border-radius: 50%;
+  background: radial-gradient(circle at center, rgba(231, 76, 60, 0.3), transparent);
+  border: 2px solid rgba(231, 76, 60, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.5s;
+}
+
+.d5-weapon-core.d5-pulsing {
+  background: radial-gradient(circle at center, rgba(46, 204, 113, 0.4), transparent);
+  border-color: #2ecc71;
+  box-shadow: 0 0 40px rgba(46, 204, 113, 0.6);
+  animation: organic-pulse 1s infinite;
+}
+
+@keyframes organic-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+.d5-weapon-tendrils {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+}
+
+.d5-tendril {
+  position: absolute;
+  width: 2px;
+  height: 60px;
+  top: 50%;
+  left: 50%;
+  transform-origin: top center;
+  background: linear-gradient(to bottom, rgba(255, 136, 68, 0.6), transparent);
+  animation: tendril-wave 2s infinite;
+}
+
+@keyframes tendril-wave {
+  0%, 100% { height: 60px; opacity: 0.6; }
+  50% { height: 70px; opacity: 1; }
+}
+
+.d5-weapon-core.d5-pulsing .d5-tendril {
+  background: linear-gradient(to bottom, rgba(46, 204, 113, 0.8), transparent);
+}
+
+.d5-weapon-text {
+  color: #fff;
+  font-weight: bold;
+  font-size: 1rem;
+  z-index: 1;
+}
+
+.d5-target-organism {
+  padding: 1rem;
+  background: rgba(231, 76, 60, 0.1);
+  border: 2px solid rgba(231, 76, 60, 0.3);
+  border-radius: 20px;
+}
+
+.d5-target-tendril {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.d5-target-segment {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.d5-target-label {
+  color: #ff8844;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+}
+
+.d5-organic-bar {
+  height: 20px;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 136, 68, 0.3);
+  border-radius: 10px;
+  overflow: hidden;
+  position: relative;
+}
+
+.d5-organic-fill {
+  height: 100%;
+  transition: width 0.5s;
+  border-radius: 10px;
+  position: relative;
+}
+
+.d5-organic-fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  animation: organic-shimmer 2s infinite;
+}
+
+@keyframes organic-shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.d5-enemy-hull {
+  background: radial-gradient(circle at center, rgba(231, 76, 60, 0.8), rgba(231, 76, 60, 0.4));
+  box-shadow: 0 0 10px rgba(231, 76, 60, 0.5);
+}
+
+.d5-enemy-shield {
+  background: radial-gradient(circle at center, rgba(155, 89, 182, 0.8), rgba(155, 89, 182, 0.4));
+  box-shadow: 0 0 10px rgba(155, 89, 182, 0.5);
+}
+
+/* RESPONSIVE STYLES */
+@media (max-width: 768px) {
+  .hud-design-1,
+  .hud-design-3 .d3-main-grid,
+  .d4-layout,
+  .d5-container {
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1rem;
+  }
+
+  .d2-main {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .d1-crosshair,
+  .d3-targeting-reticle,
+  .d4-holographic-reticle,
+  .d5-eye-outer {
+    width: 120px;
+    height: 120px;
+  }
+
+  .mockup-title {
+    font-size: 1.5rem;
+  }
+
+  .hud-display {
+    min-height: 300px;
+  }
+}

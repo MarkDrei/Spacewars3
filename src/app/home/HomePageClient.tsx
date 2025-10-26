@@ -7,6 +7,7 @@ import { useTechCounts } from '@/lib/client/hooks/useTechCounts';
 import { useDefenseValues } from '@/lib/client/hooks/useDefenseValues';
 import { useBattleStatus } from '@/lib/client/hooks/useBattleStatus';
 import { ServerAuthState } from '@/lib/server/serverSession';
+import BattleHUDMockups from '@/components/BattleHUD/BattleHUDMockups';
 import './HomePage.css';
 
 interface HomePageClientProps {
@@ -142,6 +143,13 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ auth, initialMessages }
     <AuthenticatedLayout>
       <div className="home-page">
         <div className="home-container">
+          {/* Battle HUD Design Mockups */}
+          {!battleLoading && battleStatus?.inBattle && battleStatus.battle && (
+            <div className="battle-hud-mockup-section">
+              <BattleHUDMockups />
+            </div>
+          )}
+
           {/* Battle Status Banner */}
           {!battleLoading && battleStatus?.inBattle && battleStatus.battle && (
             <div className="battle-banner">
