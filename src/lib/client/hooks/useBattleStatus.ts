@@ -19,6 +19,8 @@ export interface BattleStatus {
     opponentStats: BattleStats;
     weaponCooldowns: WeaponCooldowns;
     battleLog: BattleEvent[];
+    myTotalDamage: number;
+    opponentTotalDamage: number;
   };
 }
 

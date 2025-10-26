@@ -6,7 +6,7 @@ import { getUserMessages } from '@/lib/server/MessageCache';
 
 /**
  * GET /api/messages
- * Get all unread messages for the authenticated user and mark them as read
+ * Get all unread messages for the authenticated user
  * Using FIXED cached operations (deadlock resolved)
  */
 export async function GET(request: NextRequest) {
@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
     
     console.log(`📬 Messages requested by user: ${session.userId}`);
     
-    // Get and mark unread messages as read
+    // Get unread messages
     const unreadMessages = await getUserMessages(session.userId!);
     
     console.log(`📨 Retrieved ${unreadMessages.length} unread message(s) for user ${session.userId}`);

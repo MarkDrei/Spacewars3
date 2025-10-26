@@ -80,6 +80,8 @@ CREATE TABLE IF NOT EXISTS battles (
   attacker_weapon_cooldowns TEXT NOT NULL, -- JSON: { pulse_laser: timestamp, ... }
   attackee_weapon_cooldowns TEXT NOT NULL, -- JSON: { pulse_laser: timestamp, ... }
   battle_log TEXT NOT NULL, -- JSON array of battle events
+  attacker_total_damage REAL NOT NULL DEFAULT 0.0, -- Total damage dealt by attacker
+  attackee_total_damage REAL NOT NULL DEFAULT 0.0, -- Total damage dealt by attackee
   FOREIGN KEY (attacker_id) REFERENCES users (id),
   FOREIGN KEY (attackee_id) REFERENCES users (id),
   FOREIGN KEY (winner_id) REFERENCES users (id),
@@ -132,5 +134,11 @@ export const MIGRATE_ADD_BATTLE_STATE = [
   'ALTER TABLE users ADD COLUMN current_battle_id INTEGER DEFAULT NULL'
 ];
 
+// Migration to add damage tracking to battles table
+export const MIGRATE_ADD_BATTLE_DAMAGE = [
+  'ALTER TABLE battles ADD COLUMN attacker_total_damage REAL NOT NULL DEFAULT 0.0',
+  'ALTER TABLE battles ADD COLUMN attackee_total_damage REAL NOT NULL DEFAULT 0.0'
+];
+
 // Optional: Version management for migrations
-export const SCHEMA_VERSION = 9;
+export const SCHEMA_VERSION = 10;

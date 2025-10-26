@@ -17,6 +17,8 @@ export interface Battle {
   attackerEndStats: BattleStats | null;
   attackeeEndStats: BattleStats | null;
   battleLog: BattleEvent[];
+  attackerTotalDamage: number;
+  attackeeTotalDamage: number;
 }
 
 export interface WeaponCooldowns {
@@ -68,6 +70,8 @@ export interface BattleRow {
   attacker_end_stats: string | null; // JSON
   attackee_end_stats: string | null; // JSON
   battle_log: string; // JSON
+  attacker_total_damage: number;
+  attackee_total_damage: number;
 }
 
 // Helper to convert DB row to Battle object
@@ -87,5 +91,7 @@ export function battleRowToBattle(row: BattleRow): Battle {
     attackerEndStats: row.attacker_end_stats ? JSON.parse(row.attacker_end_stats) : null,
     attackeeEndStats: row.attackee_end_stats ? JSON.parse(row.attackee_end_stats) : null,
     battleLog: JSON.parse(row.battle_log),
+    attackerTotalDamage: row.attacker_total_damage || 0,
+    attackeeTotalDamage: row.attackee_total_damage || 0,
   };
 }

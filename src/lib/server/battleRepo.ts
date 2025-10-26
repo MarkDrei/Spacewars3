@@ -102,7 +102,9 @@ export async function createBattle(
           attackeeStartStats,
           attackerEndStats: null,
           attackeeEndStats: null,
-          battleLog: []
+          battleLog: [],
+          attackerTotalDamage: 0,
+          attackeeTotalDamage: 0
         };
 
         // Store in BattleCache
@@ -319,6 +321,8 @@ export async function getBattlesForUser(userId: number): Promise<Battle[]> {
         attacker_end_stats: string | null;
         attackee_end_stats: string | null;
         battle_log: string;
+        attacker_total_damage?: number;
+        attackee_total_damage?: number;
       }[]).map(row => ({
         id: row.id,
         attackerId: row.attacker_id,
@@ -333,7 +337,9 @@ export async function getBattlesForUser(userId: number): Promise<Battle[]> {
         attackeeStartStats: JSON.parse(row.attackee_start_stats),
         attackerEndStats: row.attacker_end_stats ? JSON.parse(row.attacker_end_stats) : null,
         attackeeEndStats: row.attackee_end_stats ? JSON.parse(row.attackee_end_stats) : null,
-        battleLog: JSON.parse(row.battle_log)
+        battleLog: JSON.parse(row.battle_log),
+        attackerTotalDamage: row.attacker_total_damage || 0,
+        attackeeTotalDamage: row.attackee_total_damage || 0
       }));
 
       resolve(battles);
