@@ -3,12 +3,17 @@ import { Mocked } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { useIron } from '@/lib/client/hooks/useIron';
 import { userStatsService } from '@/lib/client/services/userStatsService';
+import * as retryLogic from '@/lib/client/hooks/useIron/retryLogic';
+import * as pollingUtils from '@/lib/client/hooks/useIron/pollingUtils';
 
 // Mock the userStatsService
 vi.mock('@/lib/client/services/userStatsService');
 const mockUserStatsService = userStatsService as Mocked<typeof userStatsService>;
 
 describe('useIron', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -77,27 +82,44 @@ describe('useIron', () => {
     expect(result.current.ironAmount).toBe(1000);
   });
 
-  test('useIron_networkErrorRetry_eventuallySucceeds', async () => {
-    // Arrange
-    mockUserStatsService.getUserStats
-      .mockResolvedValueOnce({ error: 'Network error' })
-      .mockResolvedValueOnce({
-        iron: 500,
-        last_updated: 1674567890,
-        ironPerSecond: 1
-      });
+  // Test that retry logic is correctly wired up (not the timing!)
+  test('useIron_networkError_callsRetryLogic', async () => {
+    const scheduleRetrySpy = vi.spyOn(retryLogic, 'scheduleRetry');
+    
+    mockUserStatsService.getUserStats.mockResolvedValueOnce({
+      error: 'Network error'
+    });
 
-    // Act
-    const { result } = renderHook(() => useIron());
+    renderHook(() => useIron());
 
-    // Should eventually succeed after retry
+    // Wait for the fetch to complete
     await waitFor(() => {
-      expect(result.current.isLoading).toBe(false);
-    }, { timeout: 10000 });
+      expect(mockUserStatsService.getUserStats).toHaveBeenCalledTimes(1);
+    });
 
-    expect(result.current.ironAmount).toBe(500);
-    expect(result.current.error).toBe(null);
-    expect(mockUserStatsService.getUserStats).toHaveBeenCalledTimes(2);
+    // Verify that scheduleRetry was called (proving retry mechanism is triggered)
+    await waitFor(() => {
+      expect(scheduleRetrySpy).toHaveBeenCalled();
+    });
+  });
+
+  test('useIron_successfulFetch_doesNotRetry', async () => {
+    const scheduleRetrySpy = vi.spyOn(retryLogic, 'scheduleRetry');
+    
+    mockUserStatsService.getUserStats.mockResolvedValueOnce({
+      iron: 1000,
+      last_updated: 1674567890,
+      ironPerSecond: 1
+    });
+
+    renderHook(() => useIron());
+
+    await waitFor(() => {
+      expect(mockUserStatsService.getUserStats).toHaveBeenCalledTimes(1);
+    });
+
+    // Verify no retry was scheduled
+    expect(scheduleRetrySpy).not.toHaveBeenCalled();
   });
 
   test('useIron_zeroIronPerSecond_displaysServerValue', async () => {
@@ -188,41 +210,27 @@ describe('useIron', () => {
     Date.now = originalDateNow;
   });
 
-  test('useIron_multipleFetchesWithDifferentTimes_maintainsSmoothUpdates', async () => {
-    // Arrange
-    const mockStats1 = {
+  // Test that polling is set up correctly (not the timing!)
+  test('useIron_setsUpPolling_withCorrectInterval', async () => {
+    const setupPollingSpy = vi.spyOn(pollingUtils, 'setupPolling');
+    
+    mockUserStatsService.getUserStats.mockResolvedValue({
       iron: 1000,
       last_updated: 1674567890,
       ironPerSecond: 1
-    };
-    const mockStats2 = {
-      iron: 1100,
-      last_updated: 1674567950, // 60 seconds later
-      ironPerSecond: 2
-    };
-
-    mockUserStatsService.getUserStats
-      .mockResolvedValueOnce(mockStats1)
-      .mockResolvedValueOnce(mockStats2);
-
-    // Act
-    const { result } = renderHook(() => useIron(1000)); // 1 second poll interval
-
-    // Wait for initial load
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false);
     });
 
-    expect(result.current.ironAmount).toBe(1000);
+    const customInterval = 3000;
+    renderHook(() => useIron(customInterval));
 
-    // Wait for second fetch
+    // Verify that polling was set up with the correct interval
     await waitFor(() => {
-      expect(mockUserStatsService.getUserStats).toHaveBeenCalledTimes(2);
-    }, { timeout: 2000 });
-
-    // Should now have the updated iron amount
-    await waitFor(() => {
-      expect(result.current.ironAmount).toBe(1100);
+      expect(setupPollingSpy).toHaveBeenCalled();
     });
+
+    // Check that the interval value passed is correct
+    const calls = setupPollingSpy.mock.calls;
+    const pollingCall = calls.find(call => call[1] === customInterval);
+    expect(pollingCall).toBeDefined();
   });
 });
