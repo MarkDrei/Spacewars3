@@ -388,8 +388,8 @@ export async function updateBattle(battleId: number): Promise<Battle> {
   await BattleRepo.updateWeaponCooldowns(battleId, battle.attackerId, battle.attackerWeaponCooldowns);
   await BattleRepo.updateWeaponCooldowns(battleId, battle.attackeeId, battle.attackeeWeaponCooldowns);
   
-  // Update defense values (using current battle stats)
-  await BattleRepo.updateBattleDefenses(battleId, battle.attackerEndStats, battle.attackeeEndStats);
+  // Update defense values (using current battle stats from attackerStartStats/attackeeStartStats which are modified during combat)
+  await BattleRepo.updateBattleDefenses(battleId, battle.attackerStartStats, battle.attackeeStartStats);
   
   // Check if battle is over
   if (battleEngine.isBattleOver()) {
@@ -425,6 +425,18 @@ export async function resolveBattle(
   // Get final stats
   const attackerEndStats = battle.attackerStartStats;
   const attackeeEndStats = battle.attackeeStartStats;
+  
+  // Log battle end event BEFORE ending battle (so it's still in cache)
+  const endEvent: BattleEvent = {
+    timestamp: Math.floor(Date.now() / 1000),
+    type: 'battle_ended',
+    actor: winnerId === battle.attackerId ? 'attacker' : 'attackee',
+    data: {
+      message: `Battle ended. Winner: User ${winnerId}`
+    }
+  };
+  
+  await BattleRepo.addBattleEvent(battleId, endEvent);
   
   // End the battle in database
   await BattleRepo.endBattle(
@@ -471,16 +483,4 @@ export async function resolveBattle(
     
     console.log(`⚔️ Battle ${battleId} ended: Winner ${winnerId}, Loser ${loserId} teleported to (${teleportPos.x.toFixed(0)}, ${teleportPos.y.toFixed(0)})`);
   }
-  
-  // Log battle end event
-  const endEvent: BattleEvent = {
-    timestamp: Math.floor(Date.now() / 1000),
-    type: 'battle_ended',
-    actor: winnerId === battle.attackerId ? 'attacker' : 'attackee',
-    data: {
-      message: `Battle ended. Winner: User ${winnerId}`
-    }
-  };
-  
-  await BattleRepo.addBattleEvent(battleId, endEvent);
 }
