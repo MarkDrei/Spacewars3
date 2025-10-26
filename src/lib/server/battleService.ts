@@ -265,44 +265,6 @@ async function getUserShipId(userId: number): Promise<number> {
 }
 
 /**
- * Get current defense values for a user from cache
- */
-async function getUserDefenseFromCache(
-  userId: number
-): Promise<{ hull: number; armor: number; shield: number }> {
-  const cacheManager = getTypedCacheManager();
-  const ctx = createLockContext();
-  const userCtx = await cacheManager.acquireUserLock(ctx);
-  try {
-    const user = cacheManager.getUserUnsafe(userId, userCtx);
-    if (!user) {
-      // Fallback to loading from database if not in cache
-      const dbCtx = await cacheManager.acquireDatabaseRead(userCtx);
-      try {
-        const loadedUser = await cacheManager.loadUserFromDbUnsafe(userId, dbCtx);
-        if (!loadedUser) {
-          throw new Error(`User ${userId} not found`);
-        }
-        return {
-          hull: loadedUser.hullCurrent,
-          armor: loadedUser.armorCurrent,
-          shield: loadedUser.shieldCurrent
-        };
-      } finally {
-        dbCtx.dispose();
-      }
-    }
-    return {
-      hull: user.hullCurrent,
-      armor: user.armorCurrent,
-      shield: user.shieldCurrent
-    };
-  } finally {
-    userCtx.dispose();
-  }
-}
-
-/**
  * Initiate a battle between two users
  * NOTE: Caller should check battle state via user.inBattle before calling this
  * 
@@ -510,24 +472,11 @@ export async function resolveBattle(
     battle.attackeeStartStats.shield.current
   );
   
-  // Get current defense values from User cache for end stats
-  const attackerCurrentDefense = await getUserDefenseFromCache(battle.attackerId);
-  const attackeeCurrentDefense = await getUserDefenseFromCache(battle.attackeeId);
-  
-  // Create end stats with current values from cache
-  const attackerEndStats = {
-    ...battle.attackerStartStats,
-    hull: { current: attackerCurrentDefense.hull, max: battle.attackerStartStats.hull.max },
-    armor: { current: attackerCurrentDefense.armor, max: battle.attackerStartStats.armor.max },
-    shield: { current: attackerCurrentDefense.shield, max: battle.attackerStartStats.shield.max }
-  };
-  
-  const attackeeEndStats = {
-    ...battle.attackeeStartStats,
-    hull: { current: attackeeCurrentDefense.hull, max: battle.attackeeStartStats.hull.max },
-    armor: { current: attackeeCurrentDefense.armor, max: battle.attackeeStartStats.armor.max },
-    shield: { current: attackeeCurrentDefense.shield, max: battle.attackeeStartStats.shield.max }
-  };
+  // Create end stats from BattleStats (which we just wrote to User cache)
+  // BattleStats.hull.current contains the final values after all damage was applied
+  // No need to read from cache again - we just wrote these values there
+  const attackerEndStats = battle.attackerStartStats;
+  const attackeeEndStats = battle.attackeeStartStats;
   
   // Log battle end event BEFORE ending battle (so it's still in cache)
   const endEvent: BattleEvent = {
