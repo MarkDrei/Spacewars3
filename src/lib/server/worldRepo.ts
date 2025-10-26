@@ -12,7 +12,7 @@ import { createEmptyContext } from './typedLocks';
  */
 export function loadWorldFromDb(db: sqlite3.Database, saveCallback: SaveWorldCallback): Promise<World> {
   return new Promise((resolve, reject) => {
-    // Join with users table to get usernames for player ships
+    // Join with users table to get usernames and ship_image_index for player ships
     const query = `
       SELECT 
         so.id,
@@ -22,7 +22,8 @@ export function loadWorldFromDb(db: sqlite3.Database, saveCallback: SaveWorldCal
         so.speed,
         so.angle,
         so.last_position_update_ms,
-        u.username
+        u.username,
+        u.ship_image_index
       FROM space_objects so
       LEFT JOIN users u ON so.type = 'player_ship' AND so.id = u.ship_id
     `;
@@ -42,6 +43,7 @@ export function loadWorldFromDb(db: sqlite3.Database, saveCallback: SaveWorldCal
         angle: number;
         last_position_update_ms: number;
         username: string | null;
+        ship_image_index: number | null;
       }>).map(row => ({
         id: row.id,
         type: row.type as SpaceObject['type'],
@@ -50,8 +52,9 @@ export function loadWorldFromDb(db: sqlite3.Database, saveCallback: SaveWorldCal
         speed: row.speed,
         angle: row.angle,
         last_position_update_ms: row.last_position_update_ms,
-        // Only include username for player ships
-        ...(row.type === 'player_ship' && row.username ? { username: row.username } : {})
+        // Only include username and shipImageIndex for player ships
+        ...(row.type === 'player_ship' && row.username ? { username: row.username } : {}),
+        ...(row.type === 'player_ship' && row.ship_image_index ? { shipImageIndex: row.ship_image_index } : {})
       }));
 
       const world = new World(

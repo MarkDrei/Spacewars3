@@ -6,12 +6,17 @@ import { SpaceObjectRendererBase } from './SpaceObjectRendererBase';
  * Uses the base SpaceObjectRenderer for positioning and wrapping
  */
 export class OtherShipRenderer extends SpaceObjectRendererBase {
-    private shipImage: HTMLImageElement;
+    private shipImages: Map<number, HTMLImageElement> = new Map();
+    private currentShipImageIndex: number = 1;
 
     constructor() {
         super();
-        this.shipImage = new Image();
-        this.shipImage.src = '/assets/images/ship1.png';
+        // Pre-load all ship images
+        for (let i = 1; i <= 5; i++) {
+            const img = new Image();
+            img.src = `/assets/images/ship${i}.png`;
+            this.shipImages.set(i, img);
+        }
     }
     
     /**
@@ -25,15 +30,17 @@ export class OtherShipRenderer extends SpaceObjectRendererBase {
         viewportY: number, 
         ship: SpaceObject
     ): void {
+        // Set the current ship image index before drawing
+        this.currentShipImageIndex = ship.shipImageIndex || 1;
         // Use the base class method to handle positioning and wrapping
         this.drawSpaceObject(ctx, centerX, centerY, viewportX, viewportY, ship);
     }
 
     /**
-     * Get the ship image
+     * Get the ship image based on the current ship's shipImageIndex
      */
     protected getObjectImage(): HTMLImageElement | null {
-        return this.shipImage;
+        return this.shipImages.get(this.currentShipImageIndex) || this.shipImages.get(1) || null;
     }
     
     /**

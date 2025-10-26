@@ -143,6 +143,104 @@
   color: #66bb6a;
 }
 
+.ship-selection {
+  background-color: #1e1e1e;
+  padding: 2rem;
+  border-radius: 8px;
+  margin-bottom: 2rem;
+}
+
+.ship-selection h3 {
+  color: var(--primary-green);
+  margin: 0 0 1.5rem 0;
+  text-align: center;
+}
+
+.message {
+  padding: 1rem;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+  text-align: center;
+  font-weight: 500;
+}
+
+.message.success {
+  background-color: rgba(76, 175, 80, 0.2);
+  border: 1px solid #4caf50;
+  color: #66bb6a;
+}
+
+.message.error {
+  background-color: rgba(244, 67, 54, 0.2);
+  border: 1px solid #f44336;
+  color: #ef5350;
+}
+
+.ship-options {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 1.5rem;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.ship-option {
+  position: relative;
+  background-color: #2d2d2d;
+  border: 3px solid transparent;
+  border-radius: 8px;
+  padding: 1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-align: center;
+}
+
+.ship-option:hover:not(.disabled) {
+  border-color: var(--primary-green);
+  background-color: #3d3d3d;
+  transform: translateY(-4px);
+}
+
+.ship-option.selected {
+  border-color: var(--primary-green);
+  background-color: rgba(76, 175, 80, 0.15);
+}
+
+.ship-option.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ship-preview {
+  width: 100%;
+  height: auto;
+  max-width: 100px;
+  display: block;
+  margin: 0 auto 0.5rem;
+}
+
+.ship-label {
+  display: block;
+  color: white;
+  font-size: 0.9rem;
+  margin-top: 0.5rem;
+}
+
+.checkmark {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  background-color: var(--primary-green);
+  color: white;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+}
+
 @media (max-width: 768px) {
   .profile-page {
     padding: 1rem 0.5rem;
@@ -164,7 +262,13 @@
   }
 
   .achievements,
-  .playtime-info {
+  .playtime-info,
+  .ship-selection {
     padding: 1.5rem;
+  }
+
+  .ship-options {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
   }
 }

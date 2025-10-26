@@ -7,13 +7,30 @@ import { SpaceObjectOld } from '../game/SpaceObject';
 export class PlayerShipRenderer {
     private shipImage: HTMLImageElement;
     private imageLoaded: boolean = false;
+    private currentShipImageIndex: number = 1;
 
-    constructor() {
+    constructor(shipImageIndex: number = 1) {
+        this.currentShipImageIndex = shipImageIndex;
         this.shipImage = new Image();
         this.shipImage.onload = () => {
             this.imageLoaded = true;
         };
-        this.shipImage.src = '/assets/images/ship1.png';
+        this.shipImage.src = `/assets/images/ship${shipImageIndex}.png`;
+    }
+
+    /**
+     * Update the ship image if the index has changed
+     */
+    updateShipImage(shipImageIndex: number): void {
+        if (this.currentShipImageIndex !== shipImageIndex) {
+            this.currentShipImageIndex = shipImageIndex;
+            this.imageLoaded = false;
+            this.shipImage = new Image();
+            this.shipImage.onload = () => {
+                this.imageLoaded = true;
+            };
+            this.shipImage.src = `/assets/images/ship${shipImageIndex}.png`;
+        }
     }
 
     /**
