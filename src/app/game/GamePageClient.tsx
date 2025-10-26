@@ -8,6 +8,7 @@ import { useWorldData } from '@/lib/client/hooks/useWorldData';
 import { navigateShip } from '@/lib/client/services/navigationService';
 import { getShipStats } from '@/lib/client/services/shipStatsService';
 import { ServerAuthState } from '@/lib/server/serverSession';
+import DataAgeIndicator from '@/components/DataAgeIndicator/DataAgeIndicator';
 
 interface GamePageClientProps {
   auth: ServerAuthState;
@@ -24,7 +25,7 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
   const [isSettingAngle, setIsSettingAngle] = useState(false);
   const [isSettingSpeed, setIsSettingSpeed] = useState(false);
   // Auth is guaranteed by server, so pass true and use auth.shipId
-  const { worldData, isLoading, error, refetch } = useWorldData(3000);
+  const { worldData, isLoading, error, refetch, lastUpdateTime } = useWorldData(3000);
 
   // Sync debugDrawingsEnabled state with game instance
   useEffect(() => {
@@ -247,6 +248,7 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
             height="800"
           ></canvas>
         </div>
+        {debugDrawingsEnabled && <DataAgeIndicator lastUpdateTime={lastUpdateTime} />}
         <div className="game-controls">
           <div className="navigation-controls">
             <div className="control-row">
