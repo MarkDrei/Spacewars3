@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import AuthenticatedLayout from '@/components/Layout/AuthenticatedLayout';
 import './GamePage.css';
@@ -42,6 +42,11 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
       gameInstanceRef.current.setDebugDrawingsEnabled(enabled);
     }
   };
+
+  // Memoize the redirect callback to avoid recreating it on every render
+  const handleAttackSuccess = useCallback(() => {
+    router.push('/');
+  }, [router]);
 
   useEffect(() => {
     // Initialize game only when we have necessary data AND canvas is rendered (not loading)
@@ -85,11 +90,9 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
       // Set the navigation callback to update input fields when user clicks on canvas
       gameInstanceRef.current.setNavigationCallback?.(updateInputFieldsFromShip);
       // Set the attack success callback to redirect to home page
-      gameInstanceRef.current.setAttackSuccessCallback?.(() => {
-        router.push('/');
-      });
+      gameInstanceRef.current.setAttackSuccessCallback?.(handleAttackSuccess);
     }
-  }, [worldData, auth.shipId, refetch, router]);
+  }, [worldData, auth.shipId, refetch, handleAttackSuccess]);
 
   // Initialize input fields with current ship state only once when game starts
   useEffect(() => {

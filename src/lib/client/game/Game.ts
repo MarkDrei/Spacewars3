@@ -286,8 +286,12 @@ export class Game {
         
         // Redirect to home page after successful attack
         if (this.onAttackSuccessCallback) {
-          console.log(`🏠 Redirecting to home page...`);
-          this.onAttackSuccessCallback();
+          try {
+            console.log(`🏠 Redirecting to home page...`);
+            this.onAttackSuccessCallback();
+          } catch (error) {
+            console.error('⚠️ Failed to execute attack success callback:', error);
+          }
         }
       } else {
         console.error('⚔️ Failed to initiate battle:', result.error);
