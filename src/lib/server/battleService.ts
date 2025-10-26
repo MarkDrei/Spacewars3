@@ -473,9 +473,9 @@ export async function resolveBattle(
   );
   
   // Create end stats from BattleStats (which we just wrote to User cache)
-  // BattleStats.hull.current contains the final values after all damage was applied
-  // No need to read from cache again - we just wrote these values there
-  // Create shallow copies to ensure endStats are distinct objects from startStats
+  // Note: battle.attackerStartStats/attackeeStartStats are modified during combat
+  // to contain the final defense values, so they represent the end state of the battle
+  // We create shallow copies to ensure endStats are distinct objects from startStats
   const attackerEndStats = { ...battle.attackerStartStats };
   const attackeeEndStats = { ...battle.attackeeStartStats };
   
