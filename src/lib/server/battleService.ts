@@ -20,6 +20,7 @@ import { TechFactory } from './TechFactory';
 import { ApiError } from './errors';
 import { getTypedCacheManager } from './typedCacheManager';
 import { createLockContext } from './typedLocks';
+import { getBattleCache } from './BattleCache';
 
 /**
  * Maximum distance to initiate battle (same as collection distance)
@@ -247,6 +248,7 @@ async function updateUserDefense(
       user.defenseLastRegen = Math.floor(Date.now() / 1000);
       cacheManager.updateUserUnsafe(user, userCtx);
     }
+    
   } finally {
     userCtx.dispose();
   }
