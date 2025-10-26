@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import AuthenticatedLayout from '@/components/Layout/AuthenticatedLayout';
 import './GamePage.css';
 import { initGame, Game } from '@/lib/client/game/Game';
@@ -15,6 +16,7 @@ interface GamePageClientProps {
 }
 
 const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
+  const router = useRouter();
   const gameInitializedRef = useRef(false);
   const gameInstanceRef = useRef<Game | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -82,8 +84,12 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
       gameInstanceRef.current.setRefetchFunction?.(refetch);
       // Set the navigation callback to update input fields when user clicks on canvas
       gameInstanceRef.current.setNavigationCallback?.(updateInputFieldsFromShip);
+      // Set the attack success callback to redirect to home page
+      gameInstanceRef.current.setAttackSuccessCallback?.(() => {
+        router.push('/');
+      });
     }
-  }, [worldData, auth.shipId, refetch]);
+  }, [worldData, auth.shipId, refetch, router]);
 
   // Initialize input fields with current ship state only once when game starts
   useEffect(() => {

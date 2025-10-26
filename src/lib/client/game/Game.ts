@@ -24,6 +24,7 @@ export class Game {
   private targetingLine: TargetingLine | null = null;
   private interceptionLines: InterceptionLines | null = null;
   private onNavigationCallback?: () => void; // Callback for when navigation happens
+  private onAttackSuccessCallback?: () => void; // Callback for when attack succeeds
 
   constructor(canvas: HTMLCanvasElement) {
     // Initialize the canvas context
@@ -282,6 +283,12 @@ export class Game {
         } else {
           console.log(`⚠️ No refetch function available`);
         }
+        
+        // Redirect to home page after successful attack
+        if (this.onAttackSuccessCallback) {
+          console.log(`🏠 Redirecting to home page...`);
+          this.onAttackSuccessCallback();
+        }
       } else {
         console.error('⚔️ Failed to initiate battle:', result.error);
         // Could show user feedback here (e.g., toast notification)
@@ -322,6 +329,13 @@ export class Game {
    */
   public setNavigationCallback(callback: () => void): void {
     this.onNavigationCallback = callback;
+  }
+
+  /**
+   * Set a callback function to trigger when attack succeeds
+   */
+  public setAttackSuccessCallback(callback: () => void): void {
+    this.onAttackSuccessCallback = callback;
   }
 
   /**
