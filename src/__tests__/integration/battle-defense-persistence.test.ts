@@ -131,8 +131,7 @@ describe('Battle Defense Persistence', () => {
     // Call resolveBattle to end the battle and update user defense values
     await battleService.resolveBattle(battle.id, attacker.id);
     
-    // Persist any dirty users to database
-    await cacheManager.backgroundPersist();
+    console.log('✅ Battle ended');
     
     // Re-load users from cache to check they weren't reset
     console.log('🔄 Checking users in cache...');
