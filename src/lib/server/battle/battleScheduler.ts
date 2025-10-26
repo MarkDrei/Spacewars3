@@ -199,7 +199,7 @@ async function fireWeapon(
     
     // Send message to both players
     await createMessage(attackerId, `Your ${weaponType.replace(/_/g, ' ')} fired ${shotsPerSalvo} shot(s) but all missed!`);
-    await createMessage(defenderId, `Enemy ${weaponType.replace(/_/g, ' ')} fired ${shotsPerSalvo} shot(s) but all missed!`);
+    await createMessage(defenderId, `A: Enemy ${weaponType.replace(/_/g, ' ')} fired ${shotsPerSalvo} shot(s) but all missed!`);
     
     // Update cooldown - set to when weapon will be ready next
     const nextReadyTime = currentTime + (weaponSpec.cooldown || 5);
@@ -262,8 +262,8 @@ async function fireWeapon(
   const damageBreakdown = defenseChanges.join(', ');
   
   // Send detailed messages to both players
-  const attackerMessage = `⚔️ Your **${weaponType.replace(/_/g, ' ')}** fired ${shotsPerSalvo} shot(s), **${hits} hit** for **${totalDamage} damage**! (${damageBreakdown})`;
-  const defenderMessage = `🛡️ Enemy **${weaponType.replace(/_/g, ' ')}** fired ${shotsPerSalvo} shot(s), **${hits} hit** you for **${totalDamage} damage**! (${damageBreakdown})`;
+  const attackerMessage = `⚔️ Your **${weaponType.replace(/_/g, ' ')}** fired ${shotsPerSalvo} shot(s), **${hits} hit** for **${totalDamage} damage**! Enemy: ${defenseChanges}`;
+  const defenderMessage = `A: 🛡️ Enemy **${weaponType.replace(/_/g, ' ')}** fired ${shotsPerSalvo} shot(s), **${hits} hit** you for **${totalDamage} damage**! Your defenses: ${defenseChanges}`;
   
   await createMessage(attackerId, attackerMessage);
   await createMessage(defenderId, defenderMessage);
