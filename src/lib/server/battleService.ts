@@ -272,6 +272,44 @@ async function getUserShipId(userId: number): Promise<number> {
 }
 
 /**
+ * Get current defense values for a user from cache
+ */
+async function getUserDefenseFromCache(
+  userId: number
+): Promise<{ hull: number; armor: number; shield: number }> {
+  const cacheManager = getTypedCacheManager();
+  const ctx = createLockContext();
+  const userCtx = await cacheManager.acquireUserLock(ctx);
+  try {
+    const user = cacheManager.getUserUnsafe(userId, userCtx);
+    if (!user) {
+      // Fallback to loading from database if not in cache
+      const dbCtx = await cacheManager.acquireDatabaseRead(userCtx);
+      try {
+        const loadedUser = await cacheManager.loadUserFromDbUnsafe(userId, dbCtx);
+        if (!loadedUser) {
+          throw new Error(`User ${userId} not found`);
+        }
+        return {
+          hull: loadedUser.hullCurrent,
+          armor: loadedUser.armorCurrent,
+          shield: loadedUser.shieldCurrent
+        };
+      } finally {
+        dbCtx.dispose();
+      }
+    }
+    return {
+      hull: user.hullCurrent,
+      armor: user.armorCurrent,
+      shield: user.shieldCurrent
+    };
+  } finally {
+    userCtx.dispose();
+  }
+}
+
+/**
  * Initiate a battle between two users
  * NOTE: Caller should check battle state via user.inBattle before calling this
  * 
