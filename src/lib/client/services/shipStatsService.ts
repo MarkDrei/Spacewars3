@@ -12,6 +12,12 @@ export interface ShipStatsResponse {
   maxSpeed: number;
   last_position_update_ms: number;
   defenseValues: DefenseValues;
+  afterburner: {
+    isActive: boolean;
+    cooldownRemainingMs: number;
+    canActivate: boolean;
+    researchLevel: number;
+  };
 }
 
 export interface ShipStatsError {

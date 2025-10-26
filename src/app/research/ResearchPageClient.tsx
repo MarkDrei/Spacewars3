@@ -12,7 +12,6 @@ import './ResearchPage.css';
 const researchTypeToKey: Record<ResearchType, keyof TechTree> = {
   IronHarvesting: 'ironHarvesting',
   ShipSpeed: 'shipSpeed',
-  Afterburner: 'afterburner',
   // Projectile Weapons
   projectileDamage: 'projectileDamage',
   projectileReloadRate: 'projectileReloadRate',
