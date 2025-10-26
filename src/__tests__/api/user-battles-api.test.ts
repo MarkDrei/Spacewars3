@@ -136,7 +136,7 @@ describe('User battles API', () => {
   test('userBattles_withBattles_returnsBattleHistory', async () => {
     // Create two users
     const sessionCookie1 = await createAuthenticatedSession('battleuser1');
-    const sessionCookie2 = await createAuthenticatedSession('battleuser2');
+    await createAuthenticatedSession('battleuser2'); // Create second user but don't need their session
 
     // Get their user data - the last two created users
     const db = await getDatabase();
@@ -185,7 +185,7 @@ describe('User battles API', () => {
   test('userBattles_battleStatistics_areAccurate', async () => {
     // Create two users and a battle
     const sessionCookie1 = await createAuthenticatedSession('statuser1');
-    const sessionCookie2 = await createAuthenticatedSession('statuser2');
+    await createAuthenticatedSession('statuser2'); // Create second user but don't need their session
 
     const db = await getDatabase();
     
