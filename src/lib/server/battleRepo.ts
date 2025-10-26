@@ -231,6 +231,66 @@ export async function endBattle(
 }
 
 /**
+ * Get all battles (for admin view)
+ * Queries database directly as this is not cached
+ */
+export async function getAllBattles(): Promise<Battle[]> {
+  const db = await getDatabase();
+
+  return new Promise((resolve, reject) => {
+    const query = `
+      SELECT * FROM battles 
+      ORDER BY battle_start_time DESC
+    `;
+
+    db.all(query, [], (err, rows) => {
+      if (err) {
+        reject(err);
+        return;
+      }
+
+      const battles = (rows as {
+        id: number;
+        attacker_id: number;
+        attackee_id: number;
+        battle_start_time: number;
+        battle_end_time: number | null;
+        winner_id: number | null;
+        loser_id: number | null;
+        attacker_weapon_cooldowns: string;
+        attackee_weapon_cooldowns: string;
+        attacker_start_stats: string;
+        attackee_start_stats: string;
+        attacker_end_stats: string | null;
+        attackee_end_stats: string | null;
+        battle_log: string;
+        attacker_total_damage?: number;
+        attackee_total_damage?: number;
+      }[]).map(row => ({
+        id: row.id,
+        attackerId: row.attacker_id,
+        attackeeId: row.attackee_id,
+        battleStartTime: row.battle_start_time,
+        battleEndTime: row.battle_end_time,
+        winnerId: row.winner_id,
+        loserId: row.loser_id,
+        attackerWeaponCooldowns: JSON.parse(row.attacker_weapon_cooldowns),
+        attackeeWeaponCooldowns: JSON.parse(row.attackee_weapon_cooldowns),
+        attackerStartStats: JSON.parse(row.attacker_start_stats),
+        attackeeStartStats: JSON.parse(row.attackee_start_stats),
+        attackerEndStats: row.attacker_end_stats ? JSON.parse(row.attacker_end_stats) : null,
+        attackeeEndStats: row.attackee_end_stats ? JSON.parse(row.attackee_end_stats) : null,
+        battleLog: JSON.parse(row.battle_log),
+        attackerTotalDamage: row.attacker_total_damage || 0,
+        attackeeTotalDamage: row.attackee_total_damage || 0
+      }));
+
+      resolve(battles);
+    });
+  });
+}
+
+/**
  * Get battles for a specific user (for history)
  * Queries database directly as this is not cached
  */
@@ -358,6 +418,7 @@ export const BattleRepo = {
   addBattleEvent,
   updateBattleDefenses,
   endBattle,
+  getAllBattles,
   getBattlesForUser,
   getActiveBattles,
   setWeaponCooldown,
