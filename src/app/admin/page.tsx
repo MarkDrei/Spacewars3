@@ -314,6 +314,8 @@ const AdminPage: React.FC = () => {
                   <th>Status</th>
                   <th>Winner</th>
                   <th>Loser</th>
+                  <th>Attacker Damage</th>
+                  <th>Attackee Damage</th>
                   <th>Events</th>
                 </tr>
               </thead>
@@ -359,6 +361,12 @@ const AdminPage: React.FC = () => {
                       ) : (
                         <span className="empty">-</span>
                       )}
+                    </td>
+                    <td className="data-cell">
+                      <span className="damage-value">{battle.attackerTotalDamage.toFixed(1)}</span>
+                    </td>
+                    <td className="data-cell">
+                      <span className="damage-value">{battle.attackeeTotalDamage.toFixed(1)}</span>
                     </td>
                     <td className="data-cell">
                       <span className="event-count">{battle.battleLog.length}</span>
