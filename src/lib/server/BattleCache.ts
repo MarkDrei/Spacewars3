@@ -451,7 +451,9 @@ export class BattleCache {
       attackeeStartStats: JSON.parse(row.attackee_start_stats),
       attackerEndStats: row.attacker_end_stats ? JSON.parse(row.attacker_end_stats) : null,
       attackeeEndStats: row.attackee_end_stats ? JSON.parse(row.attackee_end_stats) : null,
-      battleLog: JSON.parse(row.battle_log)
+      battleLog: JSON.parse(row.battle_log),
+      attackerTotalDamage: row.attacker_total_damage || 0,
+      attackeeTotalDamage: row.attackee_total_damage || 0,
     };
   }
 
@@ -484,7 +486,9 @@ export class BattleCache {
               battle_log = ?,
               battle_end_time = ?,
               winner_id = ?,
-              loser_id = ?
+              loser_id = ?,
+              attacker_total_damage = ?,
+              attackee_total_damage = ?
             WHERE id = ?
           `, [
             JSON.stringify(battle.attackerWeaponCooldowns),
@@ -497,6 +501,8 @@ export class BattleCache {
             battle.battleEndTime,
             battle.winnerId,
             battle.loserId,
+            battle.attackerTotalDamage,
+            battle.attackeeTotalDamage,
             battle.id
           ], (updateErr) => {
             if (updateErr) {
@@ -514,8 +520,9 @@ export class BattleCache {
               attacker_weapon_cooldowns, attackee_weapon_cooldowns,
               attacker_start_stats, attackee_start_stats,
               attacker_end_stats, attackee_end_stats,
-              battle_log
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              battle_log,
+              attacker_total_damage, attackee_total_damage
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           `, [
             battle.id,
             battle.attackerId,
@@ -530,7 +537,9 @@ export class BattleCache {
             JSON.stringify(battle.attackeeStartStats),
             battle.attackerEndStats ? JSON.stringify(battle.attackerEndStats) : null,
             battle.attackeeEndStats ? JSON.stringify(battle.attackeeEndStats) : null,
-            JSON.stringify(battle.battleLog)
+            JSON.stringify(battle.battleLog),
+            battle.attackerTotalDamage,
+            battle.attackeeTotalDamage
           ], (insertErr) => {
             if (insertErr) {
               reject(insertErr);
@@ -626,7 +635,9 @@ export class BattleCache {
                   battle_log = ?,
                   battle_end_time = ?,
                   winner_id = ?,
-                  loser_id = ?
+                  loser_id = ?,
+                  attacker_total_damage = ?,
+                  attackee_total_damage = ?
                 WHERE id = ?
               `, [
                 JSON.stringify(battle.attackerWeaponCooldowns),
@@ -639,6 +650,8 @@ export class BattleCache {
                 battle.battleEndTime,
                 battle.winnerId,
                 battle.loserId,
+                battle.attackerTotalDamage,
+                battle.attackeeTotalDamage,
                 battle.id
               ]);
             }

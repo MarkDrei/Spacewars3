@@ -115,6 +115,16 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ auth, initialMessages }
                 <p>
                   {battleStatus.battle.isAttacker ? 'You attacked' : 'You are under attack from'} opponent #{battleStatus.battle.opponentId}
                 </p>
+                <div className="battle-damage-stats">
+                  <div className="damage-stat">
+                    <span className="damage-label">Your Damage:</span>
+                    <span className="damage-value">{Math.round(battleStatus.battle.myTotalDamage)}</span>
+                  </div>
+                  <div className="damage-stat">
+                    <span className="damage-label">Opponent Damage:</span>
+                    <span className="damage-value">{Math.round(battleStatus.battle.opponentTotalDamage)}</span>
+                  </div>
+                </div>
                 {battleStatus.battle.weaponCooldowns && Object.keys(battleStatus.battle.weaponCooldowns).length > 0 && (
                   <div className="weapon-cooldowns">
                     <div className="cooldown-header">Weapon Cooldowns:</div>
