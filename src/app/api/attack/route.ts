@@ -8,8 +8,6 @@ import { getIronSession } from 'iron-session';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, ApiError, requireAuth } from '@/lib/server/errors';
 import { initiateBattle } from '@/lib/server/battleService';
-import { getDatabase } from '@/lib/server/database';
-import { getUserById } from '@/lib/server/userRepo';
 
 /**
  * POST /api/attack
@@ -39,23 +37,30 @@ export async function POST(request: NextRequest) {
     
     console.log(`⚔️ Attack API: User ${session.userId} attacking user ${targetUserId}`);
     
-    // Load both users directly from database
-    // Do NOT hold locks while calling initiateBattle as it needs to access the database
-    console.log(`⚔️ Step 1: Getting database...`);
-    const db = await getDatabase();
-    console.log(`⚔️ Step 2: Database obtained, loading attacker...`);
+    // Load both users from cache (which ensures proper state management)
+    console.log(`⚔️ Step 1: Loading users from cache...`);
+    const { getTypedCacheManager } = await import('@/lib/server/typedCacheManager');
+    const cacheManager = getTypedCacheManager();
     
-    const attacker = await getUserById(db, session.userId!);
+    // Load attacker from cache
+    const attacker = await cacheManager.loadUserIfNeeded(session.userId!);
     if (!attacker) {
       throw new ApiError(404, 'Attacker not found');
     }
-    console.log(`⚔️ Step 3: Attacker loaded, loading target...`);
+    console.log(`⚔️ Step 2: Attacker loaded, loading target...`);
     
-    const target = await getUserById(db, targetUserId);
+    // Load target from cache
+    const target = await cacheManager.loadUserIfNeeded(targetUserId);
     if (!target) {
       throw new ApiError(404, 'Target user not found');
     }
-    console.log(`⚔️ Step 4: Target loaded, initiating battle...`);
+    console.log(`⚔️ Step 3: Both users loaded, updating defense values...`);
+    
+    // Update defense values with regeneration before battle starts
+    const now = Math.floor(Date.now() / 1000);
+    attacker.updateDefenseValues(now);
+    target.updateDefenseValues(now);
+    console.log(`⚔️ Step 4: Defense values updated, initiating battle...`);
     
     // Initiate the battle - this will handle its own locking internally
     const battle = await initiateBattle(attacker, target);

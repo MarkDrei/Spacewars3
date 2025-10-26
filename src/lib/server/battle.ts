@@ -147,6 +147,9 @@ export class BattleEngine {
   /**
    * Apply damage to a target's defenses (shield → armor → hull)
    * Returns the amount of damage actually dealt to each layer
+   * 
+   * CRITICAL: This method modifies endStats (current battle state), NOT startStats
+   * startStats should remain unchanged to represent initial battle state
    */
   applyDamage(
     targetUserId: number,
@@ -158,7 +161,17 @@ export class BattleEngine {
     remainingHull: number;
   } {
     const isAttacker = this.battle.attackerId === targetUserId;
-    const stats = isAttacker ? this.battle.attackerStartStats : this.battle.attackeeStartStats;
+    
+    // Ensure endStats are initialized (copy from startStats if null)
+    if (isAttacker && !this.battle.attackerEndStats) {
+      this.battle.attackerEndStats = JSON.parse(JSON.stringify(this.battle.attackerStartStats));
+    }
+    if (!isAttacker && !this.battle.attackeeEndStats) {
+      this.battle.attackeeEndStats = JSON.parse(JSON.stringify(this.battle.attackeeStartStats));
+    }
+    
+    // Work with endStats (current state), NOT startStats
+    const stats = isAttacker ? this.battle.attackerEndStats! : this.battle.attackeeEndStats!;
 
     let remainingDamage = totalDamage;
     let shieldDamage = 0;
@@ -186,11 +199,11 @@ export class BattleEngine {
       remainingDamage -= hullDamage;
     }
 
-    // Update battle stats
+    // Update endStats (NOT startStats - startStats should remain unchanged)
     if (isAttacker) {
-      this.battle.attackerStartStats = stats;
+      this.battle.attackerEndStats = stats;
     } else {
-      this.battle.attackeeStartStats = stats;
+      this.battle.attackeeEndStats = stats;
     }
 
     return {
@@ -203,23 +216,28 @@ export class BattleEngine {
 
   /**
    * Check if the battle is over (someone's hull reached 0)
+   * Uses endStats (current state) if available, falls back to startStats
    */
   isBattleOver(): boolean {
-    return (
-      this.battle.attackerStartStats.hull.current <= 0 ||
-      this.battle.attackeeStartStats.hull.current <= 0
-    );
+    const attackerHull = this.battle.attackerEndStats?.hull.current ?? this.battle.attackerStartStats.hull.current;
+    const attackeeHull = this.battle.attackeeEndStats?.hull.current ?? this.battle.attackeeStartStats.hull.current;
+    
+    return attackerHull <= 0 || attackeeHull <= 0;
   }
 
   /**
    * Get the winner and loser IDs
+   * Uses endStats (current state) if available, falls back to startStats
    */
   getBattleOutcome(): { winnerId: number; loserId: number } | null {
     if (!this.isBattleOver()) {
       return null;
     }
 
-    if (this.battle.attackerStartStats.hull.current <= 0) {
+    const attackerHull = this.battle.attackerEndStats?.hull.current ?? this.battle.attackerStartStats.hull.current;
+    const attackeeHull = this.battle.attackeeEndStats?.hull.current ?? this.battle.attackeeStartStats.hull.current;
+
+    if (attackerHull <= 0) {
       return {
         winnerId: this.battle.attackeeId,
         loserId: this.battle.attackerId
@@ -312,17 +330,17 @@ export class BattleEngine {
     // Add event to battle log
     this.battle.battleLog.push(event);
 
-    // Check for defense layer destruction
-    if (damageResult.shieldDamage > 0 && 
-        (isAttacker ? this.battle.attackeeStartStats : this.battle.attackerStartStats).shield.current === 0) {
+    // Check for defense layer destruction (use endStats, not startStats)
+    const targetEndStats = isAttacker ? this.battle.attackeeEndStats : this.battle.attackerEndStats;
+    
+    if (damageResult.shieldDamage > 0 && targetEndStats && targetEndStats.shield.current === 0) {
       const shieldBrokenEvent = this.createBattleEvent('shield_broken', targetActor, {
         message: `${targetActor}'s shield has been destroyed!`
       });
       this.battle.battleLog.push(shieldBrokenEvent);
     }
 
-    if (damageResult.armorDamage > 0 && 
-        (isAttacker ? this.battle.attackeeStartStats : this.battle.attackerStartStats).armor.current === 0) {
+    if (damageResult.armorDamage > 0 && targetEndStats && targetEndStats.armor.current === 0) {
       const armorBrokenEvent = this.createBattleEvent('armor_broken', targetActor, {
         message: `${targetActor}'s armor has been destroyed!`
       });

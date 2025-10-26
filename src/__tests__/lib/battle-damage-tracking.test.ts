@@ -110,9 +110,14 @@ describe('Battle Damage Tracking', () => {
     // Act
     engine.executeTurn(battle.battleStartTime);
 
-    // Assert - Damage was applied to target
+    // Assert - startStats should remain unchanged (initial snapshot)
     const updatedBattle = engine.getBattle();
-    expect(updatedBattle.attackeeStartStats.shield.current).toBeLessThan(initialShieldCurrent);
+    expect(updatedBattle.attackeeStartStats.shield.current).toBe(initialShieldCurrent);
+    
+    // Assert - endStats should be created and reflect damage
+    expect(updatedBattle.attackeeEndStats).not.toBeNull();
+    expect(updatedBattle.attackeeEndStats!.shield.current).toBeLessThan(initialShieldCurrent);
+    
     // And total damage was tracked
     expect(updatedBattle.attackerTotalDamage).toBeGreaterThan(0);
   });

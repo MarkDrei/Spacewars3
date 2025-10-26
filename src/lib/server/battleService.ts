@@ -203,7 +203,7 @@ async function teleportShip(shipId: number, x: number, y: number): Promise<void>
 
 /**
  * Update user defense values via User cache
- * Delegates to TypedCacheManager instead of bypassing cache
+ * Delegates to TypedCacheManager with proper cache loading
  */
 async function updateUserDefense(
   userId: number,
@@ -215,7 +215,21 @@ async function updateUserDefense(
   const ctx = createLockContext();
   const userCtx = await cacheManager.acquireUserLock(ctx);
   try {
-    const user = cacheManager.getUserUnsafe(userId, userCtx);
+    // Load user from cache/DB if needed
+    let user = cacheManager.getUserUnsafe(userId, userCtx);
+    if (!user) {
+      // Load from database
+      const dbCtx = await cacheManager.acquireDatabaseRead(userCtx);
+      try {
+        user = await cacheManager.loadUserFromDbUnsafe(userId, dbCtx);
+        if (user) {
+          cacheManager.setUserUnsafe(user, userCtx);
+        }
+      } finally {
+        dbCtx.dispose();
+      }
+    }
+    
     if (user) {
       user.hullCurrent = hull;
       user.armorCurrent = armor;
@@ -422,9 +436,10 @@ export async function resolveBattle(
   
   const loserId = winnerId === battle.attackerId ? battle.attackeeId : battle.attackerId;
   
-  // Get final stats
-  const attackerEndStats = battle.attackerStartStats;
-  const attackeeEndStats = battle.attackeeStartStats;
+  // Get final stats from endStats (which contain current battle state)
+  // If endStats are null, fallback to startStats (no damage taken)
+  const attackerEndStats = battle.attackerEndStats ?? battle.attackerStartStats;
+  const attackeeEndStats = battle.attackeeEndStats ?? battle.attackeeStartStats;
   
   // End the battle in database
   await BattleRepo.endBattle(
