@@ -45,6 +45,12 @@ function seedTestDatabase(db: sqlite3.Database): void {
   try {
     let shipIdCounter = 0;
     
+    // Precomputed password hashes for test consistency (bcrypt with 10 rounds)
+    const passwordHashes: Record<string, string> = {
+      'a': '$2b$10$0q/od18qjo/fyCB8b.Dn2OZdKs1pKAOPwly98WEZzbsT.yavE6BY.',
+      'dummy': '$2b$10$GJ2Bjb5Ruhd1hCnDxzEzxOmDAlgIy9.0ci11khzvsH0ta7q17K4ay',
+    };
+    
     // Create ships and users for all DEFAULT_USERS
     DEFAULT_USERS.forEach((user, index) => {
       // Create ship for this user
@@ -56,8 +62,8 @@ function seedTestDatabase(db: sqlite3.Database): void {
       shipIdCounter++;
       const shipId = shipIdCounter; // Ships get sequential IDs starting from 1
       
-      // Hash password (both 'a' and 'dummy' use same hash for test consistency)
-      const hashedPassword = '$2b$10$wjxntg6T2IBU42fmC1.sP.RxTQZlm3s2u8Ql7dnRXSwcW0hwZ5hFO';
+      // Get precomputed hash for this user's password
+      const hashedPassword = passwordHashes[user.password] || passwordHashes['a']; // Fallback to 'a' hash
       const techTreeJson = JSON.stringify(user.tech_tree);
       
       // Get defense values from user or use defaults
@@ -65,11 +71,49 @@ function seedTestDatabase(db: sqlite3.Database): void {
       const armorCurrent = user.defense?.armor_current ?? 250.0;
       const shieldCurrent = user.defense?.shield_current ?? 250.0;
       
+      // Build INSERT statement based on what optional fields are provided
+      const columns = ['username', 'password_hash', 'iron', 'last_updated', 'tech_tree', 'ship_id', 'hull_current', 'armor_current', 'shield_current', 'defense_last_regen'];
+      const values: (string | number)[] = [
+        user.username,
+        hashedPassword,
+        user.iron,
+        Math.floor(now / 1000),
+        techTreeJson,
+        shipId,
+        hullCurrent,
+        armorCurrent,
+        shieldCurrent,
+        Math.floor(now / 1000)
+      ];
+      
+      // Add tech_counts if provided
+      if (user.tech_counts) {
+        columns.push(
+          'pulse_laser', 'auto_turret', 'plasma_lance', 'gauss_rifle', 
+          'photon_torpedo', 'rocket_launcher', 'ship_hull', 'kinetic_armor', 
+          'energy_shield', 'missile_jammer'
+        );
+        values.push(
+          user.tech_counts.pulse_laser,
+          user.tech_counts.auto_turret,
+          user.tech_counts.plasma_lance,
+          user.tech_counts.gauss_rifle,
+          user.tech_counts.photon_torpedo,
+          user.tech_counts.rocket_launcher,
+          user.tech_counts.ship_hull,
+          user.tech_counts.kinetic_armor,
+          user.tech_counts.energy_shield,
+          user.tech_counts.missile_jammer
+        );
+      }
+      
+      const insertSQL = `
+        INSERT INTO users (${columns.join(', ')})
+        VALUES (${columns.map(() => '?').join(', ')})
+      `;
+      
       // Create user
-      db.run(`
-        INSERT INTO users (username, password_hash, iron, last_updated, tech_tree, ship_id, hull_current, armor_current, shield_current, defense_last_regen)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `, [user.username, hashedPassword, user.iron, Math.floor(now / 1000), techTreeJson, shipId, hullCurrent, armorCurrent, shieldCurrent, Math.floor(now / 1000)]);
+      db.run(insertSQL, values);
     });
     
     // Create other space objects (asteroids, shipwrecks, escape pods)

@@ -8,7 +8,7 @@ import { getDatabase } from './database';
 export interface Message {
   id: number;
   recipient_id: number;
-  created_at: number; // Unix timestamp in seconds
+  created_at: number; // Unix timestamp in milliseconds
   is_read: boolean;
   message: string;
   isPending?: boolean; // Flag for messages not yet persisted to DB
@@ -32,7 +32,7 @@ export class MessagesRepo {
    */
   createMessage(recipientId: number, message: string): Promise<number> {
     return new Promise((resolve, reject) => {
-      const createdAt = Math.floor(Date.now() / 1000);
+      const createdAt = Date.now();
       const stmt = this.db.prepare(`
         INSERT INTO messages (recipient_id, created_at, is_read, message)
         VALUES (?, ?, 0, ?)
@@ -158,7 +158,7 @@ export class MessagesRepo {
    */
   deleteOldReadMessages(olderThanDays = 30): Promise<number> {
     return new Promise((resolve, reject) => {
-      const cutoffTime = Math.floor(Date.now() / 1000) - (olderThanDays * 24 * 60 * 60);
+      const cutoffTime = Date.now() - (olderThanDays * 24 * 60 * 60 * 1000);
       const stmt = this.db.prepare(`
         DELETE FROM messages 
         WHERE is_read = 1 AND created_at < ?

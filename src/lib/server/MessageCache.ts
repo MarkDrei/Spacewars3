@@ -222,7 +222,7 @@ export class MessageCache {
       const newMessage: Message = {
         id: tempId,
         recipient_id: userId,
-        created_at: Math.floor(Date.now() / 1000),
+        created_at: Date.now(),
         is_read: false,
         message: messageText,
         isPending: true
@@ -292,7 +292,7 @@ export class MessageCache {
     try {
       if (!this.db) throw new Error('Database not initialized');
       
-      const cutoffTime = Math.floor(Date.now() / 1000) - (olderThanDays * 24 * 60 * 60);
+      const cutoffTime = Date.now() - (olderThanDays * 24 * 60 * 60 * 1000);
       const deletedCount = await this.deleteOldMessagesFromDb(cutoffTime);
       
       // Clear cache to force reload
@@ -452,7 +452,7 @@ export class MessageCache {
     if (!this.db) throw new Error('Database not initialized');
     
     return new Promise((resolve, reject) => {
-      const createdAt = Math.floor(Date.now() / 1000);
+      const createdAt = Date.now();
       const stmt = this.db!.prepare(`
         INSERT INTO messages (recipient_id, created_at, is_read, message)
         VALUES (?, ?, 0, ?)

@@ -58,7 +58,7 @@ export const CREATE_MESSAGES_TABLE = `
 CREATE TABLE IF NOT EXISTS messages (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   recipient_id INTEGER NOT NULL,
-  created_at INTEGER NOT NULL, -- Unix timestamp in seconds
+  created_at INTEGER NOT NULL, -- Unix timestamp in milliseconds
   is_read BOOLEAN NOT NULL DEFAULT 0,
   message TEXT NOT NULL,
   FOREIGN KEY (recipient_id) REFERENCES users (id)
