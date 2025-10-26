@@ -177,7 +177,7 @@ async function fireWeapon(
     
     // Send message to both players
     await createMessage(attackerId, `Your ${weaponType.replace(/_/g, ' ')} fired ${shotsPerSalvo} shot(s) but all missed!`);
-    await createMessage(defenderId, `Enemy ${weaponType.replace(/_/g, ' ')} fired ${shotsPerSalvo} shot(s) but all missed!`);
+    await createMessage(defenderId, `A: Enemy ${weaponType.replace(/_/g, ' ')} fired ${shotsPerSalvo} shot(s) but all missed!`);
     
     // Update cooldown - set to when weapon will be ready next
     const nextReadyTime = currentTime + (weaponSpec.cooldown || 5);
@@ -278,7 +278,7 @@ async function fireWeapon(
   
   // Send detailed messages to both players
   const attackerMessage = `⚔️ Your **${weaponType.replace(/_/g, ' ')}** fired ${shotsPerSalvo} shot(s), **${hits} hit** for **${totalDamage} damage**! Enemy: ${defenseChanges}`;
-  const defenderMessage = `🛡️ Enemy **${weaponType.replace(/_/g, ' ')}** fired ${shotsPerSalvo} shot(s), **${hits} hit** you for **${totalDamage} damage**! Your defenses: ${defenseChanges}`;
+  const defenderMessage = `A: 🛡️ Enemy **${weaponType.replace(/_/g, ' ')}** fired ${shotsPerSalvo} shot(s), **${hits} hit** you for **${totalDamage} damage**! Your defenses: ${defenseChanges}`;
   
   await createMessage(attackerId, attackerMessage);
   await createMessage(defenderId, defenderMessage);
@@ -318,8 +318,8 @@ async function endBattle(battleId: number, winnerId: number): Promise<void> {
   console.log(`⚔️ Cleared battle state for users ${battle.attackerId} and ${battle.attackeeId}`);
   
   // Send victory/defeat messages
-  await createMessage(winnerId, `🎉 **Victory!** You won the battle!`);
-  await createMessage(loserId, `💀 **Defeat!** You lost the battle and have been teleported away.`);
+  await createMessage(winnerId, `P: 🎉 **Victory!** You won the battle!`);
+  await createMessage(loserId, `A: 💀 **Defeat!** You lost the battle and have been teleported away.`);
   
   console.log(`⚔️ Battle ${battleId} ended: Winner ${winnerId}, Loser ${loserId}`);
 }

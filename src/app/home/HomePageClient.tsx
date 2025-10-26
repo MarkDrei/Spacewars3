@@ -14,6 +14,43 @@ interface HomePageClientProps {
   initialMessages: UnreadMessage[];
 }
 
+// Message type based on prefix
+type MessageType = 'neutral' | 'attack' | 'positive';
+
+interface ParsedMessage {
+  type: MessageType;
+  content: string;
+}
+
+/**
+ * Parse message to determine type and extract content
+ * A: prefix = attack (red background)
+ * P: prefix = positive (green background)
+ * No prefix = neutral (no special background)
+ */
+function parseMessage(message: string): ParsedMessage {
+  if (message.startsWith('A: ')) {
+    return { type: 'attack', content: message.substring(3) };
+  }
+  if (message.startsWith('P: ')) {
+    return { type: 'positive', content: message.substring(3) };
+  }
+  return { type: 'neutral', content: message };
+}
+
+/**
+ * Convert **text** to <strong>text</strong>
+ */
+function formatBoldText(text: string): React.ReactNode {
+  const parts = text.split(/(\*\*.*?\*\*)/g);
+  return parts.map((part, index) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return <strong key={index}>{part.slice(2, -2)}</strong>;
+    }
+    return <React.Fragment key={index}>{part}</React.Fragment>;
+  });
+}
+
 const HomePageClient: React.FC<HomePageClientProps> = ({ auth, initialMessages }) => {
   // Messages are pre-loaded from server - maintain in state for dynamic updates
   const [messages, setMessages] = React.useState<UnreadMessage[]>(initialMessages);
@@ -189,17 +226,20 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ auth, initialMessages }
                     </td>
                   </tr>
                 ) : (
-                  messages.map(message => (
-                    <tr key={message.id} className="data-row">
-                      <td className="time-cell">
-                        <div className="time-line">{messagesService.formatTime(message.created_at)}</div>
-                        <div className="date-line">{messagesService.formatDate(message.created_at)}</div>
-                      </td>
-                      <td className="data-cell message-cell">
-                        {message.message}
-                      </td>
-                    </tr>
-                  ))
+                  messages.map(message => {
+                    const parsed = parseMessage(message.message);
+                    return (
+                      <tr key={message.id} className={`data-row message-row-${parsed.type}`}>
+                        <td className="time-cell">
+                          <div className="time-line">{messagesService.formatTime(message.created_at)}</div>
+                          <div className="date-line">{messagesService.formatDate(message.created_at)}</div>
+                        </td>
+                        <td className={`data-cell message-cell message-${parsed.type}`}>
+                          {formatBoldText(parsed.content)}
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
