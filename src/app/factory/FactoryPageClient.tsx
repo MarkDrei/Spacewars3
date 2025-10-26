@@ -16,7 +16,7 @@ interface FactoryPageClientProps {
   auth: ServerAuthState;
 }
 
-const FactoryPageClient: React.FC<FactoryPageClientProps> = ({ auth }) => {
+const FactoryPageClient: React.FC<FactoryPageClientProps> = () => {
   // Auth is guaranteed by server, so pass true to hooks
   const { ironAmount } = useIron();
   const {

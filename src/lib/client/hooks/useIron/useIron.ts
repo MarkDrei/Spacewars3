@@ -60,7 +60,7 @@ export const useIron = (pollInterval: number = 5000): UseIronReturn => {
       setIronData(newData);
       setDisplayIronAmount(Math.floor(result.iron));
       setIsLoading(false);
-    } catch (err) {
+    } catch {
       if (isMountedRef.current) {
         // Check if we should retry on exception
         const retryDecision = shouldRetryFetch('Network error', retryCount, DEFAULT_RETRY_CONFIG);

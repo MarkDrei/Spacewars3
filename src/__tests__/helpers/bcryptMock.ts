@@ -25,7 +25,7 @@ export const PRECOMPUTED_HASHES: Record<string, string> = {
  * Mock bcrypt.hash function
  * Returns precomputed hash if available, otherwise throws error
  */
-export const mockHash = async (password: string, _rounds?: number): Promise<string> => {
+export const mockHash = async (password: string): Promise<string> => {
   const hash = PRECOMPUTED_HASHES[password];
   if (!hash) {
     throw new Error(
@@ -53,7 +53,7 @@ export const createBcryptMock = () => {
   const mockModule = {
     hash: mockHash,
     compare: mockCompare,
-    hashSync: (password: string, _rounds?: number) => {
+    hashSync: (password: string) => {
       const hash = PRECOMPUTED_HASHES[password];
       if (!hash) {
         throw new Error(`No precomputed hash for password "${password}"`);

@@ -13,7 +13,7 @@ interface HomePageClientProps {
   initialMessages: UnreadMessage[];
 }
 
-const HomePageClient: React.FC<HomePageClientProps> = ({ auth, initialMessages }) => {
+const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
   // Messages are pre-loaded from server - no client-side fetching needed
   const { techCounts, weapons, defenses, isLoading: techLoading, error: techError } = useTechCounts();
   const { defenseValues, isLoading: defenseLoading, error: defenseError } = useDefenseValues();
