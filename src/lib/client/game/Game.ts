@@ -24,6 +24,8 @@ export class Game {
   private targetingLine: TargetingLine | null = null;
   private interceptionLines: InterceptionLines | null = null;
   private onNavigationCallback?: () => void; // Callback for when navigation happens
+  private teleportMode: boolean = false; // Track if teleport mode is active
+  private teleportRange: number = 0; // Current teleport range
 
   constructor(canvas: HTMLCanvasElement) {
     // Initialize the canvas context
@@ -79,12 +81,27 @@ export class Game {
       // Update hover states with fresh click coordinates to ensure accuracy
       this.updateHoverStates();
       
-      // Check if any object is hovered
+      // Convert click coordinates to world coordinates
+      const centerX = canvas.width / 2;
+      const centerY = canvas.height / 2;
+      const dx = logicalX - centerX;
+      const dy = logicalY - centerY;
+      const ship = this.world.getShip();
+      const worldTargetX = ship.getX() + dx;
+      const worldTargetY = ship.getY() + dy;
+      
+      // Check if in teleport mode
+      if (this.teleportMode) {
+        // In teleport mode - attempt to teleport to the clicked location
+        this.handleTeleport(worldTargetX, worldTargetY);
+        return;
+      }
+      
+      // Normal mode - check if any object is hovered
       const hoveredObject = this.world.findHoveredObject();
       
       if (hoveredObject) {
         // Check if object is close enough to collect and not a ship
-        const ship = this.world.getShip();
         const distance = calculateToroidalDistance(
           { x: ship.getX(), y: ship.getY() },
           { x: hoveredObject.getX(), y: hoveredObject.getY() },
@@ -100,18 +117,8 @@ export class Game {
         }
       } else {
         // If no object is hovered, use the regular click-to-aim behavior
-        // Use shared angleUtils for conversion
-        const centerX = canvas.width / 2;
-        const centerY = canvas.height / 2;
-        const dx = logicalX - centerX;
-        const dy = logicalY - centerY;
         const angle = Math.atan2(dy, dx);
         const angleDegrees = (angle * 180 / Math.PI + 360) % 360;
-        
-        // Convert click coordinates to world coordinates
-        const ship = this.world.getShip();
-        const worldTargetX = ship.getX() + dx;
-        const worldTargetY = ship.getY() + dy;
         
         this.handleDirectionChange(angleDegrees, worldTargetX, worldTargetY);
       }
@@ -244,6 +251,39 @@ export class Game {
       console.error('Failed to handle collection:', error);
     }
   }
+
+  // Handle teleportation when clicking in teleport mode
+  private async handleTeleport(worldTargetX: number, worldTargetY: number): Promise<void> {
+    try {
+      // Import dynamically to avoid circular dependencies
+      const { teleportShip } = await import('../services/teleportService');
+      
+      console.log(`Attempting to teleport to (${worldTargetX.toFixed(1)}, ${worldTargetY.toFixed(1)})`);
+      
+      const result = await teleportShip(worldTargetX, worldTargetY);
+      
+      if ('error' in result) {
+        console.error('Failed to teleport:', result.error);
+        // Could show user feedback here (e.g., toast notification with error message)
+        return;
+      }
+      
+      console.log(`Successfully teleported! Distance: ${result.teleportation.distance.toFixed(1)} units (Max: ${result.teleportation.maxRange.toFixed(1)})`);
+      
+      // Trigger world data refresh to get updated state from server
+      if (this.refetchWorldData) {
+        console.log(`🔄 Triggering world data refresh after teleport...`);
+        this.refetchWorldData();
+      }
+      
+      // Trigger navigation callback to update input fields
+      if (this.onNavigationCallback) {
+        this.onNavigationCallback();
+      }
+    } catch (error) {
+      console.error('Failed to handle teleportation:', error);
+    }
+  }
   
   // Update hover states based on current mouse position
   private updateHoverStates(): void {
@@ -276,6 +316,28 @@ export class Game {
    */
   public setNavigationCallback(callback: () => void): void {
     this.onNavigationCallback = callback;
+  }
+
+  /**
+   * Enable or disable teleport mode
+   */
+  public setTeleportMode(enabled: boolean, range: number = 0): void {
+    this.teleportMode = enabled;
+    this.teleportRange = range;
+  }
+
+  /**
+   * Get the current teleport mode state
+   */
+  public getTeleportMode(): boolean {
+    return this.teleportMode;
+  }
+
+  /**
+   * Get the current teleport range
+   */
+  public getTeleportRange(): number {
+    return this.teleportRange;
   }
 
   /**

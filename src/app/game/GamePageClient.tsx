@@ -7,6 +7,7 @@ import { initGame, Game } from '@/lib/client/game/Game';
 import { useWorldData } from '@/lib/client/hooks/useWorldData';
 import { navigateShip } from '@/lib/client/services/navigationService';
 import { getShipStats } from '@/lib/client/services/shipStatsService';
+import { getTeleportStats } from '@/lib/client/services/teleportService';
 import { ServerAuthState } from '@/lib/server/serverSession';
 import DataAgeIndicator from '@/components/DataAgeIndicator/DataAgeIndicator';
 
@@ -24,6 +25,9 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
   const [speedInput, setSpeedInput] = useState<string>('0');
   const [isSettingAngle, setIsSettingAngle] = useState(false);
   const [isSettingSpeed, setIsSettingSpeed] = useState(false);
+  const [teleportMode, setTeleportMode] = useState(false);
+  const [teleportLevel, setTeleportLevel] = useState(0);
+  const [teleportRange, setTeleportRange] = useState(0);
   // Auth is guaranteed by server, so pass true and use auth.shipId
   const { worldData, isLoading, error, refetch, lastUpdateTime } = useWorldData(3000);
 
@@ -38,6 +42,14 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
     setDebugDrawingsEnabled(enabled);
     if (gameInstanceRef.current) {
       gameInstanceRef.current.setDebugDrawingsEnabled(enabled);
+    }
+  };
+
+  const handleTeleportToggle = () => {
+    const newTeleportMode = !teleportMode;
+    setTeleportMode(newTeleportMode);
+    if (gameInstanceRef.current) {
+      gameInstanceRef.current.setTeleportMode(newTeleportMode, teleportRange);
     }
   };
 
@@ -95,6 +107,21 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
       }
     }
   }, [worldData, auth.shipId, angleInput, speedInput]);
+
+  // Fetch teleport stats when component mounts
+  useEffect(() => {
+    const fetchTeleportStats = async () => {
+      const stats = await getTeleportStats();
+      if ('error' in stats) {
+        console.error('Failed to fetch teleport stats:', stats.error);
+      } else {
+        setTeleportLevel(stats.level);
+        setTeleportRange(stats.range);
+      }
+    };
+    
+    fetchTeleportStats();
+  }, []);
 
   const initializeGame = () => {
     const gameCanvas = canvasRef.current;
@@ -246,6 +273,7 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
             id="gameCanvas" 
             width="800" 
             height="800"
+            style={{ cursor: teleportMode ? 'crosshair' : 'default' }}
           ></canvas>
         </div>
         {debugDrawingsEnabled && <DataAgeIndicator lastUpdateTime={lastUpdateTime} />}
@@ -308,6 +336,25 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
                 {isSettingMaxSpeed ? 'Setting Max Speed...' : 'Set Max Speed'}
               </button>
             </div>
+
+            {/* Teleport controls - only show if teleport is researched */}
+            {teleportLevel > 0 && (
+              <div className="control-row teleport-controls">
+                <div className="teleport-info">
+                  <span className="teleport-label">Teleport:</span>
+                  <span className="teleport-stats">
+                    Level {teleportLevel} | Range: {teleportRange.toFixed(0)} units
+                  </span>
+                </div>
+                <button 
+                  className={`teleport-button ${teleportMode ? 'btn-warning' : 'btn-primary'}`}
+                  onClick={handleTeleportToggle}
+                  style={{ cursor: teleportMode ? 'crosshair' : 'pointer' }}
+                >
+                  {teleportMode ? '✓ Teleport Mode Active' : 'Enable Teleport Mode'}
+                </button>
+              </div>
+            )}
           </div>
           
           <div className="debug-toggle-container">
