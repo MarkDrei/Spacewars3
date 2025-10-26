@@ -11,6 +11,7 @@
 // Precomputed bcrypt hashes for common test passwords
 export const PRECOMPUTED_HASHES: Record<string, string> = {
   'a': '$2b$10$0q/od18qjo/fyCB8b.Dn2OZdKs1pKAOPwly98WEZzbsT.yavE6BY.',
+  'dummy': '$2b$10$GJ2Bjb5Ruhd1hCnDxzEzxOmDAlgIy9.0ci11khzvsH0ta7q17K4ay',
   'q': '$2b$10$mV0R0OSohm5YjLDdttWtQOZcANRDw.vwIH2JdV.mLBLUPhYvby1Ae',
   'testpass123': '$2b$10$d8dOM7A1Ll449rWUtQZWcepcInTyqySN80niJclYVYFtAPjI0PvIC',
   'testpass': '$2b$10$nHBeHr1QP3Z13msELpYFtOHl6Ltczgeo.ovhYUf34iXwG/Hvbr6B2',
