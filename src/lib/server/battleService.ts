@@ -248,6 +248,44 @@ async function getUserShipId(userId: number): Promise<number> {
 }
 
 /**
+ * Get current defense values for a user from cache
+ */
+async function getUserDefenseFromCache(
+  userId: number
+): Promise<{ hull: number; armor: number; shield: number }> {
+  const cacheManager = getTypedCacheManager();
+  const ctx = createLockContext();
+  const userCtx = await cacheManager.acquireUserLock(ctx);
+  try {
+    const user = cacheManager.getUserUnsafe(userId, userCtx);
+    if (!user) {
+      // Fallback to loading from database if not in cache
+      const dbCtx = await cacheManager.acquireDatabaseRead(userCtx);
+      try {
+        const loadedUser = await cacheManager.loadUserFromDbUnsafe(userId, dbCtx);
+        if (!loadedUser) {
+          throw new Error(`User ${userId} not found`);
+        }
+        return {
+          hull: loadedUser.hullCurrent,
+          armor: loadedUser.armorCurrent,
+          shield: loadedUser.shieldCurrent
+        };
+      } finally {
+        dbCtx.dispose();
+      }
+    }
+    return {
+      hull: user.hullCurrent,
+      armor: user.armorCurrent,
+      shield: user.shieldCurrent
+    };
+  } finally {
+    userCtx.dispose();
+  }
+}
+
+/**
  * Initiate a battle between two users
  * NOTE: Caller should check battle state via user.inBattle before calling this
  * 
@@ -376,7 +414,6 @@ export async function updateBattle(battleId: number): Promise<Battle> {
   const battleEngine = new BattleEngine(battle);
   
   // Process combat until next shot (max 100 turns)
-  const now = Math.floor(Date.now() / 1000);
   const events = battleEngine.processBattleUntilNextShot(100);
   
   // Save events to database
@@ -388,8 +425,20 @@ export async function updateBattle(battleId: number): Promise<Battle> {
   await BattleRepo.updateWeaponCooldowns(battleId, battle.attackerId, battle.attackerWeaponCooldowns);
   await BattleRepo.updateWeaponCooldowns(battleId, battle.attackeeId, battle.attackeeWeaponCooldowns);
   
-  // Update defense values (using current battle stats from attackerStartStats/attackeeStartStats which are modified during combat)
-  await BattleRepo.updateBattleDefenses(battleId, battle.attackerStartStats, battle.attackeeStartStats);
+  // Apply battle damage to User objects in cache
+  // The battle stats track damage dealt, but we need to update the actual User objects
+  await updateUserDefense(
+    battle.attackerId,
+    battle.attackerStartStats.hull.current,
+    battle.attackerStartStats.armor.current,
+    battle.attackerStartStats.shield.current
+  );
+  await updateUserDefense(
+    battle.attackeeId,
+    battle.attackeeStartStats.hull.current,
+    battle.attackeeStartStats.armor.current,
+    battle.attackeeStartStats.shield.current
+  );
   
   // Check if battle is over
   if (battleEngine.isBattleOver()) {
@@ -422,9 +471,40 @@ export async function resolveBattle(
   
   const loserId = winnerId === battle.attackerId ? battle.attackeeId : battle.attackerId;
   
-  // Get final stats
-  const attackerEndStats = battle.attackerStartStats;
-  const attackeeEndStats = battle.attackeeStartStats;
+  // Apply final battle damage to User objects in cache
+  // This ensures defense values are updated even if updateBattle() wasn't called
+  // (e.g., in tests or if battle ends on first turn)
+  await updateUserDefense(
+    battle.attackerId,
+    battle.attackerStartStats.hull.current,
+    battle.attackerStartStats.armor.current,
+    battle.attackerStartStats.shield.current
+  );
+  await updateUserDefense(
+    battle.attackeeId,
+    battle.attackeeStartStats.hull.current,
+    battle.attackeeStartStats.armor.current,
+    battle.attackeeStartStats.shield.current
+  );
+  
+  // Get current defense values from User cache for end stats
+  const attackerCurrentDefense = await getUserDefenseFromCache(battle.attackerId);
+  const attackeeCurrentDefense = await getUserDefenseFromCache(battle.attackeeId);
+  
+  // Create end stats with current values from cache
+  const attackerEndStats = {
+    ...battle.attackerStartStats,
+    hull: { current: attackerCurrentDefense.hull, max: battle.attackerStartStats.hull.max },
+    armor: { current: attackerCurrentDefense.armor, max: battle.attackerStartStats.armor.max },
+    shield: { current: attackerCurrentDefense.shield, max: battle.attackerStartStats.shield.max }
+  };
+  
+  const attackeeEndStats = {
+    ...battle.attackeeStartStats,
+    hull: { current: attackeeCurrentDefense.hull, max: battle.attackeeStartStats.hull.max },
+    armor: { current: attackeeCurrentDefense.armor, max: battle.attackeeStartStats.armor.max },
+    shield: { current: attackeeCurrentDefense.shield, max: battle.attackeeStartStats.shield.max }
+  };
   
   // Log battle end event BEFORE ending battle (so it's still in cache)
   const endEvent: BattleEvent = {
@@ -450,20 +530,6 @@ export async function resolveBattle(
   // Clear battle state for both users
   await updateUserBattleState(battle.attackerId, false, null);
   await updateUserBattleState(battle.attackeeId, false, null);
-  
-  // Update defense values in users table
-  await updateUserDefense(
-    battle.attackerId,
-    attackerEndStats.hull.current,
-    attackerEndStats.armor.current,
-    attackerEndStats.shield.current
-  );
-  await updateUserDefense(
-    battle.attackeeId,
-    attackeeEndStats.hull.current,
-    attackeeEndStats.armor.current,
-    attackeeEndStats.shield.current
-  );
   
   // Get ship IDs for teleportation
   const winnerShipId = await getUserShipId(winnerId);
