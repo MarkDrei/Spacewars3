@@ -31,7 +31,7 @@ class MessagesService {
    * Format timestamp for display
    */
   formatTime(timestamp: number): string {
-    const date = new Date(timestamp * 1000); // Convert from seconds to milliseconds
+    const date = new Date(timestamp); // Timestamp is already in milliseconds
     return date.toLocaleTimeString('en-US', { 
       hour12: false,
       hour: '2-digit', 
@@ -44,7 +44,7 @@ class MessagesService {
    * Format date for display (no year)
    */
   formatDate(timestamp: number): string {
-    const date = new Date(timestamp * 1000); // Convert from seconds to milliseconds
+    const date = new Date(timestamp); // Timestamp is already in milliseconds
     return date.toLocaleDateString('en-US', { 
       month: 'short', 
       day: 'numeric' 
