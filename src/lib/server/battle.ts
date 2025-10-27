@@ -4,9 +4,17 @@
 
 import type { Battle, BattleStats, BattleEvent, WeaponCooldowns } from '../../shared/battleTypes';
 import { TechFactory } from './TechFactory';
+import { getTypedCacheManager } from './typedCacheManager';
+import { createLockContext } from './typedLocks';
+import type { User } from './user';
 
 /**
  * Battle class - Encapsulates battle state and combat mechanics
+ * 
+ * ARCHITECTURE:
+ * - startStats and endStats are "write once" snapshots (beginning and end of battle)
+ * - During battle, we read/update actual User defense values from TypedCacheManager
+ * - This ensures defense values persist correctly through cache system
  */
 export class BattleEngine {
   private battle: Battle;
@@ -148,105 +156,163 @@ export class BattleEngine {
    * Apply damage to a target's defenses (shield → armor → hull)
    * Returns the amount of damage actually dealt to each layer
    * 
-   * CRITICAL: This method modifies endStats (current battle state), NOT startStats
-   * startStats should remain unchanged to represent initial battle state
+   * CRITICAL: This method reads and updates User defense values from TypedCacheManager
+   * startStats and endStats are NOT modified here - they are write-once snapshots
    */
-  applyDamage(
+  async applyDamage(
     targetUserId: number,
     totalDamage: number
-  ): {
+  ): Promise<{
     shieldDamage: number;
     armorDamage: number;
     hullDamage: number;
     remainingHull: number;
-  } {
-    const isAttacker = this.battle.attackerId === targetUserId;
+  }> {
+    // Load user from cache to get current defense values
+    const cacheManager = getTypedCacheManager();
+    const ctx = createLockContext();
+    const userCtx = await cacheManager.acquireUserLock(ctx);
     
-    // Ensure endStats are initialized (copy from startStats if null)
-    if (isAttacker && !this.battle.attackerEndStats) {
-      this.battle.attackerEndStats = JSON.parse(JSON.stringify(this.battle.attackerStartStats));
-    }
-    if (!isAttacker && !this.battle.attackeeEndStats) {
-      this.battle.attackeeEndStats = JSON.parse(JSON.stringify(this.battle.attackeeStartStats));
-    }
-    
-    // Work with endStats (current state), NOT startStats
-    const stats = isAttacker ? this.battle.attackerEndStats! : this.battle.attackeeEndStats!;
+    try {
+      let user = cacheManager.getUserUnsafe(targetUserId, userCtx);
+      if (!user) {
+        // Load from DB if not in cache
+        const dbCtx = await cacheManager.acquireDatabaseRead(userCtx);
+        try {
+          user = await cacheManager.loadUserFromDbUnsafe(targetUserId, dbCtx);
+          if (user) {
+            cacheManager.setUserUnsafe(user, userCtx);
+          }
+        } finally {
+          dbCtx.dispose();
+        }
+      }
+      
+      if (!user) {
+        throw new Error(`User ${targetUserId} not found during battle`);
+      }
 
-    let remainingDamage = totalDamage;
-    let shieldDamage = 0;
-    let armorDamage = 0;
-    let hullDamage = 0;
+      let remainingDamage = totalDamage;
+      let shieldDamage = 0;
+      let armorDamage = 0;
+      let hullDamage = 0;
 
-    // 1. Apply to shield first
-    if (stats.shield.current > 0 && remainingDamage > 0) {
-      shieldDamage = Math.min(remainingDamage, stats.shield.current);
-      stats.shield.current -= shieldDamage;
-      remainingDamage -= shieldDamage;
+      // 1. Apply to shield first
+      if (user.shieldCurrent > 0 && remainingDamage > 0) {
+        shieldDamage = Math.min(remainingDamage, user.shieldCurrent);
+        user.shieldCurrent -= shieldDamage;
+        remainingDamage -= shieldDamage;
+      }
+
+      // 2. Apply to armor second
+      if (user.armorCurrent > 0 && remainingDamage > 0) {
+        armorDamage = Math.min(remainingDamage, user.armorCurrent);
+        user.armorCurrent -= armorDamage;
+        remainingDamage -= armorDamage;
+      }
+
+      // 3. Apply to hull last
+      if (user.hullCurrent > 0 && remainingDamage > 0) {
+        hullDamage = Math.min(remainingDamage, user.hullCurrent);
+        user.hullCurrent -= hullDamage;
+        remainingDamage -= hullDamage;
+      }
+
+      // Update user in cache (marks as dirty for persistence)
+      cacheManager.updateUserUnsafe(user, userCtx);
+
+      return {
+        shieldDamage,
+        armorDamage,
+        hullDamage,
+        remainingHull: user.hullCurrent
+      };
+    } finally {
+      userCtx.dispose();
     }
-
-    // 2. Apply to armor second
-    if (stats.armor.current > 0 && remainingDamage > 0) {
-      armorDamage = Math.min(remainingDamage, stats.armor.current);
-      stats.armor.current -= armorDamage;
-      remainingDamage -= armorDamage;
-    }
-
-    // 3. Apply to hull last
-    if (stats.hull.current > 0 && remainingDamage > 0) {
-      hullDamage = Math.min(remainingDamage, stats.hull.current);
-      stats.hull.current -= hullDamage;
-      remainingDamage -= hullDamage;
-    }
-
-    // Update endStats (NOT startStats - startStats should remain unchanged)
-    if (isAttacker) {
-      this.battle.attackerEndStats = stats;
-    } else {
-      this.battle.attackeeEndStats = stats;
-    }
-
-    return {
-      shieldDamage,
-      armorDamage,
-      hullDamage,
-      remainingHull: stats.hull.current
-    };
   }
 
   /**
    * Check if the battle is over (someone's hull reached 0)
-   * Uses endStats (current state) if available, falls back to startStats
+   * Checks actual User defense values from cache, not battle stats
    */
-  isBattleOver(): boolean {
-    const attackerHull = this.battle.attackerEndStats?.hull.current ?? this.battle.attackerStartStats.hull.current;
-    const attackeeHull = this.battle.attackeeEndStats?.hull.current ?? this.battle.attackeeStartStats.hull.current;
+  async isBattleOver(): Promise<boolean> {
+    const cacheManager = getTypedCacheManager();
+    const ctx = createLockContext();
+    const userCtx = await cacheManager.acquireUserLock(ctx);
     
-    return attackerHull <= 0 || attackeeHull <= 0;
+    try {
+      const attacker = await this.getUserFromCache(this.battle.attackerId, cacheManager, userCtx);
+      const attackee = await this.getUserFromCache(this.battle.attackeeId, cacheManager, userCtx);
+      
+      if (!attacker || !attackee) {
+        throw new Error('Users not found during battle');
+      }
+      
+      return attacker.hullCurrent <= 0 || attackee.hullCurrent <= 0;
+    } finally {
+      userCtx.dispose();
+    }
+  }
+  
+  /**
+   * Helper to get user from cache (loads from DB if needed)
+   */
+  private async getUserFromCache(
+    userId: number,
+    cacheManager: ReturnType<typeof getTypedCacheManager>,
+    userCtx: import('./typedCacheManager').UserContext
+  ): Promise<User | null> {
+    let user = cacheManager.getUserUnsafe(userId, userCtx);
+    if (!user) {
+      const dbCtx = await cacheManager.acquireDatabaseRead(userCtx);
+      try {
+        user = await cacheManager.loadUserFromDbUnsafe(userId, dbCtx);
+        if (user) {
+          cacheManager.setUserUnsafe(user, userCtx);
+        }
+      } finally {
+        dbCtx.dispose();
+      }
+    }
+    return user;
   }
 
   /**
    * Get the winner and loser IDs
-   * Uses endStats (current state) if available, falls back to startStats
+   * Checks actual User defense values from cache
    */
-  getBattleOutcome(): { winnerId: number; loserId: number } | null {
-    if (!this.isBattleOver()) {
+  async getBattleOutcome(): Promise<{ winnerId: number; loserId: number } | null> {
+    const isOver = await this.isBattleOver();
+    if (!isOver) {
       return null;
     }
 
-    const attackerHull = this.battle.attackerEndStats?.hull.current ?? this.battle.attackerStartStats.hull.current;
-    const attackeeHull = this.battle.attackeeEndStats?.hull.current ?? this.battle.attackeeStartStats.hull.current;
+    const cacheManager = getTypedCacheManager();
+    const ctx = createLockContext();
+    const userCtx = await cacheManager.acquireUserLock(ctx);
+    
+    try {
+      const attacker = await this.getUserFromCache(this.battle.attackerId, cacheManager, userCtx);
+      const attackee = await this.getUserFromCache(this.battle.attackeeId, cacheManager, userCtx);
+      
+      if (!attacker || !attackee) {
+        throw new Error('Users not found during battle');
+      }
 
-    if (attackerHull <= 0) {
-      return {
-        winnerId: this.battle.attackeeId,
-        loserId: this.battle.attackerId
-      };
-    } else {
-      return {
-        winnerId: this.battle.attackerId,
-        loserId: this.battle.attackeeId
-      };
+      if (attacker.hullCurrent <= 0) {
+        return {
+          winnerId: this.battle.attackeeId,
+          loserId: this.battle.attackerId
+        };
+      } else {
+        return {
+          winnerId: this.battle.attackerId,
+          loserId: this.battle.attackeeId
+        };
+      }
+    } finally {
+      userCtx.dispose();
     }
   }
 
@@ -270,7 +336,7 @@ export class BattleEngine {
    * Execute a single combat turn (one weapon fires)
    * Returns the event generated from this turn
    */
-  executeTurn(currentTime: number): BattleEvent | null {
+  async executeTurn(currentTime: number): Promise<BattleEvent | null> {
     // Find next weapon ready to fire
     const nextShot = this.getNextWeaponToFire(currentTime);
     if (!nextShot || nextShot.timeUntilReady > 0) {
@@ -292,7 +358,7 @@ export class BattleEngine {
 
     // Calculate and apply damage
     const totalDamage = this.calculateDamage(weaponType, weaponData.count);
-    const damageResult = this.applyDamage(targetUserId, totalDamage);
+    const damageResult = await this.applyDamage(targetUserId, totalDamage);
 
     // Track total damage dealt by attacker/attackee
     if (isAttacker) {
@@ -330,29 +396,39 @@ export class BattleEngine {
     // Add event to battle log
     this.battle.battleLog.push(event);
 
-    // Check for defense layer destruction (use endStats, not startStats)
-    const targetEndStats = isAttacker ? this.battle.attackeeEndStats : this.battle.attackerEndStats;
+    // Check for defense layer destruction by reading current user values
+    const cacheManager = getTypedCacheManager();
+    const ctx = createLockContext();
+    const userCtx = await cacheManager.acquireUserLock(ctx);
     
-    if (damageResult.shieldDamage > 0 && targetEndStats && targetEndStats.shield.current === 0) {
-      const shieldBrokenEvent = this.createBattleEvent('shield_broken', targetActor, {
-        message: `${targetActor}'s shield has been destroyed!`
-      });
-      this.battle.battleLog.push(shieldBrokenEvent);
-    }
+    try {
+      const targetUser = await this.getUserFromCache(targetUserId, cacheManager, userCtx);
+      
+      if (targetUser) {
+        if (damageResult.shieldDamage > 0 && targetUser.shieldCurrent === 0) {
+          const shieldBrokenEvent = this.createBattleEvent('shield_broken', targetActor, {
+            message: `${targetActor}'s shield has been destroyed!`
+          });
+          this.battle.battleLog.push(shieldBrokenEvent);
+        }
 
-    if (damageResult.armorDamage > 0 && targetEndStats && targetEndStats.armor.current === 0) {
-      const armorBrokenEvent = this.createBattleEvent('armor_broken', targetActor, {
-        message: `${targetActor}'s armor has been destroyed!`
-      });
-      this.battle.battleLog.push(armorBrokenEvent);
-    }
+        if (damageResult.armorDamage > 0 && targetUser.armorCurrent === 0) {
+          const armorBrokenEvent = this.createBattleEvent('armor_broken', targetActor, {
+            message: `${targetActor}'s armor has been destroyed!`
+          });
+          this.battle.battleLog.push(armorBrokenEvent);
+        }
 
-    // Check for hull destruction (battle over)
-    if (damageResult.remainingHull <= 0) {
-      const hullDestroyedEvent = this.createBattleEvent('hull_destroyed', targetActor, {
-        message: `${targetActor}'s hull has been destroyed! Battle over.`
-      });
-      this.battle.battleLog.push(hullDestroyedEvent);
+        // Check for hull destruction (battle over)
+        if (targetUser.hullCurrent <= 0) {
+          const hullDestroyedEvent = this.createBattleEvent('hull_destroyed', targetActor, {
+            message: `${targetActor}'s hull has been destroyed! Battle over.`
+          });
+          this.battle.battleLog.push(hullDestroyedEvent);
+        }
+      }
+    } finally {
+      userCtx.dispose();
     }
 
     return event;
@@ -362,13 +438,13 @@ export class BattleEngine {
    * Process battle until a weapon is ready or battle ends
    * Returns the list of events that occurred
    */
-  processBattleUntilNextShot(maxTurns: number = 100): BattleEvent[] {
+  async processBattleUntilNextShot(maxTurns: number = 100): Promise<BattleEvent[]> {
     const events: BattleEvent[] = [];
     let turns = 0;
     const currentTime = Math.floor(Date.now() / 1000);
 
-    while (turns < maxTurns && !this.isBattleOver()) {
-      const event = this.executeTurn(currentTime + turns);
+    while (turns < maxTurns && !(await this.isBattleOver())) {
+      const event = await this.executeTurn(currentTime + turns);
       
       if (!event) {
         // No weapon ready, would need to wait
@@ -378,7 +454,7 @@ export class BattleEngine {
       events.push(event);
       turns++;
 
-      if (this.isBattleOver()) {
+      if (await this.isBattleOver()) {
         break;
       }
     }
