@@ -322,6 +322,46 @@ export async function initiateBattle(
     throw new ApiError(400, `Target is too far away (${distance.toFixed(1)} units, max ${BATTLE_RANGE})`);
   }
   
+  console.log(`⚔️ initiateBattle: Validating defense values...`);
+  // Validation & Recovery: Check defense values and restore if needed
+  // This prevents battles from starting with 0 hull/armor/shield after data corruption
+  const attackerNeedsRecovery = attacker.hullCurrent <= 0 || attacker.armorCurrent < 0 || attacker.shieldCurrent < 0;
+  const attackeeNeedsRecovery = attackee.hullCurrent <= 0 || attackee.armorCurrent < 0 || attackee.shieldCurrent < 0;
+  
+  if (attackerNeedsRecovery || attackeeNeedsRecovery) {
+    console.warn(`⚠️ Defense values corrupted - Attacker: Hull=${attacker.hullCurrent}, Armor=${attacker.armorCurrent}, Shield=${attacker.shieldCurrent}`);
+    console.warn(`⚠️ Defense values corrupted - Attackee: Hull=${attackee.hullCurrent}, Armor=${attackee.armorCurrent}, Shield=${attackee.shieldCurrent}`);
+    
+    // Auto-recover: Set defense values to max/2 based on tech counts
+    if (attackerNeedsRecovery) {
+      const maxHull = attacker.techCounts.ship_hull * 100;
+      const maxArmor = attacker.techCounts.kinetic_armor * 100;
+      const maxShield = attacker.techCounts.energy_shield * 100;
+      
+      attacker.hullCurrent = Math.max(maxHull / 2, attacker.hullCurrent);
+      attacker.armorCurrent = Math.max(maxArmor / 2, attacker.armorCurrent);
+      attacker.shieldCurrent = Math.max(maxShield / 2, attacker.shieldCurrent);
+      attacker.defenseLastRegen = Math.floor(Date.now() / 1000);
+      
+      await attacker.save();
+      console.log(`✅ Recovered attacker defense values: Hull=${attacker.hullCurrent}, Armor=${attacker.armorCurrent}, Shield=${attacker.shieldCurrent}`);
+    }
+    
+    if (attackeeNeedsRecovery) {
+      const maxHull = attackee.techCounts.ship_hull * 100;
+      const maxArmor = attackee.techCounts.kinetic_armor * 100;
+      const maxShield = attackee.techCounts.energy_shield * 100;
+      
+      attackee.hullCurrent = Math.max(maxHull / 2, attackee.hullCurrent);
+      attackee.armorCurrent = Math.max(maxArmor / 2, attackee.armorCurrent);
+      attackee.shieldCurrent = Math.max(maxShield / 2, attackee.shieldCurrent);
+      attackee.defenseLastRegen = Math.floor(Date.now() / 1000);
+      
+      await attackee.save();
+      console.log(`✅ Recovered attackee defense values: Hull=${attackee.hullCurrent}, Armor=${attackee.armorCurrent}, Shield=${attackee.shieldCurrent}`);
+    }
+  }
+  
   console.log(`⚔️ initiateBattle: Creating battle stats...`);
   // Create battle stats snapshots
   const attackerStats = createBattleStats(attacker);
