@@ -15,12 +15,12 @@
 import { BattleRepo } from './battleRepo';
 import { BattleEngine } from './battle';
 import { resolveBattle } from './battleService';
-import type { Battle, BattleEvent } from '../../shared/battleTypes';
-import { TechFactory } from './TechFactory';
-import { sendMessageToUser } from './MessageCache';
+import type { Battle, BattleEvent } from '../../../shared/battleTypes';
+import { TechFactory } from '../TechFactory';
+import { sendMessageToUser } from '../MessageCache';
 import { getBattleCache } from './BattleCache';
-import { getTypedCacheManager } from './typedCacheManager';
-import { createLockContext } from './typedLocks';
+import { getTypedCacheManager } from '../typedCacheManager';
+import { createLockContext } from '../typedLocks';
 
 /**
  * Helper to update user's battle state via TypedCacheManager

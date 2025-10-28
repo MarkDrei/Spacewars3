@@ -4,7 +4,7 @@ import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth, ApiError } from '@/lib/server/errors';
 import { getDatabase } from '@/lib/server/database';
 import { getUserById } from '@/lib/server/userRepo';
-import { getAllBattles } from '@/lib/server/battleRepo';
+import { getAllBattles } from '@/lib/server/battle/battleRepo';
 import type { Battle } from '@/shared/battleTypes';
 
 interface UserData {

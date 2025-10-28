@@ -4,7 +4,7 @@ import fs from 'fs';
 import { CREATE_TABLES } from './schema';
 import { seedDatabase, DEFAULT_USERS, DEFAULT_SPACE_OBJECTS } from './seedData';
 import { applyTechMigrations } from './migrations';
-import { BattleCache } from './BattleCache';
+import { BattleCache } from './battle/BattleCache';
 
 let db: sqlite3.Database | null = null;
 let isInitializing = false;

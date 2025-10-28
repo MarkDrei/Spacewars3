@@ -610,7 +610,7 @@ export class TypedCacheManager {
    */
   private startBattleScheduler(): void {
     // Import dynamically to avoid circular dependencies
-    import('./battleScheduler').then(({ startBattleScheduler }) => {
+    import('./battle/battleScheduler').then(({ startBattleScheduler }) => {
       startBattleScheduler(1000); // Process battles every 1 second
     }).catch(error => {
       console.error('❌ Failed to start battle scheduler:', error);

@@ -4,13 +4,13 @@
 // ---
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { BattleCache } from '../../lib/server/BattleCache';
+import { BattleCache } from '../../lib/server/battle/BattleCache';
 import { TypedCacheManager, getTypedCacheManager } from '../../lib/server/typedCacheManager';
-import * as battleService from '../../lib/server/battleService';
+import * as battleService from '../../lib/server/battle/battleService';
 import { createTestDatabase } from '../helpers/testDatabase';
 import { User } from '../../lib/server/user';
 import { createLockContext } from '../../lib/server/typedLocks';
-import { BattleRepo } from '../../lib/server/battleRepo';
+import { BattleRepo } from '../../lib/server/battle/battleRepo';
 import type { BattleStats } from '../../shared/battleTypes';
 
 describe('Battle Defense Persistence', () => {

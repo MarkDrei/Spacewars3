@@ -7,7 +7,7 @@
 // ---
 
 import { describe, it, expect } from 'vitest';
-import { BattleEngine } from '../../lib/server/battle';
+import { BattleEngine } from '../../lib/server/battle/battle';
 import type { Battle, BattleStats } from '../../shared/battleTypes';
 
 describe('Battle Damage Tracking', () => {

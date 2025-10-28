@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getIronSession } from 'iron-session';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, ApiError, requireAuth } from '@/lib/server/errors';
-import { initiateBattle } from '@/lib/server/battleService';
+import { initiateBattle } from '@/lib/server/battle/battleService';
 
 /**
  * POST /api/attack

@@ -10,11 +10,11 @@
 //   - Any cache/database or user/world state updates should move to BattleService or repository/cache managers.
 // ---
 
-import type { Battle, BattleStats, BattleEvent, WeaponCooldowns } from '../../shared/battleTypes';
-import { TechFactory } from './TechFactory';
-import { getTypedCacheManager } from './typedCacheManager';
-import { createLockContext } from './typedLocks';
-import type { User } from './user';
+import type { Battle, BattleStats, BattleEvent, WeaponCooldowns } from '../../../shared/battleTypes';
+import { TechFactory } from '../TechFactory';
+import { getTypedCacheManager } from '../typedCacheManager';
+import { createLockContext } from '../typedLocks';
+import type { User } from '../user';
 
 /**
  * Battle class - Encapsulates battle state and combat mechanics
@@ -270,7 +270,7 @@ export class BattleEngine {
   private async getUserFromCache(
     userId: number,
     cacheManager: ReturnType<typeof getTypedCacheManager>,
-    userCtx: import('./typedCacheManager').UserContext
+    userCtx: import('../typedCacheManager').UserContext
   ): Promise<User | null> {
     let user = cacheManager.getUserUnsafe(userId, userCtx);
     if (!user) {

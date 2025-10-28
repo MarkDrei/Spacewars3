@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getIronSession } from 'iron-session';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, ApiError, requireAuth } from '@/lib/server/errors';
-import { BattleRepo } from '@/lib/server/battleRepo';
+import { BattleRepo } from '@/lib/server/battle/battleRepo';
 
 /**
  * GET /api/battle-status
