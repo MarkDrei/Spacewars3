@@ -1,5 +1,13 @@
 // ---
-// Battle Domain Logic - Core battle mechanics and calculations
+// BattleEngine: Encapsulates pure domain battle mechanics and calculations.
+// Responsibilities:
+//   - Executes combat turns, damage calculations, cooldown logic, and determines battle outcome.
+//   - Remains stateless and pure, with no direct persistence or orchestration.
+// Main interaction partners:
+//   - BattleService (for orchestration)
+//   - BattleRepository/BattleCacheManager (for state access)
+// Responsibilities to move:
+//   - Any cache/database or user/world state updates should move to BattleService or repository/cache managers.
 // ---
 
 import type { Battle, BattleStats, BattleEvent, WeaponCooldowns } from '../../shared/battleTypes';
@@ -80,6 +88,7 @@ export class BattleEngine {
       return {
         userId: this.battle.attackerId,
         weaponType: attackerReadyWeapons[0], // Pick first ready weapon
+
         timeUntilReady: 0
       };
     }

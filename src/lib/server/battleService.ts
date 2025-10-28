@@ -1,5 +1,15 @@
 // ---
-// Battle Service - High-level battle operations
+// BattleScheduler: Automates periodic processing of active battles.
+// Responsibilities:
+//   - Triggers battle rounds at regular intervals via BattleService.
+//   - Orchestrates battle lifecycle events (start, resolve, end).
+//   - Sends notifications/messages to users.
+// Main interaction partners:
+//   - BattleService (for orchestration)
+//   - BattleRepository/BattleCacheManager (for battle state)
+//   - User/World managers (for state updates)
+// Responsibilities to move:
+//   - Any direct battle mechanics or persistence logic should move to BattleService or repository/cache managers.
 // ---
 
 import { BattleRepo } from './battleRepo';
