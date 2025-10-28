@@ -9,7 +9,6 @@ import * as battleService from '../../lib/server/battle/battleService';
 import { createTestDatabase } from '../helpers/testDatabase';
 import { User } from '../../lib/server/user';
 import { createLockContext } from '../../lib/server/typedLocks';
-import type { BattleStats } from '../../shared/battleTypes';
 
 describe('Battle Immediate End Issue', () => {
   
