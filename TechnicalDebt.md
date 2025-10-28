@@ -106,3 +106,51 @@ Refactor battle system to use TypedCacheManager APIs:
 1. **Defense Values Display**: Modified `HomePageClient.tsx` to show battle stats when in battle instead of regenerating user values
 2. **Cache Refresh**: Manual cache refresh after DB updates to prevent stale data
 
+---
+
+## Defense Value Regeneration in Attack Route
+
+**Priority**: Low  
+**Added**: 2025-10-28  
+**Component**: Attack API Route
+
+### Problem
+
+The attack route (`src/app/api/attack/route.ts`) was temporarily modified to call `updateDefenseValues()` and write the results back to cache before initiating battle. This violates the separation of concerns:
+
+- Defense value regeneration should be handled by the **world loop** (periodic background process)
+- API routes should not perform world state updates
+- This creates duplicate logic and potential race conditions
+
+### Architecture Violation
+
+The world loop is designed to handle all periodic updates including:
+- Ship movement
+- Defense value regeneration
+- Resource regeneration
+- Other time-based mechanics
+
+API routes should only:
+- Validate requests
+- Initiate actions (like battles)
+- Return responses
+
+Mixing these concerns makes the system harder to maintain and reason about.
+
+### Temporary Fix Applied
+
+The defense value update was removed from the attack route. The world loop should handle defense regeneration before battles are initiated.
+
+### Proper Solution
+
+Ensure the world loop runs frequently enough to keep defense values up-to-date:
+1. Verify world loop interval is appropriate (currently runs every tick)
+2. Consider adding "ensure up-to-date" logic in battle initiation that triggers world loop if needed
+3. Document clearly that defense values are the responsibility of world loop, not API routes
+
+### Related Files
+
+- `src/app/api/attack/route.ts` - Attack API route
+- `src/lib/server/worldLoop.ts` - World update loop (if exists)
+- `src/lib/server/user.ts` - User class with `updateDefenseValues()` method
+

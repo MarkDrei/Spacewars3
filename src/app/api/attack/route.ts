@@ -54,13 +54,7 @@ export async function POST(request: NextRequest) {
     if (!target) {
       throw new ApiError(404, 'Target user not found');
     }
-    console.log(`⚔️ Step 3: Both users loaded, updating defense values...`);
-    
-    // Update defense values with regeneration before battle starts
-    const now = Math.floor(Date.now() / 1000);
-    attacker.updateDefenseValues(now);
-    target.updateDefenseValues(now);
-    console.log(`⚔️ Step 4: Defense values updated, initiating battle...`);
+    console.log(`⚔️ Step 3: Both users loaded, initiating battle...`);
     
     // Initiate the battle - this will handle its own locking internally
     const battle = await initiateBattle(attacker, target);

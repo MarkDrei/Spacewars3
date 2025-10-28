@@ -4,6 +4,7 @@
 
 import { BattleRepo } from './battleRepo';
 import { BattleEngine } from './battle';
+import { resolveBattle } from './battleService';
 import type { Battle, BattleEvent } from '../../shared/battleTypes';
 import { TechFactory } from './TechFactory';
 import { sendMessageToUser } from './MessageCache';
@@ -111,10 +112,21 @@ async function processBattleRound(battleId: number): Promise<void> {
   const updatedBattle = await BattleRepo.getBattle(battleId);
   if (updatedBattle) {
     const updatedEngine = new BattleEngine(updatedBattle);
-    if (updatedEngine.isBattleOver()) {
-      const outcome = updatedEngine.getBattleOutcome();
+    if (await updatedEngine.isBattleOver()) {
+      const outcome = await updatedEngine.getBattleOutcome();
       if (outcome) {
-        await endBattle(battleId, outcome.winnerId);
+        // Use battleService.resolveBattle instead of local endBattle
+        // This ensures proper endStats snapshotting and teleportation
+        await resolveBattle(battleId, outcome.winnerId);
+        
+        // Send victory/defeat messages (battleService doesn't do this)
+        const battle = updatedBattle;
+        const winnerId = outcome.winnerId;
+        const loserId = outcome.loserId;
+        await createMessage(winnerId, `🎉 **Victory!** You won the battle!`);
+        await createMessage(loserId, `💀 **Defeat!** You lost the battle and have been teleported away.`);
+        
+        console.log(`⚔️ Battle ${battleId} ended: Winner ${winnerId}, Loser ${loserId}`);
       }
     }
   }
@@ -190,46 +202,14 @@ async function fireWeapon(
   const damagePerHit = weaponSpec.damage || 10;
   const totalDamage = hits * damagePerHit;
   
-  // Store defense values BEFORE damage
-  const defensesBefore = {
-    shield: Math.round(defenderStats.shield.current),
-    armor: Math.round(defenderStats.armor.current),
-    hull: Math.round(defenderStats.hull.current)
-  };
+  // Apply damage using BattleEngine to ensure User cache is updated
+  const battleEngine = new BattleEngine(battle);
+  const damageResult = await battleEngine.applyDamage(defenderId, totalDamage);
   
-  // Apply damage to defender's defenses
-  let remainingDamage = totalDamage;
-  let shieldDamage = 0;
-  let armorDamage = 0;
-  let hullDamage = 0;
-  
-  // Damage shields first
-  if (defenderStats.shield.current > 0 && remainingDamage > 0) {
-    shieldDamage = Math.min(defenderStats.shield.current, remainingDamage);
-    defenderStats.shield.current -= shieldDamage;
-    remainingDamage -= shieldDamage;
-  }
-  
-  // Then armor
-  if (defenderStats.armor.current > 0 && remainingDamage > 0) {
-    armorDamage = Math.min(defenderStats.armor.current, remainingDamage);
-    defenderStats.armor.current -= armorDamage;
-    remainingDamage -= armorDamage;
-  }
-  
-  // Finally hull
-  if (defenderStats.hull.current > 0 && remainingDamage > 0) {
-    hullDamage = Math.min(defenderStats.hull.current, remainingDamage);
-    defenderStats.hull.current -= hullDamage;
-    remainingDamage -= hullDamage;
-  }
-  
-  // Store defense values AFTER damage
-  const defensesAfter = {
-    shield: Math.round(defenderStats.shield.current),
-    armor: Math.round(defenderStats.armor.current),
-    hull: Math.round(defenderStats.hull.current)
-  };
+  // Extract damage amounts from result
+  const shieldDamage = damageResult.shieldDamage;
+  const armorDamage = damageResult.armorDamage;
+  const hullDamage = damageResult.hullDamage;
   
   // Track total damage dealt by attacker/attackee
   // Get battle from cache to update damage tracking
@@ -241,7 +221,7 @@ async function fireWeapon(
     } else {
       cachedBattle.attackeeTotalDamage += totalDamage;
     }
-    // Mark battle as dirty for persistence (stats already modified by reference)
+    // Mark battle as dirty for persistence
     battleCache.updateBattleUnsafe(cachedBattle);
   }
   
@@ -264,21 +244,16 @@ async function fireWeapon(
   
   await BattleRepo.addBattleEvent(battle.id, hitEvent);
   
-  // Format defense status
-  const formatDefense = (name: string, before: number, after: number, damage: number): string => {
-    if (damage === 0) return '';
-    return `${name}: ${before} → ${after}`;
-  };
-  
-  const defenseChanges = [
-    formatDefense('Shield', defensesBefore.shield, defensesAfter.shield, shieldDamage),
-    formatDefense('Armor', defensesBefore.armor, defensesAfter.armor, armorDamage),
-    formatDefense('Hull', defensesBefore.hull, defensesAfter.hull, hullDamage)
-  ].filter(s => s).join(', ');
+  // Format defense damage for messages
+  const defenseChanges = [];
+  if (shieldDamage > 0) defenseChanges.push(`Shield: -${shieldDamage}`);
+  if (armorDamage > 0) defenseChanges.push(`Armor: -${armorDamage}`);
+  if (hullDamage > 0) defenseChanges.push(`Hull: -${hullDamage}`);
+  const damageBreakdown = defenseChanges.join(', ');
   
   // Send detailed messages to both players
-  const attackerMessage = `⚔️ Your **${weaponType.replace(/_/g, ' ')}** fired ${shotsPerSalvo} shot(s), **${hits} hit** for **${totalDamage} damage**! Enemy: ${defenseChanges}`;
-  const defenderMessage = `🛡️ Enemy **${weaponType.replace(/_/g, ' ')}** fired ${shotsPerSalvo} shot(s), **${hits} hit** you for **${totalDamage} damage**! Your defenses: ${defenseChanges}`;
+  const attackerMessage = `⚔️ Your **${weaponType.replace(/_/g, ' ')}** fired ${shotsPerSalvo} shot(s), **${hits} hit** for **${totalDamage} damage**! (${damageBreakdown})`;
+  const defenderMessage = `🛡️ Enemy **${weaponType.replace(/_/g, ' ')}** fired ${shotsPerSalvo} shot(s), **${hits} hit** you for **${totalDamage} damage**! (${damageBreakdown})`;
   
   await createMessage(attackerId, attackerMessage);
   await createMessage(defenderId, defenderMessage);
@@ -288,40 +263,6 @@ async function fireWeapon(
   await BattleRepo.setWeaponCooldown(battle.id, attackerId, weaponType, nextReadyTime);
   
   console.log(`⚔️ Battle ${battle.id}: User ${attackerId} ${weaponType} - ${hits}/${shotsPerSalvo} hits, ${totalDamage} damage`);
-}
-
-/**
- * End a battle and clean up
- */
-async function endBattle(battleId: number, winnerId: number): Promise<void> {
-  const battle = await BattleRepo.getBattle(battleId);
-  
-  if (!battle) {
-    return;
-  }
-  
-  const loserId = winnerId === battle.attackerId ? battle.attackeeId : battle.attackerId;
-  
-  // End battle in database
-  await BattleRepo.endBattle(
-    battleId,
-    winnerId,
-    loserId,
-    battle.attackerStartStats,
-    battle.attackeeStartStats
-  );
-  
-  // Clear battle state for both users in database
-  await updateUserBattleState(battle.attackerId, false, null);
-  await updateUserBattleState(battle.attackeeId, false, null);
-  
-  console.log(`⚔️ Cleared battle state for users ${battle.attackerId} and ${battle.attackeeId}`);
-  
-  // Send victory/defeat messages
-  await createMessage(winnerId, `🎉 **Victory!** You won the battle!`);
-  await createMessage(loserId, `💀 **Defeat!** You lost the battle and have been teleported away.`);
-  
-  console.log(`⚔️ Battle ${battleId} ended: Winner ${winnerId}, Loser ${loserId}`);
 }
 
 /**
