@@ -114,19 +114,31 @@ describe('Battle Defense Persistence', () => {
     
     console.log(`⚔️ Battle ${battle.id} created`);
     
-    // Modify battle stats to simulate damage
-    battle.attackerStartStats.hull.current = attackerDamagedHull;
-    battle.attackeeStartStats.hull.current = defenderDamagedHull;
+    // CRITICAL: Apply damage to User objects in cache (not just battle stats)
+    // This is the new architecture - User defense values are the source of truth
+    const damageCtx = createLockContext();
+    const damageUserCtx = await cacheManager.acquireUserLock(damageCtx);
     
-    // Update the battle in cache
-    battleCache.updateBattleUnsafe(battle);
-    
-    console.log(`💥 Simulated damage - Attacker hull: ${attackerDamagedHull}, Defender hull: ${defenderDamagedHull}`);
-    
-    // Now resolve the battle (this is the key function that should update user defense values)
-    // Set defender hull to 0 in the battle stats to make them lose
-    battle.attackeeStartStats.hull.current = 0;
-    battleCache.updateBattleUnsafe(battle);
+    try {
+      const attackerInCache = cacheManager.getUserUnsafe(attacker.id, damageUserCtx);
+      const defenderInCache = cacheManager.getUserUnsafe(defender.id, damageUserCtx);
+      
+      if (!attackerInCache || !defenderInCache) {
+        throw new Error('Users not in cache for damage application');
+      }
+      
+      // Apply damage to attacker
+      attackerInCache.hullCurrent = attackerDamagedHull;
+      cacheManager.updateUserUnsafe(attackerInCache, damageUserCtx);
+      
+      // Set defender to 0 hull (they will lose)
+      defenderInCache.hullCurrent = 0;
+      cacheManager.updateUserUnsafe(defenderInCache, damageUserCtx);
+      
+      console.log(`💥 Simulated damage - Attacker hull: ${attackerDamagedHull}, Defender hull: 0`);
+    } finally {
+      damageUserCtx.dispose();
+    }
     
     // Call resolveBattle to end the battle and update user defense values
     await battleService.resolveBattle(battle.id, attacker.id);
