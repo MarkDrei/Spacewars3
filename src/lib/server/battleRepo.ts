@@ -1,6 +1,14 @@
 // ---
-// Battle Repository - Cache-first operations for battles
-// Converted from static class to exported functions using BattleCache
+// BattleRepository: Handles CRUD and persistence for battle objects.
+// Responsibilities:
+//   - Provides cache-first access to battle objects.
+//   - Handles database synchronization and querying.
+//   - Delegates mechanics and orchestration to BattleEngine and BattleService.
+// Main interaction partners:
+//   - BattleService (for orchestration)
+//   - BattleCacheManager (for cache)
+// Responsibilities to move:
+//   - Any business logic or orchestration should move to BattleService; only persistence should remain here.
 // ---
 
 import type { Battle, BattleStats, BattleEvent, WeaponCooldowns } from '../../shared/battleTypes';

@@ -1,5 +1,15 @@
 // ---
-// Battle Service - High-level battle operations
+// BattleScheduler: Automates periodic processing of active battles.
+// Responsibilities:
+//   - Triggers battle rounds at regular intervals via BattleService.
+//   - Orchestrates battle lifecycle events (start, resolve, end).
+//   - Sends notifications/messages to users.
+// Main interaction partners:
+//   - BattleService (for orchestration)
+//   - BattleRepository/BattleCacheManager (for battle state)
+//   - User/World managers (for state updates)
+// Responsibilities to move:
+//   - Any direct battle mechanics or persistence logic should move to BattleService or repository/cache managers.
 // ---
 
 import { BattleRepo } from './battleRepo';
@@ -203,7 +213,7 @@ async function teleportShip(shipId: number, x: number, y: number): Promise<void>
 
 /**
  * Update user defense values via User cache
- * Delegates to TypedCacheManager instead of bypassing cache
+ * Delegates to TypedCacheManager with proper cache loading
  */
 async function updateUserDefense(
   userId: number,
@@ -215,7 +225,21 @@ async function updateUserDefense(
   const ctx = createLockContext();
   const userCtx = await cacheManager.acquireUserLock(ctx);
   try {
-    const user = cacheManager.getUserUnsafe(userId, userCtx);
+    // Load user from cache/DB if needed
+    let user = cacheManager.getUserUnsafe(userId, userCtx);
+    if (!user) {
+      // Load from database
+      const dbCtx = await cacheManager.acquireDatabaseRead(userCtx);
+      try {
+        user = await cacheManager.loadUserFromDbUnsafe(userId, dbCtx);
+        if (user) {
+          cacheManager.setUserUnsafe(user, userCtx);
+        }
+      } finally {
+        dbCtx.dispose();
+      }
+    }
+    
     if (user) {
       user.hullCurrent = hull;
       user.armorCurrent = armor;
@@ -377,7 +401,7 @@ export async function updateBattle(battleId: number): Promise<Battle> {
   
   // Process combat until next shot (max 100 turns)
   const now = Math.floor(Date.now() / 1000);
-  const events = battleEngine.processBattleUntilNextShot(100);
+  const events = await battleEngine.processBattleUntilNextShot(100);
   
   // Save events to database
   for (const event of events) {
@@ -388,12 +412,12 @@ export async function updateBattle(battleId: number): Promise<Battle> {
   await BattleRepo.updateWeaponCooldowns(battleId, battle.attackerId, battle.attackerWeaponCooldowns);
   await BattleRepo.updateWeaponCooldowns(battleId, battle.attackeeId, battle.attackeeWeaponCooldowns);
   
-  // Update defense values (using current battle stats)
-  await BattleRepo.updateBattleDefenses(battleId, battle.attackerEndStats, battle.attackeeEndStats);
+  // Note: Defense values are updated directly in User objects during combat
+  // We don't need to call updateBattleDefenses here anymore
   
   // Check if battle is over
-  if (battleEngine.isBattleOver()) {
-    const outcome = battleEngine.getBattleOutcome();
+  if (await battleEngine.isBattleOver()) {
+    const outcome = await battleEngine.getBattleOutcome();
     if (outcome) {
       await resolveBattle(battleId, outcome.winnerId);
     }
@@ -422,11 +446,82 @@ export async function resolveBattle(
   
   const loserId = winnerId === battle.attackerId ? battle.attackeeId : battle.attackerId;
   
-  // Get final stats
-  const attackerEndStats = battle.attackerStartStats;
-  const attackeeEndStats = battle.attackeeStartStats;
+  // Snapshot final defense values from User objects to create endStats
+  // This is the "write once at end of battle" for endStats
+  const cacheManager = getTypedCacheManager();
+  let attackerEndStats: BattleStats;
+  let attackeeEndStats: BattleStats;
   
-  // End the battle in database
+  {
+    const ctx = createLockContext();
+    const userCtx = await cacheManager.acquireUserLock(ctx);
+    try {
+      let attacker = cacheManager.getUserUnsafe(battle.attackerId, userCtx);
+      let attackee = cacheManager.getUserUnsafe(battle.attackeeId, userCtx);
+      
+      // Load from DB if not in cache
+      if (!attacker) {
+        const dbCtx = await cacheManager.acquireDatabaseRead(userCtx);
+        try {
+          attacker = await cacheManager.loadUserFromDbUnsafe(battle.attackerId, dbCtx);
+          if (attacker) cacheManager.setUserUnsafe(attacker, userCtx);
+        } finally {
+          dbCtx.dispose();
+        }
+      }
+      
+      if (!attackee) {
+        const dbCtx = await cacheManager.acquireDatabaseRead(userCtx);
+        try {
+          attackee = await cacheManager.loadUserFromDbUnsafe(battle.attackeeId, dbCtx);
+          if (attackee) cacheManager.setUserUnsafe(attackee, userCtx);
+        } finally {
+          dbCtx.dispose();
+        }
+      }
+      
+      if (!attacker || !attackee) {
+        throw new Error('Users not found when resolving battle');
+      }
+      
+      // Create endStats from current user defense values
+      attackerEndStats = {
+        hull: { current: attacker.hullCurrent, max: attacker.techCounts.ship_hull * 100 },
+        armor: { current: attacker.armorCurrent, max: attacker.techCounts.kinetic_armor * 100 },
+        shield: { current: attacker.shieldCurrent, max: attacker.techCounts.energy_shield * 100 },
+        weapons: battle.attackerStartStats.weapons // Weapons don't change
+      };
+      
+      attackeeEndStats = {
+        hull: { current: attackee.hullCurrent, max: attackee.techCounts.ship_hull * 100 },
+        armor: { current: attackee.armorCurrent, max: attackee.techCounts.kinetic_armor * 100 },
+        shield: { current: attackee.shieldCurrent, max: attackee.techCounts.energy_shield * 100 },
+        weapons: battle.attackeeStartStats.weapons // Weapons don't change
+      };
+    } finally {
+      userCtx.dispose();
+    }
+  }
+  
+  // Log battle end event BEFORE ending battle (battle must still be in cache)
+  // If event logging fails, we still proceed with ending the battle to avoid inconsistent state
+  try {
+    const endEvent: BattleEvent = {
+      timestamp: Math.floor(Date.now() / 1000),
+      type: 'battle_ended',
+      actor: winnerId === battle.attackerId ? 'attacker' : 'attackee',
+      data: {
+        message: `Battle ended. Winner: User ${winnerId}`
+      }
+    };
+    
+    await BattleRepo.addBattleEvent(battleId, endEvent);
+  } catch (error) {
+    console.error(`⚠️ Failed to log battle end event for battle ${battleId}:`, error);
+    // Continue with battle resolution even if event logging fails
+  }
+  
+  // End the battle in database (this removes it from cache)
   await BattleRepo.endBattle(
     battleId,
     winnerId,
@@ -439,19 +534,8 @@ export async function resolveBattle(
   await updateUserBattleState(battle.attackerId, false, null);
   await updateUserBattleState(battle.attackeeId, false, null);
   
-  // Update defense values in users table
-  await updateUserDefense(
-    battle.attackerId,
-    attackerEndStats.hull.current,
-    attackerEndStats.armor.current,
-    attackerEndStats.shield.current
-  );
-  await updateUserDefense(
-    battle.attackeeId,
-    attackeeEndStats.hull.current,
-    attackeeEndStats.armor.current,
-    attackeeEndStats.shield.current
-  );
+  // Note: Defense values are already updated in User objects during battle
+  // No need to call updateUserDefense here
   
   // Get ship IDs for teleportation
   const winnerShipId = await getUserShipId(winnerId);
@@ -471,16 +555,4 @@ export async function resolveBattle(
     
     console.log(`⚔️ Battle ${battleId} ended: Winner ${winnerId}, Loser ${loserId} teleported to (${teleportPos.x.toFixed(0)}, ${teleportPos.y.toFixed(0)})`);
   }
-  
-  // Log battle end event
-  const endEvent: BattleEvent = {
-    timestamp: Math.floor(Date.now() / 1000),
-    type: 'battle_ended',
-    actor: winnerId === battle.attackerId ? 'attacker' : 'attackee',
-    data: {
-      message: `Battle ended. Winner: User ${winnerId}`
-    }
-  };
-  
-  await BattleRepo.addBattleEvent(battleId, endEvent);
 }

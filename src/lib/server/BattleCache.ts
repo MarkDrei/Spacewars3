@@ -1,6 +1,15 @@
 // ---
-// BattleCache - Singleton cache manager for Battle objects
-// Delegates User/World operations to TypedCacheManager to maintain consistency
+// BattleCacheManager: Singleton for in-memory battle object management.
+// Responsibilities:
+//   - Manages active battle objects in memory.
+//   - Handles cache initialization, background persistence, and cache invalidation.
+//   - Delegates mechanics and orchestration to BattleEngine and BattleService.
+// Main interaction partners:
+//   - BattleService (for orchestration)
+//   - BattleRepository (for persistence)
+//   - TypedCacheManager (for User/World cache consistency)
+// Responsibilities to move:
+//   - Any business logic or orchestration should move to BattleService; only cache management should remain here.
 // ---
 
 import type sqlite3 from 'sqlite3';
