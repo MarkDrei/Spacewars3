@@ -337,7 +337,7 @@ export class TechRepo {
         const itemTypeLabel = item.itemType === 'weapon' ? 'weapon' : 'defense system';
         
         // Create notification message
-        const message = `🔧 Construction complete: ${itemName} (${itemTypeLabel}) is now ready for deployment!`;
+        const message = `P: 🔧 Construction complete: ${itemName} (${itemTypeLabel}) is now ready for deployment!`;
         
         console.log(`📝 Sending build completion notification to user ${userId}: "${message}"`);
         await sendMessageToUser(userId, message);
