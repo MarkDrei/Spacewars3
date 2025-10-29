@@ -1,13 +1,22 @@
 // ---
-// BattleCache - Singleton cache manager for Battle objects
-// Delegates User/World operations to TypedCacheManager to maintain consistency
+// BattleCacheManager: Singleton for in-memory battle object management.
+// Responsibilities:
+//   - Manages active battle objects in memory.
+//   - Handles cache initialization, background persistence, and cache invalidation.
+//   - Delegates mechanics and orchestration to BattleEngine and BattleService.
+// Main interaction partners:
+//   - BattleService (for orchestration)
+//   - BattleRepository (for persistence)
+//   - TypedCacheManager (for User/World cache consistency)
+// Responsibilities to move:
+//   - Any business logic or orchestration should move to BattleService; only cache management should remain here.
 // ---
 
 import type sqlite3 from 'sqlite3';
 import { LOCK_10 as DATABASE_LOCK } from '@markdrei/ironguard-typescript-locks';
-import type { Battle } from '../../shared/battleTypes';
-import { createLockContext } from './typedLocks';
-import { getTypedCacheManager } from './typedCacheManager';
+import type { Battle } from '../../../shared/battleTypes';
+import { createLockContext } from '../typedLocks';
+import { getTypedCacheManager } from '../typedCacheManager';
 
 // Define BATTLE_LOCK at level 12 (between USER_LOCK and DATABASE_LOCK)
 // Lock Hierarchy: CACHE(2) → WORLD(4) → USER(6) → BATTLE(12) → DATABASE(10)
@@ -83,7 +92,7 @@ export class BattleCache {
 
       if (!BattleCache.instance.initialized) {
         // Import here to avoid circular dependency
-        const { getDatabase } = await import('./database');
+        const { getDatabase } = await import('../database');
         const db = await getDatabase();
         await BattleCache.instance.initialize(db);
       }

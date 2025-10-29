@@ -1,6 +1,6 @@
 // Debug test to understand BattleCache initialization
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { BattleCache, getBattleCache } from '../../lib/server/BattleCache';
+import { BattleCache, getBattleCache } from '../../lib/server/battle/BattleCache';
 import { TypedCacheManager, getTypedCacheManager } from '../../lib/server/typedCacheManager';
 import { createTestDatabase } from '../helpers/testDatabase';
 

@@ -4,11 +4,11 @@
 // ---
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { BattleCache, getBattleCache } from '../../lib/server/BattleCache';
+import { BattleCache, getBattleCache } from '../../lib/server/battle/BattleCache';
 import { TypedCacheManager, getTypedCacheManager } from '../../lib/server/typedCacheManager';
-import * as BattleRepo from '../../lib/server/battleRepo';
-import * as battleService from '../../lib/server/battleService';
-import * as battleScheduler from '../../lib/server/battleScheduler';
+import * as BattleRepo from '../../lib/server/battle/battleRepo';
+import * as battleService from '../../lib/server/battle/battleService';
+import * as battleScheduler from '../../lib/server/battle/battleScheduler';
 import { createTestDatabase } from '../helpers/testDatabase';
 import { createAuthenticatedSession } from '../helpers/apiTestHelpers';
 import type { Battle, BattleStats, WeaponCooldowns } from '../../shared/battleTypes';

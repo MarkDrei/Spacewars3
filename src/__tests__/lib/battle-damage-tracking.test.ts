@@ -1,9 +1,13 @@
 // ---
 // Battle Damage Tracking Tests
+// NOTE: These tests are now deprecated as defense values are tracked in User objects via cache
+// The tests have been updated to reflect the new architecture where:
+// - startStats and endStats are "write once" snapshots
+// - Defense values are tracked in User objects during battle
 // ---
 
 import { describe, it, expect } from 'vitest';
-import { BattleEngine } from '../../lib/server/battle';
+import { BattleEngine } from '../../lib/server/battle/battle';
 import type { Battle, BattleStats } from '../../shared/battleTypes';
 
 describe('Battle Damage Tracking', () => {
@@ -49,39 +53,39 @@ describe('Battle Damage Tracking', () => {
     };
   }
 
-  it('damageTracking_attackerFires_damageAccumulates', () => {
+  it('damageTracking_attackerFires_damageAccumulates', async () => {
     // Arrange
     const battle = createTestBattle();
     const engine = new BattleEngine(battle);
     const currentTime = battle.battleStartTime;
 
-    // Act - Attacker fires weapon
-    engine.executeTurn(currentTime);
+    // Act - Attacker fires weapon (async now)
+    await engine.executeTurn(currentTime);
 
-    // Assert
+    // Assert - Total damage should be tracked in battle object
     const updatedBattle = engine.getBattle();
     // Damage depends on weapon specs (5 weapons with configured damage)
     expect(updatedBattle.attackerTotalDamage).toBeGreaterThan(0);
     expect(updatedBattle.attackeeTotalDamage).toBe(0);
   });
 
-  it('damageTracking_multipleRounds_damageAccumulates', () => {
+  it('damageTracking_multipleRounds_damageAccumulates', async () => {
     // Arrange
     const battle = createTestBattle();
     const engine = new BattleEngine(battle);
     const baseTime = battle.battleStartTime;
 
-    // Act - Execute multiple turns with proper cooldown management
-    const event1 = engine.executeTurn(baseTime); // Attacker fires
+    // Act - Execute multiple turns with proper cooldown management (async now)
+    const event1 = await engine.executeTurn(baseTime); // Attacker fires
     expect(event1).not.toBeNull();
     const firstAttackerDamage = engine.getBattle().attackerTotalDamage;
     expect(firstAttackerDamage).toBeGreaterThan(0);
     
     // Weapon cooldown is now set to baseTime, so need to wait cooldown period
-    const event2 = engine.executeTurn(baseTime + 10); // Enough time for both to be ready
+    const event2 = await engine.executeTurn(baseTime + 10); // Enough time for both to be ready
     expect(event2).not.toBeNull();
     
-    const event3 = engine.executeTurn(baseTime + 20); // Another turn
+    const event3 = await engine.executeTurn(baseTime + 20); // Another turn
     expect(event3).not.toBeNull();
 
     // Assert - Damage accumulates over multiple rounds
@@ -101,19 +105,24 @@ describe('Battle Damage Tracking', () => {
     expect(battle.attackeeTotalDamage).toBe(0);
   });
 
-  it('damageTracking_damageApplied_totalUpdated', () => {
+  it('damageTracking_damageApplied_totalUpdated', async () => {
     // Arrange
     const battle = createTestBattle();
     const engine = new BattleEngine(battle);
     const initialShieldCurrent = battle.attackeeStartStats.shield.current;
 
-    // Act
-    engine.executeTurn(battle.battleStartTime);
+    // Act (async now)
+    await engine.executeTurn(battle.battleStartTime);
 
-    // Assert - Damage was applied to target
+    // Assert - startStats should remain unchanged (initial snapshot)
     const updatedBattle = engine.getBattle();
-    expect(updatedBattle.attackeeStartStats.shield.current).toBeLessThan(initialShieldCurrent);
-    // And total damage was tracked
+    expect(updatedBattle.attackeeStartStats.shield.current).toBe(initialShieldCurrent);
+    
+    // Assert - endStats are NOT populated during battle (only at battle end)
+    // Defense values are tracked in User objects via cache during battle
+    expect(updatedBattle.attackeeEndStats).toBeNull();
+    
+    // Total damage should still be tracked in battle object
     expect(updatedBattle.attackerTotalDamage).toBeGreaterThan(0);
   });
 });
