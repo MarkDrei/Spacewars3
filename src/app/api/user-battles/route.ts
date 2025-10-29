@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getIronSession } from 'iron-session';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth } from '@/lib/server/errors';
-import { getBattlesForUser } from '@/lib/server/battleRepo';
+import { getBattlesForUser } from '@/lib/server/battle/battleRepo';
 import { getDatabase } from '@/lib/server/database';
 import { Battle } from '@/shared/battleTypes';
 

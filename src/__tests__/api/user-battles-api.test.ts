@@ -7,10 +7,10 @@ import { GET as userBattlesGET } from '@/app/api/user-battles/route';
 import { createRequest, createAuthenticatedSession } from '../helpers/apiTestHelpers';
 
 // Import battle creation utilities
-import { createBattle, endBattle } from '@/lib/server/battleRepo';
+import { createBattle, endBattle } from '@/lib/server/battle/battleRepo';
 import { getDatabase } from '@/lib/server/database';
 import { BattleStats } from '@/shared/battleTypes';
-import { BattleCache, getBattleCache } from '@/lib/server/BattleCache';
+import { BattleCache, getBattleCache } from '@/lib/server/battle/BattleCache';
 import { TypedCacheManager, getTypedCacheManager } from '@/lib/server/typedCacheManager';
 
 // Helper to get user ID from username
