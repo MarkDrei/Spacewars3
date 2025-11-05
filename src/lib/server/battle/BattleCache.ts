@@ -14,9 +14,9 @@
 
 import type sqlite3 from 'sqlite3';
 import { LOCK_10 as DATABASE_LOCK } from '@markdrei/ironguard-typescript-locks';
-import type { Battle } from '../../../shared/battleTypes';
+import type { Battle } from './battleTypes';
 import { createLockContext } from '../typedLocks';
-import { getTypedCacheManager } from '../typedCacheManager';
+import { getUserWorldCache } from '../world/userWorldCache';
 
 // Define BATTLE_LOCK at level 12 (between USER_LOCK and DATABASE_LOCK)
 // Lock Hierarchy: CACHE(2) → WORLD(4) → USER(6) → BATTLE(12) → DATABASE(10)
@@ -251,7 +251,7 @@ export class BattleCache {
     }
 
     // Load from database
-    const cacheManager = getTypedCacheManager();
+    const cacheManager = getUserWorldCache();
     const ctx = createLockContext();
     const dbCtx = await cacheManager.acquireDatabaseRead(ctx);
     try {
@@ -284,7 +284,7 @@ export class BattleCache {
     }
 
     // Not in cache - query database
-    const cacheManager = getTypedCacheManager();
+    const cacheManager = getUserWorldCache();
     const ctx = createLockContext();
     const dbCtx = await cacheManager.acquireDatabaseRead(ctx);
     try {
@@ -592,7 +592,7 @@ export class BattleCache {
     const dirtyIds = Array.from(this.dirtyBattles);
     
     // Acquire database lock
-    const cacheManager = getTypedCacheManager();
+    const cacheManager = getUserWorldCache();
     const ctx = createLockContext();
     const dbCtx = await cacheManager.acquireDatabaseWrite(ctx);
     try {

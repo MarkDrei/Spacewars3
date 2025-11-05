@@ -4,11 +4,11 @@
 
 import sqlite3 from 'sqlite3';
 import { User, SaveUserCallback } from './user';
-import { createInitialTechTree } from './techtree';
-import { getTypedCacheManager } from './typedCacheManager';
-import { createLockContext } from './typedLocks';
-import { sendMessageToUser } from './MessageCache';
-import { TechCounts } from './TechFactory';
+import { createInitialTechTree } from '../techtree';
+import { getUserWorldCache } from './userWorldCache';
+import { createLockContext } from '../typedLocks';
+import { sendMessageToUser } from '../MessageCache';
+import { TechCounts } from '../TechFactory';
 
 interface UserRow {
   id: number;
@@ -119,7 +119,7 @@ export function getUserByUsernameFromDb(db: sqlite3.Database, username: string, 
 // Cache-aware public functions
 export async function getUserById(db: sqlite3.Database, id: number): Promise<User | null> {
   // Use typed cache manager for cache-aware access
-  const cacheManager = getTypedCacheManager();
+  const cacheManager = getUserWorldCache();
   
   const emptyCtx = createLockContext();
   
@@ -127,7 +127,7 @@ export async function getUserById(db: sqlite3.Database, id: number): Promise<Use
   const userCtx = await cacheManager.acquireUserLock(emptyCtx);
   try {
     // Try to get from cache first
-    let user = cacheManager.getUserUnsafe(id, userCtx);
+    let user = cacheManager.getUserByIdFromCache(id, userCtx);
     
     if (!user) {
       // Load from database if not in cache
@@ -151,7 +151,7 @@ export async function getUserById(db: sqlite3.Database, id: number): Promise<Use
 
 export async function getUserByUsername(db: sqlite3.Database, username: string): Promise<User | null> {
   // Use typed cache manager for cache-aware username lookup
-  const cacheManager = getTypedCacheManager();
+  const cacheManager = getUserWorldCache();
   
   return await cacheManager.getUserByUsername(username);
 }

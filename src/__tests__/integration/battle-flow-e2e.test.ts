@@ -5,13 +5,13 @@
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { BattleCache, getBattleCache } from '../../lib/server/battle/BattleCache';
-import { TypedCacheManager, getTypedCacheManager } from '../../lib/server/typedCacheManager';
+import { UserWorldCache, getUserWorldCache } from '../../lib/server/world/userWorldCache';
 import * as BattleRepo from '../../lib/server/battle/battleRepo';
 import * as battleService from '../../lib/server/battle/battleService';
 import * as battleScheduler from '../../lib/server/battle/battleScheduler';
 import { createTestDatabase } from '../helpers/testDatabase';
 import { createAuthenticatedSession } from '../helpers/apiTestHelpers';
-import type { Battle, BattleStats, WeaponCooldowns } from '../../shared/battleTypes';
+import type { Battle, BattleStats, WeaponCooldowns } from '../../lib/server/battle/battleTypes';
 
 describe('Phase 5: End-to-End Battle Flow with BattleCache', () => {
   
@@ -24,19 +24,19 @@ describe('Phase 5: End-to-End Battle Flow with BattleCache', () => {
     
     // Reset all caches to clean state
     BattleCache.resetInstance();
-    TypedCacheManager.resetInstance();
+    UserWorldCache.resetInstance();
   });
 
   afterEach(async () => {
     // Clean shutdown
-    await getTypedCacheManager().shutdown();
+    await getUserWorldCache().shutdown();
   });
 
   describe('Complete Battle Lifecycle', () => {
     it('battleFlow_createToCompletion_properCacheIntegration', async () => {
       // === Phase 1: Setup ===
       const battleCache = getBattleCache();
-      const cacheManager = getTypedCacheManager();
+      const cacheManager = getUserWorldCache();
       await cacheManager.initialize();
 
       // Initialize BattleCache manually for tests
@@ -147,7 +147,7 @@ describe('Phase 5: End-to-End Battle Flow with BattleCache', () => {
       // Reset cache and reload from DB
       BattleCache.resetInstance();
       const freshCache = getBattleCache();
-      const freshCacheManager = getTypedCacheManager();
+      const freshCacheManager = getUserWorldCache();
       await freshCacheManager.initialize();
       const freshDb = await freshCacheManager.getDatabaseConnection();
       await freshCache.initialize(freshDb);
@@ -206,7 +206,7 @@ describe('Phase 5: End-to-End Battle Flow with BattleCache', () => {
     // The test should be updated when these methods are implemented
     it.skip('battleFlow_cacheIntegration_properDelegation', async () => {
       // Test that battle operations properly delegate to TypedCacheManager
-      const cacheManager = getTypedCacheManager();
+      const cacheManager = getUserWorldCache();
       await cacheManager.initialize();
 
       // Initialize BattleCache manually for tests
@@ -255,7 +255,7 @@ describe('Phase 5: End-to-End Battle Flow with BattleCache', () => {
 
     it('battleFlow_concurrentBattles_cacheSeparation', async () => {
       // Test multiple concurrent battles with proper cache separation
-      const cacheManager = getTypedCacheManager();
+      const cacheManager = getUserWorldCache();
       await cacheManager.initialize();
 
       // Initialize BattleCache manually for tests
@@ -313,7 +313,7 @@ describe('Phase 5: End-to-End Battle Flow with BattleCache', () => {
   describe('BattleCache Performance', () => {
     it('battleCache_backgroundPersistence_worksCorrectly', async () => {
       const cache = getBattleCache();
-      const cacheManager = getTypedCacheManager();
+      const cacheManager = getUserWorldCache();
       await cacheManager.initialize();
 
       // Initialize BattleCache manually for tests
@@ -391,7 +391,7 @@ describe('Phase 5: End-to-End Battle Flow with BattleCache', () => {
 
     it('battleCache_cacheOperations_threadsafe', async () => {
       const cache = getBattleCache();
-      const cacheManager = getTypedCacheManager();
+      const cacheManager = getUserWorldCache();
       await cacheManager.initialize();
 
       // Initialize BattleCache manually for tests

@@ -5,11 +5,11 @@
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { BattleCache, getBattleCache } from '../../lib/server/battle/BattleCache';
-import { TypedCacheManager, getTypedCacheManager } from '../../lib/server/typedCacheManager';
+import { UserWorldCache, getUserWorldCache } from '../../lib/server/world/userWorldCache';
 import * as BattleRepo from '../../lib/server/battle/battleRepo';
 import * as battleService from '../../lib/server/battle/battleService';
 import { createTestDatabase } from '../helpers/testDatabase';
-import type { BattleStats, WeaponCooldowns } from '../../shared/battleTypes';
+import type { BattleStats, WeaponCooldowns } from '../../lib/server/battle/battleTypes';
 
 describe('Defense Value Persistence After Battle', () => {
   
@@ -22,18 +22,18 @@ describe('Defense Value Persistence After Battle', () => {
     
     // Reset all caches to clean state
     BattleCache.resetInstance();
-    TypedCacheManager.resetInstance();
+    UserWorldCache.resetInstance();
   });
 
   afterEach(async () => {
     // Clean shutdown
-    await getTypedCacheManager().shutdown();
+    await getUserWorldCache().shutdown();
   });
 
   it('defenseValues_afterBattleResolution_persistCorrectly', async () => {
     // === Phase 1: Setup ===
     const battleCache = getBattleCache();
-    const cacheManager = getTypedCacheManager();
+    const cacheManager = getUserWorldCache();
     await cacheManager.initialize();
 
     // Initialize BattleCache manually for tests
@@ -41,9 +41,9 @@ describe('Defense Value Persistence After Battle', () => {
     await battleCache.initialize(db);
 
     // Load users from cache
-    const attacker = await cacheManager.loadUserIfNeeded(1);
-    const defender = await cacheManager.loadUserIfNeeded(2);
-    
+    const attacker = await cacheManager.getUserById(1);
+    const defender = await cacheManager.getUserById(2);
+
     expect(attacker).not.toBeNull();
     expect(defender).not.toBeNull();
 
@@ -132,13 +132,13 @@ describe('Defense Value Persistence After Battle', () => {
     await cacheManager.flushAllToDatabase();
 
     // Clear cache and reload users from DB
-    TypedCacheManager.resetInstance();
-    const freshCacheManager = getTypedCacheManager();
+    UserWorldCache.resetInstance();
+    const freshCacheManager = getUserWorldCache();
     await freshCacheManager.initialize();
 
     // Load users again from database
-    const reloadedAttacker = await freshCacheManager.loadUserIfNeeded(attacker!.id);
-    const reloadedDefender = await freshCacheManager.loadUserIfNeeded(defender!.id);
+    const reloadedAttacker = await freshCacheManager.getUserById(attacker!.id);
+    const reloadedDefender = await freshCacheManager.getUserById(defender!.id);
 
     console.log(`Reloaded attacker hull: ${reloadedAttacker?.hullCurrent}`);
     console.log(`Reloaded defender hull: ${reloadedDefender?.hullCurrent}`);

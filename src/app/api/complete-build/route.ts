@@ -3,7 +3,7 @@ import { getIronSession } from 'iron-session';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { requireAuth, handleApiError, ApiError } from '@/lib/server/errors';
 import { TechRepo } from '@/lib/server/techRepo';
-import { getUserById } from '@/lib/server/userRepo';
+import { getUserById } from '@/lib/server/world/userRepo';
 import { getDatabase } from '@/lib/server/database';
 
 /**

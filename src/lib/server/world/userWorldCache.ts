@@ -1,6 +1,5 @@
 // ---
-// TypeScript Compile-Time Deadlock Prevention System
-// Phase 2: Pure IronGuard Cache Manager 
+// Cache manager for User and World data
 // ---
 
 import { 
@@ -10,10 +9,10 @@ import {
   WORLD_LOCK,
   USER_LOCK,
   DATABASE_LOCK
-} from './typedLocks';
+} from '../typedLocks';
 import { User } from './user';
 import { World } from './world';
-import { getDatabase } from './database';
+import { getDatabase } from '../database';
 import { loadWorldFromDb, saveWorldToDb } from './worldRepo';
 import { getUserByIdFromDb, getUserByUsernameFromDb } from './userRepo';
 import sqlite3 from 'sqlite3';
@@ -53,16 +52,16 @@ export interface TypedCacheStats {
  * Typed Cache Manager with compile-time deadlock prevention
  * Enforces singleton pattern and lock ordering
  */
-export class TypedCacheManager {
+export class UserWorldCache {
   // Singleton enforcement
-  private static instance: TypedCacheManager | null = null;
+  private static instance: UserWorldCache | null = null;
   private constructor() {
     console.log('🧠 Typed cache manager initialized');
   }
 
-  static getInstance(config?: TypedCacheConfig): TypedCacheManager {
+  static getInstance(config?: TypedCacheConfig): UserWorldCache {
     if (!this.instance) {
-      this.instance = new TypedCacheManager();
+      this.instance = new UserWorldCache();
       if (config) {
         this.instance.config = config;
       }
@@ -218,13 +217,14 @@ export class TypedCacheManager {
   }
 
   /**
-   * Get world data without acquiring locks (requires world lock context)
+   * Get world data reference (requires world lock context). Performs a physics update.
    */
-  getWorldUnsafe(_context: WorldAccessContext): World {
+  getWorldFromCache(_context: WorldAccessContext): World {
     if (!this.world) {
       throw new Error('World not loaded - call initialize() first');
     }
     this.stats.worldCacheHits++;
+    this.world.updatePhysics(Date.now());
     return this.world;
   }
 
@@ -236,55 +236,12 @@ export class TypedCacheManager {
     this.worldDirty = true;
   }
 
-  // ===== LEVEL 2: USER OPERATIONS =====
-
-  /**
-   * Acquire user lock and return context for chaining
-   */
-  async acquireUserLock(
-    context: IronGuardLockContext<readonly []> | WorldReadContext | WorldWriteContext
-  ): Promise<UserContext> {
-    await this.ensureInitialized();
-    return await context.acquireWrite(USER_LOCK) as UserContext;
-  }
-
-  /**
-   * Get user data without acquiring locks (requires user lock context)
-   */
-  getUserUnsafe(userId: number, _context: UserAccessContext): User | null {
-    const user = this.users.get(userId);
-    if (user) {
-      this.stats.userCacheHits++;
-      return user;
-    } else {
-      this.stats.userCacheMisses++;
-      return null;
-    }
-  }
-
-  /**
-   * Set user data without acquiring locks (requires user lock context)
-   */
-  setUserUnsafe(user: User, _context: UserAccessContext): void {
-    this.users.set(user.id, user);
-    this.usernameToUserId.set(user.username, user.id); // Cache username mapping
-    this.dirtyUsers.delete(user.id); // Fresh from DB, not dirty
-    console.log(`👤 User ${user.id} cached in memory`);
-  }
-
-  /**
-   * Update user data without acquiring locks (requires user lock context)
-   */
-  updateUserUnsafe(user: User, _context: UserAccessContext): void {
-    this.users.set(user.id, user);
-    this.usernameToUserId.set(user.username, user.id); // Update username mapping
-    this.dirtyUsers.add(user.id); // Mark as dirty for persistence
-  }
-
   // ===== LEVEL 3: DATABASE OPERATIONS =====
 
   /**
    * Acquire database read lock and return context for chaining
+   * 
+   * TODO: Check all callers, DB should usually not be accessed directly but only from the cache
    */
   async acquireDatabaseRead(
     context: IronGuardLockContext<readonly []> | WorldReadContext | WorldWriteContext | UserContext
@@ -319,44 +276,123 @@ export class TypedCacheManager {
     return await getUserByUsernameFromDb(this.db, username, async () => {});
   }
 
-  // ===== HIGH-LEVEL OPERATIONS WITH PROPER LOCK ORDERING =====
+
+
+  // ===== USER OPERATIONS =====
 
   /**
-   * Load user from database if not in cache (proper lock ordering)
+   * Acquire user lock and return context for chaining
    */
-  async loadUserIfNeeded(userId: number): Promise<User | null> {
-    if (!this.isInitialized) {
-      await this.initialize();
+  async acquireUserLock(
+    context: IronGuardLockContext<readonly []> | WorldReadContext | WorldWriteContext
+  ): Promise<UserContext> {
+    await this.ensureInitialized();
+    return await context.acquireWrite(USER_LOCK) as UserContext;
+  }
+
+  /**
+   * Get user data from cache, will return null if not found. Requires user lock context.
+   * 
+   * Use getUserById or getUserByIdWithLock for safe loading from database if not in cache.
+   */
+  getUserByIdFromCache(userId: number, _context: UserAccessContext): User | null {
+    const user = this.users.get(userId);
+    if (user) {
+      this.stats.userCacheHits++;
+      return user;
+    } else {
+      this.stats.userCacheMisses++;
+      return null;
     }
-    
+  }
+
+  /**
+   * Announces that the user was written to the DB and is now safe to cache
+   * This should only be called after a successful database write operation.
+   * 
+   * TODO: should never be called directly, always user getUserById or getUserByUsername
+   */
+  setUserUnsafe(user: User, _context: UserAccessContext): void {
+    this.users.set(user.id, user);
+    this.usernameToUserId.set(user.username, user.id); // Cache username mapping
+    this.dirtyUsers.delete(user.id); // Fresh from DB, not dirty
+    console.log(`👤 User ${user.id} cached in memory`);
+  }
+
+  
+  /**
+   * Update user data in the cache, marking as dirty (requires user lock context)
+   */
+  updateUserInCache(user: User, _context: UserAccessContext): void {
+    this.users.set(user.id, user);
+    this.usernameToUserId.set(user.username, user.id); // Update username mapping
+    this.dirtyUsers.add(user.id); // Mark as dirty for persistence
+  }
+
+  /**
+   * Get user by ID (with caching) for reading purposes
+   * - Loads from database if not in cache
+   * - Updates user before returning
+   * 
+   * If you intent to update the user, do not use this method - acquire the user lock and use getUserByIdWithLock instead.
+   */
+  async getUserById(userId: number): Promise<User | null> {
     const emptyCtx = createLockContext();
-    
     const userCtx = await this.acquireUserLock(emptyCtx);
     try {
-      let user = this.getUserUnsafe(userId, userCtx);
-      if (user) {
-        return user;
-      }
-
-      // Load from database
-      const dbCtx = await this.acquireDatabaseRead(userCtx);
-      try {
-        console.log(`🔄 User ${userId} cache miss, loading from database...`);
-        user = await this.loadUserFromDbUnsafe(userId, dbCtx);
-        if (user) {
-          this.setUserUnsafe(user, userCtx);
-        }
-        return user;
-      } finally {
-        dbCtx.dispose();
-      }
+      return await this.getUserByIdWithLock(userId, userCtx);
     } finally {
       userCtx.dispose();
     }
   }
 
   /**
-   * Get user by username (with caching)
+   * Get user by ID (with caching) when you already have the user lock
+   * - Loads from database if not in cache
+   * - Updates user before returning
+   * 
+   * If you intent to update the user, you need to keep the user lock over the complete get and update cycle.
+   */
+  async getUserByIdWithLock(userId: number, userCtx: UserContext): Promise<User | null> {
+    if (!this.isInitialized) {
+      await this.initialize();
+    }
+
+    // Check cache first
+    let user = this.getUserByIdFromCache(userId, userCtx);
+
+    if (user) {
+      console.log(`👤 User ${userId} cache hit`);
+    }
+
+    if (!user) {
+      console.log(`🔍 User ${userId} cache miss, loading from database`);
+
+      const dbCtx = await this.acquireDatabaseRead(userCtx);
+      try {
+        user = await this.loadUserFromDbUnsafe(userId, dbCtx);
+        if (user) {
+          this.setUserUnsafe(user, userCtx);
+        }
+      } finally {
+        dbCtx.dispose();
+      }
+    }
+
+    if (user) {
+      user.updateStats(Math.floor(Date.now() / 1000));
+      this.updateUserInCache(user, userCtx);
+      return user;
+    }
+    return null;
+  }
+
+  /**
+   * Get user by name (with caching)
+   * - Loads from database if not in cache
+   * - Updates user before returning
+   * 
+   * If you intent to update the user, you need to use getUserByUsernameWithLock instead.
    */
   async getUserByUsername(username: string): Promise<User | null> {
     if (!this.isInitialized) {
@@ -367,32 +403,51 @@ export class TypedCacheManager {
     
     const userCtx = await this.acquireUserLock(emptyCtx);
     try {
-      // Check username cache first
-      const cachedUserId = this.usernameToUserId.get(username);
-      if (cachedUserId) {
-        const user = this.getUserUnsafe(cachedUserId, userCtx);
-        if (user) {
-          console.log(`👤 Username "${username}" cache hit for user ID ${cachedUserId}`);
-          return user;
-        }
-      }
-      
-      // Cache miss - load from database
-      console.log(`🔍 Username "${username}" cache miss, loading from database`);
-      const dbCtx = await this.acquireDatabaseRead(userCtx);
-      try {
-        const user = await this.loadUserByUsernameFromDbUnsafe(username, dbCtx);
-        if (user) {
-          this.setUserUnsafe(user, userCtx);
-        }
-        return user;
-      } finally {
-        dbCtx.dispose();
-      }
+      return await this.getUserByUsernameWithLock(username, userCtx);
     } finally {
       userCtx.dispose();
     }
   }
+
+  /**
+   * Get user by name (with caching)  when you already have the user lock
+   * - Loads from database if not in cache
+   * - Updates user before returning
+   * 
+   * Use this method if you intent to update the user after getting it. Keep the lock for the complete get and update cycle.
+   */
+  async getUserByUsernameWithLock(username: string, userCtx: UserContext): Promise<User | null> {
+    // Check username cache first
+    const cachedUserId = this.usernameToUserId.get(username);
+    let user: User | null = null;
+    if (cachedUserId) {
+      user = this.getUserByIdFromCache(cachedUserId, userCtx);
+      if (user) {
+        console.log(`👤 Username "${username}" cache hit for user ID ${cachedUserId}`);
+      }
+    }
+
+    if (!user) {
+      // Cache miss - load from database
+      console.log(`🔍 Username "${username}" cache miss, loading from database`);
+      const dbCtx = await this.acquireDatabaseRead(userCtx);
+      try {
+        user = await this.loadUserByUsernameFromDbUnsafe(username, dbCtx);
+      } finally {
+        dbCtx.dispose();
+      }
+    }
+
+    if (user) {
+      user.updateStats(Math.floor(Date.now() / 1000));
+      this.updateUserInCache(user, userCtx);
+      return user;
+    }
+
+    return null;
+  }
+
+  // ===== PERSISTENCE RELATED OPERATIONS =====
 
   /**
    * Get cache statistics
@@ -445,7 +500,7 @@ export class TypedCacheManager {
     }
     
     // Flush messages via MessageCache (imported dynamically to avoid circular dependencies)
-    const { getMessageCache } = await import('./MessageCache');
+    const { getMessageCache } = await import('../MessageCache');
     const messageCache = getMessageCache();
     await messageCache.flushToDatabase();
     
@@ -610,7 +665,7 @@ export class TypedCacheManager {
    */
   private startBattleScheduler(): void {
     // Import dynamically to avoid circular dependencies
-    import('./battle/battleScheduler').then(({ startBattleScheduler }) => {
+    import('../battle/battleScheduler').then(({ startBattleScheduler }) => {
       startBattleScheduler(1000); // Process battles every 1 second
     }).catch(error => {
       console.error('❌ Failed to start battle scheduler:', error);
@@ -669,6 +724,6 @@ export class TypedCacheManager {
 }
 
 // Convenience function to get singleton instance
-export function getTypedCacheManager(config?: TypedCacheConfig): TypedCacheManager {
-  return TypedCacheManager.getInstance(config);
+export function getUserWorldCache(config?: TypedCacheConfig): UserWorldCache {
+  return UserWorldCache.getInstance(config);
 }

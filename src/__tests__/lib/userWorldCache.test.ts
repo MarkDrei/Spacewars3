@@ -4,24 +4,24 @@
 
 import { describe, expect, test, beforeEach, afterEach } from 'vitest';
 import { 
-  TypedCacheManager, 
-  getTypedCacheManager,
+  UserWorldCache, 
+  getUserWorldCache,
   type TypedCacheConfig 
-} from '../../lib/server/typedCacheManager';
+} from '../../lib/server/world/userWorldCache';
 
 describe('TypedCacheManager', () => {
   
   beforeEach(() => {
     // Reset singleton before each test
-    TypedCacheManager.resetInstance();
+    UserWorldCache.resetInstance();
   });
 
   afterEach(async () => {
     // Clean up after each test
     try {
-      const manager = getTypedCacheManager();
+      const manager = getUserWorldCache();
       await manager.shutdown();
-      TypedCacheManager.resetInstance();
+      UserWorldCache.resetInstance();
     } catch {
       // Ignore cleanup errors
     }
@@ -29,18 +29,18 @@ describe('TypedCacheManager', () => {
 
   describe('Singleton Pattern', () => {
     test('getInstance_multipleCalls_returnsSameInstance', () => {
-      const manager1 = TypedCacheManager.getInstance();
-      const manager2 = TypedCacheManager.getInstance();
-      const manager3 = getTypedCacheManager();
+      const manager1 = UserWorldCache.getInstance();
+      const manager2 = UserWorldCache.getInstance();
+      const manager3 = getUserWorldCache();
 
       expect(manager1).toBe(manager2);
       expect(manager2).toBe(manager3);
     });
 
     test('resetInstance_afterReset_createsNewInstance', () => {
-      const manager1 = TypedCacheManager.getInstance();
-      TypedCacheManager.resetInstance();
-      const manager2 = TypedCacheManager.getInstance();
+      const manager1 = UserWorldCache.getInstance();
+      UserWorldCache.resetInstance();
+      const manager2 = UserWorldCache.getInstance();
 
       expect(manager1).not.toBe(manager2);
     });
@@ -52,7 +52,7 @@ describe('TypedCacheManager', () => {
         logStats: true
       };
 
-      const manager = TypedCacheManager.getInstance(config);
+      const manager = UserWorldCache.getInstance(config);
       
       expect(manager).toBeDefined();
       // Config is applied internally (we can't directly test private members)
@@ -60,16 +60,16 @@ describe('TypedCacheManager', () => {
   });
 
   describe('Basic Functionality', () => {
-    test('loadUserIfNeeded_nonExistentUser_returnsNull', async () => {
-      const manager = getTypedCacheManager();
+    test('getUserById_nonExistentUser_returnsNull', async () => {
+      const manager = getUserWorldCache();
       await manager.initialize();
 
-      const user = await manager.loadUserIfNeeded(999); // Non-existent user
+      const user = await manager.getUserById(999); // Non-existent user
       expect(user).toBeNull();
     });
 
     test('getStats_returnsValidStats', async () => {
-      const manager = getTypedCacheManager();
+      const manager = getUserWorldCache();
       await manager.initialize();
 
       const stats = await manager.getStats();
@@ -87,7 +87,7 @@ describe('TypedCacheManager', () => {
 
   describe('Lifecycle', () => {
     test('initialize_multipleCallsAreSafe_noErrors', async () => {
-      const manager = getTypedCacheManager();
+      const manager = getUserWorldCache();
       
       // Multiple initialization calls should be safe
       await manager.initialize();
@@ -99,7 +99,7 @@ describe('TypedCacheManager', () => {
     });
 
     test('shutdown_afterInitialization_cleansUpProperly', async () => {
-      const manager = getTypedCacheManager();
+      const manager = getUserWorldCache();
       await manager.initialize();
       
       await manager.shutdown();
@@ -111,13 +111,13 @@ describe('TypedCacheManager', () => {
 
   describe('Concurrency', () => {
     test('concurrentOperations_completeSuccessfully', async () => {
-      const manager = getTypedCacheManager();
+      const manager = getUserWorldCache();
       await manager.initialize();
 
       // Start multiple concurrent operations
       const operations = [
-        manager.loadUserIfNeeded(999),
-        manager.loadUserIfNeeded(998),
+        manager.getUserById(999),
+        manager.getUserById(998),
         manager.getStats(),
         manager.getStats()
       ];

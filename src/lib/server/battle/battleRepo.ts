@@ -11,7 +11,7 @@
 //   - Any business logic or orchestration should move to BattleService; only persistence should remain here.
 // ---
 
-import type { Battle, BattleStats, BattleEvent, WeaponCooldowns } from '../../../shared/battleTypes';
+import type { Battle, BattleStats, BattleEvent, WeaponCooldowns } from './battleTypes';
 import { getBattleCache } from './BattleCache';
 import { getDatabase } from '../database';
 

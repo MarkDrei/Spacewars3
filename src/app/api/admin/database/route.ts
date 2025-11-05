@@ -3,9 +3,9 @@ import { getIronSession } from 'iron-session';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth, ApiError } from '@/lib/server/errors';
 import { getDatabase } from '@/lib/server/database';
-import { getUserById } from '@/lib/server/userRepo';
+import { getUserById } from '@/lib/server/world/userRepo';
 import { getAllBattles } from '@/lib/server/battle/battleRepo';
-import type { Battle } from '@/shared/battleTypes';
+import type { Battle } from '@/lib/server/battle/battleTypes';
 
 interface UserData {
   id: number;
@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
     
     // CRITICAL: Flush all cache data to database before reading
     // This ensures the admin page shows current values, not stale cached data
-    const { getTypedCacheManager } = await import('@/lib/server/typedCacheManager');
+    const { getUserWorldCache: getTypedCacheManager } = await import('@/lib/server/world/userWorldCache');
     const cacheManager = getTypedCacheManager();
     if (cacheManager.isReady) {
       await cacheManager.flushAllToDatabase();

@@ -1,13 +1,13 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { TypedCacheManager } from '@/lib/server/typedCacheManager';
+import { UserWorldCache } from '@/lib/server/world/userWorldCache';
 import { getDatabase } from '@/lib/server/database';
-import { createUser } from '@/lib/server/userRepo';
-import { saveUserToDb } from '@/lib/server/userRepo';
+import { createUser } from '@/lib/server/world/userRepo';
+import { saveUserToDb } from '@/lib/server/world/userRepo';
 
 describe('User Persistence to Database', () => {
   beforeEach(() => {
     // Reset cache manager for each test
-    TypedCacheManager.resetInstance();
+    UserWorldCache.resetInstance();
   });
 
   it('userPersistence_dirtyUserModified_persitsToDatabase', async () => {
@@ -19,7 +19,7 @@ describe('User Persistence to Database', () => {
     const initialTechCount = user.techCounts.pulse_laser;
     
     // Get cache manager and initialize
-    const cacheManager = TypedCacheManager.getInstance();
+    const cacheManager = UserWorldCache.getInstance();
     await cacheManager.initialize();
     
     // Load user into cache
@@ -40,7 +40,7 @@ describe('User Persistence to Database', () => {
     
     const userCtx2 = await cacheManager.acquireUserLock(emptyCtx);
     try {
-      cacheManager.updateUserUnsafe(user, userCtx2);
+      cacheManager.updateUserInCache(user, userCtx2);
     } finally {
       userCtx2.dispose();
     }
@@ -74,7 +74,7 @@ describe('User Persistence to Database', () => {
     const user = await createUser(db, 'testuser_shutdown_persist', 'hashedpass', saveCallback);
     
     // Get cache manager
-    const cacheManager = TypedCacheManager.getInstance();
+    const cacheManager = UserWorldCache.getInstance();
     await cacheManager.initialize();
     
     // Load user into cache
@@ -94,7 +94,7 @@ describe('User Persistence to Database', () => {
     
     const userCtx2 = await cacheManager.acquireUserLock(emptyCtx);
     try {
-      cacheManager.updateUserUnsafe(user, userCtx2);
+      cacheManager.updateUserInCache(user, userCtx2);
     } finally {
       userCtx2.dispose();
     }

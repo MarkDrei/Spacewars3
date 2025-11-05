@@ -5,13 +5,13 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getIronSession } from 'iron-session';
-import { getTypedCacheManager, type TypedCacheManager, type UserContext } from '@/lib/server/typedCacheManager';
+import { getUserWorldCache, type UserWorldCache, type UserContext } from '@/lib/server/world/userWorldCache';
 import { getResearchEffectFromTree, ResearchType } from '@/lib/server/techtree';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth, ApiError } from '@/lib/server/errors';
 import { createLockContext } from '@/lib/server/typedLocks';
-import type { User } from '@/lib/server/user';
-import type { World } from '@/lib/server/world';
+import type { User } from '@/lib/server/world/user';
+import type { World } from '@/lib/server/world/world';
 
 export async function POST(request: NextRequest) {
   try {
@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
     console.log(`🧭 [TYPED] Navigation API called - speed: ${speed}, angle: ${angle} by user: ${session.userId}`);
     
     // Get typed cache manager singleton
-    const cacheManager = getTypedCacheManager();
+    const cacheManager = getUserWorldCache();
     console.log(`✅ [TYPED] Typed cache manager ready for navigation`);
     
     // Create empty context for lock acquisition
@@ -47,10 +47,10 @@ export async function POST(request: NextRequest) {
         console.log(`👤 [TYPED] User lock acquired for navigation`);
         
         // Get world data safely (we have world write lock)
-        const world = cacheManager.getWorldUnsafe(userCtx);
+        const world = cacheManager.getWorldFromCache(userCtx);
         console.log(`✅ [TYPED] World loaded with ${world.spaceObjects.length} objects`);
         // Get user data safely (we have user lock)
-        let user = cacheManager.getUserUnsafe(session.userId!, userCtx);
+        let user = cacheManager.getUserByIdFromCache(session.userId!, userCtx);
         
         if (!user) {
           // Load user from database if not in cache
@@ -99,7 +99,7 @@ async function performNavigationLogic(
   user: User,
   speed: number | undefined,
   angle: number | undefined,
-  cacheManager: TypedCacheManager,
+  cacheManager: UserWorldCache,
   userCtx: UserContext
 ): Promise<NextResponse> {
   console.log(`🧭 [TYPED] Starting navigation logic with proper lock context`);

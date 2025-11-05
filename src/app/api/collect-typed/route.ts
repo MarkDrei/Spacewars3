@@ -6,12 +6,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getIronSession } from 'iron-session';
 import { calculateToroidalDistance } from '@shared/physics';
-import { getTypedCacheManager, type TypedCacheManager, type UserContext } from '@/lib/server/typedCacheManager';
+import { getUserWorldCache, type UserWorldCache, type UserContext } from '@/lib/server/world/userWorldCache';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth, ApiError } from '@/lib/server/errors';
 import { createLockContext } from '@/lib/server/typedLocks';
-import type { User } from '@/lib/server/user';
-import type { World } from '@/lib/server/world';
+import type { User } from '@/lib/server/world/user';
+import type { World } from '@/lib/server/world/world';
 
 export async function POST(request: NextRequest) {
   try {
@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
       throw new ApiError(400, 'Missing or invalid object ID');
     }
     // Get typed cache manager singleton
-    const cacheManager = getTypedCacheManager();
+    const cacheManager = getUserWorldCache();
     console.log(`📋 [TYPED] Typed cache manager obtained`);
     
     // Create empty context for lock acquisition
@@ -54,41 +54,16 @@ export async function POST(request: NextRequest) {
     // World Write (1) → User (2) → Database Read (3) if needed
     const worldCtx = await cacheManager.acquireWorldWrite(emptyCtx);
     try {
-      console.log(`🌍 [TYPED] World write lock acquired`);
-      
       const userCtx = await cacheManager.acquireUserLock(worldCtx);
+      const world = cacheManager.getWorldFromCache(worldCtx);
+      if (!world) {
+        throw new ApiError(500, 'World not found in cache');
+      }
+
       try {
-        console.log(`👤 [TYPED] User lock acquired`);
-        
-        // Get world data safely (we have world write lock)
-        const world = cacheManager.getWorldUnsafe(userCtx);
-        console.log(`✅ [TYPED] World loaded with ${world.spaceObjects.length} objects`);
-        
-        // Get user data safely (we have user lock)  
-        let user = cacheManager.getUserUnsafe(session.userId!, userCtx);
-        
+        const user = await cacheManager.getUserByIdWithLock(session.userId!, userCtx);
         if (!user) {
-          // Load user from database if not in cache
-          console.log(`🔄 [TYPED] User ${session.userId} not in cache, loading from database...`);
-          
-          const dbCtx = await cacheManager.acquireDatabaseRead(userCtx);
-          try {
-            console.log(`💾 [TYPED] Database read lock acquired`);
-            
-            user = await cacheManager.loadUserFromDbUnsafe(session.userId!, dbCtx);
-            if (!user) {
-              console.log(`❌ [TYPED] User ${session.userId} not found in database`);
-              throw new ApiError(404, 'User not found');
-            }
-            
-            // Cache the loaded user
-            cacheManager.setUserUnsafe(user, userCtx);
-            console.log(`✅ [TYPED] User loaded and cached: ${user.username} (ID: ${user.id})`);
-          } finally {
-            dbCtx.dispose();
-          }
-        } else {
-          console.log(`✅ [TYPED] User found in cache: ${user.username} (ID: ${user.id})`);
+          throw new ApiError(404, 'User not found');
         }
         
         // Continue with collection logic
@@ -113,7 +88,7 @@ async function performCollectionLogic(
   world: World,
   user: User, 
   objectId: number,
-  cacheManager: TypedCacheManager,
+  cacheManager: UserWorldCache,
   userCtx: UserContext
 ): Promise<NextResponse> {
   console.log(`🎯 [TYPED] Starting collection logic with proper lock context`);
@@ -179,7 +154,7 @@ async function performCollectionLogic(
   console.log(`✅ [TYPED] Collection complete! Iron reward: ${ironReward}, Total iron: ${user.iron}`);
   
   // Update cache with new data (using unsafe methods because we have proper locks)
-  cacheManager.updateUserUnsafe(user, userCtx);
+  cacheManager.updateUserInCache(user, userCtx);
   cacheManager.updateWorldUnsafe(world, userCtx);
   
   console.log(`💾 [TYPED] Cache updated successfully with compile-time safety`);
