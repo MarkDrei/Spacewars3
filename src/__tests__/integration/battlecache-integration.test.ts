@@ -94,7 +94,7 @@ describe('Phase 5: BattleCache Integration Testing', () => {
       console.log('✅ Battle created with ID:', battle.id);
 
       // Verify battle is in cache
-      const cachedBattle = battleCache.getBattleUnsafe(battle.id);
+      const cachedBattle = battleCache.getBattleFromCache(battle.id);
       expect(cachedBattle).toBeDefined();
       expect(cachedBattle?.id).toBe(battle.id);
       expect(cachedBattle?.attackerId).toBe(attackerId);
@@ -151,7 +151,7 @@ describe('Phase 5: BattleCache Integration Testing', () => {
       expect(loadedBattle?.attackeeId).toBe(defenderId);
 
       // Should now be in cache
-      const cachedAfterLoad = freshCache.getBattleUnsafe(battle.id);
+      const cachedAfterLoad = freshCache.getBattleFromCache(battle.id);
       expect(cachedAfterLoad).toBeDefined();
       expect(cachedAfterLoad?.id).toBe(battle.id);
 
@@ -307,7 +307,7 @@ describe('Phase 5: BattleCache Integration Testing', () => {
       expect(dirtyAfterEvent).toContain(battle.id);
 
       // Battle log should contain the event
-      const updatedBattle = battleCache.getBattleUnsafe(battle.id);
+      const updatedBattle = battleCache.getBattleFromCache(battle.id);
       expect(updatedBattle?.battleLog).toHaveLength(1);
       expect(updatedBattle?.battleLog[0].type).toBe('damage_dealt');
 
@@ -354,7 +354,7 @@ describe('Phase 5: BattleCache Integration Testing', () => {
       );
 
       // Verify battle is in cache and active
-      expect(battleCache.getBattleUnsafe(battle.id)).toBeDefined();
+      expect(battleCache.getBattleFromCache(battle.id)).toBeDefined();
       
       const activeBefore = await BattleRepo.getActiveBattles();
       expect(activeBefore).toHaveLength(1);
@@ -371,7 +371,7 @@ describe('Phase 5: BattleCache Integration Testing', () => {
       );
 
       // Battle should be removed from cache (completed battles aren't cached)
-      expect(battleCache.getBattleUnsafe(battle.id)).toBeNull();
+      expect(battleCache.getBattleFromCache(battle.id)).toBeNull();
 
       // Should not appear in active battles
       const activeAfter = await BattleRepo.getActiveBattles();
@@ -392,7 +392,7 @@ describe('Phase 5: BattleCache Integration Testing', () => {
       expect(nonExistent).toBeNull();
 
       // Try to get from cache
-      const notInCache = battleCache.getBattleUnsafe(99999);
+      const notInCache = battleCache.getBattleFromCache(99999);
       expect(notInCache).toBeNull();
 
       // Try to get ongoing battle for non-existent user

@@ -20,13 +20,13 @@ import { createLockContext } from '../typedLocks';
 import { getUserWorldCache } from '../world/userWorldCache';
 import * as battleRepo from './battleRepo';
 
-// Define BATTLE_LOCK at level 12 (between USER_LOCK and DATABASE_LOCK)
-// Lock Hierarchy: CACHE(2) → WORLD(4) → USER(6) → BATTLE(12) → DATABASE(10)
-// Note: Level 12 > 10, but DATABASE_LOCK is always last in practice
-const BATTLE_LOCK = {
-  level: 12 as const,
-  mode: 'write' as const
-};
+// Define BATTLE_LOCK at level 12
+// Lock Hierarchy: CACHE(2) → WORLD(4) → USER(6) → MESSAGE(8) → DATABASE(10) → BATTLE(12)
+// BATTLE_LOCK is highest level because battle operations may need to modify users/world
+// When modifying battles, acquire locks in order: User → World → Battle
+import { LOCK_12 } from '@markdrei/ironguard-typescript-locks';
+
+const BATTLE_LOCK = LOCK_12;
 
 /**
  * BattleCache - Manages battle objects in memory
@@ -173,23 +173,23 @@ export class BattleCache {
   }
 
   // ========================================
-  // Unsafe Methods (require lock context)
+  // Private Methods (internal use only - no locks needed as used within locked sections)
   // ========================================
 
   /**
-   * Get battle from cache (UNSAFE - requires lock)
+   * Get battle from cache (PRIVATE - internal use only)
    * Returns null if battle not in cache
    */
-  getBattleUnsafe(battleId: number): Battle | null {
+  private getBattleFromCacheInternal(battleId: number): Battle | null {
     this.ensureInitialized();
     return this.battles.get(battleId) ?? null;
   }
 
   /**
-   * Set battle in cache (UNSAFE - requires lock)
+   * Set battle in cache (PRIVATE - internal use only)
    * Marks battle as dirty for persistence
    */
-  setBattleUnsafe(battle: Battle): void {
+  private setBattleInCacheInternal(battle: Battle): void {
     this.ensureInitialized();
     this.battles.set(battle.id, battle);
     this.dirtyBattles.add(battle.id);
@@ -202,10 +202,10 @@ export class BattleCache {
   }
 
   /**
-   * Update battle in cache (UNSAFE - requires lock)
+   * Update battle in cache (PRIVATE - internal use only)
    * Marks battle as dirty for persistence
    */
-  updateBattleUnsafe(battle: Battle): void {
+  private updateBattleInCacheInternal(battle: Battle): void {
     this.ensureInitialized();
     if (!this.battles.has(battle.id)) {
       throw new Error(`Cannot update non-existent battle ${battle.id}`);
@@ -221,10 +221,10 @@ export class BattleCache {
   }
 
   /**
-   * Delete battle from cache (UNSAFE - requires lock)
+   * Delete battle from cache (PRIVATE - internal use only)
    * Used for completed battles that are persisted
    */
-  deleteBattleUnsafe(battleId: number): void {
+  private deleteBattleFromCacheInternal(battleId: number): void {
     this.ensureInitialized();
     const battle = this.battles.get(battleId);
     if (battle) {
@@ -352,6 +352,15 @@ export class BattleCache {
   }
 
   /**
+   * Check if a battle is in cache (for testing)
+   * Returns the cached battle or null if not in cache
+   */
+  getBattleFromCache(battleId: number): Battle | null {
+    this.ensureInitialized();
+    return this.battles.get(battleId) ?? null;
+  }
+
+  /**
    * Persist all dirty battles to database (public async version)
    */
   async persistDirtyBattles(): Promise<void> {
@@ -392,7 +401,7 @@ export class BattleCache {
       );
       
       // Store in cache
-      this.setBattleUnsafe(battle);
+      this.setBattleInCacheInternal(battle);
       
       return battle;
     } finally {
@@ -427,7 +436,7 @@ export class BattleCache {
     }
 
     // Mark battle as dirty for persistence
-    this.updateBattleUnsafe(battle);
+    this.updateBattleInCacheInternal(battle);
   }
 
   /**
@@ -447,7 +456,7 @@ export class BattleCache {
     battle.battleLog.push(event);
 
     // Mark battle as dirty for persistence
-    this.updateBattleUnsafe(battle);
+    this.updateBattleInCacheInternal(battle);
   }
 
   /**
@@ -478,7 +487,7 @@ export class BattleCache {
     }
 
     // Mark battle as dirty for persistence
-    this.updateBattleUnsafe(battle);
+    this.updateBattleInCacheInternal(battle);
   }
 
   /**
@@ -507,7 +516,37 @@ export class BattleCache {
     }
 
     // Mark battle as dirty for persistence
-    this.updateBattleUnsafe(battle);
+    this.updateBattleInCacheInternal(battle);
+  }
+
+  /**
+   * Update total damage dealt in a battle
+   * Auto-acquires necessary locks
+   */
+  async updateTotalDamage(
+    battleId: number,
+    userId: number,
+    additionalDamage: number
+  ): Promise<void> {
+    await this.ensureInitializedAsync();
+    
+    // Get battle from cache
+    const battle = this.battles.get(battleId);
+    if (!battle) {
+      throw new Error(`Battle ${battleId} not found in cache`);
+    }
+
+    // Update total damage
+    if (userId === battle.attackerId) {
+      battle.attackerTotalDamage += additionalDamage;
+    } else if (userId === battle.attackeeId) {
+      battle.attackeeTotalDamage += additionalDamage;
+    } else {
+      throw new Error(`User ${userId} is not part of battle ${battleId}`);
+    }
+
+    // Mark battle as dirty for persistence
+    this.updateBattleInCacheInternal(battle);
   }
 
   /**
@@ -538,13 +577,13 @@ export class BattleCache {
     battle.attackeeEndStats = attackeeEndStats;
 
     // Update battle in cache (marks as dirty)
-    this.updateBattleUnsafe(battle);
+    this.updateBattleInCacheInternal(battle);
 
     // Persist to database immediately before removing from cache
     await this.persistDirtyBattles();
 
     // Remove from cache (completed battles are not kept in memory)
-    this.deleteBattleUnsafe(battleId);
+    this.deleteBattleFromCacheInternal(battleId);
   }
 
   /**
@@ -831,6 +870,15 @@ export async function updateBattleStats(
   return cache.updateBattleStats(battleId, attackerEndStats, attackeeEndStats);
 }
 
+export async function updateTotalDamage(
+  battleId: number,
+  userId: number,
+  additionalDamage: number
+): Promise<void> {
+  const cache = await getBattleCacheInitialized();
+  return cache.updateTotalDamage(battleId, userId, additionalDamage);
+}
+
 /**
  * Backward compatibility object that mimics the old BattleRepo API
  * All methods delegate to BattleCache
@@ -932,5 +980,14 @@ export const BattleRepo = {
   ) => {
     const cache = await getBattleCacheInitialized();
     return cache.updateBattleStats(battleId, attackerEndStats, attackeeEndStats);
+  },
+
+  updateTotalDamage: async (
+    battleId: number,
+    userId: number,
+    additionalDamage: number
+  ) => {
+    const cache = await getBattleCacheInitialized();
+    return cache.updateTotalDamage(battleId, userId, additionalDamage);
   }
 };

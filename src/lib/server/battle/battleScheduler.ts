@@ -221,18 +221,7 @@ async function fireWeapon(
   const hullDamage = damageResult.hullDamage;
   
   // Track total damage dealt by attacker/attackee
-  // Get battle from cache to update damage tracking
-  const battleCache = getBattleCache();
-  const cachedBattle = battleCache.getBattleUnsafe(battle.id);
-  if (cachedBattle) {
-    if (isAttacker) {
-      cachedBattle.attackerTotalDamage += totalDamage;
-    } else {
-      cachedBattle.attackeeTotalDamage += totalDamage;
-    }
-    // Mark battle as dirty for persistence
-    battleCache.updateBattleUnsafe(cachedBattle);
-  }
+  await BattleRepo.updateTotalDamage(battle.id, attackerId, totalDamage);
   
   // Create battle event
   const hitEvent: BattleEvent = {
