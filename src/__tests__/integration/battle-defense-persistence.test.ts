@@ -5,13 +5,13 @@
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { BattleCache } from '../../lib/server/battle/BattleCache';
-import { TypedCacheManager, getTypedCacheManager } from '../../lib/server/typedCacheManager';
+import { UserWorldCache, getUserWorldCache } from '../../lib/server/world/userWorldCache';
 import * as battleService from '../../lib/server/battle/battleService';
 import { createTestDatabase } from '../helpers/testDatabase';
-import { User } from '../../lib/server/user';
+import { User } from '../../lib/server/world/user';
 import { createLockContext } from '../../lib/server/typedLocks';
 import { BattleRepo } from '../../lib/server/battle/battleRepo';
-import type { BattleStats } from '../../shared/battleTypes';
+import type { BattleStats } from '../../lib/server/battle/battleTypes';
 
 describe('Battle Defense Persistence', () => {
   
@@ -23,17 +23,17 @@ describe('Battle Defense Persistence', () => {
     
     // Reset all caches
     BattleCache.resetInstance();
-    TypedCacheManager.resetInstance();
+    UserWorldCache.resetInstance();
   });
 
   afterEach(async () => {
-    await getTypedCacheManager().shutdown();
+    await getUserWorldCache().shutdown();
   });
 
   it('defenseValues_afterBattleEnds_notResetToMax', { timeout: 15000 }, async () => {
     console.log('🧪 Testing defense value persistence after battle ends...');
     
-    const cacheManager = getTypedCacheManager();
+    const cacheManager = getUserWorldCache();
     await cacheManager.initialize();
     
     // Initialize BattleCache
@@ -120,8 +120,8 @@ describe('Battle Defense Persistence', () => {
     const damageUserCtx = await cacheManager.acquireUserLock(damageCtx);
     
     try {
-      const attackerInCache = cacheManager.getUserUnsafe(attacker.id, damageUserCtx);
-      const defenderInCache = cacheManager.getUserUnsafe(defender.id, damageUserCtx);
+      const attackerInCache = cacheManager.getUserByIdFromCache(attacker.id, damageUserCtx);
+      const defenderInCache = cacheManager.getUserByIdFromCache(defender.id, damageUserCtx);
       
       if (!attackerInCache || !defenderInCache) {
         throw new Error('Users not in cache for damage application');
@@ -129,11 +129,11 @@ describe('Battle Defense Persistence', () => {
       
       // Apply damage to attacker
       attackerInCache.hullCurrent = attackerDamagedHull;
-      cacheManager.updateUserUnsafe(attackerInCache, damageUserCtx);
+      cacheManager.updateUserInCache(attackerInCache, damageUserCtx);
       
       // Set defender to 0 hull (they will lose)
       defenderInCache.hullCurrent = 0;
-      cacheManager.updateUserUnsafe(defenderInCache, damageUserCtx);
+      cacheManager.updateUserInCache(defenderInCache, damageUserCtx);
       
       console.log(`💥 Simulated damage - Attacker hull: ${attackerDamagedHull}, Defender hull: 0`);
     } finally {
@@ -155,8 +155,8 @@ describe('Battle Defense Persistence', () => {
     let defenderAfter: User | null = null;
     
     try {
-      attackerAfter = cacheManager.getUserUnsafe(attacker.id, userCtx2);
-      defenderAfter = cacheManager.getUserUnsafe(defender.id, userCtx2);
+      attackerAfter = cacheManager.getUserByIdFromCache(attacker.id, userCtx2);
+      defenderAfter = cacheManager.getUserByIdFromCache(defender.id, userCtx2);
     } finally {
       userCtx2.dispose();
     }

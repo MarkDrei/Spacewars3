@@ -2,8 +2,8 @@
 // Domain logic for the User and its stats, including persistence callback.
 // ---
 
-import { TechTree, ResearchType, getResearchEffectFromTree, createInitialTechTree, updateTechTree } from './techtree';
-import { TechCounts } from './TechFactory';
+import { TechTree, ResearchType, getResearchEffectFromTree, createInitialTechTree, updateTechTree } from '../techtree';
+import { TechCounts } from '../TechFactory';
 
 class User {
   id: number;

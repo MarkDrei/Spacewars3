@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import AuthenticatedLayout from '@/components/Layout/AuthenticatedLayout';
 import { useAuth } from '@/lib/client/hooks/useAuth';
-import type { Battle } from '@/shared/battleTypes';
+import type { Battle } from '@/lib/server/battle/battleTypes';
 import './AdminPage.css';
 
 interface UserData {

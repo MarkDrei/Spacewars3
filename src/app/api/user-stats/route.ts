@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getIronSession } from 'iron-session';
-import { getTypedCacheManager, TypedCacheManager } from '@/lib/server/typedCacheManager';
+import { getUserWorldCache, UserWorldCache } from '@/lib/server/world/userWorldCache';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth, ApiError } from '@/lib/server/errors';
 import { createLockContext, type LockContext as IronGuardLockContext, USER_LOCK } from '@/lib/server/typedLocks';
-import { User } from '@/lib/server/user';
+import { User } from '@/lib/server/world/user';
 
 // Type alias for user context
 type UserContext = IronGuardLockContext<readonly [typeof USER_LOCK]>;
@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
     requireAuth(session.userId);
     
         // Get typed cache manager singleton
-    const cacheManager = getTypedCacheManager();
+    const cacheManager = getUserWorldCache();
     
     // Create empty context for lock acquisition
     const emptyCtx = createLockContext();
@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
     const userCtx = await cacheManager.acquireUserLock(emptyCtx);
     try {
       // Get user data safely (we have user lock)
-      let user = cacheManager.getUserUnsafe(session.userId!, userCtx);
+      let user = cacheManager.getUserByIdFromCache(session.userId!, userCtx);
       
       if (!user) {
         // Load user from database if not in cache
@@ -52,12 +52,12 @@ export async function GET(request: NextRequest) {
   }
 }
 
-function processUserStats(user: User, cacheManager: TypedCacheManager, userCtx: UserContext): NextResponse {
+function processUserStats(user: User, cacheManager: UserWorldCache, userCtx: UserContext): NextResponse {
   const now = Math.floor(Date.now() / 1000);
   user.updateStats(now);
   
   // Update cache with new data (using unsafe methods because we have proper locks)
-  cacheManager.updateUserUnsafe(user, userCtx);
+  cacheManager.updateUserInCache(user, userCtx);
   
   const responseData = { 
     iron: user.iron, 

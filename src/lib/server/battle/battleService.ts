@@ -13,12 +13,12 @@
 // ---
 
 import { BattleRepo } from './battleRepo';
-import { BattleEngine } from './battle';
-import type { Battle, BattleStats, BattleEvent, WeaponCooldowns } from '../../../shared/battleTypes';
-import type { User } from '../user';
+import { BattleEngine } from './battleEngine';
+import type { Battle, BattleStats, BattleEvent, WeaponCooldowns } from './battleTypes';
+import type { User } from '../world/user';
 import { TechFactory } from '../TechFactory';
 import { ApiError } from '../errors';
-import { getTypedCacheManager } from '../typedCacheManager';
+import { getUserWorldCache } from '../world/userWorldCache';
 import { createLockContext } from '../typedLocks';
 import { getBattleCache } from './BattleCache';
 
@@ -109,11 +109,11 @@ function calculateDistance(x1: number, y1: number, x2: number, y2: number): numb
  * Helper function that delegates to TypedCacheManager
  */
 async function getShipPosition(shipId: number): Promise<{ x: number; y: number } | null> {
-  const cacheManager = getTypedCacheManager();
+  const cacheManager = getUserWorldCache();
   const ctx = createLockContext();
   const worldCtx = await cacheManager.acquireWorldRead(ctx);
   try {
-    const world = cacheManager.getWorldUnsafe(worldCtx);
+    const world = cacheManager.getWorldFromCache(worldCtx);
     const ship = world.spaceObjects.find(obj => obj.id === shipId);
     return ship ? { x: ship.x, y: ship.y } : null;
   } finally {
@@ -126,11 +126,11 @@ async function getShipPosition(shipId: number): Promise<{ x: number; y: number }
  * Delegates to TypedCacheManager instead of bypassing cache
  */
 async function setShipSpeed(shipId: number, speed: number): Promise<void> {
-  const cacheManager = getTypedCacheManager();
+  const cacheManager = getUserWorldCache();
   const ctx = createLockContext();
   const worldCtx = await cacheManager.acquireWorldWrite(ctx);
   try {
-    const world = cacheManager.getWorldUnsafe(worldCtx);
+    const world = cacheManager.getWorldFromCache(worldCtx);
     const ship = world.spaceObjects.find(obj => obj.id === shipId);
     if (ship) {
       ship.speed = speed;
@@ -146,15 +146,15 @@ async function setShipSpeed(shipId: number, speed: number): Promise<void> {
  * Delegates to TypedCacheManager instead of bypassing cache
  */
 async function updateUserBattleState(userId: number, inBattle: boolean, battleId: number | null): Promise<void> {
-  const cacheManager = getTypedCacheManager();
+  const cacheManager = getUserWorldCache();
   const ctx = createLockContext();
   const userCtx = await cacheManager.acquireUserLock(ctx);
   try {
-    const user = cacheManager.getUserUnsafe(userId, userCtx);
+    const user = cacheManager.getUserByIdFromCache(userId, userCtx);
     if (user) {
       user.inBattle = inBattle;
       user.currentBattleId = battleId;
-      cacheManager.updateUserUnsafe(user, userCtx);
+      cacheManager.updateUserInCache(user, userCtx);
     }
   } finally {
     userCtx.dispose();
@@ -194,11 +194,11 @@ function generateTeleportPosition(
  * Delegates to TypedCacheManager instead of bypassing cache
  */
 async function teleportShip(shipId: number, x: number, y: number): Promise<void> {
-  const cacheManager = getTypedCacheManager();
+  const cacheManager = getUserWorldCache();
   const ctx = createLockContext();
   const worldCtx = await cacheManager.acquireWorldWrite(ctx);
   try {
-    const world = cacheManager.getWorldUnsafe(worldCtx);
+    const world = cacheManager.getWorldFromCache(worldCtx);
     const ship = world.spaceObjects.find(obj => obj.id === shipId);
     if (ship) {
       ship.x = x;
@@ -222,12 +222,12 @@ async function updateUserDefense(
   armor: number,
   shield: number
 ): Promise<void> {
-  const cacheManager = getTypedCacheManager();
+  const cacheManager = getUserWorldCache();
   const ctx = createLockContext();
   const userCtx = await cacheManager.acquireUserLock(ctx);
   try {
     // Load user from cache/DB if needed
-    let user = cacheManager.getUserUnsafe(userId, userCtx);
+    let user = cacheManager.getUserByIdFromCache(userId, userCtx);
     if (!user) {
       // Load from database
       const dbCtx = await cacheManager.acquireDatabaseRead(userCtx);
@@ -246,7 +246,7 @@ async function updateUserDefense(
       user.armorCurrent = armor;
       user.shieldCurrent = shield;
       user.defenseLastRegen = Math.floor(Date.now() / 1000);
-      cacheManager.updateUserUnsafe(user, userCtx);
+      cacheManager.updateUserInCache(user, userCtx);
     }
     
   } finally {
@@ -259,11 +259,11 @@ async function updateUserDefense(
  * Delegates to TypedCacheManager instead of bypassing cache
  */
 async function getUserShipId(userId: number): Promise<number> {
-  const cacheManager = getTypedCacheManager();
+  const cacheManager = getUserWorldCache();
   const ctx = createLockContext();
   const userCtx = await cacheManager.acquireUserLock(ctx);
   try {
-    const user = cacheManager.getUserUnsafe(userId, userCtx);
+    const user = cacheManager.getUserByIdFromCache(userId, userCtx);
     if (!user || user.ship_id === undefined) {
       throw new Error('User not found or has no ship');
     }
@@ -286,7 +286,7 @@ export async function initiateBattle(
   attacker: User,
   attackee: User
 ): Promise<Battle> {
-  console.log(`⚔️ initiateBattle: Starting battle between ${attacker.username} and ${attackee.username}`);
+  console.log(`⚔️ BattleService.initiateBattle(): Starting battle between ${attacker.username} and ${attackee.username}`);
   
   // Validation: Check battle state from user objects (no DB access needed)
   if (attacker.inBattle) {
@@ -450,7 +450,7 @@ export async function resolveBattle(
   
   // Snapshot final defense values from User objects to create endStats
   // This is the "write once at end of battle" for endStats
-  const cacheManager = getTypedCacheManager();
+  const cacheManager = getUserWorldCache();
   let attackerEndStats: BattleStats;
   let attackeeEndStats: BattleStats;
   
@@ -458,8 +458,8 @@ export async function resolveBattle(
     const ctx = createLockContext();
     const userCtx = await cacheManager.acquireUserLock(ctx);
     try {
-      let attacker = cacheManager.getUserUnsafe(battle.attackerId, userCtx);
-      let attackee = cacheManager.getUserUnsafe(battle.attackeeId, userCtx);
+      let attacker = cacheManager.getUserByIdFromCache(battle.attackerId, userCtx);
+      let attackee = cacheManager.getUserByIdFromCache(battle.attackeeId, userCtx);
       
       // Load from DB if not in cache
       if (!attacker) {

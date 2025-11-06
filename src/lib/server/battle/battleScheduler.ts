@@ -13,13 +13,13 @@
 // ---
 
 import { BattleRepo } from './battleRepo';
-import { BattleEngine } from './battle';
+import { BattleEngine } from './battleEngine';
 import { resolveBattle } from './battleService';
-import type { Battle, BattleEvent } from '../../../shared/battleTypes';
+import type { Battle, BattleEvent } from './battleTypes';
 import { TechFactory } from '../TechFactory';
 import { sendMessageToUser } from '../MessageCache';
 import { getBattleCache } from './BattleCache';
-import { getTypedCacheManager } from '../typedCacheManager';
+import { getUserWorldCache } from '../world/userWorldCache';
 import { createLockContext } from '../typedLocks';
 
 /**
@@ -27,15 +27,15 @@ import { createLockContext } from '../typedLocks';
  * Uses proper cache delegation instead of direct DB access
  */
 async function updateUserBattleState(userId: number, inBattle: boolean, battleId: number | null): Promise<void> {
-  const cacheManager = getTypedCacheManager();
+  const cacheManager = getUserWorldCache();
   const ctx = createLockContext();
   const userCtx = await cacheManager.acquireUserLock(ctx);
   try {
-    const user = cacheManager.getUserUnsafe(userId, userCtx);
+    const user = cacheManager.getUserByIdFromCache(userId, userCtx);
     if (user) {
       user.inBattle = inBattle;
       user.currentBattleId = battleId;
-      cacheManager.updateUserUnsafe(user, userCtx);
+      cacheManager.updateUserInCache(user, userCtx);
     }
   } finally {
     userCtx.dispose();

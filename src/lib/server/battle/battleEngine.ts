@@ -10,11 +10,11 @@
 //   - Any cache/database or user/world state updates should move to BattleService or repository/cache managers.
 // ---
 
-import type { Battle, BattleStats, BattleEvent, WeaponCooldowns } from '../../../shared/battleTypes';
+import type { Battle, BattleStats, BattleEvent, WeaponCooldowns } from './battleTypes';
 import { TechFactory } from '../TechFactory';
-import { getTypedCacheManager } from '../typedCacheManager';
+import { getUserWorldCache } from '../world/userWorldCache';
 import { createLockContext } from '../typedLocks';
-import type { User } from '../user';
+import type { User } from '../world/user';
 
 /**
  * Battle class - Encapsulates battle state and combat mechanics
@@ -134,7 +134,7 @@ export class BattleEngine {
   /**
    * Fire a weapon and update cooldown
    */
-  fireWeapon(userId: number, weaponType: string, currentTime: number): void {
+  updateWeaponCooldown(userId: number, weaponType: string, currentTime: number): void {
     const isAttacker = this.battle.attackerId === userId;
     const cooldowns = isAttacker ? this.battle.attackerWeaponCooldowns : this.battle.attackeeWeaponCooldowns;
     
@@ -178,24 +178,12 @@ export class BattleEngine {
     remainingHull: number;
   }> {
     // Load user from cache to get current defense values
-    const cacheManager = getTypedCacheManager();
+    const cacheManager = getUserWorldCache();
     const ctx = createLockContext();
     const userCtx = await cacheManager.acquireUserLock(ctx);
     
     try {
-      let user = cacheManager.getUserUnsafe(targetUserId, userCtx);
-      if (!user) {
-        // Load from DB if not in cache
-        const dbCtx = await cacheManager.acquireDatabaseRead(userCtx);
-        try {
-          user = await cacheManager.loadUserFromDbUnsafe(targetUserId, dbCtx);
-          if (user) {
-            cacheManager.setUserUnsafe(user, userCtx);
-          }
-        } finally {
-          dbCtx.dispose();
-        }
-      }
+      const user = await cacheManager.getUserByIdWithLock(targetUserId, userCtx);
       
       if (!user) {
         throw new Error(`User ${targetUserId} not found during battle`);
@@ -228,7 +216,7 @@ export class BattleEngine {
       }
 
       // Update user in cache (marks as dirty for persistence)
-      cacheManager.updateUserUnsafe(user, userCtx);
+      cacheManager.updateUserInCache(user, userCtx);
 
       return {
         shieldDamage,
@@ -246,14 +234,14 @@ export class BattleEngine {
    * Checks actual User defense values from cache, not battle stats
    */
   async isBattleOver(): Promise<boolean> {
-    const cacheManager = getTypedCacheManager();
+    const cacheManager = getUserWorldCache();
     const ctx = createLockContext();
     const userCtx = await cacheManager.acquireUserLock(ctx);
     
     try {
-      const attacker = await this.getUserFromCache(this.battle.attackerId, cacheManager, userCtx);
-      const attackee = await this.getUserFromCache(this.battle.attackeeId, cacheManager, userCtx);
-      
+      const attacker = await cacheManager.getUserByIdWithLock(this.battle.attackerId, userCtx);
+      const attackee = await cacheManager.getUserByIdWithLock(this.battle.attackeeId, userCtx);
+
       if (!attacker || !attackee) {
         throw new Error('Users not found during battle');
       }
@@ -262,29 +250,6 @@ export class BattleEngine {
     } finally {
       userCtx.dispose();
     }
-  }
-  
-  /**
-   * Helper to get user from cache (loads from DB if needed)
-   */
-  private async getUserFromCache(
-    userId: number,
-    cacheManager: ReturnType<typeof getTypedCacheManager>,
-    userCtx: import('../typedCacheManager').UserContext
-  ): Promise<User | null> {
-    let user = cacheManager.getUserUnsafe(userId, userCtx);
-    if (!user) {
-      const dbCtx = await cacheManager.acquireDatabaseRead(userCtx);
-      try {
-        user = await cacheManager.loadUserFromDbUnsafe(userId, dbCtx);
-        if (user) {
-          cacheManager.setUserUnsafe(user, userCtx);
-        }
-      } finally {
-        dbCtx.dispose();
-      }
-    }
-    return user;
   }
 
   /**
@@ -297,14 +262,14 @@ export class BattleEngine {
       return null;
     }
 
-    const cacheManager = getTypedCacheManager();
+    const cacheManager = getUserWorldCache();
     const ctx = createLockContext();
     const userCtx = await cacheManager.acquireUserLock(ctx);
     
     try {
-      const attacker = await this.getUserFromCache(this.battle.attackerId, cacheManager, userCtx);
-      const attackee = await this.getUserFromCache(this.battle.attackeeId, cacheManager, userCtx);
-      
+      const attacker = await cacheManager.getUserByIdWithLock(this.battle.attackerId, userCtx);
+      const attackee = await cacheManager.getUserByIdWithLock(this.battle.attackeeId, userCtx);
+
       if (!attacker || !attackee) {
         throw new Error('Users not found during battle');
       }
@@ -377,7 +342,7 @@ export class BattleEngine {
     }
 
     // Fire the weapon (update cooldown)
-    this.fireWeapon(userId, weaponType, currentTime);
+    this.updateWeaponCooldown(userId, weaponType, currentTime);
 
     // Create damage event
     let targetDefense: 'shield' | 'armor' | 'hull' = 'shield';
@@ -396,7 +361,7 @@ export class BattleEngine {
 
     const event = this.createBattleEvent('damage_dealt', actor, {
       weaponType,
-      damageDealt: totalDamage,
+      damageDealt: damageDealt,
       targetDefense,
       remainingValue: damageResult.remainingHull,
       message: `${actor} fired ${weaponType} dealing ${totalDamage} damage to ${targetActor}'s ${targetDefense}`
@@ -406,13 +371,13 @@ export class BattleEngine {
     this.battle.battleLog.push(event);
 
     // Check for defense layer destruction by reading current user values
-    const cacheManager = getTypedCacheManager();
+    const cacheManager = getUserWorldCache();
     const ctx = createLockContext();
     const userCtx = await cacheManager.acquireUserLock(ctx);
     
     try {
-      const targetUser = await this.getUserFromCache(targetUserId, cacheManager, userCtx);
-      
+      const targetUser = await cacheManager.getUserByIdWithLock(targetUserId, userCtx);
+
       if (targetUser) {
         if (damageResult.shieldDamage > 0 && targetUser.shieldCurrent === 0) {
           const shieldBrokenEvent = this.createBattleEvent('shield_broken', targetActor, {

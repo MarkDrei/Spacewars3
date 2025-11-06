@@ -1,5 +1,30 @@
 # Technical Debt
 
+## User Object - Automatic Dirty State Tracking
+
+**Priority**: Medium
+
+### Idea
+
+Currently, marking a user as dirty for cache persistence requires explicit calls to cache manager methods after mutating the user object. This is error-prone and can lead to missed updates if callers forget to mark the user as dirty.
+
+**Proposed Solution:**
+- Inject a callback into each User object that marks it as dirty in the cache when its state changes.
+- Mutating methods and setters in the User class would invoke this callback automatically.
+- This ensures that any change to a cached User is tracked for persistence, without requiring manual dirty marking by callers.
+
+**Benefits:**
+- Reduces boilerplate and risk of missed updates
+- Centralizes dirty state tracking in the domain model
+- Makes cache management more robust and maintainable
+
+**Effort Estimate:**
+- Medium: Requires refactoring User class and cache manager
+
+**Related Files:**
+- src/lib/server/world/user.ts
+- src/lib/server/world/userWorldCache.ts
+
 ## Battle System - Cache Bypass Issue
 
 **Priority**: High  

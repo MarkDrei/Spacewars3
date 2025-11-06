@@ -5,10 +5,10 @@
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { BattleCache, getBattleCache } from '../../lib/server/battle/BattleCache';
-import { TypedCacheManager, getTypedCacheManager } from '../../lib/server/typedCacheManager';
+import { UserWorldCache, getUserWorldCache } from '../../lib/server/world/userWorldCache';
 import * as BattleRepo from '../../lib/server/battle/battleRepo';
 import { createTestDatabase } from '../helpers/testDatabase';
-import type { BattleStats, WeaponCooldowns } from '../../shared/battleTypes';
+import type { BattleStats, WeaponCooldowns } from '../../lib/server/battle/battleTypes';
 
 describe('Phase 5: BattleCache Integration Testing', () => {
   
@@ -21,14 +21,14 @@ describe('Phase 5: BattleCache Integration Testing', () => {
     
     // Reset all caches to clean state
     BattleCache.resetInstance();
-    TypedCacheManager.resetInstance();
+    UserWorldCache.resetInstance();
   });
 
   afterEach(async () => {
     // Clean shutdown
     try {
       await getBattleCache().shutdown();
-      await getTypedCacheManager().shutdown();
+      await getUserWorldCache().shutdown();
     } catch {
       // Ignore shutdown errors in tests
     }
@@ -37,7 +37,7 @@ describe('Phase 5: BattleCache Integration Testing', () => {
   describe('Core BattleCache Functionality', () => {
     it('battleCache_createBattle_storesInCache', async () => {
       const battleCache = getBattleCache();
-      const cacheManager = getTypedCacheManager();
+      const cacheManager = getUserWorldCache();
       await cacheManager.initialize();
 
       // Initialize BattleCache manually for tests
@@ -105,7 +105,7 @@ describe('Phase 5: BattleCache Integration Testing', () => {
 
     it('battleCache_loadBattleIfNeeded_loadsFromDatabase', async () => {
       const battleCache = getBattleCache();
-      const cacheManager = getTypedCacheManager();
+      const cacheManager = getUserWorldCache();
       await cacheManager.initialize();
 
       // Initialize BattleCache manually for tests
@@ -158,7 +158,7 @@ describe('Phase 5: BattleCache Integration Testing', () => {
     });
 
     it('battleCache_getOngoingBattleForUser_findsUserBattle', async () => {
-      const cacheManager = getTypedCacheManager();
+      const cacheManager = getUserWorldCache();
       await cacheManager.initialize();
 
       // Initialize BattleCache manually for tests
@@ -205,7 +205,7 @@ describe('Phase 5: BattleCache Integration Testing', () => {
     });
 
     it('battleCache_getActiveBattles_returnsAllActive', async () => {
-      const cacheManager = getTypedCacheManager();
+      const cacheManager = getUserWorldCache();
       await cacheManager.initialize();
 
       // Initialize BattleCache manually for tests
@@ -262,7 +262,7 @@ describe('Phase 5: BattleCache Integration Testing', () => {
 
     it('battleCache_addBattleEvent_updatesCache', async () => {
       const battleCache = getBattleCache();
-      const cacheManager = getTypedCacheManager();
+      const cacheManager = getUserWorldCache();
       await cacheManager.initialize();
 
       // Initialize BattleCache manually for tests
@@ -309,7 +309,7 @@ describe('Phase 5: BattleCache Integration Testing', () => {
 
     it('battleCache_endBattle_removesFromCache', async () => {
       const battleCache = getBattleCache();
-      const cacheManager = getTypedCacheManager();
+      const cacheManager = getUserWorldCache();
       await cacheManager.initialize();
 
       // Initialize BattleCache manually for tests
@@ -396,7 +396,7 @@ describe('Phase 5: BattleCache Integration Testing', () => {
 
   describe('Persistence Testing', () => {
     it('battleCache_persistence_maintainsData', async () => {
-      const cacheManager = getTypedCacheManager();
+      const cacheManager = getUserWorldCache();
       await cacheManager.initialize();
 
       // Initialize BattleCache manually for tests
@@ -442,7 +442,7 @@ describe('Phase 5: BattleCache Integration Testing', () => {
 
       // Create fresh cache
       const newCache = getBattleCache();
-      const newCacheManager = getTypedCacheManager();
+      const newCacheManager = getUserWorldCache();
       await newCacheManager.initialize();
 
       // Battle should be loadable from database

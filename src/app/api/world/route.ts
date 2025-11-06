@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getIronSession } from 'iron-session';
-import { getTypedCacheManager } from '@/lib/server/typedCacheManager';
+import { getUserWorldCache } from '@/lib/server/world/userWorldCache';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth } from '@/lib/server/errors';
 import { createLockContext } from '@/lib/server/typedLocks';
@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
     // console.log(`🌍 World data request - userId: ${session.userId}`);
 
     // Get typed cache manager singleton
-    const cacheManager = getTypedCacheManager();
+    const cacheManager = getUserWorldCache();
     
     // Create empty context for lock acquisition
     const emptyCtx = createLockContext();
@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
     const worldCtx = await cacheManager.acquireWorldWrite(emptyCtx);
     try {
       // Get world data safely (we have world write lock)
-      const world = cacheManager.getWorldUnsafe(worldCtx);
+      const world = cacheManager.getWorldFromCache(worldCtx);
       
       // Update physics for all objects
       const currentTime = Date.now();

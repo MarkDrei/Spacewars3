@@ -2,7 +2,7 @@ import { getIronSession } from 'iron-session';
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { sessionOptions, SessionData } from './session';
-import { getTypedCacheManager } from './typedCacheManager';
+import { getUserWorldCache } from './world/userWorldCache';
 
 export interface ServerAuthState {
   userId: number;
@@ -24,9 +24,9 @@ export async function getServerAuth(): Promise<ServerAuthState | null> {
     }
 
     // Use cache to validate user existence and get current data
-    const cacheManager = getTypedCacheManager();
+    const cacheManager = getUserWorldCache();
     
-    const user = await cacheManager.loadUserIfNeeded(session.userId);
+    const user = await cacheManager.getUserById(session.userId);
 
     if (!user) {
       // User doesn't exist in database (deleted user with valid session)

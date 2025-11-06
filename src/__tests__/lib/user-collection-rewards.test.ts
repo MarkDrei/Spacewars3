@@ -1,5 +1,5 @@
 import { describe, expect, test, vi } from 'vitest';
-import { User } from '@/lib/server/user';
+import { User } from '@/lib/server/world/user';
 import { createInitialTechTree } from '@/lib/server/techtree';
 
 // Mock save callback

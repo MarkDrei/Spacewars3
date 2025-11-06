@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getIronSession } from 'iron-session';
-import { getTypedCacheManager, TypedCacheManager } from '@/lib/server/typedCacheManager';
+import { getUserWorldCache, UserWorldCache } from '@/lib/server/world/userWorldCache';
 import { getResearchEffectFromTree, ResearchType } from '@/lib/server/techtree';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth, ApiError } from '@/lib/server/errors';
 import { createLockContext, type LockContext as IronGuardLockContext, USER_LOCK } from '@/lib/server/typedLocks';
-import { User } from '@/lib/server/user';
-import { World } from '@/lib/server/world';
+import { User } from '@/lib/server/world/user';
+import { World } from '@/lib/server/world/world';
 
 // Type alias for user context
 type UserContext = IronGuardLockContext<readonly [typeof USER_LOCK]>;
@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
     }
     
     // Get typed cache manager singleton
-    const cacheManager = getTypedCacheManager();
+    const cacheManager = getUserWorldCache();
     
     // Create empty context for lock acquisition
     const emptyCtx = createLockContext();
@@ -37,10 +37,10 @@ export async function POST(request: NextRequest) {
       const userCtx = await cacheManager.acquireUserLock(worldCtx);
       try {
         // Get world data safely (we have world write lock)
-        const world = cacheManager.getWorldUnsafe(userCtx);
+        const world = cacheManager.getWorldFromCache(userCtx);
         
         // Get user data safely (we have user lock)
-        let user = cacheManager.getUserUnsafe(session.userId!, userCtx);
+        let user = cacheManager.getUserByIdFromCache(session.userId!, userCtx);
         
         if (!user) {
           // Load user from database if not in cache
@@ -80,7 +80,7 @@ async function performNavigationLogic(
   user: User,
   speed: number | undefined,
   angle: number | undefined,
-  cacheManager: TypedCacheManager,
+  cacheManager: UserWorldCache,
   userCtx: UserContext
 ): Promise<NextResponse> {
   // Check if user is in battle - cannot navigate while in battle

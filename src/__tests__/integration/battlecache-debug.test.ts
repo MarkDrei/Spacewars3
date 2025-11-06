@@ -1,7 +1,7 @@
 // Debug test to understand BattleCache initialization
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { BattleCache, getBattleCache } from '../../lib/server/battle/BattleCache';
-import { TypedCacheManager, getTypedCacheManager } from '../../lib/server/typedCacheManager';
+import { UserWorldCache, getUserWorldCache } from '../../lib/server/world/userWorldCache';
 import { createTestDatabase } from '../helpers/testDatabase';
 
 describe('BattleCache Debug Tests', () => {
@@ -14,14 +14,14 @@ describe('BattleCache Debug Tests', () => {
     
     // Reset all caches to clean state
     BattleCache.resetInstance();
-    TypedCacheManager.resetInstance();
+    UserWorldCache.resetInstance();
   });
 
   afterEach(async () => {
     // Clean shutdown
     try {
       await getBattleCache().shutdown();
-      await getTypedCacheManager().shutdown();
+      await getUserWorldCache().shutdown();
     } catch {
       // Ignore shutdown errors in tests
     }
@@ -30,7 +30,7 @@ describe('BattleCache Debug Tests', () => {
   it('debug_cacheManagerInitialization_initializesBattleCache', async () => {
     console.log('🔍 Starting debug test...');
     
-    const cacheManager = getTypedCacheManager();
+    const cacheManager = getUserWorldCache();
     console.log('📋 Got cache manager');
     
     const battleCacheBefore = getBattleCache();
@@ -78,7 +78,7 @@ describe('BattleCache Debug Tests', () => {
     console.log('🔍 Testing BattleCache auto-initialization...');
     
     // First initialize the cache manager (for database)
-    const cacheManager = getTypedCacheManager();
+    const cacheManager = getUserWorldCache();
     await cacheManager.initialize();
     console.log('✅ Cache manager initialized');
     

@@ -3,7 +3,7 @@
 // ---
 
 import { useState, useEffect } from 'react';
-import type { WeaponCooldowns, BattleStats, BattleEvent } from '@/shared/battleTypes';
+import type { WeaponCooldowns, BattleStats, BattleEvent } from '@/lib/server/battle/battleTypes';
 
 export interface BattleStatus {
   inBattle: boolean;
