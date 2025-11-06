@@ -2,12 +2,12 @@
 // BattleEngine: Encapsulates pure domain battle mechanics and calculations.
 // Responsibilities:
 //   - Executes combat turns, damage calculations, cooldown logic, and determines battle outcome.
-//   - Remains stateless and pure, with no direct persistence or orchestration.
+//   - Updates user defense values through cache manager (proper delegation)
+//   - Remains stateless (operates on Battle object passed in constructor)
 // Main interaction partners:
 //   - BattleService (for orchestration)
-//   - BattleRepository/BattleCacheManager (for state access)
-// Responsibilities to move:
-//   - Any cache/database or user/world state updates should move to BattleService or repository/cache managers.
+//   - getUserWorldCache (for updating user defense values)
+// Status: ✅ Properly delegates user state updates to cache manager
 // ---
 
 import type { Battle, BattleStats, BattleEvent, WeaponCooldowns } from './battleTypes';

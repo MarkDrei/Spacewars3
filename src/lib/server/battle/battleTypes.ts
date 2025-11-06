@@ -54,7 +54,7 @@ export interface BattleEvent {
 
 export type BattleState = 'not_in_battle' | 'in_battle';
 
-// For database row mapping
+// For database row mapping (used in battleRepo)
 export interface BattleRow {
   id: number;
   attacker_id: number;
@@ -72,26 +72,4 @@ export interface BattleRow {
   battle_log: string; // JSON
   attacker_total_damage: number;
   attackee_total_damage: number;
-}
-
-// Helper to convert DB row to Battle object
-export function battleRowToBattle(row: BattleRow): Battle {
-  return {
-    id: row.id,
-    attackerId: row.attacker_id,
-    attackeeId: row.attackee_id,
-    battleStartTime: row.battle_start_time,
-    battleEndTime: row.battle_end_time,
-    winnerId: row.winner_id,
-    loserId: row.loser_id,
-    attackerWeaponCooldowns: JSON.parse(row.attacker_weapon_cooldowns),
-    attackeeWeaponCooldowns: JSON.parse(row.attackee_weapon_cooldowns),
-    attackerStartStats: JSON.parse(row.attacker_start_stats),
-    attackeeStartStats: JSON.parse(row.attackee_start_stats),
-    attackerEndStats: row.attacker_end_stats ? JSON.parse(row.attacker_end_stats) : null,
-    attackeeEndStats: row.attackee_end_stats ? JSON.parse(row.attackee_end_stats) : null,
-    battleLog: JSON.parse(row.battle_log),
-    attackerTotalDamage: row.attacker_total_damage || 0,
-    attackeeTotalDamage: row.attackee_total_damage || 0,
-  };
 }
