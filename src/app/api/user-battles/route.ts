@@ -4,7 +4,7 @@ import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth } from '@/lib/server/errors';
 import { getBattlesForUser } from '@/lib/server/battle/battleRepo';
 import { getDatabase } from '@/lib/server/database';
-import { Battle } from '@/shared/battleTypes';
+import { Battle } from '@/lib/server/battle/battleTypes';
 
 interface UserBasicInfo {
   id: number;

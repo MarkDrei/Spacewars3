@@ -9,9 +9,9 @@ import { createRequest, createAuthenticatedSession } from '../helpers/apiTestHel
 // Import battle creation utilities
 import { createBattle, endBattle } from '@/lib/server/battle/battleRepo';
 import { getDatabase } from '@/lib/server/database';
-import { BattleStats } from '@/shared/battleTypes';
+import { BattleStats } from '@/lib/server/battle/battleTypes';
 import { BattleCache, getBattleCache } from '@/lib/server/battle/BattleCache';
-import { TypedCacheManager, getTypedCacheManager } from '@/lib/server/typedCacheManager';
+import { getUserWorldCache } from '@/lib/server/world/userWorldCache';
 
 // Helper to get user ID from username
 async function getUserIdByUsername(username: string): Promise<number> {
@@ -92,10 +92,9 @@ describe('User battles API', () => {
   beforeEach(async () => {
     // Reset caches to clean state
     BattleCache.resetInstance();
-    TypedCacheManager.resetInstance();
     
     // Initialize caches
-    const cacheManager = getTypedCacheManager();
+    const cacheManager = getUserWorldCache();
     await cacheManager.initialize();
     
     // Initialize BattleCache
@@ -106,7 +105,7 @@ describe('User battles API', () => {
 
   afterEach(async () => {
     // Clean shutdown
-    await getTypedCacheManager().shutdown();
+    await getUserWorldCache().shutdown();
   });
 
   test('userBattles_notAuthenticated_returns401', async () => {

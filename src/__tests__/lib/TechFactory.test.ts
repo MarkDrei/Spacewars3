@@ -15,7 +15,8 @@ describe('TechFactory.calculateWeaponDamage', () => {
     rocket_launcher: 1,
     kinetic_armor: 5,
     energy_shield: 5,
-    missile_jammer: 0
+    missile_jammer: 0,
+    ship_hull: 1
   };
 
   // Helper function for cleaner test calls
@@ -252,7 +253,8 @@ describe('TechFactory utility methods', () => {
       rocket_launcher: 0,
       kinetic_armor: 5,
       energy_shield: 3,
-      missile_jammer: 1
+      missile_jammer: 1,
+      ship_hull: 1
     };
 
     const effects = TechFactory.calculateTotalEffects(techCounts);
