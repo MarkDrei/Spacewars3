@@ -52,7 +52,6 @@ async function createMessage(userId: number, message: string): Promise<void> {
 
 /**
  * Process all active battles automatically  
- * Updated to use BattleCache instead of BattleRepo.getActiveBattles()
  */
 export async function processActiveBattles(): Promise<void> {
   try {
