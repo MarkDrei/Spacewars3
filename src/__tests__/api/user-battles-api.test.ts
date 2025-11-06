@@ -7,7 +7,7 @@ import { GET as userBattlesGET } from '@/app/api/user-battles/route';
 import { createRequest, createAuthenticatedSession } from '../helpers/apiTestHelpers';
 
 // Import battle creation utilities
-import { createBattle, endBattle } from '@/lib/server/battle/battleRepo';
+import { createBattle, endBattle } from '@/lib/server/battle/BattleCache';
 import { getDatabase } from '@/lib/server/database';
 import { BattleStats } from '@/lib/server/battle/battleTypes';
 import { BattleCache, getBattleCache } from '@/lib/server/battle/BattleCache';

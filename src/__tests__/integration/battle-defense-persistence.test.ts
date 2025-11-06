@@ -10,7 +10,7 @@ import * as battleService from '../../lib/server/battle/battleService';
 import { createTestDatabase } from '../helpers/testDatabase';
 import { User } from '../../lib/server/world/user';
 import { createLockContext } from '../../lib/server/typedLocks';
-import { BattleRepo } from '../../lib/server/battle/battleRepo';
+import { BattleRepo } from '../../lib/server/battle/BattleCache';
 import type { BattleStats } from '../../lib/server/battle/battleTypes';
 
 describe('Battle Defense Persistence', () => {

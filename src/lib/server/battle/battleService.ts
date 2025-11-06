@@ -12,7 +12,7 @@
 //   - Any direct battle mechanics or persistence logic should move to BattleService or repository/cache managers.
 // ---
 
-import { BattleRepo } from './battleRepo';
+import { BattleRepo } from './BattleCache';
 import { BattleEngine } from './battleEngine';
 import type { Battle, BattleStats, BattleEvent, WeaponCooldowns } from './battleTypes';
 import type { User } from '../world/user';

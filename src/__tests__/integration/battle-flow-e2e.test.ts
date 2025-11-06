@@ -6,7 +6,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { BattleCache, getBattleCache } from '../../lib/server/battle/BattleCache';
 import { UserWorldCache, getUserWorldCache } from '../../lib/server/world/userWorldCache';
-import * as BattleRepo from '../../lib/server/battle/battleRepo';
+import * as BattleRepo from '../../lib/server/battle/BattleCache';
 import * as battleService from '../../lib/server/battle/battleService';
 import * as battleScheduler from '../../lib/server/battle/battleScheduler';
 import { createTestDatabase } from '../helpers/testDatabase';
