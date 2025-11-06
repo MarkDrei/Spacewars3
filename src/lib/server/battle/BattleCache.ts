@@ -14,7 +14,6 @@
 // ---
 
 import type sqlite3 from 'sqlite3';
-import { LOCK_10 as DATABASE_LOCK } from '@markdrei/ironguard-typescript-locks';
 import type { Battle, BattleStats, BattleEvent, WeaponCooldowns } from './battleTypes';
 import { createLockContext } from '../typedLocks';
 import { getUserWorldCache } from '../world/userWorldCache';
@@ -26,7 +25,8 @@ import * as battleRepo from './battleRepo';
 // When modifying battles, acquire locks in order: User → World → Battle
 import { LOCK_12 } from '@markdrei/ironguard-typescript-locks';
 
-const BATTLE_LOCK = LOCK_12;
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const BATTLE_LOCK = LOCK_12; // Reserved for future explicit lock acquisition
 
 /**
  * BattleCache - Manages battle objects in memory
