@@ -4,7 +4,7 @@ import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth, ApiError } from '@/lib/server/errors';
 import { getDatabase } from '@/lib/server/database';
 import { getUserById } from '@/lib/server/world/userRepo';
-import { getAllBattles } from '@/lib/server/battle/battleRepo';
+import { getBattleCacheInitialized } from '@/lib/server/battle/BattleCache';
 import type { Battle } from '@/lib/server/battle/battleTypes';
 
 interface UserData {
@@ -164,7 +164,8 @@ export async function GET(request: NextRequest) {
     });
 
     // Get all battles
-    const battles = await getAllBattles();
+    const cache = await getBattleCacheInitialized();
+    const battles = await cache.getAllBattles();
 
     const adminData: AdminData = {
       users,

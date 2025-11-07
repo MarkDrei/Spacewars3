@@ -1,18 +1,21 @@
 // ---
-// BattleScheduler: Automates periodic processing of active battles.
+// BattleService: High-level orchestration of battle lifecycle.
 // Responsibilities:
-//   - Triggers battle rounds at regular intervals via BattleService.
-//   - Orchestrates battle lifecycle events (start, resolve, end).
-//   - Sends notifications/messages to users.
+//   - Initiate battles (initiateBattle)
+//   - Update battles (updateBattle - process combat rounds)
+//   - Resolve battles (resolveBattle - determine winner, apply consequences)
+//   - Coordinate between BattleCache, BattleEngine, and User/World caches
 // Main interaction partners:
-//   - BattleService (for orchestration)
-//   - BattleRepository/BattleCacheManager (for battle state)
-//   - User/World managers (for state updates)
-// Responsibilities to move:
-//   - Any direct battle mechanics or persistence logic should move to BattleService or repository/cache managers.
+//   - BattleCache (via BattleRepo compatibility layer)
+//   - BattleEngine (for combat mechanics)
+//   - getUserWorldCache (for user state updates)
+//   - World cache (for ship positioning and teleportation)
+// Status: ✅ Proper orchestration layer, uses cache delegation
+// Note: Has helper functions (updateUserBattleState, getShipPosition, etc.)
+//       These are used in battle initiation and resolution contexts.
 // ---
 
-import { BattleRepo } from './battleRepo';
+import { BattleRepo } from './BattleCache';
 import { BattleEngine } from './battleEngine';
 import type { Battle, BattleStats, BattleEvent, WeaponCooldowns } from './battleTypes';
 import type { User } from '../world/user';

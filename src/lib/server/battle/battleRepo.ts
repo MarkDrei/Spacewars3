@@ -1,61 +1,110 @@
 // ---
-// BattleRepository: Handles CRUD and persistence for battle objects.
+// BattleRepository: Pure database operations ONLY for battle objects.
 // Responsibilities:
-//   - Provides cache-first access to battle objects.
-//   - Handles database synchronization and querying.
-//   - Delegates mechanics and orchestration to BattleEngine and BattleService.
+//   - Read/write battle data from/to database
+//   - NO cache access, NO business logic, NO orchestration
+//   - Called ONLY by BattleCache for persistence
 // Main interaction partners:
-//   - BattleService (for orchestration)
-//   - BattleCacheManager (for cache)
-// Responsibilities to move:
-//   - Any business logic or orchestration should move to BattleService; only persistence should remain here.
+//   - BattleCache (the only caller for writes)
+// Status: ✅ Refactored to be DB-only
 // ---
 
 import type { Battle, BattleStats, BattleEvent, WeaponCooldowns } from './battleTypes';
-import { getBattleCache } from './BattleCache';
 import { getDatabase } from '../database';
+import type sqlite3 from 'sqlite3';
+
+// ========================================
+// Pure Database Read Operations
+// ========================================
 
 /**
- * Get a battle by ID
- * Uses BattleCache first, falls back to database
+ * Get a battle by ID from database
+ * Pure DB operation - no cache access
  */
-export async function getBattle(battleId: number): Promise<Battle | null> {
-  const battleCache = getBattleCache();
-  return await battleCache.loadBattleIfNeeded(battleId);
+export async function getBattleFromDb(battleId: number): Promise<Battle | null> {
+  const db = await getDatabase();
+  
+  return new Promise((resolve, reject) => {
+    db.get(`
+      SELECT * FROM battles WHERE id = ?
+    `, [battleId], (err, row) => {
+      if (err) {
+        reject(err);
+        return;
+      }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      resolve(row ? deserializeBattle(row as any) : null);
+    });
+  });
 }
 
 /**
- * Get ongoing battle for a user
- * Uses BattleCache for active battles
+ * Get ongoing battle for user from database
+ * Pure DB operation - no cache access
  */
-export async function getOngoingBattleForUser(userId: number): Promise<Battle | null> {
-  const battleCache = getBattleCache();
-  return await battleCache.getOngoingBattleForUser(userId);
+export async function getOngoingBattleForUserFromDb(userId: number): Promise<Battle | null> {
+  const db = await getDatabase();
+  
+  return new Promise((resolve, reject) => {
+    db.get(`
+      SELECT * FROM battles 
+      WHERE (attacker_id = ? OR attackee_id = ?)
+        AND battle_end_time IS NULL
+      ORDER BY battle_start_time DESC
+      LIMIT 1
+    `, [userId, userId], (err, row) => {
+      if (err) {
+        reject(err);
+        return;
+      }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      resolve(row ? deserializeBattle(row as any) : null);
+    });
+  });
 }
 
 /**
- * Get all active battles
- * Uses BattleCache for in-memory active battles
+ * Get all active battles from database
+ * Pure DB operation - no cache access
  */
-export async function getActiveBattles(): Promise<Battle[]> {
-  const battleCache = getBattleCache();
-  return await battleCache.getActiveBattles();
+export async function getActiveBattlesFromDb(): Promise<Battle[]> {
+  const db = await getDatabase();
+  
+  return new Promise((resolve, reject) => {
+    db.all(`
+      SELECT * FROM battles 
+      WHERE battle_end_time IS NULL
+    `, [], (err, rows) => {
+      if (err) {
+        reject(err);
+        return;
+      }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const battles = (rows as any[]).map(row => deserializeBattle(row));
+      resolve(battles);
+    });
+  });
 }
 
+// ========================================
+// Pure Database Write Operations
+// ========================================
+
 /**
- * Create a new battle
- * Creates battle in database and stores in BattleCache
+ * Insert a new battle into database
+ * Pure DB operation - no cache access
+ * Returns the battle with generated ID
  */
-export async function createBattle(
+export async function insertBattleToDb(
   attackerId: number,
   attackeeId: number,
+  battleStartTime: number,
   attackerStartStats: BattleStats,
   attackeeStartStats: BattleStats,
   attackerInitialCooldowns: WeaponCooldowns,
   attackeeInitialCooldowns: WeaponCooldowns
 ): Promise<Battle> {
   const db = await getDatabase();
-  const now = Math.floor(Date.now() / 1000);
 
   return new Promise((resolve, reject) => {
     const query = `
@@ -82,7 +131,7 @@ export async function createBattle(
       [
         attackerId,
         attackeeId,
-        now,
+        battleStartTime,
         attackerCooldowns,
         attackeeCooldowns,
         attackerStats,
@@ -100,7 +149,7 @@ export async function createBattle(
           id: this.lastID,
           attackerId,
           attackeeId,
-          battleStartTime: now,
+          battleStartTime,
           battleEndTime: null,
           winnerId: null,
           loserId: null,
@@ -115,10 +164,6 @@ export async function createBattle(
           attackeeTotalDamage: 0
         };
 
-        // Store in BattleCache
-        const battleCache = getBattleCache();
-        battleCache.setBattleUnsafe(battle);
-
         resolve(battle);
       }
     );
@@ -126,123 +171,75 @@ export async function createBattle(
 }
 
 /**
- * Update weapon cooldowns for a battle
- * Updates both database and cache
+ * Update battle in database
+ * Pure DB operation - updates all battle fields
  */
-export async function updateWeaponCooldowns(
-  battleId: number,
-  userId: number,
-  weaponCooldowns: WeaponCooldowns
-): Promise<void> {
-  const battleCache = getBattleCache();
+export async function updateBattleInDb(battle: Battle): Promise<void> {
+  const db = await getDatabase();
   
-  // Get battle from cache
-  const battle = battleCache.getBattleUnsafe(battleId);
-  if (!battle) {
-    throw new Error(`Battle ${battleId} not found in cache`);
-  }
-
-  // Update cooldowns
-  if (userId === battle.attackerId) {
-    battle.attackerWeaponCooldowns = weaponCooldowns;
-  } else if (userId === battle.attackeeId) {
-    battle.attackeeWeaponCooldowns = weaponCooldowns;
-  } else {
-    throw new Error(`User ${userId} is not part of battle ${battleId}`);
-  }
-
-  // Mark battle as dirty for persistence
-  battleCache.updateBattleUnsafe(battle);
+  return new Promise((resolve, reject) => {
+    db.run(`
+      UPDATE battles SET
+        attacker_weapon_cooldowns = ?,
+        attackee_weapon_cooldowns = ?,
+        attacker_start_stats = ?,
+        attackee_start_stats = ?,
+        attacker_end_stats = ?,
+        attackee_end_stats = ?,
+        battle_log = ?,
+        battle_end_time = ?,
+        winner_id = ?,
+        loser_id = ?,
+        attacker_total_damage = ?,
+        attackee_total_damage = ?
+      WHERE id = ?
+    `, [
+      JSON.stringify(battle.attackerWeaponCooldowns),
+      JSON.stringify(battle.attackeeWeaponCooldowns),
+      JSON.stringify(battle.attackerStartStats),
+      JSON.stringify(battle.attackeeStartStats),
+      battle.attackerEndStats ? JSON.stringify(battle.attackerEndStats) : null,
+      battle.attackeeEndStats ? JSON.stringify(battle.attackeeEndStats) : null,
+      JSON.stringify(battle.battleLog),
+      battle.battleEndTime,
+      battle.winnerId,
+      battle.loserId,
+      battle.attackerTotalDamage,
+      battle.attackeeTotalDamage,
+      battle.id
+    ], (err) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve();
+      }
+    });
+  });
 }
 
 /**
- * Add a battle event to the battle log
+ * Delete battle from database
+ * Pure DB operation - no cache access
  */
-export async function addBattleEvent(battleId: number, event: BattleEvent): Promise<void> {
-  const battleCache = getBattleCache();
+export async function deleteBattleFromDb(battleId: number): Promise<void> {
+  const db = await getDatabase();
   
-  // Get battle from cache
-  const battle = battleCache.getBattleUnsafe(battleId);
-  if (!battle) {
-    throw new Error(`Battle ${battleId} not found in cache`);
-  }
-
-  // Add event to log
-  battle.battleLog.push(event);
-
-  // Mark battle as dirty for persistence
-  battleCache.updateBattleUnsafe(battle);
+  return new Promise((resolve, reject) => {
+    db.run(`DELETE FROM battles WHERE id = ?`, [battleId], (err) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve();
+      }
+    });
+  });
 }
 
 /**
- * Update battle defense values
+ * Get all battles from database (for admin view)
+ * Pure DB operation - no cache access
  */
-export async function updateBattleDefenses(
-  battleId: number,
-  attackerEndStats: BattleStats | null,
-  attackeeEndStats: BattleStats | null
-): Promise<void> {
-  const battleCache = getBattleCache();
-  
-  // Get battle from cache
-  const battle = battleCache.getBattleUnsafe(battleId);
-  if (!battle) {
-    throw new Error(`Battle ${battleId} not found in cache`);
-  }
-
-  // Update defense stats
-  if (attackerEndStats) {
-    battle.attackerEndStats = attackerEndStats;
-  }
-  if (attackeeEndStats) {
-    battle.attackeeEndStats = attackeeEndStats;
-  }
-
-  // Mark battle as dirty for persistence
-  battleCache.updateBattleUnsafe(battle);
-}
-
-/**
- * End a battle
- * Updates battle in cache, persists to database, then removes from cache
- */
-export async function endBattle(
-  battleId: number,
-  winnerId: number,
-  loserId: number,
-  attackerEndStats: BattleStats,
-  attackeeEndStats: BattleStats
-): Promise<void> {
-  const battleCache = getBattleCache();
-  
-  // Get battle from cache
-  const battle = battleCache.getBattleUnsafe(battleId);
-  if (!battle) {
-    throw new Error(`Battle ${battleId} not found in cache`);
-  }
-
-  // End battle
-  battle.battleEndTime = Date.now();
-  battle.winnerId = winnerId;
-  battle.loserId = loserId;
-  battle.attackerEndStats = attackerEndStats;
-  battle.attackeeEndStats = attackeeEndStats;
-
-  // Update battle in cache (marks as dirty)
-  battleCache.updateBattleUnsafe(battle);
-
-  // Persist to database immediately before removing from cache
-  await battleCache.persistDirtyBattles();
-
-  // Remove from cache (completed battles are not kept in memory)
-  battleCache.deleteBattleUnsafe(battleId);
-}
-
-/**
- * Get all battles (for admin view)
- * Queries database directly as this is not cached
- */
-export async function getAllBattles(): Promise<Battle[]> {
+export async function getAllBattlesFromDb(): Promise<Battle[]> {
   const db = await getDatabase();
 
   return new Promise((resolve, reject) => {
@@ -257,52 +254,18 @@ export async function getAllBattles(): Promise<Battle[]> {
         return;
       }
 
-      const battles = (rows as {
-        id: number;
-        attacker_id: number;
-        attackee_id: number;
-        battle_start_time: number;
-        battle_end_time: number | null;
-        winner_id: number | null;
-        loser_id: number | null;
-        attacker_weapon_cooldowns: string;
-        attackee_weapon_cooldowns: string;
-        attacker_start_stats: string;
-        attackee_start_stats: string;
-        attacker_end_stats: string | null;
-        attackee_end_stats: string | null;
-        battle_log: string;
-        attacker_total_damage?: number;
-        attackee_total_damage?: number;
-      }[]).map(row => ({
-        id: row.id,
-        attackerId: row.attacker_id,
-        attackeeId: row.attackee_id,
-        battleStartTime: row.battle_start_time,
-        battleEndTime: row.battle_end_time,
-        winnerId: row.winner_id,
-        loserId: row.loser_id,
-        attackerWeaponCooldowns: JSON.parse(row.attacker_weapon_cooldowns),
-        attackeeWeaponCooldowns: JSON.parse(row.attackee_weapon_cooldowns),
-        attackerStartStats: JSON.parse(row.attacker_start_stats),
-        attackeeStartStats: JSON.parse(row.attackee_start_stats),
-        attackerEndStats: row.attacker_end_stats ? JSON.parse(row.attacker_end_stats) : null,
-        attackeeEndStats: row.attackee_end_stats ? JSON.parse(row.attackee_end_stats) : null,
-        battleLog: JSON.parse(row.battle_log),
-        attackerTotalDamage: row.attacker_total_damage || 0,
-        attackeeTotalDamage: row.attackee_total_damage || 0
-      }));
-
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const battles = (rows as any[]).map(row => deserializeBattle(row));
       resolve(battles);
     });
   });
 }
 
 /**
- * Get battles for a specific user (for history)
- * Queries database directly as this is not cached
+ * Get battles for a specific user from database (for history)
+ * Pure DB operation - no cache access
  */
-export async function getBattlesForUser(userId: number): Promise<Battle[]> {
+export async function getBattlesForUserFromDb(userId: number): Promise<Battle[]> {
   const db = await getDatabase();
 
   return new Promise((resolve, reject) => {
@@ -318,117 +281,39 @@ export async function getBattlesForUser(userId: number): Promise<Battle[]> {
         return;
       }
 
-      const battles = (rows as {
-        id: number;
-        attacker_id: number;
-        attackee_id: number;
-        battle_start_time: number;
-        battle_end_time: number | null;
-        winner_id: number | null;
-        loser_id: number | null;
-        attacker_weapon_cooldowns: string;
-        attackee_weapon_cooldowns: string;
-        attacker_start_stats: string;
-        attackee_start_stats: string;
-        attacker_end_stats: string | null;
-        attackee_end_stats: string | null;
-        battle_log: string;
-        attacker_total_damage?: number;
-        attackee_total_damage?: number;
-      }[]).map(row => ({
-        id: row.id,
-        attackerId: row.attacker_id,
-        attackeeId: row.attackee_id,
-        battleStartTime: row.battle_start_time,
-        battleEndTime: row.battle_end_time,
-        winnerId: row.winner_id,
-        loserId: row.loser_id,
-        attackerWeaponCooldowns: JSON.parse(row.attacker_weapon_cooldowns),
-        attackeeWeaponCooldowns: JSON.parse(row.attackee_weapon_cooldowns),
-        attackerStartStats: JSON.parse(row.attacker_start_stats),
-        attackeeStartStats: JSON.parse(row.attackee_start_stats),
-        attackerEndStats: row.attacker_end_stats ? JSON.parse(row.attacker_end_stats) : null,
-        attackeeEndStats: row.attackee_end_stats ? JSON.parse(row.attackee_end_stats) : null,
-        battleLog: JSON.parse(row.battle_log),
-        attackerTotalDamage: row.attacker_total_damage || 0,
-        attackeeTotalDamage: row.attackee_total_damage || 0
-      }));
-
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const battles = (rows as any[]).map(row => deserializeBattle(row));
       resolve(battles);
     });
   });
 }
 
-/**
- * Set weapon cooldown for specific weapon
- */
-export async function setWeaponCooldown(
-  battleId: number,
-  userId: number,
-  weaponType: string,
-  cooldown: number
-): Promise<void> {
-  const battleCache = getBattleCache();
-  
-  // Get battle from cache
-  const battle = battleCache.getBattleUnsafe(battleId);
-  if (!battle) {
-    throw new Error(`Battle ${battleId} not found in cache`);
-  }
-
-  // Update specific weapon cooldown
-  if (userId === battle.attackerId) {
-    battle.attackerWeaponCooldowns[weaponType] = cooldown;
-  } else if (userId === battle.attackeeId) {
-    battle.attackeeWeaponCooldowns[weaponType] = cooldown;
-  } else {
-    throw new Error(`User ${userId} is not part of battle ${battleId}`);
-  }
-
-  // Mark battle as dirty for persistence
-  battleCache.updateBattleUnsafe(battle);
-}
+// ========================================
+// Helper Functions
+// ========================================
 
 /**
- * Update battle stats for both players
+ * Deserialize battle from database row
+ * Helper function for converting DB rows to Battle objects
  */
-export async function updateBattleStats(
-  battleId: number,
-  attackerEndStats: BattleStats | null,
-  attackeeEndStats: BattleStats | null
-): Promise<void> {
-  const battleCache = getBattleCache();
-  
-  // Get battle from cache
-  const battle = battleCache.getBattleUnsafe(battleId);
-  if (!battle) {
-    throw new Error(`Battle ${battleId} not found in cache`);
-  }
-
-  // Update stats
-  if (attackerEndStats) {
-    battle.attackerEndStats = attackerEndStats;
-  }
-  if (attackeeEndStats) {
-    battle.attackeeEndStats = attackeeEndStats;
-  }
-
-  // Mark battle as dirty for persistence
-  battleCache.updateBattleUnsafe(battle);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function deserializeBattle(row: any): Battle {
+  return {
+    id: row.id,
+    attackerId: row.attacker_id,
+    attackeeId: row.attackee_id,
+    battleStartTime: row.battle_start_time,
+    battleEndTime: row.battle_end_time,
+    winnerId: row.winner_id,
+    loserId: row.loser_id,
+    attackerWeaponCooldowns: JSON.parse(row.attacker_weapon_cooldowns),
+    attackeeWeaponCooldowns: JSON.parse(row.attackee_weapon_cooldowns),
+    attackerStartStats: JSON.parse(row.attacker_start_stats),
+    attackeeStartStats: JSON.parse(row.attackee_start_stats),
+    attackerEndStats: row.attacker_end_stats ? JSON.parse(row.attacker_end_stats) : null,
+    attackeeEndStats: row.attackee_end_stats ? JSON.parse(row.attackee_end_stats) : null,
+    battleLog: JSON.parse(row.battle_log),
+    attackerTotalDamage: row.attacker_total_damage || 0,
+    attackeeTotalDamage: row.attackee_total_damage || 0,
+  };
 }
-
-// Backward compatibility - re-export as BattleRepo class for existing code
-export const BattleRepo = {
-  createBattle,
-  getBattle,
-  getOngoingBattleForUser,
-  updateWeaponCooldowns,
-  addBattleEvent,
-  updateBattleDefenses,
-  endBattle,
-  getAllBattles,
-  getBattlesForUser,
-  getActiveBattles,
-  setWeaponCooldown,
-  updateBattleStats
-};

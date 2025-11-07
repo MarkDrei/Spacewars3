@@ -1,18 +1,22 @@
 // ---
 // BattleScheduler: Automates periodic processing of active battles.
 // Responsibilities:
-//   - Triggers battle rounds at regular intervals via BattleService.
-//   - Orchestrates battle lifecycle events (start, resolve, end).
-//   - Sends notifications/messages to users.
+//   - Triggers battle rounds at regular intervals
+//   - Processes weapon firing and damage application
+//   - Sends notifications/messages to users
+//   - Calls BattleService.resolveBattle when battle ends
 // Main interaction partners:
-//   - BattleService (for orchestration)
-//   - BattleRepository/BattleCacheManager (for battle state)
-//   - User/World managers (for state updates)
-// Responsibilities to move:
-//   - Any direct battle mechanics or persistence logic should move to BattleService or repository/cache managers.
+//   - BattleCache (via BattleRepo compatibility layer)
+//   - BattleEngine (for combat mechanics)
+//   - BattleService (for battle resolution)
+//   - getUserWorldCache (for user state updates)
+//   - MessageCache (for notifications)
+// Status: ✅ Uses proper cache delegation, no direct DB access
+// Note: Has helper functions that duplicate battleService (updateUserBattleState, etc.)
+//       This is acceptable as each uses them in different contexts.
 // ---
 
-import { BattleRepo } from './battleRepo';
+import { BattleRepo } from './BattleCache';
 import { BattleEngine } from './battleEngine';
 import { resolveBattle } from './battleService';
 import type { Battle, BattleEvent } from './battleTypes';
@@ -52,7 +56,6 @@ async function createMessage(userId: number, message: string): Promise<void> {
 
 /**
  * Process all active battles automatically  
- * Updated to use BattleCache instead of BattleRepo.getActiveBattles()
  */
 export async function processActiveBattles(): Promise<void> {
   try {
@@ -222,18 +225,7 @@ async function fireWeapon(
   const hullDamage = damageResult.hullDamage;
   
   // Track total damage dealt by attacker/attackee
-  // Get battle from cache to update damage tracking
-  const battleCache = getBattleCache();
-  const cachedBattle = battleCache.getBattleUnsafe(battle.id);
-  if (cachedBattle) {
-    if (isAttacker) {
-      cachedBattle.attackerTotalDamage += totalDamage;
-    } else {
-      cachedBattle.attackeeTotalDamage += totalDamage;
-    }
-    // Mark battle as dirty for persistence
-    battleCache.updateBattleUnsafe(cachedBattle);
-  }
+  await BattleRepo.updateTotalDamage(battle.id, attackerId, totalDamage);
   
   // Create battle event
   const hitEvent: BattleEvent = {

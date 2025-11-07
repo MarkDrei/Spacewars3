@@ -6,7 +6,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { BattleCache, getBattleCache } from '../../lib/server/battle/BattleCache';
 import { UserWorldCache, getUserWorldCache } from '../../lib/server/world/userWorldCache';
-import * as BattleRepo from '../../lib/server/battle/battleRepo';
+import * as BattleRepo from '../../lib/server/battle/BattleCache';
 import * as battleService from '../../lib/server/battle/battleService';
 import * as battleScheduler from '../../lib/server/battle/battleScheduler';
 import { createTestDatabase } from '../helpers/testDatabase';
@@ -102,7 +102,7 @@ describe('Phase 5: End-to-End Battle Flow with BattleCache', () => {
       // === Phase 3: Verify BattleCache Integration ===
       
       // Battle should be in cache
-      const cachedBattle = battleCache.getBattleUnsafe(battle.id);
+      const cachedBattle = battleCache.getBattleFromCache(battle.id);
       expect(cachedBattle).toBeDefined();
       expect(cachedBattle?.id).toBe(battle.id);
 
@@ -132,7 +132,7 @@ describe('Phase 5: End-to-End Battle Flow with BattleCache', () => {
       });
 
       // Verify cache contains updated battle
-      const cachedUpdated = battleCache.getBattleUnsafe(battle.id);
+      const cachedUpdated = battleCache.getBattleFromCache(battle.id);
       expect(cachedUpdated).toBeDefined();
       
       // Battle log should have events
@@ -179,7 +179,7 @@ describe('Phase 5: End-to-End Battle Flow with BattleCache', () => {
         );
 
         // Battle should be removed from cache (completed battles aren't cached)
-        const endedBattle = freshCache.getBattleUnsafe(battle.id);
+        const endedBattle = freshCache.getBattleFromCache(battle.id);
         expect(endedBattle).toBeNull();
 
         // Should not appear in active battles
@@ -287,8 +287,8 @@ describe('Phase 5: End-to-End Battle Flow with BattleCache', () => {
 
       // Verify both battles are cached separately
       const cache = getBattleCache();
-      const cached1 = cache.getBattleUnsafe(battle1.id);
-      const cached2 = cache.getBattleUnsafe(battle2.id);
+      const cached1 = cache.getBattleFromCache(battle1.id);
+      const cached2 = cache.getBattleFromCache(battle2.id);
 
       expect(cached1?.id).toBe(battle1.id);
       expect(cached2?.id).toBe(battle2.id);

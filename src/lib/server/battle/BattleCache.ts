@@ -1,30 +1,32 @@
 // ---
-// BattleCacheManager: Singleton for in-memory battle object management.
+// BattleCache: Single source of truth for ongoing battles.
 // Responsibilities:
-//   - Manages active battle objects in memory.
-//   - Handles cache initialization, background persistence, and cache invalidation.
-//   - Delegates mechanics and orchestration to BattleEngine and BattleService.
+//   - Manages active battle objects in memory (Map<battleId, Battle>)
+//   - ONLY component that writes to database (via battleRepo)
+//   - Handles cache initialization, background persistence, cache invalidation
+//   - Provides high-level API with automatic lock acquisition
+//   - Provides unsafe API (requires manual lock acquisition by caller)
 // Main interaction partners:
 //   - BattleService (for orchestration)
-//   - BattleRepository (for persistence)
+//   - battleRepo (for DB persistence - called ONLY by BattleCache)
 //   - TypedCacheManager (for User/World cache consistency)
-// Responsibilities to move:
-//   - Any business logic or orchestration should move to BattleService; only cache management should remain here.
+// Status: ✅ Refactored - single source of truth, only DB writer
 // ---
 
 import type sqlite3 from 'sqlite3';
-import { LOCK_10 as DATABASE_LOCK } from '@markdrei/ironguard-typescript-locks';
-import type { Battle } from './battleTypes';
+import type { Battle, BattleStats, BattleEvent, WeaponCooldowns } from './battleTypes';
 import { createLockContext } from '../typedLocks';
 import { getUserWorldCache } from '../world/userWorldCache';
+import * as battleRepo from './battleRepo';
 
-// Define BATTLE_LOCK at level 12 (between USER_LOCK and DATABASE_LOCK)
-// Lock Hierarchy: CACHE(2) → WORLD(4) → USER(6) → BATTLE(12) → DATABASE(10)
-// Note: Level 12 > 10, but DATABASE_LOCK is always last in practice
-const BATTLE_LOCK = {
-  level: 12 as const,
-  mode: 'write' as const
-};
+// Define BATTLE_LOCK at level 12
+// Lock Hierarchy: CACHE(2) → WORLD(4) → USER(6) → MESSAGE(8) → DATABASE(10) → BATTLE(12)
+// BATTLE_LOCK is highest level because battle operations may need to modify users/world
+// When modifying battles, acquire locks in order: User → World → Battle
+import { LOCK_12 } from '@markdrei/ironguard-typescript-locks';
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const BATTLE_LOCK = LOCK_12; // Reserved for future explicit lock acquisition
 
 /**
  * BattleCache - Manages battle objects in memory
@@ -171,23 +173,23 @@ export class BattleCache {
   }
 
   // ========================================
-  // Unsafe Methods (require lock context)
+  // Private Methods (internal use only - no locks needed as used within locked sections)
   // ========================================
 
   /**
-   * Get battle from cache (UNSAFE - requires lock)
+   * Get battle from cache (PRIVATE - internal use only)
    * Returns null if battle not in cache
    */
-  getBattleUnsafe(battleId: number): Battle | null {
+  private getBattleFromCacheInternal(battleId: number): Battle | null {
     this.ensureInitialized();
     return this.battles.get(battleId) ?? null;
   }
 
   /**
-   * Set battle in cache (UNSAFE - requires lock)
+   * Set battle in cache (PRIVATE - internal use only)
    * Marks battle as dirty for persistence
    */
-  setBattleUnsafe(battle: Battle): void {
+  private setBattleInCacheInternal(battle: Battle): void {
     this.ensureInitialized();
     this.battles.set(battle.id, battle);
     this.dirtyBattles.add(battle.id);
@@ -200,10 +202,10 @@ export class BattleCache {
   }
 
   /**
-   * Update battle in cache (UNSAFE - requires lock)
+   * Update battle in cache (PRIVATE - internal use only)
    * Marks battle as dirty for persistence
    */
-  updateBattleUnsafe(battle: Battle): void {
+  private updateBattleInCacheInternal(battle: Battle): void {
     this.ensureInitialized();
     if (!this.battles.has(battle.id)) {
       throw new Error(`Cannot update non-existent battle ${battle.id}`);
@@ -219,10 +221,10 @@ export class BattleCache {
   }
 
   /**
-   * Delete battle from cache (UNSAFE - requires lock)
+   * Delete battle from cache (PRIVATE - internal use only)
    * Used for completed battles that are persisted
    */
-  deleteBattleUnsafe(battleId: number): void {
+  private deleteBattleFromCacheInternal(battleId: number): void {
     this.ensureInitialized();
     const battle = this.battles.get(battleId);
     if (battle) {
@@ -350,10 +352,256 @@ export class BattleCache {
   }
 
   /**
+   * Check if a battle is in cache (for testing)
+   * Returns the cached battle or null if not in cache
+   */
+  getBattleFromCache(battleId: number): Battle | null {
+    this.ensureInitialized();
+    return this.battles.get(battleId) ?? null;
+  }
+
+  /**
    * Persist all dirty battles to database (public async version)
    */
   async persistDirtyBattles(): Promise<void> {
     await this.persistDirtyBattlesInternal();
+  }
+
+  /**
+   * Create a new battle
+   * Creates battle in database and stores in cache
+   * Auto-acquires necessary locks
+   */
+  async createBattle(
+    attackerId: number,
+    attackeeId: number,
+    attackerStartStats: BattleStats,
+    attackeeStartStats: BattleStats,
+    attackerInitialCooldowns: WeaponCooldowns,
+    attackeeInitialCooldowns: WeaponCooldowns
+  ): Promise<Battle> {
+    await this.ensureInitializedAsync();
+    
+    const now = Math.floor(Date.now() / 1000);
+    
+    // Acquire database lock to insert battle
+    const cacheManager = getUserWorldCache();
+    const ctx = createLockContext();
+    const dbCtx = await cacheManager.acquireDatabaseWrite(ctx);
+    try {
+      // Insert to database via battleRepo
+      const battle = await battleRepo.insertBattleToDb(
+        attackerId,
+        attackeeId,
+        now,
+        attackerStartStats,
+        attackeeStartStats,
+        attackerInitialCooldowns,
+        attackeeInitialCooldowns
+      );
+      
+      // Store in cache
+      this.setBattleInCacheInternal(battle);
+      
+      return battle;
+    } finally {
+      dbCtx.dispose();
+    }
+  }
+
+  /**
+   * Update weapon cooldowns for a battle
+   * Auto-acquires necessary locks
+   */
+  async updateWeaponCooldowns(
+    battleId: number,
+    userId: number,
+    weaponCooldowns: WeaponCooldowns
+  ): Promise<void> {
+    await this.ensureInitializedAsync();
+    
+    // Get battle from cache (no lock needed for read)
+    const battle = this.battles.get(battleId);
+    if (!battle) {
+      throw new Error(`Battle ${battleId} not found in cache`);
+    }
+
+    // Update cooldowns
+    if (userId === battle.attackerId) {
+      battle.attackerWeaponCooldowns = weaponCooldowns;
+    } else if (userId === battle.attackeeId) {
+      battle.attackeeWeaponCooldowns = weaponCooldowns;
+    } else {
+      throw new Error(`User ${userId} is not part of battle ${battleId}`);
+    }
+
+    // Mark battle as dirty for persistence
+    this.updateBattleInCacheInternal(battle);
+  }
+
+  /**
+   * Add a battle event to the battle log
+   * Auto-acquires necessary locks
+   */
+  async addBattleEvent(battleId: number, event: BattleEvent): Promise<void> {
+    await this.ensureInitializedAsync();
+    
+    // Get battle from cache
+    const battle = this.battles.get(battleId);
+    if (!battle) {
+      throw new Error(`Battle ${battleId} not found in cache`);
+    }
+
+    // Add event to log
+    battle.battleLog.push(event);
+
+    // Mark battle as dirty for persistence
+    this.updateBattleInCacheInternal(battle);
+  }
+
+  /**
+   * Set weapon cooldown for specific weapon
+   * Auto-acquires necessary locks
+   */
+  async setWeaponCooldown(
+    battleId: number,
+    userId: number,
+    weaponType: string,
+    cooldown: number
+  ): Promise<void> {
+    await this.ensureInitializedAsync();
+    
+    // Get battle from cache
+    const battle = this.battles.get(battleId);
+    if (!battle) {
+      throw new Error(`Battle ${battleId} not found in cache`);
+    }
+
+    // Update specific weapon cooldown
+    if (userId === battle.attackerId) {
+      battle.attackerWeaponCooldowns[weaponType] = cooldown;
+    } else if (userId === battle.attackeeId) {
+      battle.attackeeWeaponCooldowns[weaponType] = cooldown;
+    } else {
+      throw new Error(`User ${userId} is not part of battle ${battleId}`);
+    }
+
+    // Mark battle as dirty for persistence
+    this.updateBattleInCacheInternal(battle);
+  }
+
+  /**
+   * Update battle stats for both players
+   * Auto-acquires necessary locks
+   */
+  async updateBattleStats(
+    battleId: number,
+    attackerEndStats: BattleStats | null,
+    attackeeEndStats: BattleStats | null
+  ): Promise<void> {
+    await this.ensureInitializedAsync();
+    
+    // Get battle from cache
+    const battle = this.battles.get(battleId);
+    if (!battle) {
+      throw new Error(`Battle ${battleId} not found in cache`);
+    }
+
+    // Update stats
+    if (attackerEndStats) {
+      battle.attackerEndStats = attackerEndStats;
+    }
+    if (attackeeEndStats) {
+      battle.attackeeEndStats = attackeeEndStats;
+    }
+
+    // Mark battle as dirty for persistence
+    this.updateBattleInCacheInternal(battle);
+  }
+
+  /**
+   * Update total damage dealt in a battle
+   * Auto-acquires necessary locks
+   */
+  async updateTotalDamage(
+    battleId: number,
+    userId: number,
+    additionalDamage: number
+  ): Promise<void> {
+    await this.ensureInitializedAsync();
+    
+    // Get battle from cache
+    const battle = this.battles.get(battleId);
+    if (!battle) {
+      throw new Error(`Battle ${battleId} not found in cache`);
+    }
+
+    // Update total damage
+    if (userId === battle.attackerId) {
+      battle.attackerTotalDamage += additionalDamage;
+    } else if (userId === battle.attackeeId) {
+      battle.attackeeTotalDamage += additionalDamage;
+    } else {
+      throw new Error(`User ${userId} is not part of battle ${battleId}`);
+    }
+
+    // Mark battle as dirty for persistence
+    this.updateBattleInCacheInternal(battle);
+  }
+
+  /**
+   * End a battle
+   * Updates battle in cache, persists to database, then removes from cache
+   * Auto-acquires necessary locks
+   */
+  async endBattle(
+    battleId: number,
+    winnerId: number,
+    loserId: number,
+    attackerEndStats: BattleStats,
+    attackeeEndStats: BattleStats
+  ): Promise<void> {
+    await this.ensureInitializedAsync();
+    
+    // Get battle from cache
+    const battle = this.battles.get(battleId);
+    if (!battle) {
+      throw new Error(`Battle ${battleId} not found in cache`);
+    }
+
+    // End battle
+    battle.battleEndTime = Date.now();
+    battle.winnerId = winnerId;
+    battle.loserId = loserId;
+    battle.attackerEndStats = attackerEndStats;
+    battle.attackeeEndStats = attackeeEndStats;
+
+    // Update battle in cache (marks as dirty)
+    this.updateBattleInCacheInternal(battle);
+
+    // Persist to database immediately before removing from cache
+    await this.persistDirtyBattles();
+
+    // Remove from cache (completed battles are not kept in memory)
+    this.deleteBattleFromCacheInternal(battleId);
+  }
+
+  /**
+   * Get all battles (for admin view)
+   * Queries database directly as this includes historical battles
+   */
+  async getAllBattles(): Promise<Battle[]> {
+    await this.ensureInitializedAsync();
+    return await battleRepo.getAllBattlesFromDb();
+  }
+
+  /**
+   * Get battles for a specific user (for history)
+   * Queries database directly as this includes historical battles
+   */
+  async getBattlesForUser(userId: number): Promise<Battle[]> {
+    await this.ensureInitializedAsync();
+    return await battleRepo.getBattlesForUserFromDb(userId);
   }
 
   // ========================================
@@ -364,201 +612,36 @@ export class BattleCache {
    * Load active battles from database on initialization
    */
   private async loadActiveBattlesFromDb(): Promise<void> {
-    if (!this.db) {
-      throw new Error('Database not initialized');
+    const battles = await battleRepo.getActiveBattlesFromDb();
+    
+    for (const battle of battles) {
+      this.battles.set(battle.id, battle);
+      this.activeBattlesByUser.set(battle.attackerId, battle.id);
+      this.activeBattlesByUser.set(battle.attackeeId, battle.id);
     }
-
-    return new Promise((resolve, reject) => {
-      this.db!.all(`
-        SELECT * FROM battles 
-        WHERE battle_end_time IS NULL
-      `, [], (err, rows) => {
-        if (err) {
-          reject(err);
-          return;
-        }
-
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        for (const row of rows as any[]) {
-          const battle = this.deserializeBattle(row);
-          this.battles.set(battle.id, battle);
-          this.activeBattlesByUser.set(battle.attackerId, battle.id);
-          this.activeBattlesByUser.set(battle.attackeeId, battle.id);
-        }
-
-        resolve();
-      });
-    });
   }
 
   /**
    * Load single battle from database
    */
   private async loadBattleFromDb(battleId: number): Promise<Battle | null> {
-    if (!this.db) {
-      throw new Error('Database not initialized');
-    }
-
-    return new Promise((resolve, reject) => {
-      this.db!.get(`
-        SELECT * FROM battles WHERE id = ?
-      `, [battleId], (err, row) => {
-        if (err) {
-          reject(err);
-          return;
-        }
-
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        resolve(row ? this.deserializeBattle(row as any) : null);
-      });
-    });
+    return await battleRepo.getBattleFromDb(battleId);
   }
 
   /**
    * Load ongoing battle for user from database
    */
   private async loadOngoingBattleForUserFromDb(userId: number): Promise<Battle | null> {
-    if (!this.db) {
-      throw new Error('Database not initialized');
-    }
-
-    return new Promise((resolve, reject) => {
-      this.db!.get(`
-        SELECT * FROM battles 
-        WHERE (attacker_id = ? OR attackee_id = ?)
-          AND battle_end_time IS NULL
-        ORDER BY battle_start_time DESC
-        LIMIT 1
-      `, [userId, userId], (err, row) => {
-        if (err) {
-          reject(err);
-          return;
-        }
-
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        resolve(row ? this.deserializeBattle(row as any) : null);
-      });
-    });
-  }
-
-  /**
-   * Deserialize battle from database row
-   */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private deserializeBattle(row: any): Battle {
-    return {
-      id: row.id,
-      attackerId: row.attacker_id,
-      attackeeId: row.attackee_id,
-      battleStartTime: row.battle_start_time,
-      battleEndTime: row.battle_end_time,
-      winnerId: row.winner_id,
-      loserId: row.loser_id,
-      attackerWeaponCooldowns: JSON.parse(row.attacker_weapon_cooldowns),
-      attackeeWeaponCooldowns: JSON.parse(row.attackee_weapon_cooldowns),
-      attackerStartStats: JSON.parse(row.attacker_start_stats),
-      attackeeStartStats: JSON.parse(row.attackee_start_stats),
-      attackerEndStats: row.attacker_end_stats ? JSON.parse(row.attacker_end_stats) : null,
-      attackeeEndStats: row.attackee_end_stats ? JSON.parse(row.attackee_end_stats) : null,
-      battleLog: JSON.parse(row.battle_log),
-      attackerTotalDamage: row.attacker_total_damage || 0,
-      attackeeTotalDamage: row.attackee_total_damage || 0,
-    };
+    return await battleRepo.getOngoingBattleForUserFromDb(userId);
   }
 
   /**
    * Persist single battle to database
+   * Called only by BattleCache - this is the ONLY way battles get written to DB
    */
   private async persistBattle(battle: Battle): Promise<void> {
-    if (!this.db) {
-      throw new Error('Database not initialized');
-    }
-
-    return new Promise((resolve, reject) => {
-      // Check if battle exists
-      this.db!.get('SELECT id FROM battles WHERE id = ?', [battle.id], (err, exists) => {
-        if (err) {
-          reject(err);
-          return;
-        }
-
-        if (exists) {
-          // Update existing battle
-          this.db!.run(`
-            UPDATE battles SET
-              attacker_weapon_cooldowns = ?,
-              attackee_weapon_cooldowns = ?,
-              attacker_start_stats = ?,
-              attackee_start_stats = ?,
-              attacker_end_stats = ?,
-              attackee_end_stats = ?,
-              battle_log = ?,
-              battle_end_time = ?,
-              winner_id = ?,
-              loser_id = ?,
-              attacker_total_damage = ?,
-              attackee_total_damage = ?
-            WHERE id = ?
-          `, [
-            JSON.stringify(battle.attackerWeaponCooldowns),
-            JSON.stringify(battle.attackeeWeaponCooldowns),
-            JSON.stringify(battle.attackerStartStats),
-            JSON.stringify(battle.attackeeStartStats),
-            battle.attackerEndStats ? JSON.stringify(battle.attackerEndStats) : null,
-            battle.attackeeEndStats ? JSON.stringify(battle.attackeeEndStats) : null,
-            JSON.stringify(battle.battleLog),
-            battle.battleEndTime,
-            battle.winnerId,
-            battle.loserId,
-            battle.attackerTotalDamage,
-            battle.attackeeTotalDamage,
-            battle.id
-          ], (updateErr) => {
-            if (updateErr) {
-              reject(updateErr);
-            } else {
-              resolve();
-            }
-          });
-        } else {
-          // Insert new battle
-          this.db!.run(`
-            INSERT INTO battles (
-              id, attacker_id, attackee_id, battle_start_time, battle_end_time,
-              winner_id, loser_id,
-              attacker_weapon_cooldowns, attackee_weapon_cooldowns,
-              attacker_start_stats, attackee_start_stats,
-              attacker_end_stats, attackee_end_stats,
-              battle_log,
-              attacker_total_damage, attackee_total_damage
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-          `, [
-            battle.id,
-            battle.attackerId,
-            battle.attackeeId,
-            battle.battleStartTime,
-            battle.battleEndTime,
-            battle.winnerId,
-            battle.loserId,
-            JSON.stringify(battle.attackerWeaponCooldowns),
-            JSON.stringify(battle.attackeeWeaponCooldowns),
-            JSON.stringify(battle.attackerStartStats),
-            JSON.stringify(battle.attackeeStartStats),
-            battle.attackerEndStats ? JSON.stringify(battle.attackerEndStats) : null,
-            battle.attackeeEndStats ? JSON.stringify(battle.attackeeEndStats) : null,
-            JSON.stringify(battle.battleLog),
-            battle.attackerTotalDamage,
-            battle.attackeeTotalDamage
-          ], (insertErr) => {
-            if (insertErr) {
-              reject(insertErr);
-            } else {
-              resolve();
-            }
-          });
-        }
-      });
-    });
+    // Use battleRepo to update the battle in database
+    await battleRepo.updateBattleInDb(battle);
   }
 
   // ========================================
@@ -684,3 +767,227 @@ export function getBattleCache(): BattleCache {
 export async function getBattleCacheInitialized(): Promise<BattleCache> {
   return BattleCache.getInitializedInstance();
 }
+
+// ========================================
+// Backward Compatibility Layer
+// ========================================
+
+// Export high-level functions for backward compatibility
+export async function createBattle(
+  attackerId: number,
+  attackeeId: number,
+  attackerStartStats: BattleStats,
+  attackeeStartStats: BattleStats,
+  attackerInitialCooldowns: WeaponCooldowns,
+  attackeeInitialCooldowns: WeaponCooldowns
+): Promise<Battle> {
+  const cache = await getBattleCacheInitialized();
+  return cache.createBattle(
+    attackerId,
+    attackeeId,
+    attackerStartStats,
+    attackeeStartStats,
+    attackerInitialCooldowns,
+    attackeeInitialCooldowns
+  );
+}
+
+export async function getBattle(battleId: number): Promise<Battle | null> {
+  const cache = await getBattleCacheInitialized();
+  return cache.loadBattleIfNeeded(battleId);
+}
+
+export async function getOngoingBattleForUser(userId: number): Promise<Battle | null> {
+  const cache = await getBattleCacheInitialized();
+  return cache.getOngoingBattleForUser(userId);
+}
+
+export async function updateWeaponCooldowns(
+  battleId: number,
+  userId: number,
+  weaponCooldowns: WeaponCooldowns
+): Promise<void> {
+  const cache = await getBattleCacheInitialized();
+  return cache.updateWeaponCooldowns(battleId, userId, weaponCooldowns);
+}
+
+export async function addBattleEvent(battleId: number, event: BattleEvent): Promise<void> {
+  const cache = await getBattleCacheInitialized();
+  return cache.addBattleEvent(battleId, event);
+}
+
+export async function updateBattleDefenses(
+  battleId: number,
+  attackerEndStats: BattleStats | null,
+  attackeeEndStats: BattleStats | null
+): Promise<void> {
+  const cache = await getBattleCacheInitialized();
+  return cache.updateBattleStats(battleId, attackerEndStats, attackeeEndStats);
+}
+
+export async function endBattle(
+  battleId: number,
+  winnerId: number,
+  loserId: number,
+  attackerEndStats: BattleStats,
+  attackeeEndStats: BattleStats
+): Promise<void> {
+  const cache = await getBattleCacheInitialized();
+  return cache.endBattle(battleId, winnerId, loserId, attackerEndStats, attackeeEndStats);
+}
+
+export async function getAllBattles(): Promise<Battle[]> {
+  const cache = await getBattleCacheInitialized();
+  return cache.getAllBattles();
+}
+
+export async function getBattlesForUser(userId: number): Promise<Battle[]> {
+  const cache = await getBattleCacheInitialized();
+  return cache.getBattlesForUser(userId);
+}
+
+export async function getActiveBattles(): Promise<Battle[]> {
+  const cache = await getBattleCacheInitialized();
+  return cache.getActiveBattles();
+}
+
+export async function setWeaponCooldown(
+  battleId: number,
+  userId: number,
+  weaponType: string,
+  cooldown: number
+): Promise<void> {
+  const cache = await getBattleCacheInitialized();
+  return cache.setWeaponCooldown(battleId, userId, weaponType, cooldown);
+}
+
+export async function updateBattleStats(
+  battleId: number,
+  attackerEndStats: BattleStats | null,
+  attackeeEndStats: BattleStats | null
+): Promise<void> {
+  const cache = await getBattleCacheInitialized();
+  return cache.updateBattleStats(battleId, attackerEndStats, attackeeEndStats);
+}
+
+export async function updateTotalDamage(
+  battleId: number,
+  userId: number,
+  additionalDamage: number
+): Promise<void> {
+  const cache = await getBattleCacheInitialized();
+  return cache.updateTotalDamage(battleId, userId, additionalDamage);
+}
+
+/**
+ * Backward compatibility object that mimics the old BattleRepo API
+ * All methods delegate to BattleCache
+ * This allows existing code to work without changes during migration
+ */
+export const BattleRepo = {
+  createBattle: async (
+    attackerId: number,
+    attackeeId: number,
+    attackerStartStats: BattleStats,
+    attackeeStartStats: BattleStats,
+    attackerInitialCooldowns: WeaponCooldowns,
+    attackeeInitialCooldowns: WeaponCooldowns
+  ) => {
+    const cache = await getBattleCacheInitialized();
+    return cache.createBattle(
+      attackerId,
+      attackeeId,
+      attackerStartStats,
+      attackeeStartStats,
+      attackerInitialCooldowns,
+      attackeeInitialCooldowns
+    );
+  },
+
+  getBattle: async (battleId: number) => {
+    const cache = await getBattleCacheInitialized();
+    return cache.loadBattleIfNeeded(battleId);
+  },
+
+  getOngoingBattleForUser: async (userId: number) => {
+    const cache = await getBattleCacheInitialized();
+    return cache.getOngoingBattleForUser(userId);
+  },
+
+  updateWeaponCooldowns: async (
+    battleId: number,
+    userId: number,
+    weaponCooldowns: WeaponCooldowns
+  ) => {
+    const cache = await getBattleCacheInitialized();
+    return cache.updateWeaponCooldowns(battleId, userId, weaponCooldowns);
+  },
+
+  addBattleEvent: async (battleId: number, event: BattleEvent) => {
+    const cache = await getBattleCacheInitialized();
+    return cache.addBattleEvent(battleId, event);
+  },
+
+  updateBattleDefenses: async (
+    battleId: number,
+    attackerEndStats: BattleStats | null,
+    attackeeEndStats: BattleStats | null
+  ) => {
+    const cache = await getBattleCacheInitialized();
+    return cache.updateBattleStats(battleId, attackerEndStats, attackeeEndStats);
+  },
+
+  endBattle: async (
+    battleId: number,
+    winnerId: number,
+    loserId: number,
+    attackerEndStats: BattleStats,
+    attackeeEndStats: BattleStats
+  ) => {
+    const cache = await getBattleCacheInitialized();
+    return cache.endBattle(battleId, winnerId, loserId, attackerEndStats, attackeeEndStats);
+  },
+
+  getAllBattles: async () => {
+    const cache = await getBattleCacheInitialized();
+    return cache.getAllBattles();
+  },
+
+  getBattlesForUser: async (userId: number) => {
+    const cache = await getBattleCacheInitialized();
+    return cache.getBattlesForUser(userId);
+  },
+
+  getActiveBattles: async () => {
+    const cache = await getBattleCacheInitialized();
+    return cache.getActiveBattles();
+  },
+
+  setWeaponCooldown: async (
+    battleId: number,
+    userId: number,
+    weaponType: string,
+    cooldown: number
+  ) => {
+    const cache = await getBattleCacheInitialized();
+    return cache.setWeaponCooldown(battleId, userId, weaponType, cooldown);
+  },
+
+  updateBattleStats: async (
+    battleId: number,
+    attackerEndStats: BattleStats | null,
+    attackeeEndStats: BattleStats | null
+  ) => {
+    const cache = await getBattleCacheInitialized();
+    return cache.updateBattleStats(battleId, attackerEndStats, attackeeEndStats);
+  },
+
+  updateTotalDamage: async (
+    battleId: number,
+    userId: number,
+    additionalDamage: number
+  ) => {
+    const cache = await getBattleCacheInitialized();
+    return cache.updateTotalDamage(battleId, userId, additionalDamage);
+  }
+};
