@@ -224,6 +224,11 @@ async function fireWeapon(
   const armorDamage = damageResult.armorDamage;
   const hullDamage = damageResult.hullDamage;
   
+  // Extract remaining defense values
+  const remainingShield = damageResult.remainingShield;
+  const remainingArmor = damageResult.remainingArmor;
+  const remainingHull = damageResult.remainingHull;
+  
   // Track total damage dealt by attacker/attackee
   await BattleRepo.updateTotalDamage(battle.id, attackerId, totalDamage);
   
@@ -246,16 +251,12 @@ async function fireWeapon(
   
   await BattleRepo.addBattleEvent(battle.id, hitEvent);
   
-  // Format defense damage for messages
-  const defenseChanges = [];
-  if (shieldDamage > 0) defenseChanges.push(`Shield: -${shieldDamage}`);
-  if (armorDamage > 0) defenseChanges.push(`Armor: -${armorDamage}`);
-  if (hullDamage > 0) defenseChanges.push(`Hull: -${hullDamage}`);
-  const damageBreakdown = defenseChanges.join(', ');
+  // Format defense status for messages - ALWAYS show all three defense values
+  const defenseStatus = `Hull: ${remainingHull}, Armor: ${remainingArmor}, Shield: ${remainingShield}`;
   
   // Send detailed messages to both players
-  const attackerMessage = `⚔️ Your **${weaponType.replace(/_/g, ' ')}** fired ${shotsPerSalvo} shot(s), **${hits} hit** for **${totalDamage} damage**! Enemy: ${defenseChanges}`;
-  const defenderMessage = `A: 🛡️ Enemy **${weaponType.replace(/_/g, ' ')}** fired ${shotsPerSalvo} shot(s), **${hits} hit** you for **${totalDamage} damage**! Your defenses: ${defenseChanges}`;
+  const attackerMessage = `⚔️ Your **${weaponType.replace(/_/g, ' ')}** fired ${shotsPerSalvo} shot(s), **${hits} hit** for **${totalDamage} damage**! Enemy: ${defenseStatus}`;
+  const defenderMessage = `🛡️ Enemy **${weaponType.replace(/_/g, ' ')}** fired ${shotsPerSalvo} shot(s), **${hits} hit** you for **${totalDamage} damage**! Your defenses: ${defenseStatus}`;
   
   await createMessage(attackerId, attackerMessage);
   await createMessage(defenderId, defenderMessage);

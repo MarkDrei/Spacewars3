@@ -105,6 +105,9 @@ class User {
     }
     this.iron = iron;
     this.last_updated = now;
+    
+    // Also update defense values (regeneration)
+    this.updateDefenseValues(now);
   }
 
   /**

@@ -163,7 +163,7 @@ export class BattleEngine {
 
   /**
    * Apply damage to a target's defenses (shield → armor → hull)
-   * Returns the amount of damage actually dealt to each layer
+   * Returns the amount of damage actually dealt to each layer and remaining defense values
    * 
    * CRITICAL: This method reads and updates User defense values from TypedCacheManager
    * startStats and endStats are NOT modified here - they are write-once snapshots
@@ -175,6 +175,8 @@ export class BattleEngine {
     shieldDamage: number;
     armorDamage: number;
     hullDamage: number;
+    remainingShield: number;
+    remainingArmor: number;
     remainingHull: number;
   }> {
     // Load user from cache to get current defense values
@@ -222,6 +224,8 @@ export class BattleEngine {
         shieldDamage,
         armorDamage,
         hullDamage,
+        remainingShield: user.shieldCurrent,
+        remainingArmor: user.armorCurrent,
         remainingHull: user.hullCurrent
       };
     } finally {
