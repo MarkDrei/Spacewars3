@@ -206,6 +206,46 @@ export class MessageCache {
   }
 
   /**
+   * Internal method to create a message when already holding MESSAGE_DATA_LOCK
+   * Does not acquire locks - must be called from within a lock context
+   */
+  private async createMessageInternal<THeld extends readonly LockLevel[]>(
+    context: ValidLock4Context<THeld> extends string ? never : ValidLock4Context<THeld>,
+    userId: number,
+    messageText: string
+  ): Promise<number> {
+    // Ensure user's messages are loaded first (so we don't lose pending messages)
+    await this.ensureMessagesLoaded(context, userId);
+    
+    // Generate temporary ID (negative to avoid conflicts)
+    const tempId = this.nextTempId--;
+    
+    // Create message in cache immediately with temporary ID
+    const newMessage: Message = {
+      id: tempId,
+      recipient_id: userId,
+      created_at: Date.now(),
+      is_read: false,
+      message: messageText,
+      isPending: true
+    };
+
+    // Messages are guaranteed to exist now due to ensureMessagesLoaded above
+    this.userMessages.get(userId)!.push(newMessage);
+
+    // Track as pending
+    this.pendingMessageIds.add(tempId);
+
+    console.log(`📬 Created message ${tempId} (pending) for user ${userId}`);
+    
+    // Start async DB insertion (don't await)
+    const writePromise = this.persistMessageAsync(userId, tempId, newMessage);
+    this.pendingWrites.set(tempId, writePromise);
+    
+    return tempId;
+  }
+
+  /**
    * Create a new message for a user
    * Message is immediately added to cache with temporary ID and persisted asynchronously
    * 
@@ -224,35 +264,7 @@ export class MessageCache {
     const dataCtx = await ctx.acquireWrite(MESSAGE_DATA_LOCK);
     
     try {
-      // Ensure user's messages are loaded first (so we don't lose pending messages)
-      await this.ensureMessagesLoaded(dataCtx, userId);
-      
-      // Generate temporary ID (negative to avoid conflicts)
-      const tempId = this.nextTempId--;
-      
-      // Create message in cache immediately with temporary ID
-      const newMessage: Message = {
-        id: tempId,
-        recipient_id: userId,
-        created_at: Date.now(),
-        is_read: false,
-        message: messageText,
-        isPending: true
-      };
-
-      // Messages are guaranteed to exist now due to ensureMessagesLoaded above
-      this.userMessages.get(userId)!.push(newMessage);
-
-      // Track as pending
-      this.pendingMessageIds.add(tempId);
-
-      console.log(`📬 Created message ${tempId} (pending) for user ${userId}`);
-      
-      // Start async DB insertion (don't await)
-      const writePromise = this.persistMessageAsync(userId, tempId, newMessage);
-      this.pendingWrites.set(tempId, writePromise);
-      
-      return tempId;
+      return await this.createMessageInternal(dataCtx, userId, messageText);
     } finally {
       dataCtx.dispose();
     }
@@ -310,6 +322,160 @@ export class MessageCache {
       
       console.log(`📬 Deleted ${deletedCount} old message(s)`);
       return deletedCount;
+    } finally {
+      dataCtx.dispose();
+    }
+  }
+
+  /**
+   * Summarize messages for a user
+   * - Marks all messages as read
+   * - Parses and summarizes known message types (battle damage, victories, defeats)
+   * - Preserves unknown messages as new unread messages
+   * Returns the summary message
+   */
+  async summarizeMessages(userId: number): Promise<string> {
+    if (!this.isInitialized) {
+      await this.initialize();
+    }
+
+    const ctx = createLockContext();
+    const dataCtx = await ctx.acquireWrite(MESSAGE_DATA_LOCK);
+    
+    try {
+      const allMessages = await this.ensureMessagesLoaded(dataCtx, userId);
+      
+      if (allMessages.length === 0) {
+        return 'No messages to summarize.';
+      }
+
+      // Track statistics
+      const stats = {
+        damageDealt: 0,
+        damageReceived: 0,
+        victories: 0,
+        defeats: 0,
+        shotsHit: 0,
+        shotsMissed: 0,
+        enemyShotsHit: 0,
+        enemyShotsMissed: 0,
+        unknownMessages: [] as string[]
+      };
+
+      // Process all messages
+      for (const msg of allMessages) {
+        const text = msg.message;
+        
+        // Parse battle damage dealt (P: prefix, with "hit for X damage")
+        if (text.startsWith('P:') && text.includes('hit') && text.includes('for') && text.includes('damage')) {
+          const damageMatch = text.match(/\*\*(\d+)\s+hit\*\*\s+for\s+\*\*(\d+)\s+damage/);
+          if (damageMatch) {
+            const hits = parseInt(damageMatch[1]);
+            const damage = parseInt(damageMatch[2]);
+            stats.damageDealt += damage;
+            stats.shotsHit += hits;
+            
+            // Count missed shots from this salvo
+            const shotsMatch = text.match(/fired\s+(\d+)\s+shot\(s\)/);
+            if (shotsMatch) {
+              const totalShots = parseInt(shotsMatch[1]);
+              stats.shotsMissed += (totalShots - hits);
+            }
+          }
+        }
+        // Parse battle damage received (N: prefix, with "hit you for X damage")
+        else if (text.startsWith('N:') && text.includes('hit') && text.includes('you for') && text.includes('damage')) {
+          const damageMatch = text.match(/\*\*(\d+)\s+hit\*\*\s+you\s+for\s+\*\*(\d+)\s+damage\*\*/);
+          if (damageMatch) {
+            const hits = parseInt(damageMatch[1]);
+            const damage = parseInt(damageMatch[2]);
+            stats.damageReceived += damage;
+            stats.enemyShotsHit += hits;
+            
+            // Count missed shots from this salvo
+            const shotsMatch = text.match(/fired\s+(\d+)\s+shot\(s\)/);
+            if (shotsMatch) {
+              const totalShots = parseInt(shotsMatch[1]);
+              stats.enemyShotsMissed += (totalShots - hits);
+            }
+          }
+        }
+        // Parse missed shots (Your weapon)
+        else if (text.includes('Your') && text.includes('but all missed!')) {
+          const shotsMatch = text.match(/(\d+)\s+shot\(s\)/);
+          if (shotsMatch) {
+            stats.shotsMissed += parseInt(shotsMatch[1]);
+          }
+        }
+        // Parse missed shots (Enemy weapon with A: prefix)
+        else if (text.startsWith('A:') && text.includes('but all missed!')) {
+          const shotsMatch = text.match(/(\d+)\s+shot\(s\)/);
+          if (shotsMatch) {
+            stats.enemyShotsMissed += parseInt(shotsMatch[1]);
+          }
+        }
+        // Parse victory
+        else if (text.includes('Victory!') || text.startsWith('P:') && text.includes('won the battle')) {
+          stats.victories++;
+        }
+        // Parse defeat
+        else if (text.includes('Defeat!') || text.startsWith('A:') && text.includes('lost the battle')) {
+          stats.defeats++;
+        }
+        // Unknown message - preserve it
+        else {
+          stats.unknownMessages.push(text);
+        }
+
+        // Mark as read
+        msg.is_read = true;
+      }
+
+      // Mark user as dirty for persistence
+      this.dirtyUsers.add(userId);
+
+      // Clear all old messages from cache (they're now in DB as read)
+      this.userMessages.set(userId, []);
+
+      // Build summary
+      const summaryParts: string[] = [];
+      summaryParts.push('📊 **Message Summary**');
+      
+      if (stats.victories > 0 || stats.defeats > 0) {
+        const battleResults: string[] = [];
+        if (stats.victories > 0) battleResults.push(`${stats.victories} victory(ies)`);
+        if (stats.defeats > 0) battleResults.push(`${stats.defeats} defeat(s)`);
+        summaryParts.push(`⚔️ **Battles:** ${battleResults.join(', ')}`);
+      }
+
+      if (stats.damageDealt > 0 || stats.damageReceived > 0) {
+        summaryParts.push(`💥 **Damage:** Dealt ${stats.damageDealt}, Received ${stats.damageReceived}`);
+      }
+
+      if (stats.shotsHit > 0 || stats.shotsMissed > 0) {
+        const totalShots = stats.shotsHit + stats.shotsMissed;
+        const accuracy = totalShots > 0 ? Math.round((stats.shotsHit / totalShots) * 100) : 0;
+        summaryParts.push(`🎯 **Your Accuracy:** ${stats.shotsHit}/${totalShots} hits (${accuracy}%)`);
+      }
+
+      if (stats.enemyShotsHit > 0 || stats.enemyShotsMissed > 0) {
+        const totalEnemyShots = stats.enemyShotsHit + stats.enemyShotsMissed;
+        const enemyAccuracy = totalEnemyShots > 0 ? Math.round((stats.enemyShotsHit / totalEnemyShots) * 100) : 0;
+        summaryParts.push(`🛡️ **Enemy Accuracy:** ${stats.enemyShotsHit}/${totalEnemyShots} hits (${enemyAccuracy}%)`);
+      }
+
+      const summary = summaryParts.join('\n');
+
+      // Create summary as new message (using internal method that doesn't acquire lock)
+      await this.createMessageInternal(dataCtx, userId, summary);
+
+      // Re-create unknown messages as unread
+      for (const unknownMsg of stats.unknownMessages) {
+        await this.createMessageInternal(dataCtx, userId, unknownMsg);
+      }
+
+      console.log(`📊 Summarized ${allMessages.length} message(s) for user ${userId}`);
+      return summary;
     } finally {
       dataCtx.dispose();
     }

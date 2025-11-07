@@ -59,6 +59,7 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ auth, initialMessages }
   );
   const [isMarkingAsRead, setIsMarkingAsRead] = React.useState(false);
   const [isRefreshing, setIsRefreshing] = React.useState(false);
+  const [isSummarizing, setIsSummarizing] = React.useState(false);
   
   const { techCounts, weapons, defenses, isLoading: techLoading, error: techError } = useTechCounts();
   const { defenseValues, isLoading: defenseLoading, error: defenseError } = useDefenseValues();
@@ -99,6 +100,39 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ auth, initialMessages }
       console.error('❌ Failed to mark messages as read:', error);
     } finally {
       setIsMarkingAsRead(false);
+    }
+  };
+
+  // Handler for summarizing messages
+  const handleSummarizeMessages = async () => {
+    if (isSummarizing || messages.length === 0) return;
+    
+    setIsSummarizing(true);
+    try {
+      const response = await fetch('/api/messages/summarize', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to summarize messages');
+      }
+
+      const result = await response.json();
+      
+      if (result.success) {
+        console.log(`✅ Messages summarized`);
+        console.log(result.summary);
+        
+        // Refresh messages to show the summary and any preserved messages
+        await handleRefreshMessages();
+      }
+    } catch (error) {
+      console.error('❌ Failed to summarize messages:', error);
+    } finally {
+      setIsSummarizing(false);
     }
   };
 
@@ -237,32 +271,60 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ auth, initialMessages }
                           {isRefreshing ? 'Refreshing...' : '🔄 Refresh'}
                         </button>
                         {messages.length > 0 && (
-                          <button 
-                            onClick={handleMarkAllAsRead}
-                            disabled={isMarkingAsRead}
-                            style={{
-                              padding: '4px 12px',
-                              fontSize: '0.85rem',
-                              backgroundColor: isMarkingAsRead ? '#666' : '#4caf50',
-                              color: 'white',
-                              border: 'none',
-                              borderRadius: '4px',
-                              cursor: isMarkingAsRead ? 'not-allowed' : 'pointer',
-                              transition: 'background-color 0.2s'
-                            }}
-                            onMouseEnter={(e) => {
-                              if (!isMarkingAsRead) {
-                                (e.target as HTMLButtonElement).style.backgroundColor = '#45a049';
-                              }
-                            }}
-                            onMouseLeave={(e) => {
-                              if (!isMarkingAsRead) {
-                                (e.target as HTMLButtonElement).style.backgroundColor = '#4caf50';
-                              }
-                            }}
-                          >
-                            {isMarkingAsRead ? 'Marking...' : 'Mark All as Read'}
-                          </button>
+                          <>
+                            <button 
+                              onClick={handleSummarizeMessages}
+                              disabled={isSummarizing}
+                              style={{
+                                padding: '4px 12px',
+                                fontSize: '0.85rem',
+                                backgroundColor: isSummarizing ? '#666' : '#ff9800',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '4px',
+                                cursor: isSummarizing ? 'not-allowed' : 'pointer',
+                                transition: 'background-color 0.2s'
+                              }}
+                              onMouseEnter={(e) => {
+                                if (!isSummarizing) {
+                                  (e.target as HTMLButtonElement).style.backgroundColor = '#f57c00';
+                                }
+                              }}
+                              onMouseLeave={(e) => {
+                                if (!isSummarizing) {
+                                  (e.target as HTMLButtonElement).style.backgroundColor = '#ff9800';
+                                }
+                              }}
+                            >
+                              {isSummarizing ? 'Summarizing...' : '📊 Summarize'}
+                            </button>
+                            <button 
+                              onClick={handleMarkAllAsRead}
+                              disabled={isMarkingAsRead}
+                              style={{
+                                padding: '4px 12px',
+                                fontSize: '0.85rem',
+                                backgroundColor: isMarkingAsRead ? '#666' : '#4caf50',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '4px',
+                                cursor: isMarkingAsRead ? 'not-allowed' : 'pointer',
+                                transition: 'background-color 0.2s'
+                              }}
+                              onMouseEnter={(e) => {
+                                if (!isMarkingAsRead) {
+                                  (e.target as HTMLButtonElement).style.backgroundColor = '#45a049';
+                                }
+                              }}
+                              onMouseLeave={(e) => {
+                                if (!isMarkingAsRead) {
+                                  (e.target as HTMLButtonElement).style.backgroundColor = '#4caf50';
+                                }
+                              }}
+                            >
+                              {isMarkingAsRead ? 'Marking...' : 'Mark All as Read'}
+                            </button>
+                          </>
                         )}
                       </div>
                     </div>
