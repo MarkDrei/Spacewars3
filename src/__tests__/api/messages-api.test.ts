@@ -12,6 +12,10 @@ import { getMessageCache, MessageCache } from '@/lib/server/MessageCache';
 
 describe('Messages API Route Handler', () => {
   beforeEach(async () => {
+    // Reset database singleton to ensure clean state
+    const { resetTestDatabase } = await import('../../lib/server/database');
+    resetTestDatabase();
+    
     await clearTestDatabase();
     // Reset message cache before each test
     MessageCache.resetInstance();

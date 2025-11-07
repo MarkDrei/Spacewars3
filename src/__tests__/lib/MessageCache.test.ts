@@ -14,7 +14,11 @@ import {
 
 describe('MessageCache', () => {
   
-  beforeEach(() => {
+  beforeEach(async () => {
+    // Reset database to ensure clean state
+    const { resetTestDatabase } = await import('../../lib/server/database');
+    resetTestDatabase();
+    
     // Reset singleton before each test
     MessageCache.resetInstance();
   });
@@ -28,6 +32,10 @@ describe('MessageCache', () => {
     } catch {
       // Ignore cleanup errors
     }
+    
+    // Reset database after each test
+    const { resetTestDatabase } = await import('../../lib/server/database');
+    resetTestDatabase();
   });
 
   describe('Singleton Pattern', () => {

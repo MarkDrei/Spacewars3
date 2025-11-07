@@ -12,6 +12,22 @@ export interface UnreadMessage {
 class MessagesService {
 
   /**
+   * Get all unread messages for the current user
+   */
+  async getMessages(): Promise<{ success: boolean; messages: UnreadMessage[]; count: number }> {
+    const response = await fetch('/api/messages', {
+      method: 'GET',
+      credentials: 'include'
+    });
+    
+    if (!response.ok) {
+      throw new Error('Failed to fetch messages');
+    }
+    
+    return response.json();
+  }
+
+  /**
    * Mark all messages as read for the current user
    */
   async markAllAsRead(): Promise<{ success: boolean; markedCount: number }> {

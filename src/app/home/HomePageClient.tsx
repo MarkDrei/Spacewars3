@@ -53,12 +53,35 @@ function formatBoldText(text: string): React.ReactNode {
 
 const HomePageClient: React.FC<HomePageClientProps> = ({ auth, initialMessages }) => {
   // Messages are pre-loaded from server - maintain in state for dynamic updates
-  const [messages, setMessages] = React.useState<UnreadMessage[]>(initialMessages);
+  // Sort messages by created_at descending (newest first)
+  const [messages, setMessages] = React.useState<UnreadMessage[]>(
+    [...initialMessages].sort((a, b) => b.created_at - a.created_at)
+  );
   const [isMarkingAsRead, setIsMarkingAsRead] = React.useState(false);
+  const [isRefreshing, setIsRefreshing] = React.useState(false);
   
   const { techCounts, weapons, defenses, isLoading: techLoading, error: techError } = useTechCounts();
   const { defenseValues, isLoading: defenseLoading, error: defenseError } = useDefenseValues();
   const { battleStatus, isLoading: battleLoading, error: battleError } = useBattleStatus();
+
+  // Handler for refreshing messages
+  const handleRefreshMessages = async () => {
+    if (isRefreshing) return;
+    
+    setIsRefreshing(true);
+    try {
+      const result = await messagesService.getMessages();
+      if (result.success) {
+        // Sort messages by created_at descending (newest first)
+        setMessages([...result.messages].sort((a, b) => b.created_at - a.created_at));
+        console.log(`✅ Refreshed ${result.messages.length} message(s)`);
+      }
+    } catch (error) {
+      console.error('❌ Failed to refresh messages:', error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   // Handler for marking all messages as read
   const handleMarkAllAsRead = async () => {
@@ -186,34 +209,62 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ auth, initialMessages }
                   <th colSpan={2}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <span>Notifications</span>
-                      {messages.length > 0 && (
+                      <div style={{ display: 'flex', gap: '8px' }}>
                         <button 
-                          onClick={handleMarkAllAsRead}
-                          disabled={isMarkingAsRead}
+                          onClick={handleRefreshMessages}
+                          disabled={isRefreshing}
                           style={{
                             padding: '4px 12px',
                             fontSize: '0.85rem',
-                            backgroundColor: isMarkingAsRead ? '#666' : '#4caf50',
+                            backgroundColor: isRefreshing ? '#666' : '#2196F3',
                             color: 'white',
                             border: 'none',
                             borderRadius: '4px',
-                            cursor: isMarkingAsRead ? 'not-allowed' : 'pointer',
+                            cursor: isRefreshing ? 'not-allowed' : 'pointer',
                             transition: 'background-color 0.2s'
                           }}
                           onMouseEnter={(e) => {
-                            if (!isMarkingAsRead) {
-                              (e.target as HTMLButtonElement).style.backgroundColor = '#45a049';
+                            if (!isRefreshing) {
+                              (e.target as HTMLButtonElement).style.backgroundColor = '#1976D2';
                             }
                           }}
                           onMouseLeave={(e) => {
-                            if (!isMarkingAsRead) {
-                              (e.target as HTMLButtonElement).style.backgroundColor = '#4caf50';
+                            if (!isRefreshing) {
+                              (e.target as HTMLButtonElement).style.backgroundColor = '#2196F3';
                             }
                           }}
                         >
-                          {isMarkingAsRead ? 'Marking...' : 'Mark All as Read'}
+                          {isRefreshing ? 'Refreshing...' : '🔄 Refresh'}
                         </button>
-                      )}
+                        {messages.length > 0 && (
+                          <button 
+                            onClick={handleMarkAllAsRead}
+                            disabled={isMarkingAsRead}
+                            style={{
+                              padding: '4px 12px',
+                              fontSize: '0.85rem',
+                              backgroundColor: isMarkingAsRead ? '#666' : '#4caf50',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '4px',
+                              cursor: isMarkingAsRead ? 'not-allowed' : 'pointer',
+                              transition: 'background-color 0.2s'
+                            }}
+                            onMouseEnter={(e) => {
+                              if (!isMarkingAsRead) {
+                                (e.target as HTMLButtonElement).style.backgroundColor = '#45a049';
+                              }
+                            }}
+                            onMouseLeave={(e) => {
+                              if (!isMarkingAsRead) {
+                                (e.target as HTMLButtonElement).style.backgroundColor = '#4caf50';
+                              }
+                            }}
+                          >
+                            {isMarkingAsRead ? 'Marking...' : 'Mark All as Read'}
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </th>
                 </tr>

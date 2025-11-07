@@ -10,6 +10,9 @@ import { handleApiError, ApiError, requireAuth } from '@/lib/server/errors';
 import { initiateBattle } from '@/lib/server/battle/battleService';
 import { getUserWorldCache } from '@/lib/server/world/userWorldCache';
 
+// Force dynamic rendering for this route
+export const dynamic = 'force-dynamic';
+
 /**
  * POST /api/attack
  * Initiate a battle with another player

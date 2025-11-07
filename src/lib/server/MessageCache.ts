@@ -109,6 +109,7 @@ export class MessageCache {
 
   /**
    * Get all messages for a user from cache or database
+   * Cache is the single source of truth - once loaded, always use cache
    */
   async getMessagesForUser(userId: number): Promise<Message[]> {
     if (!this.isInitialized) {
@@ -119,13 +120,13 @@ export class MessageCache {
     const dataCtx = await ctx.acquireWrite(MESSAGE_DATA_LOCK);
     
     try {
-      // Check cache first
+      // Check cache first - cache is source of truth
       if (this.userMessages.has(userId)) {
         this.stats.cacheHits++;
         return [...this.userMessages.get(userId)!]; // Return copy
       }
 
-      // Cache miss - load from database
+      // Cache miss - load from database and cache it
       this.stats.cacheMisses++;
       console.log(`📬 Loading messages for user ${userId} from database...`);
       const messages = await this.loadMessagesFromDb(dataCtx, userId);
@@ -138,6 +139,8 @@ export class MessageCache {
 
   /**
    * Get unread messages for a user
+   * Returns all unread messages from cache, including pending messages
+   * Cache is the single source of truth
    */
   async getUnreadMessages(userId: number): Promise<UnreadMessage[]> {
     if (!this.isInitialized) {
@@ -204,7 +207,13 @@ export class MessageCache {
 
   /**
    * Create a new message for a user
-   * Message is immediately cached with temporary ID and persisted asynchronously
+   * Message is immediately added to cache with temporary ID and persisted asynchronously
+   * 
+   * CRITICAL: Cache is the single source of truth
+   * - Ensures messages are loaded from DB first to avoid cache miss after creation
+   * - Message is immediately visible in cache (with temporary negative ID)
+   * - DB write happens asynchronously, ID updated once complete
+   * - No race conditions: locks ensure atomicity
    */
   async createMessage(userId: number, messageText: string): Promise<number> {
     if (!this.isInitialized) {
@@ -215,6 +224,9 @@ export class MessageCache {
     const dataCtx = await ctx.acquireWrite(MESSAGE_DATA_LOCK);
     
     try {
+      // Ensure user's messages are loaded first (so we don't lose pending messages)
+      await this.ensureMessagesLoaded(dataCtx, userId);
+      
       // Generate temporary ID (negative to avoid conflicts)
       const tempId = this.nextTempId--;
       
@@ -228,11 +240,8 @@ export class MessageCache {
         isPending: true
       };
 
-      if (this.userMessages.has(userId)) {
-        this.userMessages.get(userId)!.push(newMessage);
-      } else {
-        this.userMessages.set(userId, [newMessage]);
-      }
+      // Messages are guaranteed to exist now due to ensureMessagesLoaded above
+      this.userMessages.get(userId)!.push(newMessage);
 
       // Track as pending
       this.pendingMessageIds.add(tempId);
