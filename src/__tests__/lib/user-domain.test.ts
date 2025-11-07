@@ -183,6 +183,39 @@ describe('User.updateStats with IronHarvesting research progression', () => {
     expect(user.iron).toBeCloseTo(10);
     expect(user.techTree.activeResearch).toBeDefined();
   });
+
+  test('updateStats_alsoUpdatesDefenseValues_regeneratesCorrectly', () => {
+    // User starts with partial defense values (250 each, max 500)
+    expect(user.hullCurrent).toBe(250);
+    expect(user.armorCurrent).toBe(250);
+    expect(user.shieldCurrent).toBe(250);
+    expect(user.defenseLastRegen).toBe(1000);
+
+    // 10 seconds pass
+    user.updateStats(1010);
+
+    // Defense values should regenerate at 1 point/second
+    expect(user.hullCurrent).toBe(260);
+    expect(user.armorCurrent).toBe(260);
+    expect(user.shieldCurrent).toBe(260);
+    expect(user.defenseLastRegen).toBe(1010);
+  });
+
+  test('updateStats_defenseRegenClamped_stopsAtMax', () => {
+    // User starts with partial defense values (490 each, max 500)
+    user.hullCurrent = 490;
+    user.armorCurrent = 490;
+    user.shieldCurrent = 490;
+
+    // 20 seconds pass (would regenerate 20 points, but max is 500)
+    user.updateStats(1020);
+
+    // Defense values should be clamped at max
+    expect(user.hullCurrent).toBe(500);
+    expect(user.armorCurrent).toBe(500);
+    expect(user.shieldCurrent).toBe(500);
+    expect(user.defenseLastRegen).toBe(1020);
+  });
 });
 
 describe('User getter methods', () => {
