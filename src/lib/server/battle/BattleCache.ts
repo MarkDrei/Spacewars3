@@ -15,18 +15,14 @@
 
 import type sqlite3 from 'sqlite3';
 import type { Battle, BattleStats, BattleEvent, WeaponCooldowns } from './battleTypes';
-import { createLockContext } from '../typedLocks';
+import { createLockContext, BATTLE_LOCK, type ValidLock5Context } from '../typedLocks';
 import { getUserWorldCache } from '../world/userWorldCache';
 import * as battleRepo from './battleRepo';
 
-// Define BATTLE_LOCK at level 12
-// Lock Hierarchy: CACHE(2) → WORLD(4) → USER(6) → MESSAGE(8) → DATABASE(10) → BATTLE(12)
-// BATTLE_LOCK is highest level because battle operations may need to modify users/world
-// When modifying battles, acquire locks in order: User → World → Battle
-import { LOCK_12 } from '@markdrei/ironguard-typescript-locks';
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const BATTLE_LOCK = LOCK_12; // Reserved for future explicit lock acquisition
+// Define BATTLE_LOCK at level 5
+// Lock Hierarchy: CACHE(2) → WORLD(4) → BATTLE(5) → USER(6) → MESSAGE(8) → DATABASE(10)
+// When modifying battles, acquire locks in order: BATTLE(5) then USER(6)
+// BATTLE_LOCK is defined in typedLocks.ts to prevent accidental reuse of level 5
 
 /**
  * BattleCache - Manages battle objects in memory
@@ -275,10 +271,42 @@ export class BattleCache {
   /**
    * Get ongoing battle for a user
    * Returns null if user has no active battle
+   * Acquires READ lock internally UNLESS a lock context is provided
+   * 
+   * @param userId - User ID to check
+   * @param lockContext - Optional lock context (if caller already holds BATTLE lock at level 5 or higher)
    */
-  async getOngoingBattleForUser(userId: number): Promise<Battle | null> {
+  async getOngoingBattleForUser(userId: number, lockContext?: ValidLock5Context<readonly [typeof BATTLE_LOCK]>): Promise<Battle | null> {
     await this.ensureInitializedAsync();
 
+    // If caller already holds a lock, use it; otherwise acquire READ lock
+    if (lockContext) {
+      // Use existing lock context - caller already holds BATTLE lock
+      return this.getOngoingBattleForUserInternal(userId, lockContext);
+    }
+
+    // Acquire READ lock for consistent battle state
+    const ctx = createLockContext();
+    const battleCtx = await ctx.acquireRead(BATTLE_LOCK);
+    
+    try {
+      return this.getOngoingBattleForUserInternal(userId, battleCtx);
+    } finally {
+      battleCtx.dispose();
+    }
+  }
+
+  /**
+   * Internal method to get ongoing battle
+   * Requires caller to hold BATTLE lock (enforced at compile-time via lockContext parameter)
+   * 
+   * @param userId - User ID to check
+   * @param lockContext - REQUIRED lock context proving caller holds BATTLE lock
+   */
+  private async getOngoingBattleForUserInternal(
+    userId: number, 
+    lockContext: ValidLock5Context<readonly [typeof BATTLE_LOCK]>
+  ): Promise<Battle | null> {
     // Check active battles index
     const battleId = this.activeBattlesByUser.get(userId);
     if (battleId !== undefined) {
@@ -307,10 +335,37 @@ export class BattleCache {
 
   /**
    * Get all active battles
+   * Acquires READ lock internally UNLESS a lock context is provided
+   * 
+   * @param lockContext - Optional lock context (if caller already holds BATTLE lock at level 5 or higher)
    */
-  async getActiveBattles(): Promise<Battle[]> {
+  async getActiveBattles(lockContext?: ValidLock5Context<readonly [typeof BATTLE_LOCK]>): Promise<Battle[]> {
     await this.ensureInitializedAsync();
 
+    // If caller already holds a lock, use it; otherwise acquire READ lock
+    if (lockContext) {
+      // Use existing lock context - caller already holds BATTLE lock
+      return this.getActiveBattlesInternal(lockContext);
+    }
+
+    // Acquire READ lock for consistent battle state
+    const ctx = createLockContext();
+    const battleCtx = await ctx.acquireRead(BATTLE_LOCK);
+    
+    try {
+      return this.getActiveBattlesInternal(battleCtx);
+    } finally {
+      battleCtx.dispose();
+    }
+  }
+
+  /**
+   * Internal method to get active battles
+   * Requires caller to hold BATTLE lock (enforced at compile-time via lockContext parameter)
+   * 
+   * @param lockContext - REQUIRED lock context proving caller holds BATTLE lock
+   */
+  private getActiveBattlesInternal(lockContext: ValidLock5Context<readonly [typeof BATTLE_LOCK]>): Battle[] {
     // Return all cached active battles
     const active: Battle[] = [];
     for (const battle of this.battles.values()) {

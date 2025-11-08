@@ -8,6 +8,7 @@ import {
   LockContext as IronGuardLockContext,
   LOCK_2,
   LOCK_4,
+  LOCK_5,
   LOCK_6,
   LOCK_8,
   LOCK_10,
@@ -25,11 +26,13 @@ export {
 export {
   LOCK_2,
   LOCK_4,
+  LOCK_5,
   LOCK_6,
   LOCK_8,
   LOCK_10,
   type ValidLock2Context,
   type ValidLock4Context,
+  type ValidLock5Context,
   type ValidLock6Context,
   type ValidLock8Context,
   type ValidLock10Context
@@ -38,6 +41,7 @@ export {
 // Lock level mapping from old system to IronGuard
 export const CACHE_LOCK = LOCK_2;
 export const WORLD_LOCK = LOCK_4;
+export const BATTLE_LOCK = LOCK_5;  // Battle state operations
 export const USER_LOCK = LOCK_6;
 export const MESSAGE_LOCK = LOCK_8;
 export const DATABASE_LOCK = LOCK_10;

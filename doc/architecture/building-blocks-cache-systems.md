@@ -16,6 +16,7 @@ The Spacewars application uses three cache manager implementations to optimize d
 |--------|-------------------|--------------|-------------|
 | **Primary Purpose** | User data, world state, username mappings | User messages and notifications | Battle state and combat data |
 | **Data Scope** | Multi-entity (User, World) | Single-entity (Messages) | Single-entity (Battles) |
+| **DB Abstraction** | Direct DB operations | MessagesRepo layer | Direct DB operations |
 | **Lock System** | Pure IronGuard | Pure IronGuard | Pure IronGuard via delegation |
 | **Lock Hierarchy** | 4 levels (CACHE→WORLD→USER→DB) | 2 levels (CACHE→DATA) | 4 levels (via TypedCacheManager + BATTLE) |
 | **Async Operations** | Background persistence | Async creation + background persistence | Background persistence |
@@ -139,13 +140,15 @@ MessageCache (Singleton)
 │   ├── pendingWrites: Map<tempId, Promise<void>>
 │   ├── pendingMessageIds: Set<number>
 │   └── nextTempId: -1 (decrementing)
+├── Database Layer
+│   └── MessagesRepo (abstracts all DB operations)
 ├── Locks (Pure IronGuard)
 │   ├── MESSAGE_CACHE_LOCK
 │   └── MESSAGE_DATA_LOCK
 └── Operations
-    ├── getMessagesForUser(), getUnreadMessageCount()
+    ├── getMessagesForUser(), getUnreadMessages(), getUnreadMessageCount()
     ├── createMessage() with temp IDs (async)
-    ├── getAndMarkUnreadMessages() (batch)
+    ├── markAllMessagesAsRead(), summarizeMessages()
     └── Background persistence
 ```
 
@@ -194,8 +197,11 @@ async createMessage(userId: number, text: string): Promise<number> {
 const msgId = await messageCache.createMessage(userId, "Hello!");
 // Returns immediately with tempId (-1), DB write happens in background
 
-// Get unread messages (marks as read)
-const unread = await messageCache.getAndMarkUnreadMessages(userId);
+// Get unread messages
+const unread = await messageCache.getUnreadMessages(userId);
+
+// Mark messages as read
+const markedCount = await messageCache.markAllMessagesAsRead(userId);
 
 // Graceful shutdown
 await messageCache.waitForPendingWrites(); // Wait for async writes
@@ -208,13 +214,13 @@ await messageCache.shutdown();
 **Dual Persistence Mechanisms:**
 
 1. **Pending Writes (New Messages):**
-   - Async DB insertion after cache update
+   - Async DB insertion via MessagesRepo after cache update
    - Tracked in `pendingWrites` map
    - Must complete before shutdown
 
 2. **Dirty Users (Read Status):**
-   - Background timer persists read status changes
-   - Uses `UPDATE messages SET is_read=? WHERE id=?`
+   - Background timer persists read status changes via MessagesRepo
+   - Uses `MessagesRepo.updateMultipleReadStatuses()` for batch updates
    - Skips messages with `isPending: true`
 
 ---
@@ -377,11 +383,17 @@ private pendingWrites: Map<number, Promise<void>> = new Map();
 
 ### 7. Database Integration
 - SQLite3 with callback-based API wrapped in Promises
+- **TypedCacheManager & BattleCache:** Direct database operations
+- **MessageCache:** Uses MessagesRepo for database abstraction layer
 - All managers use `sqlite3.Database` instance
 
 ---
 
 ## Key Differences
+
+### Database Abstraction
+- **MessageCache:** Uses MessagesRepo for all database operations (clean separation)
+- **TypedCacheManager & BattleCache:** Direct database operations with SQL in cache code
 
 ### Lock Implementation
 - **TypedCacheManager:** Direct IronGuard usage with 4-level hierarchy
@@ -427,7 +439,7 @@ All three cache managers use the IronGuard lock system for type-safe, deadlock-f
 
 **Key characteristics:**
 - **TypedCacheManager:** Central multi-entity cache with 4-level lock hierarchy
-- **MessageCache:** Fast async message creation with temporary IDs
+- **MessageCache:** Fast async message creation with temporary IDs, uses MessagesRepo for DB abstraction
 - **BattleCache:** Simple delegation pattern for lock management
 
 The separation ensures message operations don't block game updates, and battle operations don't interfere with user/world caching.

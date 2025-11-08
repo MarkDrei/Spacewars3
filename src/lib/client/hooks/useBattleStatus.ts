@@ -1,9 +1,13 @@
 // ---
 // useBattleStatus hook - Get current battle state
+// 
+// NOTE: This hook returns ONLY battle state (cooldowns, log, timestamps, damage).
+// For user defense values (hull/armor/shield), always use the useDefenseValues() hook,
+// which fetches from /api/user-stats or /api/ship-stats regardless of battle state.
 // ---
 
 import { useState, useEffect } from 'react';
-import type { WeaponCooldowns, BattleStats, BattleEvent } from '@/lib/server/battle/battleTypes';
+import type { WeaponCooldowns, BattleEvent } from '@/lib/server/battle/battleTypes';
 
 export interface BattleStatus {
   inBattle: boolean;
@@ -15,8 +19,6 @@ export interface BattleStatus {
     battleEndTime: number | null;
     winnerId: number | null;
     loserId: number | null;
-    myStats: BattleStats;
-    opponentStats: BattleStats;
     weaponCooldowns: WeaponCooldowns;
     battleLog: BattleEvent[];
     myTotalDamage: number;

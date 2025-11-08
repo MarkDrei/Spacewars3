@@ -500,7 +500,7 @@ export class UserWorldCache {
     }
     
     // Flush messages via MessageCache (imported dynamically to avoid circular dependencies)
-    const { getMessageCache } = await import('../MessageCache');
+    const { getMessageCache } = await import('../messages/MessageCache');
     const messageCache = getMessageCache();
     await messageCache.flushToDatabase();
     

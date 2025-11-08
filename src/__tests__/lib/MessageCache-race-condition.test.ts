@@ -1,0 +1,199 @@
+// ---
+// Test for race condition fix: summarizing twice should not re-process already-read messages
+// ---
+
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { MessageCache } from '@/lib/server/messages/MessageCache';
+
+describe('MessageCache - Race Condition Fix', () => {
+  let messageCache: MessageCache;
+
+  beforeEach(async () => {
+    // Reset database to ensure clean state
+    const { resetTestDatabase } = await import('@/lib/server/database');
+    resetTestDatabase();
+    
+    MessageCache.resetInstance();
+    messageCache = MessageCache.getInstance({
+      persistenceIntervalMs: 30000,
+      enableAutoPersistence: false
+    });
+    await messageCache.initialize();
+  });
+
+  afterEach(async () => {
+    try {
+      await messageCache.waitForPendingWrites();
+      await messageCache.shutdown();
+    } catch (error) {
+      console.error('Error during cleanup:', error);
+    }
+  });
+
+  describe('Multiple summarizations', () => {
+    it('doubleSummarization_afterMarkingAsRead_onlyProcessesNewMessages', async () => {
+      const userId = 1;
+
+      // Step 1: Create initial messages
+      await messageCache.createMessage(userId, 'P: ⚔️ Your **pulse laser** fired 5 shot(s), **3 hit** for **24 damage**! Enemy: Hull: 262, Armor: 0, Shield: 0');
+      await messageCache.createMessage(userId, 'N: 🛡️ Enemy **pulse laser** fired 1 shot(s), **1 hit** you for **8 damage**! Your defenses: Hull: 600, Armor: 600, Shield: 288');
+      await messageCache.createMessage(userId, 'P: 🎉 **Victory!** You won the battle!');
+      await messageCache.waitForPendingWrites();
+
+      // Verify initial state
+      let messages = await messageCache.getMessagesForUser(userId);
+      expect(messages.length).toBe(3);
+      expect(messages.every(m => !m.is_read)).toBe(true);
+
+      // Step 2: First summarization
+      const summary1 = await messageCache.summarizeMessages(userId);
+      await messageCache.waitForPendingWrites();
+      await messageCache.flushToDatabase();
+
+      // Verify summary contains battle stats
+      expect(summary1).toContain('Message Summary');
+      expect(summary1).toContain('1 victory(ies)');
+      expect(summary1).toContain('Dealt 24');
+      expect(summary1).toContain('Received 8');
+
+      // Verify only summary message remains (unread)
+      messages = await messageCache.getMessagesForUser(userId);
+      expect(messages.length).toBe(1);
+      expect(messages[0].message).toBe(summary1);
+      expect(messages[0].is_read).toBe(false);
+
+      // Step 3: Manually mark summary as read (simulating user action)
+      await messageCache.markAllMessagesAsRead(userId);
+      await messageCache.flushToDatabase();
+
+      // Verify summary is now marked as read
+      messages = await messageCache.getMessagesForUser(userId);
+      expect(messages.length).toBe(1);
+      expect(messages[0].is_read).toBe(true);
+
+      // Step 4: Create new messages
+      await messageCache.createMessage(userId, 'P: ⚔️ Your **auto turret** fired 3 shot(s), **2 hit** for **20 damage**! Enemy: Hull: 180, Armor: 0, Shield: 0');
+      await messageCache.createMessage(userId, 'N: 🛡️ Enemy **auto turret** fired 2 shot(s), **1 hit** you for **10 damage**! Your defenses: Hull: 600, Armor: 600, Shield: 268');
+      await messageCache.waitForPendingWrites();
+
+      // Verify we have 3 messages (1 read summary + 2 new unread)
+      messages = await messageCache.getMessagesForUser(userId);
+      expect(messages.length).toBe(3);
+      const unreadMessages = messages.filter(m => !m.is_read);
+      expect(unreadMessages.length).toBe(2);
+
+      // Step 5: Second summarization - SHOULD ONLY PROCESS NEW UNREAD MESSAGES
+      const summary2 = await messageCache.summarizeMessages(userId);
+      await messageCache.waitForPendingWrites();
+
+      // Verify second summary only contains stats from new messages
+      expect(summary2).toContain('Message Summary');
+      expect(summary2).toContain('Dealt 20'); // Only from new message
+      expect(summary2).toContain('Received 10'); // Only from new message
+      expect(summary2).not.toContain('1 victory(ies)'); // Not from old messages
+      expect(summary2).not.toContain('Dealt 24'); // Not from old messages
+      expect(summary2).not.toContain('Received 8'); // Not from old messages
+
+      // Verify final state: old read summary + new summary (unread)
+      messages = await messageCache.getMessagesForUser(userId);
+      expect(messages.length).toBe(2);
+      
+      const readMessages = messages.filter(m => m.is_read);
+      expect(readMessages.length).toBe(1);
+      expect(readMessages[0].message).toBe(summary1); // Old summary still there as read
+      
+      const newUnreadMessages = messages.filter(m => !m.is_read);
+      expect(newUnreadMessages.length).toBe(1);
+      expect(newUnreadMessages[0].message).toBe(summary2); // New summary
+    });
+
+    it('tripleeSummarization_afterMarkingAsRead_neverReprocessesOldMessages', async () => {
+      const userId = 2;
+
+      // Create and summarize messages 3 times, marking as read each time
+      for (let i = 1; i <= 3; i++) {
+        // Create new messages
+        await messageCache.createMessage(userId, `P: ⚔️ Your **weapon** fired 1 shot(s), **1 hit** for **${i}0 damage**! Enemy: Hull: 100, Armor: 0, Shield: 0`);
+        await messageCache.waitForPendingWrites();
+
+        // Summarize
+        const summary = await messageCache.summarizeMessages(userId);
+        await messageCache.waitForPendingWrites();
+        await messageCache.flushToDatabase();
+
+        // Verify summary only contains current iteration's damage
+        expect(summary).toContain(`Dealt ${i}0`);
+        if (i > 1) {
+          // Should NOT contain damage from previous iterations
+          for (let j = 1; j < i; j++) {
+            expect(summary).not.toContain(`Dealt ${j}0`);
+          }
+        }
+
+        // Mark as read before next iteration
+        await messageCache.markAllMessagesAsRead(userId);
+        await messageCache.flushToDatabase();
+      }
+
+      // Final verification: should have 3 read summaries
+      const messages = await messageCache.getMessagesForUser(userId);
+      expect(messages.length).toBe(3);
+      expect(messages.every(m => m.is_read)).toBe(true);
+    });
+
+    it('summarization_withNoUnreadMessages_returnsNoMessages', async () => {
+      const userId = 3;
+
+      // Create and mark messages as read
+      await messageCache.createMessage(userId, 'Message 1');
+      await messageCache.createMessage(userId, 'Message 2');
+      await messageCache.waitForPendingWrites();
+      await messageCache.markAllMessagesAsRead(userId);
+      await messageCache.flushToDatabase();
+
+      // Try to summarize with no unread messages
+      const summary = await messageCache.summarizeMessages(userId);
+      expect(summary).toBe('No messages to summarize.');
+
+      // Verify no new messages created
+      const messages = await messageCache.getMessagesForUser(userId);
+      expect(messages.length).toBe(2); // Still just the 2 original (read) messages
+      expect(messages.every(m => m.is_read)).toBe(true);
+    });
+
+    it('summarization_mixedReadAndUnread_onlyProcessesUnread', async () => {
+      const userId = 4;
+
+      // Create some messages and mark as read
+      await messageCache.createMessage(userId, 'P: ⚔️ Your **old weapon** fired 5 shot(s), **5 hit** for **100 damage**! Enemy: Hull: 0, Armor: 0, Shield: 0');
+      await messageCache.createMessage(userId, 'Already read message');
+      await messageCache.waitForPendingWrites();
+      await messageCache.markAllMessagesAsRead(userId);
+      await messageCache.flushToDatabase();
+
+      // Create new unread messages
+      await messageCache.createMessage(userId, 'P: ⚔️ Your **new weapon** fired 1 shot(s), **1 hit** for **10 damage**! Enemy: Hull: 90, Armor: 0, Shield: 0');
+      await messageCache.waitForPendingWrites();
+
+      // Verify state: 2 read, 1 unread
+      let messages = await messageCache.getMessagesForUser(userId);
+      expect(messages.length).toBe(3);
+      expect(messages.filter(m => m.is_read).length).toBe(2);
+      expect(messages.filter(m => !m.is_read).length).toBe(1);
+
+      // Summarize - should only process the 1 unread message
+      const summary = await messageCache.summarizeMessages(userId);
+      await messageCache.waitForPendingWrites();
+
+      // Verify summary only contains stats from new message
+      expect(summary).toContain('Dealt 10'); // Only from new message
+      expect(summary).not.toContain('Dealt 100'); // Not from old message
+
+      // Verify final state: 2 old read + 1 new unread summary
+      messages = await messageCache.getMessagesForUser(userId);
+      expect(messages.length).toBe(3);
+      expect(messages.filter(m => m.is_read).length).toBe(2);
+      expect(messages.filter(m => !m.is_read).length).toBe(1);
+    });
+  });
+});

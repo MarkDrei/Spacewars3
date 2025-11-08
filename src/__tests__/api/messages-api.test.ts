@@ -5,10 +5,9 @@
 import { describe, test, expect, beforeEach } from 'vitest';
 import { GET } from '@/app/api/messages/route';
 import { POST } from '@/app/api/messages/mark-read/route';
-import { clearTestDatabase, getTestDatabase } from '../helpers/testDatabase';
+import { clearTestDatabase } from '../helpers/testDatabase';
 import { createRequest } from '../helpers/apiTestHelpers';
-import { MessagesRepo } from '@/lib/server/messagesRepo';
-import { getMessageCache, MessageCache } from '@/lib/server/MessageCache';
+import { getMessageCache, MessageCache } from '@/lib/server/messages/MessageCache';
 
 describe('Messages API Route Handler', () => {
   beforeEach(async () => {
@@ -31,23 +30,26 @@ describe('Messages API Route Handler', () => {
   });
 
   test('messages_authenticatedUserNoMessages_returnsEmptyArray', async () => {
-    // For now, let's just test the basic structure without complex mocking
-    // The MessagesRepo tests already cover the core functionality
-    const messagesRepo = new MessagesRepo(await getTestDatabase());
-    const messages = await messagesRepo.getAndMarkUnreadMessages(1);
+    // Test using MessageCache (single source of truth)
+    const cache = getMessageCache();
+    await cache.initialize();
+    
+    const messages = await cache.getUnreadMessages(1);
     
     expect(messages).toEqual([]);
   });
 
-  test('messages_repoIntegration_worksWithDatabase', async () => {
-    // Test the MessagesRepo integration with database
-    const messagesRepo = new MessagesRepo(await getTestDatabase());
+  test('messages_cacheIntegration_worksWithDatabase', async () => {
+    // Test the MessageCache integration with database
+    const cache = getMessageCache();
+    await cache.initialize();
     
     // Create a message
-    await messagesRepo.createMessage(1, 'Test message');
+    await cache.createMessage(1, 'Test message');
+    await cache.waitForPendingWrites();
     
     // Retrieve it
-    const messages = await messagesRepo.getAndMarkUnreadMessages(1);
+    const messages = await cache.getUnreadMessages(1);
     
     expect(messages).toHaveLength(1);
     expect(messages[0].message).toBe('Test message');

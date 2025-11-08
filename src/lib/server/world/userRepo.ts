@@ -7,7 +7,7 @@ import { User, SaveUserCallback } from './user';
 import { createInitialTechTree } from '../techtree';
 import { getUserWorldCache } from './userWorldCache';
 import { createLockContext } from '../typedLocks';
-import { sendMessageToUser } from '../MessageCache';
+import { sendMessageToUser } from '../messages/MessageCache';
 import { TechCounts } from '../TechFactory';
 
 interface UserRow {

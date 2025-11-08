@@ -8,10 +8,9 @@ import {
   type ValidLock4Context,
   type LockLevel
 } from '@markdrei/ironguard-typescript-locks';
-import { getDatabase } from './database';
-import type { Message, UnreadMessage } from './messagesRepo';
-import { MESSAGE_CACHE_LOCK, MESSAGE_DATA_LOCK } from './LockDefinitions';
-import sqlite3 from 'sqlite3';
+import { getDatabase } from '../database';
+import { MESSAGE_CACHE_LOCK, MESSAGE_DATA_LOCK } from '../LockDefinitions';
+import { MessagesRepo, type Message, type UnreadMessage } from './messagesRepo';
 
 interface MessageCacheConfig {
   persistenceIntervalMs: number;
@@ -59,8 +58,9 @@ export class MessageCache {
     enableAutoPersistence: true
   };
 
-  // Database connection
-  private db: sqlite3.Database | null = null;
+  // Database connection and repo
+  private db: Awaited<ReturnType<typeof getDatabase>> | null = null;
+  private messagesRepo: MessagesRepo | null = null;
   private isInitialized = false;
   private persistenceTimer: NodeJS.Timeout | null = null;
 
@@ -97,6 +97,7 @@ export class MessageCache {
 
       console.log('📬 Initializing message cache...');
       this.db = await getDatabase();
+      this.messagesRepo = new MessagesRepo(this.db);
       
       this.startBackgroundPersistence();
       
@@ -329,10 +330,12 @@ export class MessageCache {
 
   /**
    * Summarize messages for a user
-   * - Marks all messages as read
+   * - Marks all UNREAD messages as read
    * - Parses and summarizes known message types (battle damage, victories, defeats)
    * - Preserves unknown messages as new unread messages
    * Returns the summary message
+   * 
+   * IMPORTANT: Only processes unread messages to avoid re-summarizing already-read messages
    */
   async summarizeMessages(userId: number): Promise<string> {
     if (!this.isInitialized) {
@@ -345,7 +348,10 @@ export class MessageCache {
     try {
       const allMessages = await this.ensureMessagesLoaded(dataCtx, userId);
       
-      if (allMessages.length === 0) {
+      // Filter for only unread messages - this prevents re-summarizing already-read messages
+      const unreadMessages = allMessages.filter(msg => !msg.is_read);
+      
+      if (unreadMessages.length === 0) {
         return 'No messages to summarize.';
       }
 
@@ -362,8 +368,8 @@ export class MessageCache {
         unknownMessages: [] as string[]
       };
 
-      // Process all messages
-      for (const msg of allMessages) {
+      // Process only unread messages
+      for (const msg of unreadMessages) {
         const text = msg.message;
         
         // Parse battle damage dealt (P: prefix, with "hit for X damage")
@@ -434,8 +440,13 @@ export class MessageCache {
       // Mark user as dirty for persistence
       this.dirtyUsers.add(userId);
 
-      // Clear all old messages from cache (they're now in DB as read)
-      this.userMessages.set(userId, []);
+      // Remove only the unread messages from cache (now marked as read and will be persisted)
+      // Keep already-read messages in cache
+      const readMessagesIds = new Set(unreadMessages.map(m => m.id));
+      this.userMessages.set(
+        userId, 
+        allMessages.filter(m => !readMessagesIds.has(m.id))
+      );
 
       // Build summary
       const summaryParts: string[] = [];
@@ -474,7 +485,7 @@ export class MessageCache {
         await this.createMessageInternal(dataCtx, userId, unknownMsg);
       }
 
-      console.log(`📊 Summarized ${allMessages.length} message(s) for user ${userId}`);
+      console.log(`📊 Summarized ${unreadMessages.length} unread message(s) for user ${userId}`);
       return summary;
     } finally {
       dataCtx.dispose();
@@ -602,66 +613,22 @@ export class MessageCache {
     context: ValidLock4Context<THeld> extends string ? never : ValidLock4Context<THeld>,
     userId: number
   ): Promise<Message[]> {
-    if (!this.db) throw new Error('Database not initialized');
+    if (!this.messagesRepo) throw new Error('MessagesRepo not initialized');
     
-    return new Promise((resolve, reject) => {
-      const stmt = this.db!.prepare(`
-        SELECT id, recipient_id, created_at, is_read, message
-        FROM messages 
-        WHERE recipient_id = ?
-        ORDER BY created_at DESC
-      `);
-      
-      stmt.all(userId, (err: Error | null, rows: Message[]) => {
-        stmt.finalize();
-        if (err) {
-          reject(err);
-          return;
-        }
-        resolve(rows || []);
-      });
-    });
+    return await this.messagesRepo.getAllMessages(userId);
   }
 
   private async createMessageInDb(userId: number, messageText: string): Promise<number> {
-    if (!this.db) throw new Error('Database not initialized');
+    if (!this.messagesRepo) throw new Error('MessagesRepo not initialized');
     
-    return new Promise((resolve, reject) => {
-      const createdAt = Date.now();
-      const stmt = this.db!.prepare(`
-        INSERT INTO messages (recipient_id, created_at, is_read, message)
-        VALUES (?, ?, 0, ?)
-      `);
-      
-      stmt.run(userId, createdAt, messageText, function(this: sqlite3.RunResult, err: Error | null) {
-        stmt.finalize();
-        if (err) {
-          reject(err);
-          return;
-        }
-        resolve(this.lastID);
-      });
-    });
+    return await this.messagesRepo.createMessage(userId, messageText);
   }
 
   private async deleteOldMessagesFromDb(cutoffTime: number): Promise<number> {
-    if (!this.db) throw new Error('Database not initialized');
+    if (!this.messagesRepo) throw new Error('MessagesRepo not initialized');
     
-    return new Promise((resolve, reject) => {
-      const stmt = this.db!.prepare(`
-        DELETE FROM messages 
-        WHERE is_read = 1 AND created_at < ?
-      `);
-      
-      stmt.run(cutoffTime, function(this: sqlite3.RunResult, err: Error | null) {
-        stmt.finalize();
-        if (err) {
-          reject(err);
-          return;
-        }
-        resolve(this.changes);
-      });
-    });
+    const olderThanDays = Math.floor((Date.now() - cutoffTime) / (24 * 60 * 60 * 1000));
+    return await this.messagesRepo.deleteOldReadMessages(olderThanDays);
   }
 
   private async persistMessagesForUser<THeld extends readonly LockLevel[]>(
@@ -669,9 +636,11 @@ export class MessageCache {
     userId: number
   ): Promise<void> {
     const messages = this.userMessages.get(userId);
-    if (!messages || !this.db) return;
+    if (!messages || !this.messagesRepo) return;
 
-    // Update all messages for this user in the database
+    // Collect all updates for batch processing
+    const updates: Array<{id: number, isRead: boolean}> = [];
+    
     for (const message of messages) {
       // Skip messages that are still being created (negative IDs)
       if (this.pendingMessageIds.has(message.id)) {
@@ -679,19 +648,15 @@ export class MessageCache {
         continue;
       }
       
-      await new Promise<void>((resolve, reject) => {
-        const stmt = this.db!.prepare(`
-          UPDATE messages 
-          SET is_read = ?
-          WHERE id = ?
-        `);
-        
-        stmt.run(message.is_read ? 1 : 0, message.id, (err: Error | null) => {
-          stmt.finalize();
-          if (err) reject(err);
-          else resolve();
-        });
+      updates.push({
+        id: message.id,
+        isRead: message.is_read
       });
+    }
+    
+    // Batch update all messages at once
+    if (updates.length > 0) {
+      await this.messagesRepo.updateMultipleReadStatuses(updates);
     }
   }
 
@@ -795,6 +760,9 @@ export class MessageCache {
 export function getMessageCache(config?: MessageCacheConfig): MessageCache {
   return MessageCache.getInstance(config);
 }
+
+// Re-export types from MessagesRepo for convenience
+export type { Message, UnreadMessage } from './messagesRepo';
 
 // Convenience functions for message operations
 export async function sendMessageToUser(userId: number, message: string): Promise<number> {

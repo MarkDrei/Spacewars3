@@ -136,26 +136,9 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ auth, initialMessages }
     }
   };
 
-  // Use battle stats for defense values if in battle, otherwise use regular defense values
-  const displayDefenseValues = battleStatus?.inBattle && battleStatus.battle?.myStats 
-    ? {
-        hull: { 
-          name: 'Hull', 
-          current: Math.round(battleStatus.battle.myStats.hull.current), 
-          max: battleStatus.battle.myStats.hull.max 
-        },
-        armor: { 
-          name: 'Armor', 
-          current: Math.round(battleStatus.battle.myStats.armor.current), 
-          max: battleStatus.battle.myStats.armor.max 
-        },
-        shield: { 
-          name: 'Shield', 
-          current: Math.round(battleStatus.battle.myStats.shield.current), 
-          max: battleStatus.battle.myStats.shield.max 
-        }
-      }
-    : defenseValues;
+  // Always use defenseValues from the dedicated hook (works both in and out of battle)
+  // The useDefenseValues hook polls /api/ship-stats which returns current User defense values
+  const displayDefenseValues = defenseValues;
 
   // Calculate color based on percentage (0% = red, 50% = yellow, 100% = green)
   const getDefenseColor = (current: number, max: number): string => {
@@ -559,9 +542,8 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ auth, initialMessages }
                     Object.entries(battleStatus.battle.weaponCooldowns).map(([weaponType, lastFired]) => {
                       const weapon = weapons[weaponType as keyof typeof weapons];
                       const now = Math.floor(Date.now() / 1000);
-                      // Get cooldown from weapon stats in battle or use default 5s
-                      const weaponStats = battleStatus.battle?.myStats?.weapons?.[weaponType];
-                      const cooldownPeriod = weaponStats?.cooldown || (weapon && 'cooldown' in weapon ? (weapon as { cooldown: number }).cooldown : 5);
+                      // Get cooldown from weapon tech data (from useTechCounts)
+                      const cooldownPeriod = (weapon && 'cooldown' in weapon ? (weapon as { cooldown: number }).cooldown : 5);
                       const timeSinceFired = now - (lastFired || 0);
                       const isReady = timeSinceFired >= cooldownPeriod;
                       const timeRemaining = Math.max(0, cooldownPeriod - timeSinceFired);
