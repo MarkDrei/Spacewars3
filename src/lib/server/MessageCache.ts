@@ -10,22 +10,7 @@ import {
 } from '@markdrei/ironguard-typescript-locks';
 import { getDatabase } from './database';
 import { MESSAGE_CACHE_LOCK, MESSAGE_DATA_LOCK } from './LockDefinitions';
-import sqlite3 from 'sqlite3';
-
-export interface Message {
-  id: number;
-  recipient_id: number;
-  created_at: number; // Unix timestamp in milliseconds
-  is_read: boolean;
-  message: string;
-  isPending?: boolean; // Flag for messages not yet persisted to DB
-}
-
-export interface UnreadMessage {
-  id: number;
-  created_at: number;
-  message: string;
-}
+import { MessagesRepo, type Message, type UnreadMessage } from './messagesRepo';
 
 interface MessageCacheConfig {
   persistenceIntervalMs: number;
@@ -73,8 +58,9 @@ export class MessageCache {
     enableAutoPersistence: true
   };
 
-  // Database connection
-  private db: sqlite3.Database | null = null;
+  // Database connection and repo
+  private db: Awaited<ReturnType<typeof getDatabase>> | null = null;
+  private messagesRepo: MessagesRepo | null = null;
   private isInitialized = false;
   private persistenceTimer: NodeJS.Timeout | null = null;
 
@@ -111,6 +97,7 @@ export class MessageCache {
 
       console.log('📬 Initializing message cache...');
       this.db = await getDatabase();
+      this.messagesRepo = new MessagesRepo(this.db);
       
       this.startBackgroundPersistence();
       
@@ -626,66 +613,22 @@ export class MessageCache {
     context: ValidLock4Context<THeld> extends string ? never : ValidLock4Context<THeld>,
     userId: number
   ): Promise<Message[]> {
-    if (!this.db) throw new Error('Database not initialized');
+    if (!this.messagesRepo) throw new Error('MessagesRepo not initialized');
     
-    return new Promise((resolve, reject) => {
-      const stmt = this.db!.prepare(`
-        SELECT id, recipient_id, created_at, is_read, message
-        FROM messages 
-        WHERE recipient_id = ?
-        ORDER BY created_at DESC
-      `);
-      
-      stmt.all(userId, (err: Error | null, rows: Message[]) => {
-        stmt.finalize();
-        if (err) {
-          reject(err);
-          return;
-        }
-        resolve(rows || []);
-      });
-    });
+    return await this.messagesRepo.getAllMessages(userId);
   }
 
   private async createMessageInDb(userId: number, messageText: string): Promise<number> {
-    if (!this.db) throw new Error('Database not initialized');
+    if (!this.messagesRepo) throw new Error('MessagesRepo not initialized');
     
-    return new Promise((resolve, reject) => {
-      const createdAt = Date.now();
-      const stmt = this.db!.prepare(`
-        INSERT INTO messages (recipient_id, created_at, is_read, message)
-        VALUES (?, ?, 0, ?)
-      `);
-      
-      stmt.run(userId, createdAt, messageText, function(this: sqlite3.RunResult, err: Error | null) {
-        stmt.finalize();
-        if (err) {
-          reject(err);
-          return;
-        }
-        resolve(this.lastID);
-      });
-    });
+    return await this.messagesRepo.createMessage(userId, messageText);
   }
 
   private async deleteOldMessagesFromDb(cutoffTime: number): Promise<number> {
-    if (!this.db) throw new Error('Database not initialized');
+    if (!this.messagesRepo) throw new Error('MessagesRepo not initialized');
     
-    return new Promise((resolve, reject) => {
-      const stmt = this.db!.prepare(`
-        DELETE FROM messages 
-        WHERE is_read = 1 AND created_at < ?
-      `);
-      
-      stmt.run(cutoffTime, function(this: sqlite3.RunResult, err: Error | null) {
-        stmt.finalize();
-        if (err) {
-          reject(err);
-          return;
-        }
-        resolve(this.changes);
-      });
-    });
+    const olderThanDays = Math.floor((Date.now() - cutoffTime) / (24 * 60 * 60 * 1000));
+    return await this.messagesRepo.deleteOldReadMessages(olderThanDays);
   }
 
   private async persistMessagesForUser<THeld extends readonly LockLevel[]>(
@@ -693,9 +636,11 @@ export class MessageCache {
     userId: number
   ): Promise<void> {
     const messages = this.userMessages.get(userId);
-    if (!messages || !this.db) return;
+    if (!messages || !this.messagesRepo) return;
 
-    // Update all messages for this user in the database
+    // Collect all updates for batch processing
+    const updates: Array<{id: number, isRead: boolean}> = [];
+    
     for (const message of messages) {
       // Skip messages that are still being created (negative IDs)
       if (this.pendingMessageIds.has(message.id)) {
@@ -703,19 +648,15 @@ export class MessageCache {
         continue;
       }
       
-      await new Promise<void>((resolve, reject) => {
-        const stmt = this.db!.prepare(`
-          UPDATE messages 
-          SET is_read = ?
-          WHERE id = ?
-        `);
-        
-        stmt.run(message.is_read ? 1 : 0, message.id, (err: Error | null) => {
-          stmt.finalize();
-          if (err) reject(err);
-          else resolve();
-        });
+      updates.push({
+        id: message.id,
+        isRead: message.is_read
       });
+    }
+    
+    // Batch update all messages at once
+    if (updates.length > 0) {
+      await this.messagesRepo.updateMultipleReadStatuses(updates);
     }
   }
 
@@ -819,6 +760,9 @@ export class MessageCache {
 export function getMessageCache(config?: MessageCacheConfig): MessageCache {
   return MessageCache.getInstance(config);
 }
+
+// Re-export types from MessagesRepo for convenience
+export type { Message, UnreadMessage } from './messagesRepo';
 
 // Convenience functions for message operations
 export async function sendMessageToUser(userId: number, message: string): Promise<number> {
