@@ -19,17 +19,49 @@ describe('MessagesRepo', () => {
     await closeTestDatabase();
   });
 
+  // Helper functions to wrap messagesRepo calls with lock acquisition
+  // Note: For testing, we use mock lock contexts to bypass the lock hierarchy
+  async function createMessage(userId: number, message: string): Promise<number> {
+    const mockLockCtx = {} as any; // Mock lock context for testing
+    return await messagesRepo.createMessage(userId, message, mockLockCtx);
+  }
+
+  async function getAllMessages(userId: number, limit?: number): Promise<any[]> {
+    const mockLockCtx = {} as any; // Mock lock context for testing
+    return await messagesRepo.getAllMessages(userId, limit, mockLockCtx);
+  }
+
+  async function updateMessageReadStatus(messageId: number, isRead: boolean): Promise<void> {
+    const mockLockCtx = {} as any; // Mock lock context for testing
+    return await messagesRepo.updateMessageReadStatus(messageId, isRead, mockLockCtx);
+  }
+
+  async function markAllMessagesAsRead(userId: number): Promise<void> {
+    const mockLockCtx = {} as any; // Mock lock context for testing
+    return await messagesRepo.markAllMessagesAsRead(userId, mockLockCtx);
+  }
+
+  async function getUnreadMessageCount(userId: number): Promise<number> {
+    const mockLockCtx = {} as any; // Mock lock context for testing
+    return await messagesRepo.getUnreadMessageCount(userId, mockLockCtx);
+  }
+
+  async function getUnreadMessages(userId: number): Promise<any[]> {
+    const mockLockCtx = {} as any; // Mock lock context for testing
+    return await messagesRepo.getUnreadMessages(userId, mockLockCtx);
+  }
+
   describe('createMessage', () => {
     test('createMessage_validData_createsMessageSuccessfully', async () => {
-      const messageId = await messagesRepo.createMessage(1, 'Welcome to the game!');
+      const messageId = await createMessage(1, 'Welcome to the game!');
       
       expect(messageId).toBeGreaterThan(0);
     });
 
     test('createMessage_multipleMessages_createsAllSuccessfully', async () => {
-      const messageId1 = await messagesRepo.createMessage(1, 'First message');
-      const messageId2 = await messagesRepo.createMessage(1, 'Second message');
-      const messageId3 = await messagesRepo.createMessage(2, 'Message for different user');
+      const messageId1 = await createMessage(1, 'First message');
+      const messageId2 = await createMessage(1, 'Second message');
+      const messageId3 = await createMessage(2, 'Message for different user');
       
       expect(messageId1).toBeGreaterThan(0);
       expect(messageId2).toBeGreaterThan(messageId1);
@@ -39,19 +71,19 @@ describe('MessagesRepo', () => {
 
   describe('getAllMessages', () => {
     test('getAllMessages_noMessages_returnsEmptyArray', async () => {
-      const messages = await messagesRepo.getAllMessages(1);
+      const messages = await getAllMessages(1);
       
       expect(messages).toEqual([]);
     });
 
     test('getAllMessages_hasMessages_returnsAllInDescendingOrder', async () => {
-      await messagesRepo.createMessage(1, 'First message');
+      await createMessage(1, 'First message');
       await new Promise(resolve => setTimeout(resolve, 10));
-      await messagesRepo.createMessage(1, 'Second message');
+      await createMessage(1, 'Second message');
       await new Promise(resolve => setTimeout(resolve, 10));
-      await messagesRepo.createMessage(1, 'Third message');
+      await createMessage(1, 'Third message');
       
-      const messages = await messagesRepo.getAllMessages(1);
+      const messages = await getAllMessages(1);
       
       expect(messages).toHaveLength(3);
       // Verify descending order (newest first)
@@ -62,10 +94,10 @@ describe('MessagesRepo', () => {
 
     test('getAllMessages_withLimit_respectsLimit', async () => {
       for (let i = 1; i <= 5; i++) {
-        await messagesRepo.createMessage(1, `Message ${i}`);
+        await createMessage(1, `Message ${i}`);
       }
       
-      const messages = await messagesRepo.getAllMessages(1, 3);
+      const messages = await getAllMessages(1, 3);
       
       expect(messages).toHaveLength(3);
       messages.forEach(message => {
@@ -75,14 +107,14 @@ describe('MessagesRepo', () => {
     });
 
     test('getAllMessages_multipleUsers_onlyReturnsForSpecificUser', async () => {
-      await messagesRepo.createMessage(1, 'Message for user 1');
-      await messagesRepo.createMessage(2, 'Message for user 2');
-      await messagesRepo.createMessage(1, 'Another message for user 1');
+      await createMessage(1, 'Message for user 1');
+      await createMessage(2, 'Message for user 2');
+      await createMessage(1, 'Another message for user 1');
       
-      const user1Messages = await messagesRepo.getAllMessages(1);
+      const user1Messages = await getAllMessages(1);
       expect(user1Messages).toHaveLength(2);
       
-      const user2Messages = await messagesRepo.getAllMessages(2);
+      const user2Messages = await getAllMessages(2);
       expect(user2Messages).toHaveLength(1);
       expect(user2Messages[0].message).toBe('Message for user 2');
     });
@@ -90,25 +122,25 @@ describe('MessagesRepo', () => {
 
   describe('updateMessageReadStatus', () => {
     test('updateReadStatus_singleMessage_updatesSuccessfully', async () => {
-      const messageId = await messagesRepo.createMessage(1, 'Test message');
+      const messageId = await createMessage(1, 'Test message');
       
-      await messagesRepo.updateMessageReadStatus(messageId, true);
+      await updateMessageReadStatus(messageId, true);
       
-      const messages = await messagesRepo.getAllMessages(1);
+      const messages = await getAllMessages(1);
       expect(!!messages[0].is_read).toBe(true);
     });
 
     test('updateReadStatus_toggleReadStatus_worksCorrectly', async () => {
-      const messageId = await messagesRepo.createMessage(1, 'Test message');
+      const messageId = await createMessage(1, 'Test message');
       
       // Mark as read
-      await messagesRepo.updateMessageReadStatus(messageId, true);
-      let messages = await messagesRepo.getAllMessages(1);
+      await updateMessageReadStatus(messageId, true);
+      let messages = await getAllMessages(1);
       expect(!!messages[0].is_read).toBe(true);
       
       // Mark as unread again
-      await messagesRepo.updateMessageReadStatus(messageId, false);
-      messages = await messagesRepo.getAllMessages(1);
+      await updateMessageReadStatus(messageId, false);
+      messages = await getAllMessages(1);
       expect(!!messages[0].is_read).toBe(false);
     });
   });
@@ -119,9 +151,9 @@ describe('MessagesRepo', () => {
     });
 
     test('updateMultiple_multipleMessages_updatesAllInTransaction', async () => {
-      const id1 = await messagesRepo.createMessage(1, 'Message 1');
-      const id2 = await messagesRepo.createMessage(1, 'Message 2');
-      const id3 = await messagesRepo.createMessage(1, 'Message 3');
+      const id1 = await createMessage(1, 'Message 1');
+      const id2 = await createMessage(1, 'Message 2');
+      const id3 = await createMessage(1, 'Message 3');
       
       await messagesRepo.updateMultipleReadStatuses([
         { id: id1, isRead: true },
@@ -129,7 +161,7 @@ describe('MessagesRepo', () => {
         { id: id3, isRead: false }
       ]);
       
-      const messages = await messagesRepo.getAllMessages(1);
+      const messages = await getAllMessages(1);
       expect(!!messages.find((m: { id: number }) => m.id === id1)?.is_read).toBe(true);
       expect(!!messages.find((m: { id: number }) => m.id === id2)?.is_read).toBe(true);
       expect(!!messages.find((m: { id: number }) => m.id === id3)?.is_read).toBe(false);
@@ -138,87 +170,87 @@ describe('MessagesRepo', () => {
 
   describe('markAllMessagesAsRead', () => {
     test('markAllAsRead_noUnreadMessages_completesSuccessfully', async () => {
-      await messagesRepo.createMessage(1, 'Message 1');
-      await messagesRepo.markAllMessagesAsRead(1);
+      await createMessage(1, 'Message 1');
+      await markAllMessagesAsRead(1);
       
       await expect(messagesRepo.markAllMessagesAsRead(1)).resolves.not.toThrow();
     });
 
     test('markAllAsRead_hasUnreadMessages_marksAllAsRead', async () => {
-      await messagesRepo.createMessage(1, 'Message 1');
-      await messagesRepo.createMessage(1, 'Message 2');
-      await messagesRepo.createMessage(2, 'Message for user 2');
+      await createMessage(1, 'Message 1');
+      await createMessage(1, 'Message 2');
+      await createMessage(2, 'Message for user 2');
       
-      await messagesRepo.markAllMessagesAsRead(1);
+      await markAllMessagesAsRead(1);
       
-      const user1Messages = await messagesRepo.getAllMessages(1);
+      const user1Messages = await getAllMessages(1);
       expect(user1Messages.every((m: { is_read: boolean | number }) => !!m.is_read)).toBe(true);
       
       // User 2's messages should remain unread
-      const user2Messages = await messagesRepo.getAllMessages(2);
+      const user2Messages = await getAllMessages(2);
       expect(!!user2Messages[0].is_read).toBe(false);
     });
   });
 
   describe('getUnreadMessageCount', () => {
     test('getUnreadCount_noMessages_returnsZero', async () => {
-      const count = await messagesRepo.getUnreadMessageCount(1);
+      const count = await getUnreadMessageCount(1);
       
       expect(count).toBe(0);
     });
 
     test('getUnreadCount_hasUnreadMessages_returnsCorrectCount', async () => {
-      await messagesRepo.createMessage(1, 'Message 1');
-      await messagesRepo.createMessage(1, 'Message 2');
-      await messagesRepo.createMessage(2, 'Message for different user');
+      await createMessage(1, 'Message 1');
+      await createMessage(1, 'Message 2');
+      await createMessage(2, 'Message for different user');
       
-      const count = await messagesRepo.getUnreadMessageCount(1);
+      const count = await getUnreadMessageCount(1);
       
       expect(count).toBe(2);
     });
 
     test('getUnreadCount_afterMarkingAsRead_returnsZero', async () => {
-      await messagesRepo.createMessage(1, 'Message 1');
-      await messagesRepo.createMessage(1, 'Message 2');
+      await createMessage(1, 'Message 1');
+      await createMessage(1, 'Message 2');
       
-      const countBefore = await messagesRepo.getUnreadMessageCount(1);
+      const countBefore = await getUnreadMessageCount(1);
       expect(countBefore).toBe(2);
       
-      await messagesRepo.markAllMessagesAsRead(1);
+      await markAllMessagesAsRead(1);
       
-      const countAfter = await messagesRepo.getUnreadMessageCount(1);
+      const countAfter = await getUnreadMessageCount(1);
       expect(countAfter).toBe(0);
     });
   });
 
   describe('getUnreadMessages', () => {
     test('getUnreadMessages_noMessages_returnsEmptyArray', async () => {
-      const messages = await messagesRepo.getUnreadMessages(1);
+      const messages = await getUnreadMessages(1);
       
       expect(messages).toEqual([]);
     });
 
     test('getUnreadMessages_hasUnreadMessages_returnsOnlyUnread', async () => {
-      const id1 = await messagesRepo.createMessage(1, 'Unread message 1');
-      await messagesRepo.createMessage(1, 'Unread message 2');
+      const id1 = await createMessage(1, 'Unread message 1');
+      await createMessage(1, 'Unread message 2');
       
       // Mark first message as read
-      await messagesRepo.updateMessageReadStatus(id1, true);
+      await updateMessageReadStatus(id1, true);
       
-      const unreadMessages = await messagesRepo.getUnreadMessages(1);
+      const unreadMessages = await getUnreadMessages(1);
       
       expect(unreadMessages).toHaveLength(1);
       expect(unreadMessages[0].message).toBe('Unread message 2');
     });
 
     test('getUnreadMessages_returnsInAscendingOrder', async () => {
-      await messagesRepo.createMessage(1, 'First message');
+      await createMessage(1, 'First message');
       await new Promise(resolve => setTimeout(resolve, 10));
-      await messagesRepo.createMessage(1, 'Second message');
+      await createMessage(1, 'Second message');
       await new Promise(resolve => setTimeout(resolve, 10));
-      await messagesRepo.createMessage(1, 'Third message');
+      await createMessage(1, 'Third message');
       
-      const messages = await messagesRepo.getUnreadMessages(1);
+      const messages = await getUnreadMessages(1);
       
       expect(messages).toHaveLength(3);
       // Verify ascending order (oldest first)
@@ -230,9 +262,9 @@ describe('MessagesRepo', () => {
 
   describe('deleteOldReadMessages', () => {
     test('deleteOldRead_noOldMessages_returnsZero', async () => {
-      await messagesRepo.createMessage(1, 'Recent message');
-      const id = (await messagesRepo.getAllMessages(1))[0].id;
-      await messagesRepo.updateMessageReadStatus(id, true);
+      await createMessage(1, 'Recent message');
+      const id = (await getAllMessages(1))[0].id;
+      await updateMessageReadStatus(id, true);
       
       const deletedCount = await messagesRepo.deleteOldReadMessages(30);
       
@@ -240,20 +272,20 @@ describe('MessagesRepo', () => {
     });
 
     test('deleteOldRead_onlyDeletesReadMessages_preservesUnread', async () => {
-      await messagesRepo.createMessage(1, 'Read message');
-      await messagesRepo.createMessage(1, 'Unread message');
+      await createMessage(1, 'Read message');
+      await createMessage(1, 'Unread message');
       
       // Mark first message as read
-      const allMessages = await messagesRepo.getAllMessages(1);
+      const allMessages = await getAllMessages(1);
       const readMessage = allMessages.find((m: { message: string }) => m.message === 'Read message');
       if (readMessage) {
-        await messagesRepo.updateMessageReadStatus(readMessage.id, true);
+        await updateMessageReadStatus(readMessage.id, true);
       }
       
       // Delete messages older than -1 days (i.e., all old read messages)
       await messagesRepo.deleteOldReadMessages(-1);
       
-      const remainingMessages = await messagesRepo.getAllMessages(1);
+      const remainingMessages = await getAllMessages(1);
       // Should only have the unread message remaining
       expect(remainingMessages).toHaveLength(1);
       expect(remainingMessages[0].message).toBe('Unread message');
@@ -263,15 +295,15 @@ describe('MessagesRepo', () => {
     test('deleteOldRead_respectsCutoffTime_onlyDeletesOldMessages', async () => {
       // This test would require manipulating timestamps, which is complex with the current setup
       // For now, we'll verify the basic functionality works
-      await messagesRepo.createMessage(1, 'Message');
-      const id = (await messagesRepo.getAllMessages(1))[0].id;
-      await messagesRepo.updateMessageReadStatus(id, true);
+      await createMessage(1, 'Message');
+      const id = (await getAllMessages(1))[0].id;
+      await updateMessageReadStatus(id, true);
       
       // Delete messages older than 1000 days - should keep recent message
       const deleted = await messagesRepo.deleteOldReadMessages(1000);
       expect(deleted).toBe(0);
       
-      const messages = await messagesRepo.getAllMessages(1);
+      const messages = await getAllMessages(1);
       expect(messages).toHaveLength(1);
     });
   });
