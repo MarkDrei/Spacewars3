@@ -10,7 +10,7 @@ import {
   getUserMessages,
   getUserMessageCount,
   markUserMessagesAsRead
-} from '../../lib/server/MessageCache';
+} from '../../lib/server/messages/MessageCache';
 
 describe('MessageCache', () => {
   

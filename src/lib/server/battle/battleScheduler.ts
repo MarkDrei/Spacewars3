@@ -21,7 +21,7 @@ import { BattleEngine } from './battleEngine';
 import { resolveBattle } from './battleService';
 import type { Battle, BattleEvent } from './battleTypes';
 import { TechFactory } from '../TechFactory';
-import { sendMessageToUser } from '../MessageCache';
+import { sendMessageToUser } from '../messages/MessageCache';
 import { getBattleCache } from './BattleCache';
 import { getUserWorldCache } from '../world/userWorldCache';
 import { createLockContext } from '../typedLocks';

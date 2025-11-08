@@ -1,5 +1,5 @@
 import { requireAuth } from '@/lib/server/serverSession';
-import { getUserMessages } from '@/lib/server/MessageCache';
+import { getUserMessages } from '@/lib/server/messages/MessageCache';
 import HomePageClient from './HomePageClient';
 
 // Force dynamic rendering because this page uses cookies for authentication

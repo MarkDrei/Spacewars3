@@ -3,7 +3,7 @@
 // ---
 
 import { describe, test, expect, beforeEach, afterEach } from 'vitest';
-import { MessagesRepo } from '@/lib/server/messagesRepo';
+import { MessagesRepo } from '@/lib/server/messages/messagesRepo';
 import { getTestDatabase, closeTestDatabase, clearTestDatabase } from '../helpers/testDatabase';
 
 describe('MessagesRepo', () => {

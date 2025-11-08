@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getIronSession } from 'iron-session';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { cookies } from 'next/headers';
-import { getMessageCache } from '@/lib/server/MessageCache';
+import { getMessageCache } from '@/lib/server/messages/MessageCache';
 
 /**
  * POST /api/messages/summarize

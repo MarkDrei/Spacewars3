@@ -1,10 +1,10 @@
 import { describe, test, expect, beforeEach, vi } from 'vitest';
 import { POST as completeBuildPOST } from '@/app/api/complete-build/route';
-import { sendMessageToUser } from '@/lib/server/MessageCache';
+import { sendMessageToUser } from '@/lib/server/messages/MessageCache';
 import { createRequest } from '../helpers/apiTestHelpers';
 
 // Mock MessageCache
-vi.mock('@/lib/server/MessageCache', () => ({
+vi.mock('@/lib/server/messages/MessageCache', () => ({
   getMessageCache: vi.fn().mockReturnValue({
     initialize: vi.fn().mockResolvedValue(undefined),
   }),

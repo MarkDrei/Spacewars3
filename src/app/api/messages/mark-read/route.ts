@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getIronSession } from 'iron-session';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { requireAuth, handleApiError } from '@/lib/server/errors';
-import { markUserMessagesAsRead } from '@/lib/server/MessageCache';
+import { markUserMessagesAsRead } from '@/lib/server/messages/MessageCache';
 
 /**
  * POST /api/messages/mark-read

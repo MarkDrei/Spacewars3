@@ -1,11 +1,11 @@
 import { describe, test, expect, beforeEach, vi, afterEach } from 'vitest';
 import { TechRepo } from '@/lib/server/techRepo';
-import { sendMessageToUser } from '@/lib/server/MessageCache';
+import { sendMessageToUser } from '@/lib/server/messages/MessageCache';
 import { createTestDatabase } from '../helpers/testDatabase';
 import sqlite3 from 'sqlite3';
 
 // Mock the notification system
-vi.mock('@/lib/server/MessageCache', () => ({
+vi.mock('@/lib/server/messages/MessageCache', () => ({
   sendMessageToUser: vi.fn().mockResolvedValue(1)
 }));
 

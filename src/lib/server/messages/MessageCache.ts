@@ -8,8 +8,8 @@ import {
   type ValidLock4Context,
   type LockLevel
 } from '@markdrei/ironguard-typescript-locks';
-import { getDatabase } from './database';
-import { MESSAGE_CACHE_LOCK, MESSAGE_DATA_LOCK } from './LockDefinitions';
+import { getDatabase } from '../database';
+import { MESSAGE_CACHE_LOCK, MESSAGE_DATA_LOCK } from '../LockDefinitions';
 import { MessagesRepo, type Message, type UnreadMessage } from './messagesRepo';
 
 interface MessageCacheConfig {

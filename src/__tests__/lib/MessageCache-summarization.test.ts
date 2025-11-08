@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { MessageCache } from '@/lib/server/MessageCache';
+import { MessageCache } from '@/lib/server/messages/MessageCache';
 
 describe('MessageCache - Summarization', () => {
   let messageCache: MessageCache;

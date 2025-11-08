@@ -29,9 +29,6 @@
     "src/shared/dist",
     "src/server",
     "client_old",
-    "vitest.config.ts",
-    "**/*.test.ts",
-    "**/*.test.tsx",
-    "src/__tests__/**"
+    "vitest.config.ts"
   ]
 }
