@@ -6,15 +6,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getIronSession } from 'iron-session';
 import { sessionOptions, SessionData } from '@/lib/server/session';
-import { handleApiError, ApiError, requireAuth } from '@/lib/server/errors';
-import { BattleRepo } from '@/lib/server/battle/BattleCache';
+import { handleApiError, requireAuth } from '@/lib/server/errors';
+import { getOngoingBattleForUser } from '@/lib/server/battle/BattleCache';
 
 /**
  * GET /api/battle-status
  * Get current battle state for the authenticated user
  * 
- * Returns: 
- * - If in battle: { inBattle: true, battle: Battle }
+ * Returns ONLY battle state (not user stats - use /api/user-stats for that)
+ * - If in battle: { inBattle: true, battle: { id, isAttacker, opponentId, cooldowns, log, damage, timestamps } }
  * - If not in battle: { inBattle: false }
  */
 export async function GET(request: NextRequest) {
@@ -24,22 +24,8 @@ export async function GET(request: NextRequest) {
     
     console.log(`🔍 Battle Status API: Checking battle for user ${session.userId}`);
     
-    // Check if user has an ongoing battle
-    // Handle case where battles table might not exist yet (graceful degradation)
-    let battle;
-    try {
-      battle = await BattleRepo.getOngoingBattleForUser(session.userId!);
-    } catch (dbError) {
-      // If table doesn't exist, just return not in battle
-      const errorMessage = dbError instanceof Error ? dbError.message : String(dbError);
-      if (errorMessage.includes('no such table: battles')) {
-        console.log(`⚠️ Battles table doesn't exist yet, returning not in battle`);
-        return NextResponse.json({
-          inBattle: false
-        });
-      }
-      throw dbError; // Re-throw if it's a different error
-    }
+    // Get battle from cache (cache handles DB reads if needed)
+    const battle = await getOngoingBattleForUser(session.userId!);
     
     if (!battle) {
       return NextResponse.json({
@@ -57,15 +43,6 @@ export async function GET(request: NextRequest) {
       ? battle.attackerWeaponCooldowns 
       : battle.attackeeWeaponCooldowns;
     
-    // Get current stats for the user
-    const myStats = isAttacker 
-      ? battle.attackerStartStats 
-      : battle.attackeeStartStats;
-    
-    const opponentStats = isAttacker 
-      ? battle.attackeeStartStats 
-      : battle.attackerStartStats;
-    
     return NextResponse.json({
       inBattle: true,
       battle: {
@@ -76,8 +53,6 @@ export async function GET(request: NextRequest) {
         battleEndTime: battle.battleEndTime,
         winnerId: battle.winnerId,
         loserId: battle.loserId,
-        myStats,
-        opponentStats,
         weaponCooldowns,
         battleLog: battle.battleLog,
         myTotalDamage: isAttacker ? battle.attackerTotalDamage : battle.attackeeTotalDamage,
