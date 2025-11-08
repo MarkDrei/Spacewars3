@@ -15,7 +15,7 @@
 
 import type sqlite3 from 'sqlite3';
 import type { Battle, BattleStats, BattleEvent, WeaponCooldowns } from './battleTypes';
-import { createLockContext, BATTLE_LOCK, type ValidLock5Context, type ValidLock10Context } from '../typedLocks';
+import { DATABASE_LOCK,  createLockContext, BATTLE_LOCK, type ValidLock5Context, type ValidLock10Context } from '../typedLocks';
 import { getUserWorldCache } from '../world/userWorldCache';
 import * as battleRepo from './battleRepo';
 
@@ -251,7 +251,7 @@ export class BattleCache {
     // Load from database
     const cacheManager = getUserWorldCache();
     const ctx = createLockContext();
-    const dbCtx = await cacheManager.acquireDatabaseRead(ctx);
+    const dbCtx = await ctx.acquireRead(DATABASE_LOCK);
     try {
       const battle = await this.loadBattleFromDb(battleId, dbCtx);
       
@@ -316,7 +316,7 @@ export class BattleCache {
     // Not in cache - query database
     const cacheManager = getUserWorldCache();
     const ctx = createLockContext();
-    const dbCtx = await cacheManager.acquireDatabaseRead(ctx);
+    const dbCtx = await ctx.acquireRead(DATABASE_LOCK);
     try {
       const battle = await this.loadOngoingBattleForUserFromDb(userId, dbCtx);
       
@@ -446,7 +446,7 @@ export class BattleCache {
     // Acquire database lock to insert battle
     const cacheManager = getUserWorldCache();
     const ctx = createLockContext();
-    const dbCtx = await cacheManager.acquireDatabaseWrite(ctx);
+    const dbCtx = await ctx.acquireWrite(DATABASE_LOCK);
     try {
       // Insert to database via battleRepo
       const battle = await battleRepo.insertBattleToDb(
@@ -661,7 +661,7 @@ export class BattleCache {
     // Acquire database lock for read
     const cacheManager = getUserWorldCache();
     const ctx = createLockContext();
-    const dbCtx = await cacheManager.acquireDatabaseRead(ctx);
+    const dbCtx = await ctx.acquireRead(DATABASE_LOCK);
     try {
       return await battleRepo.getAllBattlesFromDb(this.db, dbCtx);
     } finally {
@@ -683,7 +683,7 @@ export class BattleCache {
     // Acquire database lock for read
     const cacheManager = getUserWorldCache();
     const ctx = createLockContext();
-    const dbCtx = await cacheManager.acquireDatabaseRead(ctx);
+    const dbCtx = await ctx.acquireRead(DATABASE_LOCK);
     try {
       return await battleRepo.getBattlesForUserFromDb(this.db, userId, dbCtx);
     } finally {
@@ -706,7 +706,7 @@ export class BattleCache {
     // Acquire database lock to load battles
     const cacheManager = getUserWorldCache();
     const ctx = createLockContext();
-    const dbCtx = await cacheManager.acquireDatabaseRead(ctx);
+    const dbCtx = await ctx.acquireRead(DATABASE_LOCK);
     try {
       const battles = await battleRepo.getActiveBattlesFromDb(this.db, dbCtx);
       
@@ -788,7 +788,7 @@ export class BattleCache {
     // Acquire database lock
     const cacheManager = getUserWorldCache();
     const ctx = createLockContext();
-    const dbCtx = await cacheManager.acquireDatabaseWrite(ctx);
+    const dbCtx = await ctx.acquireWrite(DATABASE_LOCK);
     try {
       for (const battleId of dirtyIds) {
         const battle = this.battles.get(battleId);

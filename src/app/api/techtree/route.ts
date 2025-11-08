@@ -4,7 +4,7 @@ import { getUserWorldCache } from '@/lib/server/world/userWorldCache';
 import { AllResearches, getResearchUpgradeCost, getResearchUpgradeDuration, getResearchEffect, ResearchType } from '@/lib/server/techtree';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth, ApiError } from '@/lib/server/errors';
-import { createLockContext } from '@/lib/server/typedLocks';
+import { DATABASE_LOCK,  createLockContext } from '@/lib/server/typedLocks';
 import { User } from '@/lib/server/world/user';
 
 export async function GET(request: NextRequest) {
@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
       
       if (!user) {
         // Load user from database if not in cache
-        const dbCtx = await cacheManager.acquireDatabaseRead(userCtx);
+        const dbCtx = await userCtx.acquireRead(DATABASE_LOCK);
         try {
           user = await cacheManager.loadUserFromDbUnsafe(session.userId!, dbCtx);
           if (!user) {

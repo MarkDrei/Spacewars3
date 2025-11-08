@@ -9,7 +9,7 @@ import { getUserWorldCache, type UserWorldCache, type UserContext } from '@/lib/
 import { getResearchEffectFromTree, ResearchType } from '@/lib/server/techtree';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth, ApiError } from '@/lib/server/errors';
-import { createLockContext } from '@/lib/server/typedLocks';
+import { DATABASE_LOCK,  createLockContext } from '@/lib/server/typedLocks';
 import type { User } from '@/lib/server/world/user';
 import type { World } from '@/lib/server/world/world';
 
@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
           // Load user from database if not in cache
           console.log(`🔄 [TYPED] User ${session.userId} not in cache, loading from database...`);
           
-          const dbCtx = await cacheManager.acquireDatabaseRead(userCtx);
+          const dbCtx = await userCtx.acquireRead(DATABASE_LOCK);
           try {
             console.log(`💾 [TYPED] Database read lock acquired for user loading`);
             

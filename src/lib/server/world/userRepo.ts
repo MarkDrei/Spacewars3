@@ -7,10 +7,10 @@ import sqlite3 from 'sqlite3';
 import { User, SaveUserCallback } from './user';
 import { createInitialTechTree } from '../techtree';
 import { getUserWorldCache } from './userWorldCache';
-import { createLockContext } from '../typedLocks';
+import { DATABASE_LOCK,  createLockContext } from '../typedLocks';
 import { sendMessageToUser } from '../messages/MessageCache';
 import { TechCounts } from '../TechFactory';
-import type { ValidLock10Context } from '../typedLocks';
+import type { DATABASE_LOCK,  ValidLock10Context } from '../typedLocks';
 
 interface UserRow {
   id: number;
@@ -144,7 +144,7 @@ export async function getUserById(db: sqlite3.Database, id: number): Promise<Use
     
     if (!user) {
       // Load from database if not in cache
-      const dbCtx = await cacheManager.acquireDatabaseRead(userCtx);
+      const dbCtx = await userCtx.acquireRead(DATABASE_LOCK);
       try {
         user = await cacheManager.loadUserFromDbUnsafe(id, dbCtx);
         if (user) {

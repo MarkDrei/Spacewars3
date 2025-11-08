@@ -4,7 +4,7 @@ import { getUserWorldCache, UserWorldCache } from '@/lib/server/world/userWorldC
 import { getResearchEffectFromTree, ResearchType } from '@/lib/server/techtree';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth, ApiError } from '@/lib/server/errors';
-import { createLockContext, type LockContext as IronGuardLockContext, USER_LOCK } from '@/lib/server/typedLocks';
+import { DATABASE_LOCK,  createLockContext, type LockContext as IronGuardLockContext, USER_LOCK } from '@/lib/server/typedLocks';
 import { User } from '@/lib/server/world/user';
 import { World } from '@/lib/server/world/world';
 
@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
         
         if (!user) {
           // Load user from database if not in cache
-          const dbCtx = await cacheManager.acquireDatabaseRead(userCtx);
+          const dbCtx = await userCtx.acquireRead(DATABASE_LOCK);
           try {
             user = await cacheManager.loadUserFromDbUnsafe(session.userId!, dbCtx);
             if (!user) {

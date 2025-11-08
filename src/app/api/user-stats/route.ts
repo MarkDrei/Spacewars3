@@ -3,7 +3,7 @@ import { getIronSession } from 'iron-session';
 import { getUserWorldCache, UserWorldCache } from '@/lib/server/world/userWorldCache';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth, ApiError } from '@/lib/server/errors';
-import { createLockContext, type LockContext as IronGuardLockContext, USER_LOCK } from '@/lib/server/typedLocks';
+import { DATABASE_LOCK,  createLockContext, type LockContext as IronGuardLockContext, USER_LOCK } from '@/lib/server/typedLocks';
 import { User } from '@/lib/server/world/user';
 
 // Type alias for user context
@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
       
       if (!user) {
         // Load user from database if not in cache
-        const dbCtx = await cacheManager.acquireDatabaseRead(userCtx);
+        const dbCtx = await userCtx.acquireRead(DATABASE_LOCK);
         try {
           user = await cacheManager.loadUserFromDbUnsafe(session.userId!, dbCtx);
           if (!user) {

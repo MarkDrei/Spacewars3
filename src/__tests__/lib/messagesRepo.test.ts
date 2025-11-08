@@ -3,8 +3,9 @@
 // ---
 
 import { describe, test, expect, beforeEach, afterEach } from 'vitest';
-import { MessagesRepo } from '@/lib/server/messages/messagesRepo';
+import { MessagesRepo, type Message, type UnreadMessage } from '@/lib/server/messages/messagesRepo';
 import { getTestDatabase, closeTestDatabase, clearTestDatabase } from '../helpers/testDatabase';
+import { createLockContext, DATABASE_LOCK } from '@/lib/server/typedLocks';
 
 describe('MessagesRepo', () => {
   let messagesRepo: MessagesRepo;
@@ -20,35 +21,85 @@ describe('MessagesRepo', () => {
   });
 
   // Helper functions to wrap messagesRepo calls with lock acquisition
-  // Note: For testing, we use mock lock contexts to bypass the lock hierarchy
+  // Uses proper IronGuard lock contexts
   async function createMessage(userId: number, message: string): Promise<number> {
-    const mockLockCtx = {} as any; // Mock lock context for testing
-    return await messagesRepo.createMessage(userId, message, mockLockCtx);
+    const ctx = createLockContext();
+    const lockCtx = await ctx.acquireWrite(DATABASE_LOCK);
+    try {
+      return await messagesRepo.createMessage(userId, message, lockCtx);
+    } finally {
+      lockCtx.dispose();
+    }
   }
 
-  async function getAllMessages(userId: number, limit?: number): Promise<any[]> {
-    const mockLockCtx = {} as any; // Mock lock context for testing
-    return await messagesRepo.getAllMessages(userId, limit, mockLockCtx);
+  async function getAllMessages(userId: number, limit?: number): Promise<Message[]> {
+    const ctx = createLockContext();
+    const lockCtx = await ctx.acquireRead(DATABASE_LOCK);
+    try {
+      return await messagesRepo.getAllMessages(userId, limit, lockCtx);
+    } finally {
+      lockCtx.dispose();
+    }
   }
 
   async function updateMessageReadStatus(messageId: number, isRead: boolean): Promise<void> {
-    const mockLockCtx = {} as any; // Mock lock context for testing
-    return await messagesRepo.updateMessageReadStatus(messageId, isRead, mockLockCtx);
+    const ctx = createLockContext();
+    const lockCtx = await ctx.acquireWrite(DATABASE_LOCK);
+    try {
+      return await messagesRepo.updateMessageReadStatus(messageId, isRead, lockCtx);
+    } finally {
+      lockCtx.dispose();
+    }
   }
 
   async function markAllMessagesAsRead(userId: number): Promise<void> {
-    const mockLockCtx = {} as any; // Mock lock context for testing
-    return await messagesRepo.markAllMessagesAsRead(userId, mockLockCtx);
+    const ctx = createLockContext();
+    const lockCtx = await ctx.acquireWrite(DATABASE_LOCK);
+    try {
+      return await messagesRepo.markAllMessagesAsRead(userId, lockCtx);
+    } finally {
+      lockCtx.dispose();
+    }
   }
 
   async function getUnreadMessageCount(userId: number): Promise<number> {
-    const mockLockCtx = {} as any; // Mock lock context for testing
-    return await messagesRepo.getUnreadMessageCount(userId, mockLockCtx);
+    const ctx = createLockContext();
+    const lockCtx = await ctx.acquireRead(DATABASE_LOCK);
+    try {
+      return await messagesRepo.getUnreadMessageCount(userId, lockCtx);
+    } finally {
+      lockCtx.dispose();
+    }
   }
 
-  async function getUnreadMessages(userId: number): Promise<any[]> {
-    const mockLockCtx = {} as any; // Mock lock context for testing
-    return await messagesRepo.getUnreadMessages(userId, mockLockCtx);
+  async function getUnreadMessages(userId: number): Promise<UnreadMessage[]> {
+    const ctx = createLockContext();
+    const lockCtx = await ctx.acquireRead(DATABASE_LOCK);
+    try {
+      return await messagesRepo.getUnreadMessages(userId, lockCtx);
+    } finally {
+      lockCtx.dispose();
+    }
+  }
+
+  async function updateMultipleReadStatuses(updates: { id: number; isRead: boolean }[]): Promise<void> {
+    const ctx = createLockContext();
+    const lockCtx = await ctx.acquireWrite(DATABASE_LOCK);
+    try {
+      return await messagesRepo.updateMultipleReadStatuses(updates, lockCtx);
+    } finally {
+      lockCtx.dispose();
+    }
+  }
+
+  async function deleteOldReadMessages(daysOld: number): Promise<number> {
+    const ctx = createLockContext();
+    const lockCtx = await ctx.acquireWrite(DATABASE_LOCK);
+    try {
+      return await messagesRepo.deleteOldReadMessages(daysOld, lockCtx);
+    } finally {
+      lockCtx.dispose();
+    }
   }
 
   describe('createMessage', () => {
@@ -147,7 +198,7 @@ describe('MessagesRepo', () => {
 
   describe('updateMultipleReadStatuses', () => {
     test('updateMultiple_emptyArray_completesSuccessfully', async () => {
-      await expect(messagesRepo.updateMultipleReadStatuses([])).resolves.not.toThrow();
+      await expect(updateMultipleReadStatuses([])).resolves.not.toThrow();
     });
 
     test('updateMultiple_multipleMessages_updatesAllInTransaction', async () => {
@@ -155,16 +206,16 @@ describe('MessagesRepo', () => {
       const id2 = await createMessage(1, 'Message 2');
       const id3 = await createMessage(1, 'Message 3');
       
-      await messagesRepo.updateMultipleReadStatuses([
+      await updateMultipleReadStatuses([
         { id: id1, isRead: true },
         { id: id2, isRead: true },
         { id: id3, isRead: false }
       ]);
       
       const messages = await getAllMessages(1);
-      expect(!!messages.find((m: { id: number }) => m.id === id1)?.is_read).toBe(true);
-      expect(!!messages.find((m: { id: number }) => m.id === id2)?.is_read).toBe(true);
-      expect(!!messages.find((m: { id: number }) => m.id === id3)?.is_read).toBe(false);
+      expect(!!messages.find((m) => m.id === id1)?.is_read).toBe(true);
+      expect(!!messages.find((m) => m.id === id2)?.is_read).toBe(true);
+      expect(!!messages.find((m) => m.id === id3)?.is_read).toBe(false);
     });
   });
 
@@ -173,7 +224,7 @@ describe('MessagesRepo', () => {
       await createMessage(1, 'Message 1');
       await markAllMessagesAsRead(1);
       
-      await expect(messagesRepo.markAllMessagesAsRead(1)).resolves.not.toThrow();
+      await expect(markAllMessagesAsRead(1)).resolves.not.toThrow();
     });
 
     test('markAllAsRead_hasUnreadMessages_marksAllAsRead', async () => {
@@ -184,7 +235,7 @@ describe('MessagesRepo', () => {
       await markAllMessagesAsRead(1);
       
       const user1Messages = await getAllMessages(1);
-      expect(user1Messages.every((m: { is_read: boolean | number }) => !!m.is_read)).toBe(true);
+      expect(user1Messages.every((m) => !!m.is_read)).toBe(true);
       
       // User 2's messages should remain unread
       const user2Messages = await getAllMessages(2);
@@ -266,7 +317,7 @@ describe('MessagesRepo', () => {
       const id = (await getAllMessages(1))[0].id;
       await updateMessageReadStatus(id, true);
       
-      const deletedCount = await messagesRepo.deleteOldReadMessages(30);
+      const deletedCount = await deleteOldReadMessages(30);
       
       expect(deletedCount).toBe(0);
     });
@@ -277,13 +328,13 @@ describe('MessagesRepo', () => {
       
       // Mark first message as read
       const allMessages = await getAllMessages(1);
-      const readMessage = allMessages.find((m: { message: string }) => m.message === 'Read message');
+      const readMessage = allMessages.find((m) => m.message === 'Read message');
       if (readMessage) {
         await updateMessageReadStatus(readMessage.id, true);
       }
       
       // Delete messages older than -1 days (i.e., all old read messages)
-      await messagesRepo.deleteOldReadMessages(-1);
+      await deleteOldReadMessages(-1);
       
       const remainingMessages = await getAllMessages(1);
       // Should only have the unread message remaining
@@ -300,7 +351,7 @@ describe('MessagesRepo', () => {
       await updateMessageReadStatus(id, true);
       
       // Delete messages older than 1000 days - should keep recent message
-      const deleted = await messagesRepo.deleteOldReadMessages(1000);
+      const deleted = await deleteOldReadMessages(1000);
       expect(deleted).toBe(0);
       
       const messages = await getAllMessages(1);

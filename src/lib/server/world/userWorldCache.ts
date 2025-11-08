@@ -21,13 +21,11 @@ import sqlite3 from 'sqlite3';
 type WorldReadContext = IronGuardLockContext<readonly [typeof WORLD_LOCK]> | IronGuardLockContext<readonly [typeof CACHE_LOCK, typeof WORLD_LOCK]>;
 type WorldWriteContext = IronGuardLockContext<readonly [typeof WORLD_LOCK]> | IronGuardLockContext<readonly [typeof CACHE_LOCK, typeof WORLD_LOCK]>;
 export type UserContext = IronGuardLockContext<readonly [typeof USER_LOCK]> | IronGuardLockContext<readonly [typeof CACHE_LOCK, typeof USER_LOCK]> | IronGuardLockContext<readonly [typeof WORLD_LOCK, typeof USER_LOCK]> | IronGuardLockContext<readonly [typeof CACHE_LOCK, typeof WORLD_LOCK, typeof USER_LOCK]>;
-type DatabaseReadContext = IronGuardLockContext<readonly [typeof DATABASE_LOCK]> | IronGuardLockContext<readonly [typeof USER_LOCK, typeof DATABASE_LOCK]> | IronGuardLockContext<readonly [typeof WORLD_LOCK, typeof USER_LOCK, typeof DATABASE_LOCK]> | IronGuardLockContext<readonly [typeof CACHE_LOCK, typeof WORLD_LOCK, typeof USER_LOCK, typeof DATABASE_LOCK]>;
-type DatabaseWriteContext = IronGuardLockContext<readonly [typeof DATABASE_LOCK]> | IronGuardLockContext<readonly [typeof USER_LOCK, typeof DATABASE_LOCK]> | IronGuardLockContext<readonly [typeof WORLD_LOCK, typeof USER_LOCK, typeof DATABASE_LOCK]> | IronGuardLockContext<readonly [typeof CACHE_LOCK, typeof WORLD_LOCK, typeof USER_LOCK, typeof DATABASE_LOCK]>;
 
+// Note: DatabaseReadContext/DatabaseWriteContext removed - callers should use DATABASE_LOCK directly
 // Context type for data access methods - accepts any context that provides the required lock
-type WorldAccessContext = WorldReadContext | WorldWriteContext | UserContext | DatabaseReadContext | DatabaseWriteContext;
-type UserAccessContext = UserContext | DatabaseReadContext | DatabaseWriteContext;
-type DatabaseAccessContext = DatabaseReadContext | DatabaseWriteContext;
+type WorldAccessContext = WorldReadContext | WorldWriteContext | UserContext;
+type UserAccessContext = UserContext;
 
 // Cache configuration interface
 export interface TypedCacheConfig {
@@ -236,42 +234,22 @@ export class UserWorldCache {
     this.worldDirty = true;
   }
 
-  // ===== LEVEL 3: DATABASE OPERATIONS =====
-
-  /**
-   * Acquire database read lock and return context for chaining
-   * 
-   * TODO: Check all callers, DB should usually not be accessed directly but only from the cache
-   */
-  async acquireDatabaseRead(
-    context: IronGuardLockContext<readonly []> | WorldReadContext | WorldWriteContext | UserContext
-  ): Promise<DatabaseReadContext> {
-    await this.ensureInitialized();
-    return await context.acquireRead(DATABASE_LOCK) as DatabaseReadContext;
-  }
-
-  /**
-   * Acquire database write lock and return context for chaining
-   */
-  async acquireDatabaseWrite(
-    context: IronGuardLockContext<readonly []> | WorldReadContext | WorldWriteContext | UserContext
-  ): Promise<DatabaseWriteContext> {
-    await this.ensureInitialized();
-    return await context.acquireWrite(DATABASE_LOCK) as DatabaseWriteContext;
-  }
-
+  // ===== LEVEL 3: DATABASE OPERATIONS (DEPRECATED - USE DATABASE_LOCK DIRECTLY) =====
+  
   /**
    * Load user from database without acquiring locks (requires database read lock context)
+   * @deprecated Callers should acquire DATABASE_LOCK directly instead
    */
-  async loadUserFromDbUnsafe(userId: number, context: DatabaseAccessContext): Promise<User | null> {
+  async loadUserFromDbUnsafe(userId: number, context: IronGuardLockContext<any>): Promise<User | null> {
     if (!this.db) throw new Error('Database not initialized');
     return await getUserByIdFromDb(this.db, userId, async () => {}, context);
   }
 
   /**
    * Load user by username from database without acquiring locks (requires database read lock context)
+   * @deprecated Callers should acquire DATABASE_LOCK directly instead
    */
-  async loadUserByUsernameFromDbUnsafe(username: string, context: DatabaseAccessContext): Promise<User | null> {
+  async loadUserByUsernameFromDbUnsafe(username: string, context: IronGuardLockContext<any>): Promise<User | null> {
     if (!this.db) throw new Error('Database not initialized');
     return await getUserByUsernameFromDb(this.db, username, async () => {}, context);
   }

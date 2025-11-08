@@ -22,7 +22,7 @@ import type { User } from '../world/user';
 import { TechFactory } from '../TechFactory';
 import { ApiError } from '../errors';
 import { getUserWorldCache } from '../world/userWorldCache';
-import { createLockContext } from '../typedLocks';
+import { DATABASE_LOCK,  createLockContext } from '../typedLocks';
 import { getBattleCache } from './BattleCache';
 
 /**
@@ -233,7 +233,7 @@ async function updateUserDefense(
     let user = cacheManager.getUserByIdFromCache(userId, userCtx);
     if (!user) {
       // Load from database
-      const dbCtx = await cacheManager.acquireDatabaseRead(userCtx);
+      const dbCtx = await userCtx.acquireRead(DATABASE_LOCK);
       try {
         user = await cacheManager.loadUserFromDbUnsafe(userId, dbCtx);
         if (user) {
@@ -466,7 +466,7 @@ export async function resolveBattle(
       
       // Load from DB if not in cache
       if (!attacker) {
-        const dbCtx = await cacheManager.acquireDatabaseRead(userCtx);
+        const dbCtx = await userCtx.acquireRead(DATABASE_LOCK);
         try {
           attacker = await cacheManager.loadUserFromDbUnsafe(battle.attackerId, dbCtx);
           if (attacker) cacheManager.setUserUnsafe(attacker, userCtx);
@@ -476,7 +476,7 @@ export async function resolveBattle(
       }
       
       if (!attackee) {
-        const dbCtx = await cacheManager.acquireDatabaseRead(userCtx);
+        const dbCtx = await userCtx.acquireRead(DATABASE_LOCK);
         try {
           attackee = await cacheManager.loadUserFromDbUnsafe(battle.attackeeId, dbCtx);
           if (attackee) cacheManager.setUserUnsafe(attackee, userCtx);

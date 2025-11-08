@@ -49,7 +49,7 @@ describe('Battle Defense Persistence', () => {
     let defender: User | null = null;
     
     try {
-      const dbCtx = await cacheManager.acquireDatabaseRead(userCtx);
+      const dbCtx = await userCtx.acquireRead(DATABASE_LOCK);
       try {
         attacker = await cacheManager.loadUserFromDbUnsafe(1, dbCtx);
         defender = await cacheManager.loadUserFromDbUnsafe(2, dbCtx);
