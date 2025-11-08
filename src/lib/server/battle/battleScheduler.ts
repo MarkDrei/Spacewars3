@@ -24,7 +24,7 @@ import { TechFactory } from '../TechFactory';
 import { sendMessageToUser } from '../messages/MessageCache';
 import { getBattleCache } from './BattleCache';
 import { getUserWorldCache } from '../world/userWorldCache';
-import { createLockContext } from '../typedLocks';
+import { createLockContext, BATTLE_LOCK } from '../typedLocks';
 
 /**
  * Helper to update user's battle state via TypedCacheManager
@@ -56,24 +56,35 @@ async function createMessage(userId: number, message: string): Promise<void> {
 
 /**
  * Process all active battles automatically  
+ * Acquires BATTLE write lock once for all battle processing
  */
 export async function processActiveBattles(): Promise<void> {
   try {
-    const battleCache = getBattleCache();
-    const activeBattles = await battleCache.getActiveBattles();
+    // Acquire BATTLE write lock for the entire processing cycle
+    // This prevents concurrent scheduler ticks from interfering
+    const ctx = createLockContext();
+    const battleCtx = await ctx.acquireWrite(BATTLE_LOCK);
     
-    if (activeBattles.length === 0) {
-      return;
-    }
-    
-    console.log(`⚔️ Processing ${activeBattles.length} active battle(s)...`);
-    
-    for (const battle of activeBattles) {
-      try {
-        await processBattleRound(battle.id);
-      } catch (error) {
-        console.error(`❌ Error processing battle ${battle.id}:`, error);
+    try {
+      const battleCache = getBattleCache();
+      // Pass battleCtx so getActiveBattles doesn't try to acquire another lock
+      const activeBattles = await battleCache.getActiveBattles(battleCtx);
+      
+      if (activeBattles.length === 0) {
+        return;
       }
+      
+      console.log(`⚔️ Processing ${activeBattles.length} active battle(s)...`);
+      
+      for (const battle of activeBattles) {
+        try {
+          await processBattleRoundInternal(battle.id);
+        } catch (error) {
+          console.error(`❌ Error processing battle ${battle.id}:`, error);
+        }
+      }
+    } finally {
+      battleCtx.dispose();
     }
   } catch (error) {
     console.error('❌ Error processing active battles:', error);
@@ -82,8 +93,9 @@ export async function processActiveBattles(): Promise<void> {
 
 /**
  * Process one round for a specific battle
+ * Called from processActiveBattles which already holds BATTLE write lock
  */
-async function processBattleRound(battleId: number): Promise<void> {
+async function processBattleRoundInternal(battleId: number): Promise<void> {
   const battle = await BattleRepo.getBattle(battleId);
   
   if (!battle || battle.battleEndTime) {
@@ -92,57 +104,57 @@ async function processBattleRound(battleId: number): Promise<void> {
   
   const battleEngine = new BattleEngine(battle);
   const currentTime = Math.floor(Date.now() / 1000);
-  
-  // Get all ready weapons for both players
-  const attackerReadyWeapons = battleEngine.getReadyWeapons(battle.attackerId, currentTime);
-  const attackeeReadyWeapons = battleEngine.getReadyWeapons(battle.attackeeId, currentTime);
-  
-  // Process attacker's weapons
-  for (const weaponType of attackerReadyWeapons) {
-    await fireWeapon(
-      battle,
-      battle.attackerId,
-      battle.attackeeId,
-      weaponType,
-      currentTime,
-      'attacker'
-    );
-  }
-  
-  // Process attackee's weapons
-  for (const weaponType of attackeeReadyWeapons) {
-    await fireWeapon(
-      battle,
-      battle.attackeeId,
-      battle.attackerId,
-      weaponType,
-      currentTime,
-      'attackee'
-    );
-  }
-  
-  // Check if battle is over after this round
-  const updatedBattle = await BattleRepo.getBattle(battleId);
-  if (updatedBattle) {
-    const updatedEngine = new BattleEngine(updatedBattle);
-    if (await updatedEngine.isBattleOver()) {
-      const outcome = await updatedEngine.getBattleOutcome();
-      if (outcome) {
-        // Use battleService.resolveBattle instead of local endBattle
-        // This ensures proper endStats snapshotting and teleportation
-        await resolveBattle(battleId, outcome.winnerId);
-        
-        // Send victory/defeat messages (battleService doesn't do this)
-        const battle = updatedBattle;
-        const winnerId = outcome.winnerId;
-        const loserId = outcome.loserId;
-        await createMessage(winnerId, `P: 🎉 **Victory!** You won the battle!`);
-        await createMessage(loserId, `A: 💀 **Defeat!** You lost the battle and have been teleported away.`);
-        
-        console.log(`⚔️ Battle ${battleId} ended: Winner ${winnerId}, Loser ${loserId}`);
+    
+    // Get all ready weapons for both players
+    const attackerReadyWeapons = battleEngine.getReadyWeapons(battle.attackerId, currentTime);
+    const attackeeReadyWeapons = battleEngine.getReadyWeapons(battle.attackeeId, currentTime);
+    
+    // Process attacker's weapons
+    for (const weaponType of attackerReadyWeapons) {
+      await fireWeapon(
+        battle,
+        battle.attackerId,
+        battle.attackeeId,
+        weaponType,
+        currentTime,
+        'attacker'
+      );
+    }
+    
+    // Process attackee's weapons
+    for (const weaponType of attackeeReadyWeapons) {
+      await fireWeapon(
+        battle,
+        battle.attackeeId,
+        battle.attackerId,
+        weaponType,
+        currentTime,
+        'attackee'
+      );
+    }
+    
+    // Check if battle is over after this round
+    const updatedBattle = await BattleRepo.getBattle(battleId);
+    if (updatedBattle) {
+      const updatedEngine = new BattleEngine(updatedBattle);
+      if (await updatedEngine.isBattleOver()) {
+        const outcome = await updatedEngine.getBattleOutcome();
+        if (outcome) {
+          // Use battleService.resolveBattle instead of local endBattle
+          // This ensures proper endStats snapshotting and teleportation
+          await resolveBattle(battleId, outcome.winnerId);
+          
+          // Send victory/defeat messages (battleService doesn't do this)
+          const battle = updatedBattle;
+          const winnerId = outcome.winnerId;
+          const loserId = outcome.loserId;
+          await createMessage(winnerId, `P: 🎉 **Victory!** You won the battle!`);
+          await createMessage(loserId, `A: 💀 **Defeat!** You lost the battle and have been teleported away.`);
+          
+          console.log(`⚔️ Battle ${battleId} ended: Winner ${winnerId}, Loser ${loserId}`);
+        }
       }
     }
-  }
 }
 
 /**

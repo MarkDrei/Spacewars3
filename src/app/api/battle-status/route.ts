@@ -16,6 +16,8 @@ import { getOngoingBattleForUser } from '@/lib/server/battle/BattleCache';
  * Returns ONLY battle state (not user stats - use /api/user-stats for that)
  * - If in battle: { inBattle: true, battle: { id, isAttacker, opponentId, cooldowns, log, damage, timestamps } }
  * - If not in battle: { inBattle: false }
+ * 
+ * Note: BattleCache handles locking internally with READ lock
  */
 export async function GET(request: NextRequest) {
   try {
@@ -24,7 +26,7 @@ export async function GET(request: NextRequest) {
     
     console.log(`🔍 Battle Status API: Checking battle for user ${session.userId}`);
     
-    // Get battle from cache (cache handles DB reads if needed)
+    // Get battle from cache (cache handles locking internally)
     const battle = await getOngoingBattleForUser(session.userId!);
     
     if (!battle) {
