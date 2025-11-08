@@ -15,7 +15,7 @@
 
 import type sqlite3 from 'sqlite3';
 import type { Battle, BattleStats, BattleEvent, WeaponCooldowns } from './battleTypes';
-import { DATABASE_LOCK,  createLockContext, BATTLE_LOCK, type ValidLock5Context, type ValidLock10Context, type LockLevel } from '../typedLocks';
+import { DATABASE_LOCK,  createLockContext, BATTLE_LOCK, type ValidLock5Context, type With10 } from '../typedLocks';
 import { getUserWorldCache } from '../world/userWorldCache';
 import * as battleRepo from './battleRepo';
 
@@ -724,7 +724,7 @@ export class BattleCache {
    * Load single battle from database
    * Requires: Database lock must be held by caller
    */
-  private async loadBattleFromDb<THeld extends readonly LockLevel[]>(battleId: number, dbLockContext: ValidLock10Context<THeld>): Promise<Battle | null> {
+  private async loadBattleFromDb(battleId: number, dbLockContext: With10): Promise<Battle | null> {
     if (!this.db) {
       throw new Error('Database not initialized');
     }
@@ -735,7 +735,7 @@ export class BattleCache {
    * Load ongoing battle for user from database
    * Requires: Database lock must be held by caller
    */
-  private async loadOngoingBattleForUserFromDb<THeld extends readonly LockLevel[]>(userId: number, dbLockContext: ValidLock10Context<THeld>): Promise<Battle | null> {
+  private async loadOngoingBattleForUserFromDb(userId: number, dbLockContext: With10): Promise<Battle | null> {
     if (!this.db) {
       throw new Error('Database not initialized');
     }
@@ -747,7 +747,7 @@ export class BattleCache {
    * Called only by BattleCache - this is the ONLY way battles get written to DB
    * Requires: Database lock must be held by caller
    */
-  private async persistBattle<THeld extends readonly LockLevel[]>(battle: Battle, dbLockContext: ValidLock10Context<THeld>): Promise<void> {
+  private async persistBattle(battle: Battle, dbLockContext: With10): Promise<void> {
     if (!this.db) {
       throw new Error('Database not initialized');
     }

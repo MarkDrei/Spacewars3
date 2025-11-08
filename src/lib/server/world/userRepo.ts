@@ -7,7 +7,7 @@ import sqlite3 from 'sqlite3';
 import { User, SaveUserCallback } from './user';
 import { createInitialTechTree } from '../techtree';
 import { getUserWorldCache } from './userWorldCache';
-import { DATABASE_LOCK, createLockContext, LockLevel, LockContext, Contains } from '../typedLocks';
+import { DATABASE_LOCK, createLockContext, With10 } from '../typedLocks';
 import { sendMessageToUser } from '../messages/MessageCache';
 import { TechCounts } from '../TechFactory';
 
@@ -98,11 +98,11 @@ function userFromRow(row: UserRow, saveCallback: SaveUserCallback): User {
 
 // Direct database access functions (used internally by cache manager)
 // Requires: DATABASE_LOCK (caller must hold lock)
-export function getUserByIdFromDb<THeld extends readonly LockLevel[]>(
+export function getUserByIdFromDb(
   db: sqlite3.Database, 
   id: number, 
   saveCallback: SaveUserCallback,
-  _lockContext: Contains<THeld, 10> extends true ? LockContext<THeld> : never
+  _lockContext: With10
 ): Promise<User | null> {
   return new Promise((resolve, reject) => {
     db.get('SELECT * FROM users WHERE id = ?', [id], (err, row) => {
@@ -113,11 +113,11 @@ export function getUserByIdFromDb<THeld extends readonly LockLevel[]>(
   });
 }
 
-export function getUserByUsernameFromDb<THeld extends readonly LockLevel[]>(
+export function getUserByUsernameFromDb(
   db: sqlite3.Database, 
   username: string, 
   saveCallback: SaveUserCallback,
-  _lockContext: Contains<THeld, 10> extends true ? LockContext<THeld> : never
+  _lockContext: With10
 ): Promise<User | null> {
   return new Promise((resolve, reject) => {
     db.get('SELECT * FROM users WHERE username = ?', [username], (err, row) => {

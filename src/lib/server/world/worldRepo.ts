@@ -7,7 +7,7 @@ import sqlite3 from 'sqlite3';
 import { World, SpaceObject, SaveWorldCallback } from './world';
 import { getUserWorldCache } from './userWorldCache';
 import { createLockContext } from '../typedLocks';
-import type { ValidLock10Context, LockLevel } from '../typedLocks';
+import type { ValidLock10Context, With10 } from '../typedLocks';
 
 /**
  * Load world data from database (used internally by cache manager)
@@ -16,7 +16,7 @@ import type { ValidLock10Context, LockLevel } from '../typedLocks';
 export function loadWorldFromDb(
   db: sqlite3.Database, 
   saveCallback: SaveWorldCallback,
-  _lockContext: ValidLock10Context
+  _lockContext: With10
 ): Promise<World> {
   return new Promise((resolve, reject) => {
     // Join with users table to get usernames for player ships
@@ -82,7 +82,7 @@ export function loadWorldFromDb(
 /**
  * Load world data via cache manager (cache-aware public function)
  */
-export async function loadWorld<THeld extends readonly LockLevel[]>(): Promise<World> {
+export async function loadWorld(): Promise<World> {
   // Use typed cache manager for cache-aware access
   const cacheManager = getUserWorldCache();
   

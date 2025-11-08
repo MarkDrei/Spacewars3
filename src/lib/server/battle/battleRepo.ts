@@ -12,7 +12,7 @@
 
 import type { Battle, BattleStats, WeaponCooldowns } from './battleTypes';
 import type sqlite3 from 'sqlite3';
-import type { ValidLock10Context, LockLevel } from '../typedLocks';
+import type { With10 } from '../typedLocks';
 
 // ========================================
 // Pure Database Read Operations
@@ -23,10 +23,10 @@ import type { ValidLock10Context, LockLevel } from '../typedLocks';
  * Pure DB operation - no cache access
  * Requires: DATABASE_LOCK (caller must hold lock)
  */
-export async function getBattleFromDb<THeld extends readonly LockLevel[]>(
+export async function getBattleFromDb(
   db: sqlite3.Database,
   battleId: number,
-  _lockContext: ValidLock10Context
+  _lockContext: With10
 ): Promise<Battle | null> {
   return new Promise((resolve, reject) => {
     db.get(`
@@ -47,10 +47,10 @@ export async function getBattleFromDb<THeld extends readonly LockLevel[]>(
  * Pure DB operation - no cache access
  * Requires: DATABASE_LOCK (caller must hold lock)
  */
-export async function getOngoingBattleForUserFromDb<THeld extends readonly LockLevel[]>(
+export async function getOngoingBattleForUserFromDb(
   db: sqlite3.Database,
   userId: number,
-  _lockContext: ValidLock10Context
+  _lockContext: With10
 ): Promise<Battle | null> {
   return new Promise((resolve, reject) => {
     db.get(`
@@ -75,9 +75,9 @@ export async function getOngoingBattleForUserFromDb<THeld extends readonly LockL
  * Pure DB operation - no cache access
  * Requires: DATABASE_LOCK (caller must hold lock)
  */
-export async function getActiveBattlesFromDb<THeld extends readonly LockLevel[]>(
+export async function getActiveBattlesFromDb(
   db: sqlite3.Database,
-  _lockContext: ValidLock10Context
+  _lockContext: With10
 ): Promise<Battle[]> {
   return new Promise((resolve, reject) => {
     db.all(`
@@ -105,7 +105,7 @@ export async function getActiveBattlesFromDb<THeld extends readonly LockLevel[]>
  * Returns the battle with generated ID
  * Requires: DATABASE_LOCK (caller must hold lock)
  */
-export async function insertBattleToDb<THeld extends readonly LockLevel[]>(
+export async function insertBattleToDb(
   db: sqlite3.Database,
   attackerId: number,
   attackeeId: number,
@@ -114,7 +114,7 @@ export async function insertBattleToDb<THeld extends readonly LockLevel[]>(
   attackeeStartStats: BattleStats,
   attackerInitialCooldowns: WeaponCooldowns,
   attackeeInitialCooldowns: WeaponCooldowns,
-  _lockContext: ValidLock10Context
+  _lockContext: With10
 ): Promise<Battle> {
   return new Promise((resolve, reject) => {
     const query = `
@@ -185,10 +185,10 @@ export async function insertBattleToDb<THeld extends readonly LockLevel[]>(
  * Pure DB operation - updates all battle fields
  * Requires: DATABASE_LOCK (caller must hold lock)
  */
-export async function updateBattleInDb<THeld extends readonly LockLevel[]>(
+export async function updateBattleInDb(
   db: sqlite3.Database,
   battle: Battle,
-  _lockContext: ValidLock10Context
+  _lockContext: With10
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     db.run(`
@@ -235,10 +235,10 @@ export async function updateBattleInDb<THeld extends readonly LockLevel[]>(
  * Pure DB operation - no cache access
  * Requires: DATABASE_LOCK (caller must hold lock)
  */
-export async function deleteBattleFromDb<THeld extends readonly LockLevel[]>(
+export async function deleteBattleFromDb(
   db: sqlite3.Database,
   battleId: number,
-  _lockContext: ValidLock10Context
+  _lockContext: With10
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     db.run(`DELETE FROM battles WHERE id = ?`, [battleId], (err) => {
@@ -256,9 +256,9 @@ export async function deleteBattleFromDb<THeld extends readonly LockLevel[]>(
  * Pure DB operation - no cache access
  * Requires: DATABASE_LOCK (caller must hold lock)
  */
-export async function getAllBattlesFromDb<THeld extends readonly LockLevel[]>(
+export async function getAllBattlesFromDb(
   db: sqlite3.Database,
-  _lockContext: ValidLock10Context
+  _lockContext: With10
 ): Promise<Battle[]> {
   return new Promise((resolve, reject) => {
     const query = `
@@ -284,10 +284,10 @@ export async function getAllBattlesFromDb<THeld extends readonly LockLevel[]>(
  * Pure DB operation - no cache access
  * Requires: DATABASE_LOCK (caller must hold lock)
  */
-export async function getBattlesForUserFromDb<THeld extends readonly LockLevel[]>(
+export async function getBattlesForUserFromDb(
   db: sqlite3.Database,
   userId: number,
-  _lockContext: ValidLock10Context
+  _lockContext: With10
 ): Promise<Battle[]> {
   return new Promise((resolve, reject) => {
     const query = `

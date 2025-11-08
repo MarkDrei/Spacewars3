@@ -5,7 +5,7 @@
 // ---
 
 import sqlite3 from 'sqlite3';
-import type { LockLevel, LockContext, Contains } from '../typedLocks';
+import type { With10 } from '../typedLocks';
 
 export interface Message {
   id: number;
@@ -47,10 +47,10 @@ export class MessagesRepo {
    * Returns the ID of the newly created message
    * Requires: DATABASE_LOCK (caller must hold lock)
    */
-  async createMessage<THeld extends readonly LockLevel[]>(
+  async createMessage(
     recipientId: number, 
     message: string, 
-    _lockContext: Contains<THeld, 10> extends true ? LockContext<THeld> : never
+    _lockContext: With10
   ): Promise<number> {
     return new Promise((resolve, reject) => {
       const createdAt = Date.now();
@@ -75,10 +75,10 @@ export class MessagesRepo {
    * Returns messages in descending order by creation time (newest first)
    * Requires: MESSAGE_DB_LOCK (caller must hold lock)
    */
-  async getAllMessages<THeld extends readonly LockLevel[]>(
+  async getAllMessages(
     userId: number, 
     limit: number | undefined, 
-    _lockContext: Contains<THeld, 10> extends true ? LockContext<THeld> : never
+    _lockContext: With10
   ): Promise<Message[]> {
     return new Promise((resolve, reject) => {
       const query = limit 
@@ -115,10 +115,10 @@ export class MessagesRepo {
    * Update the read status of a specific message
    * Requires: MESSAGE_DB_LOCK (caller must hold lock)
    */
-  async updateMessageReadStatus<THeld extends readonly LockLevel[]>(
+  async updateMessageReadStatus(
     messageId: number, 
     isRead: boolean, 
-    _lockContext: Contains<THeld, 10> extends true ? LockContext<THeld> : never
+    _lockContext: With10
   ): Promise<void> {
     return new Promise((resolve, reject) => {
       const stmt = this.db.prepare(`
@@ -143,9 +143,9 @@ export class MessagesRepo {
    * More efficient than calling updateMessageReadStatus multiple times
    * Requires: MESSAGE_DB_LOCK (caller must hold lock)
    */
-  async updateMultipleReadStatuses<THeld extends readonly LockLevel[]>(
+  async updateMultipleReadStatuses(
     updates: Array<{id: number, isRead: boolean}>, 
-    _lockContext: Contains<THeld, 10> extends true ? LockContext<THeld> : never
+    _lockContext: With10
   ): Promise<void> {
     return new Promise((resolve, reject) => {
       this.db.serialize(() => {
@@ -203,9 +203,9 @@ export class MessagesRepo {
    * Mark all messages for a user as read
    * Requires: MESSAGE_DB_LOCK (caller must hold lock)
    */
-  async markAllMessagesAsRead<THeld extends readonly LockLevel[]>(
+  async markAllMessagesAsRead(
     userId: number, 
-    _lockContext: Contains<THeld, 10> extends true ? LockContext<THeld> : never
+    _lockContext: With10
   ): Promise<void> {
     return new Promise((resolve, reject) => {
       const stmt = this.db.prepare(`
@@ -230,9 +230,9 @@ export class MessagesRepo {
    * Returns the number of messages deleted
    * Requires: MESSAGE_DB_LOCK (caller must hold lock)
    */
-  async deleteOldReadMessages<THeld extends readonly LockLevel[]>(
+  async deleteOldReadMessages(
     olderThanDays: number, 
-    _lockContext: Contains<THeld, 10> extends true ? LockContext<THeld> : never
+    _lockContext: With10
   ): Promise<number> {
     return new Promise((resolve, reject) => {
       const cutoffTime = Date.now() - (olderThanDays * 24 * 60 * 60 * 1000);
@@ -256,9 +256,9 @@ export class MessagesRepo {
    * Get count of unread messages for a user
    * Requires: MESSAGE_DB_LOCK (caller must hold lock)
    */
-  async getUnreadMessageCount<THeld extends readonly LockLevel[]>(
+  async getUnreadMessageCount(
     userId: number, 
-    _lockContext: Contains<THeld, 10> extends true ? LockContext<THeld> : never
+    _lockContext: With10
   ): Promise<number> {
     return new Promise((resolve, reject) => {
       const stmt = this.db.prepare(`
@@ -283,9 +283,9 @@ export class MessagesRepo {
    * Used by MessageCache to load unread messages
    * Requires: MESSAGE_DB_LOCK (caller must hold lock)
    */
-  async getUnreadMessages<THeld extends readonly LockLevel[]>(
+  async getUnreadMessages(
     userId: number, 
-    _lockContext: Contains<THeld, 10> extends true ? LockContext<THeld> : never
+    _lockContext: With10
   ): Promise<UnreadMessage[]> {
     return new Promise((resolve, reject) => {
       const stmt = this.db.prepare(`
