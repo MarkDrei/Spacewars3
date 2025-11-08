@@ -142,7 +142,7 @@ async function testExactLockRequirement() {
   const ctx2 = await createLockContext().acquireRead(LOCK_2);
   console.log('Trying with ctx2 (LOCK_2 only):');
   // Uncomment to see compile errors:
-  // requiresExactlyLock10_Attempt1(ctx2);
+//   requiresExactlyLock10_Attempt1(ctx2);
   // requiresExactlyLock10_Attempt2(ctx2);
   // requiresExactlyLock10_Attempt3(ctx2);
   // requiresExactlyLock10_Attempt4(ctx2);
