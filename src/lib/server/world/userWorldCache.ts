@@ -8,7 +8,10 @@ import {
   CACHE_LOCK,
   WORLD_LOCK,
   USER_LOCK,
-  DATABASE_LOCK
+  DATABASE_LOCK,
+  type ValidLock10Context,
+  type LockLevel,
+  ValidLock11Context
 } from '../typedLocks';
 import { User } from './user';
 import { World } from './world';
@@ -16,6 +19,7 @@ import { getDatabase } from '../database';
 import { loadWorldFromDb, saveWorldToDb } from './worldRepo';
 import { getUserByIdFromDb, getUserByUsernameFromDb } from './userRepo';
 import sqlite3 from 'sqlite3';
+import { Contains } from '@markdrei/ironguard-typescript-locks/dist/core/ironGuardSystem';
 
 // Type aliases for IronGuard lock contexts
 type WorldReadContext = IronGuardLockContext<readonly [typeof WORLD_LOCK]> | IronGuardLockContext<readonly [typeof CACHE_LOCK, typeof WORLD_LOCK]>;
@@ -234,24 +238,80 @@ export class UserWorldCache {
     this.worldDirty = true;
   }
 
-  // ===== LEVEL 3: DATABASE OPERATIONS (DEPRECATED - USE DATABASE_LOCK DIRECTLY) =====
+  // ===== LEVEL 3: DATABASE OPERATIONS =====
   
   /**
-   * Load user from database without acquiring locks (requires database read lock context)
-   * @deprecated Callers should acquire DATABASE_LOCK directly instead
+   * Load user from database, acquiring DATABASE_LOCK
+   * Use this when you need to load a user and don't already hold DATABASE_LOCK
    */
-  async loadUserFromDbUnsafe(userId: number, context: IronGuardLockContext<any>): Promise<User | null> {
+  async loadUserFromDb<THeld extends readonly LockLevel[]>(
+    userId: number,
+    context: ValidLock10Context<THeld>
+  ): Promise<User | null> {
+    // ValidLock10Context ensures we can acquire DATABASE_LOCK
+    // Cast is safe because ValidLock10Context guarantees this
+    const lockableContext = context as unknown as IronGuardLockContext<THeld>;
     if (!this.db) throw new Error('Database not initialized');
-    return await getUserByIdFromDb(this.db, userId, async () => {}, context);
+    const dbCtx = await lockableContext.acquireRead(DATABASE_LOCK);
+    try {
+      // Direct call to getUserByIdFromDb, bypassing the internal call
+      return await getUserByIdFromDb(this.db, userId, async () => {}, dbCtx);
+    } finally {
+      dbCtx.dispose();
+    }
   }
 
   /**
-   * Load user by username from database without acquiring locks (requires database read lock context)
-   * @deprecated Callers should acquire DATABASE_LOCK directly instead
+   * Load user from database without acquiring locks (requires DATABASE_LOCK already held)
+   * Use this when you already hold DATABASE_LOCK
+   * @internal
    */
-  async loadUserByUsernameFromDbUnsafe(username: string, context: IronGuardLockContext<any>): Promise<User | null> {
+  async loadUserFromDbUnsafe(
+    userId: number, 
+    context: IronGuardLockContext<readonly LockLevel[]>
+  ): Promise<User | null> {
     if (!this.db) throw new Error('Database not initialized');
-    return await getUserByUsernameFromDb(this.db, username, async () => {}, context);
+    // Context must contain DATABASE_LOCK (enforced by caller)
+    // Type assertion needed because getUserByIdFromDb uses Contains<T, 10> which doesn't type-check properly
+    type RequiredContext = Parameters<typeof getUserByIdFromDb>[3];
+    return await getUserByIdFromDb(this.db, userId, async () => {}, context as RequiredContext);
+  }
+
+  /**
+   * Load user by username from database, acquiring DATABASE_LOCK
+   * Use this when you need to load a user and don't already hold DATABASE_LOCK
+   */
+  async loadUserByUsernameFromDb<THeld extends readonly LockLevel[]>(
+    username: string,
+    context: ValidLock10Context<THeld>
+  ): Promise<User | null> {
+    // ValidLock10Context ensures we can acquire DATABASE_LOCK
+    // Cast is safe because ValidLock10Context guarantees this
+    const lockableContext = context as unknown as IronGuardLockContext<THeld>;
+    if (!this.db) throw new Error('Database not initialized');
+    const dbCtx = await lockableContext.acquireRead(DATABASE_LOCK);
+    try {
+      // Direct call to getUserByUsernameFromDb, bypassing the internal call
+      return await getUserByUsernameFromDb(this.db, username, async () => {}, dbCtx);
+    } finally {
+      dbCtx.dispose();
+    }
+  }
+
+  /**
+   * Load user by username from database without acquiring locks (requires DATABASE_LOCK already held)
+   * Use this when you already hold DATABASE_LOCK
+   * @internal
+   */
+  async loadUserByUsernameFromDbUnsafe(
+    username: string, 
+    context: IronGuardLockContext<readonly LockLevel[]>
+  ): Promise<User | null> {
+    if (!this.db) throw new Error('Database not initialized');
+    // Context must contain DATABASE_LOCK (enforced by caller)
+    // Type assertion needed because getUserByUsernameFromDb uses Contains<T, 10> which doesn't type-check properly
+    type RequiredContext = Parameters<typeof getUserByUsernameFromDb>[3];
+    return await getUserByUsernameFromDb(this.db, username, async () => {}, context as RequiredContext);
   }
 
 
@@ -346,7 +406,7 @@ export class UserWorldCache {
     if (!user) {
       console.log(`🔍 User ${userId} cache miss, loading from database`);
 
-      const dbCtx = await this.acquireDatabaseRead(userCtx);
+      const dbCtx = await userCtx.acquireRead(DATABASE_LOCK);
       try {
         user = await this.loadUserFromDbUnsafe(userId, dbCtx);
         if (user) {
@@ -408,7 +468,7 @@ export class UserWorldCache {
     if (!user) {
       // Cache miss - load from database
       console.log(`🔍 Username "${username}" cache miss, loading from database`);
-      const dbCtx = await this.acquireDatabaseRead(userCtx);
+      const dbCtx = await userCtx.acquireRead(DATABASE_LOCK);
       try {
         user = await this.loadUserByUsernameFromDbUnsafe(username, dbCtx);
       } finally {
@@ -490,9 +550,9 @@ export class UserWorldCache {
    */
   private async persistDirtyUsers(): Promise<void> {
     const emptyCtx = createLockContext();
-    const userCtx = await this.acquireUserLock(emptyCtx);
+    const userCtx = await emptyCtx.acquireWrite(USER_LOCK);
     try {
-      const dbCtx = await this.acquireDatabaseWrite(userCtx);
+      const dbCtx = await userCtx.acquireWrite(DATABASE_LOCK);
       try {
         const dirtyUserIds = Array.from(this.dirtyUsers);
         
@@ -585,11 +645,11 @@ export class UserWorldCache {
     if (!this.worldDirty || !this.world) {
       return; // Nothing to persist
     }
-
+    
     const emptyCtx = createLockContext();
-    const worldCtx = await this.acquireWorldWrite(emptyCtx);
+    const worldCtx = await emptyCtx.acquireWrite(WORLD_LOCK);
     try {
-      const dbCtx = await this.acquireDatabaseWrite(worldCtx);
+      const dbCtx = await worldCtx.acquireWrite(DATABASE_LOCK);
       try {
         if (!this.db) throw new Error('Database not initialized');
         

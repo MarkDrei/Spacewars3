@@ -5,7 +5,7 @@ import { getUserWorldCache, UserWorldCache } from '@/lib/server/world/userWorldC
 import { sendMessageToUser } from '@/lib/server/messages/MessageCache';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth, ApiError } from '@/lib/server/errors';
-import { DATABASE_LOCK,  createLockContext, type LockContext as IronGuardLockContext, USER_LOCK } from '@/lib/server/typedLocks';
+import { DATABASE_LOCK,  createLockContext, type LockContext as IronGuardLockContext, USER_LOCK, WORLD_LOCK } from '@/lib/server/typedLocks';
 import { User } from '@/lib/server/world/user';
 import { World } from '@/lib/server/world/world';
 
@@ -51,9 +51,9 @@ export async function POST(request: NextRequest) {
     
     // Execute collection with compile-time guaranteed deadlock-free lock ordering:
     // World Write (1) → User (2) → Database Read (3) if needed
-    const worldCtx = await cacheManager.acquireWorldWrite(emptyCtx);
+    const worldCtx = await emptyCtx.acquireWrite(WORLD_LOCK);
     try {
-      const userCtx = await cacheManager.acquireUserLock(worldCtx);
+      const userCtx = await worldCtx.acquireWrite(USER_LOCK);
       try {
         // Get world data safely (we have world write lock)
         const world = cacheManager.getWorldFromCache(userCtx);

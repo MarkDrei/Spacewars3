@@ -6,7 +6,9 @@
 import { 
   createLockContext as ironguardCreateLockContext,
   LockContext as IronGuardLockContext,
+  LOCK_1,
   LOCK_2,
+  LOCK_3,
   LOCK_4,
   LOCK_5,
   LOCK_6,
@@ -14,6 +16,15 @@ import {
   LOCK_10,
   type LockLevel as IronGuardLockLevel
 } from '@markdrei/ironguard-typescript-locks';
+
+// Define Contains type ourselves since it's not exported from IronGuard
+// This matches the IronGuard internal implementation
+export type Contains<T extends readonly unknown[], U> = T extends readonly [infer First, ...infer Rest] 
+  ? First extends U 
+    ? true 
+    : Contains<Rest, U> 
+  : false;
+
 
 // Re-export IronGuard core functions and types with original names
 export { 
@@ -24,7 +35,9 @@ export {
 
 // Re-export IronGuard lock constants and context types
 export {
+  LOCK_1,
   LOCK_2,
+  LOCK_3,
   LOCK_4,
   LOCK_5,
   LOCK_6,
@@ -35,8 +48,64 @@ export {
   type ValidLock5Context,
   type ValidLock6Context,
   type ValidLock8Context,
-  type ValidLock10Context
+  type ValidLock10Context,
+  type ValidLock11Context
 } from '@markdrei/ironguard-typescript-locks';
+
+// Export LockContext type alias
+export type { LockContext } from '@markdrei/ironguard-typescript-locks';
+
+// ===== GENERATED LOCK COMBINATIONS =====
+// Re-export all generated lock combination types
+// These provide exact type matching for specific lock combinations
+export type {
+  // Individual locks (domain-agnostic names)
+  Only2,    // CACHE_LOCK
+  Only4,    // WORLD_LOCK
+  Only6,    // USER_LOCK
+  Only8,    // MESSAGE_LOCK
+  Only10,   // DATABASE_LOCK
+  
+  // All 31 specific combinations
+  Locks2, Locks4, Locks6, Locks8, Locks10,
+  Locks2_4, Locks2_6, Locks2_8, Locks2_10,
+  Locks4_6, Locks4_8, Locks4_10,
+  Locks6_8, Locks6_10,
+  Locks8_10,
+  Locks2_4_6, Locks2_4_8, Locks2_4_10,
+  Locks2_6_8, Locks2_6_10,
+  Locks2_8_10,
+  Locks4_6_8, Locks4_6_10,
+  Locks4_8_10,
+  Locks6_8_10,
+  Locks2_4_6_8, Locks2_4_6_10,
+  Locks2_4_8_10,
+  Locks2_6_8_10,
+  Locks4_6_8_10,
+  Locks2_4_6_8_10,
+  
+  // Lock-specific groupings (domain-agnostic)
+  With2,    // Any combination with CACHE_LOCK
+  With4,    // Any combination with WORLD_LOCK
+  With6,    // Any combination with USER_LOCK
+  With8,    // Any combination with MESSAGE_LOCK
+  With10,   // Any combination with DATABASE_LOCK
+  
+  // Union of all combinations
+  AnyValidLockCombination
+} from './generatedLockCombinations';
+
+// Domain-specific aliases for convenience
+export type { Only2 as OnlyCache } from './generatedLockCombinations';
+export type { Only4 as OnlyWorld } from './generatedLockCombinations';
+export type { Only6 as OnlyUser } from './generatedLockCombinations';
+export type { Only8 as OnlyMessage } from './generatedLockCombinations';
+export type { Only10 as OnlyDatabase } from './generatedLockCombinations';
+export type { With2 as WithCache } from './generatedLockCombinations';
+export type { With4 as WithWorld } from './generatedLockCombinations';
+export type { With6 as WithUser } from './generatedLockCombinations';
+export type { With8 as WithMessage } from './generatedLockCombinations';
+export type { With10 as WithDatabase } from './generatedLockCombinations';
 
 // Lock level mapping from old system to IronGuard
 export const CACHE_LOCK = LOCK_2;

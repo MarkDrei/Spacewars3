@@ -7,7 +7,7 @@ import sqlite3 from 'sqlite3';
 import { World, SpaceObject, SaveWorldCallback } from './world';
 import { getUserWorldCache } from './userWorldCache';
 import { createLockContext } from '../typedLocks';
-import type { ValidLock10Context } from '../typedLocks';
+import type { ValidLock10Context, LockLevel } from '../typedLocks';
 
 /**
  * Load world data from database (used internally by cache manager)
@@ -82,7 +82,7 @@ export function loadWorldFromDb(
 /**
  * Load world data via cache manager (cache-aware public function)
  */
-export async function loadWorld(): Promise<World> {
+export async function loadWorld<THeld extends readonly LockLevel[]>(): Promise<World> {
   // Use typed cache manager for cache-aware access
   const cacheManager = getUserWorldCache();
   
@@ -130,7 +130,7 @@ export function saveWorldToDb(db: sqlite3.Database): SaveWorldCallback {
 /**
  * Delete a space object from database and update cache
  */
-export async function deleteSpaceObject(db: sqlite3.Database, objectId: number): Promise<void> {
+export async function deleteSpaceObject<THeld extends readonly LockLevel[]>(db: sqlite3.Database, objectId: number): Promise<void> {
   // First delete from database
   await new Promise<void>((resolve, reject) => {
     db.run('DELETE FROM space_objects WHERE id = ?', [objectId], (err) => {
@@ -158,7 +158,7 @@ export async function deleteSpaceObject(db: sqlite3.Database, objectId: number):
 /**
  * Insert a new space object into database and update cache
  */
-export async function insertSpaceObject(db: sqlite3.Database, obj: Omit<SpaceObject, 'id'>): Promise<number> {
+export async function insertSpaceObject<THeld extends readonly LockLevel[]>(db: sqlite3.Database, obj: Omit<SpaceObject, 'id'>): Promise<number> {
   // First insert into database
   const objectId = await new Promise<number>((resolve, reject) => {
     db.run(
