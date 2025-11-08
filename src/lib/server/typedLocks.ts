@@ -6,9 +6,7 @@
 import { 
   createLockContext as ironguardCreateLockContext,
   LockContext as IronGuardLockContext,
-  LOCK_1,
   LOCK_2,
-  LOCK_3,
   LOCK_4,
   LOCK_5,
   LOCK_6,
@@ -35,9 +33,7 @@ export {
 
 // Re-export IronGuard lock constants and context types
 export {
-  LOCK_1,
   LOCK_2,
-  LOCK_3,
   LOCK_4,
   LOCK_5,
   LOCK_6,
