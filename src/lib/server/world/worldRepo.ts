@@ -7,7 +7,7 @@ import sqlite3 from 'sqlite3';
 import { World, SpaceObject, SaveWorldCallback } from './world';
 import { getUserWorldCache } from './userWorldCache';
 import { createLockContext } from '../typedLocks';
-import type { ValidLock10Context, With10 } from '../typedLocks';
+import type { With10 } from '../typedLocks';
 
 /**
  * Load world data from database (used internally by cache manager)

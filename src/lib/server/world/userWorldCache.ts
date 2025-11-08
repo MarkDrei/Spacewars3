@@ -10,8 +10,7 @@ import {
   USER_LOCK,
   DATABASE_LOCK,
   type ValidLock10Context,
-  type LockLevel,
-  ValidLock11Context
+  type LockLevel
 } from '../typedLocks';
 import { User } from './user';
 import { World } from './world';
@@ -19,7 +18,6 @@ import { getDatabase } from '../database';
 import { loadWorldFromDb, saveWorldToDb } from './worldRepo';
 import { getUserByIdFromDb, getUserByUsernameFromDb } from './userRepo';
 import sqlite3 from 'sqlite3';
-import { Contains } from '@markdrei/ironguard-typescript-locks/dist/core/ironGuardSystem';
 
 // Type aliases for IronGuard lock contexts
 type WorldReadContext = IronGuardLockContext<readonly [typeof WORLD_LOCK]> | IronGuardLockContext<readonly [typeof CACHE_LOCK, typeof WORLD_LOCK]>;
