@@ -329,10 +329,12 @@ export class MessageCache {
 
   /**
    * Summarize messages for a user
-   * - Marks all messages as read
+   * - Marks all UNREAD messages as read
    * - Parses and summarizes known message types (battle damage, victories, defeats)
    * - Preserves unknown messages as new unread messages
    * Returns the summary message
+   * 
+   * IMPORTANT: Only processes unread messages to avoid re-summarizing already-read messages
    */
   async summarizeMessages(userId: number): Promise<string> {
     if (!this.isInitialized) {
@@ -345,7 +347,10 @@ export class MessageCache {
     try {
       const allMessages = await this.ensureMessagesLoaded(dataCtx, userId);
       
-      if (allMessages.length === 0) {
+      // Filter for only unread messages - this prevents re-summarizing already-read messages
+      const unreadMessages = allMessages.filter(msg => !msg.is_read);
+      
+      if (unreadMessages.length === 0) {
         return 'No messages to summarize.';
       }
 
@@ -362,8 +367,8 @@ export class MessageCache {
         unknownMessages: [] as string[]
       };
 
-      // Process all messages
-      for (const msg of allMessages) {
+      // Process only unread messages
+      for (const msg of unreadMessages) {
         const text = msg.message;
         
         // Parse battle damage dealt (P: prefix, with "hit for X damage")
@@ -434,8 +439,13 @@ export class MessageCache {
       // Mark user as dirty for persistence
       this.dirtyUsers.add(userId);
 
-      // Clear all old messages from cache (they're now in DB as read)
-      this.userMessages.set(userId, []);
+      // Remove only the unread messages from cache (now marked as read and will be persisted)
+      // Keep already-read messages in cache
+      const readMessagesIds = new Set(unreadMessages.map(m => m.id));
+      this.userMessages.set(
+        userId, 
+        allMessages.filter(m => !readMessagesIds.has(m.id))
+      );
 
       // Build summary
       const summaryParts: string[] = [];
@@ -474,7 +484,7 @@ export class MessageCache {
         await this.createMessageInternal(dataCtx, userId, unknownMsg);
       }
 
-      console.log(`📊 Summarized ${allMessages.length} message(s) for user ${userId}`);
+      console.log(`📊 Summarized ${unreadMessages.length} unread message(s) for user ${userId}`);
       return summary;
     } finally {
       dataCtx.dispose();

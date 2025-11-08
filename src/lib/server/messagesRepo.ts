@@ -1,5 +1,9 @@
 // ---
 // MessagesRepo - Database operations for user messages
+// 
+// ⚠️ DEPRECATED: This class is only used by tests.
+// ⚠️ Production code should use MessageCache instead, which is the single source of truth.
+// ⚠️ MessageCache provides proper locking with IronGuard and includes caching functionality.
 // ---
 
 import sqlite3 from 'sqlite3';
