@@ -9,9 +9,23 @@ import {
   type LockLevel
 } from '@markdrei/ironguard-typescript-locks';
 import { getDatabase } from './database';
-import type { Message, UnreadMessage } from './messagesRepo';
 import { MESSAGE_CACHE_LOCK, MESSAGE_DATA_LOCK } from './LockDefinitions';
 import sqlite3 from 'sqlite3';
+
+export interface Message {
+  id: number;
+  recipient_id: number;
+  created_at: number; // Unix timestamp in milliseconds
+  is_read: boolean;
+  message: string;
+  isPending?: boolean; // Flag for messages not yet persisted to DB
+}
+
+export interface UnreadMessage {
+  id: number;
+  created_at: number;
+  message: string;
+}
 
 interface MessageCacheConfig {
   persistenceIntervalMs: number;
