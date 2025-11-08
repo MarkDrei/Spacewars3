@@ -4,14 +4,15 @@
 //   - Read/write battle data from/to database
 //   - NO cache access, NO business logic, NO orchestration
 //   - Called ONLY by BattleCache for persistence
+//   - All methods require database lock to be held by caller
 // Main interaction partners:
 //   - BattleCache (the only caller for writes)
-// Status: ✅ Refactored to be DB-only
+// Status: ✅ Refactored to be DB-only with lock parameters
 // ---
 
-import type { Battle, BattleStats, BattleEvent, WeaponCooldowns } from './battleTypes';
-import { getDatabase } from '../database';
+import type { Battle, BattleStats, WeaponCooldowns } from './battleTypes';
 import type sqlite3 from 'sqlite3';
+import type { ValidLock10Context } from '../typedLocks';
 
 // ========================================
 // Pure Database Read Operations
@@ -20,10 +21,13 @@ import type sqlite3 from 'sqlite3';
 /**
  * Get a battle by ID from database
  * Pure DB operation - no cache access
+ * Requires: DATABASE_LOCK (caller must hold lock)
  */
-export async function getBattleFromDb(battleId: number): Promise<Battle | null> {
-  const db = await getDatabase();
-  
+export async function getBattleFromDb(
+  db: sqlite3.Database,
+  battleId: number,
+  _lockContext: ValidLock10Context
+): Promise<Battle | null> {
   return new Promise((resolve, reject) => {
     db.get(`
       SELECT * FROM battles WHERE id = ?
@@ -41,10 +45,13 @@ export async function getBattleFromDb(battleId: number): Promise<Battle | null> 
 /**
  * Get ongoing battle for user from database
  * Pure DB operation - no cache access
+ * Requires: DATABASE_LOCK (caller must hold lock)
  */
-export async function getOngoingBattleForUserFromDb(userId: number): Promise<Battle | null> {
-  const db = await getDatabase();
-  
+export async function getOngoingBattleForUserFromDb(
+  db: sqlite3.Database,
+  userId: number,
+  _lockContext: ValidLock10Context
+): Promise<Battle | null> {
   return new Promise((resolve, reject) => {
     db.get(`
       SELECT * FROM battles 
@@ -66,10 +73,12 @@ export async function getOngoingBattleForUserFromDb(userId: number): Promise<Bat
 /**
  * Get all active battles from database
  * Pure DB operation - no cache access
+ * Requires: DATABASE_LOCK (caller must hold lock)
  */
-export async function getActiveBattlesFromDb(): Promise<Battle[]> {
-  const db = await getDatabase();
-  
+export async function getActiveBattlesFromDb(
+  db: sqlite3.Database,
+  _lockContext: ValidLock10Context
+): Promise<Battle[]> {
   return new Promise((resolve, reject) => {
     db.all(`
       SELECT * FROM battles 
@@ -94,18 +103,19 @@ export async function getActiveBattlesFromDb(): Promise<Battle[]> {
  * Insert a new battle into database
  * Pure DB operation - no cache access
  * Returns the battle with generated ID
+ * Requires: DATABASE_LOCK (caller must hold lock)
  */
 export async function insertBattleToDb(
+  db: sqlite3.Database,
   attackerId: number,
   attackeeId: number,
   battleStartTime: number,
   attackerStartStats: BattleStats,
   attackeeStartStats: BattleStats,
   attackerInitialCooldowns: WeaponCooldowns,
-  attackeeInitialCooldowns: WeaponCooldowns
+  attackeeInitialCooldowns: WeaponCooldowns,
+  _lockContext: ValidLock10Context
 ): Promise<Battle> {
-  const db = await getDatabase();
-
   return new Promise((resolve, reject) => {
     const query = `
       INSERT INTO battles (
@@ -173,10 +183,13 @@ export async function insertBattleToDb(
 /**
  * Update battle in database
  * Pure DB operation - updates all battle fields
+ * Requires: DATABASE_LOCK (caller must hold lock)
  */
-export async function updateBattleInDb(battle: Battle): Promise<void> {
-  const db = await getDatabase();
-  
+export async function updateBattleInDb(
+  db: sqlite3.Database,
+  battle: Battle,
+  _lockContext: ValidLock10Context
+): Promise<void> {
   return new Promise((resolve, reject) => {
     db.run(`
       UPDATE battles SET
@@ -220,10 +233,13 @@ export async function updateBattleInDb(battle: Battle): Promise<void> {
 /**
  * Delete battle from database
  * Pure DB operation - no cache access
+ * Requires: DATABASE_LOCK (caller must hold lock)
  */
-export async function deleteBattleFromDb(battleId: number): Promise<void> {
-  const db = await getDatabase();
-  
+export async function deleteBattleFromDb(
+  db: sqlite3.Database,
+  battleId: number,
+  _lockContext: ValidLock10Context
+): Promise<void> {
   return new Promise((resolve, reject) => {
     db.run(`DELETE FROM battles WHERE id = ?`, [battleId], (err) => {
       if (err) {
@@ -238,10 +254,12 @@ export async function deleteBattleFromDb(battleId: number): Promise<void> {
 /**
  * Get all battles from database (for admin view)
  * Pure DB operation - no cache access
+ * Requires: DATABASE_LOCK (caller must hold lock)
  */
-export async function getAllBattlesFromDb(): Promise<Battle[]> {
-  const db = await getDatabase();
-
+export async function getAllBattlesFromDb(
+  db: sqlite3.Database,
+  _lockContext: ValidLock10Context
+): Promise<Battle[]> {
   return new Promise((resolve, reject) => {
     const query = `
       SELECT * FROM battles 
@@ -264,10 +282,13 @@ export async function getAllBattlesFromDb(): Promise<Battle[]> {
 /**
  * Get battles for a specific user from database (for history)
  * Pure DB operation - no cache access
+ * Requires: DATABASE_LOCK (caller must hold lock)
  */
-export async function getBattlesForUserFromDb(userId: number): Promise<Battle[]> {
-  const db = await getDatabase();
-
+export async function getBattlesForUserFromDb(
+  db: sqlite3.Database,
+  userId: number,
+  _lockContext: ValidLock10Context
+): Promise<Battle[]> {
   return new Promise((resolve, reject) => {
     const query = `
       SELECT * FROM battles 

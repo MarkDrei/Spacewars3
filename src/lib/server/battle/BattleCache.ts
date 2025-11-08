@@ -15,7 +15,7 @@
 
 import type sqlite3 from 'sqlite3';
 import type { Battle, BattleStats, BattleEvent, WeaponCooldowns } from './battleTypes';
-import { createLockContext, BATTLE_LOCK, type ValidLock5Context } from '../typedLocks';
+import { createLockContext, BATTLE_LOCK, type ValidLock5Context, type ValidLock10Context } from '../typedLocks';
 import { getUserWorldCache } from '../world/userWorldCache';
 import * as battleRepo from './battleRepo';
 
@@ -253,7 +253,7 @@ export class BattleCache {
     const ctx = createLockContext();
     const dbCtx = await cacheManager.acquireDatabaseRead(ctx);
     try {
-      const battle = await this.loadBattleFromDb(battleId);
+      const battle = await this.loadBattleFromDb(battleId, dbCtx);
       
       // Cache only if active
       if (battle && battle.battleEndTime === null) {
@@ -318,7 +318,7 @@ export class BattleCache {
     const ctx = createLockContext();
     const dbCtx = await cacheManager.acquireDatabaseRead(ctx);
     try {
-      const battle = await this.loadOngoingBattleForUserFromDb(userId);
+      const battle = await this.loadOngoingBattleForUserFromDb(userId, dbCtx);
       
       // Cache if found
       if (battle) {
@@ -437,6 +437,10 @@ export class BattleCache {
   ): Promise<Battle> {
     await this.ensureInitializedAsync();
     
+    if (!this.db) {
+      throw new Error('Database not initialized');
+    }
+    
     const now = Math.floor(Date.now() / 1000);
     
     // Acquire database lock to insert battle
@@ -446,13 +450,15 @@ export class BattleCache {
     try {
       // Insert to database via battleRepo
       const battle = await battleRepo.insertBattleToDb(
+        this.db,
         attackerId,
         attackeeId,
         now,
         attackerStartStats,
         attackeeStartStats,
         attackerInitialCooldowns,
-        attackeeInitialCooldowns
+        attackeeInitialCooldowns,
+        dbCtx
       );
       
       // Store in cache
@@ -647,7 +653,20 @@ export class BattleCache {
    */
   async getAllBattles(): Promise<Battle[]> {
     await this.ensureInitializedAsync();
-    return await battleRepo.getAllBattlesFromDb();
+    
+    if (!this.db) {
+      throw new Error('Database not initialized');
+    }
+    
+    // Acquire database lock for read
+    const cacheManager = getUserWorldCache();
+    const ctx = createLockContext();
+    const dbCtx = await cacheManager.acquireDatabaseRead(ctx);
+    try {
+      return await battleRepo.getAllBattlesFromDb(this.db, dbCtx);
+    } finally {
+      dbCtx.dispose();
+    }
   }
 
   /**
@@ -656,7 +675,20 @@ export class BattleCache {
    */
   async getBattlesForUser(userId: number): Promise<Battle[]> {
     await this.ensureInitializedAsync();
-    return await battleRepo.getBattlesForUserFromDb(userId);
+    
+    if (!this.db) {
+      throw new Error('Database not initialized');
+    }
+    
+    // Acquire database lock for read
+    const cacheManager = getUserWorldCache();
+    const ctx = createLockContext();
+    const dbCtx = await cacheManager.acquireDatabaseRead(ctx);
+    try {
+      return await battleRepo.getBattlesForUserFromDb(this.db, userId, dbCtx);
+    } finally {
+      dbCtx.dispose();
+    }
   }
 
   // ========================================
@@ -667,36 +699,60 @@ export class BattleCache {
    * Load active battles from database on initialization
    */
   private async loadActiveBattlesFromDb(): Promise<void> {
-    const battles = await battleRepo.getActiveBattlesFromDb();
+    if (!this.db) {
+      throw new Error('Database not initialized');
+    }
     
-    for (const battle of battles) {
-      this.battles.set(battle.id, battle);
-      this.activeBattlesByUser.set(battle.attackerId, battle.id);
-      this.activeBattlesByUser.set(battle.attackeeId, battle.id);
+    // Acquire database lock to load battles
+    const cacheManager = getUserWorldCache();
+    const ctx = createLockContext();
+    const dbCtx = await cacheManager.acquireDatabaseRead(ctx);
+    try {
+      const battles = await battleRepo.getActiveBattlesFromDb(this.db, dbCtx);
+      
+      for (const battle of battles) {
+        this.battles.set(battle.id, battle);
+        this.activeBattlesByUser.set(battle.attackerId, battle.id);
+        this.activeBattlesByUser.set(battle.attackeeId, battle.id);
+      }
+    } finally {
+      dbCtx.dispose();
     }
   }
 
   /**
    * Load single battle from database
+   * Requires: Database lock must be held by caller
    */
-  private async loadBattleFromDb(battleId: number): Promise<Battle | null> {
-    return await battleRepo.getBattleFromDb(battleId);
+  private async loadBattleFromDb(battleId: number, dbLockContext: ValidLock10Context): Promise<Battle | null> {
+    if (!this.db) {
+      throw new Error('Database not initialized');
+    }
+    return await battleRepo.getBattleFromDb(this.db, battleId, dbLockContext);
   }
 
   /**
    * Load ongoing battle for user from database
+   * Requires: Database lock must be held by caller
    */
-  private async loadOngoingBattleForUserFromDb(userId: number): Promise<Battle | null> {
-    return await battleRepo.getOngoingBattleForUserFromDb(userId);
+  private async loadOngoingBattleForUserFromDb(userId: number, dbLockContext: ValidLock10Context): Promise<Battle | null> {
+    if (!this.db) {
+      throw new Error('Database not initialized');
+    }
+    return await battleRepo.getOngoingBattleForUserFromDb(this.db, userId, dbLockContext);
   }
 
   /**
    * Persist single battle to database
    * Called only by BattleCache - this is the ONLY way battles get written to DB
+   * Requires: Database lock must be held by caller
    */
-  private async persistBattle(battle: Battle): Promise<void> {
+  private async persistBattle(battle: Battle, dbLockContext: ValidLock10Context): Promise<void> {
+    if (!this.db) {
+      throw new Error('Database not initialized');
+    }
     // Use battleRepo to update the battle in database
-    await battleRepo.updateBattleInDb(battle);
+    await battleRepo.updateBattleInDb(this.db, battle, dbLockContext);
   }
 
   // ========================================
@@ -737,7 +793,7 @@ export class BattleCache {
       for (const battleId of dirtyIds) {
         const battle = this.battles.get(battleId);
         if (battle) {
-          await this.persistBattle(battle);
+          await this.persistBattle(battle, dbCtx);
           this.dirtyBattles.delete(battleId);
         }
       }
