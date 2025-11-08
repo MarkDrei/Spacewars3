@@ -9,7 +9,7 @@ import {
   type LockLevel
 } from '@markdrei/ironguard-typescript-locks';
 import { getDatabase } from '../database';
-import { MESSAGE_CACHE_LOCK, MESSAGE_DATA_LOCK } from '../LockDefinitions';
+import { MESSAGE_CACHE_LOCK, MESSAGE_DATA_LOCK, MESSAGE_DB_LOCK } from '../LockDefinitions';
 import { MessagesRepo, type Message, type UnreadMessage } from './messagesRepo';
 
 interface MessageCacheConfig {
@@ -615,20 +615,41 @@ export class MessageCache {
   ): Promise<Message[]> {
     if (!this.messagesRepo) throw new Error('MessagesRepo not initialized');
     
-    return await this.messagesRepo.getAllMessages(userId);
+    // Need to acquire MESSAGE_DB_LOCK for database access
+    const dbCtx = await context.acquireRead(MESSAGE_DB_LOCK);
+    try {
+      return await this.messagesRepo.getAllMessages(userId, dbCtx);
+    } finally {
+      dbCtx.dispose();
+    }
   }
 
   private async createMessageInDb(userId: number, messageText: string): Promise<number> {
     if (!this.messagesRepo) throw new Error('MessagesRepo not initialized');
     
-    return await this.messagesRepo.createMessage(userId, messageText);
+    // Need to acquire MESSAGE_DB_LOCK for database access
+    const ctx = createLockContext();
+    const dbCtx = await ctx.acquireWrite(MESSAGE_DB_LOCK);
+    try {
+      return await this.messagesRepo.createMessage(userId, messageText, dbCtx);
+    } finally {
+      dbCtx.dispose();
+    }
   }
 
   private async deleteOldMessagesFromDb(cutoffTime: number): Promise<number> {
     if (!this.messagesRepo) throw new Error('MessagesRepo not initialized');
     
     const olderThanDays = Math.floor((Date.now() - cutoffTime) / (24 * 60 * 60 * 1000));
-    return await this.messagesRepo.deleteOldReadMessages(olderThanDays);
+    
+    // Need to acquire MESSAGE_DB_LOCK for database access
+    const ctx = createLockContext();
+    const dbCtx = await ctx.acquireWrite(MESSAGE_DB_LOCK);
+    try {
+      return await this.messagesRepo.deleteOldReadMessages(olderThanDays, dbCtx);
+    } finally {
+      dbCtx.dispose();
+    }
   }
 
   private async persistMessagesForUser<THeld extends readonly LockLevel[]>(
@@ -654,9 +675,14 @@ export class MessageCache {
       });
     }
     
-    // Batch update all messages at once
+    // Batch update all messages at once - need MESSAGE_DB_LOCK
     if (updates.length > 0) {
-      await this.messagesRepo.updateMultipleReadStatuses(updates);
+      const dbCtx = await context.acquireWrite(MESSAGE_DB_LOCK);
+      try {
+        await this.messagesRepo.updateMultipleReadStatuses(updates, dbCtx);
+      } finally {
+        dbCtx.dispose();
+      }
     }
   }
 

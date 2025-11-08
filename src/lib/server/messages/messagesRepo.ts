@@ -1,9 +1,11 @@
 // ---
 // MessagesRepo - Database operations for user messages
 // Single responsibility: Handle all direct database interactions for messages
+// All methods require DATABASE_LOCK to be held by caller
 // ---
 
 import sqlite3 from 'sqlite3';
+import type { ValidLock8Context } from '../typedLocks';
 
 export interface Message {
   id: number;
@@ -31,7 +33,7 @@ export interface UnreadMessage {
  * Does NOT:
  * - Handle caching (that's MessageCache's job)
  * - Handle business logic
- * - Handle locking (caller's responsibility)
+ * - Acquire locks (caller must hold MESSAGE_DB_LOCK)
  */
 export class MessagesRepo {
   private db: sqlite3.Database;
@@ -43,8 +45,9 @@ export class MessagesRepo {
   /**
    * Create a new message for a user
    * Returns the ID of the newly created message
+   * Requires: MESSAGE_DB_LOCK (caller must hold lock)
    */
-  async createMessage(recipientId: number, message: string): Promise<number> {
+  async createMessage(recipientId: number, message: string, _lockContext: ValidLock8Context): Promise<number> {
     return new Promise((resolve, reject) => {
       const createdAt = Date.now();
       const stmt = this.db.prepare(`
@@ -66,8 +69,9 @@ export class MessagesRepo {
   /**
    * Get all messages for a user (both read and unread)
    * Returns messages in descending order by creation time (newest first)
+   * Requires: MESSAGE_DB_LOCK (caller must hold lock)
    */
-  async getAllMessages(userId: number, limit?: number): Promise<Message[]> {
+  async getAllMessages(userId: number, _lockContext: ValidLock8Context, limit?: number): Promise<Message[]> {
     return new Promise((resolve, reject) => {
       const query = limit 
         ? `SELECT id, recipient_id, created_at, is_read, message
@@ -101,8 +105,9 @@ export class MessagesRepo {
 
   /**
    * Update the read status of a specific message
+   * Requires: MESSAGE_DB_LOCK (caller must hold lock)
    */
-  async updateMessageReadStatus(messageId: number, isRead: boolean): Promise<void> {
+  async updateMessageReadStatus(messageId: number, isRead: boolean, _lockContext: ValidLock8Context): Promise<void> {
     return new Promise((resolve, reject) => {
       const stmt = this.db.prepare(`
         UPDATE messages 
@@ -124,8 +129,9 @@ export class MessagesRepo {
   /**
    * Update read status for multiple messages in a transaction
    * More efficient than calling updateMessageReadStatus multiple times
+   * Requires: MESSAGE_DB_LOCK (caller must hold lock)
    */
-  async updateMultipleReadStatuses(updates: Array<{id: number, isRead: boolean}>): Promise<void> {
+  async updateMultipleReadStatuses(updates: Array<{id: number, isRead: boolean}>, _lockContext: ValidLock8Context): Promise<void> {
     return new Promise((resolve, reject) => {
       this.db.serialize(() => {
         this.db.run('BEGIN TRANSACTION');
@@ -180,8 +186,9 @@ export class MessagesRepo {
 
   /**
    * Mark all messages for a user as read
+   * Requires: MESSAGE_DB_LOCK (caller must hold lock)
    */
-  async markAllMessagesAsRead(userId: number): Promise<void> {
+  async markAllMessagesAsRead(userId: number, _lockContext: ValidLock8Context): Promise<void> {
     return new Promise((resolve, reject) => {
       const stmt = this.db.prepare(`
         UPDATE messages 
@@ -203,8 +210,9 @@ export class MessagesRepo {
   /**
    * Delete old read messages (cleanup utility)
    * Returns the number of messages deleted
+   * Requires: MESSAGE_DB_LOCK (caller must hold lock)
    */
-  async deleteOldReadMessages(olderThanDays = 30): Promise<number> {
+  async deleteOldReadMessages(olderThanDays: number, _lockContext: ValidLock8Context): Promise<number> {
     return new Promise((resolve, reject) => {
       const cutoffTime = Date.now() - (olderThanDays * 24 * 60 * 60 * 1000);
       const stmt = this.db.prepare(`
@@ -225,8 +233,9 @@ export class MessagesRepo {
 
   /**
    * Get count of unread messages for a user
+   * Requires: MESSAGE_DB_LOCK (caller must hold lock)
    */
-  async getUnreadMessageCount(userId: number): Promise<number> {
+  async getUnreadMessageCount(userId: number, _lockContext: ValidLock8Context): Promise<number> {
     return new Promise((resolve, reject) => {
       const stmt = this.db.prepare(`
         SELECT COUNT(*) as count
@@ -248,8 +257,9 @@ export class MessagesRepo {
   /**
    * Get all unread messages for a user (without marking as read)
    * Used by MessageCache to load unread messages
+   * Requires: MESSAGE_DB_LOCK (caller must hold lock)
    */
-  async getUnreadMessages(userId: number): Promise<UnreadMessage[]> {
+  async getUnreadMessages(userId: number, _lockContext: ValidLock8Context): Promise<UnreadMessage[]> {
     return new Promise((resolve, reject) => {
       const stmt = this.db.prepare(`
         SELECT id, created_at, message
