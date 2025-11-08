@@ -1,5 +1,6 @@
 // ---
 // Handles loading and saving User objects via in-memory cache with database persistence.
+// All database operations require DATABASE_LOCK to be held by caller
 // ---
 
 import sqlite3 from 'sqlite3';
@@ -9,6 +10,7 @@ import { getUserWorldCache } from './userWorldCache';
 import { createLockContext } from '../typedLocks';
 import { sendMessageToUser } from '../messages/MessageCache';
 import { TechCounts } from '../TechFactory';
+import type { ValidLock10Context } from '../typedLocks';
 
 interface UserRow {
   id: number;
@@ -96,7 +98,13 @@ function userFromRow(row: UserRow, saveCallback: SaveUserCallback): User {
 }
 
 // Direct database access functions (used internally by cache manager)
-export function getUserByIdFromDb(db: sqlite3.Database, id: number, saveCallback: SaveUserCallback): Promise<User | null> {
+// Requires: DATABASE_LOCK (caller must hold lock)
+export function getUserByIdFromDb(
+  db: sqlite3.Database, 
+  id: number, 
+  saveCallback: SaveUserCallback,
+  _lockContext: ValidLock10Context
+): Promise<User | null> {
   return new Promise((resolve, reject) => {
     db.get('SELECT * FROM users WHERE id = ?', [id], (err, row) => {
       if (err) return reject(err);
@@ -106,7 +114,12 @@ export function getUserByIdFromDb(db: sqlite3.Database, id: number, saveCallback
   });
 }
 
-export function getUserByUsernameFromDb(db: sqlite3.Database, username: string, saveCallback: SaveUserCallback): Promise<User | null> {
+export function getUserByUsernameFromDb(
+  db: sqlite3.Database, 
+  username: string, 
+  saveCallback: SaveUserCallback,
+  _lockContext: ValidLock10Context
+): Promise<User | null> {
   return new Promise((resolve, reject) => {
     db.get('SELECT * FROM users WHERE username = ?', [username], (err, row) => {
       if (err) return reject(err);
@@ -156,15 +169,31 @@ export async function getUserByUsername(db: sqlite3.Database, username: string):
   return await cacheManager.getUserByUsername(username);
 }
 
-export function createUser(db: sqlite3.Database, username: string, password_hash: string, saveCallback: SaveUserCallback): Promise<User> {
+export function createUser(
+  db: sqlite3.Database, 
+  username: string, 
+  password_hash: string, 
+  saveCallback: SaveUserCallback
+): Promise<User> {
   return createUserWithShip(db, username, password_hash, saveCallback, true);
 }
 
-export function createUserWithoutShip(db: sqlite3.Database, username: string, password_hash: string, saveCallback: SaveUserCallback): Promise<User> {
+export function createUserWithoutShip(
+  db: sqlite3.Database, 
+  username: string, 
+  password_hash: string, 
+  saveCallback: SaveUserCallback
+): Promise<User> {
   return createUserWithShip(db, username, password_hash, saveCallback, false);
 }
 
-async function createUserWithShip(db: sqlite3.Database, username: string, password_hash: string, saveCallback: SaveUserCallback, createShip: boolean): Promise<User> {
+async function createUserWithShip(
+  db: sqlite3.Database, 
+  username: string, 
+  password_hash: string, 
+  saveCallback: SaveUserCallback, 
+  createShip: boolean
+): Promise<User> {
   return new Promise((resolve, reject) => {
     const now = Math.floor(Date.now() / 1000);
     const techTree = createInitialTechTree();

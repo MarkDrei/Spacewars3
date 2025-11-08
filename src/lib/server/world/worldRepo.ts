@@ -1,16 +1,23 @@
 // ---
 // Repository functions for World persistence via in-memory cache with database persistence
+// All database operations require DATABASE_LOCK to be held by caller
 // ---
 
 import sqlite3 from 'sqlite3';
 import { World, SpaceObject, SaveWorldCallback } from './world';
 import { getUserWorldCache } from './userWorldCache';
 import { createLockContext } from '../typedLocks';
+import type { ValidLock10Context } from '../typedLocks';
 
 /**
  * Load world data from database (used internally by cache manager)
+ * Requires: DATABASE_LOCK (caller must hold lock)
  */
-export function loadWorldFromDb(db: sqlite3.Database, saveCallback: SaveWorldCallback): Promise<World> {
+export function loadWorldFromDb(
+  db: sqlite3.Database, 
+  saveCallback: SaveWorldCallback,
+  _lockContext: ValidLock10Context
+): Promise<World> {
   return new Promise((resolve, reject) => {
     // Join with users table to get usernames for player ships
     const query = `

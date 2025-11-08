@@ -182,7 +182,7 @@ export class UserWorldCache {
         console.log('🌍 Loading world data from database...');
         this.world = await loadWorldFromDb(this.db!, async () => {
           this.worldDirty = true;
-        });
+        }, dbCtx);
         this.worldDirty = false;
         this.stats.worldCacheMisses++;
         console.log('🌍 World data cached in memory');
@@ -263,17 +263,17 @@ export class UserWorldCache {
   /**
    * Load user from database without acquiring locks (requires database read lock context)
    */
-  async loadUserFromDbUnsafe(userId: number, _context: DatabaseAccessContext): Promise<User | null> {
+  async loadUserFromDbUnsafe(userId: number, context: DatabaseAccessContext): Promise<User | null> {
     if (!this.db) throw new Error('Database not initialized');
-    return await getUserByIdFromDb(this.db, userId, async () => {});
+    return await getUserByIdFromDb(this.db, userId, async () => {}, context);
   }
 
   /**
    * Load user by username from database without acquiring locks (requires database read lock context)
    */
-  async loadUserByUsernameFromDbUnsafe(username: string, _context: DatabaseAccessContext): Promise<User | null> {
+  async loadUserByUsernameFromDbUnsafe(username: string, context: DatabaseAccessContext): Promise<User | null> {
     if (!this.db) throw new Error('Database not initialized');
-    return await getUserByUsernameFromDb(this.db, username, async () => {});
+    return await getUserByUsernameFromDb(this.db, username, async () => {}, context);
   }
 
 
