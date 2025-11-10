@@ -10,7 +10,8 @@ import {
   USER_LOCK,
   DATABASE_LOCK,
   type ValidLock10Context,
-  type LockLevel
+  type LockLevel,
+  type Contains
 } from '../typedLocks';
 import { User } from './user';
 import { World } from './world';
@@ -264,15 +265,13 @@ export class UserWorldCache {
    * Use this when you already hold DATABASE_LOCK
    * @internal
    */
-  async loadUserFromDbUnsafe(
+  async loadUserFromDbUnsafe<THeld extends readonly LockLevel[]>(
     userId: number, 
-    context: IronGuardLockContext<readonly LockLevel[]>
+    context: Contains<THeld, 10> extends true ? IronGuardLockContext<THeld> : never
   ): Promise<User | null> {
     if (!this.db) throw new Error('Database not initialized');
-    // Context must contain DATABASE_LOCK (enforced by caller)
-    // Type assertion needed because getUserByIdFromDb uses Contains<T, 10> which doesn't type-check properly
-    type RequiredContext = Parameters<typeof getUserByIdFromDb>[3];
-    return await getUserByIdFromDb(this.db, userId, async () => {}, context as RequiredContext);
+    // Context must contain DATABASE_LOCK (enforced by type constraint)
+    return await getUserByIdFromDb(this.db, userId, async () => {}, context);
   }
 
   /**
@@ -301,15 +300,13 @@ export class UserWorldCache {
    * Use this when you already hold DATABASE_LOCK
    * @internal
    */
-  async loadUserByUsernameFromDbUnsafe(
+  async loadUserByUsernameFromDbUnsafe<THeld extends readonly LockLevel[]>(
     username: string, 
-    context: IronGuardLockContext<readonly LockLevel[]>
+    context: Contains<THeld, 10> extends true ? IronGuardLockContext<THeld> : never
   ): Promise<User | null> {
     if (!this.db) throw new Error('Database not initialized');
-    // Context must contain DATABASE_LOCK (enforced by caller)
-    // Type assertion needed because getUserByUsernameFromDb uses Contains<T, 10> which doesn't type-check properly
-    type RequiredContext = Parameters<typeof getUserByUsernameFromDb>[3];
-    return await getUserByUsernameFromDb(this.db, username, async () => {}, context as RequiredContext);
+    // Context must contain DATABASE_LOCK (enforced by type constraint)
+    return await getUserByUsernameFromDb(this.db, username, async () => {}, context);
   }
 
 
@@ -406,7 +403,7 @@ export class UserWorldCache {
 
       const dbCtx = await userCtx.acquireRead(DATABASE_LOCK);
       try {
-        user = await this.loadUserFromDbUnsafe(userId, dbCtx);
+        user = await this.loadUserFromDbUnsafe(userId, dbCtx as Parameters<typeof this.loadUserFromDbUnsafe>[1]);
         if (user) {
           this.setUserUnsafe(user, userCtx);
         }
@@ -468,7 +465,7 @@ export class UserWorldCache {
       console.log(`🔍 Username "${username}" cache miss, loading from database`);
       const dbCtx = await userCtx.acquireRead(DATABASE_LOCK);
       try {
-        user = await this.loadUserByUsernameFromDbUnsafe(username, dbCtx);
+        user = await this.loadUserByUsernameFromDbUnsafe(username, dbCtx as Parameters<typeof this.loadUserByUsernameFromDbUnsafe>[1]);
       } finally {
         dbCtx.dispose();
       }

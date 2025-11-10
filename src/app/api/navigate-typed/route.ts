@@ -60,7 +60,8 @@ export async function POST(request: NextRequest) {
           try {
             console.log(`💾 [TYPED] Database read lock acquired for user loading`);
             
-            user = await cacheManager.loadUserFromDbUnsafe(session.userId!, dbCtx);
+            // Type assertion needed because conditional types don't match at call site
+            user = await cacheManager.loadUserFromDbUnsafe(session.userId!, dbCtx as Parameters<typeof cacheManager.loadUserFromDbUnsafe>[1]);
             if (!user) {
               console.log(`❌ [TYPED] User ${session.userId} not found in database`);
               throw new ApiError(404, 'User not found');

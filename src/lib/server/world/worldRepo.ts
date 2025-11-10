@@ -6,17 +6,16 @@
 import sqlite3 from 'sqlite3';
 import { World, SpaceObject, SaveWorldCallback } from './world';
 import { getUserWorldCache } from './userWorldCache';
-import { createLockContext } from '../typedLocks';
-import type { With10 } from '../typedLocks';
+import { createLockContext, type LockLevel, type LockContext as IronGuardLockContext, type Contains } from '../typedLocks';
 
 /**
  * Load world data from database (used internally by cache manager)
  * Requires: DATABASE_LOCK (caller must hold lock)
  */
-export function loadWorldFromDb(
+export function loadWorldFromDb<THeld extends readonly LockLevel[]>(
   db: sqlite3.Database, 
   saveCallback: SaveWorldCallback,
-  _lockContext: With10
+  _lockContext: Contains<THeld, 10> extends true ? IronGuardLockContext<THeld> : never
 ): Promise<World> {
   return new Promise((resolve, reject) => {
     // Join with users table to get usernames for player ships

@@ -7,7 +7,7 @@ import sqlite3 from 'sqlite3';
 import { User, SaveUserCallback } from './user';
 import { createInitialTechTree } from '../techtree';
 import { getUserWorldCache } from './userWorldCache';
-import { DATABASE_LOCK, createLockContext, With10 } from '../typedLocks';
+import { DATABASE_LOCK, createLockContext, type LockLevel, type LockContext as IronGuardLockContext, type Contains } from '../typedLocks';
 import { sendMessageToUser } from '../messages/MessageCache';
 import { TechCounts } from '../TechFactory';
 
@@ -98,11 +98,11 @@ function userFromRow(row: UserRow, saveCallback: SaveUserCallback): User {
 
 // Direct database access functions (used internally by cache manager)
 // Requires: DATABASE_LOCK (caller must hold lock)
-export function getUserByIdFromDb(
+export function getUserByIdFromDb<THeld extends readonly LockLevel[]>(
   db: sqlite3.Database, 
   id: number, 
   saveCallback: SaveUserCallback,
-  _lockContext: With10
+  _lockContext: Contains<THeld, 10> extends true ? IronGuardLockContext<THeld> : never
 ): Promise<User | null> {
   return new Promise((resolve, reject) => {
     db.get('SELECT * FROM users WHERE id = ?', [id], (err, row) => {
@@ -113,11 +113,11 @@ export function getUserByIdFromDb(
   });
 }
 
-export function getUserByUsernameFromDb(
+export function getUserByUsernameFromDb<THeld extends readonly LockLevel[]>(
   db: sqlite3.Database, 
   username: string, 
   saveCallback: SaveUserCallback,
-  _lockContext: With10
+  _lockContext: Contains<THeld, 10> extends true ? IronGuardLockContext<THeld> : never
 ): Promise<User | null> {
   return new Promise((resolve, reject) => {
     db.get('SELECT * FROM users WHERE username = ?', [username], (err, row) => {
@@ -145,7 +145,7 @@ export async function getUserById(db: sqlite3.Database, id: number): Promise<Use
       // Load from database if not in cache
       const dbCtx = await userCtx.acquireRead(DATABASE_LOCK);
       try {
-        user = await cacheManager.loadUserFromDbUnsafe(id, dbCtx);
+        user = await cacheManager.loadUserFromDbUnsafe(id, dbCtx as Parameters<typeof cacheManager.loadUserFromDbUnsafe>[1]);
         if (user) {
           // Cache the loaded user
           cacheManager.setUserUnsafe(user, userCtx);

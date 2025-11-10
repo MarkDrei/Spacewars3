@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
         // Load user from database if not in cache
         const dbCtx = await userCtx.acquireRead(DATABASE_LOCK);
         try {
-          user = await cacheManager.loadUserFromDbUnsafe(session.userId!, dbCtx);
+          user = await cacheManager.loadUserFromDbUnsafe(session.userId!, dbCtx as Parameters<typeof cacheManager.loadUserFromDbUnsafe>[1]);
           if (!user) {
             throw new ApiError(404, 'User not found');
           }

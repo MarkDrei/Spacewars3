@@ -235,7 +235,7 @@ async function updateUserDefense(
       // Load from database
       const dbCtx = await userCtx.acquireRead(DATABASE_LOCK);
       try {
-        user = await cacheManager.loadUserFromDbUnsafe(userId, dbCtx);
+        user = await cacheManager.loadUserFromDbUnsafe(userId, dbCtx as Parameters<typeof cacheManager.loadUserFromDbUnsafe>[1]);
         if (user) {
           cacheManager.setUserUnsafe(user, userCtx);
         }
@@ -468,7 +468,7 @@ export async function resolveBattle(
       if (!attacker) {
         const dbCtx = await userCtx.acquireRead(DATABASE_LOCK);
         try {
-          attacker = await cacheManager.loadUserFromDbUnsafe(battle.attackerId, dbCtx);
+          attacker = await cacheManager.loadUserFromDbUnsafe(battle.attackerId, dbCtx as Parameters<typeof cacheManager.loadUserFromDbUnsafe>[1]);
           if (attacker) cacheManager.setUserUnsafe(attacker, userCtx);
         } finally {
           dbCtx.dispose();
@@ -478,7 +478,7 @@ export async function resolveBattle(
       if (!attackee) {
         const dbCtx = await userCtx.acquireRead(DATABASE_LOCK);
         try {
-          attackee = await cacheManager.loadUserFromDbUnsafe(battle.attackeeId, dbCtx);
+          attackee = await cacheManager.loadUserFromDbUnsafe(battle.attackeeId, dbCtx as Parameters<typeof cacheManager.loadUserFromDbUnsafe>[1]);
           if (attackee) cacheManager.setUserUnsafe(attackee, userCtx);
         } finally {
           dbCtx.dispose();

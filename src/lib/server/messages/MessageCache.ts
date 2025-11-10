@@ -6,7 +6,8 @@
 import {
   createLockContext,
   type ValidLock4Context,
-  type LockLevel
+  type LockLevel,
+  type LockContext as IronGuardLockContext
 } from '@markdrei/ironguard-typescript-locks';
 import { getDatabase } from '../database';
 import { MESSAGE_CACHE_LOCK, MESSAGE_DATA_LOCK } from '../LockDefinitions';
@@ -600,7 +601,7 @@ export class MessageCache {
     if (!allMessages) {
       // Load from database
       console.log(`📬 Loading messages for user ${userId} from database...`);
-      allMessages = await this.loadMessagesFromDb(context, userId);
+      allMessages = await this.loadMessagesFromDb(context as ValidLock4Context<THeld>, userId);
       this.userMessages.set(userId, allMessages);
       this.stats.cacheMisses++;
     } else {
@@ -611,17 +612,22 @@ export class MessageCache {
   }
 
   private async loadMessagesFromDb<THeld extends readonly LockLevel[]>(
-    context: ValidLock4Context<THeld> extends string ? never : ValidLock4Context<THeld>,
+    context: ValidLock4Context<THeld>,
     userId: number
   ): Promise<Message[]> {
     if (!this.messagesRepo) throw new Error('MessagesRepo not initialized');
     
+    // ValidLock4Context ensures we can acquire DATABASE_LOCK
+    // Cast is safe because ValidLock4Context guarantees this
+    type AnyLockContext = { acquireRead: (lock: number) => Promise<any> };
+    const lockableContext = context as unknown as AnyLockContext;
+    
     // Need to acquire DATABASE_LOCK for database access
-    const dbCtx = await context.acquireRead(DATABASE_LOCK);
+    const dbCtx = await lockableContext.acquireRead(DATABASE_LOCK);
     try {
-      return await this.messagesRepo.getAllMessages(userId, undefined, dbCtx);
+      return await this.messagesRepo.getAllMessages(userId, undefined, dbCtx as Parameters<typeof this.messagesRepo.getAllMessages>[2]);
     } finally {
-      dbCtx.dispose();
+      (dbCtx as any).dispose();
     }
   }
 
@@ -632,7 +638,7 @@ export class MessageCache {
     const ctx = createLockContext();
     const dbCtx = await ctx.acquireWrite(DATABASE_LOCK);
     try {
-      return await this.messagesRepo.createMessage(userId, messageText, dbCtx);
+      return await this.messagesRepo.createMessage(userId, messageText, dbCtx as Parameters<typeof this.messagesRepo.createMessage>[2]);
     } finally {
       dbCtx.dispose();
     }
@@ -647,7 +653,7 @@ export class MessageCache {
     const ctx = createLockContext();
     const dbCtx = await ctx.acquireWrite(DATABASE_LOCK);
     try {
-      return await this.messagesRepo.deleteOldReadMessages(olderThanDays, dbCtx);
+      return await this.messagesRepo.deleteOldReadMessages(olderThanDays, dbCtx as Parameters<typeof this.messagesRepo.deleteOldReadMessages>[1]);
     } finally {
       dbCtx.dispose();
     }
@@ -680,7 +686,7 @@ export class MessageCache {
     if (updates.length > 0) {
       const dbCtx = await context.acquireWrite(DATABASE_LOCK);
       try {
-        await this.messagesRepo.updateMultipleReadStatuses(updates, dbCtx);
+        await this.messagesRepo.updateMultipleReadStatuses(updates, dbCtx as Parameters<typeof this.messagesRepo.updateMultipleReadStatuses>[1]);
       } finally {
         dbCtx.dispose();
       }
