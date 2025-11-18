@@ -63,12 +63,10 @@ export async function processActiveBattles(): Promise<void> {
     // Acquire BATTLE write lock for the entire processing cycle
     // This prevents concurrent scheduler ticks from interfering
     const ctx = createLockContext();
-    const battleCtx = await ctx.acquireWrite(BATTLE_LOCK);
-    
-    try {
+    await ctx.useLockWithAcquire(BATTLE_LOCK, async (battleContext) => {
       const battleCache = getBattleCache();
-      // Pass battleCtx so getActiveBattles doesn't try to acquire another lock
-      const activeBattles = await battleCache.getActiveBattles(battleCtx);
+      // Pass battleContext so getActiveBattles doesn't try to acquire another lock
+      const activeBattles = await battleCache.getActiveBattles(battleContext);
       
       if (activeBattles.length === 0) {
         return;
@@ -83,9 +81,7 @@ export async function processActiveBattles(): Promise<void> {
           console.error(`❌ Error processing battle ${battle.id}:`, error);
         }
       }
-    } finally {
-      battleCtx.dispose();
-    }
+    });
   } catch (error) {
     console.error('❌ Error processing active battles:', error);
   }

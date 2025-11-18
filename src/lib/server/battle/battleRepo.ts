@@ -20,8 +20,11 @@ import type sqlite3 from 'sqlite3';
 /**
  * Get a battle by ID from database
  * Pure DB operation - no cache access
+ * NOTE: Caller must hold DATABASE_LOCK_BATTLES (level 13)
  */
-export async function getBattleFromDb(battleId: number): Promise<Battle | null> {
+export async function getBattleFromDb(
+  battleId: number
+): Promise<Battle | null> {
   const db = await getDatabase();
   
   return new Promise((resolve, reject) => {
@@ -41,8 +44,11 @@ export async function getBattleFromDb(battleId: number): Promise<Battle | null> 
 /**
  * Get ongoing battle for user from database
  * Pure DB operation - no cache access
+ * NOTE: Caller must hold DATABASE_LOCK_BATTLES (level 13)
  */
-export async function getOngoingBattleForUserFromDb(userId: number): Promise<Battle | null> {
+export async function getOngoingBattleForUserFromDb(
+  userId: number
+): Promise<Battle | null> {
   const db = await getDatabase();
   
   return new Promise((resolve, reject) => {
@@ -66,8 +72,10 @@ export async function getOngoingBattleForUserFromDb(userId: number): Promise<Bat
 /**
  * Get all active battles from database
  * Pure DB operation - no cache access
+ * NOTE: Caller must hold DATABASE_LOCK_BATTLES (level 13)
  */
-export async function getActiveBattlesFromDb(): Promise<Battle[]> {
+export async function getActiveBattlesFromDb(
+): Promise<Battle[]> {
   const db = await getDatabase();
   
   return new Promise((resolve, reject) => {
@@ -94,6 +102,7 @@ export async function getActiveBattlesFromDb(): Promise<Battle[]> {
  * Insert a new battle into database
  * Pure DB operation - no cache access
  * Returns the battle with generated ID
+ * NOTE: Caller must hold DATABASE_LOCK_BATTLES (level 13)
  */
 export async function insertBattleToDb(
   attackerId: number,
@@ -173,8 +182,11 @@ export async function insertBattleToDb(
 /**
  * Update battle in database
  * Pure DB operation - updates all battle fields
+ * NOTE: Caller must hold DATABASE_LOCK_BATTLES (level 13)
  */
-export async function updateBattleInDb(battle: Battle): Promise<void> {
+export async function updateBattleInDb(
+  battle: Battle
+): Promise<void> {
   const db = await getDatabase();
   
   return new Promise((resolve, reject) => {
@@ -220,8 +232,11 @@ export async function updateBattleInDb(battle: Battle): Promise<void> {
 /**
  * Delete battle from database
  * Pure DB operation - no cache access
+ * NOTE: Caller must hold DATABASE_LOCK_BATTLES (level 13)
  */
-export async function deleteBattleFromDb(battleId: number): Promise<void> {
+export async function deleteBattleFromDb(
+  battleId: number
+): Promise<void> {
   const db = await getDatabase();
   
   return new Promise((resolve, reject) => {
@@ -238,8 +253,10 @@ export async function deleteBattleFromDb(battleId: number): Promise<void> {
 /**
  * Get all battles from database (for admin view)
  * Pure DB operation - no cache access
+ * NOTE: Caller must hold DATABASE_LOCK_BATTLES (level 13)
  */
-export async function getAllBattlesFromDb(): Promise<Battle[]> {
+export async function getAllBattlesFromDb(
+): Promise<Battle[]> {
   const db = await getDatabase();
 
   return new Promise((resolve, reject) => {
@@ -264,8 +281,11 @@ export async function getAllBattlesFromDb(): Promise<Battle[]> {
 /**
  * Get battles for a specific user from database (for history)
  * Pure DB operation - no cache access
+ * NOTE: Caller must hold DATABASE_LOCK_BATTLES (level 13)
  */
-export async function getBattlesForUserFromDb(userId: number): Promise<Battle[]> {
+export async function getBattlesForUserFromDb(
+  userId: number
+): Promise<Battle[]> {
   const db = await getDatabase();
 
   return new Promise((resolve, reject) => {

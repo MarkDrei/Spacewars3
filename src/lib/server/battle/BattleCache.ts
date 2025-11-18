@@ -11,18 +11,24 @@
 //   - battleRepo (for DB persistence - called ONLY by BattleCache)
 //   - TypedCacheManager (for User/World cache consistency)
 // Status: ✅ Refactored - single source of truth, only DB writer
+// Lock Strategy: BATTLE_LOCK (level 2) → DATABASE_LOCK_BATTLES (level 13)
 // ---
 
 import type sqlite3 from 'sqlite3';
 import type { Battle, BattleStats, BattleEvent, WeaponCooldowns } from './battleTypes';
-import { createLockContext, BATTLE_LOCK, type ValidLock5Context } from '../typedLocks';
+import {
+  createLockContext,
+  BATTLE_LOCK,
+  DATABASE_LOCK_BATTLES,
+  type LockContext
+} from '../typedLocks';
+import type { LocksAtMostAndHas2 } from '@markdrei/ironguard-typescript-locks/dist/core/ironGuardTypes';
 import { getUserWorldCache } from '../world/userWorldCache';
 import * as battleRepo from './battleRepo';
 
-// Define BATTLE_LOCK at level 5
-// Lock Hierarchy: CACHE(2) → WORLD(4) → BATTLE(5) → USER(6) → MESSAGE(8) → DATABASE(10)
-// When modifying battles, acquire locks in order: BATTLE(5) then USER(6)
-// BATTLE_LOCK is defined in typedLocks.ts to prevent accidental reuse of level 5
+// Define BATTLE_LOCK at level 2, DATABASE_LOCK_BATTLES at level 13
+// Lock Hierarchy: BATTLE_LOCK (2) → DATABASE_LOCK_BATTLES (13)
+// When modifying battles, acquire BATTLE_LOCK first, then DATABASE_LOCK_BATTLES for DB operations
 
 /**
  * BattleCache - Manages battle objects in memory
@@ -34,8 +40,8 @@ import * as battleRepo from './battleRepo';
  * - No cache consistency issues (single source of truth per entity type)
  * 
  * Lock Strategy:
- * - BATTLE_LOCK (level 12) for battle-specific operations
- * - Must acquire USER_LOCK before BATTLE_LOCK
+ * - BATTLE_LOCK (level 2) for battle-specific operations
+ * - DATABASE_LOCK_BATTLES (level 13) for database operations
  * - Delegates to TypedCacheManager for User/World locks
  */
 export class BattleCache {
@@ -249,11 +255,9 @@ export class BattleCache {
     }
 
     // Load from database
-    const cacheManager = getUserWorldCache();
     const ctx = createLockContext();
-    const dbCtx = await cacheManager.acquireDatabaseRead(ctx);
-    try {
-      const battle = await this.loadBattleFromDb(battleId);
+    return await ctx.useLockWithAcquire(DATABASE_LOCK_BATTLES, async () => {
+      const battle = await battleRepo.getBattleFromDb(battleId);
       
       // Cache only if active
       if (battle && battle.battleEndTime === null) {
@@ -263,9 +267,7 @@ export class BattleCache {
       }
       
       return battle;
-    } finally {
-      dbCtx.dispose();
-    }
+    });
   }
 
   /**
@@ -274,26 +276,22 @@ export class BattleCache {
    * Acquires READ lock internally UNLESS a lock context is provided
    * 
    * @param userId - User ID to check
-   * @param lockContext - Optional lock context (if caller already holds BATTLE lock at level 5 or higher)
+   * @param lockContext - Optional lock context (if caller already holds BATTLE lock at level 2 or higher)
    */
-  async getOngoingBattleForUser(userId: number, lockContext?: ValidLock5Context<readonly [typeof BATTLE_LOCK]>): Promise<Battle | null> {
+  async getOngoingBattleForUser(userId: number, lockContext?: LockContext<LocksAtMostAndHas2>): Promise<Battle | null> {
     await this.ensureInitializedAsync();
 
-    // If caller already holds a lock, use it; otherwise acquire READ lock
+    // If caller already holds a lock, use it; otherwise acquire lock
     if (lockContext) {
       // Use existing lock context - caller already holds BATTLE lock
       return this.getOngoingBattleForUserInternal(userId, lockContext);
     }
 
-    // Acquire READ lock for consistent battle state
+    // Acquire BATTLE lock for consistent battle state
     const ctx = createLockContext();
-    const battleCtx = await ctx.acquireRead(BATTLE_LOCK);
-    
-    try {
-      return this.getOngoingBattleForUserInternal(userId, battleCtx);
-    } finally {
-      battleCtx.dispose();
-    }
+    return await ctx.useLockWithAcquire(BATTLE_LOCK, async (battleContext) => {
+      return this.getOngoingBattleForUserInternal(userId, battleContext);
+    });
   }
 
   /**
@@ -305,7 +303,7 @@ export class BattleCache {
    */
   private async getOngoingBattleForUserInternal(
     userId: number, 
-    lockContext: ValidLock5Context<readonly [typeof BATTLE_LOCK]>
+    lockContext: LockContext<LocksAtMostAndHas2>
   ): Promise<Battle | null> {
     // Check active battles index
     const battleId = this.activeBattlesByUser.get(userId);
@@ -314,11 +312,8 @@ export class BattleCache {
     }
 
     // Not in cache - query database
-    const cacheManager = getUserWorldCache();
-    const ctx = createLockContext();
-    const dbCtx = await cacheManager.acquireDatabaseRead(ctx);
-    try {
-      const battle = await this.loadOngoingBattleForUserFromDb(userId);
+    return await lockContext.useLockWithAcquire(DATABASE_LOCK_BATTLES, async () => {
+      const battle = await battleRepo.getOngoingBattleForUserFromDb(userId);
       
       // Cache if found
       if (battle) {
@@ -328,35 +323,29 @@ export class BattleCache {
       }
       
       return battle;
-    } finally {
-      dbCtx.dispose();
-    }
+    });
   }
 
   /**
    * Get all active battles
-   * Acquires READ lock internally UNLESS a lock context is provided
+   * Acquires lock internally UNLESS a lock context is provided
    * 
-   * @param lockContext - Optional lock context (if caller already holds BATTLE lock at level 5 or higher)
+   * @param lockContext - Optional lock context (if caller already holds BATTLE lock at level 2 or higher)
    */
-  async getActiveBattles(lockContext?: ValidLock5Context<readonly [typeof BATTLE_LOCK]>): Promise<Battle[]> {
+  async getActiveBattles(lockContext?: LockContext<LocksAtMostAndHas2>): Promise<Battle[]> {
     await this.ensureInitializedAsync();
 
-    // If caller already holds a lock, use it; otherwise acquire READ lock
+    // If caller already holds a lock, use it; otherwise acquire lock
     if (lockContext) {
       // Use existing lock context - caller already holds BATTLE lock
       return this.getActiveBattlesInternal(lockContext);
     }
 
-    // Acquire READ lock for consistent battle state
+    // Acquire lock for consistent battle state
     const ctx = createLockContext();
-    const battleCtx = await ctx.acquireRead(BATTLE_LOCK);
-    
-    try {
-      return this.getActiveBattlesInternal(battleCtx);
-    } finally {
-      battleCtx.dispose();
-    }
+    return await ctx.useLockWithAcquire(BATTLE_LOCK, async (battleContext) => {
+      return this.getActiveBattlesInternal(battleContext);
+    });
   }
 
   /**
@@ -365,7 +354,7 @@ export class BattleCache {
    * 
    * @param lockContext - REQUIRED lock context proving caller holds BATTLE lock
    */
-  private getActiveBattlesInternal(lockContext: ValidLock5Context<readonly [typeof BATTLE_LOCK]>): Battle[] {
+  private getActiveBattlesInternal(lockContext: LockContext<LocksAtMostAndHas2>): Battle[] {
     // Return all cached active battles
     const active: Battle[] = [];
     for (const battle of this.battles.values()) {
@@ -439,11 +428,9 @@ export class BattleCache {
     
     const now = Math.floor(Date.now() / 1000);
     
-    // Acquire database lock to insert battle
-    const cacheManager = getUserWorldCache();
+    // Acquire locks and insert battle
     const ctx = createLockContext();
-    const dbCtx = await cacheManager.acquireDatabaseWrite(ctx);
-    try {
+    return await ctx.useLockWithAcquire(DATABASE_LOCK_BATTLES, async () => {
       // Insert to database via battleRepo
       const battle = await battleRepo.insertBattleToDb(
         attackerId,
@@ -459,9 +446,7 @@ export class BattleCache {
       this.setBattleInCacheInternal(battle);
       
       return battle;
-    } finally {
-      dbCtx.dispose();
-    }
+    });
   }
 
   /**
@@ -647,7 +632,10 @@ export class BattleCache {
    */
   async getAllBattles(): Promise<Battle[]> {
     await this.ensureInitializedAsync();
-    return await battleRepo.getAllBattlesFromDb();
+    const ctx = createLockContext();
+    return await ctx.useLockWithAcquire(DATABASE_LOCK_BATTLES, async () => {
+      return await battleRepo.getAllBattlesFromDb();
+    });
   }
 
   /**
@@ -656,7 +644,10 @@ export class BattleCache {
    */
   async getBattlesForUser(userId: number): Promise<Battle[]> {
     await this.ensureInitializedAsync();
-    return await battleRepo.getBattlesForUserFromDb(userId);
+    const ctx = createLockContext();
+    return await ctx.useLockWithAcquire(DATABASE_LOCK_BATTLES, async () => {
+      return await battleRepo.getBattlesForUserFromDb(userId);
+    });
   }
 
   // ========================================
@@ -667,36 +658,47 @@ export class BattleCache {
    * Load active battles from database on initialization
    */
   private async loadActiveBattlesFromDb(): Promise<void> {
-    const battles = await battleRepo.getActiveBattlesFromDb();
-    
-    for (const battle of battles) {
-      this.battles.set(battle.id, battle);
-      this.activeBattlesByUser.set(battle.attackerId, battle.id);
-      this.activeBattlesByUser.set(battle.attackeeId, battle.id);
-    }
+    const ctx = createLockContext();
+    await ctx.useLockWithAcquire(DATABASE_LOCK_BATTLES, async () => {
+      const battles = await battleRepo.getActiveBattlesFromDb();
+      
+      for (const battle of battles) {
+        this.battles.set(battle.id, battle);
+        this.activeBattlesByUser.set(battle.attackerId, battle.id);
+        this.activeBattlesByUser.set(battle.attackeeId, battle.id);
+      }
+    });
   }
 
   /**
    * Load single battle from database
    */
   private async loadBattleFromDb(battleId: number): Promise<Battle | null> {
-    return await battleRepo.getBattleFromDb(battleId);
+    const ctx = createLockContext();
+    return await ctx.useLockWithAcquire(DATABASE_LOCK_BATTLES, async () => {
+      return await battleRepo.getBattleFromDb(battleId);
+    });
   }
 
   /**
    * Load ongoing battle for user from database
    */
   private async loadOngoingBattleForUserFromDb(userId: number): Promise<Battle | null> {
-    return await battleRepo.getOngoingBattleForUserFromDb(userId);
+    const ctx = createLockContext();
+    return await ctx.useLockWithAcquire(DATABASE_LOCK_BATTLES, async () => {
+      return await battleRepo.getOngoingBattleForUserFromDb(userId);
+    });
   }
 
   /**
    * Persist single battle to database
    * Called only by BattleCache - this is the ONLY way battles get written to DB
    */
-  private async persistBattle(battle: Battle): Promise<void> {
+  private async persistBattle(battle: Battle, dbContext: LockContext<LocksAtMostAndHas2>): Promise<void> {
     // Use battleRepo to update the battle in database
-    await battleRepo.updateBattleInDb(battle);
+    await dbContext.useLockWithAcquire(DATABASE_LOCK_BATTLES, async () => {
+      await battleRepo.updateBattleInDb(battle);
+    });
   }
 
   // ========================================
@@ -729,21 +731,17 @@ export class BattleCache {
     // Get list of dirty battle IDs
     const dirtyIds = Array.from(this.dirtyBattles);
     
-    // Acquire database lock
-    const cacheManager = getUserWorldCache();
+    // Acquire locks
     const ctx = createLockContext();
-    const dbCtx = await cacheManager.acquireDatabaseWrite(ctx);
-    try {
+    await ctx.useLockWithAcquire(BATTLE_LOCK, async (battleContext) => {
       for (const battleId of dirtyIds) {
         const battle = this.battles.get(battleId);
         if (battle) {
-          await this.persistBattle(battle);
+          await this.persistBattle(battle, battleContext);
           this.dirtyBattles.delete(battleId);
         }
       }
-    } finally {
-      dbCtx.dispose();
-    }
+    });
   }
 
   /**
