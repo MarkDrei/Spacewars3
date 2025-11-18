@@ -1,14 +1,26 @@
 // ---
 // Cache manager for User and World data
+// Uses IronGuard lock system with hierarchical locking
 // ---
 
 import { 
   createLockContext,
-  type LockContext as IronGuardLockContext,
-  CACHE_LOCK,
-  WORLD_LOCK,
+  LOCK_10,
+  LOCK_11,
+  type LockContext,
+  type LocksAtMost3,
+  type LocksAtMost5,
+  type LocksAtMostAndHas4,
+  type LocksAtMostAndHas6,
+  type HasLock4Context,
+  type HasLock6Context,
+  type IronLocks,
+  type NullableLocksAtMost10,
+  type NullableLocksAtMost11,
   USER_LOCK,
-  DATABASE_LOCK
+  WORLD_LOCK,
+  DATABASE_LOCK_USERS,
+  DATABASE_LOCK_SPACE_OBJECTS
 } from '../typedLocks';
 import { User } from './user';
 import { World } from './world';
@@ -16,18 +28,6 @@ import { getDatabase } from '../database';
 import { loadWorldFromDb, saveWorldToDb } from './worldRepo';
 import { getUserByIdFromDb, getUserByUsernameFromDb } from './userRepo';
 import sqlite3 from 'sqlite3';
-
-// Type aliases for IronGuard lock contexts
-type WorldReadContext = IronGuardLockContext<readonly [typeof WORLD_LOCK]> | IronGuardLockContext<readonly [typeof CACHE_LOCK, typeof WORLD_LOCK]>;
-type WorldWriteContext = IronGuardLockContext<readonly [typeof WORLD_LOCK]> | IronGuardLockContext<readonly [typeof CACHE_LOCK, typeof WORLD_LOCK]>;
-export type UserContext = IronGuardLockContext<readonly [typeof USER_LOCK]> | IronGuardLockContext<readonly [typeof CACHE_LOCK, typeof USER_LOCK]> | IronGuardLockContext<readonly [typeof WORLD_LOCK, typeof USER_LOCK]> | IronGuardLockContext<readonly [typeof CACHE_LOCK, typeof WORLD_LOCK, typeof USER_LOCK]>;
-type DatabaseReadContext = IronGuardLockContext<readonly [typeof DATABASE_LOCK]> | IronGuardLockContext<readonly [typeof USER_LOCK, typeof DATABASE_LOCK]> | IronGuardLockContext<readonly [typeof WORLD_LOCK, typeof USER_LOCK, typeof DATABASE_LOCK]> | IronGuardLockContext<readonly [typeof CACHE_LOCK, typeof WORLD_LOCK, typeof USER_LOCK, typeof DATABASE_LOCK]>;
-type DatabaseWriteContext = IronGuardLockContext<readonly [typeof DATABASE_LOCK]> | IronGuardLockContext<readonly [typeof USER_LOCK, typeof DATABASE_LOCK]> | IronGuardLockContext<readonly [typeof WORLD_LOCK, typeof USER_LOCK, typeof DATABASE_LOCK]> | IronGuardLockContext<readonly [typeof CACHE_LOCK, typeof WORLD_LOCK, typeof USER_LOCK, typeof DATABASE_LOCK]>;
-
-// Context type for data access methods - accepts any context that provides the required lock
-type WorldAccessContext = WorldReadContext | WorldWriteContext | UserContext | DatabaseReadContext | DatabaseWriteContext;
-type UserAccessContext = UserContext | DatabaseReadContext | DatabaseWriteContext;
-type DatabaseAccessContext = DatabaseReadContext | DatabaseWriteContext;
 
 // Cache configuration interface
 export interface TypedCacheConfig {
@@ -114,22 +114,23 @@ export class UserWorldCache {
       return; // Fast path - already initialized
     }
 
-    // Use CACHE_LOCK to ensure only one initialization happens
-    const emptyCtx = createLockContext();
-    const cacheCtx = await emptyCtx.acquireWrite(CACHE_LOCK);
-    try {
+    const ctx = createLockContext();
+    return await ctx.useLockWithAcquire(USER_LOCK, async (userContext) => {
       if (this.isInitialized) {
         return; // Double-check inside lock
       }
 
       console.log('🚀 Initializing typed cache manager...');
 
-      // Initialize database connection
-      this.db = await getDatabase();
-      console.log('✅ Database connected');
+      // Need database connection
+      await userContext.useLockWithAcquire(LOCK_10, async () => {
+        // Initialize database connection
+        this.db = await getDatabase();
+        console.log('✅ Database connected');
+      });
 
       // Load world data
-      await this.initializeWorld();
+      await this.initializeWorld(userContext);
       console.log('✅ World data loaded');
 
       // Start background persistence if enabled
@@ -140,9 +141,7 @@ export class UserWorldCache {
 
       this.isInitialized = true;
       console.log('✅ Typed cache manager initialization complete');
-    } finally {
-      cacheCtx.dispose();
-    }
+    });
   }
 
   /**
@@ -170,15 +169,11 @@ export class UserWorldCache {
   /**
    * Load world data from database into cache
    */
-  private async initializeWorld(): Promise<void> {
+  private async initializeWorld(context: LockContext<LocksAtMostAndHas4>): Promise<void> {
     if (!this.db) throw new Error('Database not initialized');
     
-    const emptyCtx = createLockContext();
-    
-    const worldCtx = await emptyCtx.acquireWrite(WORLD_LOCK);
-    try {
-      const dbCtx = await worldCtx.acquireRead(DATABASE_LOCK);
-      try {
+    await context.useLockWithAcquire(WORLD_LOCK, async (worldContext) => {
+      await worldContext.useLockWithAcquire(LOCK_11, async () => {
         console.log('🌍 Loading world data from database...');
         this.world = await loadWorldFromDb(this.db!, async () => {
           this.worldDirty = true;
@@ -186,40 +181,16 @@ export class UserWorldCache {
         this.worldDirty = false;
         this.stats.worldCacheMisses++;
         console.log('🌍 World data cached in memory');
-      } finally {
-        dbCtx.dispose();
-      }
-    } finally {
-      worldCtx.dispose();
-    }
+      });
+    });
   }
 
-  // ===== LEVEL 1: WORLD OPERATIONS =====
-
-  /**
-   * Acquire world read lock and return context for chaining
-   */
-  async acquireWorldRead(
-    context: IronGuardLockContext<readonly []>
-  ): Promise<WorldReadContext> {
-    await this.ensureInitialized();
-    return await context.acquireRead(WORLD_LOCK) as WorldReadContext;
-  }
-
-  /**
-   * Acquire world write lock and return context for chaining
-   */
-  async acquireWorldWrite(
-    context: IronGuardLockContext<readonly []>
-  ): Promise<WorldWriteContext> {
-    await this.ensureInitialized();
-    return await context.acquireWrite(WORLD_LOCK) as WorldWriteContext;
-  }
+  // ===== WORLD OPERATIONS =====
 
   /**
    * Get world data reference (requires world lock context). Performs a physics update.
    */
-  getWorldFromCache(_context: WorldAccessContext): World {
+  getWorldFromCache<THeld extends IronLocks>(_context: HasLock6Context<THeld>): World {
     if (!this.world) {
       throw new Error('World not loaded - call initialize() first');
     }
@@ -231,71 +202,47 @@ export class UserWorldCache {
   /**
    * Update world data without acquiring locks (requires world write lock context)
    */
-  updateWorldUnsafe(world: World, _context: WorldAccessContext): void {
+  updateWorldUnsafe<THeld extends IronLocks>(world: World, _context: HasLock6Context<THeld>): void {
     this.world = world;
     this.worldDirty = true;
   }
 
-  // ===== LEVEL 3: DATABASE OPERATIONS =====
+  // ===== DATABASE OPERATIONS =====
 
   /**
-   * Acquire database read lock and return context for chaining
-   * 
-   * TODO: Check all callers, DB should usually not be accessed directly but only from the cache
+   * Load user from database helper (requires context with locks up to USER_LOCK)
    */
-  async acquireDatabaseRead(
-    context: IronGuardLockContext<readonly []> | WorldReadContext | WorldWriteContext | UserContext
-  ): Promise<DatabaseReadContext> {
-    await this.ensureInitialized();
-    return await context.acquireRead(DATABASE_LOCK) as DatabaseReadContext;
+  private async loadUserFromDb(
+    context: LockContext<LocksAtMostAndHas4>,
+    userId: number
+  ): Promise<User | null> {
+    return await context.useLockWithAcquire(LOCK_10, async () => {
+      if (!this.db) throw new Error('Database not initialized');
+      return await getUserByIdFromDb(this.db, userId, async () => {});
+    });
   }
 
   /**
-   * Acquire database write lock and return context for chaining
+   * Load user by username from database helper (requires context with locks up to USER_LOCK)
    */
-  async acquireDatabaseWrite(
-    context: IronGuardLockContext<readonly []> | WorldReadContext | WorldWriteContext | UserContext
-  ): Promise<DatabaseWriteContext> {
-    await this.ensureInitialized();
-    return await context.acquireWrite(DATABASE_LOCK) as DatabaseWriteContext;
+  private async loadUserByUsernameFromDb(
+    context: LockContext<LocksAtMostAndHas4>,
+    username: string
+  ): Promise<User | null> {
+    return await context.useLockWithAcquire(LOCK_10, async () => {
+      if (!this.db) throw new Error('Database not initialized');
+      return await getUserByUsernameFromDb(this.db, username, async () => {});
+    });
   }
-
-  /**
-   * Load user from database without acquiring locks (requires database read lock context)
-   */
-  async loadUserFromDbUnsafe(userId: number, _context: DatabaseAccessContext): Promise<User | null> {
-    if (!this.db) throw new Error('Database not initialized');
-    return await getUserByIdFromDb(this.db, userId, async () => {});
-  }
-
-  /**
-   * Load user by username from database without acquiring locks (requires database read lock context)
-   */
-  async loadUserByUsernameFromDbUnsafe(username: string, _context: DatabaseAccessContext): Promise<User | null> {
-    if (!this.db) throw new Error('Database not initialized');
-    return await getUserByUsernameFromDb(this.db, username, async () => {});
-  }
-
-
 
   // ===== USER OPERATIONS =====
 
   /**
-   * Acquire user lock and return context for chaining
-   */
-  async acquireUserLock(
-    context: IronGuardLockContext<readonly []> | WorldReadContext | WorldWriteContext
-  ): Promise<UserContext> {
-    await this.ensureInitialized();
-    return await context.acquireWrite(USER_LOCK) as UserContext;
-  }
-
-  /**
    * Get user data from cache, will return null if not found. Requires user lock context.
    * 
-   * Use getUserById or getUserByIdWithLock for safe loading from database if not in cache.
+   * Use getUserById for safe loading from database if not in cache.
    */
-  getUserByIdFromCache(userId: number, _context: UserAccessContext): User | null {
+  getUserByIdFromCache<THeld extends IronLocks>(userId: number, _context: HasLock4Context<THeld>): User | null {
     const user = this.users.get(userId);
     if (user) {
       this.stats.userCacheHits++;
@@ -309,10 +256,8 @@ export class UserWorldCache {
   /**
    * Announces that the user was written to the DB and is now safe to cache
    * This should only be called after a successful database write operation.
-   * 
-   * TODO: should never be called directly, always user getUserById or getUserByUsername
    */
-  setUserUnsafe(user: User, _context: UserAccessContext): void {
+  setUserUnsafe<THeld extends IronLocks>(user: User, _context: HasLock4Context<THeld>): void {
     this.users.set(user.id, user);
     this.usernameToUserId.set(user.username, user.id); // Cache username mapping
     this.dirtyUsers.delete(user.id); // Fresh from DB, not dirty
@@ -323,43 +268,23 @@ export class UserWorldCache {
   /**
    * Update user data in the cache, marking as dirty (requires user lock context)
    */
-  updateUserInCache(user: User, _context: UserAccessContext): void {
+  updateUserInCache<THeld extends IronLocks>(user: User, _context: HasLock4Context<THeld>): void {
     this.users.set(user.id, user);
     this.usernameToUserId.set(user.username, user.id); // Update username mapping
     this.dirtyUsers.add(user.id); // Mark as dirty for persistence
   }
 
   /**
-   * Get user by ID (with caching) for reading purposes
+   * Internal method to get user by ID when already holding USER_LOCK
    * - Loads from database if not in cache
    * - Updates user before returning
-   * 
-   * If you intent to update the user, do not use this method - acquire the user lock and use getUserByIdWithLock instead.
    */
-  async getUserById(userId: number): Promise<User | null> {
-    const emptyCtx = createLockContext();
-    const userCtx = await this.acquireUserLock(emptyCtx);
-    try {
-      return await this.getUserByIdWithLock(userId, userCtx);
-    } finally {
-      userCtx.dispose();
-    }
-  }
-
-  /**
-   * Get user by ID (with caching) when you already have the user lock
-   * - Loads from database if not in cache
-   * - Updates user before returning
-   * 
-   * If you intent to update the user, you need to keep the user lock over the complete get and update cycle.
-   */
-  async getUserByIdWithLock(userId: number, userCtx: UserContext): Promise<User | null> {
-    if (!this.isInitialized) {
-      await this.initialize();
-    }
-
+  private async getUserByIdInternal(
+    context: LockContext<LocksAtMostAndHas4>,
+    userId: number
+  ): Promise<User | null> {
     // Check cache first
-    let user = this.getUserByIdFromCache(userId, userCtx);
+    let user = this.getUserByIdFromCache(userId, context);
 
     if (user) {
       console.log(`👤 User ${userId} cache hit`);
@@ -367,61 +292,48 @@ export class UserWorldCache {
 
     if (!user) {
       console.log(`🔍 User ${userId} cache miss, loading from database`);
-
-      const dbCtx = await this.acquireDatabaseRead(userCtx);
-      try {
-        user = await this.loadUserFromDbUnsafe(userId, dbCtx);
-        if (user) {
-          this.setUserUnsafe(user, userCtx);
-        }
-      } finally {
-        dbCtx.dispose();
+      user = await this.loadUserFromDb(context, userId);
+      if (user) {
+        this.setUserUnsafe(user, context);
       }
     }
 
     if (user) {
       user.updateStats(Math.floor(Date.now() / 1000));
-      this.updateUserInCache(user, userCtx);
+      this.updateUserInCache(user, context);
       return user;
     }
     return null;
   }
 
   /**
-   * Get user by name (with caching)
+   * Get user by ID (with caching) for reading purposes
    * - Loads from database if not in cache
    * - Updates user before returning
-   * 
-   * If you intent to update the user, you need to use getUserByUsernameWithLock instead.
    */
-  async getUserByUsername(username: string): Promise<User | null> {
-    if (!this.isInitialized) {
-      await this.initialize();
-    }
-    
-    const emptyCtx = createLockContext();
-    
-    const userCtx = await this.acquireUserLock(emptyCtx);
-    try {
-      return await this.getUserByUsernameWithLock(username, userCtx);
-    } finally {
-      userCtx.dispose();
-    }
+  async getUserById(userId: number): Promise<User | null> {
+    await this.ensureInitialized();
+
+    const ctx = createLockContext();
+    return await ctx.useLockWithAcquire(USER_LOCK, async (userContext) => {
+      return await this.getUserByIdInternal(userContext, userId);
+    });
   }
 
   /**
-   * Get user by name (with caching)  when you already have the user lock
+   * Internal method to get user by username when already holding USER_LOCK
    * - Loads from database if not in cache
    * - Updates user before returning
-   * 
-   * Use this method if you intent to update the user after getting it. Keep the lock for the complete get and update cycle.
    */
-  async getUserByUsernameWithLock(username: string, userCtx: UserContext): Promise<User | null> {
+  private async getUserByUsernameInternal(
+    context: LockContext<LocksAtMostAndHas4>,
+    username: string
+  ): Promise<User | null> {
     // Check username cache first
     const cachedUserId = this.usernameToUserId.get(username);
     let user: User | null = null;
     if (cachedUserId) {
-      user = this.getUserByIdFromCache(cachedUserId, userCtx);
+      user = this.getUserByIdFromCache(cachedUserId, context);
       if (user) {
         console.log(`👤 Username "${username}" cache hit for user ID ${cachedUserId}`);
       }
@@ -430,21 +342,30 @@ export class UserWorldCache {
     if (!user) {
       // Cache miss - load from database
       console.log(`🔍 Username "${username}" cache miss, loading from database`);
-      const dbCtx = await this.acquireDatabaseRead(userCtx);
-      try {
-        user = await this.loadUserByUsernameFromDbUnsafe(username, dbCtx);
-      } finally {
-        dbCtx.dispose();
-      }
+      user = await this.loadUserByUsernameFromDb(context, username);
     }
 
     if (user) {
       user.updateStats(Math.floor(Date.now() / 1000));
-      this.updateUserInCache(user, userCtx);
+      this.updateUserInCache(user, context);
       return user;
     }
 
     return null;
+  }
+
+  /**
+   * Get user by name (with caching)
+   * - Loads from database if not in cache
+   * - Updates user before returning
+   */
+  async getUserByUsername(username: string): Promise<User | null> {
+    await this.ensureInitialized();
+    
+    const ctx = createLockContext();
+    return await ctx.useLockWithAcquire(USER_LOCK, async (userContext) => {
+      return await this.getUserByUsernameInternal(userContext, username);
+    });
   }
 
   // ===== PERSISTENCE RELATED OPERATIONS =====
@@ -453,14 +374,10 @@ export class UserWorldCache {
    * Get cache statistics
    */
   async getStats(): Promise<TypedCacheStats> {
-    if (!this.isInitialized) {
-      await this.initialize();
-    }
+    await this.ensureInitialized();
     
-    const emptyCtx = createLockContext();
-    
-    const userCtx = await this.acquireUserLock(emptyCtx);
-    try {
+    const ctx = createLockContext();
+    return await ctx.useLockWithAcquire(USER_LOCK, async () => {
       return {
         userCacheSize: this.users.size,
         usernameCacheSize: this.usernameToUserId.size,
@@ -471,9 +388,7 @@ export class UserWorldCache {
         dirtyUsers: this.dirtyUsers.size,
         worldDirty: this.worldDirty
       };
-    } finally {
-      userCtx.dispose();
-    }
+    });
   }
 
   /**
@@ -481,9 +396,7 @@ export class UserWorldCache {
    * Useful for ensuring data is persisted before reading directly from DB
    */
   async flushAllToDatabase(): Promise<void> {
-    if (!this.isInitialized) {
-      await this.initialize();
-    }
+    await this.ensureInitialized();
     
     console.log('🔄 Flushing all dirty data to database...');
     
@@ -511,11 +424,9 @@ export class UserWorldCache {
    * Manually persist all dirty users to database
    */
   private async persistDirtyUsers(): Promise<void> {
-    const emptyCtx = createLockContext();
-    const userCtx = await this.acquireUserLock(emptyCtx);
-    try {
-      const dbCtx = await this.acquireDatabaseWrite(userCtx);
-      try {
+    const ctx = createLockContext();
+    await ctx.useLockWithAcquire(USER_LOCK, async (userContext) => {
+      await userContext.useLockWithAcquire(LOCK_10, async () => {
         const dirtyUserIds = Array.from(this.dirtyUsers);
         
         if (dirtyUserIds.length === 0) {
@@ -533,12 +444,8 @@ export class UserWorldCache {
         
         this.dirtyUsers.clear();
         console.log('✅ Dirty users persisted to database');
-      } finally {
-        dbCtx.dispose();
-      }
-    } finally {
-      userCtx.dispose();
-    }
+      });
+    });
   }
 
   /**
@@ -608,11 +515,9 @@ export class UserWorldCache {
       return; // Nothing to persist
     }
 
-    const emptyCtx = createLockContext();
-    const worldCtx = await this.acquireWorldWrite(emptyCtx);
-    try {
-      const dbCtx = await this.acquireDatabaseWrite(worldCtx);
-      try {
+    const ctx = createLockContext();
+    await ctx.useLockWithAcquire(WORLD_LOCK, async (worldContext) => {
+      await worldContext.useLockWithAcquire(LOCK_11, async () => {
         if (!this.db) throw new Error('Database not initialized');
         
         console.log('💾 Persisting world data to database...');
@@ -621,12 +526,8 @@ export class UserWorldCache {
         
         this.worldDirty = false;
         console.log('✅ World data persisted to database');
-      } finally {
-        dbCtx.dispose();
-      }
-    } finally {
-      worldCtx.dispose();
-    }
+      });
+    });
   }
 
   /**
@@ -695,9 +596,8 @@ export class UserWorldCache {
    * Shutdown the cache manager
    */
   async shutdown(): Promise<void> {
-    const emptyCtx = createLockContext();
-    const cacheCtx = await emptyCtx.acquireWrite(CACHE_LOCK);
-    try {
+    const ctx = createLockContext();
+    await ctx.useLockWithAcquire(USER_LOCK, async () => {
       console.log('🔄 Shutting down typed cache manager...');
       
       // Stop background persistence
@@ -717,9 +617,7 @@ export class UserWorldCache {
       
       this.isInitialized = false;
       console.log('✅ Typed cache manager shutdown complete');
-    } finally {
-      cacheCtx.dispose();
-    }
+    });
   }
 }
 

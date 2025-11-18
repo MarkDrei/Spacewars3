@@ -120,39 +120,12 @@ export function getUserByUsernameFromDb(db: sqlite3.Database, username: string, 
 export async function getUserById(db: sqlite3.Database, id: number): Promise<User | null> {
   // Use typed cache manager for cache-aware access
   const cacheManager = getUserWorldCache();
-  
-  const emptyCtx = createLockContext();
-  
-  // Use user lock to ensure consistent access
-  const userCtx = await cacheManager.acquireUserLock(emptyCtx);
-  try {
-    // Try to get from cache first
-    let user = cacheManager.getUserByIdFromCache(id, userCtx);
-    
-    if (!user) {
-      // Load from database if not in cache
-      const dbCtx = await cacheManager.acquireDatabaseRead(userCtx);
-      try {
-        user = await cacheManager.loadUserFromDbUnsafe(id, dbCtx);
-        if (user) {
-          // Cache the loaded user
-          cacheManager.setUserUnsafe(user, userCtx);
-        }
-      } finally {
-        dbCtx.dispose();
-      }
-    }
-    
-    return user;
-  } finally {
-    userCtx.dispose();
-  }
+  return await cacheManager.getUserById(id);
 }
 
 export async function getUserByUsername(db: sqlite3.Database, username: string): Promise<User | null> {
-  // Use typed cache manager for cache-aware username lookup
+  // Use typed cache manager for cache-aware access
   const cacheManager = getUserWorldCache();
-  
   return await cacheManager.getUserByUsername(username);
 }
 

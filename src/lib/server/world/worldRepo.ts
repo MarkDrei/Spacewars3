@@ -5,7 +5,7 @@
 import sqlite3 from 'sqlite3';
 import { World, SpaceObject, SaveWorldCallback } from './world';
 import { getUserWorldCache } from './userWorldCache';
-import { createLockContext } from '../typedLocks';
+import { createLockContext, WORLD_LOCK } from '../typedLocks';
 
 /**
  * Load world data from database (used internally by cache manager)
@@ -78,17 +78,13 @@ export function loadWorldFromDb(db: sqlite3.Database, saveCallback: SaveWorldCal
 export async function loadWorld(): Promise<World> {
   // Use typed cache manager for cache-aware access
   const cacheManager = getUserWorldCache();
+  await cacheManager.initialize();
   
-  const emptyCtx = createLockContext();
-  
-  // Use world read lock to ensure consistent access
-  const worldCtx = await cacheManager.acquireWorldRead(emptyCtx);
-  try {
-    // Get world data safely (we have world read lock)
-    return cacheManager.getWorldFromCache(worldCtx);
-  } finally {
-    worldCtx.dispose();
-  }
+  const ctx = createLockContext();
+  return await ctx.useLockWithAcquire(WORLD_LOCK, async (worldContext) => {
+    // Get world data safely (we have world lock)
+    return cacheManager.getWorldFromCache(worldContext);
+  });
 }
 
 /**
