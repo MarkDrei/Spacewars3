@@ -14,7 +14,7 @@
     "export-db": "npx tsx scripts/export-database-to-html.ts"
   },
   "dependencies": {
-    "@markdrei/ironguard-typescript-locks": "^0.1.0",
+    "@markdrei/ironguard-typescript-locks": "0.2.1",
     "@tailwindcss/postcss": "^4",
     "@types/bcrypt": "^6.0.0",
     "@types/node": "^20",
@@ -23,9 +23,9 @@
     "@types/sqlite3": "^3.1.11",
     "bcrypt": "^6.0.0",
     "iron-session": "^8.0.4",
-    "next": "15.4.6",
-    "react": "19.1.0",
-    "react-dom": "19.1.0",
+    "next": "^15.4.6",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
     "react-router-dom": "^6.30.1",
     "sqlite3": "^5.1.7",
     "tailwindcss": "^4",
