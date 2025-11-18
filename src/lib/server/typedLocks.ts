@@ -33,15 +33,24 @@ export {
   LOCK_12,
   LOCK_13,
   type LocksAtMost2,
+  type LocksAtMost3,
   type LocksAtMost4,
   type LocksAtMost5,
   type LocksAtMost6,
   type LocksAtMost8,
+  type LocksAtMost9,
+  type LocksAtMostAndHas4,
+  type LocksAtMostAndHas6,
+  type HasLock4Context,
+  type HasLock6Context,
   type HasLock10Context,
   type HasLock11Context,
   type HasLock12Context,
   type HasLock13Context,
-  type LockContext
+  type LockContext,
+  type IronLocks,
+  type NullableLocksAtMost10,
+  type NullableLocksAtMost11
 } from '@markdrei/ironguard-typescript-locks';
 
 // Overview of the used lock levels and why we have them like that
