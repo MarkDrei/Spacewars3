@@ -4,11 +4,9 @@ import { getUserWorldCache, UserWorldCache } from '@/lib/server/world/userWorldC
 import { AllResearches, getResearchUpgradeCost, ResearchType, triggerResearch, TechTree } from '@/lib/server/techtree';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth, validateRequired, ApiError } from '@/lib/server/errors';
-import { createLockContext, type LockContext as IronGuardLockContext, USER_LOCK } from '@/lib/server/typedLocks';
+import { USER_LOCK } from '@/lib/server/typedLocks';
 import { User } from '@/lib/server/world/user';
-
-// Type alias for user context
-type UserContext = IronGuardLockContext<readonly [typeof USER_LOCK]>;
+import { createLockContext, LockContext, LocksAtMostAndHas4 } from '@markdrei/ironguard-typescript-locks';
 
 export async function POST(request: NextRequest) {
   try {
@@ -27,38 +25,23 @@ export async function POST(request: NextRequest) {
     const researchType = type as ResearchType;
     
     // Get typed cache manager singleton
-    const cacheManager = getUserWorldCache();
+    const userWorldCache = getUserWorldCache();
     
     // Create empty context for lock acquisition
     const emptyCtx = createLockContext();
     
-    // Execute with user lock (user-specific operation)
-    const userCtx = await cacheManager.acquireUserLock(emptyCtx);
-    try {
+    return await emptyCtx.useLockWithAcquire(USER_LOCK, async (userContext) => {
       // Get user data safely (we have user lock)
-      let user = cacheManager.getUserByIdFromCache(session.userId!, userCtx);
+      const user = await userWorldCache.getUserByIdWithLock(userContext, session.userId!);
       
       if (!user) {
-        // Load user from database if not in cache
-        const dbCtx = await cacheManager.acquireDatabaseRead(userCtx);
-        try {
-          user = await cacheManager.loadUserFromDbUnsafe(session.userId!, dbCtx);
-          if (!user) {
-            throw new ApiError(404, 'User not found');
-          }
-          
-          // Cache the loaded user
-          cacheManager.setUserUnsafe(user, userCtx);
-        } finally {
-          dbCtx.dispose();
-        }
+        console.log(`❌ User not found: ${session.userId}`);
+        throw new ApiError(404, 'User not found');
       }
       
       // Continue with research logic
-      return performResearchTrigger(user, researchType, cacheManager, userCtx);
-    } finally {
-      userCtx.dispose();
-    }
+      return performResearchTrigger(user, researchType, userWorldCache, userContext);
+    });
   } catch (error) {
     return handleApiError(error);
   }
@@ -67,8 +50,8 @@ export async function POST(request: NextRequest) {
 function performResearchTrigger(
   user: User,
   researchType: ResearchType,
-  cacheManager: UserWorldCache,
-  userCtx: UserContext
+  userWorldCache: UserWorldCache,
+  userCtx: LockContext<LocksAtMostAndHas4>
 ): NextResponse {
   const now = Math.floor(Date.now() / 1000);
   user.updateStats(now);
@@ -95,7 +78,7 @@ function performResearchTrigger(
   triggerResearch(user.techTree, researchType);
   
   // Update cache with new data (using unsafe methods because we have proper locks)
-  cacheManager.updateUserInCache(user, userCtx);
+  userWorldCache.updateUserInCache(userCtx, user);
   
   return NextResponse.json({ success: true });
 }

@@ -27,18 +27,18 @@ describe('BattleCache Debug Tests', () => {
     }
   });
 
-  it('debug_cacheManagerInitialization_initializesBattleCache', async () => {
+  it('debug_userWorldCacheInitialization_initializesBattleCache', async () => {
     console.log('🔍 Starting debug test...');
     
-    const cacheManager = getUserWorldCache();
+    const userWorldCache = getUserWorldCache();
     console.log('📋 Got cache manager');
     
     const battleCacheBefore = getBattleCache();
     console.log('⚔️ Got battle cache before init');
     
     try {
-      console.log('🚀 Calling cacheManager.initialize()...');
-      await cacheManager.initialize();
+      console.log('🚀 Calling userWorldCache.initialize()...');
+      await userWorldCache.initialize();
       console.log('✅ Cache manager initialization complete');
     } catch (error) {
       console.error('❌ Cache manager initialization failed:', error);
@@ -51,7 +51,7 @@ describe('BattleCache Debug Tests', () => {
     
     try {
       console.log('🚀 Manually initializing BattleCache with test database...');
-      const db = await cacheManager.getDatabaseConnection();
+      const db = await userWorldCache.getDatabaseConnection();
       await battleCacheAfter.initialize(db);
       console.log('✅ BattleCache manual initialization complete');
     } catch (error) {
@@ -78,8 +78,8 @@ describe('BattleCache Debug Tests', () => {
     console.log('🔍 Testing BattleCache auto-initialization...');
     
     // First initialize the cache manager (for database)
-    const cacheManager = getUserWorldCache();
-    await cacheManager.initialize();
+    const userWorldCache = getUserWorldCache();
+    await userWorldCache.initialize();
     console.log('✅ Cache manager initialized');
     
     // Get BattleCache and test auto-initialization

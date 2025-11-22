@@ -22,8 +22,10 @@ import type { User } from '../world/user';
 import { TechFactory } from '../TechFactory';
 import { ApiError } from '../errors';
 import { getUserWorldCache } from '../world/userWorldCache';
-import { createLockContext } from '../typedLocks';
 import { getBattleCache } from './BattleCache';
+import { createLockContext, LockContext, LocksAtMostAndHas2, LocksAtMostAndHas4 } from '@markdrei/ironguard-typescript-locks';
+import { WORLD_LOCK, USER_LOCK, DATABASE_LOCK_USERS } from '../typedLocks';
+import { getUserByIdFromDb } from '../world/userRepo';
 
 /**
  * Maximum distance to initiate battle (same as collection distance)
@@ -109,58 +111,46 @@ function calculateDistance(x1: number, y1: number, x2: number, y2: number): numb
 
 /**
  * Get ship position from World cache
- * Helper function that delegates to TypedCacheManager
+ * Helper function that delegates to TypeduserWorldCache
  */
 async function getShipPosition(shipId: number): Promise<{ x: number; y: number } | null> {
-  const cacheManager = getUserWorldCache();
+  const userWorldCache = getUserWorldCache();
   const ctx = createLockContext();
-  const worldCtx = await cacheManager.acquireWorldRead(ctx);
-  try {
-    const world = cacheManager.getWorldFromCache(worldCtx);
+  return await ctx.useLockWithAcquire(WORLD_LOCK, async (worldContext) => {
+    const world = userWorldCache.getWorldFromCache(worldContext);
     const ship = world.spaceObjects.find(obj => obj.id === shipId);
     return ship ? { x: ship.x, y: ship.y } : null;
-  } finally {
-    worldCtx.dispose();
-  }
+
+  });
 }
 
 /**
  * Set ship speed via World cache
- * Delegates to TypedCacheManager instead of bypassing cache
+ * Delegates to TypeduserWorldCache instead of bypassing cache
  */
 async function setShipSpeed(shipId: number, speed: number): Promise<void> {
-  const cacheManager = getUserWorldCache();
+  const userWorldCache = getUserWorldCache();
   const ctx = createLockContext();
-  const worldCtx = await cacheManager.acquireWorldWrite(ctx);
-  try {
-    const world = cacheManager.getWorldFromCache(worldCtx);
+  return await ctx.useLockWithAcquire(WORLD_LOCK, async (worldContext) => {
+    const world = userWorldCache.getWorldFromCache(worldContext);
     const ship = world.spaceObjects.find(obj => obj.id === shipId);
     if (ship) {
       ship.speed = speed;
-      cacheManager.updateWorldUnsafe(world, worldCtx);
+      userWorldCache.updateWorldUnsafe(worldContext, world);
     }
-  } finally {
-    worldCtx.dispose();
-  }
+  });
 }
 
 /**
  * Update user battle state via User cache
- * Delegates to TypedCacheManager instead of bypassing cache
  */
-async function updateUserBattleState(userId: number, inBattle: boolean, battleId: number | null): Promise<void> {
-  const cacheManager = getUserWorldCache();
-  const ctx = createLockContext();
-  const userCtx = await cacheManager.acquireUserLock(ctx);
-  try {
-    const user = cacheManager.getUserByIdFromCache(userId, userCtx);
-    if (user) {
-      user.inBattle = inBattle;
-      user.currentBattleId = battleId;
-      cacheManager.updateUserInCache(user, userCtx);
-    }
-  } finally {
-    userCtx.dispose();
+async function updateUserBattleState(context: LockContext<LocksAtMostAndHas4>, userId: number, inBattle: boolean, battleId: number | null): Promise<void> {
+  const userWorldCache = getUserWorldCache();
+  const user = userWorldCache.getUserByIdFromCache(context, userId);
+  if (user) {
+    user.inBattle = inBattle;
+    user.currentBattleId = battleId;
+    userWorldCache.updateUserInCache(context, user);
   }
 }
 
@@ -194,86 +184,37 @@ function generateTeleportPosition(
 
 /**
  * Teleport ship to new position via World cache
- * Delegates to TypedCacheManager instead of bypassing cache
+ * Delegates to TypeduserWorldCache instead of bypassing cache
+ * 
+ * TODO: Move this to userWorldCache.ts as a method
  */
-async function teleportShip(shipId: number, x: number, y: number): Promise<void> {
-  const cacheManager = getUserWorldCache();
-  const ctx = createLockContext();
-  const worldCtx = await cacheManager.acquireWorldWrite(ctx);
-  try {
-    const world = cacheManager.getWorldFromCache(worldCtx);
+async function teleportShip(context: LockContext<LocksAtMostAndHas4>, shipId: number, x: number, y: number): Promise<void> {
+  const userWorldCache = getUserWorldCache();
+  await context.useLockWithAcquire(WORLD_LOCK, async (worldContext) => {
+    const world = userWorldCache.getWorldFromCache(worldContext);
     const ship = world.spaceObjects.find(obj => obj.id === shipId);
     if (ship) {
       ship.x = x;
       ship.y = y;
       ship.speed = 0;
       ship.last_position_update_ms = Date.now();
-      cacheManager.updateWorldUnsafe(world, worldCtx);
+      userWorldCache.updateWorldUnsafe(worldContext, world);
     }
-  } finally {
-    worldCtx.dispose();
-  }
-}
-
-/**
- * Update user defense values via User cache
- * Delegates to TypedCacheManager with proper cache loading
- */
-async function updateUserDefense(
-  userId: number,
-  hull: number,
-  armor: number,
-  shield: number
-): Promise<void> {
-  const cacheManager = getUserWorldCache();
-  const ctx = createLockContext();
-  const userCtx = await cacheManager.acquireUserLock(ctx);
-  try {
-    // Load user from cache/DB if needed
-    let user = cacheManager.getUserByIdFromCache(userId, userCtx);
-    if (!user) {
-      // Load from database
-      const dbCtx = await cacheManager.acquireDatabaseRead(userCtx);
-      try {
-        user = await cacheManager.loadUserFromDbUnsafe(userId, dbCtx);
-        if (user) {
-          cacheManager.setUserUnsafe(user, userCtx);
-        }
-      } finally {
-        dbCtx.dispose();
-      }
-    }
-    
-    if (user) {
-      user.hullCurrent = hull;
-      user.armorCurrent = armor;
-      user.shieldCurrent = shield;
-      user.defenseLastRegen = Math.floor(Date.now() / 1000);
-      cacheManager.updateUserInCache(user, userCtx);
-    }
-    
-  } finally {
-    userCtx.dispose();
-  }
+  });
 }
 
 /**
  * Get user's ship ID from User cache
- * Delegates to TypedCacheManager instead of bypassing cache
  */
-async function getUserShipId(userId: number): Promise<number> {
-  const cacheManager = getUserWorldCache();
-  const ctx = createLockContext();
-  const userCtx = await cacheManager.acquireUserLock(ctx);
-  try {
-    const user = cacheManager.getUserByIdFromCache(userId, userCtx);
-    if (!user || user.ship_id === undefined) {
-      throw new Error('User not found or has no ship');
-    }
-    return user.ship_id;
-  } finally {
-    userCtx.dispose();
+async function getUserShipId(context: LockContext<LocksAtMostAndHas4>, userId: number): Promise<number> {
+  const userWorldCache = getUserWorldCache();
+
+  const user = userWorldCache.getUserByIdFromCache(context, userId);
+  if (!user || user.ship_id === undefined) {
+    throw new Error('User not found or has no ship');
   }
+  return user.ship_id;
+
 }
 
 /**
@@ -281,11 +222,12 @@ async function getUserShipId(userId: number): Promise<number> {
  * NOTE: Caller should check battle state via user.inBattle before calling this
  * 
  * TECHNICAL DEBT: This function performs multiple direct DB writes
- * bypassing TypedCacheManager (setShipSpeed, updateUserBattleState).
+ * bypassing TypeduserWorldCache (setShipSpeed, updateUserBattleState).
  * Should be refactored to use cache-first architecture.
  * See TechnicalDebt.md for details.
  */
 export async function initiateBattle(
+  context: LockContext<LocksAtMostAndHas2>,
   attacker: User,
   attackee: User
 ): Promise<Battle> {
@@ -366,9 +308,11 @@ export async function initiateBattle(
   );
   
   console.log(`⚔️ initiateBattle: Updating user battle states...`);
-  // Update users' battle state
-  await updateUserBattleState(attacker.id, true, battle.id);
-  await updateUserBattleState(attackee.id, true, battle.id);
+  await context.useLockWithAcquire(USER_LOCK, async (userContext) => {
+    // Update users' battle state
+    await updateUserBattleState(userContext, attacker.id, true, battle.id);
+    await updateUserBattleState(userContext, attackee.id, true, battle.id);
+  });
   
   // Log battle start event
   const startEvent: BattleEvent = {
@@ -390,8 +334,8 @@ export async function initiateBattle(
 /**
  * Update an ongoing battle (process one combat round)
  */
-export async function updateBattle(battleId: number): Promise<Battle> {
-  const battle = await BattleRepo.getBattle(battleId);
+export async function updateBattle(context: LockContext<LocksAtMostAndHas2>, battleId: number): Promise<Battle> {
+  const battle = await BattleRepo.getBattle(context, battleId);
   
   if (!battle) {
     throw new ApiError(404, 'Battle not found');
@@ -406,7 +350,7 @@ export async function updateBattle(battleId: number): Promise<Battle> {
   
   // Process combat until next shot (max 100 turns)
   const now = Math.floor(Date.now() / 1000);
-  const events = await battleEngine.processBattleUntilNextShot(100);
+  const events = await battleEngine.processBattleUntilNextShot(context, 100);
   
   // Save events to database
   for (const event of events) {
@@ -421,25 +365,26 @@ export async function updateBattle(battleId: number): Promise<Battle> {
   // We don't need to call updateBattleDefenses here anymore
   
   // Check if battle is over
-  if (await battleEngine.isBattleOver()) {
-    const outcome = await battleEngine.getBattleOutcome();
+  if (await battleEngine.isBattleOver(context)) {
+    const outcome = await battleEngine.getBattleOutcome(context);
     if (outcome) {
-      await resolveBattle(battleId, outcome.winnerId);
+      await resolveBattle(context, battleId, outcome.winnerId);
     }
   }
   
   // Return updated battle
-  return BattleRepo.getBattle(battleId) as Promise<Battle>;
+  return BattleRepo.getBattle(context, battleId) as Promise<Battle>;
 }
 
 /**
  * Resolve a battle (determine winner and apply consequences)
  */
 export async function resolveBattle(
+  context: LockContext<LocksAtMostAndHas2>,
   battleId: number,
   winnerId: number
 ): Promise<void> {
-  const battle = await BattleRepo.getBattle(battleId);
+  const battle = await BattleRepo.getBattle(context, battleId);
   
   if (!battle) {
     throw new ApiError(404, 'Battle not found');
@@ -453,60 +398,51 @@ export async function resolveBattle(
   
   // Snapshot final defense values from User objects to create endStats
   // This is the "write once at end of battle" for endStats
-  const cacheManager = getUserWorldCache();
-  let attackerEndStats: BattleStats;
-  let attackeeEndStats: BattleStats;
-  
-  {
-    const ctx = createLockContext();
-    const userCtx = await cacheManager.acquireUserLock(ctx);
-    try {
-      let attacker = cacheManager.getUserByIdFromCache(battle.attackerId, userCtx);
-      let attackee = cacheManager.getUserByIdFromCache(battle.attackeeId, userCtx);
-      
-      // Load from DB if not in cache
-      if (!attacker) {
-        const dbCtx = await cacheManager.acquireDatabaseRead(userCtx);
-        try {
-          attacker = await cacheManager.loadUserFromDbUnsafe(battle.attackerId, dbCtx);
-          if (attacker) cacheManager.setUserUnsafe(attacker, userCtx);
-        } finally {
-          dbCtx.dispose();
-        }
-      }
-      
-      if (!attackee) {
-        const dbCtx = await cacheManager.acquireDatabaseRead(userCtx);
-        try {
-          attackee = await cacheManager.loadUserFromDbUnsafe(battle.attackeeId, dbCtx);
-          if (attackee) cacheManager.setUserUnsafe(attackee, userCtx);
-        } finally {
-          dbCtx.dispose();
-        }
-      }
-      
-      if (!attacker || !attackee) {
-        throw new Error('Users not found when resolving battle');
-      }
-      
-      // Create endStats from current user defense values
-      attackerEndStats = {
-        hull: { current: attacker.hullCurrent, max: attacker.techCounts.ship_hull * 100 },
-        armor: { current: attacker.armorCurrent, max: attacker.techCounts.kinetic_armor * 100 },
-        shield: { current: attacker.shieldCurrent, max: attacker.techCounts.energy_shield * 100 },
-        weapons: battle.attackerStartStats.weapons // Weapons don't change
-      };
-      
-      attackeeEndStats = {
-        hull: { current: attackee.hullCurrent, max: attackee.techCounts.ship_hull * 100 },
-        armor: { current: attackee.armorCurrent, max: attackee.techCounts.kinetic_armor * 100 },
-        shield: { current: attackee.shieldCurrent, max: attackee.techCounts.energy_shield * 100 },
-        weapons: battle.attackeeStartStats.weapons // Weapons don't change
-      };
-    } finally {
-      userCtx.dispose();
+  const userWorldCache = getUserWorldCache();
+  const [attackerEndStats, attackeeEndStats] = await context.useLockWithAcquire(USER_LOCK, async (userContext) => {
+    let attacker = userWorldCache.getUserByIdFromCache(userContext, battle.attackerId);
+    let attackee = userWorldCache.getUserByIdFromCache(userContext, battle.attackeeId);
+    
+    // Load from DB if not in cache
+    if (!attacker) {
+      attacker = await userContext.useLockWithAcquire(DATABASE_LOCK_USERS, async () => {
+        const db = await userWorldCache.getDatabaseConnection();
+        const loadedAttacker = await getUserByIdFromDb(db, battle.attackerId, async () => {});
+        if (loadedAttacker) userWorldCache.setUserUnsafe(loadedAttacker, userContext);
+        return loadedAttacker;
+      });
     }
-  }
+    
+    if (!attackee) {
+      attackee = await userContext.useLockWithAcquire(DATABASE_LOCK_USERS, async () => {
+        const db = await userWorldCache.getDatabaseConnection();
+        const loadedAttackee = await getUserByIdFromDb(db, battle.attackeeId, async () => {});
+        if (loadedAttackee) userWorldCache.setUserUnsafe(loadedAttackee, userContext);
+        return loadedAttackee;
+      });
+    }
+    
+    if (!attacker || !attackee) {
+      throw new Error('Users not found when resolving battle');
+    }
+    
+    // Create endStats from current user defense values
+    const attackerStats: BattleStats = {
+      hull: { current: attacker.hullCurrent, max: attacker.techCounts.ship_hull * 100 },
+      armor: { current: attacker.armorCurrent, max: attacker.techCounts.kinetic_armor * 100 },
+      shield: { current: attacker.shieldCurrent, max: attacker.techCounts.energy_shield * 100 },
+      weapons: battle.attackerStartStats.weapons // Weapons don't change
+    };
+    
+    const attackeeStats: BattleStats = {
+      hull: { current: attackee.hullCurrent, max: attackee.techCounts.ship_hull * 100 },
+      armor: { current: attackee.armorCurrent, max: attackee.techCounts.kinetic_armor * 100 },
+      shield: { current: attackee.shieldCurrent, max: attackee.techCounts.energy_shield * 100 },
+      weapons: battle.attackeeStartStats.weapons // Weapons don't change
+    };
+    
+    return [attackerStats, attackeeStats] as const;
+  });
   
   // Log battle end event BEFORE ending battle (battle must still be in cache)
   // If event logging fails, we still proceed with ending the battle to avoid inconsistent state
@@ -535,29 +471,31 @@ export async function resolveBattle(
     attackeeEndStats
   );
   
-  // Clear battle state for both users
-  await updateUserBattleState(battle.attackerId, false, null);
-  await updateUserBattleState(battle.attackeeId, false, null);
-  
-  // Note: Defense values are already updated in User objects during battle
-  // No need to call updateUserDefense here
-  
-  // Get ship IDs for teleportation
-  const winnerShipId = await getUserShipId(winnerId);
-  const loserShipId = await getUserShipId(loserId);
-  
-  const winnerPos = await getShipPosition(winnerShipId);
-  
-  if (winnerPos) {
-    // Teleport loser to random position (minimum distance away)
-    const teleportPos = generateTeleportPosition(
-      winnerPos.x,
-      winnerPos.y,
-      MIN_TELEPORT_DISTANCE
-    );
+  await context.useLockWithAcquire(USER_LOCK, async (userContext) => {
+    // Clear battle state for both users
+    await updateUserBattleState(userContext, battle.attackerId, false, null);
+    await updateUserBattleState(userContext, battle.attackeeId, false, null);
     
-    await teleportShip(loserShipId, teleportPos.x, teleportPos.y);
+    // Note: Defense values are already updated in User objects during battle
+    // No need to call updateUserDefense here
     
-    console.log(`⚔️ Battle ${battleId} ended: Winner ${winnerId}, Loser ${loserId} teleported to (${teleportPos.x.toFixed(0)}, ${teleportPos.y.toFixed(0)})`);
-  }
+    // Get ship IDs for teleportation
+    const winnerShipId = await getUserShipId(userContext, winnerId);
+    const loserShipId = await getUserShipId(userContext, loserId);
+    
+    const winnerPos = await getShipPosition(winnerShipId);
+    
+    if (winnerPos) {
+      // Teleport loser to random position (minimum distance away)
+      const teleportPos = generateTeleportPosition(
+        winnerPos.x,
+        winnerPos.y,
+        MIN_TELEPORT_DISTANCE
+      );
+      
+      await teleportShip(userContext, loserShipId, teleportPos.x, teleportPos.y);
+      
+      console.log(`⚔️ Battle ${battleId} ended: Winner ${winnerId}, Loser ${loserId} teleported to (${teleportPos.x.toFixed(0)}, ${teleportPos.y.toFixed(0)})`);
+    }
+  });
 }

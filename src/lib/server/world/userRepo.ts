@@ -6,7 +6,6 @@ import sqlite3 from 'sqlite3';
 import { User, SaveUserCallback } from './user';
 import { createInitialTechTree } from '../techtree';
 import { getUserWorldCache } from './userWorldCache';
-import { createLockContext } from '../typedLocks';
 import { sendMessageToUser } from '../messages/MessageCache';
 import { TechCounts } from '../TechFactory';
 
@@ -116,17 +115,10 @@ export function getUserByUsernameFromDb(db: sqlite3.Database, username: string, 
   });
 }
 
-// Cache-aware public functions
-export async function getUserById(db: sqlite3.Database, id: number): Promise<User | null> {
-  // Use typed cache manager for cache-aware access
-  const cacheManager = getUserWorldCache();
-  return await cacheManager.getUserById(id);
-}
-
 export async function getUserByUsername(db: sqlite3.Database, username: string): Promise<User | null> {
   // Use typed cache manager for cache-aware access
-  const cacheManager = getUserWorldCache();
-  return await cacheManager.getUserByUsername(username);
+  const userWorldCache = getUserWorldCache();
+  return await userWorldCache.getUserByUsername(username);
 }
 
 export function createUser(db: sqlite3.Database, username: string, password_hash: string, saveCallback: SaveUserCallback): Promise<User> {

@@ -19,17 +19,17 @@ describe('User Persistence to Database', () => {
     const initialTechCount = user.techCounts.pulse_laser;
     
     // Get cache manager and initialize
-    const cacheManager = UserWorldCache.getInstance();
-    await cacheManager.initialize();
+    const userWorldCache = UserWorldCache.getInstance();
+    await userWorldCache.initialize();
     
     // Load user into cache
     const { createLockContext } = await import('@/lib/server/typedLocks');
     const emptyCtx = createLockContext();
     
-    const userCtx = await cacheManager.acquireUserLock(emptyCtx);
+    const userCtx = await userWorldCache.acquireUserLock(emptyCtx);
     try {
       // Set user in cache
-      cacheManager.setUserUnsafe(user, userCtx);
+      userWorldCache.setUserUnsafe(user, userCtx);
     } finally {
       userCtx.dispose();
     }
@@ -38,15 +38,15 @@ describe('User Persistence to Database', () => {
     user.iron = 1000;
     user.techCounts.pulse_laser = 10;
     
-    const userCtx2 = await cacheManager.acquireUserLock(emptyCtx);
+    const userCtx2 = await userWorldCache.acquireUserLock(emptyCtx);
     try {
-      cacheManager.updateUserInCache(user, userCtx2);
+      userWorldCache.updateUserInCache(user, userCtx2);
     } finally {
       userCtx2.dispose();
     }
     
     // Force flush to database
-    await cacheManager.flushAllToDatabase();
+    await userWorldCache.flushAllToDatabase();
     
     // Assert: Read directly from database to verify persistence
     const userFromDb = await new Promise<{ iron: number; pulse_laser: number }>((resolve, reject) => {
@@ -74,16 +74,16 @@ describe('User Persistence to Database', () => {
     const user = await createUser(db, 'testuser_shutdown_persist', 'hashedpass', saveCallback);
     
     // Get cache manager
-    const cacheManager = UserWorldCache.getInstance();
-    await cacheManager.initialize();
+    const userWorldCache = UserWorldCache.getInstance();
+    await userWorldCache.initialize();
     
     // Load user into cache
     const { createLockContext } = await import('@/lib/server/typedLocks');
     const emptyCtx = createLockContext();
     
-    const userCtx = await cacheManager.acquireUserLock(emptyCtx);
+    const userCtx = await userWorldCache.acquireUserLock(emptyCtx);
     try {
-      cacheManager.setUserUnsafe(user, userCtx);
+      userWorldCache.setUserUnsafe(user, userCtx);
     } finally {
       userCtx.dispose();
     }
@@ -92,15 +92,15 @@ describe('User Persistence to Database', () => {
     user.iron = 5000;
     user.techCounts.auto_turret = 15;
     
-    const userCtx2 = await cacheManager.acquireUserLock(emptyCtx);
+    const userCtx2 = await userWorldCache.acquireUserLock(emptyCtx);
     try {
-      cacheManager.updateUserInCache(user, userCtx2);
+      userWorldCache.updateUserInCache(user, userCtx2);
     } finally {
       userCtx2.dispose();
     }
     
     // Shutdown should persist dirty users
-    await cacheManager.shutdown();
+    await userWorldCache.shutdown();
     
     // Assert: Read directly from database to verify persistence on shutdown
     const userFromDb = await new Promise<{ iron: number; auto_turret: number }>((resolve, reject) => {

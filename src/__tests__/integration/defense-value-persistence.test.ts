@@ -33,16 +33,16 @@ describe('Defense Value Persistence After Battle', () => {
   it('defenseValues_afterBattleResolution_persistCorrectly', async () => {
     // === Phase 1: Setup ===
     const battleCache = getBattleCache();
-    const cacheManager = getUserWorldCache();
-    await cacheManager.initialize();
+    const userWorldCache = getUserWorldCache();
+    await userWorldCache.initialize();
 
     // Initialize BattleCache manually for tests
-    const db = await cacheManager.getDatabaseConnection();
+    const db = await userWorldCache.getDatabaseConnection();
     await battleCache.initialize(db);
 
     // Load users from cache
-    const attacker = await cacheManager.getUserById(1);
-    const defender = await cacheManager.getUserById(2);
+    const attacker = await userWorldCache.getUserById(1);
+    const defender = await userWorldCache.getUserById(2);
 
     expect(attacker).not.toBeNull();
     expect(defender).not.toBeNull();
@@ -129,7 +129,7 @@ describe('Defense Value Persistence After Battle', () => {
 
     // === Phase 5: Verify Defense Values Persisted ===
     // Flush cache to ensure values are written to DB
-    await cacheManager.flushAllToDatabase();
+    await userWorldCache.flushAllToDatabase();
 
     // Clear cache and reload users from DB
     UserWorldCache.resetInstance();

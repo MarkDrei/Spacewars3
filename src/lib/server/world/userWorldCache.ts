@@ -3,31 +3,17 @@
 // Uses IronGuard lock system with hierarchical locking
 // ---
 
-import { 
-  createLockContext,
-  LOCK_10,
-  LOCK_11,
-  type LockContext,
-  type LocksAtMost3,
-  type LocksAtMost5,
-  type LocksAtMostAndHas4,
-  type LocksAtMostAndHas6,
-  type HasLock4Context,
-  type HasLock6Context,
-  type IronLocks,
-  type NullableLocksAtMost10,
-  type NullableLocksAtMost11,
+import { createLockContext, HasLock4Context, HasLock6Context, IronLocks, LOCK_10, LOCK_11, LockContext, LocksAtMost1, LocksAtMost3, LocksAtMostAndHas4, LocksAtMostAndHas6 } from '@markdrei/ironguard-typescript-locks';
+import sqlite3 from 'sqlite3';
+import { getDatabase } from '../database';
+import {
   USER_LOCK,
-  WORLD_LOCK,
-  DATABASE_LOCK_USERS,
-  DATABASE_LOCK_SPACE_OBJECTS
+  WORLD_LOCK
 } from '../typedLocks';
 import { User } from './user';
-import { World } from './world';
-import { getDatabase } from '../database';
-import { loadWorldFromDb, saveWorldToDb } from './worldRepo';
 import { getUserByIdFromDb, getUserByUsernameFromDb } from './userRepo';
-import sqlite3 from 'sqlite3';
+import { World } from './world';
+import { loadWorldFromDb, saveWorldToDb } from './worldRepo';
 
 // Cache configuration interface
 export interface TypedCacheConfig {
@@ -190,19 +176,19 @@ export class UserWorldCache {
   /**
    * Get world data reference (requires world lock context). Performs a physics update.
    */
-  getWorldFromCache<THeld extends IronLocks>(_context: HasLock6Context<THeld>): World {
+  getWorldFromCache(context: LockContext<LocksAtMostAndHas6>): World {
     if (!this.world) {
       throw new Error('World not loaded - call initialize() first');
     }
     this.stats.worldCacheHits++;
-    this.world.updatePhysics(Date.now());
+    this.world.updatePhysics(context, Date.now());
     return this.world;
   }
 
   /**
    * Update world data without acquiring locks (requires world write lock context)
    */
-  updateWorldUnsafe<THeld extends IronLocks>(world: World, _context: HasLock6Context<THeld>): void {
+  updateWorldUnsafe(_context:LockContext<LocksAtMostAndHas6>, world: World): void {
     this.world = world;
     this.worldDirty = true;
   }
@@ -242,7 +228,10 @@ export class UserWorldCache {
    * 
    * Use getUserById for safe loading from database if not in cache.
    */
-  getUserByIdFromCache<THeld extends IronLocks>(userId: number, _context: HasLock4Context<THeld>): User | null {
+  getUserByIdFromCache<THeld extends IronLocks>(
+    _context: HasLock4Context<THeld>,
+    userId: number
+  ): User | null {
     const user = this.users.get(userId);
     if (user) {
       this.stats.userCacheHits++;
@@ -268,7 +257,7 @@ export class UserWorldCache {
   /**
    * Update user data in the cache, marking as dirty (requires user lock context)
    */
-  updateUserInCache<THeld extends IronLocks>(user: User, _context: HasLock4Context<THeld>): void {
+  updateUserInCache(_context: LockContext<LocksAtMostAndHas4>, user: User): void {
     this.users.set(user.id, user);
     this.usernameToUserId.set(user.username, user.id); // Update username mapping
     this.dirtyUsers.add(user.id); // Mark as dirty for persistence
@@ -279,12 +268,12 @@ export class UserWorldCache {
    * - Loads from database if not in cache
    * - Updates user before returning
    */
-  private async getUserByIdInternal(
+  async getUserByIdWithLock(
     context: LockContext<LocksAtMostAndHas4>,
     userId: number
   ): Promise<User | null> {
     // Check cache first
-    let user = this.getUserByIdFromCache(userId, context);
+    let user = this.getUserByIdFromCache(context, userId);
 
     if (user) {
       console.log(`👤 User ${userId} cache hit`);
@@ -300,7 +289,7 @@ export class UserWorldCache {
 
     if (user) {
       user.updateStats(Math.floor(Date.now() / 1000));
-      this.updateUserInCache(user, context);
+      this.updateUserInCache(context, user);
       return user;
     }
     return null;
@@ -311,12 +300,12 @@ export class UserWorldCache {
    * - Loads from database if not in cache
    * - Updates user before returning
    */
-  async getUserById(userId: number): Promise<User | null> {
+  async getUserById(context: LockContext<LocksAtMost3>, userId: number): Promise<User | null> {
     await this.ensureInitialized();
 
     const ctx = createLockContext();
     return await ctx.useLockWithAcquire(USER_LOCK, async (userContext) => {
-      return await this.getUserByIdInternal(userContext, userId);
+      return await this.getUserByIdWithLock(userContext, userId);
     });
   }
 
@@ -333,7 +322,7 @@ export class UserWorldCache {
     const cachedUserId = this.usernameToUserId.get(username);
     let user: User | null = null;
     if (cachedUserId) {
-      user = this.getUserByIdFromCache(cachedUserId, context);
+      user = this.getUserByIdFromCache(context, cachedUserId);
       if (user) {
         console.log(`👤 Username "${username}" cache hit for user ID ${cachedUserId}`);
       }
@@ -347,7 +336,7 @@ export class UserWorldCache {
 
     if (user) {
       user.updateStats(Math.floor(Date.now() / 1000));
-      this.updateUserInCache(user, context);
+      this.updateUserInCache(context, user);
       return user;
     }
 
@@ -395,7 +384,7 @@ export class UserWorldCache {
    * Force flush all dirty data to database
    * Useful for ensuring data is persisted before reading directly from DB
    */
-  async flushAllToDatabase(): Promise<void> {
+  async flushAllToDatabase(context: LockContext<LocksAtMost1>): Promise<void> {
     await this.ensureInitialized();
     
     console.log('🔄 Flushing all dirty data to database...');
@@ -415,7 +404,7 @@ export class UserWorldCache {
     // Flush messages via MessageCache (imported dynamically to avoid circular dependencies)
     const { getMessageCache } = await import('../messages/MessageCache');
     const messageCache = getMessageCache();
-    await messageCache.flushToDatabase();
+    await messageCache.flushToDatabase(context);
     
     console.log('✅ All dirty data flushed to database');
   }

@@ -9,6 +9,9 @@ import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, ApiError, requireAuth } from '@/lib/server/errors';
 import { initiateBattle } from '@/lib/server/battle/battleService';
 import { getUserWorldCache } from '@/lib/server/world/userWorldCache';
+import { createLockContext, LOCK_2 } from '@markdrei/ironguard-typescript-locks';
+import { a } from 'vitest/dist/chunks/suite.d.FvehnV49.js';
+import { BATTLE_LOCK, USER_LOCK } from '@/lib/server/typedLocks';
 
 // Force dynamic rendering for this route
 export const dynamic = 'force-dynamic';
@@ -41,30 +44,36 @@ export async function POST(request: NextRequest) {
     
     console.log(`⚔️ Attack API: User ${session.userId} attacking user ${targetUserId}`);
     
-    const cacheManager = getUserWorldCache();
-    
-    const attacker = await cacheManager.getUserById(session.userId!);
-    if (!attacker) {
-      throw new ApiError(404, 'Attacker not found');
-    }
+    const userWorldCache = getUserWorldCache();
 
-    // Load target from cache
-    const target = await cacheManager.getUserById(targetUserId);
-    if (!target) {
-      throw new ApiError(404, 'Target user not found');
-    }
-
-    console.log(`⚔️ Attack API: Both users loaded, initiating battle...`);
+    const context = createLockContext();
+    return await context.useLockWithAcquire(BATTLE_LOCK, async (battleContext) => {
+      return await battleContext.useLockWithAcquire(USER_LOCK, async (userContext) => {
+        const attacker = await userWorldCache.getUserByIdWithLock(userContext, session.userId!);
+        if (!attacker) {
+          throw new ApiError(404, 'Attacker not found');
+        }
     
-    // Initiate the battle - this will handle its own locking internally
-    const battle = await initiateBattle(attacker, target);
+        // Load target from cache
+        const target = await userWorldCache.getUserByIdWithLock(userContext, targetUserId);
+        if (!target) {
+          throw new ApiError(404, 'Target user not found');
+        }
     
-    console.log(`✅ Battle ${battle.id} initiated successfully`);
-    
-    return NextResponse.json({
-      success: true,
-      battle
+        console.log(`⚔️ Attack API: Both users loaded, initiating battle...`);
+        
+        // Initiate the battle - this will handle its own locking internally
+        const battle = await initiateBattle(battleContext, attacker, target);
+        
+        console.log(`✅ Battle ${battle.id} initiated successfully`);
+        
+        return NextResponse.json({
+          success: true,
+          battle
+        });
+      });
     });
+    
     
   } catch (error) {
     console.error('❌ Attack API error:', error);

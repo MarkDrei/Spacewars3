@@ -36,12 +36,12 @@ describe('Phase 5: End-to-End Battle Flow with BattleCache', () => {
     it('battleFlow_createToCompletion_properCacheIntegration', async () => {
       // === Phase 1: Setup ===
       const battleCache = getBattleCache();
-      const cacheManager = getUserWorldCache();
-      await cacheManager.initialize();
+      const userWorldCache = getUserWorldCache();
+      await userWorldCache.initialize();
 
       // Initialize BattleCache manually for tests
       // Initialize BattleCache manually for tests
-      const db = await cacheManager.getDatabaseConnection();
+      const db = await userWorldCache.getDatabaseConnection();
       await battleCache.initialize(db);
 
       // Use test user IDs (seeded by test database)
@@ -206,12 +206,12 @@ describe('Phase 5: End-to-End Battle Flow with BattleCache', () => {
     // The test should be updated when these methods are implemented
     it.skip('battleFlow_cacheIntegration_properDelegation', async () => {
       // Test that battle operations properly delegate to TypedCacheManager
-      const cacheManager = getUserWorldCache();
-      await cacheManager.initialize();
+      const userWorldCache = getUserWorldCache();
+      await userWorldCache.initialize();
 
       // Initialize BattleCache manually for tests
       const battleCache = getBattleCache();
-      const db = await cacheManager.getDatabaseConnection();
+      const db = await userWorldCache.getDatabaseConnection();
       await battleCache.initialize(db);
 
       // Use test user IDs (created by createTestDatabase)
@@ -255,12 +255,12 @@ describe('Phase 5: End-to-End Battle Flow with BattleCache', () => {
 
     it('battleFlow_concurrentBattles_cacheSeparation', async () => {
       // Test multiple concurrent battles with proper cache separation
-      const cacheManager = getUserWorldCache();
-      await cacheManager.initialize();
+      const userWorldCache = getUserWorldCache();
+      await userWorldCache.initialize();
 
       // Initialize BattleCache manually for tests
       const battleCache = getBattleCache();
-      const db = await cacheManager.getDatabaseConnection();
+      const db = await userWorldCache.getDatabaseConnection();
       await battleCache.initialize(db);
 
       // Use first 4 test users
@@ -313,12 +313,12 @@ describe('Phase 5: End-to-End Battle Flow with BattleCache', () => {
   describe('BattleCache Performance', () => {
     it('battleCache_backgroundPersistence_worksCorrectly', async () => {
       const cache = getBattleCache();
-      const cacheManager = getUserWorldCache();
-      await cacheManager.initialize();
+      const userWorldCache = getUserWorldCache();
+      await userWorldCache.initialize();
 
       // Initialize BattleCache manually for tests
       const battleCache = getBattleCache();
-      const db = await cacheManager.getDatabaseConnection();
+      const db = await userWorldCache.getDatabaseConnection();
       await battleCache.initialize(db);
 
       // Use test users
@@ -391,12 +391,12 @@ describe('Phase 5: End-to-End Battle Flow with BattleCache', () => {
 
     it('battleCache_cacheOperations_threadsafe', async () => {
       const cache = getBattleCache();
-      const cacheManager = getUserWorldCache();
-      await cacheManager.initialize();
+      const userWorldCache = getUserWorldCache();
+      await userWorldCache.initialize();
 
       // Initialize BattleCache manually for tests
       const battleCache = getBattleCache();
-      const db = await cacheManager.getDatabaseConnection();
+      const db = await userWorldCache.getDatabaseConnection();
       await battleCache.initialize(db);
 
       // Use test users

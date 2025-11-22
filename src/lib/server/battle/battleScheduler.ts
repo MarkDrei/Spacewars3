@@ -24,26 +24,24 @@ import { TechFactory } from '../TechFactory';
 import { sendMessageToUser } from '../messages/MessageCache';
 import { getBattleCache } from './BattleCache';
 import { getUserWorldCache } from '../world/userWorldCache';
-import { createLockContext, BATTLE_LOCK } from '../typedLocks';
+import { BATTLE_LOCK, USER_LOCK } from '../typedLocks';
+import { createLockContext, LockContext, LocksAtMostAndHas2 } from '@markdrei/ironguard-typescript-locks';
 
 /**
  * Helper to update user's battle state via TypedCacheManager
  * Uses proper cache delegation instead of direct DB access
  */
 async function updateUserBattleState(userId: number, inBattle: boolean, battleId: number | null): Promise<void> {
-  const cacheManager = getUserWorldCache();
+  const userWorldCache = getUserWorldCache();
   const ctx = createLockContext();
-  const userCtx = await cacheManager.acquireUserLock(ctx);
-  try {
-    const user = cacheManager.getUserByIdFromCache(userId, userCtx);
+  await ctx.useLockWithAcquire(USER_LOCK, async (userContext) => {
+    const user = userWorldCache.getUserByIdFromCache(userContext, userId);
     if (user) {
       user.inBattle = inBattle;
       user.currentBattleId = battleId;
-      cacheManager.updateUserInCache(user, userCtx);
+      userWorldCache.updateUserInCache(userContext, user);
     }
-  } finally {
-    userCtx.dispose();
-  }
+  });
 }
 
 /**
@@ -76,7 +74,7 @@ export async function processActiveBattles(): Promise<void> {
       
       for (const battle of activeBattles) {
         try {
-          await processBattleRoundInternal(battle.id);
+          await processBattleRoundInternal(battleContext, battle.id);
         } catch (error) {
           console.error(`❌ Error processing battle ${battle.id}:`, error);
         }
@@ -91,8 +89,8 @@ export async function processActiveBattles(): Promise<void> {
  * Process one round for a specific battle
  * Called from processActiveBattles which already holds BATTLE write lock
  */
-async function processBattleRoundInternal(battleId: number): Promise<void> {
-  const battle = await BattleRepo.getBattle(battleId);
+async function processBattleRoundInternal(context: LockContext<LocksAtMostAndHas2>, battleId: number): Promise<void> {
+  const battle = await BattleRepo.getBattle(context, battleId);
   
   if (!battle || battle.battleEndTime) {
     return;
@@ -108,6 +106,7 @@ async function processBattleRoundInternal(battleId: number): Promise<void> {
     // Process attacker's weapons
     for (const weaponType of attackerReadyWeapons) {
       await fireWeapon(
+        context,
         battle,
         battle.attackerId,
         battle.attackeeId,
@@ -120,6 +119,7 @@ async function processBattleRoundInternal(battleId: number): Promise<void> {
     // Process attackee's weapons
     for (const weaponType of attackeeReadyWeapons) {
       await fireWeapon(
+        context,
         battle,
         battle.attackeeId,
         battle.attackerId,
@@ -130,15 +130,15 @@ async function processBattleRoundInternal(battleId: number): Promise<void> {
     }
     
     // Check if battle is over after this round
-    const updatedBattle = await BattleRepo.getBattle(battleId);
+    const updatedBattle = await BattleRepo.getBattle(context, battleId);
     if (updatedBattle) {
       const updatedEngine = new BattleEngine(updatedBattle);
-      if (await updatedEngine.isBattleOver()) {
-        const outcome = await updatedEngine.getBattleOutcome();
+      if (await updatedEngine.isBattleOver(context)) {
+        const outcome = await updatedEngine.getBattleOutcome(context);
         if (outcome) {
           // Use battleService.resolveBattle instead of local endBattle
           // This ensures proper endStats snapshotting and teleportation
-          await resolveBattle(battleId, outcome.winnerId);
+          await resolveBattle(context, battleId, outcome.winnerId);
           
           // Send victory/defeat messages (battleService doesn't do this)
           const battle = updatedBattle;
@@ -157,6 +157,7 @@ async function processBattleRoundInternal(battleId: number): Promise<void> {
  * Fire a weapon and apply damage
  */
 async function fireWeapon(
+  context: LockContext<LocksAtMostAndHas2>,
   battle: Battle,
   attackerId: number,
   defenderId: number,
@@ -225,7 +226,7 @@ async function fireWeapon(
   
   // Apply damage using BattleEngine to ensure User cache is updated
   const battleEngine = new BattleEngine(battle);
-  const damageResult = await battleEngine.applyDamage(defenderId, totalDamage);
+  const damageResult = await battleEngine.applyDamage(context, defenderId, totalDamage);
   
   // Extract damage amounts from result
   const shieldDamage = damageResult.shieldDamage;

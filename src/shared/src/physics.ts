@@ -2,6 +2,8 @@
 // Shared physics calculations for both client and server
 // ---
 
+import { LockContext, LocksAtMostAndHas6 } from "@markdrei/ironguard-typescript-locks";
+
 export interface PhysicsObject {
   x: number;
   y: number;
@@ -84,6 +86,8 @@ export function updateObjectPositionWithTimeCorrection(
 
 /**
  * Update multiple objects' positions
+ * 
+ * 
  */
 export function updateAllObjectPositions<T extends PhysicsObject>(
   objects: T[],

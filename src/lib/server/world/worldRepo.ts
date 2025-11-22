@@ -5,7 +5,8 @@
 import sqlite3 from 'sqlite3';
 import { World, SpaceObject, SaveWorldCallback } from './world';
 import { getUserWorldCache } from './userWorldCache';
-import { createLockContext, WORLD_LOCK } from '../typedLocks';
+import { WORLD_LOCK } from '../typedLocks';
+import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 
 /**
  * Load world data from database (used internally by cache manager)
@@ -77,13 +78,12 @@ export function loadWorldFromDb(db: sqlite3.Database, saveCallback: SaveWorldCal
  */
 export async function loadWorld(): Promise<World> {
   // Use typed cache manager for cache-aware access
-  const cacheManager = getUserWorldCache();
-  await cacheManager.initialize();
+  const userWorldCache = getUserWorldCache();
+  await userWorldCache.initialize();
   
   const ctx = createLockContext();
   return await ctx.useLockWithAcquire(WORLD_LOCK, async (worldContext) => {
-    // Get world data safely (we have world lock)
-    return cacheManager.getWorldFromCache(worldContext);
+    return userWorldCache.getWorldFromCache(worldContext);
   });
 }
 
@@ -135,7 +135,7 @@ export async function deleteSpaceObject(db: sqlite3.Database, objectId: number):
   try {
     // Note: The cache manager will automatically reload world data on next access
     // since these operations modify the database directly
-    const cacheManager = getUserWorldCache();
+    const userWorldCache = getUserWorldCache();
     // Note: The cache manager will automatically reload world data on next access
     // since these operations modify the database directly
   } catch (cacheErr) {
@@ -167,7 +167,7 @@ export async function insertSpaceObject(db: sqlite3.Database, obj: Omit<SpaceObj
   try {
     // Note: The cache manager will automatically reload world data on next access
     // since these operations modify the database directly
-    const cacheManager = getUserWorldCache();
+    const userWorldCache = getUserWorldCache();
     // Note: The cache manager will automatically reload world data on next access
     // since these operations modify the database directly
   } catch (cacheErr) {

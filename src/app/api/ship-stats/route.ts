@@ -4,10 +4,11 @@ import { getUserWorldCache } from '@/lib/server/world/userWorldCache';
 import { getResearchEffectFromTree, ResearchType } from '@/lib/server/techtree';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth, ApiError } from '@/lib/server/errors';
-import { createLockContext } from '@/lib/server/typedLocks';
+import { USER_LOCK, WORLD_LOCK } from '@/lib/server/typedLocks';
 import { User } from '@/lib/server/world/user';
 import { World } from '@/lib/server/world/world';
 import { TechFactory } from '@/lib/server/TechFactory';
+import { createLockContext, LockContext, LocksAtMostAndHas4, LocksAtMostAndHas6 } from '@markdrei/ironguard-typescript-locks';
 
 export async function GET(request: NextRequest) {
   try {
@@ -15,60 +16,46 @@ export async function GET(request: NextRequest) {
     requireAuth(session.userId);
     
     // Get typed cache manager singleton
-    const cacheManager = getUserWorldCache();
+    const userWorldCache = getUserWorldCache();
     
     // Create empty context for lock acquisition
     const emptyCtx = createLockContext();
     
-    // Execute with world read and user locks (read both world and user)
-    const worldCtx = await cacheManager.acquireWorldRead(emptyCtx);
-    try {
-      const userCtx = await cacheManager.acquireUserLock(worldCtx);
-      try {
+    return await emptyCtx.useLockWithAcquire(USER_LOCK, async (userContext) => {
+      return await userContext.useLockWithAcquire(WORLD_LOCK, async (worldContext) => {
         // Get world and user data safely (we have both locks)
-        const world = cacheManager.getWorldFromCache(userCtx);
-        let user = cacheManager.getUserByIdFromCache(session.userId!, userCtx);
+        const user = await userWorldCache.getUserByIdWithLock(userContext, session.userId!);
+        const world = userWorldCache.getWorldFromCache(worldContext);
         
         if (!user) {
-          // Load user from database if not in cache
-          const dbCtx = await cacheManager.acquireDatabaseRead(userCtx);
-          try {
-            user = await cacheManager.loadUserFromDbUnsafe(session.userId!, dbCtx);
-            if (!user) {
-              throw new ApiError(404, 'User not found');
-            }
-            
-            // Cache the loaded user
-            cacheManager.setUserUnsafe(user, userCtx);
-          } finally {
-            dbCtx.dispose();
-          }
+          console.log(`❌ User not found: ${session.userId}`);
+          throw new ApiError(404, 'User not found');
         }
         
         // Continue with ship stats logic
-        return await getShipStats(world, user);
-      } finally {
-        userCtx.dispose();
-      }
-    } finally {
-      worldCtx.dispose();
-    }
+        return await getShipStats(worldContext, world, user);
+      });
+    });
   } catch (error) {
     return handleApiError(error);
   }
 }
 
-async function getShipStats(world: World, user: User): Promise<NextResponse> {
+async function getShipStats(
+  worldContext: LockContext<LocksAtMostAndHas6>,
+  world: World, 
+  user: User
+): Promise<NextResponse> {
   // Update physics for all objects first
   const currentTime = Date.now();
-  world.updatePhysics(currentTime);
+  world.updatePhysics(worldContext, currentTime);
   
   // Update defense values based on elapsed time since last regen
   const now = Math.floor(Date.now() / 1000);
   user.updateDefenseValues(now);
   
   // Find player's ship in the world
-  const playerShips = world.getSpaceObjectsByType('player_ship');
+  const playerShips = world.getSpaceObjectsByType(worldContext, 'player_ship');
   const playerShip = playerShips.find((ship) => ship.id === user.ship_id);
   
   if (!playerShip) {

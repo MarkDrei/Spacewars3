@@ -36,12 +36,12 @@ describe('Phase 5: BattleCache Integration Testing', () => {
 
   describe('Core BattleCache Functionality', () => {
     it('battleCache_createBattle_storesInCache', async () => {
-      const cacheManager = getUserWorldCache();
-      await cacheManager.initialize();
+      const userWorldCache = getUserWorldCache();
+      await userWorldCache.initialize();
       
       // Initialize BattleCache manually for tests
       const battleCache = getBattleCache();
-      const db = await cacheManager.getDatabaseConnection();
+      const db = await userWorldCache.getDatabaseConnection();
       await battleCache.initialize(db);
 
       // Use test user IDs (created by createTestDatabase)
@@ -105,12 +105,12 @@ describe('Phase 5: BattleCache Integration Testing', () => {
 
     it('battleCache_loadBattleIfNeeded_loadsFromDatabase', async () => {
       const battleCache = getBattleCache();
-      const cacheManager = getUserWorldCache();
-      await cacheManager.initialize();
+      const userWorldCache = getUserWorldCache();
+      await userWorldCache.initialize();
 
       // Initialize BattleCache manually for tests
       // Initialize BattleCache manually for tests
-      const db = await cacheManager.getDatabaseConnection();
+      const db = await userWorldCache.getDatabaseConnection();
       await battleCache.initialize(db);
 
       const attackerId = 1;
@@ -159,12 +159,12 @@ describe('Phase 5: BattleCache Integration Testing', () => {
     });
 
     it('battleCache_getOngoingBattleForUser_findsUserBattle', async () => {
-      const cacheManager = getUserWorldCache();
-      await cacheManager.initialize();
+      const userWorldCache = getUserWorldCache();
+      await userWorldCache.initialize();
 
       // Initialize BattleCache manually for tests
       const battleCache = getBattleCache();
-      const db = await cacheManager.getDatabaseConnection();
+      const db = await userWorldCache.getDatabaseConnection();
       await battleCache.initialize(db);
 
       const attackerId = 1;
@@ -207,12 +207,12 @@ describe('Phase 5: BattleCache Integration Testing', () => {
     });
 
     it('battleCache_getActiveBattles_returnsAllActive', async () => {
-      const cacheManager = getUserWorldCache();
-      await cacheManager.initialize();
+      const userWorldCache = getUserWorldCache();
+      await userWorldCache.initialize();
 
       // Initialize BattleCache manually for tests
       const battleCache = getBattleCache();
-      const db = await cacheManager.getDatabaseConnection();
+      const db = await userWorldCache.getDatabaseConnection();
       await battleCache.initialize(db);
 
       const stats: BattleStats = {
@@ -262,12 +262,12 @@ describe('Phase 5: BattleCache Integration Testing', () => {
 
     it('battleCache_addBattleEvent_marksBattleDirty', async () => {
       const battleCache = getBattleCache();
-      const cacheManager = getUserWorldCache();
-      await cacheManager.initialize();
+      const userWorldCache = getUserWorldCache();
+      await userWorldCache.initialize();
 
       // Initialize BattleCache manually for tests
       // Initialize BattleCache manually for tests
-      const db = await cacheManager.getDatabaseConnection();
+      const db = await userWorldCache.getDatabaseConnection();
       await battleCache.initialize(db);
 
       const stats: BattleStats = {
@@ -316,12 +316,12 @@ describe('Phase 5: BattleCache Integration Testing', () => {
 
     it('battleCache_endBattle_removesFromCache', async () => {
       const battleCache = getBattleCache();
-      const cacheManager = getUserWorldCache();
-      await cacheManager.initialize();
+      const userWorldCache = getUserWorldCache();
+      await userWorldCache.initialize();
 
       // Initialize BattleCache manually for tests
       // Initialize BattleCache manually for tests
-      const db = await cacheManager.getDatabaseConnection();
+      const db = await userWorldCache.getDatabaseConnection();
       await battleCache.initialize(db);
 
       const stats: BattleStats = {
@@ -406,12 +406,12 @@ describe('Phase 5: BattleCache Integration Testing', () => {
   describe('Cache Statistics', () => {
     it('battleCache_statistics_accurateTracking', async () => {
       const battleCache = getBattleCache();
-      const cacheManager = getUserWorldCache();
-      await cacheManager.initialize();
+      const userWorldCache = getUserWorldCache();
+      await userWorldCache.initialize();
 
       // Initialize BattleCache manually for tests
       // Initialize BattleCache manually for tests
-      const db = await cacheManager.getDatabaseConnection();
+      const db = await userWorldCache.getDatabaseConnection();
       await battleCache.initialize(db);
 
       // Initial stats

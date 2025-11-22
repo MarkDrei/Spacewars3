@@ -12,6 +12,7 @@
 import type { Battle, BattleStats, BattleEvent, WeaponCooldowns } from './battleTypes';
 import { getDatabase } from '../database';
 import type sqlite3 from 'sqlite3';
+import { HasLock13Context, IronLocks } from '@markdrei/ironguard-typescript-locks';
 
 // ========================================
 // Pure Database Read Operations
@@ -22,7 +23,8 @@ import type sqlite3 from 'sqlite3';
  * Pure DB operation - no cache access
  * NOTE: Caller must hold DATABASE_LOCK_BATTLES (level 13)
  */
-export async function getBattleFromDb(
+export async function getBattleFromDb<THeld extends IronLocks>(
+  _context: HasLock13Context<THeld>,
   battleId: number
 ): Promise<Battle | null> {
   const db = await getDatabase();
@@ -46,7 +48,8 @@ export async function getBattleFromDb(
  * Pure DB operation - no cache access
  * NOTE: Caller must hold DATABASE_LOCK_BATTLES (level 13)
  */
-export async function getOngoingBattleForUserFromDb(
+export async function getOngoingBattleForUserFromDb<THeld extends IronLocks>(
+  _context: HasLock13Context<THeld>,
   userId: number
 ): Promise<Battle | null> {
   const db = await getDatabase();
@@ -74,7 +77,8 @@ export async function getOngoingBattleForUserFromDb(
  * Pure DB operation - no cache access
  * NOTE: Caller must hold DATABASE_LOCK_BATTLES (level 13)
  */
-export async function getActiveBattlesFromDb(
+export async function getActiveBattlesFromDb<THeld extends IronLocks>(
+  _context: HasLock13Context<THeld>
 ): Promise<Battle[]> {
   const db = await getDatabase();
   
@@ -104,7 +108,8 @@ export async function getActiveBattlesFromDb(
  * Returns the battle with generated ID
  * NOTE: Caller must hold DATABASE_LOCK_BATTLES (level 13)
  */
-export async function insertBattleToDb(
+export async function insertBattleToDb<THeld extends IronLocks>(
+  _context: HasLock13Context<THeld>,
   attackerId: number,
   attackeeId: number,
   battleStartTime: number,
@@ -184,7 +189,8 @@ export async function insertBattleToDb(
  * Pure DB operation - updates all battle fields
  * NOTE: Caller must hold DATABASE_LOCK_BATTLES (level 13)
  */
-export async function updateBattleInDb(
+export async function updateBattleInDb<THeld extends IronLocks>(
+  _context: HasLock13Context<THeld>,
   battle: Battle
 ): Promise<void> {
   const db = await getDatabase();
@@ -234,7 +240,8 @@ export async function updateBattleInDb(
  * Pure DB operation - no cache access
  * NOTE: Caller must hold DATABASE_LOCK_BATTLES (level 13)
  */
-export async function deleteBattleFromDb(
+export async function deleteBattleFromDb<THeld extends IronLocks>(
+  _context: HasLock13Context<THeld>,
   battleId: number
 ): Promise<void> {
   const db = await getDatabase();
@@ -255,7 +262,8 @@ export async function deleteBattleFromDb(
  * Pure DB operation - no cache access
  * NOTE: Caller must hold DATABASE_LOCK_BATTLES (level 13)
  */
-export async function getAllBattlesFromDb(
+export async function getAllBattlesFromDb<THeld extends IronLocks>(
+  _context: HasLock13Context<THeld>,
 ): Promise<Battle[]> {
   const db = await getDatabase();
 
@@ -283,7 +291,8 @@ export async function getAllBattlesFromDb(
  * Pure DB operation - no cache access
  * NOTE: Caller must hold DATABASE_LOCK_BATTLES (level 13)
  */
-export async function getBattlesForUserFromDb(
+export async function getBattlesForUserFromDb<THeld extends IronLocks>(
+  _context: HasLock13Context<THeld>,
   userId: number
 ): Promise<Battle[]> {
   const db = await getDatabase();

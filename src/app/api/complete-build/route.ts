@@ -3,8 +3,11 @@ import { getIronSession } from 'iron-session';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { requireAuth, handleApiError, ApiError } from '@/lib/server/errors';
 import { TechRepo } from '@/lib/server/techRepo';
-import { getUserById } from '@/lib/server/world/userRepo';
 import { getDatabase } from '@/lib/server/database';
+import { getUserWorldCache } from '@/lib/server/world/userWorldCache';
+import { createLockContext } from '@markdrei/ironguard-typescript-locks';
+import { USER_LOCK } from '@/lib/server/typedLocks';
+import { User } from '@/lib/server/world/user';
 
 /**
  * POST /api/complete-build
@@ -20,8 +23,13 @@ export async function POST(request: NextRequest) {
     console.log(`🎮 Cheat: Complete build requested by user: ${session.userId}`);
     
     // Get user data to check username
-    const db = await getDatabase();
-    const userData = await getUserById(db, session.userId!);
+    const userWorldCache = getUserWorldCache();
+    const context = createLockContext();
+
+    const userData = await context.useLockWithAcquire(USER_LOCK, async (userContext) => {
+      return await userWorldCache.getUserByIdWithLock(userContext, session.userId!);
+    });
+
     if (!userData) {
       throw new ApiError(404, 'User not found');
     }
@@ -34,6 +42,7 @@ export async function POST(request: NextRequest) {
     
     console.log(`🔓 Cheat mode authorized for developer: ${userData.username}`);
     
+    const db = await getDatabase();
     const techRepo = new TechRepo(db);
     
     // Get current build queue

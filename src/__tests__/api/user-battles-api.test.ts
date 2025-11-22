@@ -94,8 +94,8 @@ describe('User battles API', () => {
     BattleCache.resetInstance();
     
     // Initialize caches
-    const cacheManager = getUserWorldCache();
-    await cacheManager.initialize();
+    const userWorldCache = getUserWorldCache();
+    await userWorldCache.initialize();
     
     // Initialize BattleCache
     const battleCache = getBattleCache();

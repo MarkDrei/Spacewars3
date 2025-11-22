@@ -33,34 +33,34 @@ describe('Battle Defense Persistence', () => {
   it('defenseValues_afterBattleEnds_notResetToMax', { timeout: 15000 }, async () => {
     console.log('🧪 Testing defense value persistence after battle ends...');
     
-    const cacheManager = getUserWorldCache();
-    await cacheManager.initialize();
+    const userWorldCache = getUserWorldCache();
+    await userWorldCache.initialize();
     
     // Initialize BattleCache
     const battleCache = BattleCache.getInstance();
-    const db = await cacheManager.getDatabaseConnection();
+    const db = await userWorldCache.getDatabaseConnection();
     await battleCache.initialize(db);
     
     // Get test users (seeded by test database)
     const ctx = createLockContext();
-    const userCtx = await cacheManager.acquireUserLock(ctx);
+    const userCtx = await userWorldCache.acquireUserLock(ctx);
     
     let attacker: User | null = null;
     let defender: User | null = null;
     
     try {
-      const dbCtx = await cacheManager.acquireDatabaseRead(userCtx);
+      const dbCtx = await userWorldCache.acquireDatabaseRead(userCtx);
       try {
-        attacker = await cacheManager.loadUserFromDbUnsafe(1, dbCtx);
-        defender = await cacheManager.loadUserFromDbUnsafe(2, dbCtx);
+        attacker = await userWorldCache.loadUserFromDbUnsafe(1, dbCtx);
+        defender = await userWorldCache.loadUserFromDbUnsafe(2, dbCtx);
         
         if (!attacker || !defender) {
           throw new Error('Test users not found');
         }
         
         // Cache the users
-        cacheManager.setUserUnsafe(attacker, userCtx);
-        cacheManager.setUserUnsafe(defender, userCtx);
+        userWorldCache.setUserUnsafe(attacker, userCtx);
+        userWorldCache.setUserUnsafe(defender, userCtx);
         
       } finally {
         dbCtx.dispose();
@@ -117,11 +117,11 @@ describe('Battle Defense Persistence', () => {
     // CRITICAL: Apply damage to User objects in cache (not just battle stats)
     // This is the new architecture - User defense values are the source of truth
     const damageCtx = createLockContext();
-    const damageUserCtx = await cacheManager.acquireUserLock(damageCtx);
+    const damageUserCtx = await userWorldCache.acquireUserLock(damageCtx);
     
     try {
-      const attackerInCache = cacheManager.getUserByIdFromCache(attacker.id, damageUserCtx);
-      const defenderInCache = cacheManager.getUserByIdFromCache(defender.id, damageUserCtx);
+      const attackerInCache = userWorldCache.getUserByIdFromCache(attacker.id, damageUserCtx);
+      const defenderInCache = userWorldCache.getUserByIdFromCache(defender.id, damageUserCtx);
       
       if (!attackerInCache || !defenderInCache) {
         throw new Error('Users not in cache for damage application');
@@ -129,11 +129,11 @@ describe('Battle Defense Persistence', () => {
       
       // Apply damage to attacker
       attackerInCache.hullCurrent = attackerDamagedHull;
-      cacheManager.updateUserInCache(attackerInCache, damageUserCtx);
+      userWorldCache.updateUserInCache(attackerInCache, damageUserCtx);
       
       // Set defender to 0 hull (they will lose)
       defenderInCache.hullCurrent = 0;
-      cacheManager.updateUserInCache(defenderInCache, damageUserCtx);
+      userWorldCache.updateUserInCache(defenderInCache, damageUserCtx);
       
       console.log(`💥 Simulated damage - Attacker hull: ${attackerDamagedHull}, Defender hull: 0`);
     } finally {
@@ -149,14 +149,14 @@ describe('Battle Defense Persistence', () => {
     console.log('🔄 Checking users in cache...');
     
     const ctx2 = createLockContext();
-    const userCtx2 = await cacheManager.acquireUserLock(ctx2);
+    const userCtx2 = await userWorldCache.acquireUserLock(ctx2);
     
     let attackerAfter: User | null = null;
     let defenderAfter: User | null = null;
     
     try {
-      attackerAfter = cacheManager.getUserByIdFromCache(attacker.id, userCtx2);
-      defenderAfter = cacheManager.getUserByIdFromCache(defender.id, userCtx2);
+      attackerAfter = userWorldCache.getUserByIdFromCache(attacker.id, userCtx2);
+      defenderAfter = userWorldCache.getUserByIdFromCache(defender.id, userCtx2);
     } finally {
       userCtx2.dispose();
     }

@@ -5,17 +5,14 @@
 
 import {
   createLockContext,
-  HasLock8Context,
   LOCK_12,
   LockContext,
   LocksAtMost7,
-  LocksAtMost8,
-  type LockLevel
+  LocksAtMostAndHas8,
 } from '@markdrei/ironguard-typescript-locks';
 import { getDatabase } from '../database';
 import { DATABASE_LOCK_MESSAGES, MESSAGE_LOCK } from '../typedLocks';
 import { MessagesRepo, type Message, type UnreadMessage } from './messagesRepo';
-import { IronLocks, LocksAtMostAndHas8 } from '@markdrei/ironguard-typescript-locks/dist/core/ironGuardTypes';
 
 interface MessageCacheConfig {
   persistenceIntervalMs: number;
