@@ -7,11 +7,11 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { BattleCache, getBattleCache } from '../../lib/server/battle/BattleCache';
 import { UserWorldCache, getUserWorldCache } from '../../lib/server/world/userWorldCache';
 import * as battleService from '../../lib/server/battle/battleService';
-import { createTestDatabase } from '../helpers/testDatabase';
 import { User } from '../../lib/server/world/user';
 import { BATTLE_LOCK, USER_LOCK } from '../../lib/server/typedLocks';
 import { createLockContext} from '@markdrei/ironguard-typescript-locks';
 import type { BattleStats } from '../../lib/server/battle/battleTypes';
+import { initializeIntegrationTestServer, shutdownIntegrationTestServer } from '../helpers/testServer';
 
 describe('Battle Defense Persistence', () => {
 
@@ -20,31 +20,14 @@ describe('Battle Defense Persistence', () => {
   let emptyCtx: ReturnType<typeof createLockContext>;
   
   beforeEach(async () => {
-    const { resetTestDatabase } = await import('../../lib/server/database');
-    resetTestDatabase();
-    
-    await createTestDatabase();
-    
-    // Reset all caches
-    BattleCache.resetInstance();
-    UserWorldCache.resetInstance();
-    
+    await initializeIntegrationTestServer();
     emptyCtx = createLockContext();
-    await emptyCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
-      userWorldCache = await getUserWorldCache(userCtx);
-      await userWorldCache.initialize(userCtx);
-      
-      // Initialize BattleCache manually for tests
-      battleCache = getBattleCache();
-      const db = await userWorldCache.getDatabaseConnection(userCtx);
-      await battleCache.initialize(db);
-    });
+    battleCache = getBattleCache();
+    userWorldCache = await getUserWorldCache(emptyCtx);
   });
 
   afterEach(async () => {
-    const emptyCtx = createLockContext();
-    const userWorldCache =  await getUserWorldCache(emptyCtx);
-    await userWorldCache.shutdown();
+    await shutdownIntegrationTestServer();
   });
 
   it('defenseValues_afterBattleEnds_notResetToMax', { timeout: 15000 }, async () => {

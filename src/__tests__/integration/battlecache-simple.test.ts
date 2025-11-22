@@ -7,11 +7,10 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { BattleCache, getBattleCache, getBattleCacheInitialized } from '../../lib/server/battle/BattleCache';
 import { UserWorldCache, getUserWorldCache } from '../../lib/server/world/userWorldCache';
 import * as BattleRepo from '../../lib/server/battle/BattleCache';
-import { createTestDatabase } from '../helpers/testDatabase';
 import type { BattleStats, WeaponCooldowns } from '../../lib/server/battle/battleTypes';
 import { BATTLE_LOCK, USER_LOCK } from '@/lib/server/typedLocks';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
-import { b } from 'vitest/dist/chunks/suite.d.FvehnV49.js';
+import { initializeIntegrationTestServer, shutdownIntegrationTestServer } from '../helpers/testServer';
 
 describe('Phase 5: BattleCache Integration Testing', () => {
   let battleCache: BattleCache;
@@ -19,39 +18,14 @@ describe('Phase 5: BattleCache Integration Testing', () => {
   let emptyCtx: ReturnType<typeof createLockContext>;
 
   beforeEach(async () => {
-    // Import and reset the test database
-    const { resetTestDatabase } = await import('../../lib/server/database');
-    resetTestDatabase();
-    
-    await createTestDatabase();
-    
-    // Reset all caches to clean state
-    BattleCache.resetInstance();
-    UserWorldCache.resetInstance();
-
-    // Initialize common test objects
+    await initializeIntegrationTestServer();
     emptyCtx = createLockContext();
     battleCache = getBattleCache();
     userWorldCache = await getUserWorldCache(emptyCtx);
-    
-    // Use lock to initialize properly
-    await emptyCtx.useLockWithAcquire(USER_LOCK, async (userContext) => {
-      await userWorldCache.initialize(userContext);
-      
-      // Initialize BattleCache for all tests
-      const db = await userWorldCache.getDatabaseConnection(userContext);
-      await battleCache.initialize(db);
-    });
   });
 
   afterEach(async () => {
-    // Clean shutdown
-    try {
-      await battleCache.shutdown();
-      await userWorldCache.shutdown();
-    } catch {
-      // Ignore shutdown errors in tests
-    }
+    await shutdownIntegrationTestServer();
   });
 
   describe('Core BattleCache Functionality', () => {

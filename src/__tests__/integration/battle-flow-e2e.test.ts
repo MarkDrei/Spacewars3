@@ -9,13 +9,11 @@ import { UserWorldCache, getUserWorldCache } from '../../lib/server/world/userWo
 import * as BattleRepo from '../../lib/server/battle/BattleCache';
 import * as battleService from '../../lib/server/battle/battleService';
 import * as battleScheduler from '../../lib/server/battle/battleScheduler';
-import { createTestDatabase } from '../helpers/testDatabase';
 import { createAuthenticatedSession } from '../helpers/apiTestHelpers';
 import type { Battle, BattleStats, WeaponCooldowns } from '../../lib/server/battle/battleTypes';
 import { BATTLE_LOCK, USER_LOCK } from '@/lib/server/typedLocks';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
-import { b } from 'vitest/dist/chunks/suite.d.FvehnV49.js';
-import { create } from 'domain';
+import { initializeIntegrationTestServer, shutdownIntegrationTestServer } from '../helpers/testServer';
 
 describe('Phase 5: End-to-End Battle Flow with BattleCache', () => {
 
@@ -24,33 +22,14 @@ describe('Phase 5: End-to-End Battle Flow with BattleCache', () => {
   let emptyCtx: ReturnType<typeof createLockContext>;
   
   beforeEach(async () => {
-    // Import and reset the test database
-    const { resetTestDatabase } = await import('../../lib/server/database');
-    resetTestDatabase();
-    
-    await createTestDatabase();
-    
-    // Reset all caches to clean state
-    BattleCache.resetInstance();
-    UserWorldCache.resetInstance();
-
+    await initializeIntegrationTestServer();
     emptyCtx = createLockContext();
-    await emptyCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
-      userWorldCache = await getUserWorldCache(userCtx);
-      await userWorldCache.initialize(userCtx);
-      
-      // Initialize BattleCache manually for tests
-      battleCache = getBattleCache();
-      const db = await userWorldCache.getDatabaseConnection(userCtx);
-      await battleCache.initialize(db);
-    });
+    battleCache = getBattleCache();
+    userWorldCache = await getUserWorldCache(emptyCtx);
   });
 
   afterEach(async () => {
-    // Clean shutdown
-    const emptyCtx = createLockContext();
-    const cache = await getUserWorldCache(emptyCtx);
-    await cache.shutdown();
+    await shutdownIntegrationTestServer();
   });
 
   describe('Complete Battle Lifecycle', () => {

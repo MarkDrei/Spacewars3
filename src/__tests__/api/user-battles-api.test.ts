@@ -7,13 +7,12 @@ import { GET as userBattlesGET } from '@/app/api/user-battles/route';
 import { createRequest, createAuthenticatedSession } from '../helpers/apiTestHelpers';
 
 // Import battle creation utilities
-import { endBattle } from '@/lib/server/battle/BattleCache';
+import { endBattle, getBattleCache } from '@/lib/server/battle/BattleCache';
 import { getDatabase } from '@/lib/server/database';
 import { BattleStats } from '@/lib/server/battle/battleTypes';
-import { BattleCache, getBattleCache } from '@/lib/server/battle/BattleCache';
-import { getUserWorldCache } from '@/lib/server/world/userWorldCache';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 import { BATTLE_LOCK, USER_LOCK } from '@/lib/server/typedLocks';
+import { initializeIntegrationTestServer, shutdownIntegrationTestServer } from '../helpers/testServer';
 
 // Helper to get user ID from username
 async function getUserIdByUsername(username: string): Promise<number> {
@@ -103,27 +102,11 @@ async function createTestBattle(
 describe('User battles API', () => {
   
   beforeEach(async () => {
-    // Reset caches to clean state
-    BattleCache.resetInstance();
-    
-    // Initialize caches
-    const emptyCtx = createLockContext();
-    const userWorldCache = await getUserWorldCache(emptyCtx);
-    await emptyCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
-      await userWorldCache.initialize(userCtx);
-    });
-    
-    // Initialize BattleCache
-    const battleCache = getBattleCache();
-    const db = await getDatabase();
-    await battleCache.initialize(db);
+    await initializeIntegrationTestServer();
   });
 
   afterEach(async () => {
-    // Clean shutdown
-    const emptyCtx = createLockContext();
-    const userWorldCache = await getUserWorldCache(emptyCtx);
-    await userWorldCache.shutdown();
+    await shutdownIntegrationTestServer();
   });
 
   test('userBattles_notAuthenticated_returns401', async () => {

@@ -4,35 +4,23 @@
 // ---
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { BattleCache, getBattleCache, getBattleCacheInitialized } from '../../lib/server/battle/BattleCache';
+import { getBattleCache, getBattleCacheInitialized } from '../../lib/server/battle/BattleCache';
 import { UserWorldCache, getUserWorldCache } from '../../lib/server/world/userWorldCache';
 import * as BattleRepo from '../../lib/server/battle/BattleCache';
 import * as battleService from '../../lib/server/battle/battleService';
-import { createTestDatabase } from '../helpers/testDatabase';
 import type { BattleStats, WeaponCooldowns } from '../../lib/server/battle/battleTypes';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 import { BATTLE_LOCK, USER_LOCK } from '@/lib/server/typedLocks';
-import { use } from 'react';
+import { initializeIntegrationTestServer, shutdownIntegrationTestServer } from '../helpers/testServer';
 
 describe('Defense Value Persistence After Battle', () => {
   
   beforeEach(async () => {
-    // Import and reset the test database
-    const { resetTestDatabase } = await import('../../lib/server/database');
-    resetTestDatabase();
-    
-    await createTestDatabase();
-    
-    // Reset all caches to clean state
-    BattleCache.resetInstance();
-    UserWorldCache.resetInstance();
+    await initializeIntegrationTestServer();
   });
 
   afterEach(async () => {
-    // Clean shutdown
-    const emptyCtx = createLockContext();
-    const userWorldCache = await getUserWorldCache(emptyCtx);
-    await userWorldCache.shutdown();
+    await shutdownIntegrationTestServer();
   });
 
   it('defenseValues_afterBattleResolution_persistCorrectly', async () => {
@@ -40,15 +28,6 @@ describe('Defense Value Persistence After Battle', () => {
     const battleCache = getBattleCache();
     const emptyCtx = createLockContext();
     const userWorldCache = await getUserWorldCache(emptyCtx);
-
-    await emptyCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
-      await userWorldCache.initialize(userCtx);
-  
-      // Initialize BattleCache manually for tests
-      const db = await userWorldCache.getDatabaseConnection(userCtx);
-      await battleCache.initialize(db);
-      return db;
-    });
 
     await emptyCtx.useLockWithAcquire(BATTLE_LOCK, async (battleContext) => {
         // Load users from cache
@@ -87,7 +66,7 @@ describe('Defense Value Persistence After Battle', () => {
         const attackerCooldowns: WeaponCooldowns = { pulse_laser: 0 };
         const defenderCooldowns: WeaponCooldowns = { pulse_laser: 5 };
     
-      const cache = await getBattleCacheInitialized();
+      await getBattleCacheInitialized();
       const battle = await battleContext.useLockWithAcquire(USER_LOCK, async (userCtx) => {
         return await battleCache.createBattle(
           battleContext,

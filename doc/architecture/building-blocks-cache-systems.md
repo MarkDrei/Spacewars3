@@ -6,26 +6,44 @@
 
 ## Overview
 
-The Spacewars application uses three cache manager implementations to optimize database access and ensure data consistency. All three use the IronGuard lock system for compile-time deadlock prevention.
+The Spacewars application now uses four cache manager implementations to optimize database access and ensure data consistency. All four use the IronGuard lock system for compile-time deadlock prevention and are wired together explicitly during server startup.
 
 ---
 
 ## Cache Manager Comparison
 
-| Aspect | TypedCacheManager | MessageCache | BattleCache |
-|--------|-------------------|--------------|-------------|
-| **Primary Purpose** | User data, world state, username mappings | User messages and notifications | Battle state and combat data |
-| **Data Scope** | Multi-entity (User, World) | Single-entity (Messages) | Single-entity (Battles) |
-| **DB Abstraction** | Direct DB operations | MessagesRepo layer | Direct DB operations |
-| **Lock System** | Pure IronGuard | Pure IronGuard | Pure IronGuard via delegation |
-| **Lock Hierarchy** | 4 levels (CACHE→WORLD→USER→DB) | 2 levels (CACHE→DATA) | 4 levels (via TypedCacheManager + BATTLE) |
-| **Async Operations** | Background persistence | Async creation + background persistence | Background persistence |
-| **Temporary IDs** | No | Yes (negative IDs) | No |
-| **Cache Structure** | Map<userId, User> + World singleton | Map<userId, Message[]> | Map<battleId, Battle> + user→battle index |
-| **Singleton Pattern** | Yes | Yes | Yes |
-| **Initialization** | Internal auto-init (idempotent) | Internal auto-init (idempotent) | Mixed strategy (sync + async) |
-| **Statistics Tracking** | Cache hits/misses per entity type | Cache hits/misses + pending writes | No statistics |
-| **Background Timer** | 30s persistence interval | 30s persistence interval | 30s persistence interval |
+| Aspect | TypedCacheManager (UserWorldCache) | WorldCache | MessageCache | BattleCache |
+|--------|-------------------|-----------|--------------|-------------|
+| **Primary Purpose** | User data, username mappings, coordination | Authoritative world state | User messages and notifications | Battle state and combat data |
+| **Data Scope** | Multi-entity (Users + indices) | Single-entity (World) | Single-entity (Messages) | Single-entity (Battles) |
+| **DB Abstraction** | Direct DB operations | Direct DB operations | MessagesRepo layer | Direct DB operations |
+| **Lock System** | Pure IronGuard | Pure IronGuard | Pure IronGuard | Pure IronGuard via delegation |
+| **Lock Hierarchy** | 4 levels (CACHE→WORLD→USER→DB) | WORLD + DB locks | 2 levels (CACHE→DATA) | 4 levels (via UserWorldCache + BATTLE) |
+| **Async Operations** | Background persistence | Background persistence | Async creation + background persistence | Background persistence |
+| **Temporary IDs** | No | No | Yes (negative IDs) | No |
+| **Cache Structure** | Map<userId, User> | Single World instance | Map<userId, Message[]> | Map<battleId, Battle> + user→battle index |
+| **Singleton Pattern** | Yes | Yes | Yes | Yes |
+| **Initialization** | Idempotent, coordinates WorldCache | Eager (startup) or lazy fallback | Idempotent auto-init | Mixed strategy (sync + async) |
+| **Statistics Tracking** | Cache hits/misses per entity type | Cache hits/misses + dirty flag | Cache hits/misses + pending writes | No statistics |
+| **Background Timer** | 30s persistence interval | 30s persistence interval | 30s persistence interval | 30s persistence interval |
+
+### Dependency Graph & Injection
+
+The caches now receive each other as explicit dependencies to simplify testing and avoid hidden singleton lookups:
+
+```
+MessageCache (standalone)
+  ↑
+WorldCache ──┐
+     │
+UserWorldCache ──┐
+      │
+BattleCache ◀─────┘
+```
+
+- `main.ts` is responsible for creating the real cache instances and wiring them together via the new `configureDependencies(...)` helpers before regular initialization runs.
+- Each cache throws a descriptive error if it attempts to use a dependency that has not been configured. For test scenarios, mocks or lightweight substitutes can be provided through the same configuration surface.
+- To preserve backward compatibility, `UserWorldCache` can still bootstrap a `WorldCache` + `MessageCache` on-demand if no dependency was supplied. Production code **should** inject the shared instances instead of relying on this fallback.
 
 ---
 
@@ -43,17 +61,18 @@ TypedCacheManager (Singleton)
 │   └── logStats: false
 ├── Storage
 │   ├── users: Map<number, User>
-│   ├── world: World | null
 │   ├── usernameToUserId: Map<string, number>
-│   ├── dirtyUsers: Set<number>
-│   └── worldDirty: boolean
+│   └── dirtyUsers: Set<number>
+├── Dependencies
+│   ├── worldCache: WorldCache (required in production, lazily created for tests)
+│   └── messageCache: MessageCache (optional, lazily resolved fallback)
 ├── Locks (Pure IronGuard)
 │   ├── CACHE_LOCK (level 1)
 │   ├── WORLD_LOCK (level 2)
 │   ├── USER_LOCK (level 3)
 │   └── DATABASE_LOCK (level 5)
 └── Operations
-    ├── World operations (read/write)
+    ├── World operations (delegated to WorldCache)
     ├── User operations (CRUD)
     ├── Database operations (load/persist)
     └── Background persistence + battle scheduler
@@ -79,8 +98,8 @@ DATABASE_LOCK (5)
 - No callback-based wrappers
 
 **Multi-Entity Caching:**
-- Caches heterogeneous data: User objects, World state, username mappings
-- Separate dirty tracking per entity type
+- Caches user objects and username mappings while delegating world state to `WorldCache`
+- Separate dirty tracking per entity type (users locally, world via dependency)
 
 **Internal Auto-Initialization:**
 - Public methods auto-initialize on first access
@@ -342,7 +361,7 @@ export async function createBattle(...) {
 
 ## Shared Architecture Patterns
 
-All three cache managers share these core patterns:
+All four cache managers share these core patterns:
 
 ### 1. Singleton Pattern
 ```typescript
@@ -435,7 +454,7 @@ private pendingWrites: Map<number, Promise<void>> = new Map();
 
 ## Summary
 
-All three cache managers use the IronGuard lock system for type-safe, deadlock-free concurrent access. They share core patterns (singleton, write-behind caching, dirty tracking, background persistence) while differing in complexity, initialization strategy, and async operation support.
+All four cache managers use the IronGuard lock system for type-safe, deadlock-free concurrent access. They share core patterns (singleton, write-behind caching, dirty tracking, background persistence) while differing in complexity, initialization strategy, and async operation support.
 
 **Key characteristics:**
 - **TypedCacheManager:** Central multi-entity cache with 4-level lock hierarchy

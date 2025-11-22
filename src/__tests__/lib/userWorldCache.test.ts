@@ -2,7 +2,7 @@
 // Tests for TypedCacheManager
 // ---
 
-import { describe, expect, test, beforeEach, afterEach } from 'vitest';
+import { describe, expect, test, beforeEach, afterEach, vi } from 'vitest';
 import { 
   UserWorldCache, 
   getUserWorldCache,
@@ -10,14 +10,37 @@ import {
 } from '../../lib/server/world/userWorldCache';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 import { USER_LOCK } from '@/lib/server/typedLocks';
-import { use } from 'react';
-import { userAgent } from 'next/server';
+import type { WorldCache } from '@/lib/server/world/worldCache';
+import type { MessageCache } from '@/lib/server/messages/MessageCache';
+
+const createWorldCacheStub = (): WorldCache => ({
+  getWorldFromCache: vi.fn(() => {
+    throw new Error('WorldCache stub not configured for world operations');
+  }),
+  updateWorldUnsafe: vi.fn(),
+  getStats: vi.fn(() => ({
+    worldCacheHits: 0,
+    worldCacheMisses: 0,
+    worldDirty: false,
+  })),
+  flushToDatabase: vi.fn(async () => {}),
+  shutdown: vi.fn(async () => {}),
+} as unknown as WorldCache);
+
+const createMessageCacheStub = (): MessageCache => ({
+  flushToDatabase: vi.fn(async () => {}),
+  shutdown: vi.fn(async () => {}),
+} as unknown as MessageCache);
 
 describe('TypedCacheManager', () => {
   
   beforeEach(() => {
     // Reset singleton before each test
     UserWorldCache.resetInstance();
+    UserWorldCache.configureDependencies({
+      worldCache: createWorldCacheStub(),
+      messageCache: createMessageCacheStub(),
+    });
   });
 
   afterEach(async () => {
@@ -26,10 +49,10 @@ describe('TypedCacheManager', () => {
       const emptyCtx = createLockContext();
       const manager = await getUserWorldCache(emptyCtx);
       await manager.shutdown();
-      UserWorldCache.resetInstance();
     } catch {
       // Ignore cleanup errors
     }
+    UserWorldCache.resetInstance();
   });
 
   describe('Singleton Pattern', () => {

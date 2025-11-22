@@ -1,10 +1,19 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { GET } from '@/app/api/admin/database/route';
 import { POST as registerPOST } from '@/app/api/register/route';
 import { POST as loginPOST } from '@/app/api/login/route';
 import { createRequest, createAuthenticatedSession, createUser, extractSessionCookie } from '../helpers/apiTestHelpers';
+import { initializeIntegrationTestServer, shutdownIntegrationTestServer } from '../helpers/testServer';
 
 describe('Admin Database API', () => {
+  beforeEach(async () => {
+    await initializeIntegrationTestServer();
+  });
+
+  afterEach(async () => {
+    await shutdownIntegrationTestServer();
+  });
+
   it('admin_notAuthenticated_returns401', async () => {
     const request = createRequest('http://localhost:3000/api/admin/database', 'GET');
     const response = await GET(request);

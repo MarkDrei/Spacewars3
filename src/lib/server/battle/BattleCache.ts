@@ -16,11 +16,19 @@
 
 import type sqlite3 from 'sqlite3';
 import type { Battle, BattleStats, BattleEvent, WeaponCooldowns } from './battleTypes';
-import { getUserWorldCache } from '../world/userWorldCache';
 import * as battleRepo from './battleRepo';
 import { createLockContext, HasLock13Context, HasLock2Context, IronLocks, LockContext, LocksAtMost4, LocksAtMostAndHas2 } from '@markdrei/ironguard-typescript-locks';
 import { BATTLE_LOCK, DATABASE_LOCK_BATTLES, USER_LOCK } from '../typedLocks';
 import { startBattleScheduler } from './battleScheduler';
+import { UserWorldCache } from '../world/userWorldCache';
+import { WorldCache } from '../world/worldCache';
+import { MessageCache } from '../messages/MessageCache';
+
+type BattleCacheDependencies = {
+  userCache?: UserWorldCache;
+  worldCache?: WorldCache;
+  messageCache?: MessageCache;
+};
 
 declare global {
   var battleCacheInstance: BattleCache | null;
@@ -28,6 +36,7 @@ declare global {
 
 export class BattleCache {
   private static initializationPromise: Promise<BattleCache> | null = null;
+  private static dependencies: BattleCacheDependencies = {};
 
   // Storage
   private battles: Map<number, Battle> = new Map();
@@ -42,9 +51,11 @@ export class BattleCache {
   private readonly PERSISTENCE_INTERVAL_MS = 30_000; // 30 seconds
 
   private initialized = false;
+  private dependencies: BattleCacheDependencies = {};
 
   private constructor() {
     // Private constructor for singleton
+    this.dependencies = BattleCache.dependencies;
   }
 
   private static get instance(): BattleCache | null {
@@ -113,6 +124,13 @@ export class BattleCache {
     BattleCache.initializationPromise = null;
   }
 
+  static configureDependencies(dependencies: BattleCacheDependencies): void {
+    BattleCache.dependencies = dependencies;
+    if (BattleCache.instance) {
+      BattleCache.instance.dependencies = dependencies;
+    }
+  }
+
   /**
    * Initialize the battle cache with database connection
    */
@@ -121,6 +139,7 @@ export class BattleCache {
       return;
     }
 
+    this.assertDependenciesConfigured();
     this.db = db;
     
     // Load active battles from database
@@ -130,6 +149,36 @@ export class BattleCache {
     this.startPersistence();
     
     this.initialized = true;
+  }
+
+  private assertDependenciesConfigured(): void {
+    this.getUserCache();
+    this.getWorldCache();
+    this.getMessageCache();
+  }
+
+  private getUserCache(): UserWorldCache {
+    const userCache = this.dependencies.userCache;
+    if (!userCache) {
+      throw new Error('BattleCache: user cache dependency not configured');
+    }
+    return userCache;
+  }
+
+  private getWorldCache(): WorldCache {
+    const worldCache = this.dependencies.worldCache;
+    if (!worldCache) {
+      throw new Error('BattleCache: world cache dependency not configured');
+    }
+    return worldCache;
+  }
+
+  private getMessageCache(): MessageCache {
+    const messageCache = this.dependencies.messageCache;
+    if (!messageCache) {
+      throw new Error('BattleCache: message cache dependency not configured');
+    }
+    return messageCache;
   }
 
   /**

@@ -6,7 +6,8 @@ import { getDatabase } from "./database";
 import { loadWorldFromDb } from "./world/worldRepo";
 import { UserWorldCache } from "./world/userWorldCache";
 import { BattleCache } from "./battle/BattleCache";
-import { startBattleScheduler } from "./battle/battleScheduler";
+import { MessageCache } from "./messages/MessageCache";
+import { WorldCache } from "./world/worldCache";
 
 export async function initializeServer() {
 
@@ -37,7 +38,21 @@ export async function initializeServer() {
             console.warn('⚠️ Save world callback invoked - but no save is happening');
         });
 
-        await UserWorldCache.intialize2(world, db);
+        const messageCache = MessageCache.getInstance();
+
+        WorldCache.configureDependencies({ messageCache });
+        WorldCache.initializeWithWorld(world, db);
+
+        await UserWorldCache.intialize2(db, {
+            worldCache: WorldCache.getInstance(),
+            messageCache
+        });
+
+        BattleCache.configureDependencies({
+            userCache: UserWorldCache.getInstance2(),
+            worldCache: WorldCache.getInstance(),
+            messageCache
+        });
 
         // Initialize BattleCache
         console.log('🌱🪴 Application startup - ⚔️ Initializing BattleCache...');

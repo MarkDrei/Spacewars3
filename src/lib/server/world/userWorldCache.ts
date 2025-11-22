@@ -3,9 +3,10 @@
 // Uses IronGuard lock system with hierarchical locking
 // ---
 
-import { createLockContext, HasLock4Context, HasLock6Context, IronLocks, LOCK_10, LOCK_11, LOCK_9, LockContext, LocksAtMost1, LocksAtMost3, LocksAtMost4, LocksAtMost8, LocksAtMostAndHas4, LocksAtMostAndHas6 } from '@markdrei/ironguard-typescript-locks';
+import { createLockContext, HasLock4Context, IronLocks, LOCK_10, LOCK_11, LOCK_9, LockContext, LocksAtMost3, LocksAtMost4, LocksAtMost7, LocksAtMost8, LocksAtMostAndHas4, LocksAtMostAndHas6 } from '@markdrei/ironguard-typescript-locks';
 import sqlite3 from 'sqlite3';
 import { getDatabase } from '../database';
+import { MessageCache } from '../messages/MessageCache';
 import {
   CACHES_LOCK,
   USER_LOCK,
@@ -14,7 +15,12 @@ import {
 import { User } from './user';
 import { getUserByIdFromDb, getUserByUsernameFromDb } from './userRepo';
 import { World } from './world';
-import { loadWorldFromDb, saveWorldToDb } from './worldRepo';
+import { WorldCache } from './worldCache';
+
+type UserWorldCacheDependencies = {
+  worldCache?: WorldCache;
+  messageCache?: MessageCache;
+};
 
 // Cache configuration interface
 export interface TypedCacheConfig {
@@ -44,6 +50,7 @@ declare global {
  * Enforces singleton pattern and lock ordering
  */
 export class UserWorldCache {
+  private static dependencies: UserWorldCacheDependencies = {};
 
   // ===== FIELDS =====
 
@@ -61,22 +68,22 @@ export class UserWorldCache {
 
   // In-memory cache storage
   private users: Map<number, User> = new Map();
-  private world: World | null = null;
   private usernameToUserId: Map<string, number> = new Map(); // username -> userId mapping
   private dirtyUsers: Set<number> = new Set();
-  private worldDirty: boolean = false;
 
   // Statistics
   private stats = {
-    worldCacheHits: 0,
-    worldCacheMisses: 0,
     userCacheHits: 0,
     userCacheMisses: 0
   };
 
+  private dependencies: UserWorldCacheDependencies = {};
+  private worldCacheRef: WorldCache | null = null;
+
 
   // Singleton enforcement
   private constructor() {
+    this.dependencies = UserWorldCache.dependencies;
     console.log('🧠 Typed cache manager initialized');
   }
 
@@ -93,14 +100,13 @@ export class UserWorldCache {
    * 
    * @param config optional configuration for the cache
    */
-  static async intialize2(world: World, db: sqlite3.Database, config?: TypedCacheConfig): Promise<void> {
+  static async intialize2(db: sqlite3.Database, dependencies: UserWorldCacheDependencies = {}, config?: TypedCacheConfig): Promise<void> {
+    UserWorldCache.configureDependencies(dependencies);
     this.instance = new UserWorldCache();
     if (config) {
       this.instance.config = config;
     }
     this.instance.db = db;
-    this.instance.world = world;
-    this.instance.isInitialized = true;
   }
 
   /**
@@ -131,6 +137,15 @@ export class UserWorldCache {
   // Reset singleton for testing
   static resetInstance(): void {
     this.instance = null;
+    WorldCache.resetInstance();
+  }
+
+  static configureDependencies(dependencies: UserWorldCacheDependencies): void {
+    UserWorldCache.dependencies = dependencies;
+    if (UserWorldCache.instance) {
+      UserWorldCache.instance.dependencies = dependencies;
+      UserWorldCache.instance.worldCacheRef = dependencies.worldCache ?? null;
+    }
   }
 
   /**
@@ -153,19 +168,16 @@ export class UserWorldCache {
     // Need database connection
     await context.useLockWithAcquire(LOCK_10, async () => {
       // Initialize database connection
-      this.db = await getDatabase();
+      if (!this.db) {
+        this.db = await getDatabase();
+      }
       console.log('✅ user & world Database connected');
     });
 
-    // Load world data
-    await this.initializeWorld(context);
-    console.log('✅ World data loaded');
+    await this.ensureWorldCacheInitialized(context);
 
     // Start background persistence if enabled
     this.startBackgroundPersistence();
-
-    // Start battle scheduler
-    this.startBattleScheduler();
 
     this.isInitialized = true;
     console.log('✅ userWorld cache initialization complete');
@@ -193,23 +205,63 @@ export class UserWorldCache {
     return this.db;
   }
 
-  /**
-   * Load world data from database into cache
-   */
-  private async initializeWorld(context: LockContext<LocksAtMostAndHas4>): Promise<void> {
-    if (!this.db) throw new Error('Database not initialized');
-    
-    await context.useLockWithAcquire(WORLD_LOCK, async (worldContext) => {
-      await worldContext.useLockWithAcquire(LOCK_11, async () => {
-        console.log('🌍 Loading world data from database...');
-        this.world = await loadWorldFromDb(this.db!, async () => {
-          this.worldDirty = true;
+  private async ensureWorldCacheInitialized(context: LockContext<LocksAtMostAndHas4>): Promise<void> {
+    if (this.worldCacheRef) {
+      return;
+    }
+
+    if (this.dependencies.worldCache) {
+      this.worldCacheRef = this.dependencies.worldCache;
+      return;
+    }
+
+    if (!this.db) {
+      throw new Error('Database not initialized');
+    }
+
+    const ctx = createLockContext();
+    await ctx.useLockWithAcquire(CACHES_LOCK, async () => {
+      if (this.worldCacheRef) {
+        return;
+      }
+      const worldInitCtx = createLockContext();
+      await worldInitCtx.useLockWithAcquire(WORLD_LOCK, async (worldContext) => {
+        await worldContext.useLockWithAcquire(LOCK_11, async () => {
+          const messageCache = await this.getMessageCache();
+          WorldCache.configureDependencies({ messageCache: messageCache ?? undefined });
+          await WorldCache.initializeFromDb(this.db!);
+          this.worldCacheRef = WorldCache.getInstance();
         });
-        this.worldDirty = false;
-        this.stats.worldCacheMisses++;
-        console.log('🌍 World data cached in memory');
       });
     });
+  }
+
+  private getWorldCache(): WorldCache {
+    if (!this.worldCacheRef && this.dependencies.worldCache) {
+      this.worldCacheRef = this.dependencies.worldCache;
+    }
+
+    if (!this.worldCacheRef) {
+      throw new Error('World cache not initialized');
+    }
+    return this.worldCacheRef;
+  }
+
+  private getWorldCacheOrNull(): WorldCache | null {
+    return this.worldCacheRef ?? this.dependencies.worldCache ?? null;
+  }
+
+  private async getMessageCache(): Promise<MessageCache | null> {
+    if (this.dependencies.messageCache) {
+      return this.dependencies.messageCache;
+    }
+
+    try {
+      const { getMessageCache } = await import('../messages/MessageCache');
+      return getMessageCache();
+    } catch {
+      return null;
+    }
   }
 
   // ===== WORLD OPERATIONS =====
@@ -218,20 +270,14 @@ export class UserWorldCache {
    * Get world data reference (requires world lock context). Performs a physics update.
    */
   getWorldFromCache(context: LockContext<LocksAtMostAndHas6>): World {
-    if (!this.world) {
-      throw new Error('World not loaded - call initialize() first');
-    }
-    this.stats.worldCacheHits++;
-    this.world.updatePhysics(context, Date.now());
-    return this.world;
+    return this.getWorldCache().getWorldFromCache(context);
   }
 
   /**
    * Update world data without acquiring locks (requires world write lock context)
    */
   updateWorldUnsafe(_context:LockContext<LocksAtMostAndHas6>, world: World): void {
-    this.world = world;
-    this.worldDirty = true;
+    this.getWorldCache().updateWorldUnsafe(_context, world);
   }
 
   // ===== DATABASE OPERATIONS =====
@@ -402,16 +448,17 @@ export class UserWorldCache {
    */
   async getStats(context: LockContext<LocksAtMostAndHas4>): Promise<TypedCacheStats> {
     await this.ensureInitialized(context);
+    const worldStats = this.getWorldCacheOrNull()?.getStats();
     
     return {
       userCacheSize: this.users.size,
       usernameCacheSize: this.usernameToUserId.size,
-      worldCacheHits: this.stats.worldCacheHits,
-      worldCacheMisses: this.stats.worldCacheMisses,
+      worldCacheHits: worldStats?.worldCacheHits ?? 0,
+      worldCacheMisses: worldStats?.worldCacheMisses ?? 0,
       userCacheHits: this.stats.userCacheHits,
       userCacheMisses: this.stats.userCacheMisses,
       dirtyUsers: this.dirtyUsers.size,
-      worldDirty: this.worldDirty
+      worldDirty: worldStats?.worldDirty ?? false
     };
   }
 
@@ -430,16 +477,17 @@ export class UserWorldCache {
       await this.persistDirtyUsers(context);
     }
     
-    // Persist dirty world data
-    if (this.worldDirty) {
+    // Persist dirty world data via world cache
+    const worldCache = this.getWorldCacheOrNull();
+    if (worldCache) {
       console.log('💾 Flushing world data');
-      await this.persistDirtyWorld(context);
+      await worldCache.flushToDatabase();
     }
     
-    // Flush messages via MessageCache (imported dynamically to avoid circular dependencies)
-    const { getMessageCache } = await import('../messages/MessageCache');
-    const messageCache = getMessageCache();
-    await messageCache.flushToDatabase(context);
+    const messageCache = await this.getMessageCache();
+    if (messageCache) {
+      await messageCache.flushToDatabase(context as unknown as LockContext<LocksAtMost7>);
+    }
     
     console.log('✅ All dirty data flushed to database');
   }
@@ -528,27 +576,6 @@ export class UserWorldCache {
   }
 
 
-
-  /**
-   * Manually persist dirty world data to database
-   */
-  private async persistDirtyWorld(context: LockContext<LocksAtMostAndHas4>): Promise<void> {
-    if (!this.worldDirty || !this.world) {
-      return; // Nothing to persist
-    }
-
-    await context.useLockWithAcquire(LOCK_11, async () => {
-      if (!this.db) throw new Error('Database not initialized');
-      
-      console.log('💾 Persisting world data to database...');
-      const saveCallback = saveWorldToDb(this.db);
-      await saveCallback(this.world!);
-      
-      this.worldDirty = false;
-      console.log('✅ World data persisted to database');
-    });
-  }
-
   /**
    * Start background persistence timer
    */
@@ -584,18 +611,6 @@ export class UserWorldCache {
   }
 
   /**
-   * Start battle scheduler
-   */
-  private startBattleScheduler(): void {
-    // Import dynamically to avoid circular dependencies
-    import('../battle/battleScheduler').then(({ startBattleScheduler }) => {
-      startBattleScheduler(1000); // Process battles every 1 second
-    }).catch(error => {
-      console.error('❌ Failed to start battle scheduler:', error);
-    });
-  }
-
-  /**
    * Background persistence operation
    */
   private async backgroundPersist(context: LockContext<LocksAtMostAndHas4>): Promise<void> {
@@ -604,14 +619,7 @@ export class UserWorldCache {
       console.log(`💾 Background persisting ${this.dirtyUsers.size} dirty user(s)`);
       await this.persistDirtyUsers(context);
     }
-
-    // Persist dirty world data
-    if (this.worldDirty) {
-      console.log('💾 Background persisting world data...');
-      await this.persistDirtyWorld(context);
-    }
-    
-    // Note: Messages are persisted by MessageCache independently
+    // Note: Messages and world data are handled by their own caches
   }
 
   /**
@@ -632,10 +640,17 @@ export class UserWorldCache {
         await this.persistDirtyUsers(userContext);
       }
       
-      // Final persist of dirty world data before shutdown
-      if (this.worldDirty) {
+      const worldCache = this.getWorldCacheOrNull();
+      if (worldCache) {
         console.log('💾 Final persist of world data before shutdown');
-        await this.persistDirtyWorld(userContext);
+        await worldCache.flushToDatabase();
+        await worldCache.shutdown();
+      }
+
+      const messageCache = await this.getMessageCache();
+      if (messageCache) {
+        await messageCache.flushToDatabase(userContext as unknown as LockContext<LocksAtMost7>);
+        await messageCache.shutdown();
       }
       
       this.isInitialized = false;
