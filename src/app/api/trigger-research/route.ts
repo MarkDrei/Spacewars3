@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getIronSession } from 'iron-session';
-import { getUserWorldCache, UserWorldCache } from '@/lib/server/user/userCache';
+import { getUserWorldCache, userCache } from '@/lib/server/user/userCache';
 import { AllResearches, getResearchUpgradeCost, ResearchType, triggerResearch, TechTree } from '@/lib/server/techs/techtree';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth, validateRequired, ApiError } from '@/lib/server/errors';
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
 function performResearchTrigger(
   user: User,
   researchType: ResearchType,
-  userWorldCache: UserWorldCache,
+  userWorldCache: userCache,
   userCtx: LockContext<LocksAtMostAndHas4>
 ): NextResponse {
   const now = Math.floor(Date.now() / 1000);

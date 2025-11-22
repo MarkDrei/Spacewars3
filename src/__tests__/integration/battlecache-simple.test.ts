@@ -5,7 +5,7 @@
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { BattleCache, getBattleCache, getBattleCacheInitialized } from '../../lib/server/battle/BattleCache';
-import { UserWorldCache, getUserWorldCache } from '../../lib/server/user/userCache';
+import { userCache, getUserWorldCache } from '../../lib/server/user/userCache';
 import * as BattleRepo from '../../lib/server/battle/BattleCache';
 import type { BattleStats, WeaponCooldowns } from '../../lib/server/battle/battleTypes';
 import { BATTLE_LOCK, USER_LOCK } from '@/lib/server/typedLocks';
@@ -14,7 +14,7 @@ import { initializeIntegrationTestServer, shutdownIntegrationTestServer } from '
 
 describe('Phase 5: BattleCache Integration Testing', () => {
   let battleCache: BattleCache;
-  let userWorldCache: UserWorldCache;
+  let userWorldCache: userCache;
   let emptyCtx: ReturnType<typeof createLockContext>;
 
   beforeEach(async () => {

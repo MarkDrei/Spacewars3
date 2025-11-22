@@ -5,7 +5,7 @@
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { getBattleCache, getBattleCacheInitialized } from '../../lib/server/battle/BattleCache';
-import { UserWorldCache, getUserWorldCache } from '../../lib/server/user/userCache';
+import { userCache, getUserWorldCache } from '../../lib/server/user/userCache';
 import * as BattleRepo from '../../lib/server/battle/BattleCache';
 import * as battleService from '../../lib/server/battle/battleService';
 import type { BattleStats, WeaponCooldowns } from '../../lib/server/battle/battleTypes';
@@ -127,7 +127,7 @@ describe('Defense Value Persistence After Battle', () => {
         await battleContext.useLockWithAcquire(USER_LOCK, async (userContext) => {
           await userWorldCache.flushAllToDatabase(userContext);
           // Clear cache and reload users from DB
-          UserWorldCache.resetInstance();
+          userCache.resetInstance();
           const freshCacheManager = await getUserWorldCache(battleContext);
           await freshCacheManager.initialize(userContext);
       

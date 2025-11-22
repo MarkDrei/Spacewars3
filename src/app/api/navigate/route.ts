@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getIronSession } from 'iron-session';
-import { getUserWorldCache, UserWorldCache } from '@/lib/server/user/userCache';
+import { getUserWorldCache, userCache } from '@/lib/server/user/userCache';
 import { getResearchEffectFromTree, ResearchType } from '@/lib/server/techs/techtree';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth, ApiError } from '@/lib/server/errors';
@@ -60,7 +60,7 @@ async function performNavigationLogic(
   user: User,
   speed: number | undefined,
   angle: number | undefined,
-  userWorldCache: UserWorldCache
+  userWorldCache: userCache
 ): Promise<NextResponse> {
   // Check if user is in battle - cannot navigate while in battle
   if (user.inBattle) {

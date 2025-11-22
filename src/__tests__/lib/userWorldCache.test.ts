@@ -4,7 +4,7 @@
 
 import { describe, expect, test, beforeEach, afterEach, vi } from 'vitest';
 import { 
-  UserWorldCache, 
+  userCache, 
   getUserWorldCache,
   type TypedCacheConfig 
 } from '../../lib/server/user/userCache';
@@ -36,8 +36,8 @@ describe('TypedCacheManager', () => {
   
   beforeEach(() => {
     // Reset singleton before each test
-    UserWorldCache.resetInstance();
-    UserWorldCache.configureDependencies({
+    userCache.resetInstance();
+    userCache.configureDependencies({
       worldCache: createWorldCacheStub(),
       messageCache: createMessageCacheStub(),
     });
@@ -52,15 +52,15 @@ describe('TypedCacheManager', () => {
     } catch {
       // Ignore cleanup errors
     }
-    UserWorldCache.resetInstance();
+    userCache.resetInstance();
   });
 
   describe('Singleton Pattern', () => {
     test('getInstance_multipleCalls_returnsSameInstance', async () => {
       const emptyCtx = createLockContext();
 
-      const manager1 = await UserWorldCache.getInstance(emptyCtx);
-      const manager2 = await UserWorldCache.getInstance(emptyCtx);
+      const manager1 = await userCache.getInstance(emptyCtx);
+      const manager2 = await userCache.getInstance(emptyCtx);
       const manager3 = await getUserWorldCache(emptyCtx);
 
       expect(manager1).toBe(manager2);
@@ -70,9 +70,9 @@ describe('TypedCacheManager', () => {
     test('resetInstance_afterReset_createsNewInstance', async () => {
       const emptyCtx = createLockContext();
 
-      const manager1 = await UserWorldCache.getInstance(emptyCtx);
-      UserWorldCache.resetInstance();
-      const manager2 = await UserWorldCache.getInstance(emptyCtx);
+      const manager1 = await userCache.getInstance(emptyCtx);
+      userCache.resetInstance();
+      const manager2 = await userCache.getInstance(emptyCtx);
 
       expect(manager1).not.toBe(manager2);
     });
@@ -85,7 +85,7 @@ describe('TypedCacheManager', () => {
       };
 
       const emptyCtx = createLockContext();
-      const manager = await UserWorldCache.getInstance(emptyCtx, config);
+      const manager = await userCache.getInstance(emptyCtx, config);
       
       expect(manager).toBeDefined();
       // Config is applied internally (we can't directly test private members)

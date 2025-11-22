@@ -11,7 +11,7 @@ import { BattleEngine } from '../../lib/server/battle/battleEngine';
 import type { Battle, BattleStats } from '../../lib/server/battle/battleTypes';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 import { BATTLE_LOCK, USER_LOCK } from '@/lib/server/typedLocks';
-import { UserWorldCache } from '@/lib/server/user/userCache';
+import { userCache } from '@/lib/server/user/userCache';
 import { User } from '@/lib/server/user/user';
 import { createInitialTechTree } from '@/lib/server/techs/techtree';
 import { TechCounts } from '@/lib/server/techs/TechFactory';
@@ -63,12 +63,12 @@ function createTestUser(
 describe('Battle Damage Tracking', () => {
   beforeEach(async () => {
     // Reset cache manager for each test
-    UserWorldCache.resetInstance();
+    userCache.resetInstance();
 
     const emptyCtx = createLockContext();
     
     // Initialize cache with test configuration (no auto-persistence)
-    const cache = await UserWorldCache.getInstance(emptyCtx, {
+    const cache = await userCache.getInstance(emptyCtx, {
       persistenceIntervalMs: 30000,
       enableAutoPersistence: false,
       logStats: false

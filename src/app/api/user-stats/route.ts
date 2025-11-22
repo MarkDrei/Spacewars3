@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getIronSession } from 'iron-session';
-import { getUserWorldCache, UserWorldCache } from '@/lib/server/user/userCache';
+import { getUserWorldCache, userCache } from '@/lib/server/user/userCache';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth, ApiError } from '@/lib/server/errors';
 import { USER_LOCK } from '@/lib/server/typedLocks';
@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-function processUserStats(user: User, userWorldCache: UserWorldCache, userCtx: LockContext<LocksAtMostAndHas4>): NextResponse {
+function processUserStats(user: User, userWorldCache: userCache, userCtx: LockContext<LocksAtMostAndHas4>): NextResponse {
   const now = Math.floor(Date.now() / 1000);
   user.updateStats(now);
   

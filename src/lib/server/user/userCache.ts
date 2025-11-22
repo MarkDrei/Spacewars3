@@ -18,7 +18,7 @@ import { World } from '../world/world';
 import { WorldCache } from '../world/worldCache';
 import { Cache } from '../Cache';
 
-type UserWorldCacheDependencies = {
+type userCacheDependencies = {
   worldCache?: WorldCache;
   messageCache?: MessageCache;
 };
@@ -43,15 +43,15 @@ export interface TypedCacheStats {
 }
 
 declare global {
-  var userWorldCacheInstance: UserWorldCache | null;
+  var userWorldCacheInstance: userCache | null;
 }
 
 /**
  * Typed Cache Manager with compile-time deadlock prevention
  * Enforces singleton pattern and lock ordering
  */
-export class UserWorldCache extends Cache {
-  private static dependencies: UserWorldCacheDependencies = {};
+export class userCache extends Cache {
+  private static dependencies: userCacheDependencies = {};
 
   // ===== FIELDS =====
 
@@ -78,22 +78,22 @@ export class UserWorldCache extends Cache {
     userCacheMisses: 0
   };
 
-  private dependencies: UserWorldCacheDependencies = {};
+  private dependencies: userCacheDependencies = {};
   private worldCacheRef: WorldCache | null = null;
 
 
   // Singleton enforcement
   private constructor() {
     super();
-    this.dependencies = UserWorldCache.dependencies;
+    this.dependencies = userCache.dependencies;
     console.log('🧠 Typed cache manager initialized');
   }
 
-  private static get instance(): UserWorldCache | null {
+  private static get instance(): userCache | null {
     return globalThis.userWorldCacheInstance || null;
   }
 
-  private static set instance(value: UserWorldCache | null) {
+  private static set instance(value: userCache | null) {
     globalThis.userWorldCacheInstance = value;
   }
 
@@ -102,9 +102,9 @@ export class UserWorldCache extends Cache {
    * 
    * @param config optional configuration for the cache
    */
-  static async intialize2(db: sqlite3.Database, dependencies: UserWorldCacheDependencies = {}, config?: TypedCacheConfig): Promise<void> {
-    UserWorldCache.configureDependencies(dependencies);
-    this.instance = new UserWorldCache();
+  static async intialize2(db: sqlite3.Database, dependencies: userCacheDependencies = {}, config?: TypedCacheConfig): Promise<void> {
+    userCache.configureDependencies(dependencies);
+    this.instance = new userCache();
     if (config) {
       this.instance.config = config;
     }
@@ -114,18 +114,18 @@ export class UserWorldCache extends Cache {
   /**
    * Synchronous non-locking getter for singleton instance, which was initialized at startup
    */
-  static getInstance2(): UserWorldCache {
+  static getInstance2(): userCache {
     if (!this.instance) {
       throw new Error('UserWorldCache not initialized');
     }
     return this.instance;
   }
   
-  static async getInstance(context: LockContext<LocksAtMost8>, config?: TypedCacheConfig): Promise<UserWorldCache> {
+  static async getInstance(context: LockContext<LocksAtMost8>, config?: TypedCacheConfig): Promise<userCache> {
     if (!this.instance) {
       return await context.useLockWithAcquire(CACHES_LOCK, () => {
         if (!this.instance) {
-          this.instance = new UserWorldCache();
+          this.instance = new userCache();
           if (config) {
             this.instance.config = config;
           }
@@ -142,11 +142,11 @@ export class UserWorldCache extends Cache {
     WorldCache.resetInstance();
   }
 
-  static configureDependencies(dependencies: UserWorldCacheDependencies): void {
-    UserWorldCache.dependencies = dependencies;
-    if (UserWorldCache.instance) {
-      UserWorldCache.instance.dependencies = dependencies;
-      UserWorldCache.instance.worldCacheRef = dependencies.worldCache ?? null;
+  static configureDependencies(dependencies: userCacheDependencies): void {
+    userCache.dependencies = dependencies;
+    if (userCache.instance) {
+      userCache.instance.dependencies = dependencies;
+      userCache.instance.worldCacheRef = dependencies.worldCache ?? null;
     }
   }
 
@@ -662,6 +662,6 @@ export class UserWorldCache extends Cache {
 }
   
 // Convenience function to get singleton instance
-export async function getUserWorldCache(context: LockContext<LocksAtMost8>, config?: TypedCacheConfig): Promise<UserWorldCache> {
-  return await UserWorldCache.getInstance(context, config);
+export async function getUserWorldCache(context: LockContext<LocksAtMost8>, config?: TypedCacheConfig): Promise<userCache> {
+  return await userCache.getInstance(context, config);
 }

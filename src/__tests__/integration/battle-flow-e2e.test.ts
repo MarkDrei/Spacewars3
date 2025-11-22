@@ -5,7 +5,7 @@
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { BattleCache, getBattleCache } from '../../lib/server/battle/BattleCache';
-import { UserWorldCache, getUserWorldCache } from '../../lib/server/user/userCache';
+import { userCache, getUserWorldCache } from '../../lib/server/user/userCache';
 import * as BattleRepo from '../../lib/server/battle/BattleCache';
 import * as battleService from '../../lib/server/battle/battleService';
 import * as battleScheduler from '../../lib/server/battle/battleScheduler';
@@ -18,7 +18,7 @@ import { initializeIntegrationTestServer, shutdownIntegrationTestServer } from '
 describe('Phase 5: End-to-End Battle Flow with BattleCache', () => {
 
   let battleCache: BattleCache;
-  let userWorldCache: UserWorldCache;
+  let userWorldCache: userCache;
   let emptyCtx: ReturnType<typeof createLockContext>;
   
   beforeEach(async () => {

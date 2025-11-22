@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { UserWorldCache } from '@/lib/server/user/userCache';
+import { userCache } from '@/lib/server/user/userCache';
 import { getDatabase } from '@/lib/server/database';
 import { createUser } from '@/lib/server/user/userRepo';
 import { saveUserToDb } from '@/lib/server/user/userRepo';
@@ -9,7 +9,7 @@ import { USER_LOCK } from '@/lib/server/typedLocks';
 describe('User Persistence to Database', () => {
   beforeEach(() => {
     // Reset cache manager for each test
-    UserWorldCache.resetInstance();
+    userCache.resetInstance();
   });
 
   it('userPersistence_dirtyUserModified_persitsToDatabase', async () => {
@@ -22,7 +22,7 @@ describe('User Persistence to Database', () => {
     
     // Get cache manager and initialize
     const emptyCtx = createLockContext();
-    const userWorldCache = await UserWorldCache.getInstance(emptyCtx);
+    const userWorldCache = await userCache.getInstance(emptyCtx);
     
     // Load user into cache
     
@@ -66,7 +66,7 @@ describe('User Persistence to Database', () => {
     
     const emptyCtx = createLockContext();
     // Get cache manager
-    const userWorldCache = await UserWorldCache.getInstance(emptyCtx);
+    const userWorldCache = await userCache.getInstance(emptyCtx);
     
     await emptyCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
       await userWorldCache.initialize(userCtx);

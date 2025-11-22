@@ -20,13 +20,13 @@ import * as battleRepo from './battleRepo';
 import { createLockContext, HasLock13Context, HasLock2Context, IronLocks, LockContext, LocksAtMost4, LocksAtMostAndHas2 } from '@markdrei/ironguard-typescript-locks';
 import { BATTLE_LOCK, DATABASE_LOCK_BATTLES, USER_LOCK } from '../typedLocks';
 import { startBattleScheduler } from './battleScheduler';
-import { UserWorldCache } from '../user/userCache';
+import { userCache } from '../user/userCache';
 import { WorldCache } from '../world/worldCache';
 import { MessageCache } from '../messages/MessageCache';
 import { Cache } from '../Cache';
 
 type BattleCacheDependencies = {
-  userCache?: UserWorldCache;
+  userCache?: userCache;
   worldCache?: WorldCache;
   messageCache?: MessageCache;
 };
@@ -159,7 +159,7 @@ export class BattleCache extends Cache {
     this.getMessageCache();
   }
 
-  private getUserCache(): UserWorldCache {
+  private getUserCache(): userCache {
     const userCache = this.dependencies.userCache;
     if (!userCache) {
       throw new Error('BattleCache: user cache dependency not configured');

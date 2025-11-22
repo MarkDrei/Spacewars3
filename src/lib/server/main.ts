@@ -4,7 +4,7 @@
 import { createLockContext, LOCK_1, LOCK_10, LOCK_11, LOCK_12, LOCK_13, LOCK_14, LOCK_15, LOCK_2, LOCK_3, LOCK_4, LOCK_5, LOCK_6, LOCK_7, LOCK_8, LOCK_9 } from "@markdrei/ironguard-typescript-locks";
 import { getDatabase } from "./database";
 import { loadWorldFromDb } from "./world/worldRepo";
-import { UserWorldCache } from "./user/userCache";
+import { userCache } from "./user/userCache";
 import { BattleCache } from "./battle/BattleCache";
 import { MessageCache } from "./messages/MessageCache";
 import { WorldCache } from "./world/worldCache";
@@ -43,13 +43,13 @@ export async function initializeServer() {
         WorldCache.configureDependencies({ messageCache });
         WorldCache.initializeWithWorld(world, db);
 
-        await UserWorldCache.intialize2(db, {
+        await userCache.intialize2(db, {
             worldCache: WorldCache.getInstance(),
             messageCache
         });
 
         BattleCache.configureDependencies({
-            userCache: UserWorldCache.getInstance2(),
+            userCache: userCache.getInstance2(),
             worldCache: WorldCache.getInstance(),
             messageCache
         });

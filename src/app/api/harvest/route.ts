@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getIronSession } from 'iron-session';
 import { calculateToroidalDistance } from '@shared/physics';
-import { getUserWorldCache, UserWorldCache } from '@/lib/server/user/userCache';
+import { getUserWorldCache, userCache } from '@/lib/server/user/userCache';
 import { sendMessageToUser } from '@/lib/server/messages/MessageCache';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth, ApiError } from '@/lib/server/errors';
@@ -78,7 +78,7 @@ async function performCollectionLogic(
   world: World,
   user: User, 
   objectId: number,
-  userWorldCache: UserWorldCache,
+  userWorldCache: userCache,
 ): Promise<NextResponse> {
   // Update physics for all objects first
   const currentTime = Date.now();
