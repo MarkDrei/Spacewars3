@@ -9,6 +9,7 @@ import { User } from '@/lib/server/user/user';
 import { World } from '@/lib/server/world/world';
 import { TechFactory } from '@/lib/server/techs/TechFactory';
 import { createLockContext, LockContext, LocksAtMostAndHas4, LocksAtMostAndHas6 } from '@markdrei/ironguard-typescript-locks';
+import { WorldCache } from '@/lib/server/world/worldCache';
 
 export async function GET(request: NextRequest) {
   try {
@@ -20,11 +21,12 @@ export async function GET(request: NextRequest) {
     // Get typed cache manager singleton
     const userWorldCache = await getUserWorldCache(emptyCtx);
     
+    const worldCache = WorldCache.getInstance();
     return await emptyCtx.useLockWithAcquire(USER_LOCK, async (userContext) => {
       return await userContext.useLockWithAcquire(WORLD_LOCK, async (worldContext) => {
         // Get world and user data safely (we have both locks)
         const user = await userWorldCache.getUserByIdWithLock(userContext, session.userId!);
-        const world = userWorldCache.getWorldFromCache(worldContext);
+        const world = worldCache.getWorldFromCache(worldContext);
         
         if (!user) {
           console.log(`❌ User not found: ${session.userId}`);

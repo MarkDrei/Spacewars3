@@ -26,6 +26,7 @@ import { getBattleCache } from './BattleCache';
 import { createLockContext, HasLock2Context, IronLocks, LockContext, LocksAtMost4, LocksAtMostAndHas2, LocksAtMostAndHas4 } from '@markdrei/ironguard-typescript-locks';
 import { WORLD_LOCK, USER_LOCK, DATABASE_LOCK_USERS } from '../typedLocks';
 import { getUserByIdFromDb } from '../user/userRepo';
+import { WorldCache } from '../world/worldCache';
 
 /**
  * Maximum distance to initiate battle (same as collection distance)
@@ -114,9 +115,9 @@ function calculateDistance(x1: number, y1: number, x2: number, y2: number): numb
  * Helper function that delegates to TypeduserWorldCache
  */
 async function getShipPosition(context: LockContext<LocksAtMost4>, shipId: number): Promise<{ x: number; y: number } | null> {
-  const userWorldCache = await getUserWorldCache(context);
+  const worldCache = WorldCache.getInstance();
   return await context.useLockWithAcquire(WORLD_LOCK, async (worldContext) => {
-    const world = userWorldCache.getWorldFromCache(worldContext);
+    const world = worldCache.getWorldFromCache(worldContext);
     const ship = world.spaceObjects.find(obj => obj.id === shipId);
     return ship ? { x: ship.x, y: ship.y } : null;
 
@@ -128,13 +129,13 @@ async function getShipPosition(context: LockContext<LocksAtMost4>, shipId: numbe
  * Delegates to TypeduserWorldCache instead of bypassing cache
  */
 async function setShipSpeed(context: LockContext<LocksAtMostAndHas4>, shipId: number, speed: number): Promise<void> {
-  const userWorldCache = await getUserWorldCache(context);
+  const worldCache = WorldCache.getInstance();
   return await context.useLockWithAcquire(WORLD_LOCK, async (worldContext) => {
-    const world = userWorldCache.getWorldFromCache(worldContext);
+    const world = worldCache.getWorldFromCache(worldContext);
     const ship = world.spaceObjects.find(obj => obj.id === shipId);
     if (ship) {
       ship.speed = speed;
-      userWorldCache.updateWorldUnsafe(worldContext, world);
+      worldCache.updateWorldUnsafe(worldContext, world);
     }
   });
 }
@@ -187,16 +188,16 @@ function generateTeleportPosition(
  * TODO: Move this to userWorldCache.ts as a method
  */
 async function teleportShip(context: LockContext<LocksAtMostAndHas4>, shipId: number, x: number, y: number): Promise<void> {
-  const userWorldCache = await getUserWorldCache(context);
+  const worldCache = WorldCache.getInstance();
   await context.useLockWithAcquire(WORLD_LOCK, async (worldContext) => {
-    const world = userWorldCache.getWorldFromCache(worldContext);
+    const world = worldCache.getWorldFromCache(worldContext);
     const ship = world.spaceObjects.find(obj => obj.id === shipId);
     if (ship) {
       ship.x = x;
       ship.y = y;
       ship.speed = 0;
       ship.last_position_update_ms = Date.now();
-      userWorldCache.updateWorldUnsafe(worldContext, world);
+      worldCache.updateWorldUnsafe(worldContext, world);
     }
   });
 }

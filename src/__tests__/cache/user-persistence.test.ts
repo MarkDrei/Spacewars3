@@ -7,9 +7,10 @@ import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 import { USER_LOCK } from '@/lib/server/typedLocks';
 
 describe('User Persistence to Database', () => {
-  beforeEach(() => {
-    // Reset cache manager for each test
+  beforeEach(async () => {
     userCache.resetInstance();
+    const db = await getDatabase();
+    await userCache.intialize2(db);
   });
 
   it('userPersistence_dirtyUserModified_persitsToDatabase', async () => {
@@ -22,12 +23,11 @@ describe('User Persistence to Database', () => {
     
     // Get cache manager and initialize
     const emptyCtx = createLockContext();
-    const userWorldCache = await userCache.getInstance(emptyCtx);
+    const userWorldCache = userCache.getInstance2();
     
     // Load user into cache
     
     await emptyCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
-      await userWorldCache.initialize(userCtx);
       userWorldCache.setUserUnsafe(userCtx, user);
 
       // Act: Modify user data and mark as dirty
@@ -65,11 +65,9 @@ describe('User Persistence to Database', () => {
     const user = await createUser(db, 'testuser_shutdown_persist', 'hashedpass', saveCallback);
     
     const emptyCtx = createLockContext();
-    // Get cache manager
-    const userWorldCache = await userCache.getInstance(emptyCtx);
+    const userWorldCache = userCache.getInstance2();
     
     await emptyCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
-      await userWorldCache.initialize(userCtx);
       // Load user into cache
       userWorldCache.setUserUnsafe(userCtx, user);
 

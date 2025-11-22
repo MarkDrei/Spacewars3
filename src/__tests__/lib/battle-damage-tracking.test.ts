@@ -15,6 +15,7 @@ import { userCache } from '@/lib/server/user/userCache';
 import { User } from '@/lib/server/user/user';
 import { createInitialTechTree } from '@/lib/server/techs/techtree';
 import { TechCounts } from '@/lib/server/techs/TechFactory';
+import { getDatabase } from '@/lib/server/database';
 
 // Mock save callback for test users
 const mockSaveCallback = vi.fn().mockResolvedValue(undefined);
@@ -65,14 +66,13 @@ describe('Battle Damage Tracking', () => {
     // Reset cache manager for each test
     userCache.resetInstance();
 
-    const emptyCtx = createLockContext();
-    
-    // Initialize cache with test configuration (no auto-persistence)
-    const cache = await userCache.getInstance(emptyCtx, {
+    const db = await getDatabase();
+    await userCache.intialize2(db, {}, {
       persistenceIntervalMs: 30000,
       enableAutoPersistence: false,
       logStats: false
     });
+    const cache = userCache.getInstance2();
     
     // Note: We don't call initialize() because we don't want to connect to the database
     // Instead, we'll directly populate the cache with test users

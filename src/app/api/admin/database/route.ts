@@ -100,11 +100,9 @@ export async function GET(request: NextRequest) {
       
       // CRITICAL: Flush all cache data to database before reading
       // This ensures the admin page shows current values, not stale cached data
-      if (userWorldCache.isReady) {
-        await userWorldCache.flushAllToDatabase(userContext);
-        console.log('✅ Cache flushed to database for admin query');
-        // TODO: should probably also flush other caches (e.g. battle cache) if they exist
-      }
+      // TODO: should probably also flush other caches (e.g. battle cache) if they exist
+      await userWorldCache.flushAllToDatabase(userContext);
+      console.log('✅ Cache flushed to database for admin query');
 
       const db = await getDatabase();
       // Get all users data

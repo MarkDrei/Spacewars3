@@ -392,10 +392,6 @@ describe('Phase 5: BattleCache Integration Testing', () => {
     
           // Create fresh cache
           const newCache = getBattleCache();
-          const newCtx = createLockContext();
-          const newCacheManager = await getUserWorldCache(newCtx);
-          
-          await newCacheManager.initialize(userCtx);
     
           // Battle should be loadable from database
           const persistedBattle = await newCache.loadBattleIfNeeded(battleCtx, battle.id);

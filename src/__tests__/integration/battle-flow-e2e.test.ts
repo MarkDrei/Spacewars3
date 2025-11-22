@@ -146,47 +146,40 @@ describe('Phase 5: End-to-End Battle Flow with BattleCache', () => {
         // Reset cache and reload from DB
         BattleCache.resetInstance();
         const freshCache = getBattleCache();
-        const freshCacheManager = await getUserWorldCache(battleCtx);
-        battleCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
-          await freshCacheManager.initialize(userCtx);
-          const freshDb = await freshCacheManager.getDatabaseConnection(userCtx);
-          await freshCache.initialize(freshDb);
-        });
-        
   
-          // Battle should be loadable from database
-          const reloadedBattle = await freshCache.loadBattleIfNeeded(battleCtx, battle.id);
-          expect(reloadedBattle).toBeDefined();
-          expect(reloadedBattle?.id).toBe(battle.id);
-          expect(reloadedBattle?.battleLog.length).toBeGreaterThan(0);
-    
-          // === Phase 6: End Battle ===
+        // Battle should be loadable from database
+        const reloadedBattle = await freshCache.loadBattleIfNeeded(battleCtx, battle.id);
+        expect(reloadedBattle).toBeDefined();
+        expect(reloadedBattle?.id).toBe(battle.id);
+        expect(reloadedBattle?.battleLog.length).toBeGreaterThan(0);
+  
+        // === Phase 6: End Battle ===
+        
+        if (!reloadedBattle?.battleEndTime) {
           
-          if (!reloadedBattle?.battleEndTime) {
-            
-            
-            await BattleRepo.endBattle(
-              battleCtx,
-              battle.id,
-              attackerId, // Winner
-              defenderId, // Loser
-              attackerStats, // Final attacker stats
-              { 
-                hull: { current: 0, max: 80 },
-                armor: { current: 0, max: 40 },
-                shield: { current: 0, max: 20 },
-                weapons: defenderStats.weapons
-              } // Defender defeated
-            );
-    
-            // Battle should be removed from cache (completed battles aren't cached)
-            const endedBattle = freshCache.getBattleFromCache(battle.id);
-            expect(endedBattle).toBeNull();
-    
-            // Should not appear in active battles
-            const finalActive = await BattleRepo.getActiveBattles(battleCtx);
-            expect(finalActive).toHaveLength(0);
-          }
+          
+          await BattleRepo.endBattle(
+            battleCtx,
+            battle.id,
+            attackerId, // Winner
+            defenderId, // Loser
+            attackerStats, // Final attacker stats
+            { 
+              hull: { current: 0, max: 80 },
+              armor: { current: 0, max: 40 },
+              shield: { current: 0, max: 20 },
+              weapons: defenderStats.weapons
+            } // Defender defeated
+          );
+  
+          // Battle should be removed from cache (completed battles aren't cached)
+          const endedBattle = freshCache.getBattleFromCache(battle.id);
+          expect(endedBattle).toBeNull();
+  
+          // Should not appear in active battles
+          const finalActive = await BattleRepo.getActiveBattles(battleCtx);
+          expect(finalActive).toHaveLength(0);
+        }
   
         // === Phase 7: Verify Complete Workflow ===
         

@@ -13,7 +13,7 @@ import {
 import { getDatabase } from '../database';
 import { DATABASE_LOCK_MESSAGES, MESSAGE_LOCK } from '../typedLocks';
 import { MessagesRepo, type Message, type UnreadMessage } from './messagesRepo';
-import { Cache } from '../Cache';
+import { Cache } from '../caches/Cache';
 
 interface MessageCacheConfig {
   persistenceIntervalMs: number;

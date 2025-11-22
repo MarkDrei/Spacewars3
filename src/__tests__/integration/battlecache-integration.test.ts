@@ -427,7 +427,6 @@ describe('Phase 5: BattleCache Integration Testing', () => {
       emptyCtx = createLockContext();
       await emptyCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
         userWorldCache = await getUserWorldCache(userCtx);
-        await userWorldCache.initialize(userCtx);
         
         // Initialize BattleCache manually for tests
         battleCache = getBattleCache();

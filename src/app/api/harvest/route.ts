@@ -8,6 +8,7 @@ import { handleApiError, requireAuth, ApiError } from '@/lib/server/errors';
 import { USER_LOCK, WORLD_LOCK } from '@/lib/server/typedLocks';
 import { User } from '@/lib/server/user/user';
 import { World } from '@/lib/server/world/world';
+import { WorldCache } from '@/lib/server/world/worldCache';
 import { createLockContext, LockContext, LocksAtMostAndHas4, LocksAtMostAndHas6 } from '@markdrei/ironguard-typescript-locks';
 
 export async function POST(request: NextRequest) {
@@ -43,10 +44,11 @@ export async function POST(request: NextRequest) {
     // Get typed cache manager singleton
     const userWorldCache = await getUserWorldCache(emptyCtx);
 
+    const worldCache = WorldCache.getInstance();
     return await emptyCtx.useLockWithAcquire(USER_LOCK, async (userContext) => {
       return await userContext.useLockWithAcquire(WORLD_LOCK, async (worldContext) => {
         // Get world data safely (we have world write lock)
-        const world = userWorldCache.getWorldFromCache(worldContext);
+        const world = worldCache.getWorldFromCache(worldContext);
         
         // Get user data safely (we have user lock)  
         const user = await userWorldCache.getUserByIdWithLock(userContext, session.userId!);
@@ -80,6 +82,7 @@ async function performCollectionLogic(
   objectId: number,
   userWorldCache: userCache,
 ): Promise<NextResponse> {
+  const worldCache = WorldCache.getInstance();
   // Update physics for all objects first
   const currentTime = Date.now();
   world.updatePhysics(worldContext, currentTime);
@@ -127,7 +130,7 @@ async function performCollectionLogic(
   
   // Update cache with new data (using unsafe methods because we have proper locks)
   userWorldCache.updateUserInCache(userCtx, user);
-  userWorldCache.updateWorldUnsafe(worldContext, world);
+  worldCache.updateWorldUnsafe(worldContext, world);
   
   // Create notification message for the collection
   let notificationMessage = '';

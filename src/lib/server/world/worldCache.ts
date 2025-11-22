@@ -4,7 +4,7 @@ import { WORLD_LOCK } from '../typedLocks';
 import { MessageCache } from '../messages/MessageCache';
 import { World } from './world';
 import { loadWorldFromDb, saveWorldToDb } from './worldRepo';
-import { Cache } from '../Cache';
+import { Cache } from '../caches/Cache';
 
 type WorldCacheDependencies = {
   messageCache?: MessageCache;

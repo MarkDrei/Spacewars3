@@ -5,13 +5,14 @@
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { getBattleCache, getBattleCacheInitialized } from '../../lib/server/battle/BattleCache';
-import { userCache, getUserWorldCache } from '../../lib/server/user/userCache';
+import { getUserWorldCache } from '../../lib/server/user/userCache';
 import * as BattleRepo from '../../lib/server/battle/BattleCache';
 import * as battleService from '../../lib/server/battle/battleService';
 import type { BattleStats, WeaponCooldowns } from '../../lib/server/battle/battleTypes';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 import { BATTLE_LOCK, USER_LOCK } from '@/lib/server/typedLocks';
 import { initializeIntegrationTestServer, shutdownIntegrationTestServer } from '../helpers/testServer';
+import { getDatabase } from '@/lib/server/database';
 
 describe('Defense Value Persistence After Battle', () => {
   
@@ -126,30 +127,46 @@ describe('Defense Value Persistence After Battle', () => {
         // Flush cache to ensure values are written to DB
         await battleContext.useLockWithAcquire(USER_LOCK, async (userContext) => {
           await userWorldCache.flushAllToDatabase(userContext);
-          // Clear cache and reload users from DB
-          userCache.resetInstance();
-          const freshCacheManager = await getUserWorldCache(battleContext);
-          await freshCacheManager.initialize(userContext);
-      
-          // Load users again from database
-          const reloadedAttacker = await freshCacheManager.getUserByIdWithLock(userContext, attacker!.id);
-          const reloadedDefender = await freshCacheManager.getUserByIdWithLock(userContext, defender!.id);
-      
-          console.log(`Reloaded attacker hull: ${reloadedAttacker?.hullCurrent}`);
-          console.log(`Reloaded defender hull: ${reloadedDefender?.hullCurrent}`);
-      
-          // Verify that defense values match the endStats from the battle
-          const finalAttackerHull = currentBattle?.attackerEndStats?.hull.current ?? initialAttackerHull;
-          const finalDefenderHull = currentBattle?.attackeeEndStats?.hull.current ?? initialDefenderHull;
-      
-          expect(reloadedAttacker?.hullCurrent).toBe(finalAttackerHull);
-          expect(reloadedDefender?.hullCurrent).toBe(finalDefenderHull);
-      
-          // At least one user's hull should be 0 (they lost)
-          const attackerDestroyed = reloadedAttacker?.hullCurrent === 0;
-          const defenderDestroyed = reloadedDefender?.hullCurrent === 0;
-          expect(attackerDestroyed || defenderDestroyed).toBe(true);
         });
+
+        const loadUserDefenses = async (userId: number) => {
+          const db = await getDatabase();
+          return await new Promise<{ hull_current: number }>((resolve, reject) => {
+            db.get(
+              'SELECT hull_current FROM users WHERE id = ?',
+              [userId],
+              (err, row) => {
+                if (err) {
+                  reject(err);
+                  return;
+                }
+                if (!row) {
+                  reject(new Error(`User ${userId} not found in database`));
+                  return;
+                }
+                resolve(row as { hull_current: number });
+              }
+            );
+          });
+        };
+
+        const [reloadedAttacker, reloadedDefender] = await Promise.all([
+          loadUserDefenses(attacker!.id),
+          loadUserDefenses(defender!.id)
+        ]);
+
+        console.log(`Reloaded attacker hull: ${reloadedAttacker.hull_current}`);
+        console.log(`Reloaded defender hull: ${reloadedDefender.hull_current}`);
+
+        const finalAttackerHull = currentBattle?.attackerEndStats?.hull.current ?? initialAttackerHull;
+        const finalDefenderHull = currentBattle?.attackeeEndStats?.hull.current ?? initialDefenderHull;
+
+        expect(reloadedAttacker.hull_current).toBe(finalAttackerHull);
+        expect(reloadedDefender.hull_current).toBe(finalDefenderHull);
+
+        const attackerDestroyed = reloadedAttacker.hull_current === 0;
+        const defenderDestroyed = reloadedDefender.hull_current === 0;
+        expect(attackerDestroyed || defenderDestroyed).toBe(true);
     
     });
 

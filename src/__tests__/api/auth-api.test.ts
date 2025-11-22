@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'vitest';
+import { describe, expect, test, beforeEach, afterEach } from 'vitest';
 
 // Import API routes directly (for now we'll use the real database)
 import { POST as registerPOST } from '@/app/api/register/route';
@@ -6,8 +6,17 @@ import { POST as loginPOST } from '@/app/api/login/route';
 
 // Import shared test helpers
 import { createRequest, randomUsername } from '../helpers/apiTestHelpers';
+import { initializeIntegrationTestServer, shutdownIntegrationTestServer } from '../helpers/testServer';
 
 describe('Auth API', () => {
+  beforeEach(async () => {
+    await initializeIntegrationTestServer();
+  });
+
+  afterEach(async () => {
+    await shutdownIntegrationTestServer();
+  });
+
   test('register_newUser_success', async () => {
     const username = randomUsername();
     const request = createRequest('http://localhost:3000/api/register', 'POST', {

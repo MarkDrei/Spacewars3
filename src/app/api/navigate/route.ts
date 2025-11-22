@@ -8,6 +8,7 @@ import { USER_LOCK, WORLD_LOCK } from '@/lib/server/typedLocks';
 import { User } from '@/lib/server/user/user';
 import { World } from '@/lib/server/world/world';
 import { createLockContext, LockContext, LocksAtMostAndHas4, LocksAtMostAndHas6 } from '@markdrei/ironguard-typescript-locks';
+import { WorldCache } from '@/lib/server/world/worldCache';
 
 export async function POST(request: NextRequest) {
   try {
@@ -26,10 +27,11 @@ export async function POST(request: NextRequest) {
     // Get typed cache manager singleton
     const userWorldCache = await getUserWorldCache(emptyCtx);
     
+    const worldCache = WorldCache.getInstance();
     return await emptyCtx.useLockWithAcquire(USER_LOCK, async (userContext) => {
       return await userContext.useLockWithAcquire(WORLD_LOCK, async (worldContext) => {
         // Get world data safely (we have world write lock)
-        const world = userWorldCache.getWorldFromCache(worldContext);
+        const world = worldCache.getWorldFromCache(worldContext);
         
         // Get user data safely (we have user lock)  
         const user = await userWorldCache.getUserByIdWithLock(userContext, session.userId!);
@@ -62,6 +64,7 @@ async function performNavigationLogic(
   angle: number | undefined,
   userWorldCache: userCache
 ): Promise<NextResponse> {
+  const worldCache = WorldCache.getInstance();
   // Check if user is in battle - cannot navigate while in battle
   if (user.inBattle) {
     throw new ApiError(400, 'Cannot navigate while in battle');
@@ -109,7 +112,7 @@ async function performNavigationLogic(
   playerShip.last_position_update_ms = currentTime;
   
   // Update cache with new data (using unsafe methods because we have proper locks)
-  userWorldCache.updateWorldUnsafe(worldContext, world);
+  worldCache.updateWorldUnsafe(worldContext, world);
   
   return NextResponse.json({ 
     success: true,

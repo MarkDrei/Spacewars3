@@ -1,12 +1,21 @@
-import { describe, expect, test } from 'vitest';
+import { describe, expect, test, beforeEach, afterEach } from 'vitest';
 
 // Import API routes
 import { POST as triggerResearchPOST } from '@/app/api/trigger-research/route';
 
 // Import shared test helpers
 import { createRequest, createAuthenticatedSession } from '../helpers/apiTestHelpers';
+import { initializeIntegrationTestServer, shutdownIntegrationTestServer } from '../helpers/testServer';
 
 describe('Trigger Research API', () => {
+  beforeEach(async () => {
+    await initializeIntegrationTestServer();
+  });
+
+  afterEach(async () => {
+    await shutdownIntegrationTestServer();
+  });
+
   test('triggerResearch_notAuthenticated_returns401', async () => {
     const request = createRequest('http://localhost:3000/api/trigger-research', 'POST', {
       type: 'IronHarvesting'

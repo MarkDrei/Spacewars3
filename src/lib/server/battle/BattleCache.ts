@@ -23,7 +23,7 @@ import { startBattleScheduler } from './battleScheduler';
 import { userCache } from '../user/userCache';
 import { WorldCache } from '../world/worldCache';
 import { MessageCache } from '../messages/MessageCache';
-import { Cache } from '../Cache';
+import { Cache } from '../caches/Cache';
 
 type BattleCacheDependencies = {
   userCache?: userCache;
