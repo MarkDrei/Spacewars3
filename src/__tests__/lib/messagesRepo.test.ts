@@ -5,7 +5,7 @@
 import { describe, test, expect, beforeEach, afterEach } from 'vitest';
 import { MessagesRepo } from '@/lib/server/messages/messagesRepo';
 import { getTestDatabase, closeTestDatabase, clearTestDatabase } from '../helpers/testDatabase';
-import { createLockContext, HasLock12Context, LOCK_1, LOCK_12, LockContext } from '@markdrei/ironguard-typescript-locks';
+import { createLockContext, LOCK_12, LockContext } from '@markdrei/ironguard-typescript-locks';
 
 describe('MessagesRepo', () => {
   let messagesRepo: MessagesRepo;

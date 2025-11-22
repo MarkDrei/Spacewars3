@@ -5,7 +5,6 @@
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { getBattleCache, getBattleCacheInitialized } from '../../lib/server/battle/BattleCache';
-import { getUserWorldCache } from '../../lib/server/user/userCache';
 import * as BattleRepo from '../../lib/server/battle/BattleCache';
 import * as battleService from '../../lib/server/battle/battleService';
 import type { BattleStats, WeaponCooldowns } from '../../lib/server/battle/battleTypes';
@@ -13,6 +12,7 @@ import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 import { BATTLE_LOCK, USER_LOCK } from '@/lib/server/typedLocks';
 import { initializeIntegrationTestServer, shutdownIntegrationTestServer } from '../helpers/testServer';
 import { getDatabase } from '@/lib/server/database';
+import { UserCache } from '@/lib/server/user/userCache';
 
 describe('Defense Value Persistence After Battle', () => {
   
@@ -28,7 +28,7 @@ describe('Defense Value Persistence After Battle', () => {
     // === Phase 1: Setup ===
     const battleCache = getBattleCache();
     const emptyCtx = createLockContext();
-    const userWorldCache = await getUserWorldCache(emptyCtx);
+    const userWorldCache = UserCache.getInstance2();
 
     await emptyCtx.useLockWithAcquire(BATTLE_LOCK, async (battleContext) => {
         // Load users from cache

@@ -4,8 +4,8 @@
 // ---
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { BattleCache, getBattleCache } from '../../lib/server/battle/BattleCache';
-import { userCache, getUserWorldCache } from '../../lib/server/user/userCache';
+import { getBattleCache } from '../../lib/server/battle/BattleCache';
+import { UserCache } from '../../lib/server/user/userCache';
 import * as battleService from '../../lib/server/battle/battleService';
 import { User } from '../../lib/server/user/user';
 import { BATTLE_LOCK, USER_LOCK } from '../../lib/server/typedLocks';
@@ -15,15 +15,13 @@ import { initializeIntegrationTestServer, shutdownIntegrationTestServer } from '
 
 describe('Battle Defense Persistence', () => {
 
-  let battleCache: BattleCache;
-  let userWorldCache: userCache;
+  let userWorldCache: UserCache;
   let emptyCtx: ReturnType<typeof createLockContext>;
   
   beforeEach(async () => {
     await initializeIntegrationTestServer();
     emptyCtx = createLockContext();
-    battleCache = getBattleCache();
-    userWorldCache = await getUserWorldCache(emptyCtx);
+    userWorldCache = UserCache.getInstance2();
   });
 
   afterEach(async () => {
@@ -67,7 +65,6 @@ describe('Battle Defense Persistence', () => {
     
     // Create battle stats manually with specific damaged values
     const attackerDamagedHull = attackerInitialHull - 100; // Remove 100 hull
-    const defenderDamagedHull = 50; // Set to low hull
     
     const attackerStats: BattleStats = {
       hull: { current: attackerUser.hullCurrent, max: attackerMaxHull },

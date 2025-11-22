@@ -21,9 +21,9 @@ import type { Battle, BattleStats, BattleEvent, WeaponCooldowns } from './battle
 import type { User } from '../user/user';
 import { TechFactory } from '../techs/TechFactory';
 import { ApiError } from '../errors';
-import { getUserWorldCache } from '../user/userCache';
+import { UserCache } from '../user/userCache';
 import { getBattleCache } from './BattleCache';
-import { createLockContext, HasLock2Context, IronLocks, LockContext, LocksAtMost4, LocksAtMostAndHas2, LocksAtMostAndHas4 } from '@markdrei/ironguard-typescript-locks';
+import { HasLock2Context, IronLocks, LockContext, LocksAtMost4, LocksAtMostAndHas2, LocksAtMostAndHas4 } from '@markdrei/ironguard-typescript-locks';
 import { WORLD_LOCK, USER_LOCK, DATABASE_LOCK_USERS } from '../typedLocks';
 import { getUserByIdFromDb } from '../user/userRepo';
 import { WorldCache } from '../world/worldCache';
@@ -144,7 +144,7 @@ async function setShipSpeed(context: LockContext<LocksAtMostAndHas4>, shipId: nu
  * Update user battle state via User cache
  */
 async function updateUserBattleState(context: LockContext<LocksAtMostAndHas4>, userId: number, inBattle: boolean, battleId: number | null): Promise<void> {
-  const userWorldCache = await getUserWorldCache(context);
+  const userWorldCache = UserCache.getInstance2();
   const user = userWorldCache.getUserByIdFromCache(context, userId);
   if (user) {
     user.inBattle = inBattle;
@@ -206,7 +206,7 @@ async function teleportShip(context: LockContext<LocksAtMostAndHas4>, shipId: nu
  * Get user's ship ID from User cache
  */
 async function getUserShipId(context: LockContext<LocksAtMostAndHas4>, userId: number): Promise<number> {
-  const userWorldCache = await getUserWorldCache(context);
+  const userWorldCache = UserCache.getInstance2();
 
   const user = userWorldCache.getUserByIdFromCache(context, userId);
   if (!user || user.ship_id === undefined) {
@@ -351,7 +351,6 @@ export async function updateBattle(context: LockContext<LocksAtMostAndHas2>, bat
   const battleEngine = new BattleEngine(battle);
   
   // Process combat until next shot (max 100 turns)
-  const now = Math.floor(Date.now() / 1000);
   const events = await battleEngine.processBattleUntilNextShot(context, 100);
   
   // Save events to database
@@ -400,7 +399,7 @@ export async function resolveBattle(
   
   // Snapshot final defense values from User objects to create endStats
   // This is the "write once at end of battle" for endStats
-  const userWorldCache = await getUserWorldCache(context);
+  const userWorldCache = UserCache.getInstance2();
   const [attackerEndStats, attackeeEndStats] = await context.useLockWithAcquire(USER_LOCK, async (userContext) => {
     let attacker = userWorldCache.getUserByIdFromCache(userContext, battle.attackerId);
     let attackee = userWorldCache.getUserByIdFromCache(userContext, battle.attackeeId);

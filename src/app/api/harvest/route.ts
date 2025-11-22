@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getIronSession } from 'iron-session';
 import { calculateToroidalDistance } from '@shared/physics';
-import { getUserWorldCache, userCache } from '@/lib/server/user/userCache';
+import { UserCache } from '@/lib/server/user/userCache';
 import { sendMessageToUser } from '@/lib/server/messages/MessageCache';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth, ApiError } from '@/lib/server/errors';
@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
     
     const emptyCtx = createLockContext();
     // Get typed cache manager singleton
-    const userWorldCache = await getUserWorldCache(emptyCtx);
+    const userWorldCache = UserCache.getInstance2();
 
     const worldCache = WorldCache.getInstance();
     return await emptyCtx.useLockWithAcquire(USER_LOCK, async (userContext) => {
@@ -80,7 +80,7 @@ async function performCollectionLogic(
   world: World,
   user: User, 
   objectId: number,
-  userWorldCache: userCache,
+  userWorldCache: UserCache,
 ): Promise<NextResponse> {
   const worldCache = WorldCache.getInstance();
   // Update physics for all objects first

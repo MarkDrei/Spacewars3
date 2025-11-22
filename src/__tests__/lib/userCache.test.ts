@@ -4,8 +4,7 @@
 
 import { describe, expect, test, beforeEach, afterEach, vi } from 'vitest';
 import { 
-  userCache, 
-  getUserWorldCache,
+  UserCache, 
   type TypedCacheConfig 
 } from '../../lib/server/user/userCache';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
@@ -35,7 +34,7 @@ const createMessageCacheStub = (): MessageCache => ({
 
 const initializeCache = async (config?: TypedCacheConfig): Promise<void> => {
   const db = await getDatabase();
-  await userCache.intialize2(db, {
+  await UserCache.intialize2(db, {
     worldCache: createWorldCacheStub(),
     messageCache: createMessageCacheStub(),
   }, config);
@@ -45,40 +44,36 @@ describe('TypedCacheManager', () => {
   
   beforeEach(async () => {
     resetTestDatabase();
-    userCache.resetInstance();
+    UserCache.resetInstance();
     await initializeCache();
   });
 
   afterEach(async () => {
     // Clean up after each test
     try {
-      const manager = userCache.getInstance2();
+      const manager = UserCache.getInstance2();
       await manager.shutdown();
     } catch {
       // Ignore cleanup errors
     }
-    userCache.resetInstance();
+    UserCache.resetInstance();
   });
 
   describe('Singleton Pattern', () => {
     test('getInstance_multipleCalls_returnsSameInstance', async () => {
-      const emptyCtx = createLockContext();
-
-      const manager1 = userCache.getInstance2();
-      const manager2 = userCache.getInstance2();
-      const manager3 = await getUserWorldCache(emptyCtx);
+      const manager1 = UserCache.getInstance2();
+      const manager2 = UserCache.getInstance2();
+      const manager3 = UserCache.getInstance2();
 
       expect(manager1).toBe(manager2);
       expect(manager2).toBe(manager3);
     });
 
     test('resetInstance_afterReset_createsNewInstance', async () => {
-      const emptyCtx = createLockContext();
-
-      const manager1 = userCache.getInstance2();
-      userCache.resetInstance();
+      const manager1 = UserCache.getInstance2();
+      UserCache.resetInstance();
       await initializeCache();
-      const manager2 = userCache.getInstance2();
+      const manager2 = UserCache.getInstance2();
 
       expect(manager1).not.toBe(manager2);
     });
@@ -90,9 +85,9 @@ describe('TypedCacheManager', () => {
         logStats: true
       };
 
-      userCache.resetInstance();
+      UserCache.resetInstance();
       await initializeCache(config);
-      const manager = userCache.getInstance2();
+      const manager = UserCache.getInstance2();
       
       expect(manager).toBeDefined();
       // Config is applied internally (we can't directly test private members)
@@ -102,7 +97,7 @@ describe('TypedCacheManager', () => {
   describe('Basic Functionality', () => {
     test('getUserById_nonExistentUser_returnsNull', async () => {
       const emptyCtx = createLockContext();
-      const manager = await getUserWorldCache(emptyCtx);
+      const manager = UserCache.getInstance2();
       await emptyCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
         const user = await manager.getUserByIdWithLock(userCtx, 999); // Non-existent user
         expect(user).toBeNull();
@@ -111,7 +106,7 @@ describe('TypedCacheManager', () => {
 
     test('getStats_returnsValidStats', async () => {
       const emptyCtx = createLockContext();
-      const manager = await getUserWorldCache(emptyCtx);
+      const manager = UserCache.getInstance2();
       await emptyCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
 
         const stats = await manager.getStats(userCtx);
@@ -132,7 +127,7 @@ describe('TypedCacheManager', () => {
   describe('Concurrency', () => {
     test('concurrentOperations_completeSuccessfully', async () => {
       const emptyCtx = createLockContext();
-      const manager = await getUserWorldCache(emptyCtx);
+      const manager = UserCache.getInstance2();
       await emptyCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
   
         // Start multiple concurrent operations

@@ -4,7 +4,7 @@ import { getIronSession } from 'iron-session';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, validateRequired, ApiError } from '@/lib/server/errors';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
-import { getUserWorldCache } from '@/lib/server/user/userCache';
+import { UserCache } from '@/lib/server/user/userCache';
 import { USER_LOCK } from '@/lib/server/typedLocks';
 
 export async function POST(request: NextRequest) {
@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
     validateRequired(password, 'password');
     
     const emptyCtx = createLockContext();
-    const cache = await getUserWorldCache(emptyCtx);
+    const cache = UserCache.getInstance2();
     const user = await emptyCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
       return await cache.getUserByUsername(userCtx, username);
     });

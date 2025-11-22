@@ -1,13 +1,13 @@
 import { initializeServer } from '@/lib/server/main';
 import { resetTestDatabase } from '@/lib/server/database';
 import { BattleCache } from '@/lib/server/battle/BattleCache';
-import { userCache } from '@/lib/server/user/userCache';
+import { UserCache } from '@/lib/server/user/userCache';
 import { WorldCache } from '@/lib/server/world/worldCache';
 import { MessageCache } from '@/lib/server/messages/MessageCache';
 
 async function shutdownUserWorldCache(): Promise<void> {
   try {
-    const cache = userCache.getInstance2();
+    const cache = UserCache.getInstance2();
     await cache.shutdown();
   } catch {
     // Ignore if cache was never initialized
@@ -34,7 +34,7 @@ async function shutdownMessageCache(): Promise<void> {
 export async function initializeIntegrationTestServer(): Promise<void> {
   resetTestDatabase();
   BattleCache.resetInstance();
-  userCache.resetInstance();
+  UserCache.resetInstance();
   WorldCache.resetInstance();
   MessageCache.resetInstance();
   await initializeServer();
@@ -45,7 +45,7 @@ export async function shutdownIntegrationTestServer(): Promise<void> {
   await shutdownWorldCache();
   await shutdownMessageCache();
   BattleCache.resetInstance();
-  userCache.resetInstance();
+  UserCache.resetInstance();
   WorldCache.resetInstance();
   MessageCache.resetInstance();
 }

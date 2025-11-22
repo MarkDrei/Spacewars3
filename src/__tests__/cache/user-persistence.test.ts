@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { userCache } from '@/lib/server/user/userCache';
+import { UserCache } from '@/lib/server/user/userCache';
 import { getDatabase } from '@/lib/server/database';
 import { createUser } from '@/lib/server/user/userRepo';
 import { saveUserToDb } from '@/lib/server/user/userRepo';
@@ -8,9 +8,9 @@ import { USER_LOCK } from '@/lib/server/typedLocks';
 
 describe('User Persistence to Database', () => {
   beforeEach(async () => {
-    userCache.resetInstance();
+    UserCache.resetInstance();
     const db = await getDatabase();
-    await userCache.intialize2(db);
+    await UserCache.intialize2(db);
   });
 
   it('userPersistence_dirtyUserModified_persitsToDatabase', async () => {
@@ -23,7 +23,7 @@ describe('User Persistence to Database', () => {
     
     // Get cache manager and initialize
     const emptyCtx = createLockContext();
-    const userWorldCache = userCache.getInstance2();
+    const userWorldCache = UserCache.getInstance2();
     
     // Load user into cache
     
@@ -65,7 +65,7 @@ describe('User Persistence to Database', () => {
     const user = await createUser(db, 'testuser_shutdown_persist', 'hashedpass', saveCallback);
     
     const emptyCtx = createLockContext();
-    const userWorldCache = userCache.getInstance2();
+    const userWorldCache = UserCache.getInstance2();
     
     await emptyCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
       // Load user into cache

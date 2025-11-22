@@ -10,12 +10,12 @@
 // Status: ✅ Properly delegates user state updates to cache manager
 // ---
 
-import type { Battle, BattleStats, BattleEvent, WeaponCooldowns } from './battleTypes';
+import type { Battle, BattleStats, BattleEvent } from './battleTypes';
 import { TechFactory } from '../techs/TechFactory';
-import { getUserWorldCache } from '../user/userCache';
 import { LockContext } from '@markdrei/ironguard-typescript-locks';
 import { LocksAtMost3, LocksAtMostAndHas2, LocksAtMostAndHas4 } from '@markdrei/ironguard-typescript-locks/dist/core/ironGuardTypes';
 import { USER_LOCK } from '../typedLocks';
+import { UserCache } from '../user/userCache';
 
 /**
  * Battle class - Encapsulates battle state and combat mechanics
@@ -181,7 +181,7 @@ export class BattleEngine {
     remainingArmor: number;
     remainingHull: number;
   }> {
-    const userWorldCache = await getUserWorldCache(context);
+    const userWorldCache = UserCache.getInstance2();
     const user = await userWorldCache.getUserByIdWithLock(context, targetUserId);
       
       if (!user) {
@@ -258,7 +258,7 @@ export class BattleEngine {
   }
 
   async isBattleOverWithLock(context: LockContext<LocksAtMostAndHas4>): Promise<boolean> {
-      const userWorldCache = await getUserWorldCache(context);
+      const userWorldCache = UserCache.getInstance2();
       const attacker = await userWorldCache.getUserByIdWithLock(context, this.battle.attackerId);
       const attackee = await userWorldCache.getUserByIdWithLock(context, this.battle.attackeeId);
   
@@ -280,7 +280,7 @@ export class BattleEngine {
         return null;
       }
 
-      const userWorldCache = await getUserWorldCache(context);
+      const userWorldCache = UserCache.getInstance2();
       const attacker = await userWorldCache.getUserByIdWithLock(userContext, this.battle.attackerId);
       const attackee = await userWorldCache.getUserByIdWithLock(userContext, this.battle.attackeeId);
 
@@ -385,7 +385,7 @@ export class BattleEngine {
       this.battle.battleLog.push(event);
   
       // Check for defense layer destruction by reading current user values
-      const userWorldCache = await getUserWorldCache(context);
+      const userWorldCache = UserCache.getInstance2();
       const targetUser = await userWorldCache.getUserByIdWithLock(userContext, targetUserId);
 
       if (targetUser) {

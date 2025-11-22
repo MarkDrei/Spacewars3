@@ -9,7 +9,7 @@ interface AboutPageClientProps {
   auth: ServerAuthState;
 }
 
-const AboutPageClient: React.FC<AboutPageClientProps> = ({ auth }) => {
+const AboutPageClient: React.FC<AboutPageClientProps> = () => {
   return (
     <AuthenticatedLayout>
       <div className="about-page">

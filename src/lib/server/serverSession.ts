@@ -2,7 +2,7 @@ import { getIronSession } from 'iron-session';
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { sessionOptions, SessionData } from './session';
-import { getUserWorldCache } from './user/userCache';
+import { UserCache } from './user/userCache';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 import { USER_LOCK } from './typedLocks';
 
@@ -27,7 +27,7 @@ export async function getServerAuth(): Promise<ServerAuthState | null> {
 
     // Use cache to validate user existence and get current data
     const emptyCtx = createLockContext();
-    const userWorldCache = await getUserWorldCache(emptyCtx);
+    const userWorldCache = UserCache.getInstance2();
 
     const user = await emptyCtx.useLockWithAcquire(USER_LOCK, async (userContext) => {
       return await userWorldCache.getUserByIdWithLock(userContext, session.userId!);

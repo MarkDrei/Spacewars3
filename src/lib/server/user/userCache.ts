@@ -3,14 +3,11 @@
 // Uses IronGuard lock system with hierarchical locking
 // ---
 
-import { createLockContext, HasLock4Context, IronLocks, LOCK_10, LOCK_11, LOCK_9, LockContext, LocksAtMost3, LocksAtMost4, LocksAtMost7, LocksAtMost8, LocksAtMostAndHas4 } from '@markdrei/ironguard-typescript-locks';
+import { createLockContext, HasLock4Context, IronLocks, LOCK_10, LockContext, LocksAtMost3, LocksAtMost4, LocksAtMostAndHas4 } from '@markdrei/ironguard-typescript-locks';
 import sqlite3 from 'sqlite3';
-import { getDatabase } from '../database';
 import { MessageCache } from '../messages/MessageCache';
 import {
-  CACHES_LOCK,
   USER_LOCK,
-  WORLD_LOCK
 } from '../typedLocks';
 import { User } from './user';
 import { getUserByIdFromDb, getUserByUsernameFromDb } from './userRepo';
@@ -42,14 +39,14 @@ export interface TypedCacheStats {
 }
 
 declare global {
-  var userWorldCacheInstance: userCache | null;
+  var userWorldCacheInstance: UserCache | null;
 }
 
 /**
  * Typed Cache Manager with compile-time deadlock prevention
  * Enforces singleton pattern and lock ordering
  */
-export class userCache extends Cache {
+export class UserCache extends Cache {
   private static dependencies: userCacheDependencies = {};
 
   // ===== FIELDS =====
@@ -83,15 +80,15 @@ export class userCache extends Cache {
   // Singleton enforcement
   private constructor() {
     super();
-    this.dependencies = userCache.dependencies;
+    this.dependencies = UserCache.dependencies;
     console.log('🧠 Typed cache manager initialized');
   }
 
-  private static get instance(): userCache | null {
+  private static get instance(): UserCache | null {
     return globalThis.userWorldCacheInstance || null;
   }
 
-  private static set instance(value: userCache | null) {
+  private static set instance(value: UserCache | null) {
     globalThis.userWorldCacheInstance = value;
   }
 
@@ -101,8 +98,8 @@ export class userCache extends Cache {
    * @param config optional configuration for the cache
    */
   static async intialize2(db: sqlite3.Database, dependencies: userCacheDependencies = {}, config?: TypedCacheConfig): Promise<void> {
-    userCache.configureDependencies(dependencies);
-    this.instance = new userCache();
+    UserCache.configureDependencies(dependencies);
+    this.instance = new UserCache();
     if (config) {
       this.instance.config = config;
     }
@@ -112,7 +109,7 @@ export class userCache extends Cache {
   /**
    * Synchronous non-locking getter for singleton instance, which was initialized at startup
    */
-  static getInstance2(): userCache {
+  static getInstance2(): UserCache {
     if (!this.instance) {
       throw new Error('UserWorldCache not initialized');
     }
@@ -126,10 +123,10 @@ export class userCache extends Cache {
   }
 
   static configureDependencies(dependencies: userCacheDependencies): void {
-    userCache.dependencies = dependencies;
-    if (userCache.instance) {
-      userCache.instance.dependencies = dependencies;
-      userCache.instance.worldCacheRef = dependencies.worldCache ?? null;
+    UserCache.dependencies = dependencies;
+    if (UserCache.instance) {
+      UserCache.instance.dependencies = dependencies;
+      UserCache.instance.worldCacheRef = dependencies.worldCache ?? null;
     }
   }
 
@@ -137,42 +134,13 @@ export class userCache extends Cache {
    * Get database connection (for BattleCache and other components)
    * Returns the database connection after ensuring initialization
    */
-  async getDatabaseConnection(context: LockContext<LocksAtMostAndHas4>): Promise<sqlite3.Database> {
+  // needs _context for compile time lock checking
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async getDatabaseConnection(_context: LockContext<LocksAtMostAndHas4>): Promise<sqlite3.Database> {
     if (!this.db) {
       throw new Error('Database not initialized');
     }
     return this.db;
-  }
-
-  private async ensureWorldCacheInitialized(context: LockContext<LocksAtMostAndHas4>): Promise<void> {
-    if (this.worldCacheRef) {
-      return;
-    }
-
-    if (this.dependencies.worldCache) {
-      this.worldCacheRef = this.dependencies.worldCache;
-      return;
-    }
-
-    if (!this.db) {
-      throw new Error('Database not initialized');
-    }
-
-    const ctx = createLockContext();
-    await ctx.useLockWithAcquire(CACHES_LOCK, async () => {
-      if (this.worldCacheRef) {
-        return;
-      }
-      const worldInitCtx = createLockContext();
-      await worldInitCtx.useLockWithAcquire(WORLD_LOCK, async (worldContext) => {
-        await worldContext.useLockWithAcquire(LOCK_11, async () => {
-          const messageCache = await this.getMessageCache();
-          WorldCache.configureDependencies({ messageCache: messageCache ?? undefined });
-          await WorldCache.initializeFromDb(this.db!);
-          this.worldCacheRef = WorldCache.getInstance();
-        });
-      });
-    });
   }
 
   private getWorldCacheOrNull(): WorldCache | null {
@@ -355,7 +323,9 @@ export class userCache extends Cache {
   /**
    * Get cache statistics
    */
-  async getStats(context: LockContext<LocksAtMostAndHas4>): Promise<TypedCacheStats> {
+  // needs _context for compile time lock checking
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async getStats(_context: LockContext<LocksAtMostAndHas4>): Promise<TypedCacheStats> {
     const worldStats = this.getWorldCacheOrNull()?.getStats();
 
     return {
@@ -572,7 +542,3 @@ export class userCache extends Cache {
   }
 }
 
-// Convenience function to get singleton instance
-export async function getUserWorldCache(context: LockContext<LocksAtMost8>, config?: TypedCacheConfig): Promise<userCache> {
-  return await userCache.getInstance2();
-}

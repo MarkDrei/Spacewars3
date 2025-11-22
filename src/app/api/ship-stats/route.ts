@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getIronSession } from 'iron-session';
-import { getUserWorldCache } from '@/lib/server/user/userCache';
+import { UserCache } from '@/lib/server/user/userCache';
 import { getResearchEffectFromTree, ResearchType } from '@/lib/server/techs/techtree';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth, ApiError } from '@/lib/server/errors';
@@ -8,7 +8,7 @@ import { USER_LOCK, WORLD_LOCK } from '@/lib/server/typedLocks';
 import { User } from '@/lib/server/user/user';
 import { World } from '@/lib/server/world/world';
 import { TechFactory } from '@/lib/server/techs/TechFactory';
-import { createLockContext, LockContext, LocksAtMostAndHas4, LocksAtMostAndHas6 } from '@markdrei/ironguard-typescript-locks';
+import { createLockContext, LockContext, LocksAtMostAndHas6 } from '@markdrei/ironguard-typescript-locks';
 import { WorldCache } from '@/lib/server/world/worldCache';
 
 export async function GET(request: NextRequest) {
@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     const emptyCtx = createLockContext();
     
     // Get typed cache manager singleton
-    const userWorldCache = await getUserWorldCache(emptyCtx);
+    const userWorldCache = UserCache.getInstance2();
     
     const worldCache = WorldCache.getInstance();
     return await emptyCtx.useLockWithAcquire(USER_LOCK, async (userContext) => {

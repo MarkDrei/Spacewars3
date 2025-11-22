@@ -1,16 +1,16 @@
 import { LockContext, LocksAtMostAndHas4 } from '@markdrei/ironguard-typescript-locks';
-import { userCache } from '../user/userCache';
+import { UserCache } from '../user/userCache';
 import { User } from '../user/user';
 import { TechFactory, TechCounts, BuildQueueItem } from './TechFactory';
 import { MessageCache } from '../messages/MessageCache';
 
 export class TechService {
     private static instance: TechService;
-    private userCacheInstance: userCache;
+    private userCacheInstance: UserCache;
     private messageCacheInstance: MessageCache;
 
     private constructor() {
-        this.userCacheInstance = userCache.getInstance2();
+        this.userCacheInstance = UserCache.getInstance2();
         this.messageCacheInstance = MessageCache.getInstance();
     }
 
@@ -24,7 +24,7 @@ export class TechService {
     /**
      * Set user cache instance for testing
      */
-    public setUserCacheForTesting(cache: userCache): void {
+    public setUserCacheForTesting(cache: UserCache): void {
         this.userCacheInstance = cache;
     }
 

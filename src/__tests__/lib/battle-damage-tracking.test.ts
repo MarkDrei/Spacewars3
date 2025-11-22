@@ -11,7 +11,7 @@ import { BattleEngine } from '../../lib/server/battle/battleEngine';
 import type { Battle, BattleStats } from '../../lib/server/battle/battleTypes';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 import { BATTLE_LOCK, USER_LOCK } from '@/lib/server/typedLocks';
-import { userCache } from '@/lib/server/user/userCache';
+import { UserCache } from '@/lib/server/user/userCache';
 import { User } from '@/lib/server/user/user';
 import { createInitialTechTree } from '@/lib/server/techs/techtree';
 import { TechCounts } from '@/lib/server/techs/TechFactory';
@@ -66,15 +66,15 @@ function createTestUser(
 describe('Battle Damage Tracking', () => {
   beforeEach(async () => {
     // Reset cache manager for each test
-    userCache.resetInstance();
+    UserCache.resetInstance();
 
     const db = await getDatabase();
-    await userCache.intialize2(db, {}, {
+    await UserCache.intialize2(db, {}, {
       persistenceIntervalMs: 30000,
       enableAutoPersistence: false,
       logStats: false
     });
-    const cache = userCache.getInstance2();
+    const cache = UserCache.getInstance2();
 
     // Note: We don't call initialize() because we don't want to connect to the database
     // Instead, we'll directly populate the cache with test users

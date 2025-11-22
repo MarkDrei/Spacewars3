@@ -4,10 +4,8 @@ import fs from 'fs';
 import { CREATE_TABLES } from './schema';
 import { seedDatabase, DEFAULT_USERS, DEFAULT_SPACE_OBJECTS } from './seedData';
 import { applyTechMigrations } from './migrations';
-import { BattleCache } from './battle/BattleCache';
 
 let db: sqlite3.Database | null = null;
-let isInitializing = false;
 let initializationPromise: Promise<sqlite3.Database> | null = null;
 
 // Test database management
@@ -52,7 +50,7 @@ function seedTestDatabase(db: sqlite3.Database): void {
     };
     
     // Create ships and users for all DEFAULT_USERS
-    DEFAULT_USERS.forEach((user, index) => {
+    DEFAULT_USERS.forEach((user) => {
       // Create ship for this user
       db.run(`
         INSERT INTO space_objects (type, x, y, speed, angle, last_position_update_ms)
@@ -147,7 +145,6 @@ export async function getDatabase(): Promise<sqlite3.Database> {
 
   // Start initialization
   initializationPromise = new Promise<sqlite3.Database>((resolve, reject) => {
-    isInitializing = true;
     const dbDir = path.join(process.cwd(), 'database');
     const dbPath = path.join(dbDir, 'users.db');
     
@@ -162,7 +159,6 @@ export async function getDatabase(): Promise<sqlite3.Database> {
     db = new sqlite3.Database(dbPath, async (err) => {
       if (err) {
         console.error('❌ Error opening database:', err);
-        isInitializing = false;
         initializationPromise = null;
         db = null;
         reject(err);
@@ -191,12 +187,10 @@ export async function getDatabase(): Promise<sqlite3.Database> {
         
 
         
-        isInitializing = false;
         // Don't clear initializationPromise - it's still valid
         resolve(db!);
       } catch (initError) {
         console.error('❌ Database initialization failed:', initError);
-        isInitializing = false;
         initializationPromise = null;
         db = null;
         reject(initError);

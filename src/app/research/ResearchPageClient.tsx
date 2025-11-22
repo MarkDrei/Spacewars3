@@ -239,7 +239,7 @@ const CostTooltip: React.FC<{ research: ResearchDef; currentLevel: number }> = (
   );
 };
 
-const ResearchPageClient: React.FC<ResearchPageClientProps> = ({ auth }) => {
+const ResearchPageClient: React.FC<ResearchPageClientProps> = () => {
   const [techTree, setTechTree] = useState<TechTree | null>(null);
   const [researches, setResearches] = useState<Record<ResearchType, ResearchDef> | null>(null);
   const [currentIron, setCurrentIron] = useState<number>(0);

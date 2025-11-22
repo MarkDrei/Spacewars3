@@ -23,7 +23,6 @@ export interface WorldCacheStats {
 }
 
 declare global {
-  // eslint-disable-next-line no-var
   var worldCacheInstance: WorldCache | null;
 }
 

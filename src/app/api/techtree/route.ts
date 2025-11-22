@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getIronSession } from 'iron-session';
-import { getUserWorldCache } from '@/lib/server/user/userCache';
+import { UserCache } from '@/lib/server/user/userCache';
 import { AllResearches, getResearchUpgradeCost, getResearchUpgradeDuration, getResearchEffect, ResearchType } from '@/lib/server/techs/techtree';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth, ApiError } from '@/lib/server/errors';
 import { USER_LOCK } from '@/lib/server/typedLocks';
 import { User } from '@/lib/server/user/user';
-import { createLockContext, LockContext, LocksAtMostAndHas4 } from '@markdrei/ironguard-typescript-locks';
+import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 
 export async function GET(request: NextRequest) {
   try {
@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
     
     const emptyCtx = createLockContext();
     // Get typed cache manager singleton
-    const userWorldCache = await getUserWorldCache(emptyCtx);
+    const userWorldCache = UserCache.getInstance2();
     
     return await emptyCtx.useLockWithAcquire(USER_LOCK, async (userContext) => {
       // Get user data safely (we have user lock)

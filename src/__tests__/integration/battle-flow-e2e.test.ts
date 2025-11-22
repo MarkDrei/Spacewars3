@@ -5,12 +5,8 @@
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { BattleCache, getBattleCache } from '../../lib/server/battle/BattleCache';
-import { userCache, getUserWorldCache } from '../../lib/server/user/userCache';
 import * as BattleRepo from '../../lib/server/battle/BattleCache';
-import * as battleService from '../../lib/server/battle/battleService';
-import * as battleScheduler from '../../lib/server/battle/battleScheduler';
-import { createAuthenticatedSession } from '../helpers/apiTestHelpers';
-import type { Battle, BattleStats, WeaponCooldowns } from '../../lib/server/battle/battleTypes';
+import type { BattleStats, WeaponCooldowns } from '../../lib/server/battle/battleTypes';
 import { BATTLE_LOCK, USER_LOCK } from '@/lib/server/typedLocks';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 import { initializeIntegrationTestServer, shutdownIntegrationTestServer } from '../helpers/testServer';
@@ -18,14 +14,12 @@ import { initializeIntegrationTestServer, shutdownIntegrationTestServer } from '
 describe('Phase 5: End-to-End Battle Flow with BattleCache', () => {
 
   let battleCache: BattleCache;
-  let userWorldCache: userCache;
   let emptyCtx: ReturnType<typeof createLockContext>;
   
   beforeEach(async () => {
     await initializeIntegrationTestServer();
     emptyCtx = createLockContext();
     battleCache = getBattleCache();
-    userWorldCache = await getUserWorldCache(emptyCtx);
   });
 
   afterEach(async () => {

@@ -4,9 +4,6 @@
 
 import sqlite3 from 'sqlite3';
 import { World, SpaceObject, SaveWorldCallback } from './world';
-import { getUserWorldCache } from '../user/userCache';
-import { WORLD_LOCK } from '../typedLocks';
-import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 
 /**
  * Load world data from database (used internally by cache manager)

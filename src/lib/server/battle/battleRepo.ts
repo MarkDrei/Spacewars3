@@ -9,9 +9,8 @@
 // Status: ✅ Refactored to be DB-only
 // ---
 
-import type { Battle, BattleStats, BattleEvent, WeaponCooldowns } from './battleTypes';
+import type { Battle, BattleStats, WeaponCooldowns } from './battleTypes';
 import { getDatabase } from '../database';
-import type sqlite3 from 'sqlite3';
 import { HasLock13Context, IronLocks } from '@markdrei/ironguard-typescript-locks';
 
 // ========================================
@@ -260,9 +259,9 @@ export async function deleteBattleFromDb<THeld extends IronLocks>(
  * Pure DB operation - no cache access
  * NOTE: Caller must hold DATABASE_LOCK_BATTLES (level 13)
  */
-export async function getAllBattlesFromDb<THeld extends IronLocks>(
-  _context: HasLock13Context<THeld>,
-): Promise<Battle[]> {
+// needs _context for compile time lock checking
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export async function getAllBattlesFromDb<THeld extends IronLocks>(_context: HasLock13Context<THeld>): Promise<Battle[]> {
   const db = await getDatabase();
 
   return new Promise((resolve, reject) => {

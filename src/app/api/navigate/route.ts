@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getIronSession } from 'iron-session';
-import { getUserWorldCache, userCache } from '@/lib/server/user/userCache';
+import { UserCache } from '@/lib/server/user/userCache';
 import { getResearchEffectFromTree, ResearchType } from '@/lib/server/techs/techtree';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth, ApiError } from '@/lib/server/errors';
@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
     
     const emptyCtx = createLockContext();
     // Get typed cache manager singleton
-    const userWorldCache = await getUserWorldCache(emptyCtx);
+    const userWorldCache = UserCache.getInstance2();
     
     const worldCache = WorldCache.getInstance();
     return await emptyCtx.useLockWithAcquire(USER_LOCK, async (userContext) => {
@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
         }
         
         // Continue with navigation logic
-        return await performNavigationLogic(worldContext, userContext, world, user, speed, angle, userWorldCache);
+        return await performNavigationLogic(worldContext, userContext, world, user, speed, angle);
 
       });
     });
@@ -61,8 +61,7 @@ async function performNavigationLogic(
   world: World,
   user: User,
   speed: number | undefined,
-  angle: number | undefined,
-  userWorldCache: userCache
+  angle: number | undefined
 ): Promise<NextResponse> {
   const worldCache = WorldCache.getInstance();
   // Check if user is in battle - cannot navigate while in battle

@@ -9,7 +9,6 @@ import {
   sendMessageToUser,
   getUserMessages,
   getUserMessageCount,
-  markUserMessagesAsRead
 } from '../../lib/server/messages/MessageCache';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 
@@ -237,7 +236,7 @@ describe('MessageCache', () => {
       await cache.initialize();
 
       // Create message (starts async write)
-      const tempId = await cache.createMessage(1, 'Test message');
+      await cache.createMessage(1, 'Test message');
       
       // Immediately mark as read (before async write completes)
       await cache.markAllMessagesAsRead(1);

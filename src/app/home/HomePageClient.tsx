@@ -51,7 +51,7 @@ function formatBoldText(text: string): React.ReactNode {
   });
 }
 
-const HomePageClient: React.FC<HomePageClientProps> = ({ auth, initialMessages }) => {
+const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
   // Messages are pre-loaded from server - maintain in state for dynamic updates
   // Sort messages by created_at descending (newest first)
   const [messages, setMessages] = React.useState<UnreadMessage[]>(
@@ -63,7 +63,7 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ auth, initialMessages }
   
   const { techCounts, weapons, defenses, isLoading: techLoading, error: techError } = useTechCounts();
   const { defenseValues, isLoading: defenseLoading, error: defenseError } = useDefenseValues();
-  const { battleStatus, isLoading: battleLoading, error: battleError } = useBattleStatus();
+  const { battleStatus, isLoading: battleLoading } = useBattleStatus();
 
   // Handler for refreshing messages
   const handleRefreshMessages = async () => {

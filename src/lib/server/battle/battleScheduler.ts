@@ -23,8 +23,7 @@ import type { Battle, BattleEvent } from './battleTypes';
 import { TechFactory } from '../techs/TechFactory';
 import { sendMessageToUser } from '../messages/MessageCache';
 import { getBattleCache } from './BattleCache';
-import { getUserWorldCache } from '../user/userCache';
-import { BATTLE_LOCK, USER_LOCK } from '../typedLocks';
+import { BATTLE_LOCK } from '../typedLocks';
 import { createLockContext, LockContext, LocksAtMostAndHas2 } from '@markdrei/ironguard-typescript-locks';
 
 // /**
@@ -136,7 +135,6 @@ async function processBattleRoundInternal(context: LockContext<LocksAtMostAndHas
           await resolveBattle(context, battleId, outcome.winnerId);
           
           // Send victory/defeat messages (battleService doesn't do this)
-          const battle = updatedBattle;
           const winnerId = outcome.winnerId;
           const loserId = outcome.loserId;
           await createMessage(winnerId, `P: 🎉 **Victory!** You won the battle!`);
@@ -169,7 +167,6 @@ async function fireWeapon(
   
   const isAttacker = attackerId === battle.attackerId;
   const attackerStats = isAttacker ? battle.attackerStartStats : battle.attackeeStartStats;
-  const defenderStats = isAttacker ? battle.attackeeStartStats : battle.attackerStartStats;
   
   const weaponData = attackerStats.weapons[weaponType];
   if (!weaponData || weaponData.count === 0) {

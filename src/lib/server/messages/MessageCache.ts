@@ -477,7 +477,7 @@ export class MessageCache extends Cache {
    */
   async getStats(): Promise<MessageCacheStats> {
     const ctx = createLockContext();
-    return await ctx.useLockWithAcquire(MESSAGE_LOCK, async (messageContext) => {
+    return await ctx.useLockWithAcquire(MESSAGE_LOCK, async () => {
       return {
         messageCacheSize: this.userMessages.size,
         cacheHits: this.stats.cacheHits,
@@ -495,8 +495,7 @@ export class MessageCache extends Cache {
       return;
     }
 
-    const ctx = createLockContext();
-    await ctx.useLockWithAcquire(MESSAGE_LOCK, async (messageContext) => {
+    await context.useLockWithAcquire(MESSAGE_LOCK, async (messageContext) => {
       return await this.flushToDatabaseWithLock(messageContext);
     });
   }

@@ -3,9 +3,9 @@ import { getIronSession } from 'iron-session';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { requireAuth, handleApiError, ApiError } from '@/lib/server/errors';
 import { TechService } from '@/lib/server/techs/TechService';
-import { getUserWorldCache } from '@/lib/server/user/userCache';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 import { USER_LOCK } from '@/lib/server/typedLocks';
+import { UserCache } from '@/lib/server/user/userCache';
 
 /**
  * POST /api/complete-build
@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
 
     const context = createLockContext();
     const techService = TechService.getInstance();
-    const userWorldCache = await getUserWorldCache(context);
+    const userWorldCache = UserCache.getInstance2();
 
     const result = await context.useLockWithAcquire(USER_LOCK, async (userContext) => {
       // Get user data to check username
@@ -50,19 +50,9 @@ export async function POST(request: NextRequest) {
 
       // Get the first item in queue
       const firstBuild = buildQueue[0];
-      const now = Math.floor(Date.now() / 1000);
-
       console.log(`⚡ Fast-forwarding time to complete build: ${firstBuild.itemType}/${firstBuild.itemKey} for user: ${session.userId}`);
-
-      // Advanced time simulation: Set start time back so it completes NOW
-      // We need to find how long it takes, and set buildStartSec to now - duration
-      // Or simpler: just set buildStartSec to a time in the past
-
-      // Actually, processCompletedBuilds checks: now >= user.buildStartSec + buildTime
-      // So if we set user.buildStartSec = now - buildTime - 1, it will be complete.
-      // But we don't have buildTime easily here without looking up spec.
-      // A safer way is to set buildStartSec to 0 (epoch), which is definitely in the past.
-
+      
+      // start time to past to force completion
       userData.buildStartSec = 0;
 
       // Now use the established algorithm to process completed builds

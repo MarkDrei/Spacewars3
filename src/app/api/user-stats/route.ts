@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getIronSession } from 'iron-session';
-import { getUserWorldCache, userCache } from '@/lib/server/user/userCache';
+import { UserCache } from '@/lib/server/user/userCache';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth, ApiError } from '@/lib/server/errors';
 import { USER_LOCK } from '@/lib/server/typedLocks';
@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
     
     const emptyCtx = createLockContext();
     // Get typed cache manager singleton
-    const userWorldCache = await getUserWorldCache(emptyCtx);
+    const userWorldCache = UserCache.getInstance2();
     
     return await emptyCtx.useLockWithAcquire(USER_LOCK, async (userContext) => {
       // Get user data safely (we have user lock)
@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-function processUserStats(user: User, userWorldCache: userCache, userCtx: LockContext<LocksAtMostAndHas4>): NextResponse {
+function processUserStats(user: User, userWorldCache: UserCache, userCtx: LockContext<LocksAtMostAndHas4>): NextResponse {
   const now = Math.floor(Date.now() / 1000);
   user.updateStats(now);
   

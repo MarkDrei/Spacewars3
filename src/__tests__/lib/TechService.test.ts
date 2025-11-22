@@ -1,6 +1,6 @@
 import { describe, test, expect, beforeEach, vi, afterEach } from 'vitest';
 import { TechService } from '@/lib/server/techs/TechService';
-import { userCache } from '@/lib/server/user/userCache';
+import { UserCache } from '@/lib/server/user/userCache';
 import { MessageCache } from '@/lib/server/messages/MessageCache';
 import { User } from '@/lib/server/user/user';
 import { TechCounts, BuildQueueItem } from '@/lib/server/techs/TechFactory';
@@ -10,7 +10,7 @@ import { initializeIntegrationTestServer, shutdownIntegrationTestServer } from '
 
 describe('TechService - Unit Tests', () => {
     let techService: TechService;
-    let mockUserCache: Partial<userCache>;
+    let mockUserCache: Partial<UserCache>;
     let mockMessageCache: Partial<MessageCache>;
     let mockCreateMessage: ReturnType<typeof vi.fn>;
     let mockGetUserByIdWithLock: ReturnType<typeof vi.fn>;
@@ -36,7 +36,7 @@ describe('TechService - Unit Tests', () => {
 
         // Get TechService instance and inject mocks
         techService = TechService.getInstance();
-        techService.setUserCacheForTesting(mockUserCache as userCache);
+        techService.setUserCacheForTesting(mockUserCache as UserCache);
         techService.setMessageCacheForTesting(mockMessageCache as MessageCache);
     });
 

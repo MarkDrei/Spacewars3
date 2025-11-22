@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getIronSession } from 'iron-session';
-import { getUserWorldCache } from '@/lib/server/user/userCache';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth } from '@/lib/server/errors';
 import { WORLD_LOCK } from '@/lib/server/typedLocks';
@@ -16,7 +15,6 @@ export async function GET(request: NextRequest) {
 
     const emptyCtx = createLockContext();
     // Get typed cache manager singleton
-    const userWorldCache = await getUserWorldCache(emptyCtx);
     
     const worldCache = WorldCache.getInstance();
     return await emptyCtx.useLockWithAcquire(WORLD_LOCK, async (worldContext) => {

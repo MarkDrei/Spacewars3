@@ -1,7 +1,7 @@
 import { describe, test, expect, beforeEach, vi, afterEach } from 'vitest';
 import { TechService } from '@/lib/server/techs/TechService';
 import { createTestDatabase } from '../helpers/testDatabase';
-import { userCache } from '@/lib/server/user/userCache';
+import { UserCache } from '@/lib/server/user/userCache';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 import { USER_LOCK } from '@/lib/server/typedLocks';
 import sqlite3 from 'sqlite3';
@@ -19,14 +19,14 @@ describe('TechService - Build Completion Notifications', () => {
     testDb = await createTestDatabase();
 
     // Initialize userCache with test database
-    userCache.resetInstance();
-    await userCache.intialize2(testDb);
+    UserCache.resetInstance();
+    await UserCache.intialize2(testDb);
 
     // Get TechService instance
     techService = TechService.getInstance();
 
     // Inject test userCache instance
-    techService.setUserCacheForTesting(userCache.getInstance2());
+    techService.setUserCacheForTesting(UserCache.getInstance2());
 
     // Create mock MessageCache and inject it
     mockCreateMessage = vi.fn().mockResolvedValue(1);
@@ -68,38 +68,18 @@ describe('TechService - Build Completion Notifications', () => {
         resolve();
       });
     });
-    userCache.resetInstance();
+    UserCache.resetInstance();
   });
 
   // Helper to update build queue directly via userCache
-  async function updateBuildQueue(userId: number, queue: BuildQueueItem[], startSec: number | null = null) {
+  async function updateBuildQueue(userId: number, queue: BuildQueueItem[], startSec: number) {
     const context = createLockContext();
-    const cache = userCache.getInstance2();
+    const cache = UserCache.getInstance2();
     await context.useLockWithAcquire(USER_LOCK, async (userContext) => {
       const user = await cache.getUserByIdWithLock(userContext, userId);
       if (user) {
         user.buildQueue = queue;
-        if (startSec !== null) {
-          user.buildStartSec = startSec;
-        } else if (queue.length > 0 && user.buildStartSec === null) {
-          // If queue has items but no start time, set it based on completion time of first item?
-          // The test cases provide completionTime. 
-          // TechService calculates completionTime = buildStartSec + duration.
-          // So buildStartSec = completionTime - duration.
-          // We need to look up duration.
-          // For simplicity in tests, we can just set buildStartSec directly if needed, 
-          // but the tests set completionTime in the queue item.
-          // Wait, TechService.processCompletedBuilds calculates completionTime from buildStartSec + duration.
-          // It IGNORES the completionTime property on the item in the queue (which is 0 initially).
-          // The tests previously set completionTime on the item.
-          // BUT TechService logic is: const completionTime = currentBuildStart! + buildTime;
-          // So I need to reverse engineer buildStartSec from the desired completionTime.
-
-          // Let's look at the first item
-          const firstItem = queue[0];
-          // We need TechFactory to get duration, but it's static.
-          // I'll just set buildStartSec in the test setup manually or helper.
-        }
+        user.buildStartSec = startSec;
         cache.updateUserInCache(userContext, user);
       }
     });

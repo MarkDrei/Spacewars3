@@ -17,16 +17,16 @@
 import type sqlite3 from 'sqlite3';
 import type { Battle, BattleStats, BattleEvent, WeaponCooldowns } from './battleTypes';
 import * as battleRepo from './battleRepo';
-import { createLockContext, HasLock13Context, HasLock2Context, IronLocks, LockContext, LocksAtMost4, LocksAtMostAndHas2 } from '@markdrei/ironguard-typescript-locks';
+import { createLockContext, HasLock2Context, IronLocks, LockContext, LocksAtMost4, LocksAtMostAndHas2 } from '@markdrei/ironguard-typescript-locks';
 import { BATTLE_LOCK, DATABASE_LOCK_BATTLES, USER_LOCK } from '../typedLocks';
 import { startBattleScheduler } from './battleScheduler';
-import { userCache } from '../user/userCache';
+import { UserCache } from '../user/userCache';
 import { WorldCache } from '../world/worldCache';
 import { MessageCache } from '../messages/MessageCache';
 import { Cache } from '../caches/Cache';
 
 type BattleCacheDependencies = {
-  userCache?: userCache;
+  userCache?: UserCache;
   worldCache?: WorldCache;
   messageCache?: MessageCache;
 };
@@ -159,7 +159,7 @@ export class BattleCache extends Cache {
     this.getMessageCache();
   }
 
-  private getUserCache(): userCache {
+  private getUserCache(): UserCache {
     const userCache = this.dependencies.userCache;
     if (!userCache) {
       throw new Error('BattleCache: user cache dependency not configured');
@@ -377,6 +377,8 @@ export class BattleCache extends Cache {
    * 
    * @param lockContext - REQUIRED lock context proving caller holds BATTLE lock
    */
+  // needs _context for compile time lock checking
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private getActiveBattlesInternal(lockContext: LockContext<LocksAtMostAndHas2>): Battle[] {
     // Return all cached active battles
     const active: Battle[] = [];

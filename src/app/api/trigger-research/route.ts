@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getIronSession } from 'iron-session';
-import { getUserWorldCache, userCache } from '@/lib/server/user/userCache';
+import { UserCache } from '@/lib/server/user/userCache';
 import { AllResearches, getResearchUpgradeCost, ResearchType, triggerResearch, TechTree } from '@/lib/server/techs/techtree';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth, validateRequired, ApiError } from '@/lib/server/errors';
@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
     
     const emptyCtx = createLockContext();
     // Get typed cache manager singleton
-    const userWorldCache = await getUserWorldCache(emptyCtx);
+    const userWorldCache = UserCache.getInstance2();
     
     return await emptyCtx.useLockWithAcquire(USER_LOCK, async (userContext) => {
       // Get user data safely (we have user lock)
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
 function performResearchTrigger(
   user: User,
   researchType: ResearchType,
-  userWorldCache: userCache,
+  userWorldCache: UserCache,
   userCtx: LockContext<LocksAtMostAndHas4>
 ): NextResponse {
   const now = Math.floor(Date.now() / 1000);

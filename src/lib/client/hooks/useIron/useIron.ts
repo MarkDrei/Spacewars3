@@ -71,7 +71,7 @@ export const useIron = (pollInterval: number = 5000): UseIronReturn => {
           return;
         }
         
-        setError('Failed to fetch iron amount');
+        setError('Failed to fetch iron amount: ' + (err as Error).message);
         setIsLoading(false);
       }
     }

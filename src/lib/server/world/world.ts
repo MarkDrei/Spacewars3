@@ -60,6 +60,8 @@ class World {
   /**
    * Get current world data
    */
+  // needs _context for compile time lock checking
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   getWorldData<THeld extends IronLocks>(_context: HasLock6Context<THeld>): WorldData {
     return {
       worldSize: this.worldSize,
@@ -131,6 +133,8 @@ class World {
    * Spawn a new random space object
    * 60% chance of asteroid, 30% chance of shipwreck, 10% chance of escape pod
    */
+  // needs _context for compile time lock checking
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private async spawnRandomObject<THeld extends IronLocks>(_context: HasLock6Context<THeld>): Promise<void> {
     const random = Math.random();
     let objectType: SpaceObject['type'];

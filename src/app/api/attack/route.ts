@@ -8,9 +8,8 @@ import { getIronSession } from 'iron-session';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, ApiError, requireAuth } from '@/lib/server/errors';
 import { initiateBattle } from '@/lib/server/battle/battleService';
-import { getUserWorldCache } from '@/lib/server/user/userCache';
-import { createLockContext, LOCK_2 } from '@markdrei/ironguard-typescript-locks';
-import { a } from 'vitest/dist/chunks/suite.d.FvehnV49.js';
+import { UserCache } from '@/lib/server/user/userCache';
+import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 import { BATTLE_LOCK, USER_LOCK } from '@/lib/server/typedLocks';
 
 // Force dynamic rendering for this route
@@ -45,7 +44,7 @@ export async function POST(request: NextRequest) {
     console.log(`⚔️ Attack API: User ${session.userId} attacking user ${targetUserId}`);
     
     const context = createLockContext();
-    const userWorldCache = await getUserWorldCache(context);
+    const userWorldCache = UserCache.getInstance2();
 
     return await context.useLockWithAcquire(BATTLE_LOCK, async (battleContext) => {
       return await battleContext.useLockWithAcquire(USER_LOCK, async (userContext) => {

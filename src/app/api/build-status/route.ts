@@ -5,7 +5,6 @@ import { requireAuth, handleApiError } from '@/lib/server/errors';
 import { TechService } from '@/lib/server/techs/TechService';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 import { USER_LOCK } from '@/lib/server/typedLocks';
-import { TechFactory } from '@/lib/server/techs/TechFactory';
 
 /**
  * GET /api/build-status
