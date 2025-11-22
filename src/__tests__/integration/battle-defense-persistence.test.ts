@@ -9,9 +9,8 @@ import { UserWorldCache, getUserWorldCache } from '../../lib/server/world/userWo
 import * as battleService from '../../lib/server/battle/battleService';
 import { createTestDatabase } from '../helpers/testDatabase';
 import { User } from '../../lib/server/world/user';
-import { BattleRepo } from '../../lib/server/battle/BattleCache';
 import { BATTLE_LOCK, USER_LOCK } from '../../lib/server/typedLocks';
-import { createLockContext, LockContext, LocksAtMostAndHas4 } from '@markdrei/ironguard-typescript-locks';
+import { createLockContext} from '@markdrei/ironguard-typescript-locks';
 import type { BattleStats } from '../../lib/server/battle/battleTypes';
 
 describe('Battle Defense Persistence', () => {
@@ -102,22 +101,23 @@ describe('Battle Defense Persistence', () => {
     };
     
     await emptyCtx.useLockWithAcquire(BATTLE_LOCK, async (battleCtx) => {
-      // Create battle directly through BattleCache
-      const battleCache = getBattleCache();
-      const battle = await battleCache.createBattle(
-        battleCtx,
-        attackerUser.id,
-        defenderUser.id,
-        attackerStats,
-        defenderStats,
-        {},
-        {}
-      );
-      
-      console.log(`⚔️ Battle ${battle.id} created`);
-      
-      // Apply damage to User objects in cache (not just battle stats)
-      await emptyCtx.useLockWithAcquire(USER_LOCK, async (damageUserCtx) => {
+      const battle = await emptyCtx.useLockWithAcquire(USER_LOCK, async (damageUserCtx) => {
+        // Create battle directly through BattleCache
+        const battleCache = getBattleCache();
+        const battle = await battleCache.createBattle(
+          battleCtx,
+          damageUserCtx,
+          attackerUser.id,
+          defenderUser.id,
+          attackerStats,
+          defenderStats,
+          {},
+          {}
+        );
+        
+        console.log(`⚔️ Battle ${battle.id} created`);
+        
+        // Apply damage to User objects in cache (not just battle stats)
         const attackerInCache = await userWorldCache.getUserByIdWithLock(damageUserCtx, attackerUser.id);
         const defenderInCache = await userWorldCache.getUserByIdWithLock(damageUserCtx, defenderUser.id);
         
@@ -134,10 +134,13 @@ describe('Battle Defense Persistence', () => {
         userWorldCache.updateUserInCache(damageUserCtx, defenderInCache);
         
         console.log(`💥 Simulated damage - Attacker hull: ${attackerDamagedHull}, Defender hull: 0`);
+        return battle;
       });
 
       // Call resolveBattle to end the battle and update user defense values
       await battleService.resolveBattle(battleCtx, battle.id, attackerUser.id);
+
+      console.log(`💥 Battle resolved`);
     });
     
     
@@ -149,7 +152,7 @@ describe('Battle Defense Persistence', () => {
     let attackerAfter: User | null = null;
     let defenderAfter: User | null = null;
     
-    await createLockContext().useLockWithAcquire(USER_LOCK, async (userCtx2) => {
+    await emptyCtx.useLockWithAcquire(USER_LOCK, async (userCtx2) => {
       attackerAfter = await userWorldCache.getUserByIdWithLock(userCtx2, attackerUser.id);
       defenderAfter = await userWorldCache.getUserByIdWithLock(userCtx2, defenderUser.id);
       

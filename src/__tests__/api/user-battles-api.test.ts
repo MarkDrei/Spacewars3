@@ -50,15 +50,19 @@ async function createTestBattle(
   return await emptyCtx.useLockWithAcquire(BATTLE_LOCK, async (battleContext) => {
     // Create battle
     const battleCache = getBattleCache();
-    const battle = await battleCache.createBattle(
-      battleContext,
-      attackerId,
-      attackeeId,
-      initialStats,
-      initialStats,
-      {},
-      {}
-    );
+
+    const battle = await battleContext.useLockWithAcquire(USER_LOCK, async (userCtx) => {
+      return await battleCache.createBattle(
+        battleContext,
+        userCtx,
+        attackerId,
+        attackeeId,
+        initialStats,
+        initialStats,
+        {},
+        {}
+      );
+    });
   
     // End battle with winner/loser
     const winnerId = attackerWins ? attackerId : attackeeId;

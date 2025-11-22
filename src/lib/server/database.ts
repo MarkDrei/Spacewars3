@@ -189,11 +189,7 @@ export async function getDatabase(): Promise<sqlite3.Database> {
           await applyTechMigrations(db!);
         }
         
-        // Initialize BattleCache
-        console.log('⚔️ Initializing BattleCache...');
-        const battleCache = BattleCache.getInstance();
-        await battleCache.initialize(db!);
-        console.log('✅ BattleCache initialized');
+
         
         isInitializing = false;
         // Don't clear initializationPromise - it's still valid

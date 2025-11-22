@@ -77,9 +77,7 @@ export async function getOngoingBattleForUserFromDb<THeld extends IronLocks>(
  * Pure DB operation - no cache access
  * NOTE: Caller must hold DATABASE_LOCK_BATTLES (level 13)
  */
-export async function getActiveBattlesFromDb<THeld extends IronLocks>(
-  _context: HasLock13Context<THeld>
-): Promise<Battle[]> {
+export async function getActiveBattlesFromDb(): Promise<Battle[]> {
   const db = await getDatabase();
   
   return new Promise((resolve, reject) => {

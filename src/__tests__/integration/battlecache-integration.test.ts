@@ -92,33 +92,37 @@ describe('Phase 5: BattleCache Integration Testing', () => {
         };
 
         console.log('🚀 Creating battle for cache test...');
+
+        await battleCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
+          const battle = await battleCache.createBattle(
+            battleCtx,
+            userCtx,
+            attackerId,
+            defenderId,
+            attackerStats,
+            defenderStats,
+            cooldowns,
+            cooldowns
+          );
+  
+          // Verify battle creation
+          expect(battle).toBeDefined();
+          expect(battle.id).toBeGreaterThan(0);
+          expect(battle.attackerId).toBe(attackerId);
+          expect(battle.attackeeId).toBe(defenderId);
+  
+          console.log('✅ Battle created with ID:', battle.id);
+  
+          // Verify battle is in cache
+          const cachedBattle = battleCache.getBattleFromCache(battle.id);
+          expect(cachedBattle).toBeDefined();
+          expect(cachedBattle?.id).toBe(battle.id);
+          expect(cachedBattle?.attackerId).toBe(attackerId);
+          expect(cachedBattle?.attackeeId).toBe(defenderId);
+  
+          console.log('✅ Battle properly stored in cache');
+        });
         
-        const battle = await battleCache.createBattle(
-          battleCtx,
-          attackerId,
-          defenderId,
-          attackerStats,
-          defenderStats,
-          cooldowns,
-          cooldowns
-        );
-
-      // Verify battle creation
-      expect(battle).toBeDefined();
-      expect(battle.id).toBeGreaterThan(0);
-      expect(battle.attackerId).toBe(attackerId);
-      expect(battle.attackeeId).toBe(defenderId);
-
-      console.log('✅ Battle created with ID:', battle.id);
-
-        // Verify battle is in cache
-        const cachedBattle = battleCache.getBattleFromCache(battle.id);
-        expect(cachedBattle).toBeDefined();
-        expect(cachedBattle?.id).toBe(battle.id);
-        expect(cachedBattle?.attackerId).toBe(attackerId);
-        expect(cachedBattle?.attackeeId).toBe(defenderId);
-
-        console.log('✅ Battle properly stored in cache');
       });
     });
 
@@ -143,25 +147,32 @@ describe('Phase 5: BattleCache Integration Testing', () => {
           missile_launcher: 0
         };
 
-        // Create battle
-        const battle = await battleCache.createBattle(
-          battleCtx,
-          attackerId, defenderId, stats, stats, cooldowns, cooldowns
-        );
+        const battle = await battleCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
+          return await battleCache.createBattle(
+            battleCtx,
+            userCtx,
+            attackerId,
+            defenderId,
+            stats,
+            stats,
+            cooldowns,
+            cooldowns
+          );
+        });
 
-      // Reset cache to force database load
-      BattleCache.resetInstance();
-      const freshCache = getBattleCache();
+        // Reset cache to force database load
+        BattleCache.resetInstance();
+        const freshCache = getBattleCache();
 
-      console.log('🔄 Loading battle from database...');
+        console.log('🔄 Loading battle from database...');
 
-      // Load battle (should come from database)
-      const loadedBattle = await freshCache.loadBattleIfNeeded(battleCtx, battle.id);
+        // Load battle (should come from database)
+        const loadedBattle = await freshCache.loadBattleIfNeeded(battleCtx, battle.id);
 
-      expect(loadedBattle).toBeDefined();
-      expect(loadedBattle?.id).toBe(battle.id);
-      expect(loadedBattle?.attackerId).toBe(attackerId);
-      expect(loadedBattle?.attackeeId).toBe(defenderId);
+        expect(loadedBattle).toBeDefined();
+        expect(loadedBattle?.id).toBe(battle.id);
+        expect(loadedBattle?.attackerId).toBe(attackerId);
+        expect(loadedBattle?.attackeeId).toBe(defenderId);
       
 
         // Should now be in cache
@@ -194,10 +205,18 @@ describe('Phase 5: BattleCache Integration Testing', () => {
         };
 
         // Create battle
-        const battle = await battleCache.createBattle(
-          battleCtx,
-          attackerId, defenderId, stats, stats, cooldowns, cooldowns
-        );
+        const battle = await battleCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
+          return await battleCache.createBattle(
+            battleCtx,
+            userCtx,
+            attackerId,
+            defenderId,
+            stats,
+            stats,
+            cooldowns,
+            cooldowns
+          );
+        });
 
         console.log('🔍 Finding ongoing battles for users...');
 
@@ -240,30 +259,32 @@ describe('Phase 5: BattleCache Integration Testing', () => {
 
         console.log('🔄 Creating multiple battles...');
 
-        // Create first battle
-        const battle1 = await battleCache.createBattle(
-          battleCtx,
-          1, 2, stats, stats, cooldowns, cooldowns
-        );
+        await battleCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
+          // Create first battle
+          const battle1 = await battleCache.createBattle(
+            battleCtx, userCtx,
+            1, 2, stats, stats, cooldowns, cooldowns
+          );
+  
+          activeBattles = await BattleRepo.getActiveBattles(battleCtx);
+          expect(activeBattles).toHaveLength(1);
+          expect(activeBattles[0].id).toBe(battle1.id);
+  
+          // Create second battle
+          const battle2 = await battleCache.createBattle(
+            battleCtx, userCtx,
+            3, 4, stats, stats, cooldowns, cooldowns
+          );
+  
+          activeBattles = await BattleRepo.getActiveBattles(battleCtx);
+          expect(activeBattles).toHaveLength(2);
+          
+          const battleIds = activeBattles.map(b => b.id);
+          expect(battleIds).toContain(battle1.id);
+          expect(battleIds).toContain(battle2.id);
+  
+        });
 
-        activeBattles = await BattleRepo.getActiveBattles(battleCtx);
-        expect(activeBattles).toHaveLength(1);
-        expect(activeBattles[0].id).toBe(battle1.id);
-
-        // Create second battle
-        const battle2 = await battleCache.createBattle(
-          battleCtx,
-          3, 4, stats, stats, cooldowns, cooldowns
-        );
-
-        activeBattles = await BattleRepo.getActiveBattles(battleCtx);
-        expect(activeBattles).toHaveLength(2);
-        
-        const battleIds = activeBattles.map(b => b.id);
-        expect(battleIds).toContain(battle1.id);
-        expect(battleIds).toContain(battle2.id);
-
-        console.log('✅ Active battles tracking working correctly');
       });
     });
 
@@ -286,10 +307,18 @@ describe('Phase 5: BattleCache Integration Testing', () => {
         };
 
         // Create battle
-        const battle = await battleCache.createBattle(
-          battleCtx,
-          1, 2, stats, stats, cooldowns, cooldowns
-        );
+        const battle = await battleCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
+          return await battleCache.createBattle(
+            battleCtx,
+            userCtx,
+            1,
+            2,
+            stats,
+            stats,
+            cooldowns,
+            cooldowns
+          );
+        });
 
         // Initially not dirty (just created)
         const initialDirtyBattles = battleCache.getDirtyBattleIds();
@@ -344,10 +373,18 @@ describe('Phase 5: BattleCache Integration Testing', () => {
         };
 
         // Create battle
-        const battle = await battleCache.createBattle(
-          battleCtx,
-          1, 2, stats, stats, cooldowns, cooldowns
-        );
+        const battle = await battleCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
+          return await battleCache.createBattle(
+            battleCtx,
+            userCtx,
+            1,
+            2,
+            stats,
+            stats,
+            cooldowns,
+            cooldowns
+          );
+        });
 
         // Verify battle is in cache and active
         expect(battleCache.getBattleFromCache(battle.id)).toBeDefined();
@@ -448,11 +485,18 @@ describe('Phase 5: BattleCache Integration Testing', () => {
           missile_launcher: 0
         };
 
-        // Create battle
-        await battleCache.createBattle(
-          battleCtx,
-          1, 2, battleStats, battleStats, cooldowns, cooldowns
-        );
+        const battle = await battleCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
+          return await battleCache.createBattle(
+            battleCtx,
+            userCtx,
+            1,
+            2,
+            battleStats,
+            battleStats,
+            cooldowns,
+            cooldowns
+          );
+        });
 
         // Stats should update
         stats = battleCache.getStats();

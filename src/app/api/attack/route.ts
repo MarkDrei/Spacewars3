@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
         console.log(`⚔️ Attack API: Both users loaded, initiating battle...`);
         
         // Initiate the battle - this will handle its own locking internally
-        const battle = await initiateBattle(battleContext, attacker, target);
+        const battle = await initiateBattle(battleContext, userContext, attacker, target);
         
         console.log(`✅ Battle ${battle.id} initiated successfully`);
         

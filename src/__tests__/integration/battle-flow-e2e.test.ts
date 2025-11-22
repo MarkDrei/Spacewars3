@@ -96,16 +96,19 @@ describe('Phase 5: End-to-End Battle Flow with BattleCache', () => {
   
         // === Phase 2: Create Battle ===
         
-        
-        const battle = await battleCache.createBattle(
+        const battle = await battleCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
+          return await battleCache.createBattle(
           battleCtx,
+          userCtx,
           attackerId,
           defenderId,
           attackerStats,
           defenderStats,
           attackerCooldowns,
           defenderCooldowns
-        );
+          );
+        });
+
   
         // Verify battle creation
         expect(battle).toBeDefined();
@@ -277,37 +280,40 @@ describe('Phase 5: End-to-End Battle Flow with BattleCache', () => {
         };
         const cooldowns: WeaponCooldowns = { pulse_laser: 0, auto_turret: 0, missile_launcher: 0 };
 
-        // Create multiple battles
-        const battle1 = await battleCache.createBattle(
-          battleCtx,
-          userIds[0], userIds[1], battleStats, battleStats, cooldowns, cooldowns
-        );
-        
-        const battle2 = await battleCache.createBattle(
-          battleCtx,
-          userIds[2], userIds[3], battleStats, battleStats, cooldowns, cooldowns
-        );
+        await battleCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
+          // Create multiple battles
+          const battle1 = await battleCache.createBattle(
+            battleCtx, userCtx,
+            userIds[0], userIds[1], battleStats, battleStats, cooldowns, cooldowns
+          );
+          
+          const battle2 = await battleCache.createBattle(
+            battleCtx, userCtx,
+            userIds[2], userIds[3], battleStats, battleStats, cooldowns, cooldowns
+          );
+  
+          // Verify both battles are cached separately
+          const cache = getBattleCache();
+          const cached1 = cache.getBattleFromCache(battle1.id);
+          const cached2 = cache.getBattleFromCache(battle2.id);
+  
+          expect(cached1?.id).toBe(battle1.id);
+          expect(cached2?.id).toBe(battle2.id);
+          expect(cached1?.attackerId).toBe(userIds[0]);
+          expect(cached2?.attackerId).toBe(userIds[2]);
+  
+          // Active battles should show both
+          const activeBattles = await BattleRepo.getActiveBattles(battleCtx);
+          expect(activeBattles).toHaveLength(2);
+  
+          // Each user should find their own battle
+          const user0Battle = await BattleRepo.getOngoingBattleForUser(battleCtx, userIds[0]);
+          const user2Battle = await BattleRepo.getOngoingBattleForUser(battleCtx, userIds[2]);
+  
+          expect(user0Battle?.id).toBe(battle1.id);
+          expect(user2Battle?.id).toBe(battle2.id);
+        });
 
-        // Verify both battles are cached separately
-        const cache = getBattleCache();
-        const cached1 = cache.getBattleFromCache(battle1.id);
-        const cached2 = cache.getBattleFromCache(battle2.id);
-
-        expect(cached1?.id).toBe(battle1.id);
-        expect(cached2?.id).toBe(battle2.id);
-        expect(cached1?.attackerId).toBe(userIds[0]);
-        expect(cached2?.attackerId).toBe(userIds[2]);
-
-        // Active battles should show both
-        const activeBattles = await BattleRepo.getActiveBattles(battleCtx);
-        expect(activeBattles).toHaveLength(2);
-
-        // Each user should find their own battle
-        const user0Battle = await BattleRepo.getOngoingBattleForUser(battleCtx, userIds[0]);
-        const user2Battle = await BattleRepo.getOngoingBattleForUser(battleCtx, userIds[2]);
-
-        expect(user0Battle?.id).toBe(battle1.id);
-        expect(user2Battle?.id).toBe(battle2.id);
       });
     });
   });
@@ -331,10 +337,12 @@ describe('Phase 5: End-to-End Battle Flow with BattleCache', () => {
         };
         const cooldowns: WeaponCooldowns = { pulse_laser: 0, auto_turret: 0, missile_launcher: 0 };
 
-        const battle = await battleCache.createBattle(
-          battleCtx,
-          user1Id, user2Id, stats, stats, cooldowns, cooldowns
-        );
+        const battle = await battleCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
+          return await battleCache.createBattle(
+            battleCtx, userCtx,
+            user1Id, user2Id, stats, stats, cooldowns, cooldowns
+          );
+        });
 
         // Modify battle to make it dirty
         await BattleRepo.addBattleEvent(battleCtx, battle.id, {
@@ -404,10 +412,18 @@ describe('Phase 5: End-to-End Battle Flow with BattleCache', () => {
         };
         const cooldowns: WeaponCooldowns = { pulse_laser: 0, auto_turret: 0, missile_launcher: 0 };
 
-        const battle = await battleCache.createBattle(
-          battleCtx,
-          user1Id, user2Id, stats, stats, cooldowns, cooldowns
-        );
+        const battle = await battleCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
+          return await battleCache.createBattle(
+            battleCtx,
+            userCtx,
+            user1Id,
+            user2Id,
+            stats,
+            stats,
+            cooldowns,
+            cooldowns
+          );
+        });
 
         // Perform concurrent operations
         const operations = [

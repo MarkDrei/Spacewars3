@@ -23,7 +23,7 @@ import { TechFactory } from '../TechFactory';
 import { ApiError } from '../errors';
 import { getUserWorldCache } from '../world/userWorldCache';
 import { getBattleCache } from './BattleCache';
-import { createLockContext, LockContext, LocksAtMost4, LocksAtMostAndHas2, LocksAtMostAndHas4 } from '@markdrei/ironguard-typescript-locks';
+import { createLockContext, HasLock2Context, IronLocks, LockContext, LocksAtMost4, LocksAtMostAndHas2, LocksAtMostAndHas4 } from '@markdrei/ironguard-typescript-locks';
 import { WORLD_LOCK, USER_LOCK, DATABASE_LOCK_USERS } from '../typedLocks';
 import { getUserByIdFromDb } from '../world/userRepo';
 
@@ -127,7 +127,7 @@ async function getShipPosition(context: LockContext<LocksAtMost4>, shipId: numbe
  * Set ship speed via World cache
  * Delegates to TypeduserWorldCache instead of bypassing cache
  */
-async function setShipSpeed(context: LockContext<LocksAtMostAndHas2>, shipId: number, speed: number): Promise<void> {
+async function setShipSpeed(context: LockContext<LocksAtMostAndHas4>, shipId: number, speed: number): Promise<void> {
   const userWorldCache = await getUserWorldCache(context);
   return await context.useLockWithAcquire(WORLD_LOCK, async (worldContext) => {
     const world = userWorldCache.getWorldFromCache(worldContext);
@@ -224,8 +224,9 @@ async function getUserShipId(context: LockContext<LocksAtMostAndHas4>, userId: n
  * Should be refactored to use cache-first architecture.
  * See TechnicalDebt.md for details.
  */
-export async function initiateBattle(
-  context: LockContext<LocksAtMostAndHas2>,
+export async function initiateBattle<THeld extends IronLocks>(
+  contextBattle: HasLock2Context<THeld>,
+  contextUser: LockContext<LocksAtMostAndHas4>,
   attacker: User,
   attackee: User
 ): Promise<Battle> {
@@ -247,8 +248,8 @@ export async function initiateBattle(
   
   console.log(`⚔️ initiateBattle: Getting ship positions...`);
   // Validation: Check distance
-  const attackerPos = await getShipPosition(context, attacker.ship_id);
-  const attackeePos = await getShipPosition(context, attackee.ship_id);
+  const attackerPos = await getShipPosition(contextUser, attacker.ship_id);
+  const attackeePos = await getShipPosition(contextUser, attackee.ship_id);
   
   if (!attackerPos || !attackeePos) {
     throw new ApiError(500, 'Could not determine ship positions');
@@ -291,14 +292,15 @@ export async function initiateBattle(
   
   console.log(`⚔️ initiateBattle: Setting ship speeds to 0...`);
   // Set both ships' speeds to 0
-  await setShipSpeed(context, attacker.ship_id, 0);
-  await setShipSpeed(context, attackee.ship_id, 0);
+  await setShipSpeed(contextUser, attacker.ship_id, 0);
+  await setShipSpeed(contextUser, attackee.ship_id, 0);
   
   console.log(`⚔️ initiateBattle: Creating battle in database...`);
   // Create battle in database with initial cooldowns
   const battleCache = getBattleCache();
   const battle = await battleCache.createBattle(
-    context,
+    contextBattle,
+    contextUser,
     attacker.id,
     attackee.id,
     attackerStats,
@@ -308,11 +310,9 @@ export async function initiateBattle(
   );
   
   console.log(`⚔️ initiateBattle: Updating user battle states...`);
-  await context.useLockWithAcquire(USER_LOCK, async (userContext) => {
-    // Update users' battle state
-    await updateUserBattleState(userContext, attacker.id, true, battle.id);
-    await updateUserBattleState(userContext, attackee.id, true, battle.id);
-  });
+  // Update users' battle state
+  await updateUserBattleState(contextUser, attacker.id, true, battle.id);
+  await updateUserBattleState(contextUser, attackee.id, true, battle.id);
   
   // Log battle start event
   const startEvent: BattleEvent = {
@@ -324,7 +324,7 @@ export async function initiateBattle(
     }
   };
   
-  await BattleRepo.addBattleEvent(context, battle.id, startEvent);
+  await BattleRepo.addBattleEvent(contextBattle, battle.id, startEvent);
   
   console.log(`⚔️ Battle ${battle.id} started: User ${attacker.id} vs User ${attackee.id}`);
   

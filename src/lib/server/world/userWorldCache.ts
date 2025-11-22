@@ -35,15 +35,82 @@ export interface TypedCacheStats {
   worldDirty: boolean;
 }
 
+declare global {
+  var userWorldCacheInstance: UserWorldCache | null;
+}
+
 /**
  * Typed Cache Manager with compile-time deadlock prevention
  * Enforces singleton pattern and lock ordering
  */
 export class UserWorldCache {
+
+  // ===== FIELDS =====
+
+
+  // Core infrastructure
+  private config: TypedCacheConfig = {
+    persistenceIntervalMs: 30000,
+    enableAutoPersistence: true,
+    logStats: false
+  };
+  
+  private db: sqlite3.Database | null = null;
+  private isInitialized = false;
+  private persistenceTimer: NodeJS.Timeout | null = null;
+
+  // In-memory cache storage
+  private users: Map<number, User> = new Map();
+  private world: World | null = null;
+  private usernameToUserId: Map<string, number> = new Map(); // username -> userId mapping
+  private dirtyUsers: Set<number> = new Set();
+  private worldDirty: boolean = false;
+
+  // Statistics
+  private stats = {
+    worldCacheHits: 0,
+    worldCacheMisses: 0,
+    userCacheHits: 0,
+    userCacheMisses: 0
+  };
+
+
   // Singleton enforcement
-  private static instance: UserWorldCache | null = null;
   private constructor() {
     console.log('🧠 Typed cache manager initialized');
+  }
+
+  private static get instance(): UserWorldCache | null {
+    return globalThis.userWorldCacheInstance || null;
+  }
+
+  private static set instance(value: UserWorldCache | null) {
+    globalThis.userWorldCacheInstance = value;
+  }
+
+  /**
+   * Initialize singleton instance, only to be called at as part of the server startup or testing
+   * 
+   * @param config optional configuration for the cache
+   */
+  static async intialize2(world: World, db: sqlite3.Database, config?: TypedCacheConfig): Promise<void> {
+    this.instance = new UserWorldCache();
+    if (config) {
+      this.instance.config = config;
+    }
+    this.instance.db = db;
+    this.instance.world = world;
+    this.instance.isInitialized = true;
+  }
+
+  /**
+   * Synchronous non-locking getter for singleton instance, which was initialized at startup
+   */
+  static getInstance2(): UserWorldCache {
+    if (!this.instance) {
+      throw new Error('UserWorldCache not initialized');
+    }
+    return this.instance;
   }
   
   static async getInstance(context: LockContext<LocksAtMost8>, config?: TypedCacheConfig): Promise<UserWorldCache> {
@@ -65,31 +132,6 @@ export class UserWorldCache {
   static resetInstance(): void {
     this.instance = null;
   }
-
-  // Core infrastructure
-  private config: TypedCacheConfig = {
-    persistenceIntervalMs: 30000,
-    enableAutoPersistence: true,
-    logStats: false
-  };
-  private db: sqlite3.Database | null = null;
-  private isInitialized = false;
-  private persistenceTimer: NodeJS.Timeout | null = null;
-
-  // In-memory cache storage
-  private users: Map<number, User> = new Map();
-  private world: World | null = null;
-  private usernameToUserId: Map<string, number> = new Map(); // username -> userId mapping
-  private dirtyUsers: Set<number> = new Set();
-  private worldDirty: boolean = false;
-
-  // Statistics
-  private stats = {
-    worldCacheHits: 0,
-    worldCacheMisses: 0,
-    userCacheHits: 0,
-    userCacheMisses: 0
-  };
 
   /**
    * Check if cache manager is initialized

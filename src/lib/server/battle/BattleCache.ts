@@ -18,29 +18,15 @@ import type sqlite3 from 'sqlite3';
 import type { Battle, BattleStats, BattleEvent, WeaponCooldowns } from './battleTypes';
 import { getUserWorldCache } from '../world/userWorldCache';
 import * as battleRepo from './battleRepo';
-import { createLockContext, LockContext, LocksAtMostAndHas2 } from '@markdrei/ironguard-typescript-locks';
-import { BATTLE_LOCK, DATABASE_LOCK_BATTLES } from '../typedLocks';
+import { createLockContext, HasLock13Context, HasLock2Context, IronLocks, LockContext, LocksAtMost4, LocksAtMostAndHas2 } from '@markdrei/ironguard-typescript-locks';
+import { BATTLE_LOCK, DATABASE_LOCK_BATTLES, USER_LOCK } from '../typedLocks';
+import { startBattleScheduler } from './battleScheduler';
 
-// Define BATTLE_LOCK at level 2, DATABASE_LOCK_BATTLES at level 13
-// Lock Hierarchy: BATTLE_LOCK (2) → DATABASE_LOCK_BATTLES (13)
-// When modifying battles, acquire BATTLE_LOCK first, then DATABASE_LOCK_BATTLES for DB operations
+declare global {
+  var battleCacheInstance: BattleCache | null;
+}
 
-/**
- * BattleCache - Manages battle objects in memory
- * 
- * Design Principles:
- * - ONLY caches Battle objects (Map<battleId, Battle>)
- * - Delegates User operations to TypedCacheManager
- * - Delegates World operations to TypedCacheManager
- * - No cache consistency issues (single source of truth per entity type)
- * 
- * Lock Strategy:
- * - BATTLE_LOCK (level 2) for battle-specific operations
- * - DATABASE_LOCK_BATTLES (level 13) for database operations
- * - Delegates to TypedCacheManager for User/World locks
- */
 export class BattleCache {
-  private static instance: BattleCache | null = null;
   private static initializationPromise: Promise<BattleCache> | null = null;
 
   // Storage
@@ -61,6 +47,14 @@ export class BattleCache {
     // Private constructor for singleton
   }
 
+  private static get instance(): BattleCache | null {
+    return globalThis.battleCacheInstance || null;
+  }
+
+  private static set instance(value: BattleCache | null) {
+    globalThis.battleCacheInstance = value;
+  }
+
   /**
    * Get singleton instance (synchronous, but may not be fully initialized)
    * Use getInitializedInstance() for guaranteed initialization
@@ -70,6 +64,12 @@ export class BattleCache {
       BattleCache.instance = new BattleCache();
     }
     return BattleCache.instance;
+  }
+
+  static async initialize2(db: sqlite3.Database): Promise<void> {
+    const instance = new BattleCache();
+    await instance.initialize(db);
+    startBattleScheduler();
   }
 
   /**
@@ -186,7 +186,7 @@ export class BattleCache {
    * Set battle in cache (PRIVATE - internal use only)
    * Marks battle as dirty for persistence
    */
-  private setBattleInCacheInternal(_context: LockContext<LocksAtMostAndHas2>, battle: Battle): void {
+  private setBattleInCacheInternal<THeld extends IronLocks>(_context: HasLock2Context<THeld>, battle: Battle): void {
     this.ensureInitialized();
     this.battles.set(battle.id, battle);
     this.dirtyBattles.add(battle.id);
@@ -202,7 +202,7 @@ export class BattleCache {
    * Update battle in cache (PRIVATE - internal use only)
    * Marks battle as dirty for persistence
    */
-  private updateBattleInCacheInternal(context: LockContext<LocksAtMostAndHas2>, battle: Battle): void {
+  private updateBattleInCacheInternal<THeld extends IronLocks>(context: HasLock2Context<THeld>, battle: Battle): void {
     this.ensureInitialized();
     if (!this.battles.has(battle.id)) {
       throw new Error(`Cannot update non-existent battle ${battle.id}`);
@@ -387,9 +387,13 @@ export class BattleCache {
    * Create a new battle
    * Creates battle in database and stores in cache
    * Auto-acquires necessary locks
+   * 
+   * @param contextBattleLock HAS level 2 lock
+   * @param context has level 4 lock as well and can take more locks
    */
-  async createBattle(
-    context: LockContext<LocksAtMostAndHas2>, 
+  async createBattle<THeld extends IronLocks>(
+    contextBattleLock: HasLock2Context<THeld>,
+    context: LockContext<LocksAtMost4>, 
     attackerId: number,
     attackeeId: number,
     attackerStartStats: BattleStats,
@@ -416,7 +420,7 @@ export class BattleCache {
       );
       
       // Store in cache
-      this.setBattleInCacheInternal(context, battle);
+      this.setBattleInCacheInternal(contextBattleLock, battle);
       
       return battle;
     });
@@ -455,7 +459,7 @@ export class BattleCache {
   /**
    * Add a battle event to the battle log
    */
-  async addBattleEvent(context: LockContext<LocksAtMostAndHas2>, battleId: number, event: BattleEvent): Promise<void> {
+  async addBattleEvent<THeld extends IronLocks>(context: HasLock2Context<THeld>, battleId: number, event: BattleEvent): Promise<void> {
     await this.ensureInitializedAsync();
     
     // Get battle from cache
@@ -633,17 +637,15 @@ export class BattleCache {
    * Load active battles from database on initialization
    */
   private async loadActiveBattlesFromDb(): Promise<void> {
-    const ctx = createLockContext();
-    await ctx.useLockWithAcquire(DATABASE_LOCK_BATTLES, async (databaseContext) => {
-      const battles = await battleRepo.getActiveBattlesFromDb(databaseContext);
-      
-      for (const battle of battles) {
-        this.battles.set(battle.id, battle);
-        this.activeBattlesByUser.set(battle.attackerId, battle.id);
-        this.activeBattlesByUser.set(battle.attackeeId, battle.id);
-      }
-    });
+    const battles = await battleRepo.getActiveBattlesFromDb();
+    for (const battle of battles) {
+      this.battles.set(battle.id, battle);
+      this.activeBattlesByUser.set(battle.attackerId, battle.id);
+      this.activeBattlesByUser.set(battle.attackeeId, battle.id);
+    }
   }
+
+
 
   /**
    * Load single battle from database
@@ -905,16 +907,19 @@ export const BattleRepo = {
     attackerInitialCooldowns: WeaponCooldowns,
     attackeeInitialCooldowns: WeaponCooldowns
   ) => {
-    const cache = await getBattleCacheInitialized();
-    return cache.createBattle(
-      context,
-      attackerId,
-      attackeeId,
-      attackerStartStats,
-      attackeeStartStats,
-      attackerInitialCooldowns,
-      attackeeInitialCooldowns
-    );
+    await context.useLockWithAcquire(USER_LOCK, async (userContext) => {
+      const cache = await getBattleCacheInitialized();
+      return cache.createBattle(
+        context,
+        userContext,
+        attackerId,
+        attackeeId,
+        attackerStartStats,
+        attackeeStartStats,
+        attackerInitialCooldowns,
+        attackeeInitialCooldowns
+      );
+    });
   },
 
   getBattle: async (context: LockContext<LocksAtMostAndHas2>, battleId: number) => {
@@ -937,7 +942,7 @@ export const BattleRepo = {
     return cache.updateWeaponCooldowns(context, battleId, userId, weaponCooldowns);
   },
 
-  addBattleEvent: async (context: LockContext<LocksAtMostAndHas2>, battleId: number, event: BattleEvent) => {
+  addBattleEvent: async <THeld extends IronLocks>(context: HasLock2Context<THeld>, battleId: number, event: BattleEvent) => {
     const cache = await getBattleCacheInitialized();
     return cache.addBattleEvent(context, battleId, event);
   },
