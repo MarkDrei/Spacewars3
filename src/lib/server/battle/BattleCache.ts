@@ -23,6 +23,7 @@ import { startBattleScheduler } from './battleScheduler';
 import { UserWorldCache } from '../user/userCache';
 import { WorldCache } from '../world/worldCache';
 import { MessageCache } from '../messages/MessageCache';
+import { Cache } from '../Cache';
 
 type BattleCacheDependencies = {
   userCache?: UserWorldCache;
@@ -34,7 +35,7 @@ declare global {
   var battleCacheInstance: BattleCache | null;
 }
 
-export class BattleCache {
+export class BattleCache extends Cache {
   private static initializationPromise: Promise<BattleCache> | null = null;
   private static dependencies: BattleCacheDependencies = {};
 
@@ -54,6 +55,7 @@ export class BattleCache {
   private dependencies: BattleCacheDependencies = {};
 
   private constructor() {
+    super();
     // Private constructor for singleton
     this.dependencies = BattleCache.dependencies;
   }

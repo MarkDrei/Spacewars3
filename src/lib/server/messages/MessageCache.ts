@@ -13,6 +13,7 @@ import {
 import { getDatabase } from '../database';
 import { DATABASE_LOCK_MESSAGES, MESSAGE_LOCK } from '../typedLocks';
 import { MessagesRepo, type Message, type UnreadMessage } from './messagesRepo';
+import { Cache } from '../Cache';
 
 interface MessageCacheConfig {
   persistenceIntervalMs: number;
@@ -33,10 +34,11 @@ interface MessageCacheStats {
  * - Automatic persistence to database
  * - Thread-safe with IronGuard locks
  */
-export class MessageCache {
+export class MessageCache extends Cache {
   private static instance: MessageCache | null = null;
   
   private constructor() {
+    super();
     console.log('📬 Message cache initialized');
   }
 

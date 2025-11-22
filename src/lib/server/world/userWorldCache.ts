@@ -12,11 +12,10 @@ import {
   USER_LOCK,
   WORLD_LOCK
 } from '../typedLocks';
-import { User } from './user';
-import { getUserByIdFromDb, getUserByUsernameFromDb } from './userRepo';
-import { World } from '../world/world';
-import { WorldCache } from '../world/worldCache';
-import { Cache } from '../Cache';
+import { User } from '../user/user';
+import { getUserByIdFromDb, getUserByUsernameFromDb } from '../user/userRepo';
+import { World } from './world';
+import { WorldCache } from './worldCache';
 
 type UserWorldCacheDependencies = {
   worldCache?: WorldCache;
@@ -42,15 +41,11 @@ export interface TypedCacheStats {
   worldDirty: boolean;
 }
 
-declare global {
-  var userWorldCacheInstance: UserWorldCache | null;
-}
-
 /**
  * Typed Cache Manager with compile-time deadlock prevention
  * Enforces singleton pattern and lock ordering
  */
-export class UserWorldCache extends Cache {
+export class UserWorldCache {
   private static dependencies: UserWorldCacheDependencies = {};
 
   // ===== FIELDS =====
@@ -84,17 +79,18 @@ export class UserWorldCache extends Cache {
 
   // Singleton enforcement
   private constructor() {
-    super();
     this.dependencies = UserWorldCache.dependencies;
     console.log('🧠 Typed cache manager initialized');
   }
 
+  private static instance_: UserWorldCache | null = null;
+
   private static get instance(): UserWorldCache | null {
-    return globalThis.userWorldCacheInstance || null;
+    return UserWorldCache.instance_;
   }
 
   private static set instance(value: UserWorldCache | null) {
-    globalThis.userWorldCacheInstance = value;
+    UserWorldCache.instance_ = value;
   }
 
   /**

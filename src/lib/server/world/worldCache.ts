@@ -4,6 +4,7 @@ import { WORLD_LOCK } from '../typedLocks';
 import { MessageCache } from '../messages/MessageCache';
 import { World } from './world';
 import { loadWorldFromDb, saveWorldToDb } from './worldRepo';
+import { Cache } from '../Cache';
 
 type WorldCacheDependencies = {
   messageCache?: MessageCache;
@@ -26,7 +27,7 @@ declare global {
   var worldCacheInstance: WorldCache | null;
 }
 
-export class WorldCache {
+export class WorldCache extends Cache {
   private static dependencies: WorldCacheDependencies = {};
   private config: WorldCacheConfig = {
     persistenceIntervalMs: 30000,
@@ -48,6 +49,7 @@ export class WorldCache {
   private dependencies: WorldCacheDependencies = {};
 
   private constructor() {
+    super();
     this.dependencies = WorldCache.dependencies;
     console.log('🌌 World cache manager created');
   }
