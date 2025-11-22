@@ -85,7 +85,7 @@ describe('Admin Database API', () => {
 
   it('admin_userQ_hasAccess', async () => {
     // Create user with exact username 'q' (admin access)  
-    const { password } = await createUser();
+    const password = 'testpass123';
     
     // Register the user with exact username 'q'
     const registerRequest = createRequest('http://localhost:3000/api/register', 'POST', { 

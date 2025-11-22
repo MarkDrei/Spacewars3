@@ -6,13 +6,87 @@
 // - Defense values are tracked in User objects during battle
 // ---
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { BattleEngine } from '../../lib/server/battle/battleEngine';
 import type { Battle, BattleStats } from '../../lib/server/battle/battleTypes';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
-import { BATTLE_LOCK } from '@/lib/server/typedLocks';
+import { BATTLE_LOCK, USER_LOCK } from '@/lib/server/typedLocks';
+import { UserWorldCache } from '@/lib/server/world/userWorldCache';
+import { User } from '@/lib/server/world/user';
+import { createInitialTechTree } from '@/lib/server/techtree';
+import { TechCounts } from '@/lib/server/TechFactory';
+
+// Mock save callback for test users
+const mockSaveCallback = vi.fn().mockResolvedValue(undefined);
+
+/**
+ * Helper to create a test user for battle testing
+ */
+function createTestUser(
+  id: number,
+  username: string,
+  hullCurrent: number = 500,
+  armorCurrent: number = 500,
+  shieldCurrent: number = 500
+): User {
+  const defaultTechCounts: TechCounts = {
+    pulse_laser: 5,
+    auto_turret: 0,
+    plasma_lance: 0,
+    gauss_rifle: 0,
+    photon_torpedo: 0,
+    rocket_launcher: 0,
+    kinetic_armor: 1,
+    energy_shield: 1,
+    missile_jammer: 0,
+    ship_hull: 1
+  };
+
+  return new User(
+    id,
+    username,
+    'password_hash',
+    1000,
+    Math.floor(Date.now() / 1000),
+    createInitialTechTree(),
+    mockSaveCallback,
+    defaultTechCounts,
+    hullCurrent,
+    armorCurrent,
+    shieldCurrent,
+    Math.floor(Date.now() / 1000),
+    true, // inBattle
+    null // currentBattleId
+  );
+}
 
 describe('Battle Damage Tracking', () => {
+  beforeEach(async () => {
+    // Reset cache manager for each test
+    UserWorldCache.resetInstance();
+    
+    // Initialize cache with test configuration (no auto-persistence)
+    const cache = UserWorldCache.getInstance({
+      persistenceIntervalMs: 30000,
+      enableAutoPersistence: false,
+      logStats: false
+    });
+    
+    // Note: We don't call initialize() because we don't want to connect to the database
+    // Instead, we'll directly populate the cache with test users
+    
+    // Create mock users for battle testing
+    const attacker = createTestUser(1, 'attacker');
+    const defender = createTestUser(2, 'defender');
+    
+    // Pre-populate cache with test users (using USER_LOCK)
+    const ctx = createLockContext();
+    await ctx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
+      cache.setUserUnsafe(userCtx, attacker);
+      cache.setUserUnsafe(userCtx, defender);
+    });
+  });
+
   /**
    * Helper to create a test battle
    */

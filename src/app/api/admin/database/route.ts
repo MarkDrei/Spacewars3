@@ -69,7 +69,7 @@ export async function GET(request: NextRequest) {
     // Get user data to check username for admin access
     const context0 = createLockContext();
     const userWorldCache = getUserWorldCache();
-    await context0.useLockWithAcquire(LOCK_4, async (userContext) => {
+    return await context0.useLockWithAcquire(LOCK_4, async (userContext) => {
       const userData = await userWorldCache.getUserByIdWithLock(userContext, session.userId!);
       if (!userData) {
         throw new ApiError(404, 'User not found');
@@ -194,10 +194,7 @@ export async function GET(request: NextRequest) {
       };
   
       return NextResponse.json(adminData);
-
     });
-
-    
   } catch (error) {
     return handleApiError(error);
   }
