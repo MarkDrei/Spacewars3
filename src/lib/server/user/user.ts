@@ -2,8 +2,9 @@
 // Domain logic for the User and its stats, including persistence callback.
 // ---
 
-import { TechTree, ResearchType, getResearchEffectFromTree, updateTechTree } from '..//techs/techtree';
+import { TechTree, ResearchType, getResearchEffectFromTree, updateTechTree } from '../techs/techtree';
 import { TechCounts, BuildQueueItem } from '../techs/TechFactory';
+import { TechService } from '../techs/TechService';
 
 class User {
   id: number;
@@ -128,10 +129,11 @@ class User {
     const elapsed = now - this.defenseLastRegen;
     if (elapsed <= 0) return;
 
-    // Calculate maximum values based on tech counts
-    const maxHull = this.techCounts.ship_hull * 100;
-    const maxArmor = this.techCounts.kinetic_armor * 100;
-    const maxShield = this.techCounts.energy_shield * 100;
+    // Calculate maximum values based on tech counts and research
+    const maxStats = TechService.calculateMaxDefense(this.techCounts, this.techTree);
+    const maxHull = maxStats.hull;
+    const maxArmor = maxStats.armor;
+    const maxShield = maxStats.shield;
 
     // Apply regeneration (1 point/second), clamped at max
     this.hullCurrent = Math.min(this.hullCurrent + elapsed, maxHull);

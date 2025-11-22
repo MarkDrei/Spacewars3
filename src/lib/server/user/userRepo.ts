@@ -7,6 +7,7 @@ import { User, SaveUserCallback } from './user';
 import { createInitialTechTree } from '../techs/techtree';
 import { sendMessageToUser } from '../messages/MessageCache';
 import { TechCounts, BuildQueueItem } from '../techs/TechFactory';
+import { TechService } from '../techs/TechService';
 
 interface UserRow {
   id: number;
@@ -68,9 +69,11 @@ function userFromRow(row: UserRow, saveCallback: SaveUserCallback): User {
   };
 
   // Extract defense current values, with fallback to max/2 for migration
-  const hullCurrent = row.hull_current !== undefined ? row.hull_current : (techCounts.ship_hull * 100) / 2;
-  const armorCurrent = row.armor_current !== undefined ? row.armor_current : (techCounts.kinetic_armor * 100) / 2;
-  const shieldCurrent = row.shield_current !== undefined ? row.shield_current : (techCounts.energy_shield * 100) / 2;
+  // Extract defense current values, with fallback to max/2 for migration
+  const maxStats = TechService.calculateMaxDefense(techCounts, techTree);
+  const hullCurrent = row.hull_current !== undefined ? row.hull_current : maxStats.hull / 2;
+  const armorCurrent = row.armor_current !== undefined ? row.armor_current : maxStats.armor / 2;
+  const shieldCurrent = row.shield_current !== undefined ? row.shield_current : maxStats.shield / 2;
   const defenseLastRegen = row.defense_last_regen || row.last_updated;
 
   // Extract battle state, with fallback for migration
@@ -177,7 +180,11 @@ async function createUserWithShip(db: sqlite3.Database, username: string, passwo
                 energy_shield: 5,
                 missile_jammer: 0
               };
-              const user = new User(userId, username, password_hash, 0.0, now, techTree, saveCallback, defaultTechCounts, 250.0, 250.0, 250.0, now, false, null, [], null, shipId);
+
+              // Calculate initial defense values based on default tech counts
+              const initialMaxStats = TechService.calculateMaxDefense(defaultTechCounts, techTree);
+
+              const user = new User(userId, username, password_hash, 0.0, now, techTree, saveCallback, defaultTechCounts, initialMaxStats.hull, initialMaxStats.armor, initialMaxStats.shield, now, false, null, [], null, shipId);
 
               // Send welcome message to new user
               await sendMessageToUser(userId, `Welcome to Spacewars, ${username}! Your journey among the stars begins now. Navigate wisely and collect resources to upgrade your ship.`);
@@ -216,7 +223,11 @@ async function createUserWithShip(db: sqlite3.Database, username: string, passwo
             energy_shield: 5,
             missile_jammer: 0
           };
-          const user = new User(id, username, password_hash, 0.0, now, techTree, saveCallback, defaultTechCounts, 250.0, 250.0, 250.0, now, false, null, [], null);
+
+          // Calculate initial defense values based on default tech counts
+          const initialMaxStats = TechService.calculateMaxDefense(defaultTechCounts, techTree);
+
+          const user = new User(id, username, password_hash, 0.0, now, techTree, saveCallback, defaultTechCounts, initialMaxStats.hull, initialMaxStats.armor, initialMaxStats.shield, now, false, null, [], null);
 
           try {
             // Note: User creation doesn't need immediate caching since

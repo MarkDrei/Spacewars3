@@ -2,7 +2,9 @@ import { LockContext, LocksAtMostAndHas4 } from '@markdrei/ironguard-typescript-
 import { UserCache } from '../user/userCache';
 import { User } from '../user/user';
 import { TechFactory, TechCounts, BuildQueueItem } from './TechFactory';
+import { DefenseValues } from '@/shared/defenseValues';
 import { MessageCache } from '../messages/MessageCache';
+import { TechTree, ResearchType, getResearchEffectFromTree } from './techtree';
 
 export class TechService {
     private static instance: TechService;
@@ -263,5 +265,47 @@ export class TechService {
         }
 
         return TechFactory.calculateTotalEffects(user.techCounts);
+    }
+
+    /**
+     * Calculate max defense values including research factors
+     */
+    static calculateMaxDefense(techCounts: TechCounts, techTree: TechTree): { hull: number; armor: number; shield: number } {
+        const stackedBase = TechFactory.calculateStackedBaseDefense(techCounts);
+
+        // Get research factors (percentage values, e.g. 100 = 100%)
+        const hullFactor = getResearchEffectFromTree(techTree, ResearchType.HullStrength) / 100;
+        const armorFactor = getResearchEffectFromTree(techTree, ResearchType.ArmorEffectiveness) / 100;
+        const shieldFactor = getResearchEffectFromTree(techTree, ResearchType.ShieldEffectiveness) / 100;
+
+        return {
+            hull: Math.round(stackedBase.hull * hullFactor),
+            armor: Math.round(stackedBase.armor * armorFactor),
+            shield: Math.round(stackedBase.shield * shieldFactor)
+        };
+    }
+
+    static getDefenseStats(techCounts: TechCounts, techTree: TechTree, currentValues: { hull: number; armor: number; shield: number }): DefenseValues {
+        const maxStats = this.calculateMaxDefense(techCounts, techTree);
+        return {
+            hull: {
+                name: 'Ship Hull',
+                current: currentValues.hull,
+                max: maxStats.hull,
+                regenRate: 1
+            },
+            armor: {
+                name: 'Kinetic Armor',
+                current: currentValues.armor,
+                max: maxStats.armor,
+                regenRate: 1
+            },
+            shield: {
+                name: 'Energy Shield',
+                current: currentValues.shield,
+                max: maxStats.shield,
+                regenRate: 1
+            }
+        };
     }
 }

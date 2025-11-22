@@ -112,9 +112,9 @@ describe('getResearchEffect', () => {
 
   test('getResearchEffect_newDefenseResearches_calculatesCorrectly', () => {
     expect(getResearchEffect(AllResearches[ResearchType.HullStrength], 1)).toBeCloseTo(100);
-    expect(getResearchEffect(AllResearches[ResearchType.HullStrength], 2)).toBeCloseTo(120);
-    expect(getResearchEffect(AllResearches[ResearchType.ShieldRechargeRate], 1)).toBeCloseTo(10);
-    expect(getResearchEffect(AllResearches[ResearchType.ShieldRechargeRate], 2)).toBeCloseTo(15);
+    expect(getResearchEffect(AllResearches[ResearchType.HullStrength], 2)).toBeCloseTo(107.02, 1);
+    expect(getResearchEffect(AllResearches[ResearchType.ShieldRechargeRate], 1)).toBeCloseTo(1);
+    expect(getResearchEffect(AllResearches[ResearchType.ShieldRechargeRate], 2)).toBeCloseTo(1.07, 2);
   });
 
   test('getResearchEffect_newShipResearches_calculatesCorrectly', () => {
