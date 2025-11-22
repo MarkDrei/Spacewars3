@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  # Development service with hot reload
+  dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    ports:
+      - "3000:3000"
+    volumes:
+      # Mount source code for hot reload
+      - .:/app
+      # Prevent node_modules from being overwritten
+      - /app/node_modules
+      # Mount database directory
+      - ./database:/app/database
+    environment:
+      - NODE_ENV=development
+      - SESSION_SECRET=${SESSION_SECRET:-dev-secret-change-in-production}
+      - HOSTNAME=0.0.0.0
+    command: npm run dev
+    stdin_open: true
+    tty: true
+
+  # Production service (for testing production build locally)
+  prod:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    volumes:
+      # Only mount database directory for production
+      - ./database:/app/database
+    environment:
+      - NODE_ENV=production
+      - SESSION_SECRET=${SESSION_SECRET:-dev-secret-change-in-production}
+      - HOSTNAME=0.0.0.0

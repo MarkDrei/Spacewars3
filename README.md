@@ -82,6 +82,58 @@ src/
 - Node.js (v18+)
 - npm (v8+)
 
+**Or use Docker** (recommended for consistent environment):
+- Docker (v20+)
+- Docker Compose (v2+)
+
+### Docker Development
+
+The project includes full Docker support for both local development and production deployment.
+
+#### Quick Start with Docker
+
+```bash
+# Development mode with hot reload
+docker-compose up dev
+
+# Production mode (test production build locally)
+docker-compose up prod
+```
+
+The application will be available at `http://localhost:3000`.
+
+#### Docker Commands
+
+| Command | Description |
+|---------|-------------|
+| `docker-compose up dev` | Start development server with hot reload |
+| `docker-compose up prod` | Start production server |
+| `docker-compose down` | Stop and remove containers |
+| `docker-compose build` | Rebuild containers after dependency changes |
+
+#### Docker Features
+
+- **Hot Reload**: Changes to source code automatically reflect in the running container
+- **Volume Mounts**: Database persists between container restarts
+- **Isolated Environment**: Consistent development environment across all platforms
+- **Multi-stage Builds**: Optimized production images with minimal size
+
+### GitHub Codespaces
+
+This project is fully configured for GitHub Codespaces development:
+
+1. Click "Code" → "Codespaces" → "Create codespace on main"
+2. Wait for the container to build (automatically installs dependencies)
+3. Run `npm run dev` in the terminal
+4. Access the application through the forwarded port (3000)
+
+The Codespace includes:
+- Node.js 20 LTS
+- Git and Bash
+- Pre-configured VSCode extensions (ESLint, Prettier, Tailwind CSS)
+- Automatic dependency installation
+- Port forwarding for the application
+
 ### Quick Start
 
 ```bash
@@ -143,9 +195,25 @@ The application is production-ready with multiple deployment options, featuring 
 
 ### Deployment Options
 
+- **Docker**: Use included `Dockerfile` for containerized deployment
+- **Docker Compose**: Use `docker-compose.yml` for orchestrated deployment
 - **Render**: Use included `render.yaml`
 - **Vercel**: Use included `vercel.json` 
 - **Any Node.js host**: Standard Next.js build output
+
+#### Docker Production Deployment
+
+```bash
+# Build production image
+docker build -t spacewars3:latest .
+
+# Run production container
+docker run -p 3000:3000 \
+  -v $(pwd)/database:/app/database \
+  -e SESSION_SECRET=your-secret-here \
+  -e NODE_ENV=production \
+  spacewars3:latest
+```
 
 ### Environment Variables
 
@@ -162,4 +230,62 @@ Required for production:
 - **Optimized bundles**: ~100kB first load JS
 
 The application uses SQLite database (included) and features a mathematically deadlock-free architecture, making it ready for high-traffic production deployment.
+
+## Troubleshooting
+
+### Docker Issues
+
+**Port already in use:**
+```bash
+# Stop any running containers
+docker-compose down
+
+# Or use a different port
+docker-compose run -p 3001:3000 dev
+```
+
+**Container not updating after code changes:**
+```bash
+# Rebuild the container
+docker-compose build dev
+docker-compose up dev
+```
+
+**Database permission issues:**
+```bash
+# Ensure database directory has correct permissions
+mkdir -p database
+chmod 755 database
+```
+
+### GitHub Codespaces Issues
+
+**Dependencies not installed:**
+```bash
+# Manually install dependencies
+npm install
+```
+
+**Port not forwarding:**
+- Check the "Ports" tab in VSCode
+- Ensure port 3000 is listed and public
+- Click the globe icon to make it accessible
+
+**Build fails with font loading error:**
+This is expected in restricted network environments. The application still works; the build process needs internet access to fetch Google Fonts.
+
+### General Issues
+
+**SQLite database locked:**
+- Stop all running instances of the application
+- Delete `database/*.db-wal` and `database/*.db-shm` files
+- Restart the application
+
+**Tests failing:**
+```bash
+# Clean install dependencies
+rm -rf node_modules package-lock.json
+npm install
+npm test
+```
 
