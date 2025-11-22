@@ -5,7 +5,7 @@
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { getBattleCache, getBattleCacheInitialized } from '../../lib/server/battle/BattleCache';
-import { UserWorldCache, getUserWorldCache } from '../../lib/server/world/userWorldCache';
+import { UserWorldCache, getUserWorldCache } from '../../lib/server/user/userCache';
 import * as BattleRepo from '../../lib/server/battle/BattleCache';
 import * as battleService from '../../lib/server/battle/battleService';
 import type { BattleStats, WeaponCooldowns } from '../../lib/server/battle/battleTypes';

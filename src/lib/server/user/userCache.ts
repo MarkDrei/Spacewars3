@@ -14,8 +14,8 @@ import {
 } from '../typedLocks';
 import { User } from './user';
 import { getUserByIdFromDb, getUserByUsernameFromDb } from './userRepo';
-import { World } from './world';
-import { WorldCache } from './worldCache';
+import { World } from '../world/world';
+import { WorldCache } from '../world/worldCache';
 
 type UserWorldCacheDependencies = {
   worldCache?: WorldCache;

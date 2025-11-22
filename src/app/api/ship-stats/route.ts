@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getIronSession } from 'iron-session';
-import { getUserWorldCache } from '@/lib/server/world/userWorldCache';
-import { getResearchEffectFromTree, ResearchType } from '@/lib/server/techtree';
+import { getUserWorldCache } from '@/lib/server/user/userCache';
+import { getResearchEffectFromTree, ResearchType } from '@/lib/server/techs/techtree';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth, ApiError } from '@/lib/server/errors';
 import { USER_LOCK, WORLD_LOCK } from '@/lib/server/typedLocks';
-import { User } from '@/lib/server/world/user';
+import { User } from '@/lib/server/user/user';
 import { World } from '@/lib/server/world/world';
-import { TechFactory } from '@/lib/server/TechFactory';
+import { TechFactory } from '@/lib/server/techs/TechFactory';
 import { createLockContext, LockContext, LocksAtMostAndHas4, LocksAtMostAndHas6 } from '@markdrei/ironguard-typescript-locks';
 
 export async function GET(request: NextRequest) {

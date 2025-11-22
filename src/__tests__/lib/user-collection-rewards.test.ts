@@ -1,7 +1,7 @@
 import { describe, expect, test, vi } from 'vitest';
-import { User } from '@/lib/server/world/user';
-import { createInitialTechTree } from '@/lib/server/techtree';
-import { TechCounts } from '@/lib/server/TechFactory';
+import { User } from '@/lib/server/user/user';
+import { createInitialTechTree } from '@/lib/server/techs/techtree';
+import { TechCounts } from '@/lib/server/techs/TechFactory';
 
 // Mock save callback
 const mockSaveCallback = vi.fn().mockResolvedValue(undefined);

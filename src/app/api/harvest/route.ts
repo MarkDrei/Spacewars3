@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getIronSession } from 'iron-session';
 import { calculateToroidalDistance } from '@shared/physics';
-import { getUserWorldCache, UserWorldCache } from '@/lib/server/world/userWorldCache';
+import { getUserWorldCache, UserWorldCache } from '@/lib/server/user/userCache';
 import { sendMessageToUser } from '@/lib/server/messages/MessageCache';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth, ApiError } from '@/lib/server/errors';
 import { USER_LOCK, WORLD_LOCK } from '@/lib/server/typedLocks';
-import { User } from '@/lib/server/world/user';
+import { User } from '@/lib/server/user/user';
 import { World } from '@/lib/server/world/world';
 import { createLockContext, LockContext, LocksAtMostAndHas4, LocksAtMostAndHas6 } from '@markdrei/ironguard-typescript-locks';
 

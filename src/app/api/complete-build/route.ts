@@ -2,12 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getIronSession } from 'iron-session';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { requireAuth, handleApiError, ApiError } from '@/lib/server/errors';
-import { TechRepo } from '@/lib/server/techRepo';
+import { TechRepo } from '@/lib/server/techs/techRepo';
 import { getDatabase } from '@/lib/server/database';
-import { getUserWorldCache } from '@/lib/server/world/userWorldCache';
+import { getUserWorldCache } from '@/lib/server/user/userCache';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 import { USER_LOCK } from '@/lib/server/typedLocks';
-import { User } from '@/lib/server/world/user';
+import { User } from '@/lib/server/user/user';
 
 /**
  * POST /api/complete-build

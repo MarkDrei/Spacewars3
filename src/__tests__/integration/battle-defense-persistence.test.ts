@@ -5,9 +5,9 @@
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { BattleCache, getBattleCache } from '../../lib/server/battle/BattleCache';
-import { UserWorldCache, getUserWorldCache } from '../../lib/server/world/userWorldCache';
+import { UserWorldCache, getUserWorldCache } from '../../lib/server/user/userCache';
 import * as battleService from '../../lib/server/battle/battleService';
-import { User } from '../../lib/server/world/user';
+import { User } from '../../lib/server/user/user';
 import { BATTLE_LOCK, USER_LOCK } from '../../lib/server/typedLocks';
 import { createLockContext} from '@markdrei/ironguard-typescript-locks';
 import type { BattleStats } from '../../lib/server/battle/battleTypes';

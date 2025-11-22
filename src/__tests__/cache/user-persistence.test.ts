@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { UserWorldCache } from '@/lib/server/world/userWorldCache';
+import { UserWorldCache } from '@/lib/server/user/userCache';
 import { getDatabase } from '@/lib/server/database';
-import { createUser } from '@/lib/server/world/userRepo';
-import { saveUserToDb } from '@/lib/server/world/userRepo';
+import { createUser } from '@/lib/server/user/userRepo';
+import { saveUserToDb } from '@/lib/server/user/userRepo';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 import { USER_LOCK } from '@/lib/server/typedLocks';
 

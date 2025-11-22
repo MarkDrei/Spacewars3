@@ -11,7 +11,7 @@ import {
   triggerResearch,
   updateTechTree,
   getActiveResearch
-} from '@/lib/server/techtree';
+} from '@/lib/server/techs/techtree';
 
 describe('getResearchUpgradeCost', () => {
   test('getResearchUpgradeCost_levelIsStartLevel_returnsBaseCost', () => {

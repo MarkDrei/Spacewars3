@@ -18,14 +18,14 @@
 import { BattleRepo } from './BattleCache';
 import { BattleEngine } from './battleEngine';
 import type { Battle, BattleStats, BattleEvent, WeaponCooldowns } from './battleTypes';
-import type { User } from '../world/user';
-import { TechFactory } from '../TechFactory';
+import type { User } from '../user/user';
+import { TechFactory } from '../techs/TechFactory';
 import { ApiError } from '../errors';
-import { getUserWorldCache } from '../world/userWorldCache';
+import { getUserWorldCache } from '../user/userCache';
 import { getBattleCache } from './BattleCache';
 import { createLockContext, HasLock2Context, IronLocks, LockContext, LocksAtMost4, LocksAtMostAndHas2, LocksAtMostAndHas4 } from '@markdrei/ironguard-typescript-locks';
 import { WORLD_LOCK, USER_LOCK, DATABASE_LOCK_USERS } from '../typedLocks';
-import { getUserByIdFromDb } from '../world/userRepo';
+import { getUserByIdFromDb } from '../user/userRepo';
 
 /**
  * Maximum distance to initiate battle (same as collection distance)

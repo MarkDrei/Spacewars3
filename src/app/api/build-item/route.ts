@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getIronSession } from 'iron-session';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { requireAuth, handleApiError, validateRequired, ApiError } from '@/lib/server/errors';
-import { TechRepo } from '@/lib/server/techRepo';
-import { TechFactory } from '@/lib/server/TechFactory';
+import { TechRepo } from '@/lib/server/techs/techRepo';
+import { TechFactory } from '@/lib/server/techs/TechFactory';
 import { getDatabase } from '@/lib/server/database';
 
 /**

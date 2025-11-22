@@ -20,10 +20,10 @@ import { BattleRepo } from './BattleCache';
 import { BattleEngine } from './battleEngine';
 import { resolveBattle } from './battleService';
 import type { Battle, BattleEvent } from './battleTypes';
-import { TechFactory } from '../TechFactory';
+import { TechFactory } from '../techs/TechFactory';
 import { sendMessageToUser } from '../messages/MessageCache';
 import { getBattleCache } from './BattleCache';
-import { getUserWorldCache } from '../world/userWorldCache';
+import { getUserWorldCache } from '../user/userCache';
 import { BATTLE_LOCK, USER_LOCK } from '../typedLocks';
 import { createLockContext, LockContext, LocksAtMostAndHas2 } from '@markdrei/ironguard-typescript-locks';
 

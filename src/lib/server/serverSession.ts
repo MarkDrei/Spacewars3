@@ -2,7 +2,7 @@ import { getIronSession } from 'iron-session';
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { sessionOptions, SessionData } from './session';
-import { getUserWorldCache } from './world/userWorldCache';
+import { getUserWorldCache } from './user/userCache';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 import { USER_LOCK } from './typedLocks';
 

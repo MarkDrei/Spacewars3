@@ -4,10 +4,10 @@
 
 import sqlite3 from 'sqlite3';
 import { User, SaveUserCallback } from './user';
-import { createInitialTechTree } from '../techtree';
-import { getUserWorldCache } from './userWorldCache';
+import { createInitialTechTree } from '../techs/techtree';
+import { getUserWorldCache } from './userCache';
 import { sendMessageToUser } from '../messages/MessageCache';
-import { TechCounts } from '../TechFactory';
+import { TechCounts } from '../techs/TechFactory';
 import { LockContext, LocksAtMostAndHas4 } from '@markdrei/ironguard-typescript-locks';
 
 interface UserRow {

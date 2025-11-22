@@ -4,7 +4,7 @@ import { getIronSession } from 'iron-session';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, validateRequired, ApiError } from '@/lib/server/errors';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
-import { getUserWorldCache } from '@/lib/server/world/userWorldCache';
+import { getUserWorldCache } from '@/lib/server/user/userCache';
 import { USER_LOCK } from '@/lib/server/typedLocks';
 
 export async function POST(request: NextRequest) {

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcrypt';
 import { getIronSession } from 'iron-session';
 import { getDatabase } from '@/lib/server/database';
-import { createUser, saveUserToDb } from '@/lib/server/world/userRepo';
+import { createUser, saveUserToDb } from '@/lib/server/user/userRepo';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, validateRequired } from '@/lib/server/errors';
 

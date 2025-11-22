@@ -7,7 +7,7 @@ import {
   UserWorldCache, 
   getUserWorldCache,
   type TypedCacheConfig 
-} from '../../lib/server/world/userWorldCache';
+} from '../../lib/server/user/userCache';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 import { USER_LOCK } from '@/lib/server/typedLocks';
 import type { WorldCache } from '@/lib/server/world/worldCache';

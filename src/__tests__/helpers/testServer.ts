@@ -1,7 +1,7 @@
 import { initializeServer } from '@/lib/server/main';
 import { resetTestDatabase } from '@/lib/server/database';
 import { BattleCache } from '@/lib/server/battle/BattleCache';
-import { UserWorldCache } from '@/lib/server/world/userWorldCache';
+import { UserWorldCache } from '@/lib/server/user/userCache';
 import { WorldCache } from '@/lib/server/world/worldCache';
 import { MessageCache } from '@/lib/server/messages/MessageCache';
 

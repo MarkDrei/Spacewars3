@@ -20,7 +20,7 @@ import * as battleRepo from './battleRepo';
 import { createLockContext, HasLock13Context, HasLock2Context, IronLocks, LockContext, LocksAtMost4, LocksAtMostAndHas2 } from '@markdrei/ironguard-typescript-locks';
 import { BATTLE_LOCK, DATABASE_LOCK_BATTLES, USER_LOCK } from '../typedLocks';
 import { startBattleScheduler } from './battleScheduler';
-import { UserWorldCache } from '../world/userWorldCache';
+import { UserWorldCache } from '../user/userCache';
 import { WorldCache } from '../world/worldCache';
 import { MessageCache } from '../messages/MessageCache';
 

@@ -4,8 +4,7 @@
 
 import sqlite3 from 'sqlite3';
 import { TechCounts, TechFactory } from './TechFactory';
-import { getDatabase } from './database';
-import { sendMessageToUser } from './messages/MessageCache';
+import { sendMessageToUser } from '../messages/MessageCache';
 
 export interface BuildQueueItem {
   itemKey: string;

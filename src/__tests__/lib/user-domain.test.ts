@@ -1,6 +1,6 @@
 import { describe, expect, test, beforeEach } from 'vitest';
-import { User, SaveUserCallback } from '@/lib/server/world/user';
-import { ResearchType, triggerResearch, getResearchEffectFromTree, createInitialTechTree } from '@/lib/server/techtree';
+import { User, SaveUserCallback } from '@/lib/server/user/user';
+import { ResearchType, triggerResearch, getResearchEffectFromTree, createInitialTechTree } from '@/lib/server/techs/techtree';
 
 describe('User.updateStats with IronHarvesting research progression', () => {
   let user: User;

@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getIronSession } from 'iron-session';
-import { getUserWorldCache, UserWorldCache } from '@/lib/server/world/userWorldCache';
+import { getUserWorldCache, UserWorldCache } from '@/lib/server/user/userCache';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth, ApiError } from '@/lib/server/errors';
 import { USER_LOCK } from '@/lib/server/typedLocks';
-import { User } from '@/lib/server/world/user';
+import { User } from '@/lib/server/user/user';
 import { createLockContext, LockContext, LocksAtMostAndHas4 } from '@markdrei/ironguard-typescript-locks';
 
 export async function GET(request: NextRequest) {

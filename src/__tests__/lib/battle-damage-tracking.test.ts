@@ -11,10 +11,10 @@ import { BattleEngine } from '../../lib/server/battle/battleEngine';
 import type { Battle, BattleStats } from '../../lib/server/battle/battleTypes';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 import { BATTLE_LOCK, USER_LOCK } from '@/lib/server/typedLocks';
-import { UserWorldCache } from '@/lib/server/world/userWorldCache';
-import { User } from '@/lib/server/world/user';
-import { createInitialTechTree } from '@/lib/server/techtree';
-import { TechCounts } from '@/lib/server/TechFactory';
+import { UserWorldCache } from '@/lib/server/user/userCache';
+import { User } from '@/lib/server/user/user';
+import { createInitialTechTree } from '@/lib/server/techs/techtree';
+import { TechCounts } from '@/lib/server/techs/TechFactory';
 
 // Mock save callback for test users
 const mockSaveCallback = vi.fn().mockResolvedValue(undefined);

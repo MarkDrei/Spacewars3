@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeEach, vi, afterEach } from 'vitest';
-import { TechRepo } from '@/lib/server/techRepo';
+import { TechRepo } from '@/lib/server/techs/techRepo';
 import { sendMessageToUser } from '@/lib/server/messages/MessageCache';
 import { createTestDatabase } from '../helpers/testDatabase';
 import sqlite3 from 'sqlite3';

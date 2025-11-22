@@ -6,7 +6,7 @@ import { researchService, TechTree, ResearchDef, ResearchType } from '@/lib/clie
 import { userStatsService } from '@/lib/client/services/userStatsService';
 import { globalEvents, EVENTS } from '@/lib/client/services/eventService';
 import { ServerAuthState } from '@/lib/server/serverSession';
-import { AllResearches, getResearchUpgradeCost, getResearchEffect } from '@/lib/server/techtree';
+import { AllResearches, getResearchUpgradeCost, getResearchEffect } from '@/lib/server/techs/techtree';
 import './ResearchPage.css';
 
 const researchTypeToKey: Record<ResearchType, keyof TechTree> = {

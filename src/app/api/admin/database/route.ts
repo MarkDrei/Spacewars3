@@ -18,7 +18,7 @@ import { getDatabase } from '@/lib/server/database';
 import { getBattleCacheInitialized } from '@/lib/server/battle/BattleCache';
 import type { Battle } from '@/lib/server/battle/battleTypes';
 import { createLockContext, IronGuardManager, LOCK_2, LOCK_4 } from '@markdrei/ironguard-typescript-locks';
-import { getUserWorldCache } from '@/lib/server/world/userWorldCache';
+import { getUserWorldCache } from '@/lib/server/user/userCache';
 import { a } from 'vitest/dist/chunks/suite.d.FvehnV49.js';
 
 interface UserData {

@@ -3,7 +3,7 @@
 // ---
 
 import { describe, test, expect } from 'vitest';
-import { TechFactory, TechCounts } from '@/lib/server/TechFactory';
+import { TechFactory, TechCounts } from '@/lib/server/techs/TechFactory';
 
 describe('TechFactory.calculateWeaponDamage', () => {
   const defaultTechCounts: TechCounts = {

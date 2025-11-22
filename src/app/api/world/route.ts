@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getIronSession } from 'iron-session';
-import { getUserWorldCache } from '@/lib/server/world/userWorldCache';
+import { getUserWorldCache } from '@/lib/server/user/userCache';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth } from '@/lib/server/errors';
 import { WORLD_LOCK } from '@/lib/server/typedLocks';
