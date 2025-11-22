@@ -14,6 +14,7 @@ import { createAuthenticatedSession } from '../helpers/apiTestHelpers';
 import type { Battle, BattleStats, WeaponCooldowns } from '../../lib/server/battle/battleTypes';
 import { BATTLE_LOCK } from '@/lib/server/typedLocks';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
+import { b } from 'vitest/dist/chunks/suite.d.FvehnV49.js';
 
 describe('Phase 5: End-to-End Battle Flow with BattleCache', () => {
   
@@ -120,7 +121,7 @@ describe('Phase 5: End-to-End Battle Flow with BattleCache', () => {
         expect(defenderBattle?.id).toBe(battle.id);
   
         // Should be in active battles
-        const activeBattles = await BattleRepo.getActiveBattles();
+        const activeBattles = await BattleRepo.getActiveBattles(battleCtx);
         expect(activeBattles).toHaveLength(1);
         expect(activeBattles[0].id).toBe(battle.id);
   
@@ -130,7 +131,7 @@ describe('Phase 5: End-to-End Battle Flow with BattleCache', () => {
         
         // Instead of processing full battle rounds, just add events to test cache updates
         
-        await BattleRepo.addBattleEvent(battle.id, {
+        await BattleRepo.addBattleEvent(battleCtx, battle.id, {
           timestamp: Date.now(),
           type: 'damage_dealt',
           actor: 'attacker',
@@ -148,7 +149,7 @@ describe('Phase 5: End-to-End Battle Flow with BattleCache', () => {
         // === Phase 5: Cache Persistence (Skip scheduler test) ===
         
         // Force persistence
-        await battleCache.persistDirtyBattles();
+        await battleCache.persistDirtyBattles(battleCtx);
         
         // Reset cache and reload from DB
         BattleCache.resetInstance();
@@ -171,6 +172,7 @@ describe('Phase 5: End-to-End Battle Flow with BattleCache', () => {
             
             
             await BattleRepo.endBattle(
+              battleCtx,
               battle.id,
               attackerId, // Winner
               defenderId, // Loser
@@ -188,7 +190,7 @@ describe('Phase 5: End-to-End Battle Flow with BattleCache', () => {
             expect(endedBattle).toBeNull();
     
             // Should not appear in active battles
-            const finalActive = await BattleRepo.getActiveBattles();
+            const finalActive = await BattleRepo.getActiveBattles(battleCtx);
             expect(finalActive).toHaveLength(0);
           }
   
@@ -302,7 +304,7 @@ describe('Phase 5: End-to-End Battle Flow with BattleCache', () => {
         expect(cached2?.attackerId).toBe(userIds[2]);
 
         // Active battles should show both
-        const activeBattles = await BattleRepo.getActiveBattles();
+        const activeBattles = await BattleRepo.getActiveBattles(battleCtx);
         expect(activeBattles).toHaveLength(2);
 
         // Each user should find their own battle
@@ -348,7 +350,7 @@ describe('Phase 5: End-to-End Battle Flow with BattleCache', () => {
         );
 
         // Modify battle to make it dirty
-        await BattleRepo.addBattleEvent(battle.id, {
+        await BattleRepo.addBattleEvent(battleCtx, battle.id, {
           timestamp: Date.now(),
           type: 'damage_dealt',
           actor: 'attacker',
@@ -359,7 +361,7 @@ describe('Phase 5: End-to-End Battle Flow with BattleCache', () => {
         expect(cache.getDirtyBattleIds().includes(battle.id)).toBe(true);
 
         // Force persistence
-        await cache.persistDirtyBattles();
+        await cache.persistDirtyBattles(battleCtx);
 
         // Battle should no longer be dirty
         expect(cache.getDirtyBattleIds().includes(battle.id)).toBe(false);
@@ -433,11 +435,11 @@ describe('Phase 5: End-to-End Battle Flow with BattleCache', () => {
         const operations = [
           BattleRepo.getBattle(battleCtx, battle.id),
           BattleRepo.getOngoingBattleForUser(battleCtx, user1Id),
-          BattleRepo.getActiveBattles(),
+          BattleRepo.getActiveBattles(battleCtx),
         ];
 
         // Also test concurrent write
-        const writeOp = BattleRepo.addBattleEvent(battle.id, {
+        const writeOp = BattleRepo.addBattleEvent(battleCtx, battle.id, {
           timestamp: Date.now(),
           type: 'damage_dealt', 
           actor: 'attacker',

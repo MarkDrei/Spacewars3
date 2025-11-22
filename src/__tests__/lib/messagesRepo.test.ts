@@ -6,7 +6,6 @@ import { describe, test, expect, beforeEach, afterEach } from 'vitest';
 import { MessagesRepo } from '@/lib/server/messages/messagesRepo';
 import { getTestDatabase, closeTestDatabase, clearTestDatabase } from '../helpers/testDatabase';
 import { createLockContext, HasLock12Context, LOCK_1, LOCK_12, LockContext } from '@markdrei/ironguard-typescript-locks';
-import { L } from 'vitest/dist/chunks/environment.d.cL3nLXbE.js';
 
 describe('MessagesRepo', () => {
   let messagesRepo: MessagesRepo;
@@ -20,6 +19,7 @@ describe('MessagesRepo', () => {
   });
 
   afterEach(async () => {
+    messageDbLockContext.dispose();
     await closeTestDatabase();
   });
 
@@ -50,9 +50,9 @@ describe('MessagesRepo', () => {
 
     test('getAllMessages_hasMessages_returnsAllInDescendingOrder', async () => {
       await messagesRepo.createMessage(messageDbLockContext, 1, 'First message');
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await new Promise(resolve => setTimeout(resolve, 1));
       await messagesRepo.createMessage(messageDbLockContext, 1, 'Second message');
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await new Promise(resolve => setTimeout(resolve, 1));
       await messagesRepo.createMessage(messageDbLockContext, 1, 'Third message');
       
       const messages = await messagesRepo.getAllMessages(messageDbLockContext, 1);
@@ -217,9 +217,9 @@ describe('MessagesRepo', () => {
 
     test('getUnreadMessages_returnsInAscendingOrder', async () => {
       await messagesRepo.createMessage(messageDbLockContext, 1, 'First message');
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await new Promise(resolve => setTimeout(resolve, 1));
       await messagesRepo.createMessage(messageDbLockContext, 1, 'Second message');
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await new Promise(resolve => setTimeout(resolve, 1));
       await messagesRepo.createMessage(messageDbLockContext, 1, 'Third message');
       
       const messages = await messagesRepo.getUnreadMessages(messageDbLockContext, 1);

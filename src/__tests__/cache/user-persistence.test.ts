@@ -35,12 +35,9 @@ describe('User Persistence to Database', () => {
       user.techCounts.pulse_laser = 10;
       
       userWorldCache.updateUserInCache(userCtx, user);
+      // Force flush to database
+      await userWorldCache.flushAllToDatabase(userCtx);
     });
-  
-    
-    
-    // Force flush to database
-    await userWorldCache.flushAllToDatabase(emptyCtx);
     
     // Assert: Read directly from database to verify persistence
     const userFromDb = await new Promise<{ iron: number; pulse_laser: number }>((resolve, reject) => {

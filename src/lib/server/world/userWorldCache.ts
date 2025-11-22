@@ -275,9 +275,9 @@ export class UserWorldCache {
     // Check cache first
     let user = this.getUserByIdFromCache(context, userId);
 
-    if (user) {
-      console.log(`👤 User ${userId} cache hit`);
-    }
+    // if (user) {
+    //   console.log(`👤 User ${userId} cache hit`);
+    // }
 
     if (!user) {
       console.log(`🔍 User ${userId} cache miss, loading from database`);
@@ -323,9 +323,9 @@ export class UserWorldCache {
     let user: User | null = null;
     if (cachedUserId) {
       user = this.getUserByIdFromCache(context, cachedUserId);
-      if (user) {
-        console.log(`👤 Username "${username}" cache hit for user ID ${cachedUserId}`);
-      }
+      // if (user) {
+      //   console.log(`👤 Username "${username}" cache hit for user ID ${cachedUserId}`);
+      // }
     }
 
     if (!user) {
@@ -384,7 +384,7 @@ export class UserWorldCache {
    * Force flush all dirty data to database
    * Useful for ensuring data is persisted before reading directly from DB
    */
-  async flushAllToDatabase(context: LockContext<LocksAtMost4>): Promise<void> {
+  async flushAllToDatabase(context: LockContext<LocksAtMostAndHas4>): Promise<void> {
     await this.ensureInitialized();
     
     console.log('🔄 Flushing all dirty data to database...');
@@ -392,13 +392,13 @@ export class UserWorldCache {
     // Persist dirty users
     if (this.dirtyUsers.size > 0) {
       console.log(`💾 Flushing ${this.dirtyUsers.size} dirty user(s)`);
-      await this.persistDirtyUsers();
+      await this.persistDirtyUsers(context);
     }
     
     // Persist dirty world data
     if (this.worldDirty) {
       console.log('💾 Flushing world data');
-      await this.persistDirtyWorld();
+      await this.persistDirtyWorld(context);
     }
     
     // Flush messages via MessageCache (imported dynamically to avoid circular dependencies)
@@ -412,29 +412,27 @@ export class UserWorldCache {
   /**
    * Manually persist all dirty users to database
    */
-  private async persistDirtyUsers(): Promise<void> {
-    const ctx = createLockContext();
-    await ctx.useLockWithAcquire(USER_LOCK, async (userContext) => {
-      await userContext.useLockWithAcquire(LOCK_10, async () => {
-        const dirtyUserIds = Array.from(this.dirtyUsers);
-        
-        if (dirtyUserIds.length === 0) {
-          return;
+  private async persistDirtyUsers(context: LockContext<LocksAtMost4>): Promise<void> {
+    await context.useLockWithAcquire(LOCK_10, async () => {
+      const dirtyUserIds = Array.from(this.dirtyUsers);
+      
+      if (dirtyUserIds.length === 0) {
+        return;
+      }
+      
+      console.log(`💾 Persisting ${dirtyUserIds.length} dirty user(s) to database...`);
+      
+      for (const userId of dirtyUserIds) {
+        const user = this.users.get(userId);
+        if (user) {
+          await this.persistUserToDb(user);
         }
-        
-        console.log(`💾 Persisting ${dirtyUserIds.length} dirty user(s) to database...`);
-        
-        for (const userId of dirtyUserIds) {
-          const user = this.users.get(userId);
-          if (user) {
-            await this.persistUserToDb(user);
-          }
-        }
-        
-        this.dirtyUsers.clear();
-        console.log('✅ Dirty users persisted to database');
-      });
+      }
+      
+      this.dirtyUsers.clear();
+      console.log('✅ Dirty users persisted to database');
     });
+
   }
 
   /**
@@ -499,23 +497,20 @@ export class UserWorldCache {
   /**
    * Manually persist dirty world data to database
    */
-  private async persistDirtyWorld(): Promise<void> {
+  private async persistDirtyWorld(context: LockContext<LocksAtMostAndHas4>): Promise<void> {
     if (!this.worldDirty || !this.world) {
       return; // Nothing to persist
     }
 
-    const ctx = createLockContext();
-    await ctx.useLockWithAcquire(WORLD_LOCK, async (worldContext) => {
-      await worldContext.useLockWithAcquire(LOCK_11, async () => {
-        if (!this.db) throw new Error('Database not initialized');
-        
-        console.log('💾 Persisting world data to database...');
-        const saveCallback = saveWorldToDb(this.db);
-        await saveCallback(this.world!);
-        
-        this.worldDirty = false;
-        console.log('✅ World data persisted to database');
-      });
+    await context.useLockWithAcquire(LOCK_11, async () => {
+      if (!this.db) throw new Error('Database not initialized');
+      
+      console.log('💾 Persisting world data to database...');
+      const saveCallback = saveWorldToDb(this.db);
+      await saveCallback(this.world!);
+      
+      this.worldDirty = false;
+      console.log('✅ World data persisted to database');
     });
   }
 
@@ -532,7 +527,10 @@ export class UserWorldCache {
     
     this.persistenceTimer = setInterval(async () => {
       try {
-        await this.backgroundPersist();
+        const ctx = createLockContext();
+        ctx.useLockWithAcquire(USER_LOCK, async (userContext) => {
+          await this.backgroundPersist(userContext);
+        });
       } catch (error) {
         console.error('❌ Background persistence error:', error);
       }
@@ -565,17 +563,17 @@ export class UserWorldCache {
   /**
    * Background persistence operation
    */
-  private async backgroundPersist(): Promise<void> {
+  private async backgroundPersist(context: LockContext<LocksAtMostAndHas4>): Promise<void> {
     // Persist dirty users
     if (this.dirtyUsers.size > 0) {
       console.log(`💾 Background persisting ${this.dirtyUsers.size} dirty user(s)`);
-      await this.persistDirtyUsers();
+      await this.persistDirtyUsers(context);
     }
 
     // Persist dirty world data
     if (this.worldDirty) {
       console.log('💾 Background persisting world data...');
-      await this.persistDirtyWorld();
+      await this.persistDirtyWorld(context);
     }
     
     // Note: Messages are persisted by MessageCache independently
@@ -583,10 +581,11 @@ export class UserWorldCache {
 
   /**
    * Shutdown the cache manager
+   * Currently only used in tests
    */
   async shutdown(): Promise<void> {
     const ctx = createLockContext();
-    await ctx.useLockWithAcquire(USER_LOCK, async () => {
+    await ctx.useLockWithAcquire(USER_LOCK, async (userContext) => {
       console.log('🔄 Shutting down typed cache manager...');
       
       // Stop background persistence
@@ -595,13 +594,13 @@ export class UserWorldCache {
       // Final persist of any dirty data
       if (this.dirtyUsers.size > 0) {
         console.log('💾 Final persist of dirty users before shutdown');
-        await this.persistDirtyUsers();
+        await this.persistDirtyUsers(userContext);
       }
       
       // Final persist of dirty world data before shutdown
       if (this.worldDirty) {
         console.log('💾 Final persist of world data before shutdown');
-        await this.persistDirtyWorld();
+        await this.persistDirtyWorld(userContext);
       }
       
       this.isInitialized = false;

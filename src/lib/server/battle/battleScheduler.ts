@@ -56,15 +56,11 @@ async function createMessage(userId: number, message: string): Promise<void> {
  * Process all active battles automatically  
  * Acquires BATTLE write lock once for all battle processing
  */
-export async function processActiveBattles(): Promise<void> {
+export async function processActiveBattles(context: LockContext<LocksAtMostAndHas2>): Promise<void> {
   try {
-    // Acquire BATTLE write lock for the entire processing cycle
-    // This prevents concurrent scheduler ticks from interfering
-    const ctx = createLockContext();
-    await ctx.useLockWithAcquire(BATTLE_LOCK, async (battleContext) => {
       const battleCache = getBattleCache();
       // Pass battleContext so getActiveBattles doesn't try to acquire another lock
-      const activeBattles = await battleCache.getActiveBattles(battleContext);
+      const activeBattles = await battleCache.getActiveBattles(context);
       
       if (activeBattles.length === 0) {
         return;
@@ -74,12 +70,11 @@ export async function processActiveBattles(): Promise<void> {
       
       for (const battle of activeBattles) {
         try {
-          await processBattleRoundInternal(battleContext, battle.id);
+          await processBattleRoundInternal(context, battle.id);
         } catch (error) {
           console.error(`❌ Error processing battle ${battle.id}:`, error);
         }
       }
-    });
   } catch (error) {
     console.error('❌ Error processing active battles:', error);
   }
@@ -207,7 +202,7 @@ async function fireWeapon(
       }
     };
     
-    await BattleRepo.addBattleEvent(battle.id, missEvent);
+    await BattleRepo.addBattleEvent(context, battle.id, missEvent);
     
     // Send message to both players
     await createMessage(attackerId, `Your ${weaponType.replace(/_/g, ' ')} fired ${shotsPerSalvo} shot(s) but all missed!`);
@@ -215,7 +210,7 @@ async function fireWeapon(
     
     // Update cooldown - set to when weapon will be ready next
     const nextReadyTime = currentTime + (weaponSpec.cooldown || 5);
-    await BattleRepo.setWeaponCooldown(battle.id, attackerId, weaponType, nextReadyTime);
+    await BattleRepo.setWeaponCooldown(context, battle.id, attackerId, weaponType, nextReadyTime);
     
     return;
   }
@@ -239,7 +234,7 @@ async function fireWeapon(
   const remainingHull = damageResult.remainingHull;
   
   // Track total damage dealt by attacker/attackee
-  await BattleRepo.updateTotalDamage(battle.id, attackerId, totalDamage);
+  await BattleRepo.updateTotalDamage(context, battle.id, attackerId, totalDamage);
   
   // Create battle event
   const hitEvent: BattleEvent = {
@@ -258,7 +253,7 @@ async function fireWeapon(
     }
   };
   
-  await BattleRepo.addBattleEvent(battle.id, hitEvent);
+  await BattleRepo.addBattleEvent(context, battle.id, hitEvent);
   
   // Format defense status for messages - ALWAYS show all three defense values
   const defenseStatus = `Hull: ${remainingHull}, Armor: ${remainingArmor}, Shield: ${remainingShield}`;
@@ -272,7 +267,7 @@ async function fireWeapon(
   
   // Update cooldown - set to when weapon will be ready next
   const nextReadyTime = currentTime + (weaponSpec.cooldown || 5);
-  await BattleRepo.setWeaponCooldown(battle.id, attackerId, weaponType, nextReadyTime);
+  await BattleRepo.setWeaponCooldown(context, battle.id, attackerId, weaponType, nextReadyTime);
   
   console.log(`⚔️ Battle ${battle.id}: User ${attackerId} ${weaponType} - ${hits}/${shotsPerSalvo} hits, ${totalDamage} damage`);
 }
@@ -290,9 +285,12 @@ export function startBattleScheduler(intervalMs: number = 1000): void {
   
   console.log(`⚔️ Starting battle scheduler (interval: ${intervalMs}ms)`);
   
-  schedulerInterval = setInterval(() => {
-    processActiveBattles().catch(error => {
-      console.error('❌ Battle scheduler error:', error);
+  schedulerInterval = setInterval(async () => {
+    const ctx = createLockContext();
+    await ctx.useLockWithAcquire(BATTLE_LOCK, async (battleContext) => {
+      await processActiveBattles(battleContext).catch(error => {
+        console.error('❌ Battle scheduler error:', error);
+      });
     });
   }, intervalMs);
 }

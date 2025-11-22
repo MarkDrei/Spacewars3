@@ -152,14 +152,12 @@ describe('Phase 5: BattleCache Integration Testing', () => {
       console.log('🔄 Loading battle from database...');
 
       // Load battle (should come from database)
-      await createLockContext().useLockWithAcquire(BATTLE_LOCK, async (battleContext) => {
-        const loadedBattle = await freshCache.loadBattleIfNeeded(battleContext, battle.id);
+      const loadedBattle = await freshCache.loadBattleIfNeeded(battleCtx, battle.id);
 
-        expect(loadedBattle).toBeDefined();
-        expect(loadedBattle?.id).toBe(battle.id);
-        expect(loadedBattle?.attackerId).toBe(attackerId);
-        expect(loadedBattle?.attackeeId).toBe(defenderId);
-      });
+      expect(loadedBattle).toBeDefined();
+      expect(loadedBattle?.id).toBe(battle.id);
+      expect(loadedBattle?.attackerId).toBe(attackerId);
+      expect(loadedBattle?.attackeeId).toBe(defenderId);
       
 
         // Should now be in cache
@@ -250,7 +248,7 @@ describe('Phase 5: BattleCache Integration Testing', () => {
         };
 
         // Initially no active battles
-        let activeBattles = await BattleRepo.getActiveBattles();
+        let activeBattles = await BattleRepo.getActiveBattles(battleCtx);
         expect(activeBattles).toHaveLength(0);
 
         console.log('🔄 Creating multiple battles...');
@@ -261,7 +259,7 @@ describe('Phase 5: BattleCache Integration Testing', () => {
           1, 2, stats, stats, cooldowns, cooldowns
         );
 
-        activeBattles = await BattleRepo.getActiveBattles();
+        activeBattles = await BattleRepo.getActiveBattles(battleCtx);
         expect(activeBattles).toHaveLength(1);
         expect(activeBattles[0].id).toBe(battle1.id);
 
@@ -271,7 +269,7 @@ describe('Phase 5: BattleCache Integration Testing', () => {
           3, 4, stats, stats, cooldowns, cooldowns
         );
 
-        activeBattles = await BattleRepo.getActiveBattles();
+        activeBattles = await BattleRepo.getActiveBattles(battleCtx);
         expect(activeBattles).toHaveLength(2);
         
         const battleIds = activeBattles.map(b => b.id);
@@ -320,7 +318,7 @@ describe('Phase 5: BattleCache Integration Testing', () => {
         console.log('🧹 Initial dirty battles:', initialDirtyBattles.length);
 
         // Add battle event
-        await BattleRepo.addBattleEvent(battle.id, {
+        await BattleRepo.addBattleEvent(battleCtx, battle.id, {
           timestamp: Date.now(),
           type: 'damage_dealt',
           actor: 'attacker',
@@ -385,13 +383,14 @@ describe('Phase 5: BattleCache Integration Testing', () => {
         // Verify battle is in cache and active
         expect(battleCache.getBattleFromCache(battle.id)).toBeDefined();
         
-        const activeBefore = await BattleRepo.getActiveBattles();
+        const activeBefore = await BattleRepo.getActiveBattles(battleCtx);
         expect(activeBefore).toHaveLength(1);
 
         console.log('🏁 Ending battle...');
 
         // End battle
         await BattleRepo.endBattle(
+          battleCtx,
           battle.id,
           1, // Winner
           2, // Loser
@@ -403,7 +402,7 @@ describe('Phase 5: BattleCache Integration Testing', () => {
         expect(battleCache.getBattleFromCache(battle.id)).toBeNull();
 
         // Should not appear in active battles
-        const activeAfter = await BattleRepo.getActiveBattles();
+        const activeAfter = await BattleRepo.getActiveBattles(battleCtx);
         expect(activeAfter).toHaveLength(0);
 
         console.log('✅ Battle ending and cache removal working correctly');

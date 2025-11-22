@@ -326,7 +326,7 @@ export async function initiateBattle(
     }
   };
   
-  await BattleRepo.addBattleEvent(battle.id, startEvent);
+  await BattleRepo.addBattleEvent(context, battle.id, startEvent);
   
   console.log(`⚔️ Battle ${battle.id} started: User ${attacker.id} vs User ${attackee.id}`);
   
@@ -339,6 +339,7 @@ export async function initiateBattle(
 export async function updateBattle(context: LockContext<LocksAtMostAndHas2>, battleId: number): Promise<Battle> {
   const battle = await BattleRepo.getBattle(context, battleId);
   
+  console.log(`⚔️ BattleService.updateBattle(): 1: Processing battle ${battleId}`); // TODO: Remove debug
   if (!battle) {
     throw new ApiError(404, 'Battle not found');
   }
@@ -356,12 +357,12 @@ export async function updateBattle(context: LockContext<LocksAtMostAndHas2>, bat
   
   // Save events to database
   for (const event of events) {
-    await BattleRepo.addBattleEvent(battleId, event);
+    await BattleRepo.addBattleEvent(context, battleId, event);
   }
   
   // Update weapon cooldowns
-  await BattleRepo.updateWeaponCooldowns(battleId, battle.attackerId, battle.attackerWeaponCooldowns);
-  await BattleRepo.updateWeaponCooldowns(battleId, battle.attackeeId, battle.attackeeWeaponCooldowns);
+  await BattleRepo.updateWeaponCooldowns(context, battleId, battle.attackerId, battle.attackerWeaponCooldowns);
+  await BattleRepo.updateWeaponCooldowns(context, battleId, battle.attackeeId, battle.attackeeWeaponCooldowns);
   
   // Note: Defense values are updated directly in User objects during combat
   // We don't need to call updateBattleDefenses here anymore
@@ -458,7 +459,7 @@ export async function resolveBattle(
       }
     };
     
-    await BattleRepo.addBattleEvent(battleId, endEvent);
+    await BattleRepo.addBattleEvent(context, battleId, endEvent);
   } catch (error) {
     console.error(`⚠️ Failed to log battle end event for battle ${battleId}:`, error);
     // Continue with battle resolution even if event logging fails
@@ -466,6 +467,7 @@ export async function resolveBattle(
   
   // End the battle in database (this removes it from cache)
   await BattleRepo.endBattle(
+    context,
     battleId,
     winnerId,
     loserId,

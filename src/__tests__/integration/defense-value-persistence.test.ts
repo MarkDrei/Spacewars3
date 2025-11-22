@@ -135,7 +135,9 @@ describe('Defense Value Persistence After Battle', () => {
     
         // === Phase 5: Verify Defense Values Persisted ===
         // Flush cache to ensure values are written to DB
-        await userWorldCache.flushAllToDatabase(battleContext);
+        await battleContext.useLockWithAcquire(USER_LOCK, async (userContext) => {
+          await userWorldCache.flushAllToDatabase(userContext);
+        });
     
         // Clear cache and reload users from DB
         UserWorldCache.resetInstance();
@@ -161,9 +163,6 @@ describe('Defense Value Persistence After Battle', () => {
         const defenderDestroyed = reloadedDefender?.hullCurrent === 0;
         expect(attackerDestroyed || defenderDestroyed).toBe(true);
     });
-    
 
-
-    console.log('✅ Defense values persisted correctly after battle');
   });
 });

@@ -3,6 +3,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { BattleCache, getBattleCache } from '../../lib/server/battle/BattleCache';
 import { UserWorldCache, getUserWorldCache } from '../../lib/server/world/userWorldCache';
 import { createTestDatabase } from '../helpers/testDatabase';
+import { BATTLE_LOCK } from '@/lib/server/typedLocks';
+import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 
 describe('BattleCache Debug Tests', () => {
   beforeEach(async () => {
@@ -28,75 +30,56 @@ describe('BattleCache Debug Tests', () => {
   });
 
   it('debug_userWorldCacheInitialization_initializesBattleCache', async () => {
-    console.log('🔍 Starting debug test...');
     
     const userWorldCache = getUserWorldCache();
-    console.log('📋 Got cache manager');
     
-    const battleCacheBefore = getBattleCache();
-    console.log('⚔️ Got battle cache before init');
-    
-    try {
-      console.log('🚀 Calling userWorldCache.initialize()...');
-      await userWorldCache.initialize();
-      console.log('✅ Cache manager initialization complete');
-    } catch (error) {
-      console.error('❌ Cache manager initialization failed:', error);
-      throw error;
-    }
-    
-    // Manually initialize BattleCache for tests (since test database doesn't auto-init)
-    const battleCacheAfter = getBattleCache();
-    console.log('⚔️ Got battle cache after init');
-    
-    try {
-      console.log('🚀 Manually initializing BattleCache with test database...');
-      const db = await userWorldCache.getDatabaseConnection();
-      await battleCacheAfter.initialize(db);
-      console.log('✅ BattleCache manual initialization complete');
-    } catch (error) {
-      console.error('❌ BattleCache manual initialization failed:', error);
-      throw error;
-    }
-    
-    // Test if BattleCache is initialized
-    try {
-      console.log('🔍 Testing BattleCache.getActiveBattles()...');
-      const activeBattles = await battleCacheAfter.getActiveBattles();
-      console.log('✅ BattleCache.getActiveBattles() works, found:', activeBattles.length, 'battles');
-      expect(activeBattles).toBeDefined();
-      expect(Array.isArray(activeBattles)).toBe(true);
-    } catch (error) {
-      console.error('❌ BattleCache.getActiveBattles() failed:', error);
-      throw error;
-    }
-    
-    console.log('🎉 Debug test completed successfully');
+    await userWorldCache.initialize();
+
+    const emptyCtx = createLockContext();
+    await emptyCtx.useLockWithAcquire(BATTLE_LOCK, async (battleContext) => {
+      // Manually initialize BattleCache for tests (since test database doesn't auto-init)
+      const battleCacheAfter = getBattleCache();
+      console.log('⚔️ Got battle cache after init');
+      
+      try {
+        console.log('🚀 Manually initializing BattleCache with test database...');
+        const db = await userWorldCache.getDatabaseConnection();
+        await battleCacheAfter.initialize(db);
+        console.log('✅ BattleCache manual initialization complete');
+      } catch (error) {
+        console.error('❌ BattleCache manual initialization failed:', error);
+        throw error;
+      }
+      
+      // Test if BattleCache is initialized
+      try {
+        console.log('🔍 Testing BattleCache.getActiveBattles()...');
+        const activeBattles = await battleCacheAfter.getActiveBattles(battleContext);
+        console.log('✅ BattleCache.getActiveBattles() works, found:', activeBattles.length, 'battles');
+        expect(activeBattles).toBeDefined();
+        expect(Array.isArray(activeBattles)).toBe(true);
+      } catch (error) {
+        console.error('❌ BattleCache.getActiveBattles() failed:', error);
+        throw error;
+      }
+    });
   });
 
   it('debug_battleCacheAutoInitialization_works', async () => {
-    console.log('🔍 Testing BattleCache auto-initialization...');
     
     // First initialize the cache manager (for database)
     const userWorldCache = getUserWorldCache();
     await userWorldCache.initialize();
-    console.log('✅ Cache manager initialized');
-    
-    // Get BattleCache and test auto-initialization
-    const battleCache = getBattleCache();
-    console.log('⚔️ Got BattleCache instance');
-    
-    try {
-      console.log('🔍 Testing BattleCache.getActiveBattles() with auto-initialization...');
-      const activeBattles = await battleCache.getActiveBattles();
-      console.log('✅ BattleCache.getActiveBattles() works, found:', activeBattles.length, 'battles');
+
+    const emptyCtx = createLockContext();
+    await emptyCtx.useLockWithAcquire(BATTLE_LOCK, async (battleContext) => {
+      // Get BattleCache and test auto-initialization
+      const battleCache = getBattleCache();
+      
+      const activeBattles = await battleCache.getActiveBattles(battleContext);
       expect(activeBattles).toBeDefined();
       expect(Array.isArray(activeBattles)).toBe(true);
-    } catch (error) {
-      console.error('❌ BattleCache.getActiveBattles() failed:', error);
-      throw error;
-    }
-    
-    console.log('🎉 Auto-initialization test completed successfully');
+    });
+
   });
 });

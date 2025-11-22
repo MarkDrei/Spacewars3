@@ -83,6 +83,7 @@ async function createTestBattle(
     };
   
     await endBattle(
+      battleContext,
       battle.id,
       winnerId,
       loserId,
