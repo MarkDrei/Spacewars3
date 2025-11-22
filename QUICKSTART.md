@@ -175,4 +175,4 @@ Once the server is running:
 **Need Help?** 
 - Check [DOCKER.md](DOCKER.md) for detailed Docker guide
 - Check [README.md](README.md) for full project documentation
-- Open an issue on GitHub
+- Open an issue at https://github.com/MarkDrei/Spacewars3/issues

@@ -44,8 +44,7 @@ COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/package.json ./package.json
 
-# Copy scripts if they exist
-COPY --from=builder /app/scripts ./scripts
+# Note: scripts directory not needed in production runtime
 
 # Switch to non-root user
 USER nextjs

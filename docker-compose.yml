@@ -17,7 +17,7 @@ services:
       - ./database:/app/database
     environment:
       - NODE_ENV=development
-      - SESSION_SECRET=${SESSION_SECRET:-dev-secret-change-in-production}
+      - SESSION_SECRET=${SESSION_SECRET:-CHANGE_ME_IN_PRODUCTION_NEVER_USE_THIS_DEFAULT}
       - HOSTNAME=0.0.0.0
     command: npm run dev
     stdin_open: true
@@ -35,5 +35,5 @@ services:
       - ./database:/app/database
     environment:
       - NODE_ENV=production
-      - SESSION_SECRET=${SESSION_SECRET:-dev-secret-change-in-production}
+      - SESSION_SECRET=${SESSION_SECRET:-CHANGE_ME_IN_PRODUCTION_NEVER_USE_THIS_DEFAULT}
       - HOSTNAME=0.0.0.0
