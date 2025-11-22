@@ -3,7 +3,7 @@
 // ---
 
 import { TechTree, ResearchType, getResearchEffectFromTree, createInitialTechTree, updateTechTree } from '..//techs/techtree';
-import { TechCounts } from '../techs/TechFactory';
+import { TechCounts, BuildQueueItem } from '../techs/TechFactory';
 
 class User {
   id: number;
@@ -14,17 +14,21 @@ class User {
   techTree: TechTree;
   ship_id?: number; // Optional ship ID for linking to player's ship
   techCounts: TechCounts; // Tech counts for weapons and defense
-  
+
   // Defense current values (persisted)
   hullCurrent: number;
   armorCurrent: number;
   shieldCurrent: number;
   defenseLastRegen: number; // Timestamp in seconds for regeneration tracking
-  
+
   // Battle state (persisted)
   inBattle: boolean;
   currentBattleId: number | null;
-  
+
+  // Build queue (persisted)
+  buildQueue: BuildQueueItem[];
+  buildStartSec: number | null;
+
   // TODO: Need to figure out where this is implemented: Should we use locks here?
   private saveCallback: SaveUserCallback;
 
@@ -43,6 +47,8 @@ class User {
     defenseLastRegen: number,
     inBattle: boolean,
     currentBattleId: number | null,
+    buildQueue: BuildQueueItem[],
+    buildStartSec: number | null,
     ship_id?: number
   ) {
     this.id = id;
@@ -58,6 +64,8 @@ class User {
     this.defenseLastRegen = defenseLastRegen;
     this.inBattle = inBattle;
     this.currentBattleId = currentBattleId;
+    this.buildQueue = buildQueue;
+    this.buildStartSec = buildStartSec;
     this.ship_id = ship_id;
     this.saveCallback = saveCallback;
   }
@@ -106,7 +114,7 @@ class User {
     }
     this.iron = iron;
     this.last_updated = now;
-    
+
     // Also update defense values (regeneration)
     this.updateDefenseValues(now);
   }
@@ -129,7 +137,7 @@ class User {
     this.hullCurrent = Math.min(this.hullCurrent + elapsed, maxHull);
     this.armorCurrent = Math.min(this.armorCurrent + elapsed, maxArmor);
     this.shieldCurrent = Math.min(this.shieldCurrent + elapsed, maxShield);
-    
+
     // Update last regeneration timestamp
     this.defenseLastRegen = now;
   }
@@ -144,31 +152,31 @@ class User {
    */
   collected(objectType: 'asteroid' | 'shipwreck' | 'escape_pod'): void {
     let ironReward = 0;
-    
+
     switch (objectType) {
       case 'asteroid':
         // Asteroids yield between 50-250 iron
         ironReward = Math.floor(Math.random() * (250 - 50 + 1)) + 50;
         break;
-        
+
       case 'shipwreck':
         // Shipwrecks yield between 50-1000 iron
         ironReward = Math.floor(Math.random() * (1000 - 50 + 1)) + 50;
         break;
-        
+
       case 'escape_pod':
         // Escape pods do nothing for now
         ironReward = 0;
         break;
-        
+
       default:
         console.warn(`Unknown object type collected: ${objectType}`);
         ironReward = 0;
     }
-    
+
     // Award the iron
     this.iron += ironReward;
-    
+
     console.log(`User ${this.username} collected a ${objectType} and received ${ironReward} iron (total: ${this.iron})`);
   }
 }

@@ -57,7 +57,9 @@ function createTestUser(
     shieldCurrent,
     Math.floor(Date.now() / 1000),
     true, // inBattle
-    null // currentBattleId
+    null, // currentBattleId
+    [], // buildQueue
+    null // buildStartSec
   );
 }
 
@@ -73,14 +75,14 @@ describe('Battle Damage Tracking', () => {
       logStats: false
     });
     const cache = userCache.getInstance2();
-    
+
     // Note: We don't call initialize() because we don't want to connect to the database
     // Instead, we'll directly populate the cache with test users
-    
+
     // Create mock users for battle testing
     const attacker = createTestUser(1, 'attacker');
     const defender = createTestUser(2, 'defender');
-    
+
     // Pre-populate cache with test users (using USER_LOCK)
     const ctx = createLockContext();
     await ctx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
@@ -141,7 +143,7 @@ describe('Battle Damage Tracking', () => {
     await emptyCtx.useLockWithAcquire(BATTLE_LOCK, async (battleCtx) => {
       // Act - Attacker fires weapon (async now)
       await engine.executeTurn(battleCtx, currentTime);
-  
+
       // Assert - Total damage should be tracked in battle object
       const updatedBattle = engine.getBattle();
       // Damage depends on weapon specs (5 weapons with configured damage)
@@ -163,14 +165,14 @@ describe('Battle Damage Tracking', () => {
       expect(event1).not.toBeNull();
       const firstAttackerDamage = engine.getBattle().attackerTotalDamage;
       expect(firstAttackerDamage).toBeGreaterThan(0);
-      
+
       // Weapon cooldown is now set to baseTime, so need to wait cooldown period
       const event2 = await engine.executeTurn(battleCtx, baseTime + 10); // Enough time for both to be ready
       expect(event2).not.toBeNull();
-      
+
       const event3 = await engine.executeTurn(battleCtx, baseTime + 20); // Another turn
       expect(event3).not.toBeNull();
-  
+
       // Assert - Damage accumulates over multiple rounds
       const updatedBattle = engine.getBattle();
       // At least 3 shots were fired, so total damage should be at least firstAttackerDamage
@@ -184,7 +186,7 @@ describe('Battle Damage Tracking', () => {
   it('damageTracking_newBattle_startsAtZero', () => {
     // Arrange
     const battle = createTestBattle();
-    
+
     // Assert
     expect(battle.attackerTotalDamage).toBe(0);
     expect(battle.attackeeTotalDamage).toBe(0);

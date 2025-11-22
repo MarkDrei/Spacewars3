@@ -5,10 +5,8 @@
 import sqlite3 from 'sqlite3';
 import { User, SaveUserCallback } from './user';
 import { createInitialTechTree } from '../techs/techtree';
-import { getUserWorldCache } from './userCache';
 import { sendMessageToUser } from '../messages/MessageCache';
-import { TechCounts } from '../techs/TechFactory';
-import { LockContext, LocksAtMostAndHas4 } from '@markdrei/ironguard-typescript-locks';
+import { TechCounts, BuildQueueItem } from '../techs/TechFactory';
 
 interface UserRow {
   id: number;
@@ -38,6 +36,9 @@ interface UserRow {
   // Battle state
   in_battle?: number; // SQLite stores boolean as 0/1
   current_battle_id?: number | null;
+  // Build queue
+  build_queue?: string;
+  build_start_sec?: number | null;
 }
 
 function userFromRow(row: UserRow, saveCallback: SaveUserCallback): User {
@@ -51,7 +52,7 @@ function userFromRow(row: UserRow, saveCallback: SaveUserCallback): User {
   } catch {
     techTree = createInitialTechTree();
   }
-  
+
   // Extract tech counts from row
   const techCounts: TechCounts = {
     pulse_laser: row.pulse_laser || 0,
@@ -65,17 +66,28 @@ function userFromRow(row: UserRow, saveCallback: SaveUserCallback): User {
     energy_shield: row.energy_shield || 0,
     missile_jammer: row.missile_jammer || 0
   };
-  
+
   // Extract defense current values, with fallback to max/2 for migration
   const hullCurrent = row.hull_current !== undefined ? row.hull_current : (techCounts.ship_hull * 100) / 2;
   const armorCurrent = row.armor_current !== undefined ? row.armor_current : (techCounts.kinetic_armor * 100) / 2;
   const shieldCurrent = row.shield_current !== undefined ? row.shield_current : (techCounts.energy_shield * 100) / 2;
   const defenseLastRegen = row.defense_last_regen || row.last_updated;
-  
+
   // Extract battle state, with fallback for migration
   const inBattle = row.in_battle ? row.in_battle === 1 : false;
   const currentBattleId = row.current_battle_id || null;
-  
+
+  // Extract build queue
+  let buildQueue: BuildQueueItem[] = [];
+  try {
+    if (row.build_queue) {
+      buildQueue = JSON.parse(row.build_queue);
+    }
+  } catch {
+    buildQueue = [];
+  }
+  const buildStartSec = row.build_start_sec || null;
+
   return new User(
     row.id,
     row.username,
@@ -91,6 +103,8 @@ function userFromRow(row: UserRow, saveCallback: SaveUserCallback): User {
     defenseLastRegen,
     inBattle,
     currentBattleId,
+    buildQueue,
+    buildStartSec,
     row.ship_id
   );
 }
@@ -128,28 +142,28 @@ async function createUserWithShip(db: sqlite3.Database, username: string, passwo
   return new Promise((resolve, reject) => {
     const now = Math.floor(Date.now() / 1000);
     const techTree = createInitialTechTree();
-    
+
     if (createShip) {
       // Create user with ship (production behavior)
       const nowMs = Date.now();
-      
+
       // First create a player ship
-      db.run('INSERT INTO space_objects (type, x, y, speed, angle, last_position_update_ms) VALUES (?, ?, ?, ?, ?, ?)', 
+      db.run('INSERT INTO space_objects (type, x, y, speed, angle, last_position_update_ms) VALUES (?, ?, ?, ?, ?, ?)',
         ['player_ship', 250, 250, 0, 0, nowMs], // Start at center of 500x500 world
         function (shipErr) {
           if (shipErr) return reject(shipErr);
-          
+
           const shipId = this.lastID;
-          
+
           // Then create the user with the ship_id (with default defense values)
-          db.run('INSERT INTO users (username, password_hash, iron, last_updated, tech_tree, ship_id, hull_current, armor_current, shield_current, defense_last_regen) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', 
-            [username, password_hash, 0.0, now, JSON.stringify(techTree), shipId, 250.0, 250.0, 250.0, now], 
+          db.run('INSERT INTO users (username, password_hash, iron, last_updated, tech_tree, ship_id, hull_current, armor_current, shield_current, defense_last_regen) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [username, password_hash, 0.0, now, JSON.stringify(techTree), shipId, 250.0, 250.0, 250.0, now],
             async function (userErr) {
               if (userErr) return reject(userErr);
-              
+
               const userId = this.lastID;
               console.log(`✅ Created user ${username} (ID: ${userId}) with ship ID ${shipId}`);
-              
+
               // Create the user object with default tech counts
               const defaultTechCounts: TechCounts = {
                 pulse_laser: 5,
@@ -163,11 +177,11 @@ async function createUserWithShip(db: sqlite3.Database, username: string, passwo
                 energy_shield: 5,
                 missile_jammer: 0
               };
-              const user = new User(userId, username, password_hash, 0.0, now, techTree, saveCallback, defaultTechCounts, 250.0, 250.0, 250.0, now, false, null, shipId);
-              
+              const user = new User(userId, username, password_hash, 0.0, now, techTree, saveCallback, defaultTechCounts, 250.0, 250.0, 250.0, now, false, null, [], null, shipId);
+
               // Send welcome message to new user
               await sendMessageToUser(userId, `Welcome to Spacewars, ${username}! Your journey among the stars begins now. Navigate wisely and collect resources to upgrade your ship.`);
-              
+
               try {
                 // Note: User creation doesn't need immediate caching since
                 // the API endpoints will load and cache users as needed
@@ -183,12 +197,12 @@ async function createUserWithShip(db: sqlite3.Database, username: string, passwo
       );
     } else {
       // Create user without ship (for testing, with default defense values)
-      db.run('INSERT INTO users (username, password_hash, iron, last_updated, tech_tree, hull_current, armor_current, shield_current, defense_last_regen) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', 
-        [username, password_hash, 0.0, now, JSON.stringify(techTree), 250.0, 250.0, 250.0, now], 
+      db.run('INSERT INTO users (username, password_hash, iron, last_updated, tech_tree, hull_current, armor_current, shield_current, defense_last_regen) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [username, password_hash, 0.0, now, JSON.stringify(techTree), 250.0, 250.0, 250.0, now],
         async function (err) {
           if (err) return reject(err);
           const id = this.lastID;
-          
+
           // Create the user object with default tech counts and defense values
           const defaultTechCounts: TechCounts = {
             pulse_laser: 5,
@@ -202,8 +216,8 @@ async function createUserWithShip(db: sqlite3.Database, username: string, passwo
             energy_shield: 5,
             missile_jammer: 0
           };
-          const user = new User(id, username, password_hash, 0.0, now, techTree, saveCallback, defaultTechCounts, 250.0, 250.0, 250.0, now, false, null);
-          
+          const user = new User(id, username, password_hash, 0.0, now, techTree, saveCallback, defaultTechCounts, 250.0, 250.0, 250.0, now, false, null, [], null);
+
           try {
             // Note: User creation doesn't need immediate caching since
             // the API endpoints will load and cache users as needed
@@ -243,12 +257,14 @@ export function saveUserToDb(db: sqlite3.Database): SaveUserCallback {
           shield_current = ?,
           defense_last_regen = ?,
           in_battle = ?,
-          current_battle_id = ?
+          current_battle_id = ?,
+          build_queue = ?,
+          build_start_sec = ?
         WHERE id = ?`,
         [
-          user.iron, 
-          user.last_updated, 
-          JSON.stringify(user.techTree), 
+          user.iron,
+          user.last_updated,
+          JSON.stringify(user.techTree),
           user.ship_id,
           user.techCounts.pulse_laser,
           user.techCounts.auto_turret,
@@ -266,6 +282,8 @@ export function saveUserToDb(db: sqlite3.Database): SaveUserCallback {
           user.defenseLastRegen,
           user.inBattle ? 1 : 0,
           user.currentBattleId,
+          JSON.stringify(user.buildQueue),
+          user.buildStartSec,
           user.id
         ],
         function (err) {
@@ -278,4 +296,4 @@ export function saveUserToDb(db: sqlite3.Database): SaveUserCallback {
 }
 
 // Add 'export' at the top to make this file a module
-export {};
+export { };

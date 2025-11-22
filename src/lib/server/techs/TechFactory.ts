@@ -7,6 +7,12 @@ import { DefenseValues } from '@/shared/defenseValues';
 export type WeaponSubtype = 'Projectile' | 'Energy';
 export type WeaponStrength = 'Weak' | 'Medium' | 'Strong';
 
+export interface BuildQueueItem {
+  itemKey: string;
+  itemType: 'weapon' | 'defense';
+  completionTime: number; // Unix timestamp when build completes
+}
+
 export interface WeaponSpec {
   name: string;
   subtype: WeaponSubtype;
@@ -40,7 +46,7 @@ export interface TechCounts {
   gauss_rifle: number;
   photon_torpedo: number;
   rocket_launcher: number;
-  
+
   // Defense
   ship_hull: number;
   kinetic_armor: number;
@@ -185,7 +191,7 @@ export class TechFactory {
     if (key in techCounts && typeof techCounts[key as keyof TechCounts] === 'number') {
       return techCounts[key as keyof TechCounts];
     }
-    
+
     return 0;
   }
 
@@ -333,7 +339,7 @@ export class TechFactory {
         // DPS = damage / reload time (converted to seconds)
         const weaponDPS = spec.baseDamage / (spec.reloadTimeMinutes * 60);
         const weaponTotalDPS = weaponDPS * count;
-        
+
         totalDPS += weaponTotalDPS;
         weightedAccuracy += spec.baseAccuracy * weaponTotalDPS;
         totalCost += spec.baseCost * count;
@@ -413,15 +419,15 @@ export class TechFactory {
 
     // Calculate overall accuracy based on weapon type
     let overallAccuracy: number;
-    
+
     if (weaponKey === 'rocket_launcher') {
       // Rocket Launcher: (base + positive) * (1 - ECM)
       overallAccuracy = (weaponSpec.baseAccuracy + positiveAccuracyModifier) * (1 - ecmEffectiveness);
     } else if (weaponKey === 'photon_torpedo') {
       // Photon Torpedo: (base + positive) * (1 - negative/3) * (1 - ECM/3)
-      overallAccuracy = (weaponSpec.baseAccuracy + positiveAccuracyModifier) * 
-                       (1 - (negativeAccuracyModifier / 3)) * 
-                       (1 - (ecmEffectiveness / 3));
+      overallAccuracy = (weaponSpec.baseAccuracy + positiveAccuracyModifier) *
+        (1 - (negativeAccuracyModifier / 3)) *
+        (1 - (ecmEffectiveness / 3));
     } else {
       // Other weapons: (base + positive) * (1 - negative)
       overallAccuracy = (weaponSpec.baseAccuracy + positiveAccuracyModifier) * (1 - negativeAccuracyModifier);

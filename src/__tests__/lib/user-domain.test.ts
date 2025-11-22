@@ -33,7 +33,9 @@ describe('User.updateStats with IronHarvesting research progression', () => {
       250, // shieldCurrent
       1000, // defenseLastRegen
       false, // inBattle
-      null // currentBattleId
+      null, // currentBattleId
+      [], // buildQueue
+      null // buildStartSec
     );
   });
 
@@ -249,7 +251,9 @@ describe('User getter methods', () => {
       250, // shieldCurrent
       1000, // defenseLastRegen
       false, // inBattle
-      null // currentBattleId
+      null, // currentBattleId
+      [], // buildQueue
+      null // buildStartSec
     );
   });
 
@@ -335,14 +339,16 @@ describe('User.updateDefenseValues with regeneration', () => {
       300, // shieldCurrent (below max)
       1000, // defenseLastRegen
       false, // inBattle
-      null // currentBattleId
+      null, // currentBattleId
+      [], // buildQueue
+      null // buildStartSec
     );
   });
 
   test('updateDefenseValues_elapsedTime_regeneratesCorrectly', () => {
     // 10 seconds elapsed, should add 10 points to each defense
     user.updateDefenseValues(1010);
-    
+
     expect(user.hullCurrent).toBe(110); // 100 + 10
     expect(user.armorCurrent).toBe(210); // 200 + 10
     expect(user.shieldCurrent).toBe(310); // 300 + 10
@@ -354,10 +360,10 @@ describe('User.updateDefenseValues with regeneration', () => {
     user.hullCurrent = 495; // max = 500 (5 techs × 100)
     user.armorCurrent = 490; // max = 500
     user.shieldCurrent = 498; // max = 500
-    
+
     // 20 seconds elapsed, would add 20 points but should clamp at max
     user.updateDefenseValues(1020);
-    
+
     expect(user.hullCurrent).toBe(500); // clamped at max
     expect(user.armorCurrent).toBe(500); // clamped at max
     expect(user.shieldCurrent).toBe(500); // clamped at max
@@ -368,10 +374,10 @@ describe('User.updateDefenseValues with regeneration', () => {
     const initialHull = user.hullCurrent;
     const initialArmor = user.armorCurrent;
     const initialShield = user.shieldCurrent;
-    
+
     // No time elapsed
     user.updateDefenseValues(1000);
-    
+
     expect(user.hullCurrent).toBe(initialHull);
     expect(user.armorCurrent).toBe(initialArmor);
     expect(user.shieldCurrent).toBe(initialShield);
@@ -382,10 +388,10 @@ describe('User.updateDefenseValues with regeneration', () => {
     const initialHull = user.hullCurrent;
     const initialArmor = user.armorCurrent;
     const initialShield = user.shieldCurrent;
-    
+
     // Negative time elapsed (should not happen, but handle gracefully)
     user.updateDefenseValues(999);
-    
+
     expect(user.hullCurrent).toBe(initialHull);
     expect(user.armorCurrent).toBe(initialArmor);
     expect(user.shieldCurrent).toBe(initialShield);
@@ -396,10 +402,10 @@ describe('User.updateDefenseValues with regeneration', () => {
     user.hullCurrent = 500; // at max
     user.armorCurrent = 500; // at max
     user.shieldCurrent = 500; // at max
-    
+
     // 10 seconds elapsed, but already at max
     user.updateDefenseValues(1010);
-    
+
     expect(user.hullCurrent).toBe(500);
     expect(user.armorCurrent).toBe(500);
     expect(user.shieldCurrent).toBe(500);
@@ -410,10 +416,10 @@ describe('User.updateDefenseValues with regeneration', () => {
     user.hullCurrent = 100;
     user.armorCurrent = 200;
     user.shieldCurrent = 300;
-    
+
     // 1000 seconds elapsed - would add 1000 points but should clamp at max (500)
     user.updateDefenseValues(2000);
-    
+
     expect(user.hullCurrent).toBe(500); // clamped at max
     expect(user.armorCurrent).toBe(500); // clamped at max
     expect(user.shieldCurrent).toBe(500); // clamped at max
