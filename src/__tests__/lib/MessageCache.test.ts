@@ -11,6 +11,7 @@ import {
   getUserMessageCount,
   markUserMessagesAsRead
 } from '../../lib/server/messages/MessageCache';
+import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 
 describe('MessageCache', () => {
   
@@ -245,7 +246,7 @@ describe('MessageCache', () => {
       await cache.waitForPendingWrites();
       
       // Flush read status to DB
-      await cache.flushToDatabase();
+      await cache.flushToDatabase(createLockContext());
       
       // Verify: message should have real ID and be marked as read
       const messages = await cache.getMessagesForUser(1);
@@ -286,7 +287,7 @@ describe('MessageCache', () => {
       
       // Try to persist before async write completes
       // Should not fail even though message has temp ID
-      await cache.flushToDatabase();
+      await cache.flushToDatabase(createLockContext());
       
       // Now wait for async write
       await cache.waitForPendingWrites();
@@ -459,7 +460,7 @@ describe('MessageCache', () => {
       
       // Mark as read
       await cache1.markAllMessagesAsRead(testUserId);
-      await cache1.flushToDatabase();
+      await cache1.flushToDatabase(createLockContext());
       
       // Shutdown and reinitialize
       await cache1.shutdown();

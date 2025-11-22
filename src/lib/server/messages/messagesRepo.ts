@@ -46,9 +46,9 @@ export class MessagesRepo {
    * Returns the ID of the newly created message
    */
   async createMessage<THeld extends readonly LockLevel[]>(
+    _context: HasLock12Context<THeld>,
     recipientId: number,
-    message: string,
-    _context: HasLock12Context<THeld>
+    message: string
   ): Promise<number> {
     return new Promise((resolve, reject) => {
       const createdAt = Date.now();
@@ -73,7 +73,9 @@ export class MessagesRepo {
    * Returns messages in descending order by creation time (newest first)
    */
   async getAllMessages<THeld extends readonly LockLevel[]>(
-    userId: number,  _context: HasLock12Context<THeld>, limit?: number
+    _context: HasLock12Context<THeld>,
+    userId: number, 
+    limit?: number
   ): Promise<Message[]> {
     return new Promise((resolve, reject) => {
       const query = limit 
@@ -110,7 +112,9 @@ export class MessagesRepo {
    * Update the read status of a specific message
    */
   async updateMessageReadStatus<THeld extends readonly LockLevel[]> (
-    messageId: number, isRead: boolean, _context: HasLock12Context<THeld>
+    _context: HasLock12Context<THeld>,
+    messageId: number, 
+    isRead: boolean
   ): Promise<void> {
     return new Promise((resolve, reject) => {
       const stmt = this.db.prepare(`
@@ -135,7 +139,8 @@ export class MessagesRepo {
    * More efficient than calling updateMessageReadStatus multiple times
    */
   async updateMultipleReadStatuses<THeld extends readonly LockLevel[]>(
-    updates: Array<{id: number, isRead: boolean}>, _context: HasLock12Context<THeld>
+    _context: HasLock12Context<THeld>,
+    updates: Array<{id: number, isRead: boolean}>
   ): Promise<void> {
     return new Promise((resolve, reject) => {
       this.db.serialize(() => {
@@ -193,7 +198,8 @@ export class MessagesRepo {
    * Mark all messages for a user as read
    */
   async markAllMessagesAsRead<THeld extends readonly LockLevel[]>(
-    userId: number, _context: HasLock12Context<THeld>
+    _context: HasLock12Context<THeld>,
+    userId: number,
   ): Promise<void> {
     return new Promise((resolve, reject) => {
       const stmt = this.db.prepare(`
@@ -218,7 +224,8 @@ export class MessagesRepo {
    * Returns the number of messages deleted
    */
   async deleteOldReadMessages<THeld extends readonly LockLevel[]>(
-    olderThanDays = 30, _context: HasLock12Context<THeld>
+    _context: HasLock12Context<THeld>,
+    olderThanDays = 30
   ): Promise<number> {
     return new Promise((resolve, reject) => {
       const cutoffTime = Date.now() - (olderThanDays * 24 * 60 * 60 * 1000);
@@ -242,7 +249,8 @@ export class MessagesRepo {
    * Get count of unread messages for a user
    */
   async getUnreadMessageCount<THeld extends readonly LockLevel[]>(
-    userId: number, _context: HasLock12Context<THeld>
+    _context: HasLock12Context<THeld>,
+    userId: number,
   ): Promise<number> {
     return new Promise((resolve, reject) => {
       const stmt = this.db.prepare(`
@@ -267,7 +275,8 @@ export class MessagesRepo {
    * Used by MessageCache to load unread messages
    */
   async getUnreadMessages<THeld extends readonly LockLevel[]>(
-    userId: number, _context: HasLock12Context<THeld>
+    _context: HasLock12Context<THeld>,
+    userId: number,
   ): Promise<UnreadMessage[]> {
     return new Promise((resolve, reject) => {
       const stmt = this.db.prepare(`

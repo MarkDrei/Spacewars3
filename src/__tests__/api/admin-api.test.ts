@@ -8,6 +8,10 @@ describe('Admin Database API', () => {
   it('admin_notAuthenticated_returns401', async () => {
     const request = createRequest('http://localhost:3000/api/admin/database', 'GET');
     const response = await GET(request);
+
+    if (!response) {
+      throw new Error('No response from admin database API');
+    }
     
     expect(response.status).toBe(401);
     const data = await response.json();
@@ -21,6 +25,10 @@ describe('Admin Database API', () => {
     const request = createRequest('http://localhost:3000/api/admin/database', 'GET', undefined, sessionCookie);
     
     const response = await GET(request);
+
+    if (!response) {
+      throw new Error('No response from admin database API');
+    }
     
     expect(response.status).toBe(403);
     const data = await response.json();
@@ -42,6 +50,10 @@ describe('Admin Database API', () => {
     
     const request = createRequest('http://localhost:3000/api/admin/database', 'GET', undefined, sessionCookie);
     const response = await GET(request);
+
+    if (!response) {
+      throw new Error('No response from admin database API');
+    }
     
     expect(response.status).toBe(200);
     const data = await response.json();
@@ -97,6 +109,10 @@ describe('Admin Database API', () => {
     const request = createRequest('http://localhost:3000/api/admin/database', 'GET', undefined, sessionCookie);
     const response = await GET(request);
     
+    if (!response) {
+      throw new Error('No response from admin database API');
+    }
+
     expect(response.status).toBe(200);
     const data = await response.json();
     

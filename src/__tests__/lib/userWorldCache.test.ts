@@ -8,6 +8,7 @@ import {
   getUserWorldCache,
   type TypedCacheConfig 
 } from '../../lib/server/world/userWorldCache';
+import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 
 describe('TypedCacheManager', () => {
   
@@ -64,7 +65,7 @@ describe('TypedCacheManager', () => {
       const manager = getUserWorldCache();
       await manager.initialize();
 
-      const user = await manager.getUserById(999); // Non-existent user
+      const user = await manager.getUserById(createLockContext(), 999); // Non-existent user
       expect(user).toBeNull();
     });
 
@@ -116,8 +117,8 @@ describe('TypedCacheManager', () => {
 
       // Start multiple concurrent operations
       const operations = [
-        manager.getUserById(999),
-        manager.getUserById(998),
+        manager.getUserById(createLockContext(), 999),
+        manager.getUserById(createLockContext(), 998),
         manager.getStats(),
         manager.getStats()
       ];

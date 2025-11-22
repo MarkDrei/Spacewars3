@@ -3,6 +3,8 @@ import { UserWorldCache } from '@/lib/server/world/userWorldCache';
 import { getDatabase } from '@/lib/server/database';
 import { createUser } from '@/lib/server/world/userRepo';
 import { saveUserToDb } from '@/lib/server/world/userRepo';
+import { createLockContext } from '@markdrei/ironguard-typescript-locks';
+import { USER_LOCK } from '@/lib/server/typedLocks';
 
 describe('User Persistence to Database', () => {
   beforeEach(() => {
@@ -23,30 +25,22 @@ describe('User Persistence to Database', () => {
     await userWorldCache.initialize();
     
     // Load user into cache
-    const { createLockContext } = await import('@/lib/server/typedLocks');
     const emptyCtx = createLockContext();
+
+    await emptyCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
+      userWorldCache.setUserUnsafe(userCtx, user);
+
+      // Act: Modify user data and mark as dirty
+      user.iron = 1000;
+      user.techCounts.pulse_laser = 10;
+      
+      userWorldCache.updateUserInCache(userCtx, user);
+    });
+  
     
-    const userCtx = await userWorldCache.acquireUserLock(emptyCtx);
-    try {
-      // Set user in cache
-      userWorldCache.setUserUnsafe(user, userCtx);
-    } finally {
-      userCtx.dispose();
-    }
-    
-    // Act: Modify user data and mark as dirty
-    user.iron = 1000;
-    user.techCounts.pulse_laser = 10;
-    
-    const userCtx2 = await userWorldCache.acquireUserLock(emptyCtx);
-    try {
-      userWorldCache.updateUserInCache(user, userCtx2);
-    } finally {
-      userCtx2.dispose();
-    }
     
     // Force flush to database
-    await userWorldCache.flushAllToDatabase();
+    await userWorldCache.flushAllToDatabase(emptyCtx);
     
     // Assert: Read directly from database to verify persistence
     const userFromDb = await new Promise<{ iron: number; pulse_laser: number }>((resolve, reject) => {
@@ -77,28 +71,19 @@ describe('User Persistence to Database', () => {
     const userWorldCache = UserWorldCache.getInstance();
     await userWorldCache.initialize();
     
-    // Load user into cache
-    const { createLockContext } = await import('@/lib/server/typedLocks');
     const emptyCtx = createLockContext();
     
-    const userCtx = await userWorldCache.acquireUserLock(emptyCtx);
-    try {
-      userWorldCache.setUserUnsafe(user, userCtx);
-    } finally {
-      userCtx.dispose();
-    }
-    
-    // Act: Modify user and mark as dirty
-    user.iron = 5000;
-    user.techCounts.auto_turret = 15;
-    
-    const userCtx2 = await userWorldCache.acquireUserLock(emptyCtx);
-    try {
-      userWorldCache.updateUserInCache(user, userCtx2);
-    } finally {
-      userCtx2.dispose();
-    }
-    
+    await emptyCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
+      // Load user into cache
+      userWorldCache.setUserUnsafe(userCtx, user);
+
+      // Act: Modify user and mark as dirty
+      user.iron = 5000;
+      user.techCounts.auto_turret = 15;
+      
+      userWorldCache.updateUserInCache(userCtx, user);
+    });
+
     // Shutdown should persist dirty users
     await userWorldCache.shutdown();
     

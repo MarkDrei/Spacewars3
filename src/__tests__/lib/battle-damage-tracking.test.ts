@@ -9,6 +9,8 @@
 import { describe, it, expect } from 'vitest';
 import { BattleEngine } from '../../lib/server/battle/battleEngine';
 import type { Battle, BattleStats } from '../../lib/server/battle/battleTypes';
+import { createLockContext } from '@markdrei/ironguard-typescript-locks';
+import { BATTLE_LOCK } from '@/lib/server/typedLocks';
 
 describe('Battle Damage Tracking', () => {
   /**
@@ -59,14 +61,17 @@ describe('Battle Damage Tracking', () => {
     const engine = new BattleEngine(battle);
     const currentTime = battle.battleStartTime;
 
-    // Act - Attacker fires weapon (async now)
-    await engine.executeTurn(currentTime);
-
-    // Assert - Total damage should be tracked in battle object
-    const updatedBattle = engine.getBattle();
-    // Damage depends on weapon specs (5 weapons with configured damage)
-    expect(updatedBattle.attackerTotalDamage).toBeGreaterThan(0);
-    expect(updatedBattle.attackeeTotalDamage).toBe(0);
+    const emptyCtx = createLockContext();
+    await emptyCtx.useLockWithAcquire(BATTLE_LOCK, async (battleCtx) => {
+      // Act - Attacker fires weapon (async now)
+      await engine.executeTurn(battleCtx, currentTime);
+  
+      // Assert - Total damage should be tracked in battle object
+      const updatedBattle = engine.getBattle();
+      // Damage depends on weapon specs (5 weapons with configured damage)
+      expect(updatedBattle.attackerTotalDamage).toBeGreaterThan(0);
+      expect(updatedBattle.attackeeTotalDamage).toBe(0);
+    });
   });
 
   it('damageTracking_multipleRounds_damageAccumulates', async () => {
@@ -75,25 +80,29 @@ describe('Battle Damage Tracking', () => {
     const engine = new BattleEngine(battle);
     const baseTime = battle.battleStartTime;
 
-    // Act - Execute multiple turns with proper cooldown management (async now)
-    const event1 = await engine.executeTurn(baseTime); // Attacker fires
-    expect(event1).not.toBeNull();
-    const firstAttackerDamage = engine.getBattle().attackerTotalDamage;
-    expect(firstAttackerDamage).toBeGreaterThan(0);
-    
-    // Weapon cooldown is now set to baseTime, so need to wait cooldown period
-    const event2 = await engine.executeTurn(baseTime + 10); // Enough time for both to be ready
-    expect(event2).not.toBeNull();
-    
-    const event3 = await engine.executeTurn(baseTime + 20); // Another turn
-    expect(event3).not.toBeNull();
+    const emptyCtx = createLockContext();
+    await emptyCtx.useLockWithAcquire(BATTLE_LOCK, async (battleCtx) => {
+      // Act - Execute multiple turns with proper cooldown management (async now)
+      const event1 = await engine.executeTurn(battleCtx, baseTime); // Attacker fires
+      expect(event1).not.toBeNull();
+      const firstAttackerDamage = engine.getBattle().attackerTotalDamage;
+      expect(firstAttackerDamage).toBeGreaterThan(0);
+      
+      // Weapon cooldown is now set to baseTime, so need to wait cooldown period
+      const event2 = await engine.executeTurn(battleCtx, baseTime + 10); // Enough time for both to be ready
+      expect(event2).not.toBeNull();
+      
+      const event3 = await engine.executeTurn(battleCtx, baseTime + 20); // Another turn
+      expect(event3).not.toBeNull();
+  
+      // Assert - Damage accumulates over multiple rounds
+      const updatedBattle = engine.getBattle();
+      // At least 3 shots were fired, so total damage should be at least firstAttackerDamage
+      const totalDamage = updatedBattle.attackerTotalDamage + updatedBattle.attackeeTotalDamage;
+      expect(totalDamage).toBeGreaterThanOrEqual(firstAttackerDamage);
+      expect(totalDamage).toBeGreaterThan(0);
+    });
 
-    // Assert - Damage accumulates over multiple rounds
-    const updatedBattle = engine.getBattle();
-    // At least 3 shots were fired, so total damage should be at least firstAttackerDamage
-    const totalDamage = updatedBattle.attackerTotalDamage + updatedBattle.attackeeTotalDamage;
-    expect(totalDamage).toBeGreaterThanOrEqual(firstAttackerDamage);
-    expect(totalDamage).toBeGreaterThan(0);
   });
 
   it('damageTracking_newBattle_startsAtZero', () => {
@@ -111,18 +120,21 @@ describe('Battle Damage Tracking', () => {
     const engine = new BattleEngine(battle);
     const initialShieldCurrent = battle.attackeeStartStats.shield.current;
 
-    // Act (async now)
-    await engine.executeTurn(battle.battleStartTime);
+    const emptyCtx = createLockContext();
+    await emptyCtx.useLockWithAcquire(BATTLE_LOCK, async (battleCtx) => {
+      // Act (async now)
+      await engine.executeTurn(battleCtx, battle.battleStartTime);
 
-    // Assert - startStats should remain unchanged (initial snapshot)
-    const updatedBattle = engine.getBattle();
-    expect(updatedBattle.attackeeStartStats.shield.current).toBe(initialShieldCurrent);
-    
-    // Assert - endStats are NOT populated during battle (only at battle end)
-    // Defense values are tracked in User objects via cache during battle
-    expect(updatedBattle.attackeeEndStats).toBeNull();
-    
-    // Total damage should still be tracked in battle object
-    expect(updatedBattle.attackerTotalDamage).toBeGreaterThan(0);
+      // Assert - startStats should remain unchanged (initial snapshot)
+      const updatedBattle = engine.getBattle();
+      expect(updatedBattle.attackeeStartStats.shield.current).toBe(initialShieldCurrent);
+
+      // Assert - endStats are NOT populated during battle (only at battle end)
+      // Defense values are tracked in User objects via cache during battle
+      expect(updatedBattle.attackeeEndStats).toBeNull();
+
+      // Total damage should still be tracked in battle object
+      expect(updatedBattle.attackerTotalDamage).toBeGreaterThan(0);
+    });
   });
 });

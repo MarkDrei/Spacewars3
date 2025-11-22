@@ -3,7 +3,7 @@
 // Uses IronGuard lock system with hierarchical locking
 // ---
 
-import { createLockContext, HasLock4Context, HasLock6Context, IronLocks, LOCK_10, LOCK_11, LockContext, LocksAtMost1, LocksAtMost3, LocksAtMostAndHas4, LocksAtMostAndHas6 } from '@markdrei/ironguard-typescript-locks';
+import { createLockContext, HasLock4Context, HasLock6Context, IronLocks, LOCK_10, LOCK_11, LockContext, LocksAtMost1, LocksAtMost3, LocksAtMost4, LocksAtMostAndHas4, LocksAtMostAndHas6 } from '@markdrei/ironguard-typescript-locks';
 import sqlite3 from 'sqlite3';
 import { getDatabase } from '../database';
 import {
@@ -246,7 +246,7 @@ export class UserWorldCache {
    * Announces that the user was written to the DB and is now safe to cache
    * This should only be called after a successful database write operation.
    */
-  setUserUnsafe<THeld extends IronLocks>(user: User, _context: HasLock4Context<THeld>): void {
+  setUserUnsafe<THeld extends IronLocks>(_context: HasLock4Context<THeld>, user: User): void {
     this.users.set(user.id, user);
     this.usernameToUserId.set(user.username, user.id); // Cache username mapping
     this.dirtyUsers.delete(user.id); // Fresh from DB, not dirty
@@ -283,7 +283,7 @@ export class UserWorldCache {
       console.log(`🔍 User ${userId} cache miss, loading from database`);
       user = await this.loadUserFromDb(context, userId);
       if (user) {
-        this.setUserUnsafe(user, context);
+        this.setUserUnsafe(context, user);
       }
     }
 
@@ -384,7 +384,7 @@ export class UserWorldCache {
    * Force flush all dirty data to database
    * Useful for ensuring data is persisted before reading directly from DB
    */
-  async flushAllToDatabase(context: LockContext<LocksAtMost1>): Promise<void> {
+  async flushAllToDatabase(context: LockContext<LocksAtMost4>): Promise<void> {
     await this.ensureInitialized();
     
     console.log('🔄 Flushing all dirty data to database...');

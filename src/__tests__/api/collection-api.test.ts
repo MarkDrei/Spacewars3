@@ -13,8 +13,12 @@ describe('Collection API', () => {
     });
 
     const response = await collectPOST(request);
-    const data = await response.json();
 
+    if (!response) {
+      throw new Error('No response from collection API');
+    }
+
+    const data = await response.json();
     expect(response.status).toBe(401);
     expect(data.error).toBe('Not authenticated');
   });
@@ -27,6 +31,9 @@ describe('Collection API', () => {
     }, sessionCookie);
 
     const response = await collectPOST(request);
+    if (!response) {
+      throw new Error('No response from collection API');
+    }
     const data = await response.json();
 
     expect(response.status).toBe(400);
@@ -39,6 +46,9 @@ describe('Collection API', () => {
     const request = createRequest('http://localhost:3000/api/harvest', 'POST', {}, sessionCookie);
 
     const response = await collectPOST(request);
+    if (!response) {
+      throw new Error('No response from collection API');
+    }
     const data = await response.json();
 
     expect(response.status).toBe(400);

@@ -298,7 +298,9 @@ export async function initiateBattle(
   
   console.log(`⚔️ initiateBattle: Creating battle in database...`);
   // Create battle in database with initial cooldowns
-  const battle = await BattleRepo.createBattle(
+  const battleCache = getBattleCache();
+  const battle = await battleCache.createBattle(
+    context,
     attacker.id,
     attackee.id,
     attackerStats,
@@ -408,7 +410,7 @@ export async function resolveBattle(
       attacker = await userContext.useLockWithAcquire(DATABASE_LOCK_USERS, async () => {
         const db = await userWorldCache.getDatabaseConnection();
         const loadedAttacker = await getUserByIdFromDb(db, battle.attackerId, async () => {});
-        if (loadedAttacker) userWorldCache.setUserUnsafe(loadedAttacker, userContext);
+        if (loadedAttacker) userWorldCache.setUserUnsafe(userContext, loadedAttacker);
         return loadedAttacker;
       });
     }
@@ -417,7 +419,7 @@ export async function resolveBattle(
       attackee = await userContext.useLockWithAcquire(DATABASE_LOCK_USERS, async () => {
         const db = await userWorldCache.getDatabaseConnection();
         const loadedAttackee = await getUserByIdFromDb(db, battle.attackeeId, async () => {});
-        if (loadedAttackee) userWorldCache.setUserUnsafe(loadedAttackee, userContext);
+        if (loadedAttackee) userWorldCache.setUserUnsafe(userContext, loadedAttackee);
         return loadedAttackee;
       });
     }

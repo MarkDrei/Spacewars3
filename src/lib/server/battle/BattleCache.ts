@@ -186,7 +186,7 @@ export class BattleCache {
    * Set battle in cache (PRIVATE - internal use only)
    * Marks battle as dirty for persistence
    */
-  private setBattleInCacheInternal(battle: Battle): void {
+  private setBattleInCacheInternal(_context: LockContext<LocksAtMostAndHas2>, battle: Battle): void {
     this.ensureInitialized();
     this.battles.set(battle.id, battle);
     this.dirtyBattles.add(battle.id);
@@ -272,7 +272,7 @@ export class BattleCache {
    * @param userId - User ID to check
    * @param lockContext - Optional lock context (if caller already holds BATTLE lock at level 2 or higher)
    */
-  async getOngoingBattleForUser(userId: number, lockContext?: LockContext<LocksAtMostAndHas2>): Promise<Battle | null> {
+  async getOngoingBattleForUser(lockContext: LockContext<LocksAtMostAndHas2>, userId: number): Promise<Battle | null> {
     await this.ensureInitializedAsync();
 
     // If caller already holds a lock, use it; otherwise acquire lock
@@ -411,6 +411,7 @@ export class BattleCache {
    * Auto-acquires necessary locks
    */
   async createBattle(
+    context: LockContext<LocksAtMostAndHas2>, 
     attackerId: number,
     attackeeId: number,
     attackerStartStats: BattleStats,
@@ -422,9 +423,8 @@ export class BattleCache {
     
     const now = Math.floor(Date.now() / 1000);
     
-    // Acquire locks and insert battle
-    const ctx = createLockContext();
-    return await ctx.useLockWithAcquire(DATABASE_LOCK_BATTLES, async (databaseContext) => {
+    // Acquire DB lock and insert battle
+    return await context.useLockWithAcquire(DATABASE_LOCK_BATTLES, async (databaseContext) => {
       // Insert to database via battleRepo
       const battle = await battleRepo.insertBattleToDb(
         databaseContext,
@@ -438,7 +438,7 @@ export class BattleCache {
       );
       
       // Store in cache
-      this.setBattleInCacheInternal(battle);
+      this.setBattleInCacheInternal(context, battle);
       
       return battle;
     });
@@ -820,34 +820,14 @@ export async function getBattleCacheInitialized(): Promise<BattleCache> {
 // Backward Compatibility Layer
 // ========================================
 
-// Export high-level functions for backward compatibility
-export async function createBattle(
-  attackerId: number,
-  attackeeId: number,
-  attackerStartStats: BattleStats,
-  attackeeStartStats: BattleStats,
-  attackerInitialCooldowns: WeaponCooldowns,
-  attackeeInitialCooldowns: WeaponCooldowns
-): Promise<Battle> {
-  const cache = await getBattleCacheInitialized();
-  return cache.createBattle(
-    attackerId,
-    attackeeId,
-    attackerStartStats,
-    attackeeStartStats,
-    attackerInitialCooldowns,
-    attackeeInitialCooldowns
-  );
-}
-
 export async function getBattle(context: LockContext<LocksAtMostAndHas2>, battleId: number): Promise<Battle | null> {
   const cache = await getBattleCacheInitialized();
   return cache.loadBattleIfNeeded(context, battleId);
 }
 
-export async function getOngoingBattleForUser(userId: number): Promise<Battle | null> {
+export async function getOngoingBattleForUser(context: LockContext<LocksAtMostAndHas2>, userId: number): Promise<Battle | null> {
   const cache = await getBattleCacheInitialized();
-  return cache.getOngoingBattleForUser(userId);
+  return cache.getOngoingBattleForUser(context, userId);
 }
 
 export async function updateWeaponCooldowns(
@@ -934,6 +914,7 @@ export async function updateTotalDamage(
  */
 export const BattleRepo = {
   createBattle: async (
+    context: LockContext<LocksAtMostAndHas2>,
     attackerId: number,
     attackeeId: number,
     attackerStartStats: BattleStats,
@@ -943,6 +924,7 @@ export const BattleRepo = {
   ) => {
     const cache = await getBattleCacheInitialized();
     return cache.createBattle(
+      context,
       attackerId,
       attackeeId,
       attackerStartStats,
@@ -957,9 +939,9 @@ export const BattleRepo = {
     return cache.loadBattleIfNeeded(context, battleId);
   },
 
-  getOngoingBattleForUser: async (userId: number) => {
+  getOngoingBattleForUser: async (context: LockContext<LocksAtMostAndHas2>, userId: number) => {
     const cache = await getBattleCacheInitialized();
-    return cache.getOngoingBattleForUser(userId);
+    return cache.getOngoingBattleForUser(context, userId);
   },
 
   updateWeaponCooldowns: async (

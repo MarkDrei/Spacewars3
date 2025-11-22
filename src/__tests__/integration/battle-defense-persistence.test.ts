@@ -4,13 +4,14 @@
 // ---
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { BattleCache } from '../../lib/server/battle/BattleCache';
+import { BattleCache, getBattleCache } from '../../lib/server/battle/BattleCache';
 import { UserWorldCache, getUserWorldCache } from '../../lib/server/world/userWorldCache';
 import * as battleService from '../../lib/server/battle/battleService';
 import { createTestDatabase } from '../helpers/testDatabase';
 import { User } from '../../lib/server/world/user';
-import { createLockContext } from '../../lib/server/typedLocks';
 import { BattleRepo } from '../../lib/server/battle/BattleCache';
+import { BATTLE_LOCK, USER_LOCK } from '../../lib/server/typedLocks';
+import { createLockContext, LockContext, LocksAtMostAndHas4 } from '@markdrei/ironguard-typescript-locks';
 import type { BattleStats } from '../../lib/server/battle/battleTypes';
 
 describe('Battle Defense Persistence', () => {
@@ -42,43 +43,32 @@ describe('Battle Defense Persistence', () => {
     await battleCache.initialize(db);
     
     // Get test users (seeded by test database)
-    const ctx = createLockContext();
-    const userCtx = await userWorldCache.acquireUserLock(ctx);
-    
     let attacker: User | null = null;
     let defender: User | null = null;
     
-    try {
-      const dbCtx = await userWorldCache.acquireDatabaseRead(userCtx);
-      try {
-        attacker = await userWorldCache.loadUserFromDbUnsafe(1, dbCtx);
-        defender = await userWorldCache.loadUserFromDbUnsafe(2, dbCtx);
-        
-        if (!attacker || !defender) {
-          throw new Error('Test users not found');
-        }
-        
-        // Cache the users
-        userWorldCache.setUserUnsafe(attacker, userCtx);
-        userWorldCache.setUserUnsafe(defender, userCtx);
-        
-      } finally {
-        dbCtx.dispose();
-      }
-    } finally {
-      userCtx.dispose();
+    await createLockContext().useLockWithAcquire(USER_LOCK, async (userContext) => {
+      attacker = await userWorldCache.getUserByIdWithLock(userContext, 1);
+      defender = await userWorldCache.getUserByIdWithLock(userContext, 2);
+    });
+    
+    if (!attacker || !defender) {
+      throw new Error('Test users not found');
     }
     
+    // TypeScript now knows these are not null
+    const attackerUser = attacker as User;
+    const defenderUser = defender as User;
+    
     // Record initial defense values
-    const attackerInitialHull = attacker.hullCurrent;
-    const defenderInitialHull = defender.hullCurrent;
+    const attackerInitialHull = attackerUser.hullCurrent;
+    const defenderInitialHull = defenderUser.hullCurrent;
     
     console.log(`📊 Attacker initial hull: ${attackerInitialHull}`);
     console.log(`📊 Defender initial hull: ${defenderInitialHull}`);
     
     // Calculate max values
-    const attackerMaxHull = attacker.techCounts.ship_hull * 100;
-    const defenderMaxHull = defender.techCounts.ship_hull * 100;
+    const attackerMaxHull = attackerUser.techCounts.ship_hull * 100;
+    const defenderMaxHull = defenderUser.techCounts.ship_hull * 100;
     
     // Verify users start at less than max
     expect(attackerInitialHull).toBeLessThan(attackerMaxHull);
@@ -89,94 +79,89 @@ describe('Battle Defense Persistence', () => {
     const defenderDamagedHull = 50; // Set to low hull
     
     const attackerStats: BattleStats = {
-      hull: { current: attacker.hullCurrent, max: attackerMaxHull },
-      armor: { current: attacker.armorCurrent, max: attacker.techCounts.kinetic_armor * 100 },
-      shield: { current: attacker.shieldCurrent, max: attacker.techCounts.energy_shield * 100 },
+      hull: { current: attackerUser.hullCurrent, max: attackerMaxHull },
+      armor: { current: attackerUser.armorCurrent, max: attackerUser.techCounts.kinetic_armor * 100 },
+      shield: { current: attackerUser.shieldCurrent, max: attackerUser.techCounts.energy_shield * 100 },
       weapons: {}
     };
     
     const defenderStats: BattleStats = {
-      hull: { current: defender.hullCurrent, max: defenderMaxHull },
-      armor: { current: defender.armorCurrent, max: defender.techCounts.kinetic_armor * 100 },
-      shield: { current: defender.shieldCurrent, max: defender.techCounts.energy_shield * 100 },
+      hull: { current: defenderUser.hullCurrent, max: defenderMaxHull },
+      armor: { current: defenderUser.armorCurrent, max: defenderUser.techCounts.kinetic_armor * 100 },
+      shield: { current: defenderUser.shieldCurrent, max: defenderUser.techCounts.energy_shield * 100 },
       weapons: {}
     };
     
-    // Create battle directly through BattleRepo
-    const battle = await BattleRepo.createBattle(
-      attacker.id,
-      defender.id,
-      attackerStats,
-      defenderStats,
-      {},
-      {}
-    );
-    
-    console.log(`⚔️ Battle ${battle.id} created`);
-    
-    // CRITICAL: Apply damage to User objects in cache (not just battle stats)
-    // This is the new architecture - User defense values are the source of truth
-    const damageCtx = createLockContext();
-    const damageUserCtx = await userWorldCache.acquireUserLock(damageCtx);
-    
-    try {
-      const attackerInCache = userWorldCache.getUserByIdFromCache(attacker.id, damageUserCtx);
-      const defenderInCache = userWorldCache.getUserByIdFromCache(defender.id, damageUserCtx);
+    const emptyCtx = createLockContext();
+    await emptyCtx.useLockWithAcquire(BATTLE_LOCK, async (battleCtx) => {
+      // Create battle directly through BattleCache
+      const battleCache = getBattleCache();
+      const battle = await battleCache.createBattle(
+        battleCtx,
+        attackerUser.id,
+        defenderUser.id,
+        attackerStats,
+        defenderStats,
+        {},
+        {}
+      );
       
-      if (!attackerInCache || !defenderInCache) {
-        throw new Error('Users not in cache for damage application');
-      }
+      console.log(`⚔️ Battle ${battle.id} created`);
       
-      // Apply damage to attacker
-      attackerInCache.hullCurrent = attackerDamagedHull;
-      userWorldCache.updateUserInCache(attackerInCache, damageUserCtx);
-      
-      // Set defender to 0 hull (they will lose)
-      defenderInCache.hullCurrent = 0;
-      userWorldCache.updateUserInCache(defenderInCache, damageUserCtx);
-      
-      console.log(`💥 Simulated damage - Attacker hull: ${attackerDamagedHull}, Defender hull: 0`);
-    } finally {
-      damageUserCtx.dispose();
-    }
+      // Apply damage to User objects in cache (not just battle stats)
+      await emptyCtx.useLockWithAcquire(USER_LOCK, async (damageUserCtx) => {
+        const attackerInCache = await userWorldCache.getUserByIdWithLock(damageUserCtx, attackerUser.id);
+        const defenderInCache = await userWorldCache.getUserByIdWithLock(damageUserCtx, defenderUser.id);
+        
+        if (!attackerInCache || !defenderInCache) {
+          throw new Error('Users not found for damage application');
+        }
+        
+        // Apply damage to attacker
+        attackerInCache.hullCurrent = attackerDamagedHull;
+        userWorldCache.updateUserInCache(damageUserCtx, attackerInCache);
+        
+        // Set defender to 0 hull (they will lose)
+        defenderInCache.hullCurrent = 0;
+        userWorldCache.updateUserInCache(damageUserCtx, defenderInCache);
+        
+        console.log(`💥 Simulated damage - Attacker hull: ${attackerDamagedHull}, Defender hull: 0`);
+      });
+
+      // Call resolveBattle to end the battle and update user defense values
+      await battleService.resolveBattle(battleCtx, battle.id, attackerUser.id);
+    });
     
-    // Call resolveBattle to end the battle and update user defense values
-    await battleService.resolveBattle(battle.id, attacker.id);
     
     console.log('✅ Battle ended');
     
     // Re-load users from cache to check they weren't reset
     console.log('🔄 Checking users in cache...');
     
-    const ctx2 = createLockContext();
-    const userCtx2 = await userWorldCache.acquireUserLock(ctx2);
-    
     let attackerAfter: User | null = null;
     let defenderAfter: User | null = null;
     
-    try {
-      attackerAfter = userWorldCache.getUserByIdFromCache(attacker.id, userCtx2);
-      defenderAfter = userWorldCache.getUserByIdFromCache(defender.id, userCtx2);
-    } finally {
-      userCtx2.dispose();
-    }
-    
-    if (!attackerAfter || !defenderAfter) {
-      throw new Error('Users not found in cache after battle');
-    }
-    
-    console.log(`📊 Attacker after battle - Hull: ${attackerAfter.hullCurrent} (expected: ${attackerDamagedHull})`);
-    console.log(`📊 Defender after battle - Hull: ${defenderAfter.hullCurrent} (expected: 0 since they lost)`);
-    
-    // CRITICAL: Verify defense values are NOT reset to max or initial values
-    expect(attackerAfter.hullCurrent).toBe(attackerDamagedHull);
-    expect(attackerAfter.hullCurrent).not.toBe(attackerMaxHull);
-    expect(attackerAfter.hullCurrent).not.toBe(attackerInitialHull);
-    
-    // Defender was set to 0 hull to make them lose
-    expect(defenderAfter.hullCurrent).toBe(0);
-    expect(defenderAfter.hullCurrent).not.toBe(defenderMaxHull);
-    expect(defenderAfter.hullCurrent).not.toBe(defenderInitialHull);
+    await createLockContext().useLockWithAcquire(USER_LOCK, async (userCtx2) => {
+      attackerAfter = await userWorldCache.getUserByIdWithLock(userCtx2, attackerUser.id);
+      defenderAfter = await userWorldCache.getUserByIdWithLock(userCtx2, defenderUser.id);
+      
+      if (!attackerAfter || !defenderAfter) {
+        throw new Error('Users not found in cache after battle');
+      }
+      
+      console.log(`📊 Attacker after battle - Hull: ${attackerAfter.hullCurrent} (expected: ${attackerDamagedHull})`);
+      console.log(`📊 Defender after battle - Hull: ${defenderAfter.hullCurrent} (expected: 0 since they lost)`);
+      
+      // CRITICAL: Verify defense values are NOT reset to max or initial values
+      expect(attackerAfter.hullCurrent).toBe(attackerDamagedHull);
+      expect(attackerAfter.hullCurrent).not.toBe(attackerMaxHull);
+      expect(attackerAfter.hullCurrent).not.toBe(attackerInitialHull);
+      
+      // Defender was set to 0 hull to make them lose
+      expect(defenderAfter.hullCurrent).toBe(0);
+      expect(defenderAfter.hullCurrent).not.toBe(defenderMaxHull);
+      expect(defenderAfter.hullCurrent).not.toBe(defenderInitialHull);
+    });
     
     console.log('✅ Defense values correctly persisted after battle (not reset to max)');
   });

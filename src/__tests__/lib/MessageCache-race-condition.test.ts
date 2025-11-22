@@ -4,6 +4,7 @@
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { MessageCache } from '@/lib/server/messages/MessageCache';
+import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 
 describe('MessageCache - Race Condition Fix', () => {
   let messageCache: MessageCache;
@@ -48,7 +49,7 @@ describe('MessageCache - Race Condition Fix', () => {
       // Step 2: First summarization
       const summary1 = await messageCache.summarizeMessages(userId);
       await messageCache.waitForPendingWrites();
-      await messageCache.flushToDatabase();
+      await messageCache.flushToDatabase(createLockContext());
 
       // Verify summary contains battle stats
       expect(summary1).toContain('Message Summary');
@@ -64,7 +65,7 @@ describe('MessageCache - Race Condition Fix', () => {
 
       // Step 3: Manually mark summary as read (simulating user action)
       await messageCache.markAllMessagesAsRead(userId);
-      await messageCache.flushToDatabase();
+      await messageCache.flushToDatabase(createLockContext());
 
       // Verify summary is now marked as read
       messages = await messageCache.getMessagesForUser(userId);
@@ -119,7 +120,7 @@ describe('MessageCache - Race Condition Fix', () => {
         // Summarize
         const summary = await messageCache.summarizeMessages(userId);
         await messageCache.waitForPendingWrites();
-        await messageCache.flushToDatabase();
+        await messageCache.flushToDatabase(createLockContext());
 
         // Verify summary only contains current iteration's damage
         expect(summary).toContain(`Dealt ${i}0`);
@@ -132,7 +133,7 @@ describe('MessageCache - Race Condition Fix', () => {
 
         // Mark as read before next iteration
         await messageCache.markAllMessagesAsRead(userId);
-        await messageCache.flushToDatabase();
+        await messageCache.flushToDatabase(createLockContext());
       }
 
       // Final verification: should have 3 read summaries
@@ -149,7 +150,7 @@ describe('MessageCache - Race Condition Fix', () => {
       await messageCache.createMessage(userId, 'Message 2');
       await messageCache.waitForPendingWrites();
       await messageCache.markAllMessagesAsRead(userId);
-      await messageCache.flushToDatabase();
+      await messageCache.flushToDatabase(createLockContext());
 
       // Try to summarize with no unread messages
       const summary = await messageCache.summarizeMessages(userId);
@@ -169,7 +170,7 @@ describe('MessageCache - Race Condition Fix', () => {
       await messageCache.createMessage(userId, 'Already read message');
       await messageCache.waitForPendingWrites();
       await messageCache.markAllMessagesAsRead(userId);
-      await messageCache.flushToDatabase();
+      await messageCache.flushToDatabase(createLockContext());
 
       // Create new unread messages
       await messageCache.createMessage(userId, 'P: ⚔️ Your **new weapon** fired 1 shot(s), **1 hit** for **10 damage**! Enemy: Hull: 90, Armor: 0, Shield: 0');

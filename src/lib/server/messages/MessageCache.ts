@@ -593,7 +593,7 @@ export class MessageCache {
   ): Promise<Message[]> {
     return await context.useLockWithAcquire(LOCK_12, async (databaseContext) => {
       if (!this.messagesRepo) throw new Error('MessagesRepo not initialized')
-      return await this.messagesRepo.getAllMessages(userId, databaseContext);
+      return await this.messagesRepo.getAllMessages(databaseContext, userId);
     });
   }
 
@@ -603,7 +603,7 @@ export class MessageCache {
   ): Promise<number> {
     return await context.useLockWithAcquire(LOCK_12, async (databaseContext) => {
       if (!this.messagesRepo) throw new Error('MessagesRepo not initialized')
-      return await this.messagesRepo.createMessage(userId, messageText, databaseContext);
+      return await this.messagesRepo.createMessage(databaseContext, userId, messageText);
     });
   }
 
@@ -614,7 +614,7 @@ export class MessageCache {
     const olderThanDays = Math.floor((Date.now() - cutoffTime) / (24 * 60 * 60 * 1000));
     return await context.useLockWithAcquire(LOCK_12, async (databaseContext) => {
       if (!this.messagesRepo) throw new Error('MessagesRepo not initialized')
-      return await this.messagesRepo.deleteOldReadMessages(olderThanDays, databaseContext);
+      return await this.messagesRepo.deleteOldReadMessages(databaseContext, olderThanDays);
     });
   }
 
@@ -644,7 +644,7 @@ export class MessageCache {
     // Batch update all messages at once
     await context.useLockWithAcquire(LOCK_12, async (databaseContext) => {
       if (updates.length > 0) {
-        await this.messagesRepo!.updateMultipleReadStatuses(updates, databaseContext);
+        await this.messagesRepo!.updateMultipleReadStatuses(databaseContext, updates);
       }
     });
   }
