@@ -13,7 +13,7 @@ import { BattleStats } from '@/lib/server/battle/battleTypes';
 import { BattleCache, getBattleCache } from '@/lib/server/battle/BattleCache';
 import { getUserWorldCache } from '@/lib/server/world/userWorldCache';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
-import { BATTLE_LOCK } from '@/lib/server/typedLocks';
+import { BATTLE_LOCK, USER_LOCK } from '@/lib/server/typedLocks';
 
 // Helper to get user ID from username
 async function getUserIdByUsername(username: string): Promise<number> {
@@ -103,8 +103,11 @@ describe('User battles API', () => {
     BattleCache.resetInstance();
     
     // Initialize caches
-    const userWorldCache = getUserWorldCache();
-    await userWorldCache.initialize();
+    const emptyCtx = createLockContext();
+    const userWorldCache = await getUserWorldCache(emptyCtx);
+    await emptyCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
+      await userWorldCache.initialize(userCtx);
+    });
     
     // Initialize BattleCache
     const battleCache = getBattleCache();
@@ -114,7 +117,9 @@ describe('User battles API', () => {
 
   afterEach(async () => {
     // Clean shutdown
-    await getUserWorldCache().shutdown();
+    const emptyCtx = createLockContext();
+    const userWorldCache = await getUserWorldCache(emptyCtx);
+    await userWorldCache.shutdown();
   });
 
   test('userBattles_notAuthenticated_returns401', async () => {

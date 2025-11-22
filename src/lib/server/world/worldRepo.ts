@@ -74,20 +74,6 @@ export function loadWorldFromDb(db: sqlite3.Database, saveCallback: SaveWorldCal
 }
 
 /**
- * Load world data via cache manager (cache-aware public function)
- */
-export async function loadWorld(): Promise<World> {
-  // Use typed cache manager for cache-aware access
-  const userWorldCache = getUserWorldCache();
-  await userWorldCache.initialize();
-  
-  const ctx = createLockContext();
-  return await ctx.useLockWithAcquire(WORLD_LOCK, async (worldContext) => {
-    return userWorldCache.getWorldFromCache(worldContext);
-  });
-}
-
-/**
  * Save world data to database
  */
 export function saveWorldToDb(db: sqlite3.Database): SaveWorldCallback {
@@ -130,18 +116,6 @@ export async function deleteSpaceObject(db: sqlite3.Database, objectId: number):
       }
     });
   });
-
-  // Then update cache by refreshing the world
-  try {
-    // Note: The cache manager will automatically reload world data on next access
-    // since these operations modify the database directly
-    const userWorldCache = getUserWorldCache();
-    // Note: The cache manager will automatically reload world data on next access
-    // since these operations modify the database directly
-  } catch (cacheErr) {
-    console.error('Failed to refresh world cache after object deletion:', cacheErr);
-    // Don't throw here as the database operation succeeded
-  }
 }
 
 /**
@@ -162,18 +136,6 @@ export async function insertSpaceObject(db: sqlite3.Database, obj: Omit<SpaceObj
       }
     );
   });
-
-  // Then update cache by refreshing the world
-  try {
-    // Note: The cache manager will automatically reload world data on next access
-    // since these operations modify the database directly
-    const userWorldCache = getUserWorldCache();
-    // Note: The cache manager will automatically reload world data on next access
-    // since these operations modify the database directly
-  } catch (cacheErr) {
-    console.error('Failed to refresh world cache after object insertion:', cacheErr);
-    // Don't throw here as the database operation succeeded
-  }
 
   return objectId;
 }

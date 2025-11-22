@@ -13,11 +13,9 @@ export async function GET(request: NextRequest) {
 
     // console.log(`🌍 World data request - userId: ${session.userId}`);
 
-    // Get typed cache manager singleton
-    const userWorldCache = getUserWorldCache();
-    
-    // Create empty context for lock acquisition
     const emptyCtx = createLockContext();
+    // Get typed cache manager singleton
+    const userWorldCache = await getUserWorldCache(emptyCtx);
     
     return await emptyCtx.useLockWithAcquire(WORLD_LOCK, async (worldContext) => {
       // Get world data safely (we have world write lock)

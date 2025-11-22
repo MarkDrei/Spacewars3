@@ -22,9 +22,9 @@ export async function POST(request: NextRequest) {
     
     console.log(`🎮 Cheat: Complete build requested by user: ${session.userId}`);
     
-    // Get user data to check username
-    const userWorldCache = getUserWorldCache();
     const context = createLockContext();
+    // Get user data to check username
+    const userWorldCache = await getUserWorldCache(context);
 
     const userData = await context.useLockWithAcquire(USER_LOCK, async (userContext) => {
       return await userWorldCache.getUserByIdWithLock(userContext, session.userId!);

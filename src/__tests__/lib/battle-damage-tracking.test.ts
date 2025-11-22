@@ -64,9 +64,11 @@ describe('Battle Damage Tracking', () => {
   beforeEach(async () => {
     // Reset cache manager for each test
     UserWorldCache.resetInstance();
+
+    const emptyCtx = createLockContext();
     
     // Initialize cache with test configuration (no auto-persistence)
-    const cache = UserWorldCache.getInstance({
+    const cache = await UserWorldCache.getInstance(emptyCtx, {
       persistenceIntervalMs: 30000,
       enableAutoPersistence: false,
       logStats: false

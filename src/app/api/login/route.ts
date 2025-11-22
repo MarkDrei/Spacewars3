@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcrypt';
 import { getIronSession } from 'iron-session';
-import { getDatabase } from '@/lib/server/database';
-import { getUserByUsername } from '@/lib/server/world/userRepo';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, validateRequired, ApiError } from '@/lib/server/errors';
+import { createLockContext } from '@markdrei/ironguard-typescript-locks';
+import { getUserWorldCache } from '@/lib/server/world/userWorldCache';
+import { USER_LOCK } from '@/lib/server/typedLocks';
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,8 +15,11 @@ export async function POST(request: NextRequest) {
     validateRequired(username, 'username');
     validateRequired(password, 'password');
     
-    const db = await getDatabase();
-    const user = await getUserByUsername(db, username);
+    const emptyCtx = createLockContext();
+    const cache = await getUserWorldCache(emptyCtx);
+    const user = await emptyCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
+      return await cache.getUserByUsername(userCtx, username);
+    });
     
     if (!user) {
       throw new ApiError(400, 'Invalid credentials');

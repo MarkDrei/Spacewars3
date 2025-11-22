@@ -26,8 +26,8 @@ export async function getServerAuth(): Promise<ServerAuthState | null> {
     }
 
     // Use cache to validate user existence and get current data
-    const userWorldCache = getUserWorldCache();
     const emptyCtx = createLockContext();
+    const userWorldCache = await getUserWorldCache(emptyCtx);
 
     
     const user = await emptyCtx.useLockWithAcquire(USER_LOCK, async (userContext) => {

@@ -25,6 +25,7 @@ class User {
   inBattle: boolean;
   currentBattleId: number | null;
   
+  // TODO: Need to figure out where this is implemented: Should we use locks here?
   private saveCallback: SaveUserCallback;
 
   constructor(
@@ -169,43 +170,6 @@ class User {
     this.iron += ironReward;
     
     console.log(`User ${this.username} collected a ${objectType} and received ${ironReward} iron (total: ${this.iron})`);
-  }
-
-  static createNew(username: string, password_hash: string, saveCallback: SaveUserCallback): User {
-    const now = Math.floor(Date.now() / 1000);
-    const defaultTechCounts: TechCounts = {
-      pulse_laser: 5,
-      auto_turret: 5,
-      plasma_lance: 0,
-      gauss_rifle: 0,
-      photon_torpedo: 0,
-      rocket_launcher: 0,
-      ship_hull: 5,
-      kinetic_armor: 5,
-      energy_shield: 5,
-      missile_jammer: 0
-    };
-    // Initialize defense values at max/2 (default tech counts * 100 / 2 = 250)
-    const hullCurrent = (defaultTechCounts.ship_hull * 100) / 2;
-    const armorCurrent = (defaultTechCounts.kinetic_armor * 100) / 2;
-    const shieldCurrent = (defaultTechCounts.energy_shield * 100) / 2;
-    
-    return new User(
-      0, // id will be set by DB
-      username,
-      password_hash,
-      0.0,
-      now,
-      createInitialTechTree(),
-      saveCallback,
-      defaultTechCounts,
-      hullCurrent,
-      armorCurrent,
-      shieldCurrent,
-      now, // defenseLastRegen initialized to now
-      false, // inBattle
-      null // currentBattleId
-    );
   }
 }
 

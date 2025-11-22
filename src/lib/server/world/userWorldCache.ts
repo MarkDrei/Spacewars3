@@ -3,10 +3,11 @@
 // Uses IronGuard lock system with hierarchical locking
 // ---
 
-import { createLockContext, HasLock4Context, HasLock6Context, IronLocks, LOCK_10, LOCK_11, LockContext, LocksAtMost1, LocksAtMost3, LocksAtMost4, LocksAtMostAndHas4, LocksAtMostAndHas6 } from '@markdrei/ironguard-typescript-locks';
+import { createLockContext, HasLock4Context, HasLock6Context, IronLocks, LOCK_10, LOCK_11, LOCK_9, LockContext, LocksAtMost1, LocksAtMost3, LocksAtMost4, LocksAtMost8, LocksAtMostAndHas4, LocksAtMostAndHas6 } from '@markdrei/ironguard-typescript-locks';
 import sqlite3 from 'sqlite3';
 import { getDatabase } from '../database';
 import {
+  CACHES_LOCK,
   USER_LOCK,
   WORLD_LOCK
 } from '../typedLocks';
@@ -44,13 +45,18 @@ export class UserWorldCache {
   private constructor() {
     console.log('🧠 Typed cache manager initialized');
   }
-
-  static getInstance(config?: TypedCacheConfig): UserWorldCache {
+  
+  static async getInstance(context: LockContext<LocksAtMost8>, config?: TypedCacheConfig): Promise<UserWorldCache> {
     if (!this.instance) {
-      this.instance = new UserWorldCache();
-      if (config) {
-        this.instance.config = config;
-      }
+      return await context.useLockWithAcquire(CACHES_LOCK, () => {
+        if (!this.instance) {
+          this.instance = new UserWorldCache();
+          if (config) {
+            this.instance.config = config;
+          }
+        }
+        return this.instance;
+      }); 
     }
     return this.instance;
   }
@@ -95,48 +101,41 @@ export class UserWorldCache {
   /**
    * Initialize the cache manager (idempotent - safe to call multiple times)
    */
-  async initialize(): Promise<void> {
+  async initialize(context: LockContext<LocksAtMostAndHas4>): Promise<void> {
     if (this.isInitialized) {
       return; // Fast path - already initialized
     }
 
-    const ctx = createLockContext();
-    return await ctx.useLockWithAcquire(USER_LOCK, async (userContext) => {
-      if (this.isInitialized) {
-        return; // Double-check inside lock
-      }
+    console.log('🚀 Initializing typed cache manager...');
 
-      console.log('🚀 Initializing typed cache manager...');
-
-      // Need database connection
-      await userContext.useLockWithAcquire(LOCK_10, async () => {
-        // Initialize database connection
-        this.db = await getDatabase();
-        console.log('✅ Database connected');
-      });
-
-      // Load world data
-      await this.initializeWorld(userContext);
-      console.log('✅ World data loaded');
-
-      // Start background persistence if enabled
-      this.startBackgroundPersistence();
-
-      // Start battle scheduler
-      this.startBattleScheduler();
-
-      this.isInitialized = true;
-      console.log('✅ Typed cache manager initialization complete');
+    // Need database connection
+    await context.useLockWithAcquire(LOCK_10, async () => {
+      // Initialize database connection
+      this.db = await getDatabase();
+      console.log('✅ user & world Database connected');
     });
+
+    // Load world data
+    await this.initializeWorld(context);
+    console.log('✅ World data loaded');
+
+    // Start background persistence if enabled
+    this.startBackgroundPersistence();
+
+    // Start battle scheduler
+    this.startBattleScheduler();
+
+    this.isInitialized = true;
+    console.log('✅ userWorld cache initialization complete');
   }
 
   /**
    * Ensure cache manager is initialized before operations
    * (internal helper for auto-initialization)
    */
-  private async ensureInitialized(): Promise<void> {
+  private async ensureInitialized(context: LockContext<LocksAtMostAndHas4>): Promise<void> {
     if (!this.isInitialized) {
-      await this.initialize();
+      await this.initialize(context);
     }
   }
 
@@ -144,8 +143,8 @@ export class UserWorldCache {
    * Get database connection (for BattleCache and other components)
    * Returns the database connection after ensuring initialization
    */
-  async getDatabaseConnection(): Promise<sqlite3.Database> {
-    await this.ensureInitialized();
+  async getDatabaseConnection(context: LockContext<LocksAtMostAndHas4>): Promise<sqlite3.Database> {
+    await this.ensureInitialized(context);
     if (!this.db) {
       throw new Error('Database not initialized');
     }
@@ -301,10 +300,10 @@ export class UserWorldCache {
    * - Updates user before returning
    */
   async getUserById(context: LockContext<LocksAtMost3>, userId: number): Promise<User | null> {
-    await this.ensureInitialized();
-
+    
     const ctx = createLockContext();
     return await ctx.useLockWithAcquire(USER_LOCK, async (userContext) => {
+      await this.ensureInitialized(userContext);
       return await this.getUserByIdWithLock(userContext, userId);
     });
   }
@@ -348,13 +347,9 @@ export class UserWorldCache {
    * - Loads from database if not in cache
    * - Updates user before returning
    */
-  async getUserByUsername(username: string): Promise<User | null> {
-    await this.ensureInitialized();
-    
-    const ctx = createLockContext();
-    return await ctx.useLockWithAcquire(USER_LOCK, async (userContext) => {
-      return await this.getUserByUsernameInternal(userContext, username);
-    });
+  async getUserByUsername(context: LockContext<LocksAtMostAndHas4>, username: string): Promise<User | null> {
+    await this.ensureInitialized(context);
+    return await this.getUserByUsernameInternal(context, username);
   }
 
   // ===== PERSISTENCE RELATED OPERATIONS =====
@@ -362,22 +357,19 @@ export class UserWorldCache {
   /**
    * Get cache statistics
    */
-  async getStats(): Promise<TypedCacheStats> {
-    await this.ensureInitialized();
+  async getStats(context: LockContext<LocksAtMostAndHas4>): Promise<TypedCacheStats> {
+    await this.ensureInitialized(context);
     
-    const ctx = createLockContext();
-    return await ctx.useLockWithAcquire(USER_LOCK, async () => {
-      return {
-        userCacheSize: this.users.size,
-        usernameCacheSize: this.usernameToUserId.size,
-        worldCacheHits: this.stats.worldCacheHits,
-        worldCacheMisses: this.stats.worldCacheMisses,
-        userCacheHits: this.stats.userCacheHits,
-        userCacheMisses: this.stats.userCacheMisses,
-        dirtyUsers: this.dirtyUsers.size,
-        worldDirty: this.worldDirty
-      };
-    });
+    return {
+      userCacheSize: this.users.size,
+      usernameCacheSize: this.usernameToUserId.size,
+      worldCacheHits: this.stats.worldCacheHits,
+      worldCacheMisses: this.stats.worldCacheMisses,
+      userCacheHits: this.stats.userCacheHits,
+      userCacheMisses: this.stats.userCacheMisses,
+      dirtyUsers: this.dirtyUsers.size,
+      worldDirty: this.worldDirty
+    };
   }
 
   /**
@@ -385,7 +377,7 @@ export class UserWorldCache {
    * Useful for ensuring data is persisted before reading directly from DB
    */
   async flushAllToDatabase(context: LockContext<LocksAtMostAndHas4>): Promise<void> {
-    await this.ensureInitialized();
+    await this.ensureInitialized(context);
     
     console.log('🔄 Flushing all dirty data to database...');
     
@@ -608,8 +600,8 @@ export class UserWorldCache {
     });
   }
 }
-
+  
 // Convenience function to get singleton instance
-export function getUserWorldCache(config?: TypedCacheConfig): UserWorldCache {
-  return UserWorldCache.getInstance(config);
+export async function getUserWorldCache(context: LockContext<LocksAtMost8>, config?: TypedCacheConfig): Promise<UserWorldCache> {
+  return await UserWorldCache.getInstance(context, config);
 }

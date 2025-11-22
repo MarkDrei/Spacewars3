@@ -21,13 +21,13 @@ describe('User Persistence to Database', () => {
     const initialTechCount = user.techCounts.pulse_laser;
     
     // Get cache manager and initialize
-    const userWorldCache = UserWorldCache.getInstance();
-    await userWorldCache.initialize();
+    const emptyCtx = createLockContext();
+    const userWorldCache = await UserWorldCache.getInstance(emptyCtx);
     
     // Load user into cache
-    const emptyCtx = createLockContext();
-
+    
     await emptyCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
+      await userWorldCache.initialize(userCtx);
       userWorldCache.setUserUnsafe(userCtx, user);
 
       // Act: Modify user data and mark as dirty
@@ -64,13 +64,12 @@ describe('User Persistence to Database', () => {
     const saveCallback = saveUserToDb(db);
     const user = await createUser(db, 'testuser_shutdown_persist', 'hashedpass', saveCallback);
     
-    // Get cache manager
-    const userWorldCache = UserWorldCache.getInstance();
-    await userWorldCache.initialize();
-    
     const emptyCtx = createLockContext();
+    // Get cache manager
+    const userWorldCache = await UserWorldCache.getInstance(emptyCtx);
     
     await emptyCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
+      await userWorldCache.initialize(userCtx);
       // Load user into cache
       userWorldCache.setUserUnsafe(userCtx, user);
 

@@ -12,11 +12,16 @@ import * as battleScheduler from '../../lib/server/battle/battleScheduler';
 import { createTestDatabase } from '../helpers/testDatabase';
 import { createAuthenticatedSession } from '../helpers/apiTestHelpers';
 import type { Battle, BattleStats, WeaponCooldowns } from '../../lib/server/battle/battleTypes';
-import { BATTLE_LOCK } from '@/lib/server/typedLocks';
+import { BATTLE_LOCK, USER_LOCK } from '@/lib/server/typedLocks';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 import { b } from 'vitest/dist/chunks/suite.d.FvehnV49.js';
+import { create } from 'domain';
 
 describe('Phase 5: End-to-End Battle Flow with BattleCache', () => {
+
+  let battleCache: BattleCache;
+  let userWorldCache: UserWorldCache;
+  let emptyCtx: ReturnType<typeof createLockContext>;
   
   beforeEach(async () => {
     // Import and reset the test database
@@ -28,11 +33,24 @@ describe('Phase 5: End-to-End Battle Flow with BattleCache', () => {
     // Reset all caches to clean state
     BattleCache.resetInstance();
     UserWorldCache.resetInstance();
+
+    emptyCtx = createLockContext();
+    await emptyCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
+      userWorldCache = await getUserWorldCache(userCtx);
+      await userWorldCache.initialize(userCtx);
+      
+      // Initialize BattleCache manually for tests
+      battleCache = getBattleCache();
+      const db = await userWorldCache.getDatabaseConnection(userCtx);
+      await battleCache.initialize(db);
+    });
   });
 
   afterEach(async () => {
     // Clean shutdown
-    await getUserWorldCache().shutdown();
+    const emptyCtx = createLockContext();
+    const cache = await getUserWorldCache(emptyCtx);
+    await cache.shutdown();
   });
 
   describe('Complete Battle Lifecycle', () => {
@@ -41,14 +59,6 @@ describe('Phase 5: End-to-End Battle Flow with BattleCache', () => {
       const emptyCtx = createLockContext();
       await emptyCtx.useLockWithAcquire(BATTLE_LOCK, async (battleCtx) => {
         // === Phase 1: Setup ===
-        const battleCache = getBattleCache();
-        const userWorldCache = getUserWorldCache();
-        await userWorldCache.initialize();
-  
-        // Initialize BattleCache manually for tests
-        // Initialize BattleCache manually for tests
-        const db = await userWorldCache.getDatabaseConnection();
-        await battleCache.initialize(db);
   
         // Use test user IDs (seeded by test database)
         const attackerId = 1; // User 'a' at (250, 250)
@@ -154,10 +164,12 @@ describe('Phase 5: End-to-End Battle Flow with BattleCache', () => {
         // Reset cache and reload from DB
         BattleCache.resetInstance();
         const freshCache = getBattleCache();
-        const freshCacheManager = getUserWorldCache();
-        await freshCacheManager.initialize();
-        const freshDb = await freshCacheManager.getDatabaseConnection();
-        await freshCache.initialize(freshDb);
+        const freshCacheManager = await getUserWorldCache(battleCtx);
+        battleCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
+          await freshCacheManager.initialize(userCtx);
+          const freshDb = await freshCacheManager.getDatabaseConnection(userCtx);
+          await freshCache.initialize(freshDb);
+        });
         
   
           // Battle should be loadable from database
@@ -209,14 +221,6 @@ describe('Phase 5: End-to-End Battle Flow with BattleCache', () => {
     // Note: This test is disabled because the methods it calls don't exist in battleService
     // The test should be updated when these methods are implemented
     it.skip('battleFlow_cacheIntegration_properDelegation', async () => {
-      // Test that battle operations properly delegate to TypedCacheManager
-      const userWorldCache = getUserWorldCache();
-      await userWorldCache.initialize();
-
-      // Initialize BattleCache manually for tests
-      const battleCache = getBattleCache();
-      const db = await userWorldCache.getDatabaseConnection();
-      await battleCache.initialize(db);
 
       // Use test user IDs (created by createTestDatabase)
       const user1Id = 1;
@@ -258,16 +262,7 @@ describe('Phase 5: End-to-End Battle Flow with BattleCache', () => {
     });
 
     it('battleFlow_concurrentBattles_cacheSeparation', async () => {
-      const emptyCtx = createLockContext();
       await emptyCtx.useLockWithAcquire(BATTLE_LOCK, async (battleCtx) => {
-        // Test multiple concurrent battles with proper cache separation
-        const userWorldCache = getUserWorldCache();
-        await userWorldCache.initialize();
-
-        // Initialize BattleCache manually for tests
-        const battleCache = getBattleCache();
-        const db = await userWorldCache.getDatabaseConnection();
-        await battleCache.initialize(db);
 
         // Use first 4 test users
         const userIds = [1, 2, 3, 4];
@@ -321,14 +316,6 @@ describe('Phase 5: End-to-End Battle Flow with BattleCache', () => {
     it('battleCache_backgroundPersistence_worksCorrectly', async () => {
       const emptyCtx = createLockContext();
       await emptyCtx.useLockWithAcquire(BATTLE_LOCK, async (battleCtx) => {
-        const cache = getBattleCache();
-        const userWorldCache = getUserWorldCache();
-        await userWorldCache.initialize();
-
-        // Initialize BattleCache manually for tests
-        const battleCache = getBattleCache();
-        const db = await userWorldCache.getDatabaseConnection();
-        await battleCache.initialize(db);
 
         // Use test users
         const user1Id = 1;
@@ -358,13 +345,13 @@ describe('Phase 5: End-to-End Battle Flow with BattleCache', () => {
         });
 
         // Verify battle is dirty
-        expect(cache.getDirtyBattleIds().includes(battle.id)).toBe(true);
+        expect(battleCache.getDirtyBattleIds().includes(battle.id)).toBe(true);
 
         // Force persistence
-        await cache.persistDirtyBattles(battleCtx);
+        await battleCache.persistDirtyBattles(battleCtx);
 
         // Battle should no longer be dirty
-        expect(cache.getDirtyBattleIds().includes(battle.id)).toBe(false);
+        expect(battleCache.getDirtyBattleIds().includes(battle.id)).toBe(false);
       });
     });
 
@@ -401,16 +388,7 @@ describe('Phase 5: End-to-End Battle Flow with BattleCache', () => {
     });
 
     it('battleCache_cacheOperations_threadsafe', async () => {
-      const emptyCtx = createLockContext();
       await emptyCtx.useLockWithAcquire(BATTLE_LOCK, async (battleCtx) => {
-        const cache = getBattleCache();
-        const userWorldCache = getUserWorldCache();
-        await userWorldCache.initialize();
-
-        // Initialize BattleCache manually for tests
-        const battleCache = getBattleCache();
-        const db = await userWorldCache.getDatabaseConnection();
-        await battleCache.initialize(db);
 
         // Use test users
         const user1Id = 1;

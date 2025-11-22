@@ -8,6 +8,7 @@ import { createInitialTechTree } from '../techtree';
 import { getUserWorldCache } from './userWorldCache';
 import { sendMessageToUser } from '../messages/MessageCache';
 import { TechCounts } from '../TechFactory';
+import { LockContext, LocksAtMostAndHas4 } from '@markdrei/ironguard-typescript-locks';
 
 interface UserRow {
   id: number;
@@ -113,12 +114,6 @@ export function getUserByUsernameFromDb(db: sqlite3.Database, username: string, 
       resolve(userFromRow(row as UserRow, saveCallback));
     });
   });
-}
-
-export async function getUserByUsername(db: sqlite3.Database, username: string): Promise<User | null> {
-  // Use typed cache manager for cache-aware access
-  const userWorldCache = getUserWorldCache();
-  return await userWorldCache.getUserByUsername(username);
 }
 
 export function createUser(db: sqlite3.Database, username: string, password_hash: string, saveCallback: SaveUserCallback): Promise<User> {

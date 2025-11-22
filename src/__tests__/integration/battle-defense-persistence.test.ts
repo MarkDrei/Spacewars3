@@ -15,6 +15,10 @@ import { createLockContext, LockContext, LocksAtMostAndHas4 } from '@markdrei/ir
 import type { BattleStats } from '../../lib/server/battle/battleTypes';
 
 describe('Battle Defense Persistence', () => {
+
+  let battleCache: BattleCache;
+  let userWorldCache: UserWorldCache;
+  let emptyCtx: ReturnType<typeof createLockContext>;
   
   beforeEach(async () => {
     const { resetTestDatabase } = await import('../../lib/server/database');
@@ -25,28 +29,33 @@ describe('Battle Defense Persistence', () => {
     // Reset all caches
     BattleCache.resetInstance();
     UserWorldCache.resetInstance();
+    
+    emptyCtx = createLockContext();
+    await emptyCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
+      userWorldCache = await getUserWorldCache(userCtx);
+      await userWorldCache.initialize(userCtx);
+      
+      // Initialize BattleCache manually for tests
+      battleCache = getBattleCache();
+      const db = await userWorldCache.getDatabaseConnection(userCtx);
+      await battleCache.initialize(db);
+    });
   });
 
   afterEach(async () => {
-    await getUserWorldCache().shutdown();
+    const emptyCtx = createLockContext();
+    const userWorldCache =  await getUserWorldCache(emptyCtx);
+    await userWorldCache.shutdown();
   });
 
   it('defenseValues_afterBattleEnds_notResetToMax', { timeout: 15000 }, async () => {
     console.log('🧪 Testing defense value persistence after battle ends...');
     
-    const userWorldCache = getUserWorldCache();
-    await userWorldCache.initialize();
-    
-    // Initialize BattleCache
-    const battleCache = BattleCache.getInstance();
-    const db = await userWorldCache.getDatabaseConnection();
-    await battleCache.initialize(db);
-    
     // Get test users (seeded by test database)
     let attacker: User | null = null;
     let defender: User | null = null;
     
-    await createLockContext().useLockWithAcquire(USER_LOCK, async (userContext) => {
+    await emptyCtx.useLockWithAcquire(USER_LOCK, async (userContext) => {
       attacker = await userWorldCache.getUserByIdWithLock(userContext, 1);
       defender = await userWorldCache.getUserByIdWithLock(userContext, 2);
     });
@@ -92,7 +101,6 @@ describe('Battle Defense Persistence', () => {
       weapons: {}
     };
     
-    const emptyCtx = createLockContext();
     await emptyCtx.useLockWithAcquire(BATTLE_LOCK, async (battleCtx) => {
       // Create battle directly through BattleCache
       const battleCache = getBattleCache();

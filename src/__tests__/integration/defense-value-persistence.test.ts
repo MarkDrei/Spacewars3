@@ -12,6 +12,7 @@ import { createTestDatabase } from '../helpers/testDatabase';
 import type { BattleStats, WeaponCooldowns } from '../../lib/server/battle/battleTypes';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 import { BATTLE_LOCK, USER_LOCK } from '@/lib/server/typedLocks';
+import { use } from 'react';
 
 describe('Defense Value Persistence After Battle', () => {
   
@@ -29,20 +30,26 @@ describe('Defense Value Persistence After Battle', () => {
 
   afterEach(async () => {
     // Clean shutdown
-    await getUserWorldCache().shutdown();
+    const emptyCtx = createLockContext();
+    const userWorldCache = await getUserWorldCache(emptyCtx);
+    await userWorldCache.shutdown();
   });
 
   it('defenseValues_afterBattleResolution_persistCorrectly', async () => {
     // === Phase 1: Setup ===
     const battleCache = getBattleCache();
-    const userWorldCache = getUserWorldCache();
-    await userWorldCache.initialize();
-
-    // Initialize BattleCache manually for tests
-    const db = await userWorldCache.getDatabaseConnection();
-    await battleCache.initialize(db);
-
     const emptyCtx = createLockContext();
+    const userWorldCache = await getUserWorldCache(emptyCtx);
+
+    await emptyCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
+      await userWorldCache.initialize(userCtx);
+  
+      // Initialize BattleCache manually for tests
+      const db = await userWorldCache.getDatabaseConnection(userCtx);
+      await battleCache.initialize(db);
+      return db;
+    });
+
     await emptyCtx.useLockWithAcquire(BATTLE_LOCK, async (battleContext) => {
         // Load users from cache
         const attacker = await userWorldCache.getUserById(battleContext, 1);
@@ -137,31 +144,31 @@ describe('Defense Value Persistence After Battle', () => {
         // Flush cache to ensure values are written to DB
         await battleContext.useLockWithAcquire(USER_LOCK, async (userContext) => {
           await userWorldCache.flushAllToDatabase(userContext);
+          // Clear cache and reload users from DB
+          UserWorldCache.resetInstance();
+          const freshCacheManager = await getUserWorldCache(battleContext);
+          await freshCacheManager.initialize(userContext);
+      
+          // Load users again from database
+          const reloadedAttacker = await freshCacheManager.getUserByIdWithLock(userContext, attacker!.id);
+          const reloadedDefender = await freshCacheManager.getUserByIdWithLock(userContext, defender!.id);
+      
+          console.log(`Reloaded attacker hull: ${reloadedAttacker?.hullCurrent}`);
+          console.log(`Reloaded defender hull: ${reloadedDefender?.hullCurrent}`);
+      
+          // Verify that defense values match the endStats from the battle
+          const finalAttackerHull = currentBattle?.attackerEndStats?.hull.current ?? initialAttackerHull;
+          const finalDefenderHull = currentBattle?.attackeeEndStats?.hull.current ?? initialDefenderHull;
+      
+          expect(reloadedAttacker?.hullCurrent).toBe(finalAttackerHull);
+          expect(reloadedDefender?.hullCurrent).toBe(finalDefenderHull);
+      
+          // At least one user's hull should be 0 (they lost)
+          const attackerDestroyed = reloadedAttacker?.hullCurrent === 0;
+          const defenderDestroyed = reloadedDefender?.hullCurrent === 0;
+          expect(attackerDestroyed || defenderDestroyed).toBe(true);
         });
     
-        // Clear cache and reload users from DB
-        UserWorldCache.resetInstance();
-        const freshCacheManager = getUserWorldCache();
-        await freshCacheManager.initialize();
-    
-        // Load users again from database
-        const reloadedAttacker = await freshCacheManager.getUserById(battleContext, attacker!.id);
-        const reloadedDefender = await freshCacheManager.getUserById(battleContext, defender!.id);
-    
-        console.log(`Reloaded attacker hull: ${reloadedAttacker?.hullCurrent}`);
-        console.log(`Reloaded defender hull: ${reloadedDefender?.hullCurrent}`);
-    
-        // Verify that defense values match the endStats from the battle
-        const finalAttackerHull = currentBattle?.attackerEndStats?.hull.current ?? initialAttackerHull;
-        const finalDefenderHull = currentBattle?.attackeeEndStats?.hull.current ?? initialDefenderHull;
-    
-        expect(reloadedAttacker?.hullCurrent).toBe(finalAttackerHull);
-        expect(reloadedDefender?.hullCurrent).toBe(finalDefenderHull);
-    
-        // At least one user's hull should be 0 (they lost)
-        const attackerDestroyed = reloadedAttacker?.hullCurrent === 0;
-        const defenderDestroyed = reloadedDefender?.hullCurrent === 0;
-        expect(attackerDestroyed || defenderDestroyed).toBe(true);
     });
 
   });

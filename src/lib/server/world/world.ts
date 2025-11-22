@@ -5,6 +5,7 @@
 import { HasLock6Context, IronLocks } from '@markdrei/ironguard-typescript-locks';
 import { updateAllObjectPositions } from '@shared/physics';
 import sqlite3 from 'sqlite3';
+import { deleteSpaceObject, insertSpaceObject } from './worldRepo';
 
 export interface SpaceObject {
   id: number;
@@ -120,7 +121,6 @@ class World {
     this.spaceObjects.splice(objectIndex, 1);
     
     // Remove from database
-    const { deleteSpaceObject } = await import('./worldRepo');
     await deleteSpaceObject(this.db, objectId);
     
     // Spawn a new object to replace the collected one
@@ -169,7 +169,6 @@ class World {
     };
 
     // Insert into database and get the new ID
-    const { insertSpaceObject } = await import('./worldRepo');
     const newId = await insertSpaceObject(this.db, newObject);
     
     // Add to world with the database-assigned ID

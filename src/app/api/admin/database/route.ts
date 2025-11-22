@@ -19,6 +19,7 @@ import { getBattleCacheInitialized } from '@/lib/server/battle/BattleCache';
 import type { Battle } from '@/lib/server/battle/battleTypes';
 import { createLockContext, LOCK_2, LOCK_4 } from '@markdrei/ironguard-typescript-locks';
 import { getUserWorldCache } from '@/lib/server/world/userWorldCache';
+import { a } from 'vitest/dist/chunks/suite.d.FvehnV49.js';
 
 interface UserData {
   id: number;
@@ -67,9 +68,9 @@ export async function GET(request: NextRequest) {
     requireAuth(session.userId);
     
     // Get user data to check username for admin access
-    const context0 = createLockContext();
-    const userWorldCache = getUserWorldCache();
-    return await context0.useLockWithAcquire(LOCK_4, async (userContext) => {
+    const emptyCtx = createLockContext();
+    const userWorldCache = await getUserWorldCache(emptyCtx);
+    return await emptyCtx.useLockWithAcquire(LOCK_4, async (userContext) => {
       const userData = await userWorldCache.getUserByIdWithLock(userContext, session.userId!);
       if (!userData) {
         throw new ApiError(404, 'User not found');

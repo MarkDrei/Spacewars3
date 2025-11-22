@@ -181,7 +181,7 @@ export class BattleEngine {
     remainingArmor: number;
     remainingHull: number;
   }> {
-    const userWorldCache = getUserWorldCache();
+    const userWorldCache = await getUserWorldCache(context);
     const user = await userWorldCache.getUserByIdWithLock(context, targetUserId);
       
       if (!user) {
@@ -258,7 +258,7 @@ export class BattleEngine {
   }
 
   async isBattleOverWithLock(context: LockContext<LocksAtMostAndHas4>): Promise<boolean> {
-      const userWorldCache = getUserWorldCache();
+      const userWorldCache = await getUserWorldCache(context);
       const attacker = await userWorldCache.getUserByIdWithLock(context, this.battle.attackerId);
       const attackee = await userWorldCache.getUserByIdWithLock(context, this.battle.attackeeId);
   
@@ -280,7 +280,7 @@ export class BattleEngine {
         return null;
       }
 
-      const userWorldCache = getUserWorldCache();
+      const userWorldCache = await getUserWorldCache(context);
       const attacker = await userWorldCache.getUserByIdWithLock(userContext, this.battle.attackerId);
       const attackee = await userWorldCache.getUserByIdWithLock(userContext, this.battle.attackeeId);
 
@@ -385,7 +385,7 @@ export class BattleEngine {
       this.battle.battleLog.push(event);
   
       // Check for defense layer destruction by reading current user values
-      const userWorldCache = getUserWorldCache();
+      const userWorldCache = await getUserWorldCache(context);
       const targetUser = await userWorldCache.getUserByIdWithLock(userContext, targetUserId);
 
       if (targetUser) {

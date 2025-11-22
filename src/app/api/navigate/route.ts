@@ -22,11 +22,9 @@ export async function POST(request: NextRequest) {
       throw new ApiError(400, 'Must provide speed and/or angle');
     }
     
-    // Get typed cache manager singleton
-    const userWorldCache = getUserWorldCache();
-    
-    // Create empty context for lock acquisition
     const emptyCtx = createLockContext();
+    // Get typed cache manager singleton
+    const userWorldCache = await getUserWorldCache(emptyCtx);
     
     return await emptyCtx.useLockWithAcquire(USER_LOCK, async (userContext) => {
       return await userContext.useLockWithAcquire(WORLD_LOCK, async (worldContext) => {

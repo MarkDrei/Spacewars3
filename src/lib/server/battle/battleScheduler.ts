@@ -27,22 +27,22 @@ import { getUserWorldCache } from '../world/userWorldCache';
 import { BATTLE_LOCK, USER_LOCK } from '../typedLocks';
 import { createLockContext, LockContext, LocksAtMostAndHas2 } from '@markdrei/ironguard-typescript-locks';
 
-/**
- * Helper to update user's battle state via TypedCacheManager
- * Uses proper cache delegation instead of direct DB access
- */
-async function updateUserBattleState(userId: number, inBattle: boolean, battleId: number | null): Promise<void> {
-  const userWorldCache = getUserWorldCache();
-  const ctx = createLockContext();
-  await ctx.useLockWithAcquire(USER_LOCK, async (userContext) => {
-    const user = userWorldCache.getUserByIdFromCache(userContext, userId);
-    if (user) {
-      user.inBattle = inBattle;
-      user.currentBattleId = battleId;
-      userWorldCache.updateUserInCache(userContext, user);
-    }
-  });
-}
+// /**
+//  * Helper to update user's battle state via TypedCacheManager
+//  * Uses proper cache delegation instead of direct DB access
+//  */
+// async function updateUserBattleState(userId: number, inBattle: boolean, battleId: number | null): Promise<void> {
+//   const userWorldCache = getUserWorldCache();
+//   const ctx = createLockContext();
+//   await ctx.useLockWithAcquire(USER_LOCK, async (userContext) => {
+//     const user = userWorldCache.getUserByIdFromCache(userContext, userId);
+//     if (user) {
+//       user.inBattle = inBattle;
+//       user.currentBattleId = battleId;
+//       userWorldCache.updateUserInCache(userContext, user);
+//     }
+//   });
+// }
 
 /**
  * Helper to create a message for a user via MessageCache

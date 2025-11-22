@@ -9,11 +9,14 @@ import { UserWorldCache, getUserWorldCache } from '../../lib/server/world/userWo
 import * as BattleRepo from '../../lib/server/battle/BattleCache';
 import { createTestDatabase } from '../helpers/testDatabase';
 import type { BattleStats, WeaponCooldowns } from '../../lib/server/battle/battleTypes';
-import { BATTLE_LOCK } from '@/lib/server/typedLocks';
+import { BATTLE_LOCK, USER_LOCK } from '@/lib/server/typedLocks';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 
 describe('Phase 5: BattleCache Integration Testing', () => {
-  
+  let battleCache: BattleCache;
+  let userWorldCache: UserWorldCache;
+  let emptyCtx: ReturnType<typeof createLockContext>;
+
   beforeEach(async () => {
     // Import and reset the test database
     const { resetTestDatabase } = await import('../../lib/server/database');
@@ -24,13 +27,27 @@ describe('Phase 5: BattleCache Integration Testing', () => {
     // Reset all caches to clean state
     BattleCache.resetInstance();
     UserWorldCache.resetInstance();
+
+    // Initialize common test objects
+    emptyCtx = createLockContext();
+    battleCache = getBattleCache();
+    userWorldCache = await getUserWorldCache(emptyCtx);
+    
+    // Use lock to initialize properly
+    await emptyCtx.useLockWithAcquire(USER_LOCK, async (userContext) => {
+      await userWorldCache.initialize(userContext);
+      
+      // Initialize BattleCache for all tests
+      const db = await userWorldCache.getDatabaseConnection(userContext);
+      await battleCache.initialize(db);
+    });
   });
 
   afterEach(async () => {
     // Clean shutdown
     try {
-      await getBattleCache().shutdown();
-      await getUserWorldCache().shutdown();
+      await battleCache.shutdown();
+      await userWorldCache.shutdown();
     } catch {
       // Ignore shutdown errors in tests
     }
@@ -38,15 +55,6 @@ describe('Phase 5: BattleCache Integration Testing', () => {
 
   describe('Core BattleCache Functionality', () => {
     it('battleCache_createBattle_storesInCache', async () => {
-      const battleCache = getBattleCache();
-      const userWorldCache = getUserWorldCache();
-      await userWorldCache.initialize();
-
-      // Initialize BattleCache manually for tests
-      // Initialize BattleCache manually for tests
-      const db = await userWorldCache.getDatabaseConnection();
-      await battleCache.initialize(db);
-
       // Use test user IDs (created by createTestDatabase)
       const attackerId = 1;
       const defenderId = 2;
@@ -76,7 +84,6 @@ describe('Phase 5: BattleCache Integration Testing', () => {
         missile_launcher: 0
       };
 
-      const emptyCtx = createLockContext();
       const battle = await emptyCtx.useLockWithAcquire(BATTLE_LOCK, async (battleContext) => {
         return await battleCache.createBattle(
           battleContext,
@@ -104,15 +111,6 @@ describe('Phase 5: BattleCache Integration Testing', () => {
     });
 
     it('battleCache_loadBattleIfNeeded_loadsFromDatabase', async () => {
-      const battleCache = getBattleCache();
-      const userWorldCache = getUserWorldCache();
-      await userWorldCache.initialize();
-
-      // Initialize BattleCache manually for tests
-      // Initialize BattleCache manually for tests
-      const db = await userWorldCache.getDatabaseConnection();
-      await battleCache.initialize(db);
-
       const attackerId = 1;
       const defenderId = 2;
 
@@ -131,7 +129,6 @@ describe('Phase 5: BattleCache Integration Testing', () => {
       };
 
       // Create battle
-      const emptyCtx = createLockContext();
       await emptyCtx.useLockWithAcquire(BATTLE_LOCK, async (battleCtx) => {
       
       const battleCache = await getBattleCacheInitialized();
@@ -160,14 +157,6 @@ describe('Phase 5: BattleCache Integration Testing', () => {
     });
 
     it('battleCache_getOngoingBattleForUser_findsUserBattle', async () => {
-      const userWorldCache = getUserWorldCache();
-      await userWorldCache.initialize();
-
-      // Initialize BattleCache manually for tests
-      const battleCache = getBattleCache();
-      const db = await userWorldCache.getDatabaseConnection();
-      await battleCache.initialize(db);
-
       const attackerId = 1;
       const defenderId = 2;
 
@@ -185,7 +174,6 @@ describe('Phase 5: BattleCache Integration Testing', () => {
         missile_launcher: 0
       };
 
-      const emptyCtx = createLockContext();
       await emptyCtx.useLockWithAcquire(BATTLE_LOCK, async (battleCtx) => {
         // Create battle
         const battleCache = await getBattleCacheInitialized();
@@ -209,14 +197,6 @@ describe('Phase 5: BattleCache Integration Testing', () => {
     });
 
     it('battleCache_getActiveBattles_returnsAllActive', async () => {
-      const userWorldCache = getUserWorldCache();
-      await userWorldCache.initialize();
-
-      // Initialize BattleCache manually for tests
-      const battleCache = getBattleCache();
-      const db = await userWorldCache.getDatabaseConnection();
-      await battleCache.initialize(db);
-
       const stats: BattleStats = {
         hull: { current: 100, max: 100 },
         armor: { current: 50, max: 50 },
@@ -231,7 +211,6 @@ describe('Phase 5: BattleCache Integration Testing', () => {
         missile_launcher: 0
       };
 
-      const emptyCtx = createLockContext();
       await emptyCtx.useLockWithAcquire(BATTLE_LOCK, async (battleCtx) => {
 
         // Initially no active battles
@@ -268,15 +247,6 @@ describe('Phase 5: BattleCache Integration Testing', () => {
     });
 
     it('battleCache_addBattleEvent_updatesCache', async () => {
-      const battleCache = getBattleCache();
-      const userWorldCache = getUserWorldCache();
-      await userWorldCache.initialize();
-
-      // Initialize BattleCache manually for tests
-      // Initialize BattleCache manually for tests
-      const db = await userWorldCache.getDatabaseConnection();
-      await battleCache.initialize(db);
-
       const stats: BattleStats = {
         hull: { current: 100, max: 100 },
         armor: { current: 50, max: 50 },
@@ -291,7 +261,6 @@ describe('Phase 5: BattleCache Integration Testing', () => {
         missile_launcher: 0
       };
 
-      const emptyCtx = createLockContext();
       await emptyCtx.useLockWithAcquire(BATTLE_LOCK, async (battleCtx) => {
         const battleCache = await getBattleCacheInitialized();
         // Create battle
@@ -316,15 +285,6 @@ describe('Phase 5: BattleCache Integration Testing', () => {
     });
 
     it('battleCache_endBattle_removesFromCache', async () => {
-      const battleCache = getBattleCache();
-      const userWorldCache = getUserWorldCache();
-      await userWorldCache.initialize();
-
-      // Initialize BattleCache manually for tests
-      // Initialize BattleCache manually for tests
-      const db = await userWorldCache.getDatabaseConnection();
-      await battleCache.initialize(db);
-
       const stats: BattleStats = {
         hull: { current: 100, max: 100 },
         armor: { current: 50, max: 50 },
@@ -348,7 +308,6 @@ describe('Phase 5: BattleCache Integration Testing', () => {
       };
 
 
-      const emptyCtx = createLockContext();
       await emptyCtx.useLockWithAcquire(BATTLE_LOCK, async (battleCtx) => {
         const battleCache = await getBattleCacheInitialized();
 
@@ -385,9 +344,6 @@ describe('Phase 5: BattleCache Integration Testing', () => {
 
   describe('Error Handling', () => {
     it('battleCache_nonExistentBattle_returnsNull', async () => {
-      const battleCache = getBattleCache();
-
-      const emptyCtx = createLockContext();
       await emptyCtx.useLockWithAcquire(BATTLE_LOCK, async (battleCtx) => {
         // Try to load non-existent battle
         const nonExistent = await battleCache.loadBattleIfNeeded(battleCtx, 99999);
@@ -406,14 +362,6 @@ describe('Phase 5: BattleCache Integration Testing', () => {
 
   describe('Persistence Testing', () => {
     it('battleCache_persistence_maintainsData', async () => {
-      const userWorldCache = getUserWorldCache();
-      await userWorldCache.initialize();
-
-      // Initialize BattleCache manually for tests
-      const battleCache = getBattleCache();
-      const db = await userWorldCache.getDatabaseConnection();
-      await battleCache.initialize(db);
-
       const stats: BattleStats = {
         hull: { current: 100, max: 100 },
         armor: { current: 50, max: 50 },
@@ -428,7 +376,6 @@ describe('Phase 5: BattleCache Integration Testing', () => {
         missile_launcher: 0
       };
 
-      const emptyCtx = createLockContext();
       await emptyCtx.useLockWithAcquire(BATTLE_LOCK, async (battleCtx) => {
         const battleCache = await getBattleCacheInitialized();
         // Create battle
@@ -453,10 +400,13 @@ describe('Phase 5: BattleCache Integration Testing', () => {
   
         // Create fresh cache
         const newCache = getBattleCache();
-        const newCacheManager = getUserWorldCache();
-        await newCacheManager.initialize();
+        const newCtx = createLockContext();
+        const newCacheManager = await getUserWorldCache(newCtx);
+        
+        await newCtx.useLockWithAcquire(USER_LOCK, async (userContext) => {
+          await newCacheManager.initialize(userContext);
+        });
   
-        const emptyCtx = createLockContext();
         // Battle should be loadable from database
         const persistedBattle = await newCache.loadBattleIfNeeded(battleCtx, battle.id);
         expect(persistedBattle).toBeDefined();

@@ -39,9 +39,9 @@ export async function POST(request: NextRequest) {
       throw new ApiError(400, 'Missing or invalid object ID');
     }
     
-    // Get typed cache manager singleton
-    const userWorldCache = getUserWorldCache();
     const emptyCtx = createLockContext();
+    // Get typed cache manager singleton
+    const userWorldCache = await getUserWorldCache(emptyCtx);
 
     return await emptyCtx.useLockWithAcquire(USER_LOCK, async (userContext) => {
       userContext.useLockWithAcquire(WORLD_LOCK, async (worldContext) => {

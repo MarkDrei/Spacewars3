@@ -13,11 +13,9 @@ export async function GET(request: NextRequest) {
     const session = await getIronSession<SessionData>(request, NextResponse.json({}), sessionOptions);
     requireAuth(session.userId);
     
-    // Get typed cache manager singleton
-    const userWorldCache = getUserWorldCache();
-    
-    // Create empty context for lock acquisition
     const emptyCtx = createLockContext();
+    // Get typed cache manager singleton
+    const userWorldCache = await getUserWorldCache(emptyCtx);
     
     return await emptyCtx.useLockWithAcquire(USER_LOCK, async (userContext) => {
       // Get user data safely (we have user lock)

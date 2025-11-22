@@ -44,9 +44,9 @@ export async function POST(request: NextRequest) {
     
     console.log(`⚔️ Attack API: User ${session.userId} attacking user ${targetUserId}`);
     
-    const userWorldCache = getUserWorldCache();
-
     const context = createLockContext();
+    const userWorldCache = await getUserWorldCache(context);
+
     return await context.useLockWithAcquire(BATTLE_LOCK, async (battleContext) => {
       return await battleContext.useLockWithAcquire(USER_LOCK, async (userContext) => {
         const attacker = await userWorldCache.getUserByIdWithLock(userContext, session.userId!);
