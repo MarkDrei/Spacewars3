@@ -10,11 +10,16 @@
 // Status: ✅ Properly delegates user state updates to cache manager
 // ---
 
-import type { Battle, BattleStats, BattleEvent, WeaponCooldowns } from './battleTypes';
-import { TechFactory } from '../TechFactory';
-import { getUserWorldCache } from '../world/userWorldCache';
-import { createLockContext } from '../typedLocks';
-import type { User } from '../world/user';
+import type { Battle, BattleStats, BattleEvent } from './battleTypes';
+import { TechFactory } from '../techs/TechFactory';
+import { LockContext } from '@markdrei/ironguard-typescript-locks';
+import { LocksAtMost3, LocksAtMostAndHas2, LocksAtMostAndHas4 } from '@markdrei/ironguard-typescript-locks/dist/core/ironGuardTypes';
+import { USER_LOCK } from '../typedLocks';
+
+import { UserCache } from '../user/userCache';
+import { TechService } from '../techs/TechService';
+import { TechTree, createInitialTechTree } from '../techs/techtree';
+import { TechCounts } from '../techs/TechFactory';
 
 /**
  * Battle class - Encapsulates battle state and combat mechanics
@@ -44,9 +49,9 @@ export class BattleEngine {
   isWeaponReady(userId: number, weaponType: string, currentTime: number): boolean {
     const isAttacker = this.battle.attackerId === userId;
     const cooldowns = isAttacker ? this.battle.attackerWeaponCooldowns : this.battle.attackeeWeaponCooldowns;
-    
+
     const nextReadyTime = cooldowns[weaponType] || 0;
-    
+
     // Cooldown stores "next ready time" - weapon is ready if current time >= that
     return currentTime >= nextReadyTime;
   }
@@ -57,15 +62,15 @@ export class BattleEngine {
   getReadyWeapons(userId: number, currentTime: number): string[] {
     const isAttacker = this.battle.attackerId === userId;
     const stats = isAttacker ? this.battle.attackerStartStats : this.battle.attackeeStartStats;
-    
+
     const readyWeapons: string[] = [];
-    
+
     for (const [weaponType, weaponData] of Object.entries(stats.weapons)) {
       if (weaponData.count > 0 && this.isWeaponReady(userId, weaponType, currentTime)) {
         readyWeapons.push(weaponType);
       }
     }
-    
+
     return readyWeapons;
   }
 
@@ -73,9 +78,9 @@ export class BattleEngine {
    * Determine which weapon fires next (shortest remaining cooldown)
    * Returns: { userId, weaponType, timeUntilReady }
    */
-  getNextWeaponToFire(currentTime: number): { 
-    userId: number; 
-    weaponType: string; 
+  getNextWeaponToFire(currentTime: number): {
+    userId: number;
+    weaponType: string;
     timeUntilReady: number;
   } | null {
     let nextShot: { userId: number; weaponType: string; timeUntilReady: number } | null = null;
@@ -137,10 +142,10 @@ export class BattleEngine {
   updateWeaponCooldown(userId: number, weaponType: string, currentTime: number): void {
     const isAttacker = this.battle.attackerId === userId;
     const cooldowns = isAttacker ? this.battle.attackerWeaponCooldowns : this.battle.attackeeWeaponCooldowns;
-    
+
     // Update cooldown
     cooldowns[weaponType] = currentTime;
-    
+
     if (isAttacker) {
       this.battle.attackerWeaponCooldowns = cooldowns;
     } else {
@@ -165,10 +170,11 @@ export class BattleEngine {
    * Apply damage to a target's defenses (shield → armor → hull)
    * Returns the amount of damage actually dealt to each layer and remaining defense values
    * 
-   * CRITICAL: This method reads and updates User defense values from TypedCacheManager
+   * CRITICAL: This method reads and updates User defense values from userWorldCache
    * startStats and endStats are NOT modified here - they are write-once snapshots
    */
-  async applyDamage(
+  async applyDamageWithLock(
+    context: LockContext<LocksAtMostAndHas4>,
     targetUserId: number,
     totalDamage: number
   ): Promise<{
@@ -179,100 +185,108 @@ export class BattleEngine {
     remainingArmor: number;
     remainingHull: number;
   }> {
-    // Load user from cache to get current defense values
-    const cacheManager = getUserWorldCache();
-    const ctx = createLockContext();
-    const userCtx = await cacheManager.acquireUserLock(ctx);
-    
-    try {
-      const user = await cacheManager.getUserByIdWithLock(targetUserId, userCtx);
-      
-      if (!user) {
-        throw new Error(`User ${targetUserId} not found during battle`);
-      }
+    const userWorldCache = UserCache.getInstance2();
+    const user = await userWorldCache.getUserByIdWithLock(context, targetUserId);
 
-      let remainingDamage = totalDamage;
-      let shieldDamage = 0;
-      let armorDamage = 0;
-      let hullDamage = 0;
-
-      // 1. Apply to shield first
-      if (user.shieldCurrent > 0 && remainingDamage > 0) {
-        shieldDamage = Math.min(remainingDamage, user.shieldCurrent);
-        user.shieldCurrent -= shieldDamage;
-        remainingDamage -= shieldDamage;
-      }
-
-      // 2. Apply to armor second
-      if (user.armorCurrent > 0 && remainingDamage > 0) {
-        armorDamage = Math.min(remainingDamage, user.armorCurrent);
-        user.armorCurrent -= armorDamage;
-        remainingDamage -= armorDamage;
-      }
-
-      // 3. Apply to hull last
-      if (user.hullCurrent > 0 && remainingDamage > 0) {
-        hullDamage = Math.min(remainingDamage, user.hullCurrent);
-        user.hullCurrent -= hullDamage;
-        remainingDamage -= hullDamage;
-      }
-
-      // Update user in cache (marks as dirty for persistence)
-      cacheManager.updateUserInCache(user, userCtx);
-
-      return {
-        shieldDamage,
-        armorDamage,
-        hullDamage,
-        remainingShield: user.shieldCurrent,
-        remainingArmor: user.armorCurrent,
-        remainingHull: user.hullCurrent
-      };
-    } finally {
-      userCtx.dispose();
+    if (!user) {
+      throw new Error(`User ${targetUserId} not found during battle`);
     }
+
+    let remainingDamage = totalDamage;
+    let shieldDamage = 0;
+    let armorDamage = 0;
+    let hullDamage = 0;
+
+    // 1. Apply to shield first
+    if (user.shieldCurrent > 0 && remainingDamage > 0) {
+      shieldDamage = Math.min(remainingDamage, user.shieldCurrent);
+      user.shieldCurrent -= shieldDamage;
+      remainingDamage -= shieldDamage;
+    }
+
+    // 2. Apply to armor second
+    if (user.armorCurrent > 0 && remainingDamage > 0) {
+      armorDamage = Math.min(remainingDamage, user.armorCurrent);
+      user.armorCurrent -= armorDamage;
+      remainingDamage -= armorDamage;
+    }
+
+    // 3. Apply to hull last
+    if (user.hullCurrent > 0 && remainingDamage > 0) {
+      hullDamage = Math.min(remainingDamage, user.hullCurrent);
+      user.hullCurrent -= hullDamage;
+      remainingDamage -= hullDamage;
+    }
+
+    // Update user in cache (marks as dirty for persistence)
+    userWorldCache.updateUserInCache(context, user);
+
+    return {
+      shieldDamage,
+      armorDamage,
+      hullDamage,
+      remainingShield: user.shieldCurrent,
+      remainingArmor: user.armorCurrent,
+      remainingHull: user.hullCurrent
+    };
+  }
+
+  /**
+   * Apply damage to a target's defenses
+   */
+  async applyDamage(
+    context: LockContext<LocksAtMost3>,
+    targetUserId: number,
+    totalDamage: number
+  ): Promise<{
+    shieldDamage: number;
+    armorDamage: number;
+    hullDamage: number;
+    remainingShield: number;
+    remainingArmor: number;
+    remainingHull: number;
+  }> {
+    return await context.useLockWithAcquire(USER_LOCK, async (userContext) => {
+      return this.applyDamageWithLock(userContext, targetUserId, totalDamage);
+    });
   }
 
   /**
    * Check if the battle is over (someone's hull reached 0)
    * Checks actual User defense values from cache, not battle stats
    */
-  async isBattleOver(): Promise<boolean> {
-    const cacheManager = getUserWorldCache();
-    const ctx = createLockContext();
-    const userCtx = await cacheManager.acquireUserLock(ctx);
-    
-    try {
-      const attacker = await cacheManager.getUserByIdWithLock(this.battle.attackerId, userCtx);
-      const attackee = await cacheManager.getUserByIdWithLock(this.battle.attackeeId, userCtx);
+  async isBattleOver(context: LockContext<LocksAtMost3>): Promise<boolean> {
+    return await context.useLockWithAcquire(USER_LOCK, async (userContext) => {
+      return this.isBattleOverWithLock(userContext);
+    });
+  }
 
-      if (!attacker || !attackee) {
-        throw new Error('Users not found during battle');
-      }
-      
-      return attacker.hullCurrent <= 0 || attackee.hullCurrent <= 0;
-    } finally {
-      userCtx.dispose();
+  async isBattleOverWithLock(context: LockContext<LocksAtMostAndHas4>): Promise<boolean> {
+    const userWorldCache = UserCache.getInstance2();
+    const attacker = await userWorldCache.getUserByIdWithLock(context, this.battle.attackerId);
+    const attackee = await userWorldCache.getUserByIdWithLock(context, this.battle.attackeeId);
+
+    if (!attacker || !attackee) {
+      throw new Error('Users not found during battle');
     }
+
+    return attacker.hullCurrent <= 0 || attackee.hullCurrent <= 0;
   }
 
   /**
    * Get the winner and loser IDs
    * Checks actual User defense values from cache
    */
-  async getBattleOutcome(): Promise<{ winnerId: number; loserId: number } | null> {
-    const isOver = await this.isBattleOver();
-    if (!isOver) {
-      return null;
-    }
+  async getBattleOutcome(context: LockContext<LocksAtMost3>): Promise<{ winnerId: number; loserId: number } | null> {
+    return await context.useLockWithAcquire(USER_LOCK, async (userContext) => {
+      const isOver = await this.isBattleOverWithLock(userContext);
+      if (!isOver) {
+        return null;
+      }
 
-    const cacheManager = getUserWorldCache();
-    const ctx = createLockContext();
-    const userCtx = await cacheManager.acquireUserLock(ctx);
-    
-    try {
-      const attacker = await cacheManager.getUserByIdWithLock(this.battle.attackerId, userCtx);
-      const attackee = await cacheManager.getUserByIdWithLock(this.battle.attackeeId, userCtx);
+      const userWorldCache = UserCache.getInstance2();
+      const attacker = await userWorldCache.getUserByIdWithLock(userContext, this.battle.attackerId);
+      const attackee = await userWorldCache.getUserByIdWithLock(userContext, this.battle.attackeeId);
 
       if (!attacker || !attackee) {
         throw new Error('Users not found during battle');
@@ -289,9 +303,8 @@ export class BattleEngine {
           loserId: this.battle.attackeeId
         };
       }
-    } finally {
-      userCtx.dispose();
-    }
+
+    });
   }
 
   /**
@@ -314,7 +327,7 @@ export class BattleEngine {
    * Execute a single combat turn (one weapon fires)
    * Returns the event generated from this turn
    */
-  async executeTurn(currentTime: number): Promise<BattleEvent | null> {
+  async executeTurn(context: LockContext<LocksAtMostAndHas2>, currentTime: number): Promise<BattleEvent | null> {
     // Find next weapon ready to fire
     const nextShot = this.getNextWeaponToFire(currentTime);
     if (!nextShot || nextShot.timeUntilReady > 0) {
@@ -334,53 +347,50 @@ export class BattleEngine {
       return null; // Weapon no longer available
     }
 
-    // Calculate and apply damage
-    const totalDamage = this.calculateDamage(weaponType, weaponData.count);
-    const damageResult = await this.applyDamage(targetUserId, totalDamage);
+    return await context.useLockWithAcquire(USER_LOCK, async (userContext) => {
+      // Calculate and apply damage
+      const totalDamage = this.calculateDamage(weaponType, weaponData.count);
+      const damageResult = await this.applyDamageWithLock(userContext, targetUserId, totalDamage);
 
-    // Track total damage dealt by attacker/attackee
-    if (isAttacker) {
-      this.battle.attackerTotalDamage += totalDamage;
-    } else {
-      this.battle.attackeeTotalDamage += totalDamage;
-    }
+      // Track total damage dealt by attacker/attackee
+      if (isAttacker) {
+        this.battle.attackerTotalDamage += totalDamage;
+      } else {
+        this.battle.attackeeTotalDamage += totalDamage;
+      }
 
-    // Fire the weapon (update cooldown)
-    this.updateWeaponCooldown(userId, weaponType, currentTime);
+      // Fire the weapon (update cooldown)
+      this.updateWeaponCooldown(userId, weaponType, currentTime);
 
-    // Create damage event
-    let targetDefense: 'shield' | 'armor' | 'hull' = 'shield';
-    let damageDealt = damageResult.shieldDamage;
-    
-    if (damageResult.shieldDamage > 0) {
-      targetDefense = 'shield';
-      damageDealt = damageResult.shieldDamage;
-    } else if (damageResult.armorDamage > 0) {
-      targetDefense = 'armor';
-      damageDealt = damageResult.armorDamage;
-    } else if (damageResult.hullDamage > 0) {
-      targetDefense = 'hull';
-      damageDealt = damageResult.hullDamage;
-    }
+      // Create damage event
+      let targetDefense: 'shield' | 'armor' | 'hull' = 'shield';
+      let damageDealt = damageResult.shieldDamage;
 
-    const event = this.createBattleEvent('damage_dealt', actor, {
-      weaponType,
-      damageDealt: damageDealt,
-      targetDefense,
-      remainingValue: damageResult.remainingHull,
-      message: `${actor} fired ${weaponType} dealing ${totalDamage} damage to ${targetActor}'s ${targetDefense}`
-    });
+      if (damageResult.shieldDamage > 0) {
+        targetDefense = 'shield';
+        damageDealt = damageResult.shieldDamage;
+      } else if (damageResult.armorDamage > 0) {
+        targetDefense = 'armor';
+        damageDealt = damageResult.armorDamage;
+      } else if (damageResult.hullDamage > 0) {
+        targetDefense = 'hull';
+        damageDealt = damageResult.hullDamage;
+      }
 
-    // Add event to battle log
-    this.battle.battleLog.push(event);
+      const event = this.createBattleEvent('damage_dealt', actor, {
+        weaponType,
+        damageDealt: damageDealt,
+        targetDefense,
+        remainingValue: damageResult.remainingHull,
+        message: `${actor} fired ${weaponType} dealing ${totalDamage} damage to ${targetActor}'s ${targetDefense}`
+      });
 
-    // Check for defense layer destruction by reading current user values
-    const cacheManager = getUserWorldCache();
-    const ctx = createLockContext();
-    const userCtx = await cacheManager.acquireUserLock(ctx);
-    
-    try {
-      const targetUser = await cacheManager.getUserByIdWithLock(targetUserId, userCtx);
+      // Add event to battle log
+      this.battle.battleLog.push(event);
+
+      // Check for defense layer destruction by reading current user values
+      const userWorldCache = UserCache.getInstance2();
+      const targetUser = await userWorldCache.getUserByIdWithLock(userContext, targetUserId);
 
       if (targetUser) {
         if (damageResult.shieldDamage > 0 && targetUser.shieldCurrent === 0) {
@@ -405,25 +415,22 @@ export class BattleEngine {
           this.battle.battleLog.push(hullDestroyedEvent);
         }
       }
-    } finally {
-      userCtx.dispose();
-    }
-
-    return event;
+      return event;
+    });
   }
 
   /**
    * Process battle until a weapon is ready or battle ends
    * Returns the list of events that occurred
    */
-  async processBattleUntilNextShot(maxTurns: number = 100): Promise<BattleEvent[]> {
+  async processBattleUntilNextShot(context: LockContext<LocksAtMostAndHas2>, maxTurns: number = 100): Promise<BattleEvent[]> {
     const events: BattleEvent[] = [];
     let turns = 0;
     const currentTime = Math.floor(Date.now() / 1000);
 
-    while (turns < maxTurns && !(await this.isBattleOver())) {
-      const event = await this.executeTurn(currentTime + turns);
-      
+    while (turns < maxTurns && !(await this.isBattleOver(context))) {
+      const event = await this.executeTurn(context, currentTime + turns);
+
       if (!event) {
         // No weapon ready, would need to wait
         break;
@@ -432,7 +439,7 @@ export class BattleEngine {
       events.push(event);
       turns++;
 
-      if (await this.isBattleOver()) {
+      if (await this.isBattleOver(context)) {
         break;
       }
     }
@@ -444,9 +451,10 @@ export class BattleEngine {
 /**
  * Helper function to create initial battle stats from user tech counts
  */
-export function createBattleStats(techCounts: {
-  [key: string]: number;
-}): BattleStats {
+export function createBattleStats(
+  techCounts: { [key: string]: number },
+  techTree: TechTree = createInitialTechTree()
+): BattleStats {
   const stats: BattleStats = {
     hull: { current: 0, max: 0 },
     armor: { current: 0, max: 0 },
@@ -455,17 +463,15 @@ export function createBattleStats(techCounts: {
   };
 
   // Calculate defense values
-  const hullCount = techCounts.ship_hull || 0;
-  const armorCount = techCounts.kinetic_armor || 0;
-  const shieldCount = techCounts.energy_shield || 0;
+  const maxStats = TechService.calculateMaxDefense(techCounts as unknown as TechCounts, techTree);
 
-  stats.hull.max = hullCount * 100;
+  stats.hull.max = maxStats.hull;
   stats.hull.current = stats.hull.max; // Start at full health
 
-  stats.armor.max = armorCount * 100;
+  stats.armor.max = maxStats.armor;
   stats.armor.current = stats.armor.max;
 
-  stats.shield.max = shieldCount * 100;
+  stats.shield.max = maxStats.shield;
   stats.shield.current = stats.shield.max;
 
   // Add weapons

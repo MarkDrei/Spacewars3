@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getIronSession } from 'iron-session';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { requireAuth, handleApiError } from '@/lib/server/errors';
-import { TechFactory } from '@/lib/server/TechFactory';
+import { TechFactory } from '@/lib/server/techs/TechFactory';
 
 /**
  * GET /api/tech-catalog

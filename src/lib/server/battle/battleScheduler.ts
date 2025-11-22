@@ -20,31 +20,28 @@ import { BattleRepo } from './BattleCache';
 import { BattleEngine } from './battleEngine';
 import { resolveBattle } from './battleService';
 import type { Battle, BattleEvent } from './battleTypes';
-import { TechFactory } from '../TechFactory';
+import { TechFactory } from '../techs/TechFactory';
 import { sendMessageToUser } from '../messages/MessageCache';
 import { getBattleCache } from './BattleCache';
-import { getUserWorldCache } from '../world/userWorldCache';
-import { createLockContext, BATTLE_LOCK } from '../typedLocks';
+import { BATTLE_LOCK } from '../typedLocks';
+import { createLockContext, LockContext, LocksAtMostAndHas2 } from '@markdrei/ironguard-typescript-locks';
 
-/**
- * Helper to update user's battle state via TypedCacheManager
- * Uses proper cache delegation instead of direct DB access
- */
-async function updateUserBattleState(userId: number, inBattle: boolean, battleId: number | null): Promise<void> {
-  const cacheManager = getUserWorldCache();
-  const ctx = createLockContext();
-  const userCtx = await cacheManager.acquireUserLock(ctx);
-  try {
-    const user = cacheManager.getUserByIdFromCache(userId, userCtx);
-    if (user) {
-      user.inBattle = inBattle;
-      user.currentBattleId = battleId;
-      cacheManager.updateUserInCache(user, userCtx);
-    }
-  } finally {
-    userCtx.dispose();
-  }
-}
+// /**
+//  * Helper to update user's battle state via TypedCacheManager
+//  * Uses proper cache delegation instead of direct DB access
+//  */
+// async function updateUserBattleState(userId: number, inBattle: boolean, battleId: number | null): Promise<void> {
+//   const userWorldCache = getUserWorldCache();
+//   const ctx = createLockContext();
+//   await ctx.useLockWithAcquire(USER_LOCK, async (userContext) => {
+//     const user = userWorldCache.getUserByIdFromCache(userContext, userId);
+//     if (user) {
+//       user.inBattle = inBattle;
+//       user.currentBattleId = battleId;
+//       userWorldCache.updateUserInCache(userContext, user);
+//     }
+//   });
+// }
 
 /**
  * Helper to create a message for a user via MessageCache
@@ -58,17 +55,11 @@ async function createMessage(userId: number, message: string): Promise<void> {
  * Process all active battles automatically  
  * Acquires BATTLE write lock once for all battle processing
  */
-export async function processActiveBattles(): Promise<void> {
+export async function processActiveBattles(context: LockContext<LocksAtMostAndHas2>): Promise<void> {
   try {
-    // Acquire BATTLE write lock for the entire processing cycle
-    // This prevents concurrent scheduler ticks from interfering
-    const ctx = createLockContext();
-    const battleCtx = await ctx.acquireWrite(BATTLE_LOCK);
-    
-    try {
       const battleCache = getBattleCache();
-      // Pass battleCtx so getActiveBattles doesn't try to acquire another lock
-      const activeBattles = await battleCache.getActiveBattles(battleCtx);
+      // Pass battleContext so getActiveBattles doesn't try to acquire another lock
+      const activeBattles = await battleCache.getActiveBattles(context);
       
       if (activeBattles.length === 0) {
         return;
@@ -78,14 +69,11 @@ export async function processActiveBattles(): Promise<void> {
       
       for (const battle of activeBattles) {
         try {
-          await processBattleRoundInternal(battle.id);
+          await processBattleRoundInternal(context, battle.id);
         } catch (error) {
           console.error(`❌ Error processing battle ${battle.id}:`, error);
         }
       }
-    } finally {
-      battleCtx.dispose();
-    }
   } catch (error) {
     console.error('❌ Error processing active battles:', error);
   }
@@ -95,8 +83,8 @@ export async function processActiveBattles(): Promise<void> {
  * Process one round for a specific battle
  * Called from processActiveBattles which already holds BATTLE write lock
  */
-async function processBattleRoundInternal(battleId: number): Promise<void> {
-  const battle = await BattleRepo.getBattle(battleId);
+async function processBattleRoundInternal(context: LockContext<LocksAtMostAndHas2>, battleId: number): Promise<void> {
+  const battle = await BattleRepo.getBattle(context, battleId);
   
   if (!battle || battle.battleEndTime) {
     return;
@@ -112,6 +100,7 @@ async function processBattleRoundInternal(battleId: number): Promise<void> {
     // Process attacker's weapons
     for (const weaponType of attackerReadyWeapons) {
       await fireWeapon(
+        context,
         battle,
         battle.attackerId,
         battle.attackeeId,
@@ -124,6 +113,7 @@ async function processBattleRoundInternal(battleId: number): Promise<void> {
     // Process attackee's weapons
     for (const weaponType of attackeeReadyWeapons) {
       await fireWeapon(
+        context,
         battle,
         battle.attackeeId,
         battle.attackerId,
@@ -134,18 +124,17 @@ async function processBattleRoundInternal(battleId: number): Promise<void> {
     }
     
     // Check if battle is over after this round
-    const updatedBattle = await BattleRepo.getBattle(battleId);
+    const updatedBattle = await BattleRepo.getBattle(context, battleId);
     if (updatedBattle) {
       const updatedEngine = new BattleEngine(updatedBattle);
-      if (await updatedEngine.isBattleOver()) {
-        const outcome = await updatedEngine.getBattleOutcome();
+      if (await updatedEngine.isBattleOver(context)) {
+        const outcome = await updatedEngine.getBattleOutcome(context);
         if (outcome) {
           // Use battleService.resolveBattle instead of local endBattle
           // This ensures proper endStats snapshotting and teleportation
-          await resolveBattle(battleId, outcome.winnerId);
+          await resolveBattle(context, battleId, outcome.winnerId);
           
           // Send victory/defeat messages (battleService doesn't do this)
-          const battle = updatedBattle;
           const winnerId = outcome.winnerId;
           const loserId = outcome.loserId;
           await createMessage(winnerId, `P: 🎉 **Victory!** You won the battle!`);
@@ -161,6 +150,7 @@ async function processBattleRoundInternal(battleId: number): Promise<void> {
  * Fire a weapon and apply damage
  */
 async function fireWeapon(
+  context: LockContext<LocksAtMostAndHas2>,
   battle: Battle,
   attackerId: number,
   defenderId: number,
@@ -177,7 +167,6 @@ async function fireWeapon(
   
   const isAttacker = attackerId === battle.attackerId;
   const attackerStats = isAttacker ? battle.attackerStartStats : battle.attackeeStartStats;
-  const defenderStats = isAttacker ? battle.attackeeStartStats : battle.attackerStartStats;
   
   const weaponData = attackerStats.weapons[weaponType];
   if (!weaponData || weaponData.count === 0) {
@@ -210,7 +199,7 @@ async function fireWeapon(
       }
     };
     
-    await BattleRepo.addBattleEvent(battle.id, missEvent);
+    await BattleRepo.addBattleEvent(context, battle.id, missEvent);
     
     // Send message to both players
     await createMessage(attackerId, `Your ${weaponType.replace(/_/g, ' ')} fired ${shotsPerSalvo} shot(s) but all missed!`);
@@ -218,7 +207,7 @@ async function fireWeapon(
     
     // Update cooldown - set to when weapon will be ready next
     const nextReadyTime = currentTime + (weaponSpec.cooldown || 5);
-    await BattleRepo.setWeaponCooldown(battle.id, attackerId, weaponType, nextReadyTime);
+    await BattleRepo.setWeaponCooldown(context, battle.id, attackerId, weaponType, nextReadyTime);
     
     return;
   }
@@ -229,7 +218,7 @@ async function fireWeapon(
   
   // Apply damage using BattleEngine to ensure User cache is updated
   const battleEngine = new BattleEngine(battle);
-  const damageResult = await battleEngine.applyDamage(defenderId, totalDamage);
+  const damageResult = await battleEngine.applyDamage(context, defenderId, totalDamage);
   
   // Extract damage amounts from result
   const shieldDamage = damageResult.shieldDamage;
@@ -242,7 +231,7 @@ async function fireWeapon(
   const remainingHull = damageResult.remainingHull;
   
   // Track total damage dealt by attacker/attackee
-  await BattleRepo.updateTotalDamage(battle.id, attackerId, totalDamage);
+  await BattleRepo.updateTotalDamage(context, battle.id, attackerId, totalDamage);
   
   // Create battle event
   const hitEvent: BattleEvent = {
@@ -261,7 +250,7 @@ async function fireWeapon(
     }
   };
   
-  await BattleRepo.addBattleEvent(battle.id, hitEvent);
+  await BattleRepo.addBattleEvent(context, battle.id, hitEvent);
   
   // Format defense status for messages - ALWAYS show all three defense values
   const defenseStatus = `Hull: ${remainingHull}, Armor: ${remainingArmor}, Shield: ${remainingShield}`;
@@ -275,7 +264,7 @@ async function fireWeapon(
   
   // Update cooldown - set to when weapon will be ready next
   const nextReadyTime = currentTime + (weaponSpec.cooldown || 5);
-  await BattleRepo.setWeaponCooldown(battle.id, attackerId, weaponType, nextReadyTime);
+  await BattleRepo.setWeaponCooldown(context, battle.id, attackerId, weaponType, nextReadyTime);
   
   console.log(`⚔️ Battle ${battle.id}: User ${attackerId} ${weaponType} - ${hits}/${shotsPerSalvo} hits, ${totalDamage} damage`);
 }
@@ -293,9 +282,12 @@ export function startBattleScheduler(intervalMs: number = 1000): void {
   
   console.log(`⚔️ Starting battle scheduler (interval: ${intervalMs}ms)`);
   
-  schedulerInterval = setInterval(() => {
-    processActiveBattles().catch(error => {
-      console.error('❌ Battle scheduler error:', error);
+  schedulerInterval = setInterval(async () => {
+    const ctx = createLockContext();
+    await ctx.useLockWithAcquire(BATTLE_LOCK, async (battleContext) => {
+      await processActiveBattles(battleContext).catch(error => {
+        console.error('❌ Battle scheduler error:', error);
+      });
     });
   }, intervalMs);
 }

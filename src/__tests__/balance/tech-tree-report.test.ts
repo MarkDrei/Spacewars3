@@ -7,7 +7,7 @@ import {
   getResearchUpgradeCost,
   getResearchUpgradeDuration,
   getResearchEffect,
-} from '@/lib/server/techtree';
+} from '@/lib/server/techs/techtree';
 
 describe('Tech Tree Report Generation', () => {
   it('generateTechTreeReport_first50Levels_createHTMLReport', () => {

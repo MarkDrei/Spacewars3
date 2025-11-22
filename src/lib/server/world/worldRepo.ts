@@ -4,8 +4,6 @@
 
 import sqlite3 from 'sqlite3';
 import { World, SpaceObject, SaveWorldCallback } from './world';
-import { getUserWorldCache } from './userWorldCache';
-import { createLockContext } from '../typedLocks';
 
 /**
  * Load world data from database (used internally by cache manager)
@@ -73,25 +71,6 @@ export function loadWorldFromDb(db: sqlite3.Database, saveCallback: SaveWorldCal
 }
 
 /**
- * Load world data via cache manager (cache-aware public function)
- */
-export async function loadWorld(): Promise<World> {
-  // Use typed cache manager for cache-aware access
-  const cacheManager = getUserWorldCache();
-  
-  const emptyCtx = createLockContext();
-  
-  // Use world read lock to ensure consistent access
-  const worldCtx = await cacheManager.acquireWorldRead(emptyCtx);
-  try {
-    // Get world data safely (we have world read lock)
-    return cacheManager.getWorldFromCache(worldCtx);
-  } finally {
-    worldCtx.dispose();
-  }
-}
-
-/**
  * Save world data to database
  */
 export function saveWorldToDb(db: sqlite3.Database): SaveWorldCallback {
@@ -134,18 +113,6 @@ export async function deleteSpaceObject(db: sqlite3.Database, objectId: number):
       }
     });
   });
-
-  // Then update cache by refreshing the world
-  try {
-    // Note: The cache manager will automatically reload world data on next access
-    // since these operations modify the database directly
-    const cacheManager = getUserWorldCache();
-    // Note: The cache manager will automatically reload world data on next access
-    // since these operations modify the database directly
-  } catch (cacheErr) {
-    console.error('Failed to refresh world cache after object deletion:', cacheErr);
-    // Don't throw here as the database operation succeeded
-  }
 }
 
 /**
@@ -166,18 +133,6 @@ export async function insertSpaceObject(db: sqlite3.Database, obj: Omit<SpaceObj
       }
     );
   });
-
-  // Then update cache by refreshing the world
-  try {
-    // Note: The cache manager will automatically reload world data on next access
-    // since these operations modify the database directly
-    const cacheManager = getUserWorldCache();
-    // Note: The cache manager will automatically reload world data on next access
-    // since these operations modify the database directly
-  } catch (cacheErr) {
-    console.error('Failed to refresh world cache after object insertion:', cacheErr);
-    // Don't throw here as the database operation succeeded
-  }
 
   return objectId;
 }

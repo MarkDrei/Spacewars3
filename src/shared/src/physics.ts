@@ -84,6 +84,8 @@ export function updateObjectPositionWithTimeCorrection(
 
 /**
  * Update multiple objects' positions
+ * 
+ * 
  */
 export function updateAllObjectPositions<T extends PhysicsObject>(
   objects: T[],

@@ -7,6 +7,12 @@ import { DefenseValues } from '@/shared/defenseValues';
 export type WeaponSubtype = 'Projectile' | 'Energy';
 export type WeaponStrength = 'Weak' | 'Medium' | 'Strong';
 
+export interface BuildQueueItem {
+  itemKey: string;
+  itemType: 'weapon' | 'defense';
+  completionTime: number; // Unix timestamp when build completes
+}
+
 export interface WeaponSpec {
   name: string;
   subtype: WeaponSubtype;
@@ -28,6 +34,7 @@ export interface WeaponSpec {
 export interface DefenseSpec {
   name: string;
   baseCost: number; // iron cost
+  baseValue: number; // base defense value (HP)
   buildDurationMinutes: number;
   description: string;
 }
@@ -40,7 +47,7 @@ export interface TechCounts {
   gauss_rifle: number;
   photon_torpedo: number;
   rocket_launcher: number;
-  
+
   // Defense
   ship_hull: number;
   kinetic_armor: number;
@@ -153,24 +160,28 @@ export class TechFactory {
     ship_hull: {
       name: 'Ship Hull',
       baseCost: 150,
+      baseValue: 150,
       buildDurationMinutes: 2,
       description: 'The basic structure of the ship, providing minimal protection against all damage types. Protects the engine with the same value as the hull.'
     },
     kinetic_armor: {
       name: 'Kinetic Armor',
       baseCost: 200,
+      baseValue: 250,
       buildDurationMinutes: 2,
       description: 'Reinforced plating that absorbs damage from physical and projectile-based weapons. Ideal for countering turrets, railguns, and rockets.'
     },
     energy_shield: {
       name: 'Energy Shield',
       baseCost: 200,
+      baseValue: 250,
       buildDurationMinutes: 2,
       description: 'A protective energy field that absorbs or deflects energy-based attacks like lasers and plasma weapons. Recharges slowly over time.'
     },
     missile_jammer: {
       name: 'Missile Jammer',
       baseCost: 350,
+      baseValue: 0, // Special defense, no HP
       buildDurationMinutes: 5,
       description: 'Electronic countermeasure system that scrambles enemy targeting systems. Disrupts guided weapons such as rockets and torpedoes.'
     }
@@ -185,7 +196,7 @@ export class TechFactory {
     if (key in techCounts && typeof techCounts[key as keyof TechCounts] === 'number') {
       return techCounts[key as keyof TechCounts];
     }
-    
+
     return 0;
   }
 
@@ -275,6 +286,22 @@ export class TechFactory {
   }
 
   /**
+   * Calculate stacked base defense values (base value * count)
+   * Does NOT include research factors.
+   */
+  static calculateStackedBaseDefense(techCounts: TechCounts): {
+    hull: number;
+    armor: number;
+    shield: number;
+  } {
+    return {
+      hull: techCounts.ship_hull * this.DEFENSE_CATALOG.ship_hull.baseValue,
+      armor: techCounts.kinetic_armor * this.DEFENSE_CATALOG.kinetic_armor.baseValue,
+      shield: techCounts.energy_shield * this.DEFENSE_CATALOG.energy_shield.baseValue
+    };
+  }
+
+  /**
    * Check if a defense item can be built
    */
   static canBuildDefense(defenseKey: string, availableIron: number): boolean {
@@ -282,37 +309,7 @@ export class TechFactory {
     return spec ? availableIron >= spec.baseCost : false;
   }
 
-  /**
-   * Calculate defense values (hull, armor, shield) based on tech counts and current values
-   * Max value = 100 × tech_count
-   * Current value = from database (persisted)
-   * Regen rate = 1 per second (hardcoded)
-   */
-  static calculateDefenseValues(
-    techCounts: TechCounts,
-    currentValues: { hull: number; armor: number; shield: number }
-  ): DefenseValues {
-    return {
-      hull: {
-        name: 'Ship Hull',
-        current: currentValues.hull,
-        max: techCounts.ship_hull * 100,
-        regenRate: 1
-      },
-      armor: {
-        name: 'Kinetic Armor',
-        current: currentValues.armor,
-        max: techCounts.kinetic_armor * 100,
-        regenRate: 1
-      },
-      shield: {
-        name: 'Energy Shield',
-        current: currentValues.shield,
-        max: techCounts.energy_shield * 100,
-        regenRate: 1
-      }
-    };
-  }
+
 
   /**
    * Calculate total weapon effects for a ship's current loadout
@@ -333,7 +330,7 @@ export class TechFactory {
         // DPS = damage / reload time (converted to seconds)
         const weaponDPS = spec.baseDamage / (spec.reloadTimeMinutes * 60);
         const weaponTotalDPS = weaponDPS * count;
-        
+
         totalDPS += weaponTotalDPS;
         weightedAccuracy += spec.baseAccuracy * weaponTotalDPS;
         totalCost += spec.baseCost * count;
@@ -413,15 +410,15 @@ export class TechFactory {
 
     // Calculate overall accuracy based on weapon type
     let overallAccuracy: number;
-    
+
     if (weaponKey === 'rocket_launcher') {
       // Rocket Launcher: (base + positive) * (1 - ECM)
       overallAccuracy = (weaponSpec.baseAccuracy + positiveAccuracyModifier) * (1 - ecmEffectiveness);
     } else if (weaponKey === 'photon_torpedo') {
       // Photon Torpedo: (base + positive) * (1 - negative/3) * (1 - ECM/3)
-      overallAccuracy = (weaponSpec.baseAccuracy + positiveAccuracyModifier) * 
-                       (1 - (negativeAccuracyModifier / 3)) * 
-                       (1 - (ecmEffectiveness / 3));
+      overallAccuracy = (weaponSpec.baseAccuracy + positiveAccuracyModifier) *
+        (1 - (negativeAccuracyModifier / 3)) *
+        (1 - (ecmEffectiveness / 3));
     } else {
       // Other weapons: (base + positive) * (1 - negative)
       overallAccuracy = (weaponSpec.baseAccuracy + positiveAccuracyModifier) * (1 - negativeAccuracyModifier);

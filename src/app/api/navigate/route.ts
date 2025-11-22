@@ -1,15 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getIronSession } from 'iron-session';
-import { getUserWorldCache, UserWorldCache } from '@/lib/server/world/userWorldCache';
-import { getResearchEffectFromTree, ResearchType } from '@/lib/server/techtree';
+import { UserCache } from '@/lib/server/user/userCache';
+import { getResearchEffectFromTree, ResearchType } from '@/lib/server/techs/techtree';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth, ApiError } from '@/lib/server/errors';
-import { createLockContext, type LockContext as IronGuardLockContext, USER_LOCK } from '@/lib/server/typedLocks';
-import { User } from '@/lib/server/world/user';
+import { USER_LOCK, WORLD_LOCK } from '@/lib/server/typedLocks';
+import { User } from '@/lib/server/user/user';
 import { World } from '@/lib/server/world/world';
-
-// Type alias for user context
-type UserContext = IronGuardLockContext<readonly [typeof USER_LOCK]>;
+import { createLockContext, LockContext, LocksAtMostAndHas4, LocksAtMostAndHas6 } from '@markdrei/ironguard-typescript-locks';
+import { WorldCache } from '@/lib/server/world/worldCache';
 
 export async function POST(request: NextRequest) {
   try {
@@ -24,48 +23,29 @@ export async function POST(request: NextRequest) {
       throw new ApiError(400, 'Must provide speed and/or angle');
     }
     
-    // Get typed cache manager singleton
-    const cacheManager = getUserWorldCache();
-    
-    // Create empty context for lock acquisition
     const emptyCtx = createLockContext();
+    // Get typed cache manager singleton
+    const userWorldCache = UserCache.getInstance2();
     
-    // Execute navigation with compile-time guaranteed deadlock-free lock ordering:
-    // World Write (1) → User (2) → Database Read (3) if needed
-    const worldCtx = await cacheManager.acquireWorldWrite(emptyCtx);
-    try {
-      const userCtx = await cacheManager.acquireUserLock(worldCtx);
-      try {
+    const worldCache = WorldCache.getInstance();
+    return await emptyCtx.useLockWithAcquire(USER_LOCK, async (userContext) => {
+      return await userContext.useLockWithAcquire(WORLD_LOCK, async (worldContext) => {
         // Get world data safely (we have world write lock)
-        const world = cacheManager.getWorldFromCache(userCtx);
+        const world = worldCache.getWorldFromCache(worldContext);
         
-        // Get user data safely (we have user lock)
-        let user = cacheManager.getUserByIdFromCache(session.userId!, userCtx);
-        
+        // Get user data safely (we have user lock)  
+        const user = await userWorldCache.getUserByIdWithLock(userContext, session.userId!);
+
         if (!user) {
-          // Load user from database if not in cache
-          const dbCtx = await cacheManager.acquireDatabaseRead(userCtx);
-          try {
-            user = await cacheManager.loadUserFromDbUnsafe(session.userId!, dbCtx);
-            if (!user) {
-              throw new ApiError(404, 'User not found');
-            }
-            
-            // Cache the loaded user
-            cacheManager.setUserUnsafe(user, userCtx);
-          } finally {
-            dbCtx.dispose();
-          }
+          console.log(`❌ User not found: ${session.userId}`);
+          throw new ApiError(404, 'User not found');
         }
         
         // Continue with navigation logic
-        return await performNavigationLogic(world, user, speed, angle, cacheManager, userCtx);
-      } finally {
-        userCtx.dispose();
-      }
-    } finally {
-      worldCtx.dispose();
-    }
+        return await performNavigationLogic(worldContext, userContext, world, user, speed, angle);
+
+      });
+    });
   } catch (error) {
     return handleApiError(error);
   }
@@ -76,13 +56,14 @@ export async function POST(request: NextRequest) {
  * This function requires world write and user locks to be held
  */
 async function performNavigationLogic(
+  worldContext: LockContext<LocksAtMostAndHas6>,
+  userCtx: LockContext<LocksAtMostAndHas4>,
   world: World,
   user: User,
   speed: number | undefined,
-  angle: number | undefined,
-  cacheManager: UserWorldCache,
-  userCtx: UserContext
+  angle: number | undefined
 ): Promise<NextResponse> {
+  const worldCache = WorldCache.getInstance();
   // Check if user is in battle - cannot navigate while in battle
   if (user.inBattle) {
     throw new ApiError(400, 'Cannot navigate while in battle');
@@ -90,10 +71,10 @@ async function performNavigationLogic(
   
   // Update physics for all objects first
   const currentTime = Date.now();
-  world.updatePhysics(currentTime);
+  world.updatePhysics(worldContext, currentTime);
   
   // Find player's ship in the world
-  const playerShips = world.getSpaceObjectsByType('player_ship');
+  const playerShips = world.getSpaceObjectsByType(worldContext, 'player_ship');
   const playerShip = playerShips.find((ship) => ship.id === user.ship_id);
   
   if (!playerShip) {
@@ -130,7 +111,7 @@ async function performNavigationLogic(
   playerShip.last_position_update_ms = currentTime;
   
   // Update cache with new data (using unsafe methods because we have proper locks)
-  cacheManager.updateWorldUnsafe(world, userCtx);
+  worldCache.updateWorldUnsafe(worldContext, world);
   
   return NextResponse.json({ 
     success: true,

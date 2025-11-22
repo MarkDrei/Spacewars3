@@ -1,12 +1,21 @@
-import { describe, expect, test } from 'vitest';
+import { describe, expect, test, beforeEach, afterEach } from 'vitest';
 
 // Import API routes
 import { GET as userStatsGET } from '@/app/api/user-stats/route';
 
 // Import shared test helpers
 import { createRequest, createAuthenticatedSession } from '../helpers/apiTestHelpers';
+import { initializeIntegrationTestServer, shutdownIntegrationTestServer } from '../helpers/testServer';
 
 describe('User stats API', () => {
+  beforeEach(async () => {
+    await initializeIntegrationTestServer();
+  });
+
+  afterEach(async () => {
+    await shutdownIntegrationTestServer();
+  });
+
   test('userStats_notAuthenticated_returns401', async () => {
     const request = createRequest('http://localhost:3000/api/user-stats', 'GET');
     const response = await userStatsGET(request);

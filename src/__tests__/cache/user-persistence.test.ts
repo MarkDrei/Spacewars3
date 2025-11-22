@@ -1,13 +1,16 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { UserWorldCache } from '@/lib/server/world/userWorldCache';
+import { UserCache } from '@/lib/server/user/userCache';
 import { getDatabase } from '@/lib/server/database';
-import { createUser } from '@/lib/server/world/userRepo';
-import { saveUserToDb } from '@/lib/server/world/userRepo';
+import { createUser } from '@/lib/server/user/userRepo';
+import { saveUserToDb } from '@/lib/server/user/userRepo';
+import { createLockContext } from '@markdrei/ironguard-typescript-locks';
+import { USER_LOCK } from '@/lib/server/typedLocks';
 
 describe('User Persistence to Database', () => {
-  beforeEach(() => {
-    // Reset cache manager for each test
-    UserWorldCache.resetInstance();
+  beforeEach(async () => {
+    UserCache.resetInstance();
+    const db = await getDatabase();
+    await UserCache.intialize2(db);
   });
 
   it('userPersistence_dirtyUserModified_persitsToDatabase', async () => {
@@ -19,34 +22,22 @@ describe('User Persistence to Database', () => {
     const initialTechCount = user.techCounts.pulse_laser;
     
     // Get cache manager and initialize
-    const cacheManager = UserWorldCache.getInstance();
-    await cacheManager.initialize();
+    const emptyCtx = createLockContext();
+    const userWorldCache = UserCache.getInstance2();
     
     // Load user into cache
-    const { createLockContext } = await import('@/lib/server/typedLocks');
-    const emptyCtx = createLockContext();
     
-    const userCtx = await cacheManager.acquireUserLock(emptyCtx);
-    try {
-      // Set user in cache
-      cacheManager.setUserUnsafe(user, userCtx);
-    } finally {
-      userCtx.dispose();
-    }
-    
-    // Act: Modify user data and mark as dirty
-    user.iron = 1000;
-    user.techCounts.pulse_laser = 10;
-    
-    const userCtx2 = await cacheManager.acquireUserLock(emptyCtx);
-    try {
-      cacheManager.updateUserInCache(user, userCtx2);
-    } finally {
-      userCtx2.dispose();
-    }
-    
-    // Force flush to database
-    await cacheManager.flushAllToDatabase();
+    await emptyCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
+      userWorldCache.setUserUnsafe(userCtx, user);
+
+      // Act: Modify user data and mark as dirty
+      user.iron = 1000;
+      user.techCounts.pulse_laser = 10;
+      
+      userWorldCache.updateUserInCache(userCtx, user);
+      // Force flush to database
+      await userWorldCache.flushAllToDatabase(userCtx);
+    });
     
     // Assert: Read directly from database to verify persistence
     const userFromDb = await new Promise<{ iron: number; pulse_laser: number }>((resolve, reject) => {
@@ -73,34 +64,22 @@ describe('User Persistence to Database', () => {
     const saveCallback = saveUserToDb(db);
     const user = await createUser(db, 'testuser_shutdown_persist', 'hashedpass', saveCallback);
     
-    // Get cache manager
-    const cacheManager = UserWorldCache.getInstance();
-    await cacheManager.initialize();
-    
-    // Load user into cache
-    const { createLockContext } = await import('@/lib/server/typedLocks');
     const emptyCtx = createLockContext();
+    const userWorldCache = UserCache.getInstance2();
     
-    const userCtx = await cacheManager.acquireUserLock(emptyCtx);
-    try {
-      cacheManager.setUserUnsafe(user, userCtx);
-    } finally {
-      userCtx.dispose();
-    }
-    
-    // Act: Modify user and mark as dirty
-    user.iron = 5000;
-    user.techCounts.auto_turret = 15;
-    
-    const userCtx2 = await cacheManager.acquireUserLock(emptyCtx);
-    try {
-      cacheManager.updateUserInCache(user, userCtx2);
-    } finally {
-      userCtx2.dispose();
-    }
-    
+    await emptyCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
+      // Load user into cache
+      userWorldCache.setUserUnsafe(userCtx, user);
+
+      // Act: Modify user and mark as dirty
+      user.iron = 5000;
+      user.techCounts.auto_turret = 15;
+      
+      userWorldCache.updateUserInCache(userCtx, user);
+    });
+
     // Shutdown should persist dirty users
-    await cacheManager.shutdown();
+    await userWorldCache.shutdown();
     
     // Assert: Read directly from database to verify persistence on shutdown
     const userFromDb = await new Promise<{ iron: number; auto_turret: number }>((resolve, reject) => {

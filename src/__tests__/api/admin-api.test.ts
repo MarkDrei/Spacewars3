@@ -1,13 +1,26 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { GET } from '@/app/api/admin/database/route';
 import { POST as registerPOST } from '@/app/api/register/route';
 import { POST as loginPOST } from '@/app/api/login/route';
 import { createRequest, createAuthenticatedSession, createUser, extractSessionCookie } from '../helpers/apiTestHelpers';
+import { initializeIntegrationTestServer, shutdownIntegrationTestServer } from '../helpers/testServer';
 
 describe('Admin Database API', () => {
+  beforeEach(async () => {
+    await initializeIntegrationTestServer();
+  });
+
+  afterEach(async () => {
+    await shutdownIntegrationTestServer();
+  });
+
   it('admin_notAuthenticated_returns401', async () => {
     const request = createRequest('http://localhost:3000/api/admin/database', 'GET');
     const response = await GET(request);
+
+    if (!response) {
+      throw new Error('No response from admin database API');
+    }
     
     expect(response.status).toBe(401);
     const data = await response.json();
@@ -21,6 +34,10 @@ describe('Admin Database API', () => {
     const request = createRequest('http://localhost:3000/api/admin/database', 'GET', undefined, sessionCookie);
     
     const response = await GET(request);
+
+    if (!response) {
+      throw new Error('No response from admin database API');
+    }
     
     expect(response.status).toBe(403);
     const data = await response.json();
@@ -42,6 +59,10 @@ describe('Admin Database API', () => {
     
     const request = createRequest('http://localhost:3000/api/admin/database', 'GET', undefined, sessionCookie);
     const response = await GET(request);
+
+    if (!response) {
+      throw new Error('No response from admin database API');
+    }
     
     expect(response.status).toBe(200);
     const data = await response.json();
@@ -73,7 +94,7 @@ describe('Admin Database API', () => {
 
   it('admin_userQ_hasAccess', async () => {
     // Create user with exact username 'q' (admin access)  
-    const { password } = await createUser();
+    const password = 'testpass123';
     
     // Register the user with exact username 'q'
     const registerRequest = createRequest('http://localhost:3000/api/register', 'POST', { 
@@ -97,6 +118,10 @@ describe('Admin Database API', () => {
     const request = createRequest('http://localhost:3000/api/admin/database', 'GET', undefined, sessionCookie);
     const response = await GET(request);
     
+    if (!response) {
+      throw new Error('No response from admin database API');
+    }
+
     expect(response.status).toBe(200);
     const data = await response.json();
     

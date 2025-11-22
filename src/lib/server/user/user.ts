@@ -2,8 +2,9 @@
 // Domain logic for the User and its stats, including persistence callback.
 // ---
 
-import { TechTree, ResearchType, getResearchEffectFromTree, createInitialTechTree, updateTechTree } from '../techtree';
-import { TechCounts } from '../TechFactory';
+import { TechTree, ResearchType, getResearchEffectFromTree, updateTechTree } from '../techs/techtree';
+import { TechCounts, BuildQueueItem } from '../techs/TechFactory';
+import { TechService } from '../techs/TechService';
 
 class User {
   id: number;
@@ -14,17 +15,22 @@ class User {
   techTree: TechTree;
   ship_id?: number; // Optional ship ID for linking to player's ship
   techCounts: TechCounts; // Tech counts for weapons and defense
-  
+
   // Defense current values (persisted)
   hullCurrent: number;
   armorCurrent: number;
   shieldCurrent: number;
   defenseLastRegen: number; // Timestamp in seconds for regeneration tracking
-  
+
   // Battle state (persisted)
   inBattle: boolean;
   currentBattleId: number | null;
-  
+
+  // Build queue (persisted)
+  buildQueue: BuildQueueItem[];
+  buildStartSec: number | null;
+
+  // TODO: Need to figure out where this is implemented: Should we use locks here?
   private saveCallback: SaveUserCallback;
 
   constructor(
@@ -42,6 +48,8 @@ class User {
     defenseLastRegen: number,
     inBattle: boolean,
     currentBattleId: number | null,
+    buildQueue: BuildQueueItem[],
+    buildStartSec: number | null,
     ship_id?: number
   ) {
     this.id = id;
@@ -57,6 +65,8 @@ class User {
     this.defenseLastRegen = defenseLastRegen;
     this.inBattle = inBattle;
     this.currentBattleId = currentBattleId;
+    this.buildQueue = buildQueue;
+    this.buildStartSec = buildStartSec;
     this.ship_id = ship_id;
     this.saveCallback = saveCallback;
   }
@@ -105,7 +115,7 @@ class User {
     }
     this.iron = iron;
     this.last_updated = now;
-    
+
     // Also update defense values (regeneration)
     this.updateDefenseValues(now);
   }
@@ -119,16 +129,17 @@ class User {
     const elapsed = now - this.defenseLastRegen;
     if (elapsed <= 0) return;
 
-    // Calculate maximum values based on tech counts
-    const maxHull = this.techCounts.ship_hull * 100;
-    const maxArmor = this.techCounts.kinetic_armor * 100;
-    const maxShield = this.techCounts.energy_shield * 100;
+    // Calculate maximum values based on tech counts and research
+    const maxStats = TechService.calculateMaxDefense(this.techCounts, this.techTree);
+    const maxHull = maxStats.hull;
+    const maxArmor = maxStats.armor;
+    const maxShield = maxStats.shield;
 
     // Apply regeneration (1 point/second), clamped at max
     this.hullCurrent = Math.min(this.hullCurrent + elapsed, maxHull);
     this.armorCurrent = Math.min(this.armorCurrent + elapsed, maxArmor);
     this.shieldCurrent = Math.min(this.shieldCurrent + elapsed, maxShield);
-    
+
     // Update last regeneration timestamp
     this.defenseLastRegen = now;
   }
@@ -143,69 +154,32 @@ class User {
    */
   collected(objectType: 'asteroid' | 'shipwreck' | 'escape_pod'): void {
     let ironReward = 0;
-    
+
     switch (objectType) {
       case 'asteroid':
         // Asteroids yield between 50-250 iron
         ironReward = Math.floor(Math.random() * (250 - 50 + 1)) + 50;
         break;
-        
+
       case 'shipwreck':
         // Shipwrecks yield between 50-1000 iron
         ironReward = Math.floor(Math.random() * (1000 - 50 + 1)) + 50;
         break;
-        
+
       case 'escape_pod':
         // Escape pods do nothing for now
         ironReward = 0;
         break;
-        
+
       default:
         console.warn(`Unknown object type collected: ${objectType}`);
         ironReward = 0;
     }
-    
+
     // Award the iron
     this.iron += ironReward;
-    
-    console.log(`User ${this.username} collected a ${objectType} and received ${ironReward} iron (total: ${this.iron})`);
-  }
 
-  static createNew(username: string, password_hash: string, saveCallback: SaveUserCallback): User {
-    const now = Math.floor(Date.now() / 1000);
-    const defaultTechCounts: TechCounts = {
-      pulse_laser: 5,
-      auto_turret: 5,
-      plasma_lance: 0,
-      gauss_rifle: 0,
-      photon_torpedo: 0,
-      rocket_launcher: 0,
-      ship_hull: 5,
-      kinetic_armor: 5,
-      energy_shield: 5,
-      missile_jammer: 0
-    };
-    // Initialize defense values at max/2 (default tech counts * 100 / 2 = 250)
-    const hullCurrent = (defaultTechCounts.ship_hull * 100) / 2;
-    const armorCurrent = (defaultTechCounts.kinetic_armor * 100) / 2;
-    const shieldCurrent = (defaultTechCounts.energy_shield * 100) / 2;
-    
-    return new User(
-      0, // id will be set by DB
-      username,
-      password_hash,
-      0.0,
-      now,
-      createInitialTechTree(),
-      saveCallback,
-      defaultTechCounts,
-      hullCurrent,
-      armorCurrent,
-      shieldCurrent,
-      now, // defenseLastRegen initialized to now
-      false, // inBattle
-      null // currentBattleId
-    );
+    console.log(`User ${this.username} collected a ${objectType} and received ${ironReward} iron (total: ${this.iron})`);
   }
 }
 

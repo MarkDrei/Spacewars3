@@ -7,11 +7,12 @@ import { GET as userBattlesGET } from '@/app/api/user-battles/route';
 import { createRequest, createAuthenticatedSession } from '../helpers/apiTestHelpers';
 
 // Import battle creation utilities
-import { createBattle, endBattle } from '@/lib/server/battle/BattleCache';
+import { endBattle, getBattleCache } from '@/lib/server/battle/BattleCache';
 import { getDatabase } from '@/lib/server/database';
 import { BattleStats } from '@/lib/server/battle/battleTypes';
-import { BattleCache, getBattleCache } from '@/lib/server/battle/BattleCache';
-import { getUserWorldCache } from '@/lib/server/world/userWorldCache';
+import { createLockContext } from '@markdrei/ironguard-typescript-locks';
+import { BATTLE_LOCK, USER_LOCK } from '@/lib/server/typedLocks';
+import { initializeIntegrationTestServer, shutdownIntegrationTestServer } from '../helpers/testServer';
 
 // Helper to get user ID from username
 async function getUserIdByUsername(username: string): Promise<number> {
@@ -44,68 +45,68 @@ async function createTestBattle(
     }
   };
 
-  // Create battle
-  const battle = await createBattle(
-    attackerId,
-    attackeeId,
-    initialStats,
-    initialStats,
-    {},
-    {}
-  );
+  const emptyCtx = createLockContext();
+  return await emptyCtx.useLockWithAcquire(BATTLE_LOCK, async (battleContext) => {
+    // Create battle
+    const battleCache = getBattleCache();
 
-  // End battle with winner/loser
-  const winnerId = attackerWins ? attackerId : attackeeId;
-  const loserId = attackerWins ? attackeeId : attackerId;
+    const battle = await battleContext.useLockWithAcquire(USER_LOCK, async (userCtx) => {
+      return await battleCache.createBattle(
+        battleContext,
+        userCtx,
+        attackerId,
+        attackeeId,
+        initialStats,
+        initialStats,
+        {},
+        {}
+      );
+    });
+  
+    // End battle with winner/loser
+    const winnerId = attackerWins ? attackerId : attackeeId;
+    const loserId = attackerWins ? attackeeId : attackerId;
+  
+    const winnerEndStats: BattleStats = {
+      hull: { current: 100, max: 500 },
+      armor: { current: 50, max: 500 },
+      shield: { current: 0, max: 500 },
+      weapons: {
+        pulse_laser: { count: 5, damage: 10, cooldown: 1000 }
+      }
+    };
+  
+    const loserEndStats: BattleStats = {
+      hull: { current: 0, max: 500 },
+      armor: { current: 0, max: 500 },
+      shield: { current: 0, max: 500 },
+      weapons: {
+        pulse_laser: { count: 5, damage: 10, cooldown: 1000 }
+      }
+    };
+  
+    await endBattle(
+      battleContext,
+      battle.id,
+      winnerId,
+      loserId,
+      attackerWins ? winnerEndStats : loserEndStats,
+      attackerWins ? loserEndStats : winnerEndStats
+    );
+  
+    return battle.id;
+  });
 
-  const winnerEndStats: BattleStats = {
-    hull: { current: 100, max: 500 },
-    armor: { current: 50, max: 500 },
-    shield: { current: 0, max: 500 },
-    weapons: {
-      pulse_laser: { count: 5, damage: 10, cooldown: 1000 }
-    }
-  };
-
-  const loserEndStats: BattleStats = {
-    hull: { current: 0, max: 500 },
-    armor: { current: 0, max: 500 },
-    shield: { current: 0, max: 500 },
-    weapons: {
-      pulse_laser: { count: 5, damage: 10, cooldown: 1000 }
-    }
-  };
-
-  await endBattle(
-    battle.id,
-    winnerId,
-    loserId,
-    attackerWins ? winnerEndStats : loserEndStats,
-    attackerWins ? loserEndStats : winnerEndStats
-  );
-
-  return battle.id;
 }
 
 describe('User battles API', () => {
   
   beforeEach(async () => {
-    // Reset caches to clean state
-    BattleCache.resetInstance();
-    
-    // Initialize caches
-    const cacheManager = getUserWorldCache();
-    await cacheManager.initialize();
-    
-    // Initialize BattleCache
-    const battleCache = getBattleCache();
-    const db = await getDatabase();
-    await battleCache.initialize(db);
+    await initializeIntegrationTestServer();
   });
 
   afterEach(async () => {
-    // Clean shutdown
-    await getUserWorldCache().shutdown();
+    await shutdownIntegrationTestServer();
   });
 
   test('userBattles_notAuthenticated_returns401', async () => {

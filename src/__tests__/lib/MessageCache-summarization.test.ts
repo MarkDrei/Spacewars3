@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { MessageCache } from '@/lib/server/messages/MessageCache';
+import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 
 describe('MessageCache - Summarization', () => {
   let messageCache: MessageCache;
@@ -76,7 +77,7 @@ describe('MessageCache - Summarization', () => {
       expect(messagesAfter[0].is_read).toBe(false);
 
       // All original messages should be marked as read in DB
-      await messageCache.flushToDatabase();
+      await messageCache.flushToDatabase(createLockContext());
     });
 
     it('messageSummarization_mixedMessages_preservesUnknown', async () => {

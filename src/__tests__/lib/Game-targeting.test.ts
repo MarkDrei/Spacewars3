@@ -3,19 +3,6 @@ import { Game } from '@/lib/client/game/Game';
 import type { World } from '@/lib/client/game/World';
 import type { GameRenderer } from '@/lib/client/renderers/GameRenderer';
 
-vi.mock('@/lib/client/game/World');
-vi.mock('@/lib/client/renderers/GameRenderer');
-vi.mock('@/lib/client/services/navigationService');
-
-// Helper functions to access private methods and properties safely
-const callPrivateMethod = <T>(obj: unknown, methodName: string, ...args: unknown[]): T => {
-  return (obj as Record<string, (...args: unknown[]) => T>)[methodName](...args);
-};
-
-const setPrivateProperty = (obj: unknown, propertyName: string, value: unknown): void => {
-  (obj as Record<string, unknown>)[propertyName] = value;
-};
-
 // Mock World class
 const mockWorld = {
   getShip: vi.fn().mockReturnValue({
@@ -31,6 +18,29 @@ const mockWorld = {
 const mockRenderer = {
   drawWorld: vi.fn()
 } as unknown as GameRenderer;
+
+// Define mocks with factory functions (Vitest 4.x style)
+vi.mock('@/lib/client/game/World', () => {
+  return {
+    World: class {
+      constructor() {
+        Object.assign(this, mockWorld);
+      }
+    }
+  };
+});
+
+vi.mock('@/lib/client/renderers/GameRenderer', () => {
+  return {
+    GameRenderer: class {
+      constructor() {
+        Object.assign(this, mockRenderer);
+      }
+    }
+  };
+});
+
+vi.mock('@/lib/client/services/navigationService');
 
 // Mock canvas and context
 const mockCanvas = {
@@ -48,19 +58,20 @@ const mockCanvas = {
   })
 } as unknown as HTMLCanvasElement;
 
+// Helper functions to access private methods and properties safely
+const callPrivateMethod = <T>(obj: unknown, methodName: string, ...args: unknown[]): T => {
+  return (obj as Record<string, (...args: unknown[]) => T>)[methodName](...args);
+};
+
+const setPrivateProperty = (obj: unknown, propertyName: string, value: unknown): void => {
+  (obj as Record<string, unknown>)[propertyName] = value;
+};
+
 describe('Game Class - Targeting Line Functionality', () => {
   let game: Game;
 
   beforeEach(async () => {
     vi.clearAllMocks();
-    
-    // Mock the imports
-    const { World } = await import('@/lib/client/game/World');
-    const { GameRenderer } = await import('@/lib/client/renderers/GameRenderer');
-    
-    vi.mocked(World).mockImplementation(() => mockWorld);
-    vi.mocked(GameRenderer).mockImplementation(() => mockRenderer);
-    
     game = new Game(mockCanvas);
   });
 

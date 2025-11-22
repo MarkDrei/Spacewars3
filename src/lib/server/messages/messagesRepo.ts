@@ -3,6 +3,7 @@
 // Single responsibility: Handle all direct database interactions for messages
 // ---
 
+import { HasLock12Context, LockLevel } from '@markdrei/ironguard-typescript-locks';
 import sqlite3 from 'sqlite3';
 
 export interface Message {
@@ -31,7 +32,7 @@ export interface UnreadMessage {
  * Does NOT:
  * - Handle caching (that's MessageCache's job)
  * - Handle business logic
- * - Handle locking (caller's responsibility)
+ * - Handle locking (caller's responsibility, but verified via context type parameters)
  */
 export class MessagesRepo {
   private db: sqlite3.Database;
@@ -44,7 +45,11 @@ export class MessagesRepo {
    * Create a new message for a user
    * Returns the ID of the newly created message
    */
-  async createMessage(recipientId: number, message: string): Promise<number> {
+  async createMessage<THeld extends readonly LockLevel[]>(
+    _context: HasLock12Context<THeld>,
+    recipientId: number,
+    message: string
+  ): Promise<number> {
     return new Promise((resolve, reject) => {
       const createdAt = Date.now();
       const stmt = this.db.prepare(`
@@ -67,7 +72,11 @@ export class MessagesRepo {
    * Get all messages for a user (both read and unread)
    * Returns messages in descending order by creation time (newest first)
    */
-  async getAllMessages(userId: number, limit?: number): Promise<Message[]> {
+  async getAllMessages<THeld extends readonly LockLevel[]>(
+    _context: HasLock12Context<THeld>,
+    userId: number, 
+    limit?: number
+  ): Promise<Message[]> {
     return new Promise((resolve, reject) => {
       const query = limit 
         ? `SELECT id, recipient_id, created_at, is_read, message
@@ -102,7 +111,11 @@ export class MessagesRepo {
   /**
    * Update the read status of a specific message
    */
-  async updateMessageReadStatus(messageId: number, isRead: boolean): Promise<void> {
+  async updateMessageReadStatus<THeld extends readonly LockLevel[]> (
+    _context: HasLock12Context<THeld>,
+    messageId: number, 
+    isRead: boolean
+  ): Promise<void> {
     return new Promise((resolve, reject) => {
       const stmt = this.db.prepare(`
         UPDATE messages 
@@ -125,7 +138,10 @@ export class MessagesRepo {
    * Update read status for multiple messages in a transaction
    * More efficient than calling updateMessageReadStatus multiple times
    */
-  async updateMultipleReadStatuses(updates: Array<{id: number, isRead: boolean}>): Promise<void> {
+  async updateMultipleReadStatuses<THeld extends readonly LockLevel[]>(
+    _context: HasLock12Context<THeld>,
+    updates: Array<{id: number, isRead: boolean}>
+  ): Promise<void> {
     return new Promise((resolve, reject) => {
       this.db.serialize(() => {
         this.db.run('BEGIN TRANSACTION');
@@ -181,7 +197,10 @@ export class MessagesRepo {
   /**
    * Mark all messages for a user as read
    */
-  async markAllMessagesAsRead(userId: number): Promise<void> {
+  async markAllMessagesAsRead<THeld extends readonly LockLevel[]>(
+    _context: HasLock12Context<THeld>,
+    userId: number,
+  ): Promise<void> {
     return new Promise((resolve, reject) => {
       const stmt = this.db.prepare(`
         UPDATE messages 
@@ -204,7 +223,10 @@ export class MessagesRepo {
    * Delete old read messages (cleanup utility)
    * Returns the number of messages deleted
    */
-  async deleteOldReadMessages(olderThanDays = 30): Promise<number> {
+  async deleteOldReadMessages<THeld extends readonly LockLevel[]>(
+    _context: HasLock12Context<THeld>,
+    olderThanDays = 30
+  ): Promise<number> {
     return new Promise((resolve, reject) => {
       const cutoffTime = Date.now() - (olderThanDays * 24 * 60 * 60 * 1000);
       const stmt = this.db.prepare(`
@@ -226,7 +248,10 @@ export class MessagesRepo {
   /**
    * Get count of unread messages for a user
    */
-  async getUnreadMessageCount(userId: number): Promise<number> {
+  async getUnreadMessageCount<THeld extends readonly LockLevel[]>(
+    _context: HasLock12Context<THeld>,
+    userId: number,
+  ): Promise<number> {
     return new Promise((resolve, reject) => {
       const stmt = this.db.prepare(`
         SELECT COUNT(*) as count
@@ -249,7 +274,10 @@ export class MessagesRepo {
    * Get all unread messages for a user (without marking as read)
    * Used by MessageCache to load unread messages
    */
-  async getUnreadMessages(userId: number): Promise<UnreadMessage[]> {
+  async getUnreadMessages<THeld extends readonly LockLevel[]>(
+    _context: HasLock12Context<THeld>,
+    userId: number,
+  ): Promise<UnreadMessage[]> {
     return new Promise((resolve, reject) => {
       const stmt = this.db.prepare(`
         SELECT id, created_at, message

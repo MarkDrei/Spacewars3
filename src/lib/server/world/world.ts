@@ -2,8 +2,10 @@
 // Domain logic for the World and space objects physics, including persistence callback.
 // ---
 
+import { HasLock6Context, IronLocks } from '@markdrei/ironguard-typescript-locks';
 import { updateAllObjectPositions } from '@shared/physics';
 import sqlite3 from 'sqlite3';
+import { deleteSpaceObject, insertSpaceObject } from './worldRepo';
 
 export interface SpaceObject {
   id: number;
@@ -44,8 +46,10 @@ class World {
 
   /**
    * Updates all space object positions based on elapsed time since last update
+   * 
+   * Needs write lock level 6 because it modifies object positions
    */
-  updatePhysics(currentTime: number): void {
+  updatePhysics<THeld extends IronLocks>(_context: HasLock6Context<THeld>, currentTime: number): void {
     this.spaceObjects = updateAllObjectPositions(
       this.spaceObjects,
       currentTime,
@@ -56,7 +60,9 @@ class World {
   /**
    * Get current world data
    */
-  getWorldData(): WorldData {
+  // needs _context for compile time lock checking
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  getWorldData<THeld extends IronLocks>(_context: HasLock6Context<THeld>): WorldData {
     return {
       worldSize: this.worldSize,
       spaceObjects: this.spaceObjects
@@ -66,21 +72,21 @@ class World {
   /**
    * Find a space object by ID
    */
-  getSpaceObject(id: number): SpaceObject | undefined {
+  getSpaceObject<THeld extends IronLocks>(_context: HasLock6Context<THeld>,id: number): SpaceObject | undefined {
     return this.spaceObjects.find(obj => obj.id === id);
   }
 
   /**
    * Get all space objects of a specific type
    */
-  getSpaceObjectsByType(type: SpaceObject['type']): SpaceObject[] {
+  getSpaceObjectsByType<THeld extends IronLocks>(_context: HasLock6Context<THeld>, type: SpaceObject['type']): SpaceObject[] {
     return this.spaceObjects.filter(obj => obj.type === type);
   }
 
   /**
    * Update a specific space object (e.g., for player ship movement)
    */
-  updateSpaceObject(id: number, updates: Partial<Omit<SpaceObject, 'id'>>): boolean {
+  updateSpaceObject<THeld extends IronLocks>(_context: HasLock6Context<THeld>, id: number, updates: Partial<Omit<SpaceObject, 'id'>>): boolean {
     const index = this.spaceObjects.findIndex(obj => obj.id === id);
     if (index === -1) return false;
     
@@ -104,7 +110,7 @@ class World {
    * Handle collection of space objects
    * @param objectId ID of the object to remove from the world
    */
-  async collected(objectId: number): Promise<void> {
+  async collected<THeld extends IronLocks>(context: HasLock6Context<THeld>, objectId: number): Promise<void> {
     const objectIndex = this.spaceObjects.findIndex(obj => obj.id === objectId);
     if (objectIndex === -1) {
       return; // Object not found
@@ -117,18 +123,19 @@ class World {
     this.spaceObjects.splice(objectIndex, 1);
     
     // Remove from database
-    const { deleteSpaceObject } = await import('./worldRepo');
     await deleteSpaceObject(this.db, objectId);
     
     // Spawn a new object to replace the collected one
-    await this.spawnRandomObject();
+    await this.spawnRandomObject(context);
   }
 
   /**
    * Spawn a new random space object
    * 60% chance of asteroid, 30% chance of shipwreck, 10% chance of escape pod
    */
-  private async spawnRandomObject(): Promise<void> {
+  // needs _context for compile time lock checking
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  private async spawnRandomObject<THeld extends IronLocks>(_context: HasLock6Context<THeld>): Promise<void> {
     const random = Math.random();
     let objectType: SpaceObject['type'];
     let baseSpeed: number;
@@ -166,7 +173,6 @@ class World {
     };
 
     // Insert into database and get the new ID
-    const { insertSpaceObject } = await import('./worldRepo');
     const newId = await insertSpaceObject(this.db, newObject);
     
     // Add to world with the database-assigned ID

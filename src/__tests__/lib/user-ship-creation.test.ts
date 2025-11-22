@@ -5,7 +5,7 @@
 import { describe, expect, it, afterEach, beforeEach } from 'vitest';
 import { Database } from 'sqlite3';
 import { CREATE_TABLES } from '@/lib/server/schema';
-import { createUser, saveUserToDb } from '@/lib/server/world/userRepo';
+import { createUser, saveUserToDb } from '@/lib/server/user/userRepo';
 
 interface SpaceObjectRow {
   id: number;

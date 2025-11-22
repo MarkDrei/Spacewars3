@@ -2,7 +2,9 @@ import { getIronSession } from 'iron-session';
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { sessionOptions, SessionData } from './session';
-import { getUserWorldCache } from './world/userWorldCache';
+import { UserCache } from './user/userCache';
+import { createLockContext } from '@markdrei/ironguard-typescript-locks';
+import { USER_LOCK } from './typedLocks';
 
 export interface ServerAuthState {
   userId: number;
@@ -24,9 +26,13 @@ export async function getServerAuth(): Promise<ServerAuthState | null> {
     }
 
     // Use cache to validate user existence and get current data
-    const cacheManager = getUserWorldCache();
-    
-    const user = await cacheManager.getUserById(session.userId);
+    const emptyCtx = createLockContext();
+    const userWorldCache = UserCache.getInstance2();
+
+    const user = await emptyCtx.useLockWithAcquire(USER_LOCK, async (userContext) => {
+      return await userWorldCache.getUserByIdWithLock(userContext, session.userId!);
+    });
+  
 
     if (!user) {
       // User doesn't exist in database (deleted user with valid session)
