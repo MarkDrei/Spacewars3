@@ -29,7 +29,6 @@ export async function getServerAuth(): Promise<ServerAuthState | null> {
     const emptyCtx = createLockContext();
     const userWorldCache = await getUserWorldCache(emptyCtx);
 
-    
     const user = await emptyCtx.useLockWithAcquire(USER_LOCK, async (userContext) => {
       return await userWorldCache.getUserByIdWithLock(userContext, session.userId!);
     });

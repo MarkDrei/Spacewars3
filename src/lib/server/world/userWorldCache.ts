@@ -201,6 +201,7 @@ export class UserWorldCache {
     context: LockContext<LocksAtMostAndHas4>,
     userId: number
   ): Promise<User | null> {
+    await this.ensureInitialized(context);
     return await context.useLockWithAcquire(LOCK_10, async () => {
       if (!this.db) throw new Error('Database not initialized');
       return await getUserByIdFromDb(this.db, userId, async () => {});

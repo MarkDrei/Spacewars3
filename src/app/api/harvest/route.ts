@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
     const userWorldCache = await getUserWorldCache(emptyCtx);
 
     return await emptyCtx.useLockWithAcquire(USER_LOCK, async (userContext) => {
-      userContext.useLockWithAcquire(WORLD_LOCK, async (worldContext) => {
+      return await userContext.useLockWithAcquire(WORLD_LOCK, async (worldContext) => {
         // Get world data safely (we have world write lock)
         const world = userWorldCache.getWorldFromCache(worldContext);
         

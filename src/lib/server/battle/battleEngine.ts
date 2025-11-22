@@ -12,8 +12,8 @@
 
 import type { Battle, BattleStats, BattleEvent, WeaponCooldowns } from './battleTypes';
 import { TechFactory } from '../TechFactory';
-import { getUserWorldCache, UserWorldCache } from '../world/userWorldCache';
-import { createLockContext, LockContext } from '@markdrei/ironguard-typescript-locks';
+import { getUserWorldCache } from '../world/userWorldCache';
+import { LockContext } from '@markdrei/ironguard-typescript-locks';
 import { LocksAtMost3, LocksAtMostAndHas2, LocksAtMostAndHas4 } from '@markdrei/ironguard-typescript-locks/dist/core/ironGuardTypes';
 import { USER_LOCK } from '../typedLocks';
 

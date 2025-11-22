@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
     
     // Get battle from cache
     const emptyCtx = createLockContext();
-    await emptyCtx.useLockWithAcquire(BATTLE_LOCK, async (context) => {
+    return await emptyCtx.useLockWithAcquire(BATTLE_LOCK, async (context) => {
       const battle = await getOngoingBattleForUser(context, session.userId!);
       
       if (!battle) {
