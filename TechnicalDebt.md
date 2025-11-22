@@ -179,3 +179,52 @@ Ensure the world loop runs frequently enough to keep defense values up-to-date:
 - `src/lib/server/worldLoop.ts` - World update loop (if exists)
 - `src/lib/server/user.ts` - User class with `updateDefenseValues()` method
 
+---
+
+## World Persistence - Missing Dirty State Tracking
+
+**Priority**: Medium  
+**Added**: 2025-11-19  
+**Component**: World Persistence (world.ts, userWorldCache.ts)
+
+### Problem
+
+The `saveCallback` passed to the `World` constructor is never triggered. The `World.save()` method exists but is not called in any methods that modify the world state (e.g., `collected()`, `updateSpaceObject()`, `updatePhysics()`). This means world modifications are not marked as dirty in the cache, preventing automatic persistence.
+
+### Architecture Violation
+
+The cache manager relies on dirty flags to know when to persist data:
+- World changes (e.g., object positions, additions/removals) should mark `worldDirty = true`
+- Background persistence checks this flag to decide whether to save
+- Without it, world state drifts out of sync with the database
+
+### Current Behavior
+
+- World loads with `worldDirty = false`
+- Modifications occur but don't set the flag
+- Persistence skips the world, leading to lost updates
+
+### Proposed Solution
+
+Modify `World` methods to call `await this.saveCallback(this);` after state changes:
+- `collected()`: After removing and spawning objects
+- `updateSpaceObject()`: After updating object properties (make async if needed)
+- `updatePhysics()`: If position changes require immediate persistence (consider batching for performance)
+
+This ensures the cache is notified of changes and can persist them.
+
+### Benefits
+
+- Automatic persistence of world changes
+- Prevents data loss from unpersisted modifications
+- Aligns with the callback pattern already in place
+
+### Effort Estimate
+
+- **Medium**: Requires updating World methods and ensuring async handling
+
+### Related Files
+
+- `src/lib/server/world/world.ts` - World class with save() method
+- `src/lib/server/world/userWorldCache.ts` - Cache manager with worldDirty flag
+
