@@ -2,7 +2,6 @@
 // TechFactory - Manages ship technology and equipment
 // ---
 
-import { DefenseValues } from '@/shared/defenseValues';
 
 export type WeaponSubtype = 'Projectile' | 'Energy';
 export type WeaponStrength = 'Weak' | 'Medium' | 'Strong';

@@ -1,16 +1,23 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { UserCache } from '@/lib/server/user/userCache';
 import { getDatabase } from '@/lib/server/database';
 import { createUser } from '@/lib/server/user/userRepo';
 import { saveUserToDb } from '@/lib/server/user/userRepo';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 import { USER_LOCK } from '@/lib/server/typedLocks';
+import { initializeIntegrationTestServer, shutdownIntegrationTestServer } from '../helpers/testServer';
+import { after } from 'node:test';
 
 describe('User Persistence to Database', () => {
   beforeEach(async () => {
+    await initializeIntegrationTestServer();
     UserCache.resetInstance();
     const db = await getDatabase();
-    await UserCache.intialize2(db);
+    await UserCache.intialize2({ db });
+  });
+
+  afterEach(async () => {
+    await shutdownIntegrationTestServer
   });
 
   it('userPersistence_dirtyUserModified_persitsToDatabase', async () => {

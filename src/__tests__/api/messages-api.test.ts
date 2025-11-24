@@ -8,8 +8,12 @@ import { POST } from '@/app/api/messages/mark-read/route';
 import { clearTestDatabase } from '../helpers/testDatabase';
 import { createRequest } from '../helpers/apiTestHelpers';
 import { getMessageCache, MessageCache } from '@/lib/server/messages/MessageCache';
+import { getDatabase } from '../../lib/server/database';
 
 describe('Messages API Route Handler', () => {
+
+  let cache: MessageCache;
+
   beforeEach(async () => {
     // Reset database singleton to ensure clean state
     const { resetTestDatabase } = await import('../../lib/server/database');
@@ -17,7 +21,8 @@ describe('Messages API Route Handler', () => {
     
     await clearTestDatabase();
     // Reset message cache before each test
-    MessageCache.resetInstance();
+    await MessageCache.initialize(await getDatabase());
+    cache = MessageCache.getInstance();
   });
 
   test('messages_notAuthenticated_returns401', async () => {
@@ -31,18 +36,12 @@ describe('Messages API Route Handler', () => {
 
   test('messages_authenticatedUserNoMessages_returnsEmptyArray', async () => {
     // Test using MessageCache (single source of truth)
-    const cache = getMessageCache();
-    await cache.initialize();
-    
     const messages = await cache.getUnreadMessages(1);
     
     expect(messages).toEqual([]);
   });
 
   test('messages_cacheIntegration_worksWithDatabase', async () => {
-    // Test the MessageCache integration with database
-    const cache = getMessageCache();
-    await cache.initialize();
     
     // Create a message
     await cache.createMessage(1, 'Test message');
@@ -67,18 +66,12 @@ describe('Messages API Route Handler', () => {
     });
 
     test('markRead_noMessages_returnsZero', async () => {
-      const cache = getMessageCache();
-      await cache.initialize();
-      
       const markedCount = await cache.markAllMessagesAsRead(999);
       
       expect(markedCount).toBe(0);
     });
 
     test('markRead_withMessages_marksThemAsRead', async () => {
-      const cache = getMessageCache();
-      await cache.initialize();
-      
       // Create messages
       await cache.createMessage(1, 'Message 1');
       await cache.createMessage(1, 'Message 2');
@@ -98,9 +91,6 @@ describe('Messages API Route Handler', () => {
     });
 
     test('getMessages_doesNotMarkAsRead_thenMarkReadWorks', async () => {
-      const cache = getMessageCache();
-      await cache.initialize();
-      
       // Create messages
       await cache.createMessage(1, 'Message 1');
       await cache.createMessage(1, 'Message 2');

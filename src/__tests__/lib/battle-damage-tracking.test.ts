@@ -69,7 +69,7 @@ describe('Battle Damage Tracking', () => {
     UserCache.resetInstance();
 
     const db = await getDatabase();
-    await UserCache.intialize2(db, {}, {
+    await UserCache.intialize2({ db }, {
       persistenceIntervalMs: 30000,
       enableAutoPersistence: false,
       logStats: false

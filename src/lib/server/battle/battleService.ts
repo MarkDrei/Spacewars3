@@ -25,8 +25,7 @@ import { ApiError } from '../errors';
 import { UserCache } from '../user/userCache';
 import { getBattleCache } from './BattleCache';
 import { HasLock2Context, IronLocks, LockContext, LocksAtMost4, LocksAtMostAndHas2, LocksAtMostAndHas4 } from '@markdrei/ironguard-typescript-locks';
-import { WORLD_LOCK, USER_LOCK, DATABASE_LOCK_USERS } from '../typedLocks';
-import { getUserByIdFromDb } from '../user/userRepo';
+import { WORLD_LOCK, USER_LOCK } from '../typedLocks';
 import { WorldCache } from '../world/worldCache';
 
 /**
@@ -398,27 +397,8 @@ export async function resolveBattle(
   // This is the "write once at end of battle" for endStats
   const userWorldCache = UserCache.getInstance2();
   const [attackerEndStats, attackeeEndStats] = await context.useLockWithAcquire(USER_LOCK, async (userContext) => {
-    let attacker = userWorldCache.getUserByIdFromCache(userContext, battle.attackerId);
-    let attackee = userWorldCache.getUserByIdFromCache(userContext, battle.attackeeId);
-
-    // Load from DB if not in cache
-    if (!attacker) {
-      attacker = await userContext.useLockWithAcquire(DATABASE_LOCK_USERS, async () => {
-        const db = await userWorldCache.getDatabaseConnection(userContext);
-        const loadedAttacker = await getUserByIdFromDb(db, battle.attackerId, async () => { });
-        if (loadedAttacker) userWorldCache.setUserUnsafe(userContext, loadedAttacker);
-        return loadedAttacker;
-      });
-    }
-
-    if (!attackee) {
-      attackee = await userContext.useLockWithAcquire(DATABASE_LOCK_USERS, async () => {
-        const db = await userWorldCache.getDatabaseConnection(userContext);
-        const loadedAttackee = await getUserByIdFromDb(db, battle.attackeeId, async () => { });
-        if (loadedAttackee) userWorldCache.setUserUnsafe(userContext, loadedAttackee);
-        return loadedAttackee;
-      });
-    }
+    const attacker = await userWorldCache.getUserByIdWithLock(userContext, battle.attackerId);
+    const attackee = await userWorldCache.getUserByIdWithLock(userContext, battle.attackeeId);
 
     if (!attacker || !attackee) {
       throw new Error('Users not found when resolving battle');

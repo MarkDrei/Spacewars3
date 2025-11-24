@@ -6,6 +6,7 @@ import { describe, expect, it, afterEach, beforeEach } from 'vitest';
 import { Database } from 'sqlite3';
 import { CREATE_TABLES } from '@/lib/server/schema';
 import { createUser, saveUserToDb } from '@/lib/server/user/userRepo';
+import { initializeIntegrationTestServer, shutdownIntegrationTestServer } from '../helpers/testServer';
 
 interface SpaceObjectRow {
   id: number;
@@ -21,6 +22,7 @@ describe('User Ship Creation', () => {
   let db: Database;
 
   beforeEach(async () => {
+    await initializeIntegrationTestServer();
     // Create in-memory database for testing
     db = new Database(':memory:');
     
@@ -55,6 +57,7 @@ describe('User Ship Creation', () => {
         resolve();
       }
     });
+    await shutdownIntegrationTestServer();
   });
 
   it('createUser_newUser_createsShipAndLinksIt', async () => {

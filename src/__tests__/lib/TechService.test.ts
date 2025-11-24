@@ -1,11 +1,11 @@
-import { describe, test, expect, beforeEach, vi, afterEach } from 'vitest';
+import { describe, test, expect, beforeEach, vi, afterEach, MockedFunction } from 'vitest';
 import { TechService } from '@/lib/server/techs/TechService';
 import { UserCache } from '@/lib/server/user/userCache';
 import { MessageCache } from '@/lib/server/messages/MessageCache';
 import { User } from '@/lib/server/user/user';
 import { TechCounts, BuildQueueItem } from '@/lib/server/techs/TechFactory';
-import { TechTree, ResearchType, createInitialTechTree } from '@/lib/server/techs/techtree';
-import { createLockContext } from '@markdrei/ironguard-typescript-locks';
+import { ResearchType, createInitialTechTree } from '@/lib/server/techs/techtree';
+import { createLockContext, LockContext, LocksAtMostAndHas4 } from '@markdrei/ironguard-typescript-locks';
 import { USER_LOCK } from '@/lib/server/typedLocks';
 import { initializeIntegrationTestServer, shutdownIntegrationTestServer } from '../helpers/testServer';
 
@@ -13,17 +13,17 @@ describe('TechService - Unit Tests', () => {
     let techService: TechService;
     let mockUserCache: Partial<UserCache>;
     let mockMessageCache: Partial<MessageCache>;
-    let mockCreateMessage: ReturnType<typeof vi.fn>;
-    let mockGetUserByIdWithLock: ReturnType<typeof vi.fn>;
-    let mockUpdateUserInCache: ReturnType<typeof vi.fn>;
+    let mockCreateMessage: MockedFunction<(userId: number, messageText: string) => Promise<number>>;
+    let mockGetUserByIdWithLock: MockedFunction<(context: LockContext<LocksAtMostAndHas4>, userId: number) => Promise<User | null>>;
+    let mockUpdateUserInCache: MockedFunction<(context: LockContext<LocksAtMostAndHas4>, user: User) => void>;
 
     beforeEach(async () => {
         await initializeIntegrationTestServer();
 
         // Create mock functions
-        mockCreateMessage = vi.fn().mockResolvedValue(1);
-        mockGetUserByIdWithLock = vi.fn();
-        mockUpdateUserInCache = vi.fn();
+        mockCreateMessage = vi.fn<(userId: number, messageText: string) => Promise<number>>().mockResolvedValue(1);
+        mockGetUserByIdWithLock = vi.fn<(context: LockContext<LocksAtMostAndHas4>, userId: number) => Promise<User | null>>();
+        mockUpdateUserInCache = vi.fn<(context: LockContext<LocksAtMostAndHas4>, user: User) => void>();
 
         // Create mock caches
         mockUserCache = {

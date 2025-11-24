@@ -11,16 +11,19 @@ import {
   getUserMessageCount,
 } from '../../lib/server/messages/MessageCache';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
+import { getDatabase } from '../../lib/server/database';
 
 describe('MessageCache', () => {
+
+  let cache: MessageCache;
   
   beforeEach(async () => {
     // Reset database to ensure clean state
     const { resetTestDatabase } = await import('../../lib/server/database');
     resetTestDatabase();
     
-    // Reset singleton before each test
-    MessageCache.resetInstance();
+    await MessageCache.initialize(await getDatabase());
+    cache = getMessageCache();
   });
 
   afterEach(async () => {
@@ -48,9 +51,10 @@ describe('MessageCache', () => {
       expect(cache2).toBe(cache3);
     });
 
-    test('resetInstance_afterReset_createsNewInstance', () => {
+    test('resetInstance_afterReset_createsNewInstance', async () => {
       const cache1 = MessageCache.getInstance();
       MessageCache.resetInstance();
+      await MessageCache.initialize();
       const cache2 = MessageCache.getInstance();
 
       expect(cache1).not.toBe(cache2);
@@ -59,8 +63,6 @@ describe('MessageCache', () => {
 
   describe('Message Operations', () => {
     test('createMessage_createsAndReturnsMessageId', async () => {
-      const cache = getMessageCache();
-      await cache.initialize();
 
       const messageId = await cache.createMessage(1, 'Test message');
       
@@ -76,8 +78,6 @@ describe('MessageCache', () => {
     });
 
     test('getUnreadMessageCount_returnsZeroForNewUser', async () => {
-      const cache = getMessageCache();
-      await cache.initialize();
 
       const count = await cache.getUnreadMessageCount(999);
       
@@ -85,8 +85,6 @@ describe('MessageCache', () => {
     });
 
     test('createMessage_thenGetCount_returnsCorrectCount', async () => {
-      const cache = getMessageCache();
-      await cache.initialize();
 
       await cache.createMessage(1, 'Message 1');
       await cache.createMessage(1, 'Message 2');
@@ -133,8 +131,6 @@ describe('MessageCache', () => {
 
   describe('Statistics', () => {
     test('getStats_returnsValidStats', async () => {
-      const cache = getMessageCache();
-      await cache.initialize();
 
       await cache.createMessage(1, 'Test message');
       await cache.getUnreadMessageCount(1);
@@ -151,18 +147,15 @@ describe('MessageCache', () => {
 
   describe('Lifecycle', () => {
     test('initialize_multipleCallsAreSafe', async () => {
-      const cache = getMessageCache();
       
-      await cache.initialize();
-      await cache.initialize();
-      await cache.initialize();
+      await MessageCache.initialize();
+      await MessageCache.initialize();
+      await MessageCache.initialize();
       
       expect(true).toBe(true);
     });
 
     test('shutdown_afterInitialization_cleansUpProperly', async () => {
-      const cache = getMessageCache();
-      await cache.initialize();
       
       await cache.shutdown();
       
@@ -172,8 +165,6 @@ describe('MessageCache', () => {
 
   describe('Async Message Creation', () => {
     test('createMessage_returnsTempId_messageImmediatelyAvailableInCache', async () => {
-      const cache = getMessageCache();
-      await cache.initialize();
 
       const tempId = await cache.createMessage(1, 'Test async message');
       
@@ -189,8 +180,6 @@ describe('MessageCache', () => {
     });
 
     test('createMessage_afterWaitingForPendingWrites_messageHasRealId', async () => {
-      const cache = getMessageCache();
-      await cache.initialize();
 
       const tempId = await cache.createMessage(1, 'Test async message');
       
@@ -207,8 +196,6 @@ describe('MessageCache', () => {
     });
 
     test('createMessage_multipleMessages_allGetRealIds', async () => {
-      const cache = getMessageCache();
-      await cache.initialize();
 
       const tempId1 = await cache.createMessage(1, 'Message 1');
       const tempId2 = await cache.createMessage(1, 'Message 2');
@@ -232,8 +219,6 @@ describe('MessageCache', () => {
     });
 
     test('createMessage_markAsReadDuringAsyncWrite_updatesCorrectly', async () => {
-      const cache = getMessageCache();
-      await cache.initialize();
 
       // Create message (starts async write)
       await cache.createMessage(1, 'Test message');
@@ -255,8 +240,6 @@ describe('MessageCache', () => {
     });
 
     test('waitForPendingWrites_noWrites_returnsImmediately', async () => {
-      const cache = getMessageCache();
-      await cache.initialize();
 
       // Should not hang or error
       await cache.waitForPendingWrites();
@@ -265,8 +248,6 @@ describe('MessageCache', () => {
     });
 
     test('getUnreadMessageCount_includesPendingMessages', async () => {
-      const cache = getMessageCache();
-      await cache.initialize();
 
       await cache.createMessage(1, 'Message 1');
       await cache.createMessage(1, 'Message 2');
@@ -277,8 +258,6 @@ describe('MessageCache', () => {
     });
 
     test('persistMessagesForUser_skipsPendingMessages', async () => {
-      const cache = getMessageCache();
-      await cache.initialize();
 
       // Create message and immediately mark as read
       await cache.createMessage(1, 'Test message');
@@ -297,8 +276,6 @@ describe('MessageCache', () => {
     });
 
     test('shutdown_waitsPendingWrites_thenFlushes', async () => {
-      const cache = getMessageCache();
-      await cache.initialize();
 
       // Use unique user IDs to avoid conflicts with other tests
       const testUserId1 = 9999;
@@ -316,8 +293,8 @@ describe('MessageCache', () => {
       
       // Reinitialize and verify persistence
       MessageCache.resetInstance();
-      const cache2 = getMessageCache();
-      await cache2.initialize();
+      await MessageCache.initialize(await getDatabase());
+      let cache2 = getMessageCache();
       
       const messages1 = await cache2.getMessagesForUser(testUserId1);
       const messages2 = await cache2.getMessagesForUser(testUserId2);
@@ -329,8 +306,6 @@ describe('MessageCache', () => {
     });
 
     test('createMessage_dbError_removesMessageFromCache', async () => {
-      const cache = getMessageCache();
-      await cache.initialize();
 
       // This test would require mocking DB failures
       // For now, we just verify the basic flow doesn't crash
@@ -349,8 +324,6 @@ describe('MessageCache', () => {
 
   describe('Separated Get and Mark Operations', () => {
     test('getUnreadMessages_doesNotMarkAsRead', async () => {
-      const cache = getMessageCache();
-      await cache.initialize();
 
       await cache.createMessage(1, 'Message 1');
       await cache.createMessage(1, 'Message 2');
@@ -370,8 +343,6 @@ describe('MessageCache', () => {
     });
 
     test('markAllMessagesAsRead_marksAllAsRead', async () => {
-      const cache = getMessageCache();
-      await cache.initialize();
 
       await cache.createMessage(1, 'Message 1');
       await cache.createMessage(1, 'Message 2');
@@ -395,8 +366,6 @@ describe('MessageCache', () => {
     });
 
     test('markAllMessagesAsRead_noUnreadMessages_returnsZero', async () => {
-      const cache = getMessageCache();
-      await cache.initialize();
 
       // Mark non-existent messages as read
       const markedCount = await cache.markAllMessagesAsRead(999);
@@ -420,8 +389,6 @@ describe('MessageCache', () => {
     });
 
     test('getUnreadMessages_thenMarkAllAsRead_workflow', async () => {
-      const cache = getMessageCache();
-      await cache.initialize();
 
       // Create messages
       await cache.createMessage(1, 'Message 1');
@@ -446,27 +413,24 @@ describe('MessageCache', () => {
     });
 
     test('markAllMessagesAsRead_persistsToDB', async () => {
-      const cache1 = getMessageCache();
-      await cache1.initialize();
-
       // Use unique user ID to avoid conflicts
       const testUserId = 8888;
 
       // Create messages
-      await cache1.createMessage(testUserId, 'Message 1');
-      await cache1.createMessage(testUserId, 'Message 2');
-      await cache1.waitForPendingWrites();
+      await cache.createMessage(testUserId, 'Message 1');
+      await cache.createMessage(testUserId, 'Message 2');
+      await cache.waitForPendingWrites();
       
       // Mark as read
-      await cache1.markAllMessagesAsRead(testUserId);
-      await cache1.flushToDatabase(createLockContext());
+      await cache.markAllMessagesAsRead(testUserId);
+      await cache.flushToDatabase(createLockContext());
       
       // Shutdown and reinitialize
-      await cache1.shutdown();
+      await cache.shutdown();
       MessageCache.resetInstance();
       
-      const cache2 = getMessageCache();
-      await cache2.initialize();
+      await MessageCache.initialize(await getDatabase());
+      const cache2 = MessageCache.getInstance();
       
       // Should have no unread messages
       const unread = await cache2.getUnreadMessages(testUserId);

@@ -5,12 +5,12 @@
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { BattleCache, getBattleCache } from '../../lib/server/battle/BattleCache';
-import { UserCache } from '../../lib/server/user/userCache';
 import * as BattleRepo from '../../lib/server/battle/BattleCache';
 import type { BattleStats, WeaponCooldowns } from '../../lib/server/battle/battleTypes';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 import { BATTLE_LOCK, USER_LOCK } from '@/lib/server/typedLocks';
 import { initializeIntegrationTestServer, shutdownIntegrationTestServer } from '../helpers/testServer';
+import { getDatabase } from '@/lib/server/database';
 
 describe('Phase 5: BattleCache Integration Testing', () => {
   
@@ -418,19 +418,15 @@ describe('Phase 5: BattleCache Integration Testing', () => {
   describe('Cache Statistics', () => {
     
     let battleCache: BattleCache;
-    let userWorldCache: UserCache;
     let emptyCtx: ReturnType<typeof createLockContext>;
 
     beforeEach(async () => {
       emptyCtx = createLockContext();
-      await emptyCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
-        userWorldCache = UserCache.getInstance2();
-        
-        // Initialize BattleCache manually for tests
-        battleCache = getBattleCache();
-        const db = await userWorldCache.getDatabaseConnection(userCtx);
-        await battleCache.initialize(db);
-      });
+      
+      // Initialize BattleCache manually for tests
+      battleCache = getBattleCache();
+      const db = await getDatabase()
+      await battleCache.initialize(db);
     });
 
     it('battleCache_statistics_accurateTracking', async () => {

@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeEach, vi, afterEach } from 'vitest';
+import { describe, test, expect, beforeEach, vi, afterEach, MockedFunction } from 'vitest';
 import { TechService } from '@/lib/server/techs/TechService';
 import { createTestDatabase } from '../helpers/testDatabase';
 import { UserCache } from '@/lib/server/user/userCache';
@@ -7,20 +7,22 @@ import { USER_LOCK } from '@/lib/server/typedLocks';
 import sqlite3 from 'sqlite3';
 import { BuildQueueItem } from '@/lib/server/techs/TechFactory';
 import { MessageCache } from '@/lib/server/messages/MessageCache';
+import { initializeIntegrationTestServer, shutdownIntegrationTestServer } from '../helpers/testServer';
 
 describe('TechService - Build Completion Notifications', () => {
   let testDb: sqlite3.Database;
   let techService: TechService;
-  let mockCreateMessage: ReturnType<typeof vi.fn>;
+  let mockCreateMessage: MockedFunction<(userId: number, messageText: string) => Promise<number>>;
   const testUserId = 1;
 
   beforeEach(async () => {
+    await initializeIntegrationTestServer();
     // Create test database
     testDb = await createTestDatabase();
 
     // Initialize userCache with test database
     UserCache.resetInstance();
-    await UserCache.intialize2(testDb);
+    await UserCache.intialize2({ db: testDb });
 
     // Get TechService instance
     techService = TechService.getInstance();
@@ -29,7 +31,7 @@ describe('TechService - Build Completion Notifications', () => {
     techService.setUserCacheForTesting(UserCache.getInstance2());
 
     // Create mock MessageCache and inject it
-    mockCreateMessage = vi.fn().mockResolvedValue(1);
+    mockCreateMessage = vi.fn<(userId: number, messageText: string) => Promise<number>>().mockResolvedValue(1);
     const mockMessageCache: Partial<MessageCache> = {
       createMessage: mockCreateMessage
     };
@@ -69,6 +71,7 @@ describe('TechService - Build Completion Notifications', () => {
       });
     });
     UserCache.resetInstance();
+    await shutdownIntegrationTestServer();
   });
 
   // Helper to update build queue directly via userCache

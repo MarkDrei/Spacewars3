@@ -34,7 +34,8 @@ const createMessageCacheStub = (): MessageCache => ({
 
 const initializeCache = async (config?: TypedCacheConfig): Promise<void> => {
   const db = await getDatabase();
-  await UserCache.intialize2(db, {
+  await UserCache.intialize2({
+    db,
     worldCache: createWorldCacheStub(),
     messageCache: createMessageCacheStub(),
   }, config);

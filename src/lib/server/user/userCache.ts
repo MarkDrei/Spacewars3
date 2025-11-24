@@ -13,8 +13,10 @@ import { User } from './user';
 import { getUserByIdFromDb, getUserByUsernameFromDb } from './userRepo';
 import { WorldCache } from '../world/worldCache';
 import { Cache } from '../caches/Cache';
+import { start } from 'repl';
 
 type userCacheDependencies = {
+  db?: sqlite3.Database;
   worldCache?: WorldCache;
   messageCache?: MessageCache;
 };
@@ -39,7 +41,7 @@ export interface TypedCacheStats {
 }
 
 declare global {
-  var userWorldCacheInstance: UserCache | null;
+  var userCacheInstance: UserCache | null;
 }
 
 /**
@@ -47,7 +49,6 @@ declare global {
  * Enforces singleton pattern and lock ordering
  */
 export class UserCache extends Cache {
-  private static dependencies: userCacheDependencies = {};
 
   // ===== FIELDS =====
 
@@ -59,7 +60,6 @@ export class UserCache extends Cache {
     logStats: false
   };
 
-  private db: sqlite3.Database | null = null;
   private persistenceTimer: NodeJS.Timeout | null = null;
 
   // In-memory cache storage
@@ -74,22 +74,20 @@ export class UserCache extends Cache {
   };
 
   private dependencies: userCacheDependencies = {};
-  private worldCacheRef: WorldCache | null = null;
 
 
   // Singleton enforcement
   private constructor() {
     super();
-    this.dependencies = UserCache.dependencies;
     console.log('🧠 Typed cache manager initialized');
   }
 
   private static get instance(): UserCache | null {
-    return globalThis.userWorldCacheInstance || null;
+    return globalThis.userCacheInstance || null;
   }
 
   private static set instance(value: UserCache | null) {
-    globalThis.userWorldCacheInstance = value;
+    globalThis.userCacheInstance = value;
   }
 
   /**
@@ -97,13 +95,17 @@ export class UserCache extends Cache {
    * 
    * @param config optional configuration for the cache
    */
-  static async intialize2(db: sqlite3.Database, dependencies: userCacheDependencies = {}, config?: TypedCacheConfig): Promise<void> {
-    UserCache.configureDependencies(dependencies);
+  static async intialize2(dependencies: userCacheDependencies = {}, config?: TypedCacheConfig): Promise<void> {
+    if (this.instance) {
+      await this.instance.shutdown();
+    }
+
     this.instance = new UserCache();
+    this.instance.dependencies = dependencies;
     if (config) {
       this.instance.config = config;
     }
-    this.instance.db = db;
+    this.instance.startBackgroundPersistence();
   }
 
   /**
@@ -122,29 +124,8 @@ export class UserCache extends Cache {
     WorldCache.resetInstance();
   }
 
-  static configureDependencies(dependencies: userCacheDependencies): void {
-    UserCache.dependencies = dependencies;
-    if (UserCache.instance) {
-      UserCache.instance.dependencies = dependencies;
-      UserCache.instance.worldCacheRef = dependencies.worldCache ?? null;
-    }
-  }
-
-  /**
-   * Get database connection (for BattleCache and other components)
-   * Returns the database connection after ensuring initialization
-   */
-  // needs _context for compile time lock checking
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  async getDatabaseConnection(_context: LockContext<LocksAtMostAndHas4>): Promise<sqlite3.Database> {
-    if (!this.db) {
-      throw new Error('Database not initialized');
-    }
-    return this.db;
-  }
-
   private getWorldCacheOrNull(): WorldCache | null {
-    return this.worldCacheRef ?? this.dependencies.worldCache ?? null;
+    return this.dependencies.worldCache ?? null;
   }
 
   private async getMessageCache(): Promise<MessageCache | null> {
@@ -170,8 +151,8 @@ export class UserCache extends Cache {
     userId: number
   ): Promise<User | null> {
     return await context.useLockWithAcquire(LOCK_10, async () => {
-      if (!this.db) throw new Error('Database not initialized');
-      return await getUserByIdFromDb(this.db, userId, async () => { });
+      if (!this.dependencies.db) throw new Error('Database not initialized');
+      return await getUserByIdFromDb(this.dependencies.db, userId, async () => { });
     });
   }
 
@@ -183,8 +164,8 @@ export class UserCache extends Cache {
     username: string
   ): Promise<User | null> {
     return await context.useLockWithAcquire(LOCK_10, async () => {
-      if (!this.db) throw new Error('Database not initialized');
-      return await getUserByUsernameFromDb(this.db, username, async () => { });
+      if (!this.dependencies.db) throw new Error('Database not initialized');
+      return await getUserByUsernameFromDb(this.dependencies.db, username, async () => { });
     });
   }
 
@@ -268,9 +249,7 @@ export class UserCache extends Cache {
    * - Updates user before returning
    */
   async getUserById(context: LockContext<LocksAtMost3>, userId: number): Promise<User | null> {
-
-    const ctx = createLockContext();
-    return await ctx.useLockWithAcquire(USER_LOCK, async (userContext) => {
+    return await context.useLockWithAcquire(USER_LOCK, async (userContext) => {
       return await this.getUserByIdWithLock(userContext, userId);
     });
   }
@@ -398,10 +377,10 @@ export class UserCache extends Cache {
    * Persist a single user to database
    */
   private async persistUserToDb(user: User): Promise<void> {
-    if (!this.db) throw new Error('Database not initialized');
+    if (!this.dependencies.db) throw new Error('Database not initialized');
 
     return new Promise<void>((resolve, reject) => {
-      this.db!.run(
+      this.dependencies.db!.run(
         `UPDATE users SET 
           iron = ?, 
           last_updated = ?, 
@@ -507,7 +486,7 @@ export class UserCache extends Cache {
   }
 
   /**
-   * Shutdown the cache manager
+   * Shutdown the cache manager. You need to call intialize2() again to restart.
    * Currently only used in tests
    */
   async shutdown(): Promise<void> {

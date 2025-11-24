@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { MessageCache } from '@/lib/server/messages/MessageCache';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
+import { getDatabase } from '@/lib/server/database';
 
 describe('MessageCache - Summarization', () => {
   let messageCache: MessageCache;
@@ -10,12 +11,11 @@ describe('MessageCache - Summarization', () => {
     const { resetTestDatabase } = await import('@/lib/server/database');
     resetTestDatabase();
     
-    MessageCache.resetInstance();
-    messageCache = MessageCache.getInstance({
+    await MessageCache.initialize(await getDatabase(), {
       persistenceIntervalMs: 30000,
-      enableAutoPersistence: false // Disable auto-persistence to avoid background timers
+      enableAutoPersistence: false
     });
-    await messageCache.initialize();
+    messageCache = MessageCache.getInstance();
   });
 
   afterEach(async () => {
