@@ -15,7 +15,7 @@ interface HomePageClientProps {
 }
 
 // Message type based on prefix
-type MessageType = 'neutral' | 'attack' | 'positive';
+type MessageType = 'neutral' | 'attack' | 'positive' | 'negative';
 
 interface ParsedMessage {
   type: MessageType;
@@ -25,6 +25,7 @@ interface ParsedMessage {
 /**
  * Parse message to determine type and extract content
  * A: prefix = attack (red background)
+ * N: prefix = negative (red background)
  * P: prefix = positive (green background)
  * No prefix = neutral (no special background)
  */
@@ -32,15 +33,15 @@ function parseMessage(message: string): ParsedMessage {
   if (message.startsWith('A: ')) {
     return { type: 'attack', content: message.substring(3) };
   }
+  if (message.startsWith('N: ')) {
+    return { type: 'negative', content: message.substring(3) };
+  }
   if (message.startsWith('P: ')) {
     return { type: 'positive', content: message.substring(3) };
   }
   return { type: 'neutral', content: message };
 }
 
-/**
- * Convert **text** to <strong>text</strong>
- */
 function formatBoldText(text: string): React.ReactNode {
   const parts = text.split(/(\*\*.*?\*\*)/g);
   return parts.map((part, index) => {
@@ -60,7 +61,7 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
   const [isMarkingAsRead, setIsMarkingAsRead] = React.useState(false);
   const [isRefreshing, setIsRefreshing] = React.useState(false);
   const [isSummarizing, setIsSummarizing] = React.useState(false);
-  
+
   const { techCounts, weapons, defenses, isLoading: techLoading, error: techError } = useTechCounts();
   const { defenseValues, isLoading: defenseLoading, error: defenseError } = useDefenseValues();
   const { battleStatus, isLoading: battleLoading } = useBattleStatus();
@@ -68,7 +69,7 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
   // Handler for refreshing messages
   const handleRefreshMessages = async () => {
     if (isRefreshing) return;
-    
+
     setIsRefreshing(true);
     try {
       const result = await messagesService.getMessages();
@@ -87,7 +88,7 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
   // Handler for marking all messages as read
   const handleMarkAllAsRead = async () => {
     if (isMarkingAsRead || messages.length === 0) return;
-    
+
     setIsMarkingAsRead(true);
     try {
       const result = await messagesService.markAllAsRead();
@@ -106,7 +107,7 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
   // Handler for summarizing messages
   const handleSummarizeMessages = async () => {
     if (isSummarizing || messages.length === 0) return;
-    
+
     setIsSummarizing(true);
     try {
       const response = await fetch('/api/messages/summarize', {
@@ -121,11 +122,11 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
       }
 
       const result = await response.json();
-      
+
       if (result.success) {
         console.log(`✅ Messages summarized`);
         console.log(result.summary);
-        
+
         // Refresh messages to show the summary and any preserved messages
         await handleRefreshMessages();
       }
@@ -143,9 +144,9 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
   // Calculate color based on percentage (0% = red, 50% = yellow, 100% = green)
   const getDefenseColor = (current: number, max: number): string => {
     if (max === 0) return '#4caf50'; // Green if no max (shouldn't happen)
-    
+
     const percentage = current / max;
-    
+
     if (percentage <= 0.5) {
       // Red (0%) to Yellow (50%)
       // Red: #f44336, Yellow: #ffeb3b
@@ -169,10 +170,10 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
   const formatCooldown = (cooldownTimestamp: number): string => {
     const now = Math.floor(Date.now() / 1000);
     const secondsRemaining = Math.max(0, cooldownTimestamp - now);
-    
+
     if (secondsRemaining === 0) return 'Ready';
     if (secondsRemaining < 60) return `${secondsRemaining}s`;
-    
+
     const minutes = Math.floor(secondsRemaining / 60);
     const seconds = secondsRemaining % 60;
     return `${minutes}m ${seconds}s`;
@@ -227,7 +228,7 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <span>Notifications</span>
                       <div style={{ display: 'flex', gap: '8px' }}>
-                        <button 
+                        <button
                           onClick={handleRefreshMessages}
                           disabled={isRefreshing}
                           style={{
@@ -255,7 +256,7 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
                         </button>
                         {messages.length > 0 && (
                           <>
-                            <button 
+                            <button
                               onClick={handleSummarizeMessages}
                               disabled={isSummarizing}
                               style={{
@@ -281,7 +282,7 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
                             >
                               {isSummarizing ? 'Summarizing...' : '📊 Summarize'}
                             </button>
-                            <button 
+                            <button
                               onClick={handleMarkAllAsRead}
                               disabled={isMarkingAsRead}
                               style={{
@@ -547,7 +548,7 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
                       const timeSinceFired = now - (lastFired || 0);
                       const isReady = timeSinceFired >= cooldownPeriod;
                       const timeRemaining = Math.max(0, cooldownPeriod - timeSinceFired);
-                      
+
                       return (
                         <tr key={weaponType} className="data-row">
                           <td className="data-cell">{weapon?.name || weaponType}</td>
