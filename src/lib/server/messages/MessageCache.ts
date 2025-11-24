@@ -10,7 +10,7 @@ import {
   LocksAtMostAndHas8,
 } from '@markdrei/ironguard-typescript-locks';
 import { getDatabase } from '../database';
-import { DATABASE_LOCK_MESSAGES, MESSAGE_LOCK } from '../typedLocks';
+import { MESSAGE_LOCK } from '../typedLocks';
 import { MessagesRepo, type Message, type UnreadMessage } from './messagesRepo';
 import { Cache } from '../caches/Cache';
 import { Database } from 'sqlite3';
@@ -57,7 +57,7 @@ export class MessageCache extends Cache {
    */
   static async initialize(db?: Database,  config?: MessageCacheConfig): Promise<void> {
     if (this.instance) {
-      this.instance.shutdown
+      await this.instance.shutdown();
     }
 
     this.instance = new MessageCache();
@@ -663,7 +663,7 @@ export class MessageCache extends Cache {
     }
   }
 
-  private startBackgroundPersistence(): void {
+  protected startBackgroundPersistence(): void {
     if (!this.config.enableAutoPersistence) {
       console.log('📬 Background persistence disabled by config');
       return;
@@ -686,7 +686,7 @@ export class MessageCache extends Cache {
     }, this.config.persistenceIntervalMs);
   }
 
-  private stopBackgroundPersistence(): void {
+  protected stopBackgroundPersistence(): void {
     if (this.persistenceTimer) {
       clearInterval(this.persistenceTimer);
       this.persistenceTimer = null;

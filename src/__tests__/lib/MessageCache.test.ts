@@ -294,7 +294,7 @@ describe('MessageCache', () => {
       // Reinitialize and verify persistence
       MessageCache.resetInstance();
       await MessageCache.initialize(await getDatabase());
-      let cache2 = getMessageCache();
+      const cache2 = getMessageCache();
       
       const messages1 = await cache2.getMessagesForUser(testUserId1);
       const messages2 = await cache2.getMessagesForUser(testUserId2);

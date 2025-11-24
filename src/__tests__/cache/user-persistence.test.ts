@@ -6,7 +6,6 @@ import { saveUserToDb } from '@/lib/server/user/userRepo';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 import { USER_LOCK } from '@/lib/server/typedLocks';
 import { initializeIntegrationTestServer, shutdownIntegrationTestServer } from '../helpers/testServer';
-import { after } from 'node:test';
 
 describe('User Persistence to Database', () => {
   beforeEach(async () => {

@@ -7,7 +7,7 @@ import { GET } from '@/app/api/messages/route';
 import { POST } from '@/app/api/messages/mark-read/route';
 import { clearTestDatabase } from '../helpers/testDatabase';
 import { createRequest } from '../helpers/apiTestHelpers';
-import { getMessageCache, MessageCache } from '@/lib/server/messages/MessageCache';
+import { MessageCache } from '@/lib/server/messages/MessageCache';
 import { getDatabase } from '../../lib/server/database';
 
 describe('Messages API Route Handler', () => {

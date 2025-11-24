@@ -13,7 +13,6 @@ import { User } from './user';
 import { getUserByIdFromDb, getUserByUsernameFromDb } from './userRepo';
 import { WorldCache } from '../world/worldCache';
 import { Cache } from '../caches/Cache';
-import { start } from 'repl';
 
 type userCacheDependencies = {
   db?: sqlite3.Database;
@@ -60,8 +59,6 @@ export class UserCache extends Cache {
     logStats: false
   };
 
-  private persistenceTimer: NodeJS.Timeout | null = null;
-
   // In-memory cache storage
   private users: Map<number, User> = new Map();
   private usernameToUserId: Map<string, number> = new Map(); // username -> userId mapping
@@ -97,7 +94,11 @@ export class UserCache extends Cache {
    */
   static async intialize2(dependencies: userCacheDependencies = {}, config?: TypedCacheConfig): Promise<void> {
     if (this.instance) {
-      await this.instance.shutdown();
+      const emptyCtx = createLockContext();
+      emptyCtx.useLockWithAcquire(USER_LOCK, async (userContext) => {
+        await this.instance!.shutdown(userContext);
+      });
+      
     }
 
     this.instance = new UserCache();
@@ -442,7 +443,7 @@ export class UserCache extends Cache {
   /**
    * Start background persistence timer
    */
-  private startBackgroundPersistence(): void {
+  protected startBackgroundPersistence(): void {
     if (!this.config.enableAutoPersistence) {
       console.log('📝 Background persistence disabled by config');
       return;
@@ -463,17 +464,6 @@ export class UserCache extends Cache {
   }
 
   /**
-   * Stop background persistence timer
-   */
-  private stopBackgroundPersistence(): void {
-    if (this.persistenceTimer) {
-      clearInterval(this.persistenceTimer);
-      this.persistenceTimer = null;
-      console.log('⏹️ Background persistence stopped');
-    }
-  }
-
-  /**
    * Background persistence operation
    */
   private async backgroundPersist(context: LockContext<LocksAtMostAndHas4>): Promise<void> {
@@ -489,35 +479,32 @@ export class UserCache extends Cache {
    * Shutdown the cache manager. You need to call intialize2() again to restart.
    * Currently only used in tests
    */
-  async shutdown(): Promise<void> {
-    const ctx = createLockContext();
-    await ctx.useLockWithAcquire(USER_LOCK, async (userContext) => {
-      console.log('🔄 Shutting down typed cache manager...');
+  async shutdown(context: LockContext<LocksAtMostAndHas4>): Promise<void> {
+    console.log('🔄 Shutting down typed cache manager...');
 
-      // Stop background persistence
-      this.stopBackgroundPersistence();
+    // Stop background persistence
+    this.stopBackgroundPersistence();
 
-      // Final persist of any dirty data
-      if (this.dirtyUsers.size > 0) {
-        console.log('💾 Final persist of dirty users before shutdown');
-        await this.persistDirtyUsers(userContext);
-      }
+    // Final persist of any dirty data
+    if (this.dirtyUsers.size > 0) {
+      console.log('💾 Final persist of dirty users before shutdown');
+      await this.persistDirtyUsers(context);
+    }
 
-      const worldCache = this.getWorldCacheOrNull();
-      if (worldCache) {
-        console.log('💾 Final persist of world data before shutdown');
-        await worldCache.flushToDatabase();
-        await worldCache.shutdown();
-      }
+    const worldCache = this.getWorldCacheOrNull();
+    if (worldCache) {
+      console.log('💾 Final persist of world data before shutdown');
+      await worldCache.flushToDatabase();
+      await worldCache.shutdown();
+    }
 
-      const messageCache = await this.getMessageCache();
-      if (messageCache) {
-        await messageCache.flushToDatabase(userContext);
-        await messageCache.shutdown();
-      }
+    const messageCache = await this.getMessageCache();
+    if (messageCache) {
+      await messageCache.flushToDatabase(context);
+      await messageCache.shutdown();
+    }
 
-      console.log('✅ Typed cache manager shutdown complete');
-    });
+    console.log('✅ Typed cache manager shutdown complete');
   }
 }
 

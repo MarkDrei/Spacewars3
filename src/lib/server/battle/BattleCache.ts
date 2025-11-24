@@ -205,7 +205,7 @@ export class BattleCache extends Cache {
   /**
    * Shutdown the cache (flush dirty data, stop timers)
    */
-  shutdown(): void {
+  async shutdown(): Promise<void> {
     if (this.persistenceTimer) {
       clearInterval(this.persistenceTimer);
       this.persistenceTimer = null;
