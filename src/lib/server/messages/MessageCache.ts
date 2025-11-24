@@ -92,7 +92,6 @@ export class MessageCache extends Cache {
   // Database connection and repo
   private db: Awaited<ReturnType<typeof getDatabase>> | null = null;
   private messagesRepo: MessagesRepo | null = null;
-  private persistenceTimer: NodeJS.Timeout | null = null;
 
   // In-memory cache storage
   private userMessages: Map<number, Message[]> = new Map(); // userId -> messages
@@ -457,11 +456,23 @@ export class MessageCache extends Cache {
   }
 
   /**
+   * Manually flush all dirty messages to database (implements abstract method from Cache)
+   * Acquires MESSAGE_LOCK internally
+   */
+  protected async flushAllToDatabase(): Promise<void> {
+    const ctx = createLockContext();
+    await ctx.useLockWithAcquire(MESSAGE_LOCK, async (messageContext) => {
+      await this.flushToDatabaseWithLock(messageContext);
+    });
+  }
+
+  /**
    * Manually flush all dirty messages to database
+   * @deprecated Use flushToDatabaseWithLock instead
    */
   async flushToDatabase(context: LockContext<LocksAtMost7>): Promise<void> {
     await context.useLockWithAcquire(MESSAGE_LOCK, async (messageContext) => {
-      return await this.flushToDatabaseWithLock(messageContext);
+      await this.flushToDatabaseWithLock(messageContext);
     });
   }
 
@@ -503,23 +514,23 @@ export class MessageCache extends Cache {
    * Shutdown the message cache
    */
   async shutdown(): Promise<void> {
+    console.log('📬 Shutting down message cache...');
+    
+    this.stopBackgroundPersistence();
+    
+    // Wait for pending message creations
+    await this.waitForPendingWrites();
+    
+    // Final flush of read status updates
     const ctx = createLockContext();
-    ctx.useLockWithAcquire(MESSAGE_LOCK, async (messageContext) => {
-      console.log('📬 Shutting down message cache...');
-      
-      this.stopBackgroundPersistence();
-      
-      // Wait for pending message creations
-      await this.waitForPendingWrites();
-      
-      // Final flush of read status updates
+    await ctx.useLockWithAcquire(MESSAGE_LOCK, async (messageContext) => {
       if (this.dirtyUsers.size > 0) {
         console.log('📬 Final flush of dirty messages before shutdown');
         await this.flushToDatabaseWithLock(messageContext);
       }
-      
-      console.log('✅ Message cache shutdown complete');
     });
+    
+    console.log('✅ Message cache shutdown complete');
   }
 
   // ============================================

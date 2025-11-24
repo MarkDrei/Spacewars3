@@ -37,7 +37,6 @@ export class WorldCache extends Cache {
   private db: sqlite3.Database | null = null;
   private world: World | null = null;
   private worldDirty = false;
-  private persistenceTimer: NodeJS.Timeout | null = null;
   private isInitialized = false;
 
   private stats = {
@@ -178,7 +177,7 @@ export class WorldCache extends Cache {
     }
   }
 
-  private startBackgroundPersistence(): void {
+  protected startBackgroundPersistence(): void {
     if (!this.config.enableAutoPersistence) {
       console.log('📝 World background persistence disabled by config');
       return;
@@ -198,14 +197,6 @@ export class WorldCache extends Cache {
     }, this.config.persistenceIntervalMs);
   }
 
-  private stopBackgroundPersistence(): void {
-    if (this.persistenceTimer) {
-      clearInterval(this.persistenceTimer);
-      this.persistenceTimer = null;
-      console.log('⏹️ World background persistence stopped');
-    }
-  }
-
   private async backgroundPersist(context: LockContext<LocksAtMostAndHas6>): Promise<void> {
     if (this.worldDirty) {
       console.log('💾 Background persisting world data...');
@@ -213,8 +204,17 @@ export class WorldCache extends Cache {
     }
   }
 
+  /**
+   * Flush all dirty data to database (implements abstract method from Cache)
+   * Acquires WORLD_LOCK internally
+   */
+  protected async flushAllToDatabase(): Promise<void> {
+    await this.flushToDatabase();
+  }
+
   async shutdown(): Promise<void> {
     this.stopBackgroundPersistence();
+    await this.flushToDatabase();
     this.world = null;
     this.db = null;
     this.worldDirty = false;

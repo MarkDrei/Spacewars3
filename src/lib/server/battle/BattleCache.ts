@@ -48,7 +48,6 @@ export class BattleCache extends Cache {
   private db: sqlite3.Database | null = null;
 
   // Background persistence
-  private persistenceTimer: NodeJS.Timeout | null = null;
   private readonly PERSISTENCE_INTERVAL_MS = 30_000; // 30 seconds
 
   private initialized = false;
@@ -148,7 +147,7 @@ export class BattleCache extends Cache {
     await this.loadActiveBattlesFromDb();
     
     // Start background persistence
-    this.startPersistence();
+    this.startBackgroundPersistence();
     
     this.initialized = true;
   }
@@ -206,10 +205,7 @@ export class BattleCache extends Cache {
    * Shutdown the cache (flush dirty data, stop timers)
    */
   async shutdown(): Promise<void> {
-    if (this.persistenceTimer) {
-      clearInterval(this.persistenceTimer);
-      this.persistenceTimer = null;
-    }
+    this.stopBackgroundPersistence();
 
     // Flush any remaining dirty battles
     if (this.dirtyBattles.size > 0) {
@@ -734,9 +730,9 @@ export class BattleCache extends Cache {
   // ========================================
 
   /**
-   * Start background persistence timer
+   * Start background persistence timer (implements abstract method from Cache)
    */
-  private startPersistence(): void {
+  protected startBackgroundPersistence(): void {
     if (this.persistenceTimer) {
       return; // Already running
     }
@@ -749,6 +745,17 @@ export class BattleCache extends Cache {
         });
       });
     }, this.PERSISTENCE_INTERVAL_MS);
+  }
+
+  /**
+   * Flush all dirty data to database (implements abstract method from Cache)
+   * Acquires BATTLE_LOCK internally
+   */
+  protected async flushAllToDatabase(): Promise<void> {
+    const ctx = createLockContext();
+    await ctx.useLockWithAcquire(BATTLE_LOCK, async (battleContext) => {
+      await this.persistDirtyBattlesInternal(battleContext);
+    });
   }
 
   /**
