@@ -33,8 +33,6 @@ export async function GET(request: NextRequest) {
       count: unreadMessages.length
     };
     
-    console.log('📬 Messages API: Sending response:', response);
-    
     return NextResponse.json(response);
     
   } catch (error) {

@@ -802,16 +802,6 @@ export async function addBattleEvent(context: LockContext<LocksAtMostAndHas2>, b
   return cache.addBattleEvent(context, battleId, event);
 }
 
-export async function updateBattleDefenses(
-  context: LockContext<LocksAtMostAndHas2>,
-  battleId: number,
-  attackerEndStats: BattleStats | null,
-  attackeeEndStats: BattleStats | null
-): Promise<void> {
-  const cache = getBattleCache();
-  return cache.updateBattleStats(context, battleId, attackerEndStats, attackeeEndStats);
-}
-
 export async function endBattle(
   context: LockContext<LocksAtMostAndHas2>,
   battleId: number,
@@ -848,16 +838,6 @@ export async function setWeaponCooldown(
 ): Promise<void> {
   const cache = getBattleCache();
   return cache.setWeaponCooldown(context, battleId, userId, weaponType, cooldown);
-}
-
-export async function updateBattleStats(
-  context: LockContext<LocksAtMostAndHas2>,
-  battleId: number,
-  attackerEndStats: BattleStats | null,
-  attackeeEndStats: BattleStats | null
-): Promise<void> {
-  const cache = getBattleCache();
-  return cache.updateBattleStats(context, battleId, attackerEndStats, attackeeEndStats);
 }
 
 export async function updateTotalDamage(
@@ -925,16 +905,6 @@ export const BattleRepo = {
     return cache.addBattleEvent(context, battleId, event);
   },
 
-  updateBattleDefenses: async (
-    context: LockContext<LocksAtMostAndHas2>,
-    battleId: number,
-    attackerEndStats: BattleStats | null,
-    attackeeEndStats: BattleStats | null
-  ) => {
-    const cache = getBattleCache();
-    return cache.updateBattleStats(context, battleId, attackerEndStats, attackeeEndStats);
-  },
-
   endBattle: async (
     context: LockContext<LocksAtMostAndHas2>,
     battleId: number,
@@ -971,16 +941,6 @@ export const BattleRepo = {
   ) => {
     const cache = getBattleCache();
     return cache.setWeaponCooldown(context, battleId, userId, weaponType, cooldown);
-  },
-
-  updateBattleStats: async (
-    context: LockContext<LocksAtMostAndHas2>,
-    battleId: number,
-    attackerEndStats: BattleStats | null,
-    attackeeEndStats: BattleStats | null
-  ) => {
-    const cache = getBattleCache();
-    return cache.updateBattleStats(context, battleId, attackerEndStats, attackeeEndStats);
   },
 
   updateTotalDamage: async (

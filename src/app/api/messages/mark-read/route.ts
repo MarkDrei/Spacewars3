@@ -13,12 +13,9 @@ export async function POST(request: NextRequest) {
     console.log('📬 Mark Messages as Read API: Starting request...');
     
     const session = await getIronSession<SessionData>(request, NextResponse.json({}), sessionOptions);
-    console.log('📬 Mark Messages as Read API: Session obtained, userId:', session.userId);
     
     requireAuth(session.userId);
-    console.log('📬 Mark Messages as Read API: Authentication passed');
-    
-    console.log(`📬 Marking messages as read for user: ${session.userId}`);
+
     
     // Mark all unread messages as read
     const markedCount = await markUserMessagesAsRead(session.userId!);
@@ -29,8 +26,6 @@ export async function POST(request: NextRequest) {
       success: true,
       markedCount
     };
-    
-    console.log('📬 Mark Messages as Read API: Sending response:', response);
     
     return NextResponse.json(response);
     
