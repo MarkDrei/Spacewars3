@@ -194,11 +194,13 @@ export class BattleEngine {
   }
 
   /**
-   * Apply damage to a target's defenses (legacy method for battleScheduler)
+   * Apply damage to a target's defenses (legacy method - no longer used)
    * Uses simple waterfall logic: shield → armor → hull
    * 
-   * NOTE: This is kept for backward compatibility with battleScheduler.
-   * New code should use TechFactory.calculateWeaponDamage + applyDamageWithLock directly.
+   * NOTE: This method is deprecated. Both battleEngine.executeTurn and 
+   * battleScheduler.fireWeapon now use TechFactory.calculateWeaponDamage + applyDamageWithLock.
+   * This method is kept for backward compatibility with any external code that may depend on it.
+   * @deprecated Use TechFactory.calculateWeaponDamage + applyDamageWithLock directly.
    */
   async applyDamage(
     context: LockContext<LocksAtMost3>,
