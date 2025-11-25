@@ -94,11 +94,7 @@ export class UserCache extends Cache {
    */
   static async intialize2(dependencies: userCacheDependencies = {}, config?: TypedCacheConfig): Promise<void> {
     if (this.instance) {
-      const emptyCtx = createLockContext();
-      emptyCtx.useLockWithAcquire(USER_LOCK, async (userContext) => {
-        await this.instance!.shutdown(userContext);
-      });
-      
+      await this.instance.shutdown();
     }
 
     this.instance = new UserCache();
@@ -321,10 +317,31 @@ export class UserCache extends Cache {
   }
 
   /**
-   * Force flush all dirty data to database
+   * Force flush all dirty data to database (implements abstract method from Cache)
+   * Useful for ensuring data is persisted before reading directly from DB
+   * This method acquires the USER_LOCK internally.
+   */
+  protected async flushAllToDatabase(): Promise<void> {
+    const ctx = createLockContext();
+    await ctx.useLockWithAcquire(USER_LOCK, async (userContext) => {
+      await this.flushAllToDatabaseWithContext(userContext);
+    });
+  }
+
+  /**
+   * Force flush all dirty data to database when already holding USER_LOCK
+   * Useful for ensuring data is persisted before reading directly from DB
+   * @deprecated Use flushAllToDatabaseWithContext instead
+   */
+  async flushAllToDatabaseWithLock(context: LockContext<LocksAtMostAndHas4>): Promise<void> {
+    return this.flushAllToDatabaseWithContext(context);
+  }
+
+  /**
+   * Force flush all dirty data to database when already holding USER_LOCK
    * Useful for ensuring data is persisted before reading directly from DB
    */
-  async flushAllToDatabase(context: LockContext<LocksAtMostAndHas4>): Promise<void> {
+  async flushAllToDatabaseWithContext(context: LockContext<LocksAtMostAndHas4>): Promise<void> {
     console.log('🔄 Flushing all dirty data to database...');
 
     // Persist dirty users
@@ -340,8 +357,10 @@ export class UserCache extends Cache {
       await worldCache.flushToDatabase();
     }
 
+    // Persist dirty message data via message cache
     const messageCache = await this.getMessageCache();
     if (messageCache) {
+      console.log('💾 Flushing message data');
       await messageCache.flushToDatabase(context);
     }
 
@@ -479,17 +498,20 @@ export class UserCache extends Cache {
    * Shutdown the cache manager. You need to call intialize2() again to restart.
    * Currently only used in tests
    */
-  async shutdown(context: LockContext<LocksAtMostAndHas4>): Promise<void> {
+  async shutdown(): Promise<void> {
     console.log('🔄 Shutting down typed cache manager...');
 
     // Stop background persistence
     this.stopBackgroundPersistence();
 
-    // Final persist of any dirty data
-    if (this.dirtyUsers.size > 0) {
-      console.log('💾 Final persist of dirty users before shutdown');
-      await this.persistDirtyUsers(context);
-    }
+    // Final persist of any dirty data using internal locking
+    const ctx = createLockContext();
+    await ctx.useLockWithAcquire(USER_LOCK, async (userContext) => {
+      if (this.dirtyUsers.size > 0) {
+        console.log('💾 Final persist of dirty users before shutdown');
+        await this.persistDirtyUsers(userContext);
+      }
+    });
 
     const worldCache = this.getWorldCacheOrNull();
     if (worldCache) {
@@ -500,7 +522,6 @@ export class UserCache extends Cache {
 
     const messageCache = await this.getMessageCache();
     if (messageCache) {
-      await messageCache.flushToDatabase(context);
       await messageCache.shutdown();
     }
 

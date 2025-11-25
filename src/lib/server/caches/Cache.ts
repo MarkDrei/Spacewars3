@@ -1,5 +1,3 @@
-import { LockContext, LocksAtMostAndHas4 } from "@markdrei/ironguard-typescript-locks";
-
 /**
  * Base class for all cache implementations
  * 
@@ -22,17 +20,21 @@ export abstract class Cache {
    * Shuts down the cache, persisting any in-memory data to permanent storage.
    * Stops any background tasks.
    * 
+   * Each cache implementation handles its own locking internally.
+   * 
    * resetInstance() should be called after this to clear the singleton instance.
    */
-  public shutdown(context: LockContext<LocksAtMostAndHas4>): Promise<void> {
+  public async shutdown(): Promise<void> {
     this.stopBackgroundPersistence();
-    return this.flushAllToDatabase(context);
+    await this.flushAllToDatabase();
   }
 
   /**
    * Flushes all in-memory data to permanent storage.
+   * 
+   * Each cache implementation handles its own locking internally.
    */
-  protected abstract flushAllToDatabase(context: LockContext<LocksAtMostAndHas4>): Promise<void>;
+  protected abstract flushAllToDatabase(): Promise<void>;
 
 
   /**
