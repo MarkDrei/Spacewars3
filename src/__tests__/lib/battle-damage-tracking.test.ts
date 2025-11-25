@@ -1,9 +1,10 @@
 // ---
 // Battle Damage Tracking Tests
-// NOTE: These tests are now deprecated as defense values are tracked in User objects via cache
-// The tests have been updated to reflect the new architecture where:
-// - startStats and endStats are "write once" snapshots
-// - Defense values are tracked in User objects during battle
+// Tests verify that:
+// - Damage is tracked in battle.attackerTotalDamage / attackeeTotalDamage
+// - Defense values are tracked in User objects via cache (not in startStats/endStats)
+// - startStats and endStats remain "write once" snapshots
+// - executeTurn uses TechFactory.calculateWeaponDamage for centralized damage calculation
 // ---
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';

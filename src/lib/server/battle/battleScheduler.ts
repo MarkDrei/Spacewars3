@@ -2,18 +2,18 @@
 // BattleScheduler: Automates periodic processing of active battles.
 // Responsibilities:
 //   - Triggers battle rounds at regular intervals
-//   - Processes weapon firing and damage application
-//   - Sends notifications/messages to users
+//   - Processes weapon firing using TechFactory.calculateWeaponDamage for centralized damage calculation
+//   - Applies damage via BattleEngine.applyDamageWithLock for proper cache delegation
+//   - Sends notifications/messages to users about battle events
 //   - Calls BattleService.resolveBattle when battle ends
 // Main interaction partners:
 //   - BattleCache (via BattleRepo compatibility layer)
-//   - BattleEngine (for combat mechanics)
+//   - BattleEngine (for damage application)
 //   - BattleService (for battle resolution)
-//   - getUserWorldCache (for user state updates)
+//   - UserCache (for user state access)
 //   - MessageCache (for notifications)
-// Status: ✅ Uses proper cache delegation, no direct DB access
-// Note: Has helper functions that duplicate battleService (updateUserBattleState, etc.)
-//       This is acceptable as each uses them in different contexts.
+//   - TechFactory (for centralized weapon damage calculations)
+// Status: ✅ Uses TechFactory.calculateWeaponDamage + applyDamageWithLock for consistent damage calculation
 // ---
 
 import { BattleRepo } from './BattleCache';
@@ -27,23 +27,6 @@ import { getBattleCache } from './BattleCache';
 import { BATTLE_LOCK, USER_LOCK } from '../typedLocks';
 import { createLockContext, LockContext, LocksAtMostAndHas2 } from '@markdrei/ironguard-typescript-locks';
 import { UserCache } from '../user/userCache';
-
-// /**
-//  * Helper to update user's battle state via TypedCacheManager
-//  * Uses proper cache delegation instead of direct DB access
-//  */
-// async function updateUserBattleState(userId: number, inBattle: boolean, battleId: number | null): Promise<void> {
-//   const userWorldCache = getUserWorldCache();
-//   const ctx = createLockContext();
-//   await ctx.useLockWithAcquire(USER_LOCK, async (userContext) => {
-//     const user = userWorldCache.getUserByIdFromCache(userContext, userId);
-//     if (user) {
-//       user.inBattle = inBattle;
-//       user.currentBattleId = battleId;
-//       userWorldCache.updateUserInCache(userContext, user);
-//     }
-//   });
-// }
 
 /**
  * Helper to create a message for a user via MessageCache
