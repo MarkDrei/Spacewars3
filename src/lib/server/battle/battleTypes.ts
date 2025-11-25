@@ -8,20 +8,26 @@
 // ---
 
 /**
- * Default damage calculation modifiers
- * These are used when calling TechFactory.calculateWeaponDamage
- * and can be adjusted for future game balance or special effects
+ * Default damage calculation modifiers used with TechFactory.calculateWeaponDamage.
+ * These values can be adjusted for future game balance or special effects.
+ * 
+ * Parameter details:
+ * - POSITIVE_ACCURACY_MODIFIER: Added to weapon's baseAccuracy percentage (e.g., 10 = +10% accuracy)
+ * - NEGATIVE_ACCURACY_MODIFIER: Decimal multiplier reducing accuracy (e.g., 0.2 = 20% accuracy reduction)
+ * - BASE_DAMAGE_MODIFIER: Decimal multiplier for damage (e.g., 1.5 = 150% damage)
+ * - ECM_EFFECTIVENESS: Decimal effectiveness against guided weapons (e.g., 0.5 = 50% miss chance for rockets)
+ * - SPREAD_VALUE: Decimal multiplier for hit randomization (e.g., 1.0 = normal, 0.8 = less hits)
  */
 export const DAMAGE_CALC_DEFAULTS = {
-  /** Bonus accuracy percentage (0-100+) from attacker's systems */
+  /** Added to weapon's baseAccuracy percentage (e.g., 10 = +10% accuracy bonus) */
   POSITIVE_ACCURACY_MODIFIER: 0,
-  /** Accuracy penalty as decimal (0-1) from target's evasion/agility */
+  /** Decimal reducing accuracy via multiplication (e.g., 0.2 = 20% accuracy reduction) */
   NEGATIVE_ACCURACY_MODIFIER: 0,
-  /** Damage multiplier as decimal (e.g., 1.0 = 100%, 1.5 = 150%) */
+  /** Decimal damage multiplier (e.g., 1.0 = 100% normal damage, 1.5 = 150% damage) */
   BASE_DAMAGE_MODIFIER: 1.0,
-  /** ECM jamming effectiveness as decimal (0-1), affects guided weapons */
+  /** Decimal ECM effectiveness vs guided weapons (e.g., 0.5 = rockets 50% less likely to hit) */
   ECM_EFFECTIVENESS: 0,
-  /** Damage spread multiplier as decimal (e.g., 0.8-1.2 for randomization) */
+  /** Decimal hit randomization multiplier (e.g., 1.0 = normal hit calculation) */
   SPREAD_VALUE: 1.0
 } as const;
 
