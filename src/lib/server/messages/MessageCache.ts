@@ -652,7 +652,7 @@ export class MessageCache extends Cache {
             this.dirtyUsers.add(userId);
           }
           
-          console.log(`📬 Updated message ID from ${tempId} to ${realId} for user ${userId}`);
+          // console.log(`📬 Updated message ID from ${tempId} to ${realId} for user ${userId}`);
         }
       }
       
