@@ -67,7 +67,6 @@ describe('Defense Value Persistence After Battle', () => {
         const attackerCooldowns: WeaponCooldowns = { pulse_laser: 0 };
         const defenderCooldowns: WeaponCooldowns = { pulse_laser: 5 };
     
-      const battleCache = getBattleCache();
       const battle = await battleContext.useLockWithAcquire(USER_LOCK, async (userCtx) => {
         return await battleCache.createBattle(
           battleContext,
