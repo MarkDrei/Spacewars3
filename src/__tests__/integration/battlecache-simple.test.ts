@@ -4,7 +4,7 @@
 // ---
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { BattleCache, getBattleCache, getBattleCacheInitialized } from '../../lib/server/battle/BattleCache';
+import { BattleCache, getBattleCache } from '../../lib/server/battle/BattleCache';
 import * as BattleRepo from '../../lib/server/battle/BattleCache';
 import type { BattleStats, WeaponCooldowns } from '../../lib/server/battle/battleTypes';
 import { BATTLE_LOCK, USER_LOCK } from '@/lib/server/typedLocks';
@@ -106,7 +106,7 @@ describe('Phase 5: BattleCache Integration Testing', () => {
       // Create battle
       await emptyCtx.useLockWithAcquire(BATTLE_LOCK, async (battleCtx) => {
         await battleCtx.useLockWithAcquire(USER_LOCK, async (userContext) => {
-          const battleCache = await getBattleCacheInitialized();
+          const battleCache = getBattleCache();
           const battle = await battleCache.createBattle(
             battleCtx, userContext, attackerId, defenderId, stats, stats, cooldowns, cooldowns
           );
@@ -152,7 +152,7 @@ describe('Phase 5: BattleCache Integration Testing', () => {
 
       await emptyCtx.useLockWithAcquire(BATTLE_LOCK, async (battleCtx) => {
         // Create battle
-        const battleCache = await getBattleCacheInitialized();
+        const battleCache = getBattleCache();
 
         await battleCtx.useLockWithAcquire(USER_LOCK, async (userContext) => {
           const battle = await battleCache.createBattle(
@@ -196,7 +196,7 @@ describe('Phase 5: BattleCache Integration Testing', () => {
         let activeBattles = await BattleRepo.getActiveBattles(battleCtx);
         expect(activeBattles).toHaveLength(0);
 
-        const battleCache = await getBattleCacheInitialized();
+        const battleCache = getBattleCache();
 
         await battleCtx.useLockWithAcquire(USER_LOCK, async (userContext) => {
           // Create first battle
@@ -245,7 +245,7 @@ describe('Phase 5: BattleCache Integration Testing', () => {
 
       await emptyCtx.useLockWithAcquire(BATTLE_LOCK, async (battleCtx) => {
         await battleCtx.useLockWithAcquire(USER_LOCK, async (userContext) => {
-          const battleCache = await getBattleCacheInitialized();
+          const battleCache = getBattleCache();
           // Create battle
           const battle = await battleCache.createBattle(
             battleCtx, userContext, 1, 2, stats, stats, cooldowns, cooldowns
@@ -293,7 +293,7 @@ describe('Phase 5: BattleCache Integration Testing', () => {
 
 
       await emptyCtx.useLockWithAcquire(BATTLE_LOCK, async (battleCtx) => {
-        const battleCache = await getBattleCacheInitialized();
+        const battleCache = getBattleCache();
 
         await battleCtx.useLockWithAcquire(USER_LOCK, async (userContext) => {
           // Create battle
@@ -364,7 +364,7 @@ describe('Phase 5: BattleCache Integration Testing', () => {
       };
 
       await emptyCtx.useLockWithAcquire(BATTLE_LOCK, async (battleCtx) => {
-        const battleCache = await getBattleCacheInitialized();
+        const battleCache = getBattleCache();
 
         await battleCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
           // Create battle

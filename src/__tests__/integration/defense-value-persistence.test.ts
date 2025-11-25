@@ -4,7 +4,7 @@
 // ---
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { getBattleCache, getBattleCacheInitialized } from '../../lib/server/battle/BattleCache';
+import { getBattleCache } from '../../lib/server/battle/BattleCache';
 import * as BattleRepo from '../../lib/server/battle/BattleCache';
 import * as battleService from '../../lib/server/battle/battleService';
 import type { BattleStats, WeaponCooldowns } from '../../lib/server/battle/battleTypes';
@@ -67,7 +67,7 @@ describe('Defense Value Persistence After Battle', () => {
         const attackerCooldowns: WeaponCooldowns = { pulse_laser: 0 };
         const defenderCooldowns: WeaponCooldowns = { pulse_laser: 5 };
     
-      await getBattleCacheInitialized();
+      const battleCache = getBattleCache();
       const battle = await battleContext.useLockWithAcquire(USER_LOCK, async (userCtx) => {
         return await battleCache.createBattle(
           battleContext,
