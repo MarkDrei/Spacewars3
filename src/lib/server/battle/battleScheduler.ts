@@ -20,6 +20,7 @@ import { BattleRepo } from './BattleCache';
 import { BattleEngine } from './battleEngine';
 import { resolveBattle } from './battleService';
 import type { Battle, BattleEvent } from './battleTypes';
+import { DAMAGE_CALC_DEFAULTS } from './battleTypes';
 import { TechFactory, TechCounts } from '../techs/TechFactory';
 import { sendMessageToUser } from '../messages/MessageCache';
 import { getBattleCache } from './BattleCache';
@@ -195,11 +196,11 @@ async function fireWeapon(
       attackerUser.techCounts as TechCounts,
       defenderUser.shieldCurrent,
       defenderUser.armorCurrent,
-      0, // positiveAccuracyModifier - hardcoded for now
-      0, // negativeAccuracyModifier - hardcoded for now
-      1.0, // baseDamageModifier - hardcoded for now
-      0, // ecmEffectiveness - hardcoded for now
-      1.0 // spreadValue - hardcoded for now
+      DAMAGE_CALC_DEFAULTS.POSITIVE_ACCURACY_MODIFIER,
+      DAMAGE_CALC_DEFAULTS.NEGATIVE_ACCURACY_MODIFIER,
+      DAMAGE_CALC_DEFAULTS.BASE_DAMAGE_MODIFIER,
+      DAMAGE_CALC_DEFAULTS.ECM_EFFECTIVENESS,
+      DAMAGE_CALC_DEFAULTS.SPREAD_VALUE
     );
     
     const shotsPerSalvo = weaponData.count;

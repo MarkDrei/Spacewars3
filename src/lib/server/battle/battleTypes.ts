@@ -2,6 +2,24 @@
 // Battle system type definitions - shared between client and server
 // ---
 
+/**
+ * Default damage calculation modifiers
+ * These are used when calling TechFactory.calculateWeaponDamage
+ * and can be adjusted for future game balance or special effects
+ */
+export const DAMAGE_CALC_DEFAULTS = {
+  /** Bonus accuracy percentage (0-100+) from attacker's systems */
+  POSITIVE_ACCURACY_MODIFIER: 0,
+  /** Accuracy penalty as decimal (0-1) from target's evasion/agility */
+  NEGATIVE_ACCURACY_MODIFIER: 0,
+  /** Damage multiplier as decimal (e.g., 1.0 = 100%, 1.5 = 150%) */
+  BASE_DAMAGE_MODIFIER: 1.0,
+  /** ECM jamming effectiveness as decimal (0-1), affects guided weapons */
+  ECM_EFFECTIVENESS: 0,
+  /** Damage spread multiplier as decimal (e.g., 0.8-1.2 for randomization) */
+  SPREAD_VALUE: 1.0
+} as const;
+
 export interface Battle {
   id: number;
   attackerId: number;
