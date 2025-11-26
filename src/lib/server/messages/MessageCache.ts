@@ -439,6 +439,11 @@ export class MessageCache extends Cache {
 
   /**
    * Parse a collection message (P: Successfully collected...)
+   * Expected message formats from harvest API:
+   *   - "P: Successfully collected asteroid and received **123** iron."
+   *   - "P: Successfully collected ship wreck and received **456** iron."
+   *   - "P: Successfully collected shipwreck and received **789** iron."
+   *   - "P: Successfully collected escape pod." (no iron for escape pods)
    * Returns true if message was parsed, false otherwise
    */
   private parseCollectionMessage(
@@ -446,11 +451,10 @@ export class MessageCache extends Cache {
     stats: ReturnType<typeof MessageCache.createCollectionStats>
   ): boolean {
     if (text.startsWith('P:') && text.includes('Successfully collected')) {
-      // Match: "P: Successfully collected asteroid and received **123** iron."
-      // or: "P: Successfully collected ship wreck." (no iron)
       const collectionMatch = text.match(/Successfully collected (asteroid|ship ?wreck|escape ?pod)/i);
       if (collectionMatch) {
-        const type = collectionMatch[1].toLowerCase().replace(' ', '');
+        // Remove all whitespace and normalize to lowercase for reliable comparison
+        const type = collectionMatch[1].toLowerCase().replace(/\s+/g, '');
         
         // Count the collection type
         if (type === 'asteroid') {
@@ -640,13 +644,8 @@ export class MessageCache extends Cache {
         summaries.push(collectionSummary);
       }
 
-      // If no summaries were created but we had messages, create a generic summary
-      if (summaries.length === 0 && unknownMessages.length > 0) {
-        const genericSummary = '📊 **Message Summary**';
-        await this.createMessageInternal(messageContext, userId, genericSummary);
-        summaries.push(genericSummary);
-      } else if (summaries.length === 0) {
-        // Fallback when there are no messages to summarize (shouldn't happen but just in case)
+      // If no summaries were created, create a generic summary
+      if (summaries.length === 0) {
         const genericSummary = '📊 **Message Summary**';
         await this.createMessageInternal(messageContext, userId, genericSummary);
         summaries.push(genericSummary);
@@ -714,7 +713,6 @@ export class MessageCache extends Cache {
     message: Message,
     timestamp: number
   ): Promise<void> {
-
     // Insert into DB with preserved timestamp
     const realId = await this.createMessageInDbWithTimestamp(context, userId, message.message, timestamp);
 
