@@ -69,6 +69,34 @@ export class MessagesRepo {
   }
 
   /**
+   * Create a new message for a user with a specific timestamp
+   * Used for preserving original timestamps when re-creating unknown messages
+   * Returns the ID of the newly created message
+   */
+  async createMessageWithTimestamp<THeld extends readonly LockLevel[]>(
+    _context: HasLock12Context<THeld>,
+    recipientId: number,
+    message: string,
+    timestamp: number
+  ): Promise<number> {
+    return new Promise((resolve, reject) => {
+      const stmt = this.db.prepare(`
+        INSERT INTO messages (recipient_id, created_at, is_read, message)
+        VALUES (?, ?, 0, ?)
+      `);
+      
+      stmt.run(recipientId, timestamp, message, function(this: sqlite3.RunResult, err: Error | null) {
+        stmt.finalize();
+        if (err) {
+          reject(err);
+          return;
+        }
+        resolve(this.lastID);
+      });
+    });
+  }
+
+  /**
    * Get all messages for a user (both read and unread)
    * Returns messages in descending order by creation time (newest first)
    */
