@@ -19,7 +19,7 @@ import { resolveBattle } from './battleService';
 import type { Battle, BattleEvent } from './battleTypes';
 import { DAMAGE_CALC_DEFAULTS } from './battleTypes';
 import { TechFactory, TechCounts } from '../techs/TechFactory';
-import { sendMessageToUser } from '../messages/MessageCache';
+import { getMessageCache } from '../messages/MessageCache';
 import { getBattleCache } from './BattleCache';
 import { BATTLE_LOCK, USER_LOCK } from '../typedLocks';
 import { createLockContext, LockContext, LocksAtMostAndHas2, LocksAtMost3, LocksAtMostAndHas4 } from '@markdrei/ironguard-typescript-locks';
@@ -151,7 +151,7 @@ async function getBattleOutcome(battle: Battle, context: LockContext<LocksAtMost
  * Uses the cache system to ensure consistency
  */
 async function createMessage(userId: number, message: string): Promise<void> {
-  await sendMessageToUser(userId, message);
+  await getMessageCache().createMessage(userId, message);
 }
 
 /**

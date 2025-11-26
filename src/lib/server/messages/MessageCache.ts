@@ -715,11 +715,6 @@ export function getMessageCache(config?: MessageCacheConfig): MessageCache {
 export type { Message, UnreadMessage } from './messagesRepo';
 
 // Convenience functions for message operations
-export async function sendMessageToUser(userId: number, message: string): Promise<number> {
-  const cache = getMessageCache();
-  return await cache.createMessage(userId, message);
-}
-
 export async function getUserMessages(userId: number): Promise<UnreadMessage[]> {
   const cache = getMessageCache();
   return await cache.getUnreadMessages(userId);

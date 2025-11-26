@@ -5,7 +5,7 @@
 import sqlite3 from 'sqlite3';
 import { User, SaveUserCallback } from './user';
 import { createInitialTechTree } from '../techs/techtree';
-import { sendMessageToUser } from '../messages/MessageCache';
+import { getMessageCache } from '../messages/MessageCache';
 import { TechCounts, BuildQueueItem } from '../techs/TechFactory';
 import { TechService } from '../techs/TechService';
 
@@ -187,7 +187,7 @@ async function createUserWithShip(db: sqlite3.Database, username: string, passwo
               const user = new User(userId, username, password_hash, 0.0, now, techTree, saveCallback, defaultTechCounts, initialMaxStats.hull, initialMaxStats.armor, initialMaxStats.shield, now, false, null, [], null, shipId);
 
               // Send welcome message to new user
-              await sendMessageToUser(userId, `Welcome to Spacewars, ${username}! Your journey among the stars begins now. Navigate wisely and collect resources to upgrade your ship.`);
+              await getMessageCache().createMessage(userId, `Welcome to Spacewars, ${username}! Your journey among the stars begins now. Navigate wisely and collect resources to upgrade your ship.`);
 
               try {
                 // Note: User creation doesn't need immediate caching since
