@@ -4,6 +4,7 @@ import { BattleCache } from '@/lib/server/battle/BattleCache';
 import { UserCache } from '@/lib/server/user/userCache';
 import { WorldCache } from '@/lib/server/world/worldCache';
 import { MessageCache } from '@/lib/server/messages/MessageCache';
+import { stopBattleScheduler } from '@/lib/server/battle/battleScheduler';
 
 async function shutdownUserWorldCache(): Promise<void> {
   try {
@@ -41,6 +42,7 @@ export async function initializeIntegrationTestServer(): Promise<void> {
 }
 
 export async function shutdownIntegrationTestServer(): Promise<void> {
+  stopBattleScheduler();
   await shutdownUserWorldCache();
   await shutdownWorldCache();
   await shutdownMessageCache();
