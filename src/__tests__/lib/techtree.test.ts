@@ -10,7 +10,9 @@ import {
   getResearchEffectFromTree,
   triggerResearch,
   updateTechTree,
-  getActiveResearch
+  getActiveResearch,
+  getWeaponDamageModifierFromTree,
+  getDamageModifierFromTree
 } from '@/lib/server/techs/techtree';
 
 describe('getResearchUpgradeCost', () => {
@@ -249,5 +251,79 @@ describe('getActiveResearch', () => {
     triggerResearch(tree, ResearchType.Afterburner);
     updateTechTree(tree, 9999); // complete it
     expect(getActiveResearch(tree)).toBeUndefined();
+  });
+});
+
+describe('getWeaponDamageModifierFromTree', () => {
+  test('getWeaponDamageModifierFromTree_projectileWeaponAtLevel1_returns1', () => {
+    const tree = createInitialTechTree();
+    // At level 1, effect = baseValue = 50, modifier = 50/50 = 1.0
+    expect(getWeaponDamageModifierFromTree(tree, 'machine_gun')).toBeCloseTo(1.0);
+    expect(getWeaponDamageModifierFromTree(tree, 'flak_cannon')).toBeCloseTo(1.0);
+    expect(getWeaponDamageModifierFromTree(tree, 'rocket_launcher')).toBeCloseTo(1.0);
+  });
+
+  test('getWeaponDamageModifierFromTree_energyWeaponAtLevel1_returns1', () => {
+    const tree = createInitialTechTree();
+    // At level 1, effect = baseValue = 60, modifier = 60/60 = 1.0
+    expect(getWeaponDamageModifierFromTree(tree, 'pulse_laser')).toBeCloseTo(1.0);
+    expect(getWeaponDamageModifierFromTree(tree, 'plasma_cannon')).toBeCloseTo(1.0);
+    expect(getWeaponDamageModifierFromTree(tree, 'photon_torpedo')).toBeCloseTo(1.0);
+  });
+
+  test('getWeaponDamageModifierFromTree_projectileWeaponAtLevel2_returns115Percent', () => {
+    const tree = createInitialTechTree();
+    tree.projectileDamage = 2;
+    // At level 2, effect = 50 * 1.15 = 57.5, modifier = 57.5/50 = 1.15
+    expect(getWeaponDamageModifierFromTree(tree, 'machine_gun')).toBeCloseTo(1.15);
+  });
+
+  test('getWeaponDamageModifierFromTree_energyWeaponAtLevel2_returns115Percent', () => {
+    const tree = createInitialTechTree();
+    tree.energyDamage = 2;
+    // At level 2, effect = 60 * 1.15 = 69, modifier = 69/60 = 1.15
+    expect(getWeaponDamageModifierFromTree(tree, 'pulse_laser')).toBeCloseTo(1.15);
+  });
+
+  test('getWeaponDamageModifierFromTree_projectileWeaponAtLevel3_returnsScaledModifier', () => {
+    const tree = createInitialTechTree();
+    tree.projectileDamage = 3;
+    // At level 3, effect = 50 * 1.15^2 = 66.125, modifier = 66.125/50 = 1.3225
+    expect(getWeaponDamageModifierFromTree(tree, 'rocket_launcher')).toBeCloseTo(1.3225);
+  });
+
+  test('getWeaponDamageModifierFromTree_unknownWeaponType_returns1', () => {
+    const tree = createInitialTechTree();
+    expect(getWeaponDamageModifierFromTree(tree, 'unknown_weapon')).toBe(1.0);
+  });
+});
+
+describe('getDamageModifierFromTree', () => {
+  test('getDamageModifierFromTree_projectileDamageAtLevel1_returns1', () => {
+    const tree = createInitialTechTree();
+    expect(getDamageModifierFromTree(tree, ResearchType.ProjectileDamage)).toBeCloseTo(1.0);
+  });
+
+  test('getDamageModifierFromTree_energyDamageAtLevel1_returns1', () => {
+    const tree = createInitialTechTree();
+    expect(getDamageModifierFromTree(tree, ResearchType.EnergyDamage)).toBeCloseTo(1.0);
+  });
+
+  test('getDamageModifierFromTree_projectileDamageAtLevel2_returns115Percent', () => {
+    const tree = createInitialTechTree();
+    tree.projectileDamage = 2;
+    expect(getDamageModifierFromTree(tree, ResearchType.ProjectileDamage)).toBeCloseTo(1.15);
+  });
+
+  test('getDamageModifierFromTree_energyDamageAtLevel3_returnsScaledModifier', () => {
+    const tree = createInitialTechTree();
+    tree.energyDamage = 3;
+    // At level 3, effect = 60 * 1.15^2 = 79.35, modifier = 79.35/60 = 1.3225
+    expect(getDamageModifierFromTree(tree, ResearchType.EnergyDamage)).toBeCloseTo(1.3225);
+  });
+
+  test('getDamageModifierFromTree_invalidResearchType_throwsError', () => {
+    const tree = createInitialTechTree();
+    expect(() => getDamageModifierFromTree(tree, ResearchType.IronHarvesting)).toThrow('Invalid research type for damage modifier');
   });
 });

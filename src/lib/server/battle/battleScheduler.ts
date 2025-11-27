@@ -24,6 +24,7 @@ import { getBattleCache } from './BattleCache';
 import { BATTLE_LOCK, USER_LOCK } from '../typedLocks';
 import { createLockContext, LockContext, LocksAtMostAndHas2, LocksAtMost3, LocksAtMostAndHas4 } from '@markdrei/ironguard-typescript-locks';
 import { UserCache } from '../user/userCache';
+import { getWeaponDamageModifierFromTree } from '../techs/techtree';
 
 // ========================================
 // Battle Helper Functions
@@ -290,6 +291,7 @@ async function fireWeapon(
     }
     
     // Calculate damage using TechFactory with actual defense values and tech counts
+    const damageModifier = getWeaponDamageModifierFromTree(attackerUser.techTree, weaponType);
     const damageCalc = TechFactory.calculateWeaponDamage(
       weaponType,
       attackerUser.techCounts as TechCounts,
@@ -297,7 +299,7 @@ async function fireWeapon(
       defenderUser.armorCurrent,
       DAMAGE_CALC_DEFAULTS.POSITIVE_ACCURACY_MODIFIER,
       DAMAGE_CALC_DEFAULTS.NEGATIVE_ACCURACY_MODIFIER,
-      DAMAGE_CALC_DEFAULTS.BASE_DAMAGE_MODIFIER,
+      damageModifier,
       DAMAGE_CALC_DEFAULTS.ECM_EFFECTIVENESS,
       DAMAGE_CALC_DEFAULTS.SPREAD_VALUE
     );
