@@ -324,6 +324,6 @@ describe('getDamageModifierFromTree', () => {
 
   test('getDamageModifierFromTree_invalidResearchType_throwsError', () => {
     const tree = createInitialTechTree();
-    expect(() => getDamageModifierFromTree(tree, ResearchType.IronHarvesting)).toThrow('Invalid research type for damage modifier');
+    expect(() => getDamageModifierFromTree(tree, ResearchType.IronHarvesting)).toThrow('Invalid research type for damage modifier. Expected ProjectileDamage or EnergyDamage, got: IronHarvesting');
   });
 });

@@ -407,6 +407,12 @@ export const AllResearches: Record<ResearchType, Research> = {
 };
 
 /**
+ * Weapon type categorization for damage modifier calculations
+ */
+const PROJECTILE_WEAPONS = ['machine_gun', 'flak_cannon', 'rocket_launcher'] as const;
+const ENERGY_WEAPONS = ['pulse_laser', 'plasma_cannon', 'photon_torpedo'] as const;
+
+/**
  * Represents the tech tree, which hosts all researches for a user.
  * Stores only the level for each research, all other data is immutable and referenced from AllResearches.
  * If a research is currently being upgraded, 'activeResearch' tracks which one and its remaining duration.
@@ -632,15 +638,10 @@ export function getResearchEffectFromTree(tree: TechTree, type: ResearchType): n
  */
 export function getWeaponDamageModifierFromTree(tree: TechTree, weaponType: string): number {
   // Determine research type based on weapon type
-  // Projectile weapons: machine_gun, flak_cannon, rocket_launcher
-  // Energy weapons: pulse_laser, plasma_cannon, photon_torpedo
-  const projectileWeapons = ['machine_gun', 'flak_cannon', 'rocket_launcher'];
-  const energyWeapons = ['pulse_laser', 'plasma_cannon', 'photon_torpedo'];
-  
   let researchType: ResearchType;
-  if (projectileWeapons.includes(weaponType)) {
+  if (PROJECTILE_WEAPONS.includes(weaponType as typeof PROJECTILE_WEAPONS[number])) {
     researchType = ResearchType.ProjectileDamage;
-  } else if (energyWeapons.includes(weaponType)) {
+  } else if (ENERGY_WEAPONS.includes(weaponType as typeof ENERGY_WEAPONS[number])) {
     researchType = ResearchType.EnergyDamage;
   } else {
     // Default to 1.0 (100%) for unknown weapon types
@@ -648,6 +649,10 @@ export function getWeaponDamageModifierFromTree(tree: TechTree, weaponType: stri
   }
   
   const research = AllResearches[researchType];
+  // Guard against division by zero
+  if (research.baseValue === 0) {
+    return 1.0;
+  }
   const effect = getResearchEffectFromTree(tree, researchType);
   // Modifier = current effect / base value
   return effect / research.baseValue;
@@ -664,10 +669,14 @@ export function getWeaponDamageModifierFromTree(tree: TechTree, weaponType: stri
  */
 export function getDamageModifierFromTree(tree: TechTree, researchType: ResearchType): number {
   if (researchType !== ResearchType.ProjectileDamage && researchType !== ResearchType.EnergyDamage) {
-    throw new Error('Invalid research type for damage modifier');
+    throw new Error(`Invalid research type for damage modifier. Expected ProjectileDamage or EnergyDamage, got: ${researchType}`);
   }
   
   const research = AllResearches[researchType];
+  // Guard against division by zero
+  if (research.baseValue === 0) {
+    return 1.0;
+  }
   const effect = getResearchEffectFromTree(tree, researchType);
   // Modifier = current effect / base value
   return effect / research.baseValue;
