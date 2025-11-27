@@ -4,7 +4,7 @@ import { BattleCache } from '@/lib/server/battle/BattleCache';
 import { UserCache } from '@/lib/server/user/userCache';
 import { WorldCache } from '@/lib/server/world/worldCache';
 import { MessageCache } from '@/lib/server/messages/MessageCache';
-import { stopBattleScheduler } from '@/lib/server/battle/battleScheduler';
+import { resetBattleScheduler } from '@/lib/server/battle/battleScheduler';
 
 async function shutdownUserWorldCache(): Promise<void> {
   try {
@@ -34,6 +34,7 @@ async function shutdownMessageCache(): Promise<void> {
 
 export async function initializeIntegrationTestServer(): Promise<void> {
   resetTestDatabase();
+  resetBattleScheduler();
   BattleCache.resetInstance();
   UserCache.resetInstance();
   WorldCache.resetInstance();
@@ -42,7 +43,7 @@ export async function initializeIntegrationTestServer(): Promise<void> {
 }
 
 export async function shutdownIntegrationTestServer(): Promise<void> {
-  stopBattleScheduler();
+  resetBattleScheduler();
   await shutdownUserWorldCache();
   await shutdownWorldCache();
   await shutdownMessageCache();
