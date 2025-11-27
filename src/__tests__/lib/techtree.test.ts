@@ -11,8 +11,7 @@ import {
   triggerResearch,
   updateTechTree,
   getActiveResearch,
-  getWeaponDamageModifierFromTree,
-  getDamageModifierFromTree
+  getWeaponDamageModifierFromTree
 } from '@/lib/server/techs/techtree';
 
 describe('getResearchUpgradeCost', () => {
@@ -295,35 +294,5 @@ describe('getWeaponDamageModifierFromTree', () => {
   test('getWeaponDamageModifierFromTree_unknownWeaponType_returns1', () => {
     const tree = createInitialTechTree();
     expect(getWeaponDamageModifierFromTree(tree, 'unknown_weapon')).toBe(1.0);
-  });
-});
-
-describe('getDamageModifierFromTree', () => {
-  test('getDamageModifierFromTree_projectileDamageAtLevel1_returns1', () => {
-    const tree = createInitialTechTree();
-    expect(getDamageModifierFromTree(tree, ResearchType.ProjectileDamage)).toBeCloseTo(1.0);
-  });
-
-  test('getDamageModifierFromTree_energyDamageAtLevel1_returns1', () => {
-    const tree = createInitialTechTree();
-    expect(getDamageModifierFromTree(tree, ResearchType.EnergyDamage)).toBeCloseTo(1.0);
-  });
-
-  test('getDamageModifierFromTree_projectileDamageAtLevel2_returns115Percent', () => {
-    const tree = createInitialTechTree();
-    tree.projectileDamage = 2;
-    expect(getDamageModifierFromTree(tree, ResearchType.ProjectileDamage)).toBeCloseTo(1.15);
-  });
-
-  test('getDamageModifierFromTree_energyDamageAtLevel3_returnsScaledModifier', () => {
-    const tree = createInitialTechTree();
-    tree.energyDamage = 3;
-    // At level 3, effect = 60 * 1.15^2 = 79.35, modifier = 79.35/60 = 1.3225
-    expect(getDamageModifierFromTree(tree, ResearchType.EnergyDamage)).toBeCloseTo(1.3225);
-  });
-
-  test('getDamageModifierFromTree_invalidResearchType_throwsError', () => {
-    const tree = createInitialTechTree();
-    expect(() => getDamageModifierFromTree(tree, ResearchType.IronHarvesting)).toThrow('Invalid research type for damage modifier. Expected ProjectileDamage or EnergyDamage, got: IronHarvesting');
   });
 });

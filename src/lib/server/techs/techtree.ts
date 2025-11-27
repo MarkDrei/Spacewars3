@@ -657,31 +657,6 @@ export function getWeaponDamageModifierFromTree(tree: TechTree, weaponType: stri
   // Modifier = current effect / base value
   return effect / research.baseValue;
 }
-
-/**
- * Returns the damage modifier for a specific research type from the tech tree.
- * The modifier is calculated as the research effect divided by the base value,
- * resulting in a decimal multiplier (e.g., 1.0 = 100%, 1.15 = 115%).
- * 
- * @param tree The tech tree to read research levels from
- * @param researchType The research type (ProjectileDamage or EnergyDamage)
- * @returns The damage modifier as a decimal (e.g., 1.0 for 100%, 1.15 for 115%)
- */
-export function getDamageModifierFromTree(tree: TechTree, researchType: ResearchType): number {
-  if (researchType !== ResearchType.ProjectileDamage && researchType !== ResearchType.EnergyDamage) {
-    throw new Error(`Invalid research type for damage modifier. Expected ProjectileDamage or EnergyDamage, got: ${researchType}`);
-  }
-  
-  const research = AllResearches[researchType];
-  // Guard against division by zero
-  if (research.baseValue === 0) {
-    return 1.0;
-  }
-  const effect = getResearchEffectFromTree(tree, researchType);
-  // Modifier = current effect / base value
-  return effect / research.baseValue;
-}
-
 /**
  * Triggers a research upgrade on the tech tree if no research is currently in progress.
  * Sets the activeResearch and its initial remainingDuration based on the next upgrade duration.
