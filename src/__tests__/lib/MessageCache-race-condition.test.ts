@@ -50,8 +50,8 @@ describe('MessageCache - Race Condition Fix', () => {
       await messageCache.waitForPendingWrites();
       await messageCache.flushToDatabase(createLockContext());
 
-      // Verify summary contains battle stats
-      expect(summary1).toContain('Message Summary');
+      // Verify summary contains battle stats - now uses "Battle Summary" header
+      expect(summary1).toContain('Battle Summary');
       expect(summary1).toContain('1 victory(ies)');
       expect(summary1).toContain('Dealt 24');
       expect(summary1).toContain('Received 8');
@@ -86,8 +86,8 @@ describe('MessageCache - Race Condition Fix', () => {
       const summary2 = await messageCache.summarizeMessages(userId);
       await messageCache.waitForPendingWrites();
 
-      // Verify second summary only contains stats from new messages
-      expect(summary2).toContain('Message Summary');
+      // Verify second summary only contains stats from new messages - now uses "Battle Summary" header
+      expect(summary2).toContain('Battle Summary');
       expect(summary2).toContain('Dealt 20'); // Only from new message
       expect(summary2).toContain('Received 10'); // Only from new message
       expect(summary2).not.toContain('1 victory(ies)'); // Not from old messages
