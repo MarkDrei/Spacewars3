@@ -3,6 +3,7 @@ import { SpaceObjectOld } from '../game/SpaceObject';
 import { PlayerShipRenderer } from './PlayerShipRenderer';
 import { RadarRenderer } from './RadarRenderer';
 import { TooltipRenderer } from './TooltipRenderer';
+import { HUDRenderer } from './HUDRenderer';
 import { World } from '../game/World';
 import { SpaceObjectsRenderer } from './SpaceObjectsRenderer';
 import { TargetingLineRenderer } from './TargetingLineRenderer';
@@ -16,6 +17,7 @@ export class GameRenderer {
     private playerShipRenderer: PlayerShipRenderer;
     private radarRenderer: RadarRenderer;
     private tooltipRenderer: TooltipRenderer;
+    private hudRenderer: HUDRenderer;
     private collectiblesRenderer: SpaceObjectsRenderer;
     private targetingLineRenderer: TargetingLineRenderer;
 
@@ -26,6 +28,7 @@ export class GameRenderer {
         this.playerShipRenderer = new PlayerShipRenderer();
         this.radarRenderer = new RadarRenderer();
         this.tooltipRenderer = new TooltipRenderer(canvas);
+        this.hudRenderer = new HUDRenderer(ctx, canvas);
         this.collectiblesRenderer = new SpaceObjectsRenderer(ctx, canvas);
         this.targetingLineRenderer = new TargetingLineRenderer(ctx);
     }
@@ -46,8 +49,8 @@ export class GameRenderer {
 
     private drawGrid(): void {
         const gridSize = 50;
-        this.ctx.strokeStyle = '#1a1a1a';
-        this.ctx.lineWidth = 1;
+        this.ctx.strokeStyle = '#0a2a2a';
+        this.ctx.lineWidth = 0.5;
         
         const shipX = this.world.getShip().getX();
         const shipY = this.world.getShip().getY();
@@ -181,6 +184,9 @@ export class GameRenderer {
         
         // Restore context state (removes clipping)
         this.ctx.restore();
+        
+        // Draw HUD overlay (ship info, compass)
+        this.hudRenderer.drawHUD(ship);
         
         // Draw tooltip for all objects (outside the clipped area, so they can extend beyond)
         this.tooltipRenderer.drawTooltip(

@@ -57,7 +57,7 @@ export class TooltipRenderer {
         this.ctx.fillRect(tooltipX, tooltipY, tooltipWidth, tooltipHeight);
         
         // Draw tooltip border
-        this.ctx.strokeStyle = '#ffffff';
+        this.ctx.strokeStyle = '#4caf50';
         this.ctx.lineWidth = 1;
         this.ctx.strokeRect(tooltipX, tooltipY, tooltipWidth, tooltipHeight);
         
