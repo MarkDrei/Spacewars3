@@ -205,7 +205,7 @@ export class BattleCache extends Cache {
   /**
    * Shutdown the cache (flush dirty data, stop timers)
    */
-  shutdown(): void {
+  async shutdown(): Promise<void> {
     if (this.persistenceTimer) {
       clearInterval(this.persistenceTimer);
       this.persistenceTimer = null;
@@ -213,7 +213,7 @@ export class BattleCache extends Cache {
 
     // Flush any remaining dirty battles
     if (this.dirtyBattles.size > 0) {
-      this.persistDirtyBattlesSync();
+      await this.persistDirtyBattlesAsync();
     }
 
     this.initialized = false;
@@ -772,20 +772,17 @@ export class BattleCache extends Cache {
   }
 
   /**
-   * Persist all dirty battles synchronously (for shutdown)
-   * Note: PostgreSQL doesn't have synchronous mode, so we make this async internally
-   * but keep the method signature sync for compatibility with shutdown flow
+   * Persist all dirty battles asynchronously (for shutdown)
    */
-  private persistDirtyBattlesSync(): void {
+  private async persistDirtyBattlesAsync(): Promise<void> {
     if (this.dirtyBattles.size === 0 || !this.db) {
       return;
     }
 
     const dirtyIds = Array.from(this.dirtyBattles);
     
-    // Use Promise.all to persist all dirty battles
-    // Note: This is async but we don't await - best effort during shutdown
-    Promise.all(dirtyIds.map(async (battleId) => {
+    // Persist all dirty battles
+    await Promise.all(dirtyIds.map(async (battleId) => {
       const battle = this.battles.get(battleId);
       if (battle && this.db) {
         try {
@@ -830,9 +827,7 @@ export class BattleCache extends Cache {
           console.error(`Error persisting battle ${battleId} during shutdown:`, err);
         }
       }
-    })).catch(err => {
-      console.error('Error persisting battles during shutdown:', err);
-    });
+    }));
   }
 }
 

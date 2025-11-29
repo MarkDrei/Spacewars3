@@ -186,7 +186,7 @@ export async function getDatabase(): Promise<Pool> {
       
       if (!tablesExist) {
         console.log('🆕 New database detected, initializing...');
-        await initializeDatabase(client);
+        await initializeDatabase(client, pool);
       } else {
         console.log('📊 Existing database detected, checking for migrations...');
         await applyTechMigrations(pool);
@@ -212,7 +212,7 @@ async function checkTablesExist(client: PoolClient): Promise<boolean> {
   return result.rows[0].exists;
 }
 
-async function initializeDatabase(client: PoolClient): Promise<void> {
+async function initializeDatabase(client: PoolClient, pool: Pool): Promise<void> {
   console.log('🏗️ Creating database tables...');
   
   for (let i = 0; i < CREATE_TABLES.length; i++) {
@@ -222,16 +222,8 @@ async function initializeDatabase(client: PoolClient): Promise<void> {
   }
   
   console.log('🌱 Tables created, seeding initial data...');
-  // Get pool for seedDatabase - need to release client first then get pool
-  // Actually we need pool here
-  const config = getDatabaseConfig();
-  const tempPool = new Pool(config);
-  try {
-    await seedDatabase(tempPool);
-    console.log('✅ Database initialization complete!');
-  } finally {
-    await tempPool.end();
-  }
+  await seedDatabase(pool);
+  console.log('✅ Database initialization complete!');
 }
 
 export async function closeDatabase(): Promise<void> {

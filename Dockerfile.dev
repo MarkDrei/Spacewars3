@@ -15,9 +15,6 @@ RUN npm ci
 # Copy the rest of the application
 COPY . .
 
-# Create database directory
-RUN mkdir -p /app/database
-
 # Expose the development port
 EXPOSE 3000
 

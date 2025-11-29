@@ -41,8 +41,8 @@
     - `src/lib/client/game/`: Game engine classes (Game, World, Ship, etc.)
     - `src/lib/client/renderers/`: Canvas rendering classes
   - `src/lib/server/`: Server-side code (database, business logic)
-    - `src/lib/server/database.ts`: Database connection and initialization
-    - `src/lib/server/schema.ts`: Database schema definitions
+    - `src/lib/server/database.ts`: PostgreSQL database connection and initialization
+    - `src/lib/server/schema.ts`: Database schema definitions (PostgreSQL syntax)
     - `src/lib/server/seedData.ts`: Default data seeding functions
     - `src/lib/server/session.ts`: Session management utilities
     - `src/lib/server/user.ts`: User domain logic
@@ -51,7 +51,6 @@
     - `src/lib/server/TechFactory.ts`: Tech/defense calculations and specifications
 - `src/shared/`: Shared types and utilities used by both client and server (defenseValues, etc.)
 - `src/__tests__/`: Test files for all components and logic
-- `database/`: SQLite database files (auto-created)
 
 ## Development Guidelines
 - Do not delete the DB unless asked to.
@@ -73,12 +72,13 @@
 - Default test user: username "a", password "a" (created during database initialization)
 
 ## Database
-- SQLite database with schema-first approach defined in `src/lib/server/schema.ts`
-- Auto-initialization on first API call - creates database directory, tables, and seeds default data
-- Database file location: `database/users.db` (auto-created if missing)
-- Tables: users (authentication + game stats), space_objects (game world)
+- PostgreSQL database with schema-first approach defined in `src/lib/server/schema.ts`
+- Auto-initialization on first API call - creates tables and seeds default data
+- Configuration via environment variables (POSTGRES_HOST, POSTGRES_PORT, POSTGRES_DB, POSTGRES_USER, POSTGRES_PASSWORD)
+- Tables: users (authentication + game stats), space_objects (game world), battles, messages
 - All database operations should go through the server-side utilities
 - Seeding: Default user "a" and space objects (asteroids, shipwrecks, escape pods) created automatically
+- Use `docker-compose up db` to start PostgreSQL locally for development
 
 ## Testing
 - All business logic must be covered by unit tests
@@ -95,6 +95,7 @@
 
 ## Building and Running
 - Use `npm install` to install dependencies.
+- Use `docker-compose up db -d` to start PostgreSQL database.
 - Use `npm run dev` to start the Next.js development server (port 3000).
 - Use `npm run build` to build the optimized production bundle.
 - Use `npm start` to start the production server.
