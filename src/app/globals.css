@@ -107,6 +107,8 @@ code {
   overflow: hidden;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   margin-bottom: 2rem;
+  max-width: 100vw;
+  overflow-x: auto;
 }
 
 .data-table {
@@ -178,9 +180,7 @@ code {
     overflow-x: auto;
   }
 
-  .data-table {
-    min-width: 800px;
-  }
+  /* Remove min-width to allow tables to be responsive on mobile */
 }
 
 @media (max-width: 768px) {

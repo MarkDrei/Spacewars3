@@ -3,20 +3,17 @@
 // Responsibilities:
 //   - Initiate battles (initiateBattle)
 //   - Update battles (updateBattle - process combat rounds)
-//   - Resolve battles (resolveBattle - determine winner, apply consequences)
-//   - Coordinate between BattleCache, BattleEngine, and User/World caches
+//   - Coordinate between BattleCache, BattleScheduler, and User/World caches
 // Main interaction partners:
 //   - BattleCache (via BattleRepo compatibility layer)
-//   - BattleEngine (for combat mechanics)
+//   - BattleScheduler (for automated battle processing and resolution)
 //   - getUserWorldCache (for user state updates)
-//   - World cache (for ship positioning and teleportation)
+//   - World cache (for ship positioning)
 // Status: ✅ Proper orchestration layer, uses cache delegation
-// Note: Has helper functions (updateUserBattleState, getShipPosition, etc.)
-//       These are used in battle initiation and resolution contexts.
+// Note: resolveBattle has been moved to battleScheduler.ts
 // ---
 
 import { BattleRepo } from './BattleCache';
-import { BattleEngine } from './battleEngine';
 import type { Battle, BattleStats, BattleEvent, WeaponCooldowns } from './battleTypes';
 import type { User } from '../user/user';
 import { TechFactory } from '../techs/TechFactory';
@@ -25,24 +22,13 @@ import { ApiError } from '../errors';
 import { UserCache } from '../user/userCache';
 import { getBattleCache } from './BattleCache';
 import { HasLock2Context, IronLocks, LockContext, LocksAtMost4, LocksAtMostAndHas2, LocksAtMostAndHas4 } from '@markdrei/ironguard-typescript-locks';
-import { WORLD_LOCK, USER_LOCK } from '../typedLocks';
+import { WORLD_LOCK } from '../typedLocks';
 import { WorldCache } from '../world/worldCache';
 
 /**
  * Maximum distance to initiate battle (same as collection distance)
  */
 const BATTLE_RANGE = 100;
-
-/**
- * Minimum distance for teleportation after losing battle
- */
-const MIN_TELEPORT_DISTANCE = 1000;
-
-/**
- * World dimensions
- */
-const WORLD_WIDTH = 3000;
-const WORLD_HEIGHT = 3000;
 
 /**
  * Get current defense values for a user
@@ -147,69 +133,6 @@ async function updateUserBattleState(context: LockContext<LocksAtMostAndHas4>, u
     user.currentBattleId = battleId;
     userWorldCache.updateUserInCache(context, user);
   }
-}
-
-/**
- * Generate random position with minimum distance from a point
- */
-function generateTeleportPosition(
-  fromX: number,
-  fromY: number,
-  minDistance: number
-): { x: number; y: number } {
-  let x: number, y: number, distance: number;
-
-  // Try up to 100 times to find a valid position
-  for (let i = 0; i < 100; i++) {
-    x = Math.random() * WORLD_WIDTH;
-    y = Math.random() * WORLD_HEIGHT;
-    distance = calculateDistance(fromX, fromY, x, y);
-
-    if (distance >= minDistance) {
-      return { x, y };
-    }
-  }
-
-  // Fallback: place at opposite corner
-  return {
-    x: fromX > WORLD_WIDTH / 2 ? 0 : WORLD_WIDTH,
-    y: fromY > WORLD_HEIGHT / 2 ? 0 : WORLD_HEIGHT
-  };
-}
-
-/**
- * Teleport ship to new position via World cache
- * Delegates to TypeduserWorldCache instead of bypassing cache
- * 
- * TODO: Move this to userWorldCache.ts as a method
- */
-async function teleportShip(context: LockContext<LocksAtMostAndHas4>, shipId: number, x: number, y: number): Promise<void> {
-  const worldCache = WorldCache.getInstance();
-  await context.useLockWithAcquire(WORLD_LOCK, async (worldContext) => {
-    const world = worldCache.getWorldFromCache(worldContext);
-    const ship = world.spaceObjects.find(obj => obj.id === shipId);
-    if (ship) {
-      ship.x = x;
-      ship.y = y;
-      ship.speed = 0;
-      ship.last_position_update_ms = Date.now();
-      worldCache.updateWorldUnsafe(worldContext, world);
-    }
-  });
-}
-
-/**
- * Get user's ship ID from User cache
- */
-async function getUserShipId(context: LockContext<LocksAtMostAndHas4>, userId: number): Promise<number> {
-  const userWorldCache = UserCache.getInstance2();
-
-  const user = userWorldCache.getUserByIdFromCache(context, userId);
-  if (!user || user.ship_id === undefined) {
-    throw new Error('User not found or has no ship');
-  }
-  return user.ship_id;
-
 }
 
 /**
@@ -330,6 +253,8 @@ export async function initiateBattle<THeld extends IronLocks>(
 
 /**
  * Update an ongoing battle (process one combat round)
+ * Note: In production, battles are processed automatically by battleScheduler.
+ * This method is primarily for testing and manual battle progression.
  */
 export async function updateBattle(context: LockContext<LocksAtMostAndHas2>, battleId: number): Promise<Battle> {
   const battle = await BattleRepo.getBattle(context, battleId);
@@ -343,138 +268,17 @@ export async function updateBattle(context: LockContext<LocksAtMostAndHas2>, bat
     throw new ApiError(400, 'Battle has already ended');
   }
 
-  // Create battle engine instance
-  const battleEngine = new BattleEngine(battle);
+  // Import processActiveBattles to avoid circular dependency
+  const { processActiveBattles } = await import('./battleScheduler');
+  
+  // Process all active battles using the production code path
+  await processActiveBattles(context);
 
-  // Process combat until next shot (max 100 turns)
-  const events = await battleEngine.processBattleUntilNextShot(context, 100);
-
-  // Save events to database
-  for (const event of events) {
-    await BattleRepo.addBattleEvent(context, battleId, event);
+  // Return updated battle state
+  const updatedBattle = await BattleRepo.getBattle(context, battleId);
+  if (!updatedBattle) {
+    throw new ApiError(404, 'Battle not found after processing');
   }
 
-  // Update weapon cooldowns
-  await BattleRepo.updateWeaponCooldowns(context, battleId, battle.attackerId, battle.attackerWeaponCooldowns);
-  await BattleRepo.updateWeaponCooldowns(context, battleId, battle.attackeeId, battle.attackeeWeaponCooldowns);
-
-  // Note: Defense values are updated directly in User objects during combat
-  // We don't need to call updateBattleDefenses here anymore
-
-  // Check if battle is over
-  if (await battleEngine.isBattleOver(context)) {
-    const outcome = await battleEngine.getBattleOutcome(context);
-    if (outcome) {
-      await resolveBattle(context, battleId, outcome.winnerId);
-    }
-  }
-
-  // Return updated battle
-  return BattleRepo.getBattle(context, battleId) as Promise<Battle>;
-}
-
-/**
- * Resolve a battle (determine winner and apply consequences)
- */
-export async function resolveBattle(
-  context: LockContext<LocksAtMostAndHas2>,
-  battleId: number,
-  winnerId: number
-): Promise<void> {
-  const battle = await BattleRepo.getBattle(context, battleId);
-
-  if (!battle) {
-    throw new ApiError(404, 'Battle not found');
-  }
-
-  if (battle.battleEndTime) {
-    throw new ApiError(400, 'Battle has already ended');
-  }
-
-  const loserId = winnerId === battle.attackerId ? battle.attackeeId : battle.attackerId;
-
-  // Snapshot final defense values from User objects to create endStats
-  // This is the "write once at end of battle" for endStats
-  const userWorldCache = UserCache.getInstance2();
-  const [attackerEndStats, attackeeEndStats] = await context.useLockWithAcquire(USER_LOCK, async (userContext) => {
-    const attacker = await userWorldCache.getUserByIdWithLock(userContext, battle.attackerId);
-    const attackee = await userWorldCache.getUserByIdWithLock(userContext, battle.attackeeId);
-
-    if (!attacker || !attackee) {
-      throw new Error('Users not found when resolving battle');
-    }
-
-    // Create endStats from current user defense values
-    const attackerStats: BattleStats = {
-      hull: { current: attacker.hullCurrent, max: attacker.techCounts.ship_hull * 100 },
-      armor: { current: attacker.armorCurrent, max: attacker.techCounts.kinetic_armor * 100 },
-      shield: { current: attacker.shieldCurrent, max: attacker.techCounts.energy_shield * 100 },
-      weapons: battle.attackerStartStats.weapons // Weapons don't change
-    };
-
-    const attackeeStats: BattleStats = {
-      hull: { current: attackee.hullCurrent, max: attackee.techCounts.ship_hull * 100 },
-      armor: { current: attackee.armorCurrent, max: attackee.techCounts.kinetic_armor * 100 },
-      shield: { current: attackee.shieldCurrent, max: attackee.techCounts.energy_shield * 100 },
-      weapons: battle.attackeeStartStats.weapons // Weapons don't change
-    };
-
-    return [attackerStats, attackeeStats] as const;
-  });
-
-  // Log battle end event BEFORE ending battle (battle must still be in cache)
-  // If event logging fails, we still proceed with ending the battle to avoid inconsistent state
-  try {
-    const endEvent: BattleEvent = {
-      timestamp: Math.floor(Date.now() / 1000),
-      type: 'battle_ended',
-      actor: winnerId === battle.attackerId ? 'attacker' : 'attackee',
-      data: {
-        message: `Battle ended. Winner: User ${winnerId}`
-      }
-    };
-
-    await BattleRepo.addBattleEvent(context, battleId, endEvent);
-  } catch (error) {
-    console.error(`⚠️ Failed to log battle end event for battle ${battleId}:`, error);
-    // Continue with battle resolution even if event logging fails
-  }
-
-  // End the battle in database (this removes it from cache)
-  await BattleRepo.endBattle(
-    context,
-    battleId,
-    winnerId,
-    loserId,
-    attackerEndStats,
-    attackeeEndStats
-  );
-
-  await context.useLockWithAcquire(USER_LOCK, async (userContext) => {
-    // Clear battle state for both users
-    await updateUserBattleState(userContext, battle.attackerId, false, null);
-    await updateUserBattleState(userContext, battle.attackeeId, false, null);
-
-    // Note: Defense values are already updated in User objects during battle
-    // No need to call updateUserDefense here
-
-    // Get ship IDs for teleportation
-    const winnerShipId = await getUserShipId(userContext, winnerId);
-    const loserShipId = await getUserShipId(userContext, loserId);
-
-    const winnerPos = await getShipPosition(userContext, winnerShipId);
-
-    if (winnerPos) {
-      // Teleport loser to random position (minimum distance away)
-      const teleportPos = generateTeleportPosition(
-        winnerPos.x,
-        winnerPos.y,
-        MIN_TELEPORT_DISTANCE
-      );
-
-      await teleportShip(userContext, loserShipId, teleportPos.x, teleportPos.y);
-
-      console.log(`⚔️ Battle ${battleId} ended: Winner ${winnerId}, Loser ${loserId} teleported to (${teleportPos.x.toFixed(0)}, ${teleportPos.y.toFixed(0)})`);
-    }
-  });
+  return updatedBattle;
 }

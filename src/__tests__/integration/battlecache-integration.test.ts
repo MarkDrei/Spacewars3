@@ -11,7 +11,6 @@ import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 import { BATTLE_LOCK, USER_LOCK } from '@/lib/server/typedLocks';
 import { initializeIntegrationTestServer, shutdownIntegrationTestServer } from '../helpers/testServer';
 import { getDatabase } from '@/lib/server/database';
-import { after } from 'node:test';
 
 describe('Phase 5: BattleCache Integration Testing', () => {
   
@@ -426,8 +425,7 @@ describe('Phase 5: BattleCache Integration Testing', () => {
       
       // Initialize BattleCache manually for tests
       battleCache = getBattleCache();
-      const db = await getDatabase()
-      initializeIntegrationTestServer()
+      await initializeIntegrationTestServer();
     });
 
     afterEach(async () => {

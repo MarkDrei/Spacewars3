@@ -6,7 +6,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { getBattleCache } from '../../lib/server/battle/BattleCache';
 import { UserCache } from '../../lib/server/user/userCache';
-import * as battleService from '../../lib/server/battle/battleService';
+import { resolveBattle } from '../../lib/server/battle/battleScheduler';
 import { User } from '../../lib/server/user/user';
 import { BATTLE_LOCK, USER_LOCK } from '../../lib/server/typedLocks';
 import { createLockContext} from '@markdrei/ironguard-typescript-locks';
@@ -118,7 +118,7 @@ describe('Battle Defense Persistence', () => {
       });
 
       // Call resolveBattle to end the battle and update user defense values
-      await battleService.resolveBattle(battleCtx, battle.id, attackerUser.id);
+      await resolveBattle(battleCtx, battle.id, attackerUser.id);
 
       console.log(`💥 Battle resolved`);
     });
