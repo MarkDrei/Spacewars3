@@ -6,7 +6,6 @@ import { describe, expect, test, beforeEach, afterEach } from 'vitest';
 import { 
   MessageCache, 
   getMessageCache,
-  sendMessageToUser,
   getUserMessages,
   getUserMessageCount,
 } from '../../lib/server/messages/MessageCache';
@@ -96,14 +95,14 @@ describe('MessageCache', () => {
   });
 
   describe('Convenience Functions', () => {
-    test('sendMessageToUser_createsMessage', async () => {
-      const messageId = await sendMessageToUser(1, 'Test via convenience function');
+    test('createMessage_createsMessage', async () => {
+      const cache = getMessageCache();
+      const messageId = await cache.createMessage(1, 'Test via convenience function');
       
       // Now returns temporary negative ID immediately
       expect(messageId).toBeLessThan(0);
       
       // Wait for write to complete
-      const cache = getMessageCache();
       await cache.waitForPendingWrites();
       
       // Verify message has real ID
@@ -112,8 +111,9 @@ describe('MessageCache', () => {
     });
 
     test('getUserMessages_returnsUnreadMessages', async () => {
-      await sendMessageToUser(1, 'Message 1');
-      await sendMessageToUser(1, 'Message 2');
+      const cache = getMessageCache();
+      await cache.createMessage(1, 'Message 1');
+      await cache.createMessage(1, 'Message 2');
       
       const messages = await getUserMessages(1);
       
@@ -121,7 +121,8 @@ describe('MessageCache', () => {
     });
 
     test('getUserMessageCount_returnsCount', async () => {
-      await sendMessageToUser(1, 'Message 1');
+      const cache = getMessageCache();
+      await cache.createMessage(1, 'Message 1');
       
       const count = await getUserMessageCount(1);
       
@@ -373,10 +374,10 @@ describe('MessageCache', () => {
     });
 
     test('getUserMessages_doesNotMarkAsRead', async () => {
-      await sendMessageToUser(1, 'Message 1');
-      await sendMessageToUser(1, 'Message 2');
-      
       const cache = getMessageCache();
+      await cache.createMessage(1, 'Message 1');
+      await cache.createMessage(1, 'Message 2');
+      
       await cache.waitForPendingWrites();
       
       // Get messages
