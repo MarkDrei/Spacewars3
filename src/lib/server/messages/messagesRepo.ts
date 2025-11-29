@@ -4,7 +4,7 @@
 // ---
 
 import { HasLock12Context, LockLevel } from '@markdrei/ironguard-typescript-locks';
-import sqlite3 from 'sqlite3';
+import { Pool } from 'pg';
 
 export interface Message {
   id: number;
@@ -35,9 +35,9 @@ export interface UnreadMessage {
  * - Handle locking (caller's responsibility, but verified via context type parameters)
  */
 export class MessagesRepo {
-  private db: sqlite3.Database;
+  private db: Pool;
 
-  constructor(database: sqlite3.Database) {
+  constructor(database: Pool) {
     this.db = database;
   }
 
@@ -50,22 +50,13 @@ export class MessagesRepo {
     recipientId: number,
     message: string
   ): Promise<number> {
-    return new Promise((resolve, reject) => {
-      const createdAt = Date.now();
-      const stmt = this.db.prepare(`
-        INSERT INTO messages (recipient_id, created_at, is_read, message)
-        VALUES (?, ?, 0, ?)
-      `);
-      
-      stmt.run(recipientId, createdAt, message, function(this: sqlite3.RunResult, err: Error | null) {
-        stmt.finalize();
-        if (err) {
-          reject(err);
-          return;
-        }
-        resolve(this.lastID);
-      });
-    });
+    const createdAt = Date.now();
+    const result = await this.db.query(
+      `INSERT INTO messages (recipient_id, created_at, is_read, message)
+       VALUES ($1, $2, FALSE, $3) RETURNING id`,
+      [recipientId, createdAt, message]
+    );
+    return result.rows[0].id;
   }
 
   /**
@@ -77,35 +68,20 @@ export class MessagesRepo {
     userId: number, 
     limit?: number
   ): Promise<Message[]> {
-    return new Promise((resolve, reject) => {
-      const query = limit 
-        ? `SELECT id, recipient_id, created_at, is_read, message
-           FROM messages 
-           WHERE recipient_id = ?
-           ORDER BY created_at DESC
-           LIMIT ?`
-        : `SELECT id, recipient_id, created_at, is_read, message
-           FROM messages 
-           WHERE recipient_id = ?
-           ORDER BY created_at DESC`;
-      
-      const stmt = this.db.prepare(query);
-      
-      const callback = (err: Error | null, rows: Message[]) => {
-        stmt.finalize();
-        if (err) {
-          reject(err);
-          return;
-        }
-        resolve(rows || []);
-      };
-      
-      if (limit) {
-        stmt.all(userId, limit, callback);
-      } else {
-        stmt.all(userId, callback);
-      }
-    });
+    const query = limit 
+      ? `SELECT id, recipient_id, created_at, is_read, message
+         FROM messages 
+         WHERE recipient_id = $1
+         ORDER BY created_at DESC
+         LIMIT $2`
+      : `SELECT id, recipient_id, created_at, is_read, message
+         FROM messages 
+         WHERE recipient_id = $1
+         ORDER BY created_at DESC`;
+    
+    const params = limit ? [userId, limit] : [userId];
+    const result = await this.db.query(query, params);
+    return result.rows || [];
   }
 
   /**
@@ -116,22 +92,12 @@ export class MessagesRepo {
     messageId: number, 
     isRead: boolean
   ): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const stmt = this.db.prepare(`
-        UPDATE messages 
-        SET is_read = ?
-        WHERE id = ?
-      `);
-      
-      stmt.run(isRead ? 1 : 0, messageId, (err: Error | null) => {
-        stmt.finalize();
-        if (err) {
-          reject(err);
-          return;
-        }
-        resolve();
-      });
-    });
+    await this.db.query(
+      `UPDATE messages 
+       SET is_read = $1
+       WHERE id = $2`,
+      [isRead, messageId]
+    );
   }
 
   /**
@@ -142,56 +108,30 @@ export class MessagesRepo {
     _context: HasLock12Context<THeld>,
     updates: Array<{id: number, isRead: boolean}>
   ): Promise<void> {
-    return new Promise((resolve, reject) => {
-      this.db.serialize(() => {
-        this.db.run('BEGIN TRANSACTION');
-        
-        const stmt = this.db.prepare(`
-          UPDATE messages 
-          SET is_read = ?
-          WHERE id = ?
-        `);
-        
-        let completedCount = 0;
-        let hadError = false;
-        
-        for (const update of updates) {
-          stmt.run(update.isRead ? 1 : 0, update.id, (err: Error | null) => {
-            if (err && !hadError) {
-              hadError = true;
-              stmt.finalize();
-              this.db.run('ROLLBACK');
-              reject(err);
-              return;
-            }
-            
-            completedCount++;
-            if (completedCount === updates.length && !hadError) {
-              stmt.finalize();
-              this.db.run('COMMIT', (commitErr: Error | null) => {
-                if (commitErr) {
-                  reject(commitErr);
-                  return;
-                }
-                resolve();
-              });
-            }
-          });
-        }
-        
-        // Handle empty updates array
-        if (updates.length === 0) {
-          stmt.finalize();
-          this.db.run('COMMIT', (commitErr: Error | null) => {
-            if (commitErr) {
-              reject(commitErr);
-              return;
-            }
-            resolve();
-          });
-        }
-      });
-    });
+    if (updates.length === 0) {
+      return;
+    }
+
+    const client = await this.db.connect();
+    try {
+      await client.query('BEGIN');
+      
+      for (const update of updates) {
+        await client.query(
+          `UPDATE messages 
+           SET is_read = $1
+           WHERE id = $2`,
+          [update.isRead, update.id]
+        );
+      }
+      
+      await client.query('COMMIT');
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
   }
 
   /**
@@ -201,22 +141,12 @@ export class MessagesRepo {
     _context: HasLock12Context<THeld>,
     userId: number,
   ): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const stmt = this.db.prepare(`
-        UPDATE messages 
-        SET is_read = 1 
-        WHERE recipient_id = ? AND is_read = 0
-      `);
-      
-      stmt.run(userId, (err: Error | null) => {
-        stmt.finalize();
-        if (err) {
-          reject(err);
-          return;
-        }
-        resolve();
-      });
-    });
+    await this.db.query(
+      `UPDATE messages 
+       SET is_read = TRUE 
+       WHERE recipient_id = $1 AND is_read = FALSE`,
+      [userId]
+    );
   }
 
   /**
@@ -227,22 +157,13 @@ export class MessagesRepo {
     _context: HasLock12Context<THeld>,
     olderThanDays = 30
   ): Promise<number> {
-    return new Promise((resolve, reject) => {
-      const cutoffTime = Date.now() - (olderThanDays * 24 * 60 * 60 * 1000);
-      const stmt = this.db.prepare(`
-        DELETE FROM messages 
-        WHERE is_read = 1 AND created_at < ?
-      `);
-      
-      stmt.run(cutoffTime, function(this: sqlite3.RunResult, err: Error | null) {
-        stmt.finalize();
-        if (err) {
-          reject(err);
-          return;
-        }
-        resolve(this.changes);
-      });
-    });
+    const cutoffTime = Date.now() - (olderThanDays * 24 * 60 * 60 * 1000);
+    const result = await this.db.query(
+      `DELETE FROM messages 
+       WHERE is_read = TRUE AND created_at < $1`,
+      [cutoffTime]
+    );
+    return result.rowCount || 0;
   }
 
   /**
@@ -252,22 +173,13 @@ export class MessagesRepo {
     _context: HasLock12Context<THeld>,
     userId: number,
   ): Promise<number> {
-    return new Promise((resolve, reject) => {
-      const stmt = this.db.prepare(`
-        SELECT COUNT(*) as count
-        FROM messages 
-        WHERE recipient_id = ? AND is_read = 0
-      `);
-      
-      stmt.get(userId, (err: Error | null, result: { count: number } | undefined) => {
-        stmt.finalize();
-        if (err) {
-          reject(err);
-          return;
-        }
-        resolve(result?.count || 0);
-      });
-    });
+    const result = await this.db.query(
+      `SELECT COUNT(*) as count
+       FROM messages 
+       WHERE recipient_id = $1 AND is_read = FALSE`,
+      [userId]
+    );
+    return parseInt(result.rows[0]?.count || '0', 10);
   }
 
   /**
@@ -278,22 +190,13 @@ export class MessagesRepo {
     _context: HasLock12Context<THeld>,
     userId: number,
   ): Promise<UnreadMessage[]> {
-    return new Promise((resolve, reject) => {
-      const stmt = this.db.prepare(`
-        SELECT id, created_at, message
-        FROM messages 
-        WHERE recipient_id = ? AND is_read = 0
-        ORDER BY created_at ASC
-      `);
-      
-      stmt.all(userId, (err: Error | null, rows: UnreadMessage[]) => {
-        stmt.finalize();
-        if (err) {
-          reject(err);
-          return;
-        }
-        resolve(rows || []);
-      });
-    });
+    const result = await this.db.query(
+      `SELECT id, created_at, message
+       FROM messages 
+       WHERE recipient_id = $1 AND is_read = FALSE
+       ORDER BY created_at ASC`,
+      [userId]
+    );
+    return result.rows || [];
   }
 }

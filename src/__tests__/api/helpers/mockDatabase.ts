@@ -2,81 +2,82 @@
 // Mock database utilities for testing World class with dependency injection
 // ---
 
-import sqlite3 from 'sqlite3';
+import { Pool, QueryResult } from 'pg';
 
 /**
- * Creates a mock database that implements the sqlite3.Database interface
+ * Creates a mock database pool that implements the Pool interface
  * but doesn't actually persist data. Useful for testing World class behavior
  * without needing real database operations.
  */
-export function createMockDatabase(): sqlite3.Database {
+export function createMockDatabase(): Pool {
   let nextId = 1;
   const mockObjects: Record<number, unknown> = {};
 
-  // Create a mock database with minimal implementation
-  const mockDb = {
-    run: (sql: string, params: unknown[], callback?: (this: { lastID: number }, err: Error | null) => void) => {
-      // Simulate INSERT operations
-      if (sql.includes('INSERT INTO space_objects')) {
+  // Create a mock database pool with minimal implementation
+  const mockPool = {
+    query: async (sql: string, params?: unknown[]): Promise<QueryResult> => {
+      // Simulate INSERT operations with RETURNING id
+      if (sql.includes('INSERT INTO space_objects') && sql.includes('RETURNING id')) {
         const newId = nextId++;
-        if (callback) {
-          // Simulate the 'this' context with lastID
-          callback.call({ lastID: newId }, null);
-        }
-        return mockDb as unknown as sqlite3.Database;
+        return {
+          rows: [{ id: newId }],
+          rowCount: 1,
+          command: 'INSERT',
+          oid: 0,
+          fields: []
+        } as QueryResult;
       }
       
       // Simulate DELETE operations
       if (sql.includes('DELETE FROM space_objects')) {
-        const objectId = params[0] as number;
+        const objectId = params?.[0] as number;
         delete mockObjects[objectId];
-        if (callback) {
-          callback.call({ lastID: 0 }, null);
-        }
-        return mockDb as unknown as sqlite3.Database;
+        return {
+          rows: [],
+          rowCount: 1,
+          command: 'DELETE',
+          oid: 0,
+          fields: []
+        } as QueryResult;
+      }
+      
+      // Simulate SELECT operations
+      if (sql.includes('SELECT')) {
+        return {
+          rows: [],
+          rowCount: 0,
+          command: 'SELECT',
+          oid: 0,
+          fields: []
+        } as QueryResult;
       }
       
       // Default: simulate success
-      if (callback) {
-        callback.call({ lastID: 0 }, null);
-      }
-      return mockDb as unknown as sqlite3.Database;
+      return {
+        rows: [],
+        rowCount: 0,
+        command: 'UPDATE',
+        oid: 0,
+        fields: []
+      } as QueryResult;
     },
     
-    get: (sql: string, params: unknown[], callback: (err: Error | null, row?: unknown) => void) => {
-      // Mock implementation for get operations
-      callback(null, undefined);
-      return mockDb as unknown as sqlite3.Database;
-    },
+    connect: async () => ({
+      query: mockPool.query,
+      release: () => {}
+    }),
     
-    all: (sql: string, params: unknown[], callback: (err: Error | null, rows: unknown[]) => void) => {
-      // Mock implementation for all operations
-      callback(null, []);
-      return mockDb as unknown as sqlite3.Database;
-    },
+    end: async () => {},
     
-    close: (callback?: (err: Error | null) => void) => {
-      if (callback) {
-        callback(null);
-      }
-      return mockDb as unknown as sqlite3.Database;
-    },
-    
-    // Add other methods as needed for sqlite3.Database interface
-    prepare: () => mockDb as unknown as sqlite3.Database,
-    exec: () => mockDb as unknown as sqlite3.Database,
-    serialize: () => mockDb as unknown as sqlite3.Database,
-    parallelize: () => mockDb as unknown as sqlite3.Database,
-    
-  } as unknown as sqlite3.Database; // Type assertion to satisfy sqlite3.Database interface
+  } as unknown as Pool;
 
-  return mockDb;
+  return mockPool;
 }
 
 /**
- * Alternative: Create a real in-memory database for more realistic testing
- * This provides full SQLite functionality but in memory only
+ * Create mock pool for test purposes
+ * This provides pool interface but stores nothing
  */
-export function createInMemoryDatabase(): sqlite3.Database {
-  return new sqlite3.Database(':memory:');
+export function createInMemoryDatabase(): Pool {
+  return createMockDatabase();
 }

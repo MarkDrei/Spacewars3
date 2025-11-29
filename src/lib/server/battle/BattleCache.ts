@@ -14,7 +14,7 @@
 // Lock Strategy: BATTLE_LOCK (level 2) → DATABASE_LOCK_BATTLES (level 13)
 // ---
 
-import type sqlite3 from 'sqlite3';
+import type { Pool } from 'pg';
 import type { Battle, BattleStats, BattleEvent, WeaponCooldowns } from './battleTypes';
 import * as battleRepo from './battleRepo';
 import { createLockContext, HasLock2Context, IronLocks, LockContext, LocksAtMost4, LocksAtMostAndHas2 } from '@markdrei/ironguard-typescript-locks';
@@ -45,7 +45,7 @@ export class BattleCache extends Cache {
   private dirtyBattles: Set<number> = new Set();
 
   // Database connection
-  private db: sqlite3.Database | null = null;
+  private db: Pool | null = null;
 
   // Background persistence
   private persistenceTimer: NodeJS.Timeout | null = null;
@@ -79,7 +79,7 @@ export class BattleCache extends Cache {
     return BattleCache.instance;
   }
 
-  static async initialize2(db: sqlite3.Database): Promise<void> {
+  static async initialize2(db: Pool): Promise<void> {
     const instance = new BattleCache();
     await instance.initialize(db);
     startBattleScheduler();
@@ -136,7 +136,7 @@ export class BattleCache extends Cache {
   /**
    * Initialize the battle cache with database connection
    */
-  async initialize(db: sqlite3.Database): Promise<void> {
+  async initialize(db: Pool): Promise<void> {
     if (this.initialized) {
       return;
     }
@@ -773,6 +773,8 @@ export class BattleCache extends Cache {
 
   /**
    * Persist all dirty battles synchronously (for shutdown)
+   * Note: PostgreSQL doesn't have synchronous mode, so we make this async internally
+   * but keep the method signature sync for compatibility with shutdown flow
    */
   private persistDirtyBattlesSync(): void {
     if (this.dirtyBattles.size === 0 || !this.db) {
@@ -781,60 +783,56 @@ export class BattleCache extends Cache {
 
     const dirtyIds = Array.from(this.dirtyBattles);
     
-    for (const battleId of dirtyIds) {
+    // Use Promise.all to persist all dirty battles
+    // Note: This is async but we don't await - best effort during shutdown
+    Promise.all(dirtyIds.map(async (battleId) => {
       const battle = this.battles.get(battleId);
-      if (battle) {
-        // Synchronous persist during shutdown using serialize
+      if (battle && this.db) {
         try {
-          this.db.serialize(() => {
-            // Check if exists (synchronous get)
-            let exists = false;
-            this.db!.get('SELECT id FROM battles WHERE id = ?', [battle.id], (err, row) => {
-              if (!err && row) {
-                exists = true;
-              }
-            });
-            
-            if (exists) {
-              this.db!.run(`
-                UPDATE battles SET
-                  attacker_weapon_cooldowns = ?,
-                  attackee_weapon_cooldowns = ?,
-                  attacker_start_stats = ?,
-                  attackee_start_stats = ?,
-                  attacker_end_stats = ?,
-                  attackee_end_stats = ?,
-                  battle_log = ?,
-                  battle_end_time = ?,
-                  winner_id = ?,
-                  loser_id = ?,
-                  attacker_total_damage = ?,
-                  attackee_total_damage = ?
-                WHERE id = ?
-              `, [
-                JSON.stringify(battle.attackerWeaponCooldowns),
-                JSON.stringify(battle.attackeeWeaponCooldowns),
-                JSON.stringify(battle.attackerStartStats),
-                JSON.stringify(battle.attackeeStartStats),
-                battle.attackerEndStats ? JSON.stringify(battle.attackerEndStats) : null,
-                battle.attackeeEndStats ? JSON.stringify(battle.attackeeEndStats) : null,
-                JSON.stringify(battle.battleLog),
-                battle.battleEndTime,
-                battle.winnerId,
-                battle.loserId,
-                battle.attackerTotalDamage,
-                battle.attackeeTotalDamage,
-                battle.id
-              ]);
-            }
-          });
+          // Check if exists
+          const existsResult = await this.db.query('SELECT id FROM battles WHERE id = $1', [battle.id]);
+          
+          if (existsResult.rows.length > 0) {
+            await this.db.query(`
+              UPDATE battles SET
+                attacker_weapon_cooldowns = $1,
+                attackee_weapon_cooldowns = $2,
+                attacker_start_stats = $3,
+                attackee_start_stats = $4,
+                attacker_end_stats = $5,
+                attackee_end_stats = $6,
+                battle_log = $7,
+                battle_end_time = $8,
+                winner_id = $9,
+                loser_id = $10,
+                attacker_total_damage = $11,
+                attackee_total_damage = $12
+              WHERE id = $13
+            `, [
+              JSON.stringify(battle.attackerWeaponCooldowns),
+              JSON.stringify(battle.attackeeWeaponCooldowns),
+              JSON.stringify(battle.attackerStartStats),
+              JSON.stringify(battle.attackeeStartStats),
+              battle.attackerEndStats ? JSON.stringify(battle.attackerEndStats) : null,
+              battle.attackeeEndStats ? JSON.stringify(battle.attackeeEndStats) : null,
+              JSON.stringify(battle.battleLog),
+              battle.battleEndTime,
+              battle.winnerId,
+              battle.loserId,
+              battle.attackerTotalDamage,
+              battle.attackeeTotalDamage,
+              battle.id
+            ]);
+          }
           
           this.dirtyBattles.delete(battleId);
         } catch (err) {
           console.error(`Error persisting battle ${battleId} during shutdown:`, err);
         }
       }
-    }
+    })).catch(err => {
+      console.error('Error persisting battles during shutdown:', err);
+    });
   }
 }
 

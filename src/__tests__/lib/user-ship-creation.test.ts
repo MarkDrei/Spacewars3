@@ -3,7 +3,7 @@
 // ---
 
 import { describe, expect, it, afterEach, beforeEach } from 'vitest';
-import { Database } from 'sqlite3';
+import { Pool } from 'pg';
 import { CREATE_TABLES } from '@/lib/server/schema';
 import { createUser, saveUserToDb } from '@/lib/server/user/userRepo';
 
@@ -18,43 +18,37 @@ interface SpaceObjectRow {
 }
 
 describe('User Ship Creation', () => {
-  let db: Database;
+  let db: Pool;
 
   beforeEach(async () => {
-    // Create in-memory database for testing
-    db = new Database(':memory:');
-    
-    // Create tables
-    await new Promise<void>((resolve, reject) => {
-      let completed = 0;
-      const tables = CREATE_TABLES;
-      
-      tables.forEach((createTableSQL) => {
-        db.run(createTableSQL, (err) => {
-          if (err) {
-            reject(err);
-            return;
-          }
-          completed++;
-          if (completed === tables.length) {
-            resolve();
-          }
-        });
-      });
+    // Create database connection for testing
+    db = new Pool({
+      host: process.env.POSTGRES_HOST || 'localhost',
+      port: parseInt(process.env.POSTGRES_PORT || '5432', 10),
+      database: process.env.POSTGRES_TEST_DB || 'spacewars_test',
+      user: process.env.POSTGRES_USER || 'spacewars',
+      password: process.env.POSTGRES_PASSWORD || 'spacewars',
+      max: 5,
     });
+    
+    // Clean up and create tables
+    const client = await db.connect();
+    try {
+      await client.query('DROP TABLE IF EXISTS battles CASCADE');
+      await client.query('DROP TABLE IF EXISTS messages CASCADE');
+      await client.query('DROP TABLE IF EXISTS users CASCADE');
+      await client.query('DROP TABLE IF EXISTS space_objects CASCADE');
+      
+      for (const createTableSQL of CREATE_TABLES) {
+        await client.query(createTableSQL);
+      }
+    } finally {
+      client.release();
+    }
   });
 
   afterEach(async () => {
-    await new Promise<void>((resolve, reject) => {
-      try {
-        db.close((err) => {
-          if (err) reject(err);
-          else resolve();
-        });
-      } catch {
-        resolve();
-      }
-    });
+    await db.end();
   });
 
   it('createUser_newUser_createsShipAndLinksIt', async () => {
@@ -66,12 +60,8 @@ describe('User Ship Creation', () => {
     expect(user.ship_id).toBeGreaterThan(0);
     
     // Verify the ship exists in the database
-    const ship = await new Promise<SpaceObjectRow | null>((resolve, reject) => {
-      db.get('SELECT * FROM space_objects WHERE id = ? AND type = ?', [user.ship_id, 'player_ship'], (err, row) => {
-        if (err) reject(err);
-        else resolve(row as SpaceObjectRow | undefined || null);
-      });
-    });
+    const shipResult = await db.query('SELECT * FROM space_objects WHERE id = $1 AND type = $2', [user.ship_id, 'player_ship']);
+    const ship = shipResult.rows[0] as SpaceObjectRow | undefined;
     
     expect(ship).toBeDefined();
     expect(ship).not.toBeNull();
@@ -96,12 +86,8 @@ describe('User Ship Creation', () => {
     expect(user1.ship_id).not.toBe(user2.ship_id);
     
     // Verify both ships exist
-    const ships = await new Promise<SpaceObjectRow[]>((resolve, reject) => {
-      db.all('SELECT * FROM space_objects WHERE type = ?', ['player_ship'], (err, rows) => {
-        if (err) reject(err);
-        else resolve((rows as SpaceObjectRow[]) || []);
-      });
-    });
+    const shipsResult = await db.query('SELECT * FROM space_objects WHERE type = $1', ['player_ship']);
+    const ships = shipsResult.rows as SpaceObjectRow[];
     
     expect(ships).toHaveLength(2);
     expect(ships.map(s => s.id)).toContain(user1.ship_id);

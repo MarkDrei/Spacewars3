@@ -4,12 +4,12 @@ import { createTestDatabase } from '../helpers/testDatabase';
 import { UserCache } from '@/lib/server/user/userCache';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 import { USER_LOCK } from '@/lib/server/typedLocks';
-import sqlite3 from 'sqlite3';
+import { Pool } from 'pg';
 import { BuildQueueItem } from '@/lib/server/techs/TechFactory';
 import { MessageCache } from '@/lib/server/messages/MessageCache';
 
 describe('TechService - Build Completion Notifications', () => {
-  let testDb: sqlite3.Database;
+  let testDb: Pool;
   let techService: TechService;
   let mockCreateMessage: ReturnType<typeof vi.fn>;
   const testUserId = 1;
@@ -40,34 +40,19 @@ describe('TechService - Build Completion Notifications', () => {
 
     // Set up test user with initial tech counts
     const now = Math.floor(Date.now() / 1000);
-    await new Promise<void>((resolve, reject) => {
-      const stmt = testDb.prepare(`
-        INSERT INTO users (
-          id, username, password_hash, iron, last_updated, tech_tree, 
-          pulse_laser, auto_turret, ship_hull, kinetic_armor, energy_shield,
-          build_queue, build_start_sec
-        )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `);
-
-      stmt.run([testUserId, 'testuser', 'hash', 1000, now, '{}', 1, 0, 1, 0, 5, '[]', null], (err) => {
-        stmt.finalize(); // Always finalize the statement
-        if (err) reject(err);
-        else resolve();
-      });
-    });
+    await testDb.query(`
+      INSERT INTO users (
+        id, username, password_hash, iron, last_updated, tech_tree, 
+        pulse_laser, auto_turret, ship_hull, kinetic_armor, energy_shield,
+        build_queue, build_start_sec
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+    `, [testUserId, 'testuser', 'hash', 1000, now, '{}', 1, 0, 1, 0, 5, '[]', null]);
   });
 
   afterEach(async () => {
     // Properly close the database connection
-    await new Promise<void>((resolve) => {
-      testDb.close((err) => {
-        if (err) {
-          console.error('Error closing test database:', err);
-        }
-        resolve();
-      });
-    });
+    await testDb.end();
     UserCache.resetInstance();
   });
 

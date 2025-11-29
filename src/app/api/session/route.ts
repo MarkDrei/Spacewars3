@@ -20,19 +20,12 @@ export async function GET(request: NextRequest) {
     
     const db = await getDatabase();
     
-    const userRow = await new Promise<{ username: string; ship_id: number } | undefined>((resolve, reject) => {
-      db.get(
-        'SELECT username, ship_id FROM users WHERE id = ?',
-        [session.userId],
-        (err, row) => {
-          if (err) {
-            reject(err);
-          } else {
-            resolve(row as { username: string; ship_id: number } | undefined);
-          }
-        }
-      );
-    });
+    const result = await db.query(
+      'SELECT username, ship_id FROM users WHERE id = $1',
+      [session.userId]
+    );
+    
+    const userRow = result.rows[0] as { username: string; ship_id: number } | undefined;
     
     if (userRow) {
       console.log(`✅ Session valid - user: ${userRow.username}, shipId: ${userRow.ship_id}`);
