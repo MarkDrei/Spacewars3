@@ -27,6 +27,7 @@ import type { MessageCache } from '../messages/MessageCache';
 import { WorldCache } from '../world/worldCache';
 import { UserCache } from '../user/userCache';
 import { ApiError } from '../errors';
+import { calculateToroidalDistance } from '@shared/physics';
 
 // ========================================
 // Module-level configuration and state
@@ -505,23 +506,22 @@ export function stopBattleScheduler(): void {
 // ========================================
 
 /**
- * Minimum distance for teleportation after losing battle
+ * Get world dimensions
+ * World size is 500x500 as defined in src/lib/server/world/world.ts
+ * This matches the default in World.createDefault() and worldRepo.ts
  */
-const MIN_TELEPORT_DISTANCE = 1000;
+function getWorldSize(): { width: number; height: number } {
+  // The world size is configured in src/lib/server/world/world.ts
+  // and src/lib/server/world/worldRepo.ts with default value { width: 500, height: 500 }
+  return { width: 500, height: 500 };
+}
 
 /**
- * World dimensions
+ * Calculate minimum teleport distance (world width / 3)
  */
-const WORLD_WIDTH = 3000;
-const WORLD_HEIGHT = 3000;
-
-/**
- * Calculate distance between two positions
- */
-function calculateDistance(x1: number, y1: number, x2: number, y2: number): number {
-  const dx = x2 - x1;
-  const dy = y2 - y1;
-  return Math.sqrt(dx * dx + dy * dy);
+function getMinTeleportDistance(): number {
+  const worldSize = getWorldSize();
+  return worldSize.width / 3;
 }
 
 /**
@@ -551,29 +551,35 @@ async function updateUserBattleState(context: LockContext<LocksAtMostAndHas4>, u
 
 /**
  * Generate random position with minimum distance from a point
+ * Uses toroidal distance calculation to consider world wrapping
  */
 function generateTeleportPosition(
   fromX: number,
   fromY: number,
   minDistance: number
 ): { x: number; y: number } {
+  const worldSize = getWorldSize();
   let x: number, y: number, distance: number;
 
   // Try up to 100 times to find a valid position
   for (let i = 0; i < 100; i++) {
-    x = Math.random() * WORLD_WIDTH;
-    y = Math.random() * WORLD_HEIGHT;
-    distance = calculateDistance(fromX, fromY, x, y);
+    x = Math.random() * worldSize.width;
+    y = Math.random() * worldSize.height;
+    distance = calculateToroidalDistance(
+      { x: fromX, y: fromY },
+      { x, y },
+      worldSize
+    );
 
     if (distance >= minDistance) {
       return { x, y };
     }
   }
 
-  // Fallback: place at opposite corner
+  // Fallback: place at opposite side of the world
   return {
-    x: fromX > WORLD_WIDTH / 2 ? 0 : WORLD_WIDTH,
-    y: fromY > WORLD_HEIGHT / 2 ? 0 : WORLD_HEIGHT
+    x: fromX > worldSize.width / 2 ? 0 : worldSize.width - 1,
+    y: fromY > worldSize.height / 2 ? 0 : worldSize.height - 1
   };
 }
 
@@ -701,11 +707,12 @@ export async function resolveBattle(
     const winnerPos = await getShipPosition(userContext, winnerShipId);
 
     if (winnerPos) {
-      // Teleport loser to random position (minimum distance away)
+      // Teleport loser to random position (minimum distance = world width / 3)
+      const minTeleportDistance = getMinTeleportDistance();
       const teleportPos = generateTeleportPosition(
         winnerPos.x,
         winnerPos.y,
-        MIN_TELEPORT_DISTANCE
+        minTeleportDistance
       );
 
       await teleportShip(userContext, loserShipId, teleportPos.x, teleportPos.y);
