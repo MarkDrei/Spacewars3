@@ -18,10 +18,21 @@ This guide explains how to use Docker for developing and deploying Spacewars3.
 - Docker Desktop (Windows/Mac) or Docker Engine (Linux)
 - Docker Compose v2+
 - Git
+- **Minimum 8GB RAM allocated to Docker** (required for dev containers)
 
 ### Windows-Specific
 - WSL2 (Windows Subsystem for Linux)
 - Docker Desktop with WSL2 backend enabled
+- **WSL 2 Memory Configuration:**
+  - WSL 2 uses 50% of your system RAM by default
+  - For systems with 16GB+ RAM, this is usually sufficient
+  - To customize, create `%UserProfile%\.wslconfig` with:
+    ```ini
+    [wsl2]
+    memory=8GB
+    processors=4
+    ```
+  - Then run `wsl --shutdown` in PowerShell to apply
 
 ### Verify Installation
 ```bash
@@ -251,6 +262,31 @@ docker cp ./backup/. spacewars3:/app/database
 ```
 
 ## Troubleshooting
+
+## Troubleshooting
+
+### VS Code Dev Container OOM Error (Exit Code 137)
+
+**Symptom:** Container fails to start with "Exit code 137" or "Shell server terminated (code: 137)"
+
+**Cause:** Out of Memory (OOM) kill during VS Code Server installation. This happens when Docker doesn't have enough memory allocated.
+
+**Solution:**
+1. **Increase Docker Desktop Memory:**
+   - Open Docker Desktop → Settings → Resources
+   - Set Memory to **at least 8GB** (recommended for dev containers)
+   - Set CPUs to **4 or more**
+   - Click "Apply & Restart"
+
+2. **Remove old containers and try again:**
+   ```bash
+   docker-compose down -v
+   docker system prune -a
+   ```
+
+3. **Close memory-intensive applications** before reopening the container
+
+4. **Restart Docker Desktop** if the issue persists
 
 ### Port Already in Use
 

@@ -20,6 +20,12 @@
 ---
 
 #### Option 2: Local Docker Development (Recommended)
+
+**Prerequisites:**
+- Docker Desktop with WSL 2 backend
+- **Windows:** WSL 2 should have 8GB+ RAM (check with `wsl docker run --rm alpine free -h`)
+- **Mac/Linux:** Docker Desktop should have 8GB+ RAM allocated
+
 ```bash
 # Clone and start
 git clone https://github.com/MarkDrei/Spacewars3.git
@@ -37,6 +43,8 @@ docker-compose up dev
 - Offline work
 - Full control
 - Performance
+
+**Important:** If you get "Exit code 137" when reopening in VS Code Dev Container, increase Docker Desktop memory to 8GB or more.
 
 ---
 

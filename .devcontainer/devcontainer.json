@@ -1,56 +1,43 @@
 {
   "name": "Spacewars3 Development",
-  "image": "mcr.microsoft.com/devcontainers/typescript-node:1-20-bullseye",
+  "image": "mcr.microsoft.com/devcontainers/typescript-node:1-22-bookworm",
   
-  // Features to add to the dev container
-  "features": {
-    "ghcr.io/devcontainers/features/git:1": {
-      "version": "latest"
-    }
-  },
-
   // Configure tool-specific properties
   "customizations": {
     "vscode": {
       "settings": {
         "terminal.integrated.defaultProfile.linux": "bash",
         "editor.formatOnSave": true,
-        "editor.defaultFormatter": "esbenp.prettier-vscode",
-        "typescript.tsdk": "node_modules/typescript/lib",
-        "typescript.enablePromptUseWorkspaceTsdk": true
+        "typescript.tsdk": "node_modules/typescript/lib"
       },
       "extensions": [
         "dbaeumer.vscode-eslint",
-        "esbenp.prettier-vscode",
-        "ms-vscode.vscode-typescript-next",
-        "bradlc.vscode-tailwindcss",
-        "formulahendry.auto-rename-tag",
-        "usernamehw.errorlens"
+        "esbenp.prettier-vscode"
       ]
     }
   },
 
   // Use 'forwardPorts' to make a list of ports inside the container available locally
   "forwardPorts": [3000],
-  "portsAttributes": {
-    "3000": {
-      "label": "Application",
-      "onAutoForward": "notify"
-    }
-  },
 
-  // Use 'postCreateCommand' to run commands after the container is created
+  // Fix workspace permissions first, then install dependencies
+  "onCreateCommand": "sudo chown -R node:node /workspaces/Spacewars3-container",
   "postCreateCommand": "npm install",
-
-  // Use 'postStartCommand' to run commands after the container starts
-  "postStartCommand": "echo 'Container is ready! Run npm run dev to start the development server.'",
 
   // Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root
   "remoteUser": "node",
+  
+  // Add features for sudo support
+  "features": {
+    "ghcr.io/devcontainers/features/common-utils:2": {
+      "installZsh": false,
+      "installOhMyZsh": false,
+      "upgradePackages": false
+    }
+  },
 
   // Set environment variables
   "containerEnv": {
-    "NEXT_TELEMETRY_DISABLED": "1",
-    "NODE_ENV": "development"
+    "NEXT_TELEMETRY_DISABLED": "1"
   }
 }
