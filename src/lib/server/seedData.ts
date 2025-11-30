@@ -1,4 +1,4 @@
-import { Pool } from 'pg';
+import { DatabaseConnection } from './database';
 import bcrypt from 'bcrypt';
 
 export interface SeedUser {
@@ -169,7 +169,7 @@ export const DEFAULT_SPACE_OBJECTS: SeedSpaceObject[] = [
   { type: 'escape_pod', x: 400, y: 150, speed: 45, angle: 95 }
 ];
 
-export async function seedDatabase(db: Pool): Promise<void> {
+export async function seedDatabase(db: DatabaseConnection): Promise<void> {
   // Check if database already has data
   const result = await db.query('SELECT COUNT(*) as count FROM users');
   const userCount = parseInt(result.rows[0]?.count || '0', 10);

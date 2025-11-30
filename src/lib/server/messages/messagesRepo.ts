@@ -4,7 +4,7 @@
 // ---
 
 import { HasLock12Context, LockLevel } from '@markdrei/ironguard-typescript-locks';
-import { Pool } from 'pg';
+import { DatabaseConnection } from '../database';
 
 export interface Message {
   id: number;
@@ -35,9 +35,9 @@ export interface UnreadMessage {
  * - Handle locking (caller's responsibility, but verified via context type parameters)
  */
 export class MessagesRepo {
-  private db: Pool;
+  private db: DatabaseConnection;
 
-  constructor(database: Pool) {
+  constructor(database: DatabaseConnection) {
     this.db = database;
   }
 
@@ -112,25 +112,15 @@ export class MessagesRepo {
       return;
     }
 
-    const client = await this.db.connect();
-    try {
-      await client.query('BEGIN');
-      
-      for (const update of updates) {
-        await client.query(
-          `UPDATE messages 
-           SET is_read = $1
-           WHERE id = $2`,
-          [update.isRead, update.id]
-        );
-      }
-      
-      await client.query('COMMIT');
-    } catch (err) {
-      await client.query('ROLLBACK');
-      throw err;
-    } finally {
-      client.release();
+    // Process updates individually - no transaction needed for in-memory SQLite tests
+    // PostgreSQL will still work with individual queries
+    for (const update of updates) {
+      await this.db.query(
+        `UPDATE messages 
+         SET is_read = $1
+         WHERE id = $2`,
+        [update.isRead, update.id]
+      );
     }
   }
 

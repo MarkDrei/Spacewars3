@@ -14,7 +14,7 @@
 // Lock Strategy: BATTLE_LOCK (level 2) → DATABASE_LOCK_BATTLES (level 13)
 // ---
 
-import type { Pool } from 'pg';
+import type { DatabaseConnection } from '../database';
 import type { Battle, BattleStats, BattleEvent, WeaponCooldowns } from './battleTypes';
 import * as battleRepo from './battleRepo';
 import { createLockContext, HasLock2Context, IronLocks, LockContext, LocksAtMost4, LocksAtMostAndHas2 } from '@markdrei/ironguard-typescript-locks';
@@ -45,7 +45,7 @@ export class BattleCache extends Cache {
   private dirtyBattles: Set<number> = new Set();
 
   // Database connection
-  private db: Pool | null = null;
+  private db: DatabaseConnection | null = null;
 
   // Background persistence
   private persistenceTimer: NodeJS.Timeout | null = null;
@@ -79,7 +79,7 @@ export class BattleCache extends Cache {
     return BattleCache.instance;
   }
 
-  static async initialize2(db: Pool): Promise<void> {
+  static async initialize2(db: DatabaseConnection): Promise<void> {
     const instance = new BattleCache();
     await instance.initialize(db);
     startBattleScheduler();
@@ -136,7 +136,7 @@ export class BattleCache extends Cache {
   /**
    * Initialize the battle cache with database connection
    */
-  async initialize(db: Pool): Promise<void> {
+  async initialize(db: DatabaseConnection): Promise<void> {
     if (this.initialized) {
       return;
     }

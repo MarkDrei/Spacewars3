@@ -2,7 +2,7 @@
 // Handles loading and saving User objects via in-memory cache with database persistence.
 // ---
 
-import { Pool } from 'pg';
+import { DatabaseConnection } from '../database';
 import { User, SaveUserCallback } from './user';
 import { createInitialTechTree } from '../techs/techtree';
 import { sendMessageToUser } from '../messages/MessageCache';
@@ -113,27 +113,27 @@ function userFromRow(row: UserRow, saveCallback: SaveUserCallback): User {
 }
 
 // Direct database access functions (used internally by cache manager)
-export async function getUserByIdFromDb(db: Pool, id: number, saveCallback: SaveUserCallback): Promise<User | null> {
+export async function getUserByIdFromDb(db: DatabaseConnection, id: number, saveCallback: SaveUserCallback): Promise<User | null> {
   const result = await db.query('SELECT * FROM users WHERE id = $1', [id]);
   if (result.rows.length === 0) return null;
   return userFromRow(result.rows[0] as UserRow, saveCallback);
 }
 
-export async function getUserByUsernameFromDb(db: Pool, username: string, saveCallback: SaveUserCallback): Promise<User | null> {
+export async function getUserByUsernameFromDb(db: DatabaseConnection, username: string, saveCallback: SaveUserCallback): Promise<User | null> {
   const result = await db.query('SELECT * FROM users WHERE username = $1', [username]);
   if (result.rows.length === 0) return null;
   return userFromRow(result.rows[0] as UserRow, saveCallback);
 }
 
-export function createUser(db: Pool, username: string, password_hash: string, saveCallback: SaveUserCallback): Promise<User> {
+export function createUser(db: DatabaseConnection, username: string, password_hash: string, saveCallback: SaveUserCallback): Promise<User> {
   return createUserWithShip(db, username, password_hash, saveCallback, true);
 }
 
-export function createUserWithoutShip(db: Pool, username: string, password_hash: string, saveCallback: SaveUserCallback): Promise<User> {
+export function createUserWithoutShip(db: DatabaseConnection, username: string, password_hash: string, saveCallback: SaveUserCallback): Promise<User> {
   return createUserWithShip(db, username, password_hash, saveCallback, false);
 }
 
-async function createUserWithShip(db: Pool, username: string, password_hash: string, saveCallback: SaveUserCallback, createShip: boolean): Promise<User> {
+async function createUserWithShip(db: DatabaseConnection, username: string, password_hash: string, saveCallback: SaveUserCallback, createShip: boolean): Promise<User> {
   const now = Math.floor(Date.now() / 1000);
   const techTree = createInitialTechTree();
 
@@ -213,7 +213,7 @@ async function createUserWithShip(db: Pool, username: string, password_hash: str
   }
 }
 
-export function saveUserToDb(db: Pool): SaveUserCallback {
+export function saveUserToDb(db: DatabaseConnection): SaveUserCallback {
   return async (user: User) => {
     await db.query(
       `UPDATE users SET 

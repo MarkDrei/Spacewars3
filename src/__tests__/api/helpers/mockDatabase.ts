@@ -2,30 +2,29 @@
 // Mock database utilities for testing World class with dependency injection
 // ---
 
-import { Pool, QueryResult } from 'pg';
+import { DatabaseConnection } from '@/lib/server/database';
+import type { QueryResult } from '@/lib/server/databaseAdapter';
 
 /**
- * Creates a mock database pool that implements the Pool interface
+ * Creates a mock database pool that implements the DatabaseConnection interface
  * but doesn't actually persist data. Useful for testing World class behavior
  * without needing real database operations.
  */
-export function createMockDatabase(): Pool {
+export function createMockDatabase(): DatabaseConnection {
   let nextId = 1;
   const mockObjects: Record<number, unknown> = {};
 
   // Create a mock database pool with minimal implementation
-  const mockPool = {
-    query: async (sql: string, params?: unknown[]): Promise<QueryResult> => {
+  const mockPool: DatabaseConnection = {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    query: async <T = any>(sql: string, params?: unknown[]): Promise<QueryResult<T>> => {
       // Simulate INSERT operations with RETURNING id
       if (sql.includes('INSERT INTO space_objects') && sql.includes('RETURNING id')) {
         const newId = nextId++;
         return {
-          rows: [{ id: newId }],
+          rows: [{ id: newId }] as T[],
           rowCount: 1,
-          command: 'INSERT',
-          oid: 0,
-          fields: []
-        } as QueryResult;
+        };
       }
       
       // Simulate DELETE operations
@@ -33,43 +32,26 @@ export function createMockDatabase(): Pool {
         const objectId = params?.[0] as number;
         delete mockObjects[objectId];
         return {
-          rows: [],
+          rows: [] as T[],
           rowCount: 1,
-          command: 'DELETE',
-          oid: 0,
-          fields: []
-        } as QueryResult;
+        };
       }
       
       // Simulate SELECT operations
       if (sql.includes('SELECT')) {
         return {
-          rows: [],
+          rows: [] as T[],
           rowCount: 0,
-          command: 'SELECT',
-          oid: 0,
-          fields: []
-        } as QueryResult;
+        };
       }
       
       // Default: simulate success
       return {
-        rows: [],
+        rows: [] as T[],
         rowCount: 0,
-        command: 'UPDATE',
-        oid: 0,
-        fields: []
-      } as QueryResult;
+      };
     },
-    
-    connect: async () => ({
-      query: mockPool.query,
-      release: () => {}
-    }),
-    
-    end: async () => {},
-    
-  } as unknown as Pool;
+  };
 
   return mockPool;
 }
@@ -78,6 +60,6 @@ export function createMockDatabase(): Pool {
  * Create mock pool for test purposes
  * This provides pool interface but stores nothing
  */
-export function createInMemoryDatabase(): Pool {
+export function createInMemoryDatabase(): DatabaseConnection {
   return createMockDatabase();
 }

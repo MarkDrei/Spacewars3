@@ -1,6 +1,6 @@
 import { beforeEach, afterEach, describe, expect, test, vi } from 'vitest';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
-import type { Pool } from 'pg';
+import type { DatabaseConnection } from '@/lib/server/database';
 import { WORLD_LOCK } from '@/lib/server/typedLocks';
 import { World, type SpaceObject } from '@/lib/server/world/world';
 import { WorldCache } from '@/lib/server/world/worldCache';
@@ -13,10 +13,10 @@ const createMockDb = () => {
       release: vi.fn()
     }),
     end: vi.fn().mockResolvedValue(undefined)
-  } as unknown as Pool;
+  } as unknown as DatabaseConnection;
 };
 
-const createWorld = (db: Pool, spaceObjects: SpaceObject[] = []): World => {
+const createWorld = (db: DatabaseConnection, spaceObjects: SpaceObject[] = []): World => {
   return new World(
     { width: 500, height: 500 },
     spaceObjects,
@@ -26,7 +26,7 @@ const createWorld = (db: Pool, spaceObjects: SpaceObject[] = []): World => {
 };
 
 describe('WorldCache', () => {
-  let db: Pool;
+  let db: DatabaseConnection;
 
   beforeEach(() => {
     db = createMockDb();

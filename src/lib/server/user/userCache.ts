@@ -4,7 +4,7 @@
 // ---
 
 import { createLockContext, HasLock4Context, IronLocks, LOCK_10, LockContext, LocksAtMost3, LocksAtMost4, LocksAtMostAndHas4 } from '@markdrei/ironguard-typescript-locks';
-import { Pool } from 'pg';
+import { DatabaseConnection } from '../database';
 import { MessageCache } from '../messages/MessageCache';
 import {
   USER_LOCK,
@@ -59,7 +59,7 @@ export class UserCache extends Cache {
     logStats: false
   };
 
-  private db: Pool | null = null;
+  private db: DatabaseConnection | null = null;
   private persistenceTimer: NodeJS.Timeout | null = null;
 
   // In-memory cache storage
@@ -97,7 +97,7 @@ export class UserCache extends Cache {
    * 
    * @param config optional configuration for the cache
    */
-  static async intialize2(db: Pool, dependencies: userCacheDependencies = {}, config?: TypedCacheConfig): Promise<void> {
+  static async intialize2(db: DatabaseConnection, dependencies: userCacheDependencies = {}, config?: TypedCacheConfig): Promise<void> {
     UserCache.configureDependencies(dependencies);
     this.instance = new UserCache();
     if (config) {
@@ -136,7 +136,7 @@ export class UserCache extends Cache {
    */
   // needs _context for compile time lock checking
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  async getDatabaseConnection(_context: LockContext<LocksAtMostAndHas4>): Promise<Pool> {
+  async getDatabaseConnection(_context: LockContext<LocksAtMostAndHas4>): Promise<DatabaseConnection> {
     if (!this.db) {
       throw new Error('Database not initialized');
     }

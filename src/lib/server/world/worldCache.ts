@@ -1,5 +1,5 @@
 import { createLockContext, LOCK_11, LockContext, LocksAtMostAndHas6 } from '@markdrei/ironguard-typescript-locks';
-import { Pool } from 'pg';
+import { DatabaseConnection } from '../database';
 import { WORLD_LOCK } from '../typedLocks';
 import { MessageCache } from '../messages/MessageCache';
 import { World } from './world';
@@ -34,7 +34,7 @@ export class WorldCache extends Cache {
     logStats: false,
   };
 
-  private db: Pool | null = null;
+  private db: DatabaseConnection | null = null;
   private world: World | null = null;
   private worldDirty = false;
   private persistenceTimer: NodeJS.Timeout | null = null;
@@ -61,7 +61,7 @@ export class WorldCache extends Cache {
     globalThis.worldCacheInstance = value;
   }
 
-  static async initializeFromDb(db: Pool, config?: Partial<WorldCacheConfig>): Promise<void> {
+  static async initializeFromDb(db: DatabaseConnection, config?: Partial<WorldCacheConfig>): Promise<void> {
     WorldCache.instance?.stopBackgroundPersistence();
     const cache = new WorldCache();
     cache.applyConfig(config);
@@ -77,7 +77,7 @@ export class WorldCache extends Cache {
     WorldCache.instance = cache;
   }
 
-  static initializeWithWorld(world: World, db: Pool, config?: Partial<WorldCacheConfig>): void {
+  static initializeWithWorld(world: World, db: DatabaseConnection, config?: Partial<WorldCacheConfig>): void {
     WorldCache.instance?.stopBackgroundPersistence();
     const cache = new WorldCache();
     cache.applyConfig(config);

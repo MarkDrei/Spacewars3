@@ -2,7 +2,7 @@
 // Database migration system (future enhancement) - PostgreSQL
 // ---
 
-import { Pool } from 'pg';
+import { DatabaseConnection } from './database';
 
 export interface Migration {
   version: number;
@@ -134,7 +134,7 @@ export function getCurrentVersion(): number {
 /**
  * Check if a column exists in a table (PostgreSQL)
  */
-async function columnExists(db: Pool, tableName: string, columnName: string): Promise<boolean> {
+async function columnExists(db: DatabaseConnection, tableName: string, columnName: string): Promise<boolean> {
   const result = await db.query(`
     SELECT EXISTS (
       SELECT FROM information_schema.columns 
@@ -149,7 +149,7 @@ async function columnExists(db: Pool, tableName: string, columnName: string): Pr
 /**
  * Check if a table exists in the database (PostgreSQL)
  */
-async function tableExists(db: Pool, tableName: string): Promise<boolean> {
+async function tableExists(db: DatabaseConnection, tableName: string): Promise<boolean> {
   const result = await db.query(`
     SELECT EXISTS (
       SELECT FROM information_schema.tables 
@@ -163,7 +163,7 @@ async function tableExists(db: Pool, tableName: string): Promise<boolean> {
 /**
  * Run a migration statement safely (PostgreSQL)
  */
-async function runMigrationStatement(db: Pool, sql: string): Promise<void> {
+async function runMigrationStatement(db: DatabaseConnection, sql: string): Promise<void> {
   try {
     await db.query(sql);
   } catch (err) {
@@ -178,7 +178,7 @@ async function runMigrationStatement(db: Pool, sql: string): Promise<void> {
 /**
  * Apply tech system migrations to the database
  */
-export async function applyTechMigrations(db: Pool): Promise<void> {
+export async function applyTechMigrations(db: DatabaseConnection): Promise<void> {
   console.log('🔄 Checking for tech system migrations...');
   
   // Check if any tech columns are missing
@@ -242,7 +242,7 @@ export async function applyTechMigrations(db: Pool): Promise<void> {
 /**
  * Apply messages table migrations to the database
  */
-export async function applyMessagesMigrations(db: Pool): Promise<void> {
+export async function applyMessagesMigrations(db: DatabaseConnection): Promise<void> {
   console.log('🔄 Checking for messages table migration...');
   
   try {
@@ -275,7 +275,7 @@ export async function applyMessagesMigrations(db: Pool): Promise<void> {
 /**
  * Apply ship_hull column migration to the database
  */
-export async function applyShipHullMigration(db: Pool): Promise<void> {
+export async function applyShipHullMigration(db: DatabaseConnection): Promise<void> {
   console.log('🔄 Checking for ship_hull column migration...');
   
   try {
@@ -308,7 +308,7 @@ export async function applyShipHullMigration(db: Pool): Promise<void> {
 /**
  * Apply defense current values migration to the database
  */
-export async function applyDefenseCurrentValuesMigration(db: Pool): Promise<void> {
+export async function applyDefenseCurrentValuesMigration(db: DatabaseConnection): Promise<void> {
   console.log('🔄 Checking for defense current values migration...');
   
   try {
@@ -353,7 +353,7 @@ export async function applyDefenseCurrentValuesMigration(db: Pool): Promise<void
 /**
  * Apply battle state migration to the database
  */
-export async function applyBattleStateMigration(db: Pool): Promise<void> {
+export async function applyBattleStateMigration(db: DatabaseConnection): Promise<void> {
   console.log('🔄 Checking for battle state migration...');
   
   try {
@@ -386,7 +386,7 @@ export async function applyBattleStateMigration(db: Pool): Promise<void> {
 /**
  * Apply battle end stats migration to the database
  */
-export async function applyBattleEndStatsMigration(db: Pool): Promise<void> {
+export async function applyBattleEndStatsMigration(db: DatabaseConnection): Promise<void> {
   console.log('🔄 Checking for battle end stats migration...');
   
   try {

@@ -2,13 +2,13 @@
 // Repository functions for World persistence via in-memory cache with database persistence
 // ---
 
-import { Pool } from 'pg';
+import { DatabaseConnection } from '../database';
 import { World, SpaceObject, SaveWorldCallback } from './world';
 
 /**
  * Load world data from database (used internally by cache manager)
  */
-export async function loadWorldFromDb(db: Pool, saveCallback: SaveWorldCallback): Promise<World> {
+export async function loadWorldFromDb(db: DatabaseConnection, saveCallback: SaveWorldCallback): Promise<World> {
   // Join with users table to get usernames for player ships
   const query = `
     SELECT
@@ -57,7 +57,7 @@ export async function loadWorldFromDb(db: Pool, saveCallback: SaveWorldCallback)
 /**
  * Save world data to database
  */
-export function saveWorldToDb(db: Pool): SaveWorldCallback {
+export function saveWorldToDb(db: DatabaseConnection): SaveWorldCallback {
   return async (world: World) => {
     const updatePromises = world.spaceObjects.map(obj => 
       db.query(
@@ -73,14 +73,14 @@ export function saveWorldToDb(db: Pool): SaveWorldCallback {
 /**
  * Delete a space object from database and update cache
  */
-export async function deleteSpaceObject(db: Pool, objectId: number): Promise<void> {
+export async function deleteSpaceObject(db: DatabaseConnection, objectId: number): Promise<void> {
   await db.query('DELETE FROM space_objects WHERE id = $1', [objectId]);
 }
 
 /**
  * Insert a new space object into database and update cache
  */
-export async function insertSpaceObject(db: Pool, obj: Omit<SpaceObject, 'id'>): Promise<number> {
+export async function insertSpaceObject(db: DatabaseConnection, obj: Omit<SpaceObject, 'id'>): Promise<number> {
   const result = await db.query(
     'INSERT INTO space_objects (type, x, y, speed, angle, last_position_update_ms) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
     [obj.type, obj.x, obj.y, obj.speed, obj.angle, obj.last_position_update_ms]

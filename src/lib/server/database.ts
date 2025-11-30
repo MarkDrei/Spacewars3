@@ -1,15 +1,29 @@
 import { Pool, PoolClient } from 'pg';
 import { CREATE_TABLES } from './schema';
+import { CREATE_TABLES_SQLITE } from './testSchemas';
 import { seedDatabase, DEFAULT_USERS, DEFAULT_SPACE_OBJECTS } from './seedData';
 import { applyTechMigrations } from './migrations';
+import { DatabaseAdapter, PostgreSQLAdapter, SQLiteAdapter, QueryResult } from './databaseAdapter';
 
-// Database connection pool
+// Database connection pool (for production PostgreSQL)
 let pool: Pool | null = null;
 let initializationPromise: Promise<Pool> | null = null;
 
-// Test database management
-let testPool: Pool | null = null;
+// Test database management (SQLite in-memory)
+let testAdapter: SQLiteAdapter | null = null;
 let testDbInitialized = false;
+
+// Cached adapter for production
+let productionAdapter: PostgreSQLAdapter | null = null;
+
+/**
+ * Type for the database - compatible interface for both PostgreSQL Pool and SQLite adapter
+ * This allows any code using db.query() to work with both backends
+ */
+export interface DatabaseConnection {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  query<T = any>(sql: string, params?: unknown[]): Promise<QueryResult<T>>;
+}
 
 /**
  * Get database connection configuration from environment
@@ -32,44 +46,36 @@ function getDatabaseConfig() {
 }
 
 /**
- * Initialize the test database with tables and seed data
+ * Initialize the test database with SQLite in-memory
  */
-async function initializeTestDatabase(): Promise<Pool> {
-  if (testPool && testDbInitialized) {
-    return testPool;
+async function initializeTestDatabase(): Promise<DatabaseConnection> {
+  if (testAdapter && testDbInitialized) {
+    // Return existing adapter
+    return testAdapter;
   }
   
-  const config = getDatabaseConfig();
-  testPool = new Pool(config);
+  // Dynamic import of better-sqlite3 for tests only
+  const BetterSqlite3 = (await import('better-sqlite3')).default;
+  const db = new BetterSqlite3(':memory:');
+  testAdapter = new SQLiteAdapter(db);
   
-  const client = await testPool.connect();
-  try {
-    // Clean up any existing data
-    await client.query('DROP TABLE IF EXISTS battles CASCADE');
-    await client.query('DROP TABLE IF EXISTS messages CASCADE');
-    await client.query('DROP TABLE IF EXISTS users CASCADE');
-    await client.query('DROP TABLE IF EXISTS space_objects CASCADE');
-    
-    // Create tables
-    for (const createTableSQL of CREATE_TABLES) {
-      await client.query(createTableSQL);
-    }
-    
-    // Seed with the same default data as production
-    await seedTestDatabase(client);
-    
-    testDbInitialized = true;
-  } finally {
-    client.release();
+  // Create tables using SQLite-compatible schema
+  for (const createTableSQL of CREATE_TABLES_SQLITE) {
+    await testAdapter.query(createTableSQL);
   }
   
-  return testPool;
+  // Seed with the same default data as production
+  await seedTestDatabaseSQLite(testAdapter);
+  
+  testDbInitialized = true;
+  
+  return testAdapter;
 }
 
 /**
- * Seeding for test database using the same data as production
+ * Seeding for test database (SQLite)
  */
-async function seedTestDatabase(client: PoolClient): Promise<void> {
+async function seedTestDatabaseSQLite(adapter: SQLiteAdapter): Promise<void> {
   const now = Date.now();
   
   try {
@@ -82,7 +88,7 @@ async function seedTestDatabase(client: PoolClient): Promise<void> {
     // Create ships and users for all DEFAULT_USERS
     for (const user of DEFAULT_USERS) {
       // Create ship for this user
-      const shipResult = await client.query(
+      const shipResult = await adapter.query<{ id: number }>(
         `INSERT INTO space_objects (type, x, y, speed, angle, last_position_update_ms)
          VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
         ['player_ship', user.ship.x, user.ship.y, user.ship.speed, user.ship.angle, now]
@@ -138,12 +144,12 @@ async function seedTestDatabase(client: PoolClient): Promise<void> {
       const placeholders = columns.map((_, i) => `$${i + 1}`).join(', ');
       const insertSQL = `INSERT INTO users (${columns.join(', ')}) VALUES (${placeholders})`;
       
-      await client.query(insertSQL, values);
+      await adapter.query(insertSQL, values);
     }
     
     // Create other space objects (asteroids, shipwrecks, escape pods)
     for (const obj of DEFAULT_SPACE_OBJECTS) {
-      await client.query(
+      await adapter.query(
         `INSERT INTO space_objects (type, x, y, speed, angle, last_position_update_ms)
          VALUES ($1, $2, $3, $4, $5, $6)`,
         [obj.type, obj.x, obj.y, obj.speed, obj.angle, now]
@@ -156,10 +162,10 @@ async function seedTestDatabase(client: PoolClient): Promise<void> {
   }
 }
 
-export async function getDatabase(): Promise<Pool> {
-  // Use test database for tests
+export async function getDatabase(): Promise<DatabaseConnection> {
+  // Use test database for tests - return SQLite adapter
   if (process.env.NODE_ENV === 'test') {
-    return initializeTestDatabase();
+    return await initializeTestDatabase();
   }
 
   // If database is already initialized, return it immediately
@@ -176,6 +182,7 @@ export async function getDatabase(): Promise<Pool> {
   initializationPromise = (async () => {
     const config = getDatabaseConfig();
     pool = new Pool(config);
+    productionAdapter = new PostgreSQLAdapter(pool);
     
     console.log(`✅ Connected to PostgreSQL database: ${config.database}@${config.host}:${config.port}`);
     
@@ -231,6 +238,7 @@ export async function closeDatabase(): Promise<void> {
     await pool.end();
     pool = null;
     initializationPromise = null;
+    productionAdapter = null;
   }
 }
 
@@ -238,9 +246,9 @@ export async function closeDatabase(): Promise<void> {
  * Closes the test database (for cleanup in tests)
  */
 export async function closeTestDatabase(): Promise<void> {
-  if (testPool && process.env.NODE_ENV === 'test') {
-    await testPool.end();
-    testPool = null;
+  if (testAdapter && process.env.NODE_ENV === 'test') {
+    await testAdapter.close();
+    testAdapter = null;
   }
 }
 
@@ -249,8 +257,15 @@ export async function closeTestDatabase(): Promise<void> {
  */
 export function resetTestDatabase(): void {
   if (process.env.NODE_ENV === 'test') {
-    testPool = null;
+    // Close existing connection if any
+    if (testAdapter) {
+      testAdapter.close().catch(() => {});
+    }
+    testAdapter = null;
     testDbInitialized = false;
     // Next call to getDatabase() will create a fresh database
   }
 }
+
+// Export the adapter interface for type usage
+export type { DatabaseAdapter };

@@ -4,12 +4,12 @@ import { createTestDatabase } from '../helpers/testDatabase';
 import { UserCache } from '@/lib/server/user/userCache';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 import { USER_LOCK } from '@/lib/server/typedLocks';
-import { Pool } from 'pg';
+import { DatabaseConnection, resetTestDatabase } from '@/lib/server/database';
 import { BuildQueueItem } from '@/lib/server/techs/TechFactory';
 import { MessageCache } from '@/lib/server/messages/MessageCache';
 
 describe('TechService - Build Completion Notifications', () => {
-  let testDb: Pool;
+  let testDb: DatabaseConnection;
   let techService: TechService;
   let mockCreateMessage: ReturnType<typeof vi.fn>;
   const testUserId = 1;
@@ -52,7 +52,7 @@ describe('TechService - Build Completion Notifications', () => {
 
   afterEach(async () => {
     // Properly close the database connection
-    await testDb.end();
+    resetTestDatabase();
     UserCache.resetInstance();
   });
 
