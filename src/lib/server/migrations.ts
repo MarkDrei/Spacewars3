@@ -1,6 +1,8 @@
 // ---
-// Database migration system (future enhancement)
+// Database migration system (future enhancement) - PostgreSQL
 // ---
+
+import { DatabaseConnection } from './database';
 
 export interface Migration {
   version: number;
@@ -15,10 +17,10 @@ export const migrations: Migration[] = [
     name: 'initial_schema',
     up: [
       `CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         username TEXT UNIQUE NOT NULL,
         password_hash TEXT NOT NULL,
-        iron REAL NOT NULL DEFAULT 0.0,
+        iron DOUBLE PRECISION NOT NULL DEFAULT 0.0,
         last_updated INTEGER NOT NULL,
         tech_tree TEXT NOT NULL
       )`
@@ -29,30 +31,30 @@ export const migrations: Migration[] = [
     version: 2,
     name: 'add_tech_system',
     up: [
-      'ALTER TABLE users ADD COLUMN pulse_laser INTEGER NOT NULL DEFAULT 5',
-      'ALTER TABLE users ADD COLUMN auto_turret INTEGER NOT NULL DEFAULT 5',
-      'ALTER TABLE users ADD COLUMN plasma_lance INTEGER NOT NULL DEFAULT 0',
-      'ALTER TABLE users ADD COLUMN gauss_rifle INTEGER NOT NULL DEFAULT 0',
-      'ALTER TABLE users ADD COLUMN photon_torpedo INTEGER NOT NULL DEFAULT 0',
-      'ALTER TABLE users ADD COLUMN rocket_launcher INTEGER NOT NULL DEFAULT 0',
-      'ALTER TABLE users ADD COLUMN kinetic_armor INTEGER NOT NULL DEFAULT 5',
-      'ALTER TABLE users ADD COLUMN energy_shield INTEGER NOT NULL DEFAULT 5',
-      'ALTER TABLE users ADD COLUMN missile_jammer INTEGER NOT NULL DEFAULT 0',
-      'ALTER TABLE users ADD COLUMN build_queue TEXT DEFAULT NULL',
-      'ALTER TABLE users ADD COLUMN build_start_sec INTEGER DEFAULT NULL'
+      'ALTER TABLE users ADD COLUMN IF NOT EXISTS pulse_laser INTEGER NOT NULL DEFAULT 5',
+      'ALTER TABLE users ADD COLUMN IF NOT EXISTS auto_turret INTEGER NOT NULL DEFAULT 5',
+      'ALTER TABLE users ADD COLUMN IF NOT EXISTS plasma_lance INTEGER NOT NULL DEFAULT 0',
+      'ALTER TABLE users ADD COLUMN IF NOT EXISTS gauss_rifle INTEGER NOT NULL DEFAULT 0',
+      'ALTER TABLE users ADD COLUMN IF NOT EXISTS photon_torpedo INTEGER NOT NULL DEFAULT 0',
+      'ALTER TABLE users ADD COLUMN IF NOT EXISTS rocket_launcher INTEGER NOT NULL DEFAULT 0',
+      'ALTER TABLE users ADD COLUMN IF NOT EXISTS kinetic_armor INTEGER NOT NULL DEFAULT 5',
+      'ALTER TABLE users ADD COLUMN IF NOT EXISTS energy_shield INTEGER NOT NULL DEFAULT 5',
+      'ALTER TABLE users ADD COLUMN IF NOT EXISTS missile_jammer INTEGER NOT NULL DEFAULT 0',
+      'ALTER TABLE users ADD COLUMN IF NOT EXISTS build_queue TEXT DEFAULT NULL',
+      'ALTER TABLE users ADD COLUMN IF NOT EXISTS build_start_sec INTEGER DEFAULT NULL'
     ],
     down: [
-      'ALTER TABLE users DROP COLUMN pulse_laser',
-      'ALTER TABLE users DROP COLUMN auto_turret',
-      'ALTER TABLE users DROP COLUMN plasma_lance',
-      'ALTER TABLE users DROP COLUMN gauss_rifle',
-      'ALTER TABLE users DROP COLUMN photon_torpedo',
-      'ALTER TABLE users DROP COLUMN rocket_launcher',
-      'ALTER TABLE users DROP COLUMN kinetic_armor',
-      'ALTER TABLE users DROP COLUMN energy_shield',
-      'ALTER TABLE users DROP COLUMN missile_jammer',
-      'ALTER TABLE users DROP COLUMN build_queue',
-      'ALTER TABLE users DROP COLUMN build_start_sec'
+      'ALTER TABLE users DROP COLUMN IF EXISTS pulse_laser',
+      'ALTER TABLE users DROP COLUMN IF EXISTS auto_turret',
+      'ALTER TABLE users DROP COLUMN IF EXISTS plasma_lance',
+      'ALTER TABLE users DROP COLUMN IF EXISTS gauss_rifle',
+      'ALTER TABLE users DROP COLUMN IF EXISTS photon_torpedo',
+      'ALTER TABLE users DROP COLUMN IF EXISTS rocket_launcher',
+      'ALTER TABLE users DROP COLUMN IF EXISTS kinetic_armor',
+      'ALTER TABLE users DROP COLUMN IF EXISTS energy_shield',
+      'ALTER TABLE users DROP COLUMN IF EXISTS missile_jammer',
+      'ALTER TABLE users DROP COLUMN IF EXISTS build_queue',
+      'ALTER TABLE users DROP COLUMN IF EXISTS build_start_sec'
     ]
   },
   {
@@ -60,10 +62,10 @@ export const migrations: Migration[] = [
     name: 'add_messages_table',
     up: [
       `CREATE TABLE IF NOT EXISTS messages (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         recipient_id INTEGER NOT NULL,
-        created_at INTEGER NOT NULL,
-        is_read BOOLEAN NOT NULL DEFAULT 0,
+        created_at BIGINT NOT NULL,
+        is_read BOOLEAN NOT NULL DEFAULT FALSE,
         message TEXT NOT NULL,
         FOREIGN KEY (recipient_id) REFERENCES users (id)
       )`
@@ -76,59 +78,53 @@ export const migrations: Migration[] = [
     version: 4,
     name: 'add_ship_hull_defense',
     up: [
-      'ALTER TABLE users ADD COLUMN ship_hull INTEGER NOT NULL DEFAULT 5'
+      'ALTER TABLE users ADD COLUMN IF NOT EXISTS ship_hull INTEGER NOT NULL DEFAULT 5'
     ],
     down: [
-      'ALTER TABLE users DROP COLUMN ship_hull'
+      'ALTER TABLE users DROP COLUMN IF EXISTS ship_hull'
     ]
   },
   {
     version: 5,
     name: 'add_defense_current_values',
     up: [
-      'ALTER TABLE users ADD COLUMN hull_current REAL NOT NULL DEFAULT 250.0',
-      'ALTER TABLE users ADD COLUMN armor_current REAL NOT NULL DEFAULT 250.0',
-      'ALTER TABLE users ADD COLUMN shield_current REAL NOT NULL DEFAULT 250.0',
-      'ALTER TABLE users ADD COLUMN defense_last_regen INTEGER NOT NULL DEFAULT 0'
+      'ALTER TABLE users ADD COLUMN IF NOT EXISTS hull_current DOUBLE PRECISION NOT NULL DEFAULT 250.0',
+      'ALTER TABLE users ADD COLUMN IF NOT EXISTS armor_current DOUBLE PRECISION NOT NULL DEFAULT 250.0',
+      'ALTER TABLE users ADD COLUMN IF NOT EXISTS shield_current DOUBLE PRECISION NOT NULL DEFAULT 250.0',
+      'ALTER TABLE users ADD COLUMN IF NOT EXISTS defense_last_regen INTEGER NOT NULL DEFAULT 0'
     ],
     down: [
-      'ALTER TABLE users DROP COLUMN hull_current',
-      'ALTER TABLE users DROP COLUMN armor_current',
-      'ALTER TABLE users DROP COLUMN shield_current',
-      'ALTER TABLE users DROP COLUMN defense_last_regen'
+      'ALTER TABLE users DROP COLUMN IF EXISTS hull_current',
+      'ALTER TABLE users DROP COLUMN IF EXISTS armor_current',
+      'ALTER TABLE users DROP COLUMN IF EXISTS shield_current',
+      'ALTER TABLE users DROP COLUMN IF EXISTS defense_last_regen'
     ]
   },
   {
     version: 6,
     name: 'add_battle_state',
     up: [
-      'ALTER TABLE users ADD COLUMN in_battle INTEGER NOT NULL DEFAULT 0',
-      'ALTER TABLE users ADD COLUMN current_battle_id INTEGER DEFAULT NULL'
+      'ALTER TABLE users ADD COLUMN IF NOT EXISTS in_battle INTEGER NOT NULL DEFAULT 0',
+      'ALTER TABLE users ADD COLUMN IF NOT EXISTS current_battle_id INTEGER DEFAULT NULL'
     ],
     down: [
-      'ALTER TABLE users DROP COLUMN in_battle',
-      'ALTER TABLE users DROP COLUMN current_battle_id'
+      'ALTER TABLE users DROP COLUMN IF EXISTS in_battle',
+      'ALTER TABLE users DROP COLUMN IF EXISTS current_battle_id'
     ]
   },
   {
     version: 7,
     name: 'add_battle_end_stats',
     up: [
-      'ALTER TABLE battles ADD COLUMN attacker_end_stats TEXT DEFAULT NULL',
-      'ALTER TABLE battles ADD COLUMN attackee_end_stats TEXT DEFAULT NULL'
+      'ALTER TABLE battles ADD COLUMN IF NOT EXISTS attacker_end_stats TEXT DEFAULT NULL',
+      'ALTER TABLE battles ADD COLUMN IF NOT EXISTS attackee_end_stats TEXT DEFAULT NULL'
     ],
     down: [
-      'ALTER TABLE battles DROP COLUMN attacker_end_stats',
-      'ALTER TABLE battles DROP COLUMN attackee_end_stats'
+      'ALTER TABLE battles DROP COLUMN IF EXISTS attacker_end_stats',
+      'ALTER TABLE battles DROP COLUMN IF EXISTS attackee_end_stats'
     ]
   }
   // Future migrations go here
-  // {
-  //   version: 6,
-  //   name: 'add_user_settings',
-  //   up: ['ALTER TABLE users ADD COLUMN settings TEXT DEFAULT "{}"'],
-  //   down: ['ALTER TABLE users DROP COLUMN settings']
-  // }
 ];
 
 export function getCurrentVersion(): number {
@@ -136,41 +132,53 @@ export function getCurrentVersion(): number {
 }
 
 /**
- * Check if a column exists in a table
+ * Check if a column exists in a table (PostgreSQL)
  */
-function columnExists(db: import('sqlite3').Database, tableName: string, columnName: string): Promise<boolean> {
-  return new Promise((resolve, reject) => {
-    db.all(`PRAGMA table_info(${tableName})`, (err: Error | null, rows: { name: string }[]) => {
-      if (err) {
-        reject(err);
-        return;
-      }
-      
-      const exists = rows.some(row => row.name === columnName);
-      resolve(exists);
-    });
-  });
+async function columnExists(db: DatabaseConnection, tableName: string, columnName: string): Promise<boolean> {
+  const result = await db.query(`
+    SELECT EXISTS (
+      SELECT FROM information_schema.columns 
+      WHERE table_schema = 'public' 
+      AND table_name = $1 
+      AND column_name = $2
+    )
+  `, [tableName, columnName]);
+  return result.rows[0].exists;
 }
 
 /**
- * Run a migration statement safely (ignore errors if column already exists)
+ * Check if a table exists in the database (PostgreSQL)
  */
-function runMigrationStatement(db: import('sqlite3').Database, sql: string): Promise<void> {
-  return new Promise((resolve) => {
-    db.run(sql, (err: Error | null) => {
-      if (err && !err.message.includes('duplicate column name')) {
-        console.warn(`⚠️ Migration warning: ${err.message}`);
-      }
-      // Always resolve - we don't want to fail if column already exists
-      resolve();
-    });
-  });
+async function tableExists(db: DatabaseConnection, tableName: string): Promise<boolean> {
+  const result = await db.query(`
+    SELECT EXISTS (
+      SELECT FROM information_schema.tables 
+      WHERE table_schema = 'public' 
+      AND table_name = $1
+    )
+  `, [tableName]);
+  return result.rows[0].exists;
+}
+
+/**
+ * Run a migration statement safely (PostgreSQL)
+ */
+async function runMigrationStatement(db: DatabaseConnection, sql: string): Promise<void> {
+  try {
+    await db.query(sql);
+  } catch (err) {
+    const errorMessage = (err as Error).message || '';
+    // Ignore "column already exists" type errors
+    if (!errorMessage.includes('already exists')) {
+      console.warn(`⚠️ Migration warning: ${errorMessage}`);
+    }
+  }
 }
 
 /**
  * Apply tech system migrations to the database
  */
-export async function applyTechMigrations(db: import('sqlite3').Database): Promise<void> {
+export async function applyTechMigrations(db: DatabaseConnection): Promise<void> {
   console.log('🔄 Checking for tech system migrations...');
   
   // Check if any tech columns are missing
@@ -232,25 +240,9 @@ export async function applyTechMigrations(db: import('sqlite3').Database): Promi
 }
 
 /**
- * Check if a table exists in the database
- */
-function tableExists(db: import('sqlite3').Database, tableName: string): Promise<boolean> {
-  return new Promise((resolve, reject) => {
-    db.all(`SELECT name FROM sqlite_master WHERE type='table' AND name=?`, [tableName], (err: Error | null, rows: { name: string }[]) => {
-      if (err) {
-        reject(err);
-        return;
-      }
-      
-      resolve(rows.length > 0);
-    });
-  });
-}
-
-/**
  * Apply messages table migrations to the database
  */
-export async function applyMessagesMigrations(db: import('sqlite3').Database): Promise<void> {
+export async function applyMessagesMigrations(db: DatabaseConnection): Promise<void> {
   console.log('🔄 Checking for messages table migration...');
   
   try {
@@ -283,7 +275,7 @@ export async function applyMessagesMigrations(db: import('sqlite3').Database): P
 /**
  * Apply ship_hull column migration to the database
  */
-export async function applyShipHullMigration(db: import('sqlite3').Database): Promise<void> {
+export async function applyShipHullMigration(db: DatabaseConnection): Promise<void> {
   console.log('🔄 Checking for ship_hull column migration...');
   
   try {
@@ -316,7 +308,7 @@ export async function applyShipHullMigration(db: import('sqlite3').Database): Pr
 /**
  * Apply defense current values migration to the database
  */
-export async function applyDefenseCurrentValuesMigration(db: import('sqlite3').Database): Promise<void> {
+export async function applyDefenseCurrentValuesMigration(db: DatabaseConnection): Promise<void> {
   console.log('🔄 Checking for defense current values migration...');
   
   try {
@@ -342,21 +334,15 @@ export async function applyDefenseCurrentValuesMigration(db: import('sqlite3').D
     
     // After adding columns with defaults, update existing users to have current = max/2
     console.log('🔄 Updating existing users defense values to max/2...');
-    await new Promise<void>((resolve, reject) => {
-      db.run(
-        `UPDATE users 
-         SET 
-           hull_current = ship_hull * 50.0,
-           armor_current = kinetic_armor * 50.0,
-           shield_current = energy_shield * 50.0,
-           defense_last_regen = last_updated
-         WHERE hull_current = 250.0`, // Only update rows that still have the default value
-        (err: Error | null) => {
-          if (err) reject(err);
-          else resolve();
-        }
-      );
-    });
+    await db.query(
+      `UPDATE users 
+       SET 
+         hull_current = ship_hull * 50.0,
+         armor_current = kinetic_armor * 50.0,
+         shield_current = energy_shield * 50.0,
+         defense_last_regen = last_updated
+       WHERE hull_current = 250.0`
+    );
     
     console.log('✅ Defense current values migration completed');
   } catch (error) {
@@ -367,7 +353,7 @@ export async function applyDefenseCurrentValuesMigration(db: import('sqlite3').D
 /**
  * Apply battle state migration to the database
  */
-export async function applyBattleStateMigration(db: import('sqlite3').Database): Promise<void> {
+export async function applyBattleStateMigration(db: DatabaseConnection): Promise<void> {
   console.log('🔄 Checking for battle state migration...');
   
   try {
@@ -400,7 +386,7 @@ export async function applyBattleStateMigration(db: import('sqlite3').Database):
 /**
  * Apply battle end stats migration to the database
  */
-export async function applyBattleEndStatsMigration(db: import('sqlite3').Database): Promise<void> {
+export async function applyBattleEndStatsMigration(db: DatabaseConnection): Promise<void> {
   console.log('🔄 Checking for battle end stats migration...');
   
   try {
