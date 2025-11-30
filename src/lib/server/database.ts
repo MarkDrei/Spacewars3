@@ -168,14 +168,15 @@ export async function getDatabase(): Promise<DatabaseConnection> {
     return await initializeTestDatabase();
   }
 
-  // If database is already initialized, return it immediately
-  if (pool) {
-    return pool;
+  // If database is already initialized, return the adapter
+  if (pool && productionAdapter) {
+    return productionAdapter;
   }
 
   // If initialization is in progress, wait for it
   if (initializationPromise) {
-    return initializationPromise;
+    await initializationPromise;
+    return productionAdapter!;
   }
 
   // Start initialization
@@ -205,7 +206,8 @@ export async function getDatabase(): Promise<DatabaseConnection> {
     }
   })();
 
-  return initializationPromise;
+  await initializationPromise;
+  return productionAdapter!;
 }
 
 async function checkTablesExist(client: PoolClient): Promise<boolean> {

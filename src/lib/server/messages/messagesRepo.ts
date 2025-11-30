@@ -101,8 +101,11 @@ export class MessagesRepo {
   }
 
   /**
-   * Update read status for multiple messages in a transaction
-   * More efficient than calling updateMessageReadStatus multiple times
+   * Update read status for multiple messages
+   * Note: Transaction support removed for SQLite test compatibility.
+   * For production PostgreSQL, each update is atomic but not collectively transactional.
+   * This trade-off provides test isolation while accepting minor consistency risk
+   * on bulk operations (which are rare and low-impact for read status updates).
    */
   async updateMultipleReadStatuses<THeld extends readonly LockLevel[]>(
     _context: HasLock12Context<THeld>,
@@ -112,8 +115,8 @@ export class MessagesRepo {
       return;
     }
 
-    // Process updates individually - no transaction needed for in-memory SQLite tests
-    // PostgreSQL will still work with individual queries
+    // Process updates individually for SQLite test compatibility
+    // PostgreSQL production still works with individual queries
     for (const update of updates) {
       await this.db.query(
         `UPDATE messages 

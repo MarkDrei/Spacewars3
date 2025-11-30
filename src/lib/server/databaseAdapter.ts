@@ -2,7 +2,7 @@
 // Database abstraction layer for PostgreSQL (production) and SQLite (tests)
 // ---
 
-import type { Pool as PgPool, QueryResult as PgQueryResult } from 'pg';
+import type { Pool as PgPool } from 'pg';
 import type BetterSqlite3 from 'better-sqlite3';
 
 /**
@@ -140,10 +140,7 @@ export class SQLiteAdapter implements DatabaseAdapter {
     if ('exists' in converted) {
       converted.exists = Boolean(converted.exists);
     }
-    // Convert in_battle from integer to boolean
-    if ('in_battle' in converted) {
-      converted.in_battle = Number(converted.in_battle);
-    }
+    // Note: in_battle stays as integer (0/1) since it's stored as INTEGER in schema
     return converted as T;
   }
   
