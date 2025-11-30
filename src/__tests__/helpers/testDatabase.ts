@@ -7,7 +7,7 @@ import { DatabaseConnection, getDatabase, resetTestDatabase } from '@/lib/server
 let testDatabaseConnection: DatabaseConnection | null = null;
 
 /**
- * Creates a test database with all tables
+ * Creates a test database with all tables and seed data
  */
 export async function createTestDatabase(): Promise<DatabaseConnection> {
   // Reset and get fresh test database (SQLite in-memory for tests)
@@ -36,12 +36,15 @@ export async function closeTestDatabase(): Promise<void> {
 }
 
 /**
- * Clears all data from test database tables
+ * Clears test data from database tables (messages and battles only, preserves seed data)
+ * This allows tests to run with fresh data while keeping required seed users/space_objects
  */
 export async function clearTestDatabase(): Promise<void> {
   const db = await getTestDatabase();
   
-  const tables = ['messages', 'battles', 'users', 'space_objects'];
+  // Only clear messages and battles - users and space_objects contain seed data
+  // that other tests depend on (foreign keys)
+  const tables = ['messages', 'battles'];
   
   for (const table of tables) {
     await db.query(`DELETE FROM ${table}`, []);

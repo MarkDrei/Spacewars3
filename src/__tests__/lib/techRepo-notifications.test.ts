@@ -15,7 +15,7 @@ describe('TechService - Build Completion Notifications', () => {
   const testUserId = 1;
 
   beforeEach(async () => {
-    // Create test database
+    // Create test database (includes seed data)
     testDb = await createTestDatabase();
 
     // Initialize userCache with test database
@@ -38,16 +38,15 @@ describe('TechService - Build Completion Notifications', () => {
     // Clear all mocks
     vi.clearAllMocks();
 
-    // Set up test user with initial tech counts
+    // Update the existing test user (id=1 from seed data) with our test data
     const now = Math.floor(Date.now() / 1000);
     await testDb.query(`
-      INSERT INTO users (
-        id, username, password_hash, iron, last_updated, tech_tree, 
-        pulse_laser, auto_turret, ship_hull, kinetic_armor, energy_shield,
-        build_queue, build_start_sec
-      )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-    `, [testUserId, 'testuser', 'hash', 1000, now, '{}', 1, 0, 1, 0, 5, '[]', null]);
+      UPDATE users SET 
+        iron = $1, last_updated = $2, tech_tree = $3, 
+        pulse_laser = $4, auto_turret = $5, ship_hull = $6, kinetic_armor = $7, energy_shield = $8,
+        build_queue = $9, build_start_sec = $10
+      WHERE id = $11
+    `, [1000, now, '{}', 1, 0, 1, 0, 5, '[]', null, testUserId]);
   });
 
   afterEach(async () => {
