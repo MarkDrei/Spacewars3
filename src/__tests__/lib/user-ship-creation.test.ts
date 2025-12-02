@@ -5,6 +5,7 @@
 import { describe, expect, it, afterEach, beforeEach } from 'vitest';
 import { DatabaseConnection, getDatabase, resetTestDatabase } from '@/lib/server/database';
 import { createUser, saveUserToDb } from '@/lib/server/user/userRepo';
+import { MessageCache } from '@/lib/server/messages/MessageCache';
 
 interface SpaceObjectRow {
   id: number;
@@ -20,13 +21,26 @@ describe('User Ship Creation', () => {
   let db: DatabaseConnection;
 
   beforeEach(async () => {
+    // Reset MessageCache to avoid stale database references
+    MessageCache.resetInstance();
+    
     // Reset and get fresh test database
     resetTestDatabase();
     db = await getDatabase();
   });
 
   afterEach(async () => {
-    // Clean up
+    // Wait for any pending message writes before resetting
+    try {
+      const cache = MessageCache.getInstance();
+      await cache.waitForPendingWrites();
+      await cache.shutdown();
+    } catch {
+      // Ignore if cache was never initialized
+    }
+    
+    // Reset cache and database
+    MessageCache.resetInstance();
     resetTestDatabase();
   });
 

@@ -156,6 +156,28 @@ async function seedTestDatabaseSQLite(adapter: SQLiteAdapter): Promise<void> {
       );
     }
     
+    // Create additional test users (IDs 3-10) for tests that need more users
+    const testPasswordHash = passwordHashes['a'];
+    const testTechTree = JSON.stringify({ ironHarvesting: 1, shipSpeed: 1 });
+    
+    for (let i = 3; i <= 10; i++) {
+      // Create ship for this test user
+      const shipResult = await adapter.query<{ id: number }>(
+        `INSERT INTO space_objects (type, x, y, speed, angle, last_position_update_ms)
+         VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+        ['player_ship', 250 + i * 10, 250 + i * 10, 0, 0, now]
+      );
+      
+      const shipId = shipResult.rows[0].id;
+      
+      // Create the test user
+      await adapter.query(
+        `INSERT INTO users (username, password_hash, iron, last_updated, tech_tree, ship_id, hull_current, armor_current, shield_current, defense_last_regen)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+        [`testuser${i}`, testPasswordHash, 1000, Math.floor(now / 1000), testTechTree, shipId, 250.0, 250.0, 250.0, Math.floor(now / 1000)]
+      );
+    }
+    
   } catch (error) {
     console.error('❌ Error seeding test database:', error);
     throw error;

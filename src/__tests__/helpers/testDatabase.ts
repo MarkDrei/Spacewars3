@@ -4,10 +4,10 @@
 
 import { DatabaseConnection, getDatabase, resetTestDatabase } from '@/lib/server/database';
 
-let testDatabaseConnection: DatabaseConnection | null = null;
-
 /**
- * Creates a test database with all tables and seed data
+ * Creates a test database with all tables and seed data.
+ * In the new architecture, the database module handles all setup including
+ * additional test users.
  */
 export async function createTestDatabase(): Promise<DatabaseConnection> {
   // Reset and get fresh test database (SQLite in-memory for tests)
@@ -16,23 +16,19 @@ export async function createTestDatabase(): Promise<DatabaseConnection> {
 }
 
 /**
- * Gets or creates a test database instance
+ * Gets or creates a test database instance.
+ * Always calls getDatabase() which handles its own state management.
  */
 export async function getTestDatabase(): Promise<DatabaseConnection> {
-  if (!testDatabaseConnection) {
-    testDatabaseConnection = await createTestDatabase();
-  }
-  return testDatabaseConnection;
+  // The database module handles caching internally
+  return await getDatabase();
 }
 
 /**
  * Closes the test database
  */
 export async function closeTestDatabase(): Promise<void> {
-  if (testDatabaseConnection) {
-    resetTestDatabase();
-    testDatabaseConnection = null;
-  }
+  resetTestDatabase();
 }
 
 /**

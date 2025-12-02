@@ -37,6 +37,9 @@ export async function initializeIntegrationTestServer(): Promise<void> {
   UserCache.resetInstance();
   WorldCache.resetInstance();
   MessageCache.resetInstance();
+  
+  // initializeServer will call getDatabase() which creates the test database
+  // with all users (including test users 3-10)
   await initializeServer();
 }
 
