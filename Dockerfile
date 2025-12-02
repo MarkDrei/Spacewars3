@@ -34,10 +34,6 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 
-# Create database directory with proper permissions
-RUN mkdir -p /app/database && \
-    chown -R nextjs:nodejs /app/database
-
 # Copy necessary files from builder
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./

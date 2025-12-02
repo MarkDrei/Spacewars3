@@ -131,23 +131,14 @@ describe('Defense Value Persistence After Battle', () => {
 
         const loadUserDefenses = async (userId: number) => {
           const db = await getDatabase();
-          return await new Promise<{ hull_current: number }>((resolve, reject) => {
-            db.get(
-              'SELECT hull_current FROM users WHERE id = ?',
-              [userId],
-              (err, row) => {
-                if (err) {
-                  reject(err);
-                  return;
-                }
-                if (!row) {
-                  reject(new Error(`User ${userId} not found in database`));
-                  return;
-                }
-                resolve(row as { hull_current: number });
-              }
-            );
-          });
+          const result = await db.query(
+            'SELECT hull_current FROM users WHERE id = $1',
+            [userId]
+          );
+          if (result.rows.length === 0) {
+            throw new Error(`User ${userId} not found in database`);
+          }
+          return result.rows[0] as { hull_current: number };
         };
 
         const [reloadedAttacker, reloadedDefender] = await Promise.all([

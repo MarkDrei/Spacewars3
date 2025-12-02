@@ -2,7 +2,7 @@
 // Handles loading and saving User objects via in-memory cache with database persistence.
 // ---
 
-import sqlite3 from 'sqlite3';
+import { DatabaseConnection } from '../database';
 import { User, SaveUserCallback } from './user';
 import { createInitialTechTree } from '../techs/techtree';
 import { sendMessageToUser } from '../messages/MessageCache';
@@ -35,7 +35,7 @@ interface UserRow {
   shield_current: number;
   defense_last_regen: number;
   // Battle state
-  in_battle?: number; // SQLite stores boolean as 0/1
+  in_battle?: number; // PostgreSQL stores boolean as 0/1 for compatibility
   current_battle_id?: number | null;
   // Build queue
   build_queue?: string;
@@ -113,196 +113,159 @@ function userFromRow(row: UserRow, saveCallback: SaveUserCallback): User {
 }
 
 // Direct database access functions (used internally by cache manager)
-export function getUserByIdFromDb(db: sqlite3.Database, id: number, saveCallback: SaveUserCallback): Promise<User | null> {
-  return new Promise((resolve, reject) => {
-    db.get('SELECT * FROM users WHERE id = ?', [id], (err, row) => {
-      if (err) return reject(err);
-      if (!row) return resolve(null);
-      resolve(userFromRow(row as UserRow, saveCallback));
-    });
-  });
+export async function getUserByIdFromDb(db: DatabaseConnection, id: number, saveCallback: SaveUserCallback): Promise<User | null> {
+  const result = await db.query('SELECT * FROM users WHERE id = $1', [id]);
+  if (result.rows.length === 0) return null;
+  return userFromRow(result.rows[0] as UserRow, saveCallback);
 }
 
-export function getUserByUsernameFromDb(db: sqlite3.Database, username: string, saveCallback: SaveUserCallback): Promise<User | null> {
-  return new Promise((resolve, reject) => {
-    db.get('SELECT * FROM users WHERE username = ?', [username], (err, row) => {
-      if (err) return reject(err);
-      if (!row) return resolve(null);
-      resolve(userFromRow(row as UserRow, saveCallback));
-    });
-  });
+export async function getUserByUsernameFromDb(db: DatabaseConnection, username: string, saveCallback: SaveUserCallback): Promise<User | null> {
+  const result = await db.query('SELECT * FROM users WHERE username = $1', [username]);
+  if (result.rows.length === 0) return null;
+  return userFromRow(result.rows[0] as UserRow, saveCallback);
 }
 
-export function createUser(db: sqlite3.Database, username: string, password_hash: string, saveCallback: SaveUserCallback): Promise<User> {
+export function createUser(db: DatabaseConnection, username: string, password_hash: string, saveCallback: SaveUserCallback): Promise<User> {
   return createUserWithShip(db, username, password_hash, saveCallback, true);
 }
 
-export function createUserWithoutShip(db: sqlite3.Database, username: string, password_hash: string, saveCallback: SaveUserCallback): Promise<User> {
+export function createUserWithoutShip(db: DatabaseConnection, username: string, password_hash: string, saveCallback: SaveUserCallback): Promise<User> {
   return createUserWithShip(db, username, password_hash, saveCallback, false);
 }
 
-async function createUserWithShip(db: sqlite3.Database, username: string, password_hash: string, saveCallback: SaveUserCallback, createShip: boolean): Promise<User> {
-  return new Promise((resolve, reject) => {
-    const now = Math.floor(Date.now() / 1000);
-    const techTree = createInitialTechTree();
+async function createUserWithShip(db: DatabaseConnection, username: string, password_hash: string, saveCallback: SaveUserCallback, createShip: boolean): Promise<User> {
+  const now = Math.floor(Date.now() / 1000);
+  const techTree = createInitialTechTree();
 
-    if (createShip) {
-      // Create user with ship (production behavior)
-      const nowMs = Date.now();
+  if (createShip) {
+    // Create user with ship (production behavior)
+    const nowMs = Date.now();
 
-      // First create a player ship
-      db.run('INSERT INTO space_objects (type, x, y, speed, angle, last_position_update_ms) VALUES (?, ?, ?, ?, ?, ?)',
-        ['player_ship', 250, 250, 0, 0, nowMs], // Start at center of 500x500 world
-        function (shipErr) {
-          if (shipErr) return reject(shipErr);
+    // First create a player ship
+    const shipResult = await db.query(
+      'INSERT INTO space_objects (type, x, y, speed, angle, last_position_update_ms) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
+      ['player_ship', 250, 250, 0, 0, nowMs] // Start at center of 500x500 world
+    );
 
-          const shipId = this.lastID;
+    const shipId = shipResult.rows[0].id;
 
-          // Then create the user with the ship_id (with default defense values)
-          db.run('INSERT INTO users (username, password_hash, iron, last_updated, tech_tree, ship_id, hull_current, armor_current, shield_current, defense_last_regen) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-            [username, password_hash, 0.0, now, JSON.stringify(techTree), shipId, 250.0, 250.0, 250.0, now],
-            async function (userErr) {
-              if (userErr) return reject(userErr);
+    // Then create the user with the ship_id (with default defense values)
+    const userResult = await db.query(
+      'INSERT INTO users (username, password_hash, iron, last_updated, tech_tree, ship_id, hull_current, armor_current, shield_current, defense_last_regen) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id',
+      [username, password_hash, 0.0, now, JSON.stringify(techTree), shipId, 250.0, 250.0, 250.0, now]
+    );
 
-              const userId = this.lastID;
-              console.log(`✅ Created user ${username} (ID: ${userId}) with ship ID ${shipId}`);
+    const userId = userResult.rows[0].id;
+    console.log(`✅ Created user ${username} (ID: ${userId}) with ship ID ${shipId}`);
 
-              // Create the user object with default tech counts
-              const defaultTechCounts: TechCounts = {
-                pulse_laser: 5,
-                auto_turret: 5,
-                plasma_lance: 0,
-                gauss_rifle: 0,
-                photon_torpedo: 0,
-                rocket_launcher: 0,
-                ship_hull: 5,
-                kinetic_armor: 5,
-                energy_shield: 5,
-                missile_jammer: 0
-              };
+    // Create the user object with default tech counts
+    const defaultTechCounts: TechCounts = {
+      pulse_laser: 5,
+      auto_turret: 5,
+      plasma_lance: 0,
+      gauss_rifle: 0,
+      photon_torpedo: 0,
+      rocket_launcher: 0,
+      ship_hull: 5,
+      kinetic_armor: 5,
+      energy_shield: 5,
+      missile_jammer: 0
+    };
 
-              // Calculate initial defense values based on default tech counts
-              const initialMaxStats = TechService.calculateMaxDefense(defaultTechCounts, techTree);
+    // Calculate initial defense values based on default tech counts
+    const initialMaxStats = TechService.calculateMaxDefense(defaultTechCounts, techTree);
 
-              const user = new User(userId, username, password_hash, 0.0, now, techTree, saveCallback, defaultTechCounts, initialMaxStats.hull, initialMaxStats.armor, initialMaxStats.shield, now, false, null, [], null, shipId);
+    const user = new User(userId, username, password_hash, 0.0, now, techTree, saveCallback, defaultTechCounts, initialMaxStats.hull, initialMaxStats.armor, initialMaxStats.shield, now, false, null, [], null, shipId);
 
-              // Send welcome message to new user
-              await sendMessageToUser(userId, `Welcome to Spacewars, ${username}! Your journey among the stars begins now. Navigate wisely and collect resources to upgrade your ship.`);
+    // Send welcome message to new user
+    await sendMessageToUser(userId, `Welcome to Spacewars, ${username}! Your journey among the stars begins now. Navigate wisely and collect resources to upgrade your ship.`);
 
-              try {
-                // Note: User creation doesn't need immediate caching since
-                // the API endpoints will load and cache users as needed
-                resolve(user);
-              } catch (cacheErr) {
-                console.error('Note: User created successfully but caching skipped:', cacheErr);
-                // Still resolve with user since creation succeeded
-                resolve(user);
-              }
-            }
-          );
-        }
-      );
-    } else {
-      // Create user without ship (for testing, with default defense values)
-      db.run('INSERT INTO users (username, password_hash, iron, last_updated, tech_tree, hull_current, armor_current, shield_current, defense_last_regen) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-        [username, password_hash, 0.0, now, JSON.stringify(techTree), 250.0, 250.0, 250.0, now],
-        async function (err) {
-          if (err) return reject(err);
-          const id = this.lastID;
+    return user;
+  } else {
+    // Create user without ship (for testing, with default defense values)
+    const userResult = await db.query(
+      'INSERT INTO users (username, password_hash, iron, last_updated, tech_tree, hull_current, armor_current, shield_current, defense_last_regen) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id',
+      [username, password_hash, 0.0, now, JSON.stringify(techTree), 250.0, 250.0, 250.0, now]
+    );
 
-          // Create the user object with default tech counts and defense values
-          const defaultTechCounts: TechCounts = {
-            pulse_laser: 5,
-            auto_turret: 5,
-            plasma_lance: 0,
-            gauss_rifle: 0,
-            photon_torpedo: 0,
-            rocket_launcher: 0,
-            ship_hull: 5,
-            kinetic_armor: 5,
-            energy_shield: 5,
-            missile_jammer: 0
-          };
+    const id = userResult.rows[0].id;
 
-          // Calculate initial defense values based on default tech counts
-          const initialMaxStats = TechService.calculateMaxDefense(defaultTechCounts, techTree);
+    // Create the user object with default tech counts and defense values
+    const defaultTechCounts: TechCounts = {
+      pulse_laser: 5,
+      auto_turret: 5,
+      plasma_lance: 0,
+      gauss_rifle: 0,
+      photon_torpedo: 0,
+      rocket_launcher: 0,
+      ship_hull: 5,
+      kinetic_armor: 5,
+      energy_shield: 5,
+      missile_jammer: 0
+    };
 
-          const user = new User(id, username, password_hash, 0.0, now, techTree, saveCallback, defaultTechCounts, initialMaxStats.hull, initialMaxStats.armor, initialMaxStats.shield, now, false, null, [], null);
+    // Calculate initial defense values based on default tech counts
+    const initialMaxStats = TechService.calculateMaxDefense(defaultTechCounts, techTree);
 
-          try {
-            // Note: User creation doesn't need immediate caching since
-            // the API endpoints will load and cache users as needed
-            resolve(user);
-          } catch (cacheErr) {
-            console.error('Note: User created successfully but caching skipped:', cacheErr);
-            // Still resolve with user since creation succeeded
-            resolve(user);
-          }
-        }
-      );
-    }
-  });
+    const user = new User(id, username, password_hash, 0.0, now, techTree, saveCallback, defaultTechCounts, initialMaxStats.hull, initialMaxStats.armor, initialMaxStats.shield, now, false, null, [], null);
+
+    return user;
+  }
 }
 
-export function saveUserToDb(db: sqlite3.Database): SaveUserCallback {
+export function saveUserToDb(db: DatabaseConnection): SaveUserCallback {
   return async (user: User) => {
-    return new Promise<void>((resolve, reject) => {
-      db.run(
-        `UPDATE users SET 
-          iron = ?, 
-          last_updated = ?, 
-          tech_tree = ?, 
-          ship_id = ?,
-          pulse_laser = ?,
-          auto_turret = ?,
-          plasma_lance = ?,
-          gauss_rifle = ?,
-          photon_torpedo = ?,
-          rocket_launcher = ?,
-          ship_hull = ?,
-          kinetic_armor = ?,
-          energy_shield = ?,
-          missile_jammer = ?,
-          hull_current = ?,
-          armor_current = ?,
-          shield_current = ?,
-          defense_last_regen = ?,
-          in_battle = ?,
-          current_battle_id = ?,
-          build_queue = ?,
-          build_start_sec = ?
-        WHERE id = ?`,
-        [
-          user.iron,
-          user.last_updated,
-          JSON.stringify(user.techTree),
-          user.ship_id,
-          user.techCounts.pulse_laser,
-          user.techCounts.auto_turret,
-          user.techCounts.plasma_lance,
-          user.techCounts.gauss_rifle,
-          user.techCounts.photon_torpedo,
-          user.techCounts.rocket_launcher,
-          user.techCounts.ship_hull,
-          user.techCounts.kinetic_armor,
-          user.techCounts.energy_shield,
-          user.techCounts.missile_jammer,
-          user.hullCurrent,
-          user.armorCurrent,
-          user.shieldCurrent,
-          user.defenseLastRegen,
-          user.inBattle ? 1 : 0,
-          user.currentBattleId,
-          JSON.stringify(user.buildQueue),
-          user.buildStartSec,
-          user.id
-        ],
-        function (err) {
-          if (err) return reject(err);
-          resolve();
-        }
-      );
-    });
+    await db.query(
+      `UPDATE users SET 
+        iron = $1, 
+        last_updated = $2, 
+        tech_tree = $3, 
+        ship_id = $4,
+        pulse_laser = $5,
+        auto_turret = $6,
+        plasma_lance = $7,
+        gauss_rifle = $8,
+        photon_torpedo = $9,
+        rocket_launcher = $10,
+        ship_hull = $11,
+        kinetic_armor = $12,
+        energy_shield = $13,
+        missile_jammer = $14,
+        hull_current = $15,
+        armor_current = $16,
+        shield_current = $17,
+        defense_last_regen = $18,
+        in_battle = $19,
+        current_battle_id = $20,
+        build_queue = $21,
+        build_start_sec = $22
+      WHERE id = $23`,
+      [
+        user.iron,
+        user.last_updated,
+        JSON.stringify(user.techTree),
+        user.ship_id,
+        user.techCounts.pulse_laser,
+        user.techCounts.auto_turret,
+        user.techCounts.plasma_lance,
+        user.techCounts.gauss_rifle,
+        user.techCounts.photon_torpedo,
+        user.techCounts.rocket_launcher,
+        user.techCounts.ship_hull,
+        user.techCounts.kinetic_armor,
+        user.techCounts.energy_shield,
+        user.techCounts.missile_jammer,
+        user.hullCurrent,
+        user.armorCurrent,
+        user.shieldCurrent,
+        user.defenseLastRegen,
+        user.inBattle ? 1 : 0,
+        user.currentBattleId,
+        JSON.stringify(user.buildQueue),
+        user.buildStartSec,
+        user.id
+      ]
+    );
   };
 }
 
