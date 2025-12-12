@@ -6,12 +6,11 @@ import { DatabaseConnection, getDatabase, resetTestDatabase } from '@/lib/server
 
 /**
  * Creates a test database with all tables and seed data.
- * In the new architecture, the database module handles all setup including
- * additional test users.
+ * Uses PostgreSQL test database.
  */
 export async function createTestDatabase(): Promise<DatabaseConnection> {
-  // Reset and get fresh test database (SQLite in-memory for tests)
-  resetTestDatabase();
+  // Reset and get fresh test database (PostgreSQL test DB)
+  await resetTestDatabase();
   return await getDatabase();
 }
 
@@ -28,7 +27,7 @@ export async function getTestDatabase(): Promise<DatabaseConnection> {
  * Closes the test database
  */
 export async function closeTestDatabase(): Promise<void> {
-  resetTestDatabase();
+  await resetTestDatabase();
 }
 
 /**

@@ -1,24 +1,18 @@
 import { Pool, PoolClient } from 'pg';
 import { CREATE_TABLES } from './schema';
-import { CREATE_TABLES_SQLITE } from './testSchemas';
-import { seedDatabase, DEFAULT_USERS, DEFAULT_SPACE_OBJECTS } from './seedData';
+import { seedDatabase } from './seedData';
 import { applyTechMigrations } from './migrations';
-import { DatabaseAdapter, PostgreSQLAdapter, SQLiteAdapter, QueryResult } from './databaseAdapter';
+import { DatabaseAdapter, PostgreSQLAdapter, QueryResult } from './databaseAdapter';
 
-// Database connection pool (for production PostgreSQL)
+// Database connection pool (for both production and test PostgreSQL)
 let pool: Pool | null = null;
 let initializationPromise: Promise<Pool> | null = null;
 
-// Test database management (SQLite in-memory)
-let testAdapter: SQLiteAdapter | null = null;
-let testDbInitialized = false;
-
-// Cached adapter for production
-let productionAdapter: PostgreSQLAdapter | null = null;
+// Cached adapter
+let adapter: PostgreSQLAdapter | null = null;
 
 /**
- * Type for the database - compatible interface for both PostgreSQL Pool and SQLite adapter
- * This allows any code using db.query() to work with both backends
+ * Type for the database - PostgreSQL connection interface
  */
 export interface DatabaseConnection {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -45,169 +39,27 @@ function getDatabaseConfig() {
   };
 }
 
-/**
- * Initialize the test database with SQLite in-memory
- */
-async function initializeTestDatabase(): Promise<DatabaseConnection> {
-  if (testAdapter && testDbInitialized) {
-    // Return existing adapter
-    return testAdapter;
-  }
-  
-  // Dynamic import of better-sqlite3 for tests only
-  const BetterSqlite3 = (await import('better-sqlite3')).default;
-  const db = new BetterSqlite3(':memory:');
-  testAdapter = new SQLiteAdapter(db);
-  
-  // Create tables using SQLite-compatible schema
-  for (const createTableSQL of CREATE_TABLES_SQLITE) {
-    await testAdapter.query(createTableSQL);
-  }
-  
-  // Seed with the same default data as production
-  await seedTestDatabaseSQLite(testAdapter);
-  
-  testDbInitialized = true;
-  
-  return testAdapter;
-}
-
-/**
- * Seeding for test database (SQLite)
- */
-async function seedTestDatabaseSQLite(adapter: SQLiteAdapter): Promise<void> {
-  const now = Date.now();
-  
-  try {
-    // Precomputed password hashes for test consistency (bcrypt with 10 rounds)
-    const passwordHashes: Record<string, string> = {
-      'a': '$2b$10$0q/od18qjo/fyCB8b.Dn2OZdKs1pKAOPwly98WEZzbsT.yavE6BY.',
-      'dummy': '$2b$10$GJ2Bjb5Ruhd1hCnDxzEzxOmDAlgIy9.0ci11khzvsH0ta7q17K4ay',
-    };
-    
-    // Create ships and users for all DEFAULT_USERS
-    for (const user of DEFAULT_USERS) {
-      // Create ship for this user
-      const shipResult = await adapter.query<{ id: number }>(
-        `INSERT INTO space_objects (type, x, y, speed, angle, last_position_update_ms)
-         VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
-        ['player_ship', user.ship.x, user.ship.y, user.ship.speed, user.ship.angle, now]
-      );
-      
-      const shipId = shipResult.rows[0].id;
-      
-      // Get precomputed hash for this user's password
-      const hashedPassword = passwordHashes[user.password] || passwordHashes['a'];
-      const techTreeJson = JSON.stringify(user.tech_tree);
-      
-      // Get defense values from user or use defaults
-      const hullCurrent = user.defense?.hull_current ?? 250.0;
-      const armorCurrent = user.defense?.armor_current ?? 250.0;
-      const shieldCurrent = user.defense?.shield_current ?? 250.0;
-      
-      // Build INSERT statement based on what optional fields are provided
-      const columns = ['username', 'password_hash', 'iron', 'last_updated', 'tech_tree', 'ship_id', 'hull_current', 'armor_current', 'shield_current', 'defense_last_regen'];
-      const values: (string | number)[] = [
-        user.username,
-        hashedPassword,
-        user.iron,
-        Math.floor(now / 1000),
-        techTreeJson,
-        shipId,
-        hullCurrent,
-        armorCurrent,
-        shieldCurrent,
-        Math.floor(now / 1000)
-      ];
-      
-      // Add tech_counts if provided
-      if (user.tech_counts) {
-        columns.push(
-          'pulse_laser', 'auto_turret', 'plasma_lance', 'gauss_rifle', 
-          'photon_torpedo', 'rocket_launcher', 'ship_hull', 'kinetic_armor', 
-          'energy_shield', 'missile_jammer'
-        );
-        values.push(
-          user.tech_counts.pulse_laser,
-          user.tech_counts.auto_turret,
-          user.tech_counts.plasma_lance,
-          user.tech_counts.gauss_rifle,
-          user.tech_counts.photon_torpedo,
-          user.tech_counts.rocket_launcher,
-          user.tech_counts.ship_hull,
-          user.tech_counts.kinetic_armor,
-          user.tech_counts.energy_shield,
-          user.tech_counts.missile_jammer
-        );
-      }
-      
-      const placeholders = columns.map((_, i) => `$${i + 1}`).join(', ');
-      const insertSQL = `INSERT INTO users (${columns.join(', ')}) VALUES (${placeholders})`;
-      
-      await adapter.query(insertSQL, values);
-    }
-    
-    // Create other space objects (asteroids, shipwrecks, escape pods)
-    for (const obj of DEFAULT_SPACE_OBJECTS) {
-      await adapter.query(
-        `INSERT INTO space_objects (type, x, y, speed, angle, last_position_update_ms)
-         VALUES ($1, $2, $3, $4, $5, $6)`,
-        [obj.type, obj.x, obj.y, obj.speed, obj.angle, now]
-      );
-    }
-    
-    // Create additional test users (IDs 3-10) for tests that need more users
-    const testPasswordHash = passwordHashes['a'];
-    const testTechTree = JSON.stringify({ ironHarvesting: 1, shipSpeed: 1 });
-    
-    for (let i = 3; i <= 10; i++) {
-      // Create ship for this test user
-      const shipResult = await adapter.query<{ id: number }>(
-        `INSERT INTO space_objects (type, x, y, speed, angle, last_position_update_ms)
-         VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
-        ['player_ship', 250 + i * 10, 250 + i * 10, 0, 0, now]
-      );
-      
-      const shipId = shipResult.rows[0].id;
-      
-      // Create the test user
-      await adapter.query(
-        `INSERT INTO users (username, password_hash, iron, last_updated, tech_tree, ship_id, hull_current, armor_current, shield_current, defense_last_regen)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-        [`testuser${i}`, testPasswordHash, 1000, Math.floor(now / 1000), testTechTree, shipId, 250.0, 250.0, 250.0, Math.floor(now / 1000)]
-      );
-    }
-    
-  } catch (error) {
-    console.error('❌ Error seeding test database:', error);
-    throw error;
-  }
-}
-
 export async function getDatabase(): Promise<DatabaseConnection> {
-  // Use test database for tests - return SQLite adapter
-  if (process.env.NODE_ENV === 'test') {
-    return await initializeTestDatabase();
-  }
-
   // If database is already initialized, return the adapter
-  if (pool && productionAdapter) {
-    return productionAdapter;
+  if (pool && adapter) {
+    return adapter;
   }
 
   // If initialization is in progress, wait for it
   if (initializationPromise) {
     await initializationPromise;
-    return productionAdapter!;
+    return adapter!;
   }
 
   // Start initialization
   initializationPromise = (async () => {
     const config = getDatabaseConfig();
     pool = new Pool(config);
-    productionAdapter = new PostgreSQLAdapter(pool);
+    adapter = new PostgreSQLAdapter(pool);
     
-    console.log(`✅ Connected to PostgreSQL database: ${config.database}@${config.host}:${config.port}`);
+    const isTest = process.env.NODE_ENV === 'test';
+    const dbLabel = isTest ? 'test' : 'production';
+    console.log(`✅ Connected to PostgreSQL ${dbLabel} database: ${config.database}@${config.host}:${config.port}`);
     
     const client = await pool.connect();
     try {
@@ -215,9 +67,10 @@ export async function getDatabase(): Promise<DatabaseConnection> {
       const tablesExist = await checkTablesExist(client);
       
       if (!tablesExist) {
-        console.log('🆕 New database detected, initializing...');
+        console.log(`🆕 New ${dbLabel} database detected, initializing...`);
         await initializeDatabase(client, pool);
-      } else {
+      } else if (!isTest) {
+        // Only run migrations in production, not in tests
         console.log('📊 Existing database detected, checking for migrations...');
         await applyTechMigrations(pool);
       }
@@ -229,7 +82,7 @@ export async function getDatabase(): Promise<DatabaseConnection> {
   })();
 
   await initializationPromise;
-  return productionAdapter!;
+  return adapter!;
 }
 
 async function checkTablesExist(client: PoolClient): Promise<boolean> {
@@ -262,32 +115,41 @@ export async function closeDatabase(): Promise<void> {
     await pool.end();
     pool = null;
     initializationPromise = null;
-    productionAdapter = null;
-  }
-}
-
-/**
- * Closes the test database (for cleanup in tests)
- */
-export async function closeTestDatabase(): Promise<void> {
-  if (testAdapter && process.env.NODE_ENV === 'test') {
-    await testAdapter.close();
-    testAdapter = null;
+    adapter = null;
   }
 }
 
 /**
  * Resets the test database to fresh state
+ * Drops all tables and recreates them with seed data
  */
-export function resetTestDatabase(): void {
-  if (process.env.NODE_ENV === 'test') {
-    // Close existing connection if any
-    if (testAdapter) {
-      testAdapter.close().catch(() => {});
+export async function resetTestDatabase(): Promise<void> {
+  if (process.env.NODE_ENV === 'test' && pool) {
+    try {
+      // Drop all tables in reverse order (respecting foreign keys)
+      await pool.query('DROP TABLE IF EXISTS battles CASCADE');
+      await pool.query('DROP TABLE IF EXISTS messages CASCADE');
+      await pool.query('DROP TABLE IF EXISTS users CASCADE');
+      await pool.query('DROP TABLE IF EXISTS space_objects CASCADE');
+      
+      // Recreate tables
+      for (const createTableSQL of CREATE_TABLES) {
+        await pool.query(createTableSQL);
+      }
+      
+      // Seed the database with default data
+      await seedDatabase(pool);
+      
+      console.log('🔄 Test database reset complete');
+    } catch (error) {
+      console.error('❌ Error resetting test database:', error);
+      throw error;
     }
-    testAdapter = null;
-    testDbInitialized = false;
-    // Next call to getDatabase() will create a fresh database
+  } else if (process.env.NODE_ENV === 'test') {
+    // Clear the connection so next getDatabase() call will initialize fresh
+    pool = null;
+    initializationPromise = null;
+    adapter = null;
   }
 }
 
