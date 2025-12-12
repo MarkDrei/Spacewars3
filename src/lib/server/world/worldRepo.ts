@@ -2,13 +2,13 @@
 // Repository functions for World persistence via in-memory cache with database persistence
 // ---
 
-import sqlite3 from 'sqlite3';
+import { Pool } from 'pg';
 import { World, SpaceObject, SaveWorldCallback } from './world';
 
 /**
  * Load world data from database (used internally by cache manager)
  */
-export function loadWorldFromDb(db: sqlite3.Database, saveCallback: SaveWorldCallback): Promise<World> {
+export function loadWorldFromDb(db: Pool, saveCallback: SaveWorldCallback): Promise<World> {
   return new Promise((resolve, reject) => {
     // Join with users table to get usernames for player ships
     const query = `
@@ -73,7 +73,7 @@ export function loadWorldFromDb(db: sqlite3.Database, saveCallback: SaveWorldCal
 /**
  * Save world data to database
  */
-export function saveWorldToDb(db: sqlite3.Database): SaveWorldCallback {
+export function saveWorldToDb(db: Pool): SaveWorldCallback {
   return async (world: World) => {
     return new Promise((resolve, reject) => {
       const updatePromises = world.spaceObjects.map(obj => {
@@ -102,7 +102,7 @@ export function saveWorldToDb(db: sqlite3.Database): SaveWorldCallback {
 /**
  * Delete a space object from database and update cache
  */
-export async function deleteSpaceObject(db: sqlite3.Database, objectId: number): Promise<void> {
+export async function deleteSpaceObject(db: Pool, objectId: number): Promise<void> {
   // First delete from database
   await new Promise<void>((resolve, reject) => {
     db.run('DELETE FROM space_objects WHERE id = ?', [objectId], (err) => {
@@ -118,7 +118,7 @@ export async function deleteSpaceObject(db: sqlite3.Database, objectId: number):
 /**
  * Insert a new space object into database and update cache
  */
-export async function insertSpaceObject(db: sqlite3.Database, obj: Omit<SpaceObject, 'id'>): Promise<number> {
+export async function insertSpaceObject(db: Pool, obj: Omit<SpaceObject, 'id'>): Promise<number> {
   // First insert into database
   const objectId = await new Promise<number>((resolve, reject) => {
     db.run(

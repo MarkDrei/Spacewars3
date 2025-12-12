@@ -4,7 +4,7 @@
 
 import { HasLock6Context, IronLocks } from '@markdrei/ironguard-typescript-locks';
 import { updateAllObjectPositions } from '@shared/physics';
-import sqlite3 from 'sqlite3';
+import { Pool } from 'pg';
 import { deleteSpaceObject, insertSpaceObject } from './worldRepo';
 
 export interface SpaceObject {
@@ -30,13 +30,13 @@ class World {
   public worldSize: { width: number; height: number };
   public spaceObjects: SpaceObject[];
   private saveCallback: SaveWorldCallback;
-  private db: sqlite3.Database; // Required database reference
+  private db: Pool; // Required database reference
 
   constructor(
     worldSize: { width: number; height: number },
     spaceObjects: SpaceObject[],
     saveCallback: SaveWorldCallback,
-    db: sqlite3.Database
+    db: Pool
   ) {
     this.worldSize = worldSize;
     this.spaceObjects = spaceObjects;
@@ -187,7 +187,7 @@ class World {
   /**
    * Create a new world instance with default values
    */
-  static createDefault(saveCallback: SaveWorldCallback, db: sqlite3.Database): World {
+  static createDefault(saveCallback: SaveWorldCallback, db: Pool): World {
     return new World(
       { width: 500, height: 500 }, // Default world size
       [], // Empty space objects initially

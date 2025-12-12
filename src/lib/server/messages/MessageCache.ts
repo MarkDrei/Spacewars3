@@ -13,7 +13,7 @@ import { getDatabase } from '../database';
 import { MESSAGE_LOCK } from '../typedLocks';
 import { MessagesRepo, type Message, type UnreadMessage } from './messagesRepo';
 import { Cache } from '../caches/Cache';
-import { Database } from 'sqlite3';
+import { Pool } from 'pg';
 
 interface MessageCacheConfig {
   persistenceIntervalMs: number;
@@ -55,7 +55,7 @@ export class MessageCache extends Cache {
     /**
    * Initialize the message cache
    */
-  static async initialize(db?: Database,  config?: MessageCacheConfig): Promise<void> {
+  static async initialize(db?: Pool,  config?: MessageCacheConfig): Promise<void> {
     if (this.instance) {
       await this.instance.shutdown();
     }

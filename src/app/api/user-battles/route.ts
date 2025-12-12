@@ -14,14 +14,15 @@ interface UserBasicInfo {
 // Helper to get username by user ID
 async function getUsernameById(userId: number): Promise<string> {
   const db = await getDatabase();
+  const client = await db.connect();
   
-  return new Promise((resolve, reject) => {
-    db.get('SELECT username FROM users WHERE id = ?', [userId], (err, row) => {
-      if (err) return reject(err);
-      if (!row) return resolve('Unknown User');
-      resolve((row as UserBasicInfo).username);
-    });
-  });
+  try {
+    const result = await client.query('SELECT username FROM users WHERE id = $1', [userId]);
+    if (!result.rows[0]) return 'Unknown User';
+    return (result.rows[0] as UserBasicInfo).username;
+  } finally {
+    client.release();
+  }
 }
 
 // Helper to calculate battle duration in seconds

@@ -27,19 +27,17 @@ export async function getBattleFromDb<THeld extends IronLocks>(
   battleId: number
 ): Promise<Battle | null> {
   const db = await getDatabase();
+  const client = await db.connect();
   
-  return new Promise((resolve, reject) => {
-    db.get(`
-      SELECT * FROM battles WHERE id = ?
-    `, [battleId], (err, row) => {
-      if (err) {
-        reject(err);
-        return;
-      }
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      resolve(row ? deserializeBattle(row as any) : null);
-    });
-  });
+  try {
+    const result = await client.query(`
+      SELECT * FROM battles WHERE id = $1
+    `, [battleId]);
+    
+    return result.rows[0] ? deserializeBattle(result.rows[0]) : null;
+  } finally {
+    client.release();
+  }
 }
 
 /**
@@ -52,23 +50,21 @@ export async function getOngoingBattleForUserFromDb<THeld extends IronLocks>(
   userId: number
 ): Promise<Battle | null> {
   const db = await getDatabase();
+  const client = await db.connect();
   
-  return new Promise((resolve, reject) => {
-    db.get(`
+  try {
+    const result = await client.query(`
       SELECT * FROM battles 
-      WHERE (attacker_id = ? OR attackee_id = ?)
+      WHERE (attacker_id = $1 OR attackee_id = $2)
         AND battle_end_time IS NULL
       ORDER BY battle_start_time DESC
       LIMIT 1
-    `, [userId, userId], (err, row) => {
-      if (err) {
-        reject(err);
-        return;
-      }
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      resolve(row ? deserializeBattle(row as any) : null);
-    });
-  });
+    `, [userId, userId]);
+    
+    return result.rows[0] ? deserializeBattle(result.rows[0]) : null;
+  } finally {
+    client.release();
+  }
 }
 
 /**
@@ -78,21 +74,18 @@ export async function getOngoingBattleForUserFromDb<THeld extends IronLocks>(
  */
 export async function getActiveBattlesFromDb(): Promise<Battle[]> {
   const db = await getDatabase();
+  const client = await db.connect();
   
-  return new Promise((resolve, reject) => {
-    db.all(`
+  try {
+    const result = await client.query(`
       SELECT * FROM battles 
       WHERE battle_end_time IS NULL
-    `, [], (err, rows) => {
-      if (err) {
-        reject(err);
-        return;
-      }
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const battles = (rows as any[]).map(row => deserializeBattle(row));
-      resolve(battles);
-    });
-  });
+    `, []);
+    
+    return result.rows.map(row => deserializeBattle(row));
+  } finally {
+    client.release();
+  }
 }
 
 // ========================================
@@ -116,8 +109,9 @@ export async function insertBattleToDb<THeld extends IronLocks>(
   attackeeInitialCooldowns: WeaponCooldowns
 ): Promise<Battle> {
   const db = await getDatabase();
+  const client = await db.connect();
 
-  return new Promise((resolve, reject) => {
+  try {
     const query = `
       INSERT INTO battles (
         attacker_id,
@@ -128,7 +122,8 @@ export async function insertBattleToDb<THeld extends IronLocks>(
         attacker_start_stats,
         attackee_start_stats,
         battle_log
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      RETURNING id
     `;
 
     const attackerCooldowns = JSON.stringify(attackerInitialCooldowns);
@@ -137,7 +132,7 @@ export async function insertBattleToDb<THeld extends IronLocks>(
     const attackeeStats = JSON.stringify(attackeeStartStats);
     const battleLog = JSON.stringify([]);
 
-    db.run(
+    const result = await client.query(
       query,
       [
         attackerId,
@@ -148,37 +143,33 @@ export async function insertBattleToDb<THeld extends IronLocks>(
         attackerStats,
         attackeeStats,
         battleLog
-      ],
-      function (err) {
-        if (err) {
-          reject(err);
-          return;
-        }
-
-        // Create battle object with generated ID
-        const battle: Battle = {
-          id: this.lastID,
-          attackerId,
-          attackeeId,
-          battleStartTime,
-          battleEndTime: null,
-          winnerId: null,
-          loserId: null,
-          attackerWeaponCooldowns: attackerInitialCooldowns,
-          attackeeWeaponCooldowns: attackeeInitialCooldowns,
-          attackerStartStats,
-          attackeeStartStats,
-          attackerEndStats: null,
-          attackeeEndStats: null,
-          battleLog: [],
-          attackerTotalDamage: 0,
-          attackeeTotalDamage: 0
-        };
-
-        resolve(battle);
-      }
+      ]
     );
-  });
+
+    // Create battle object with generated ID
+    const battle: Battle = {
+      id: result.rows[0].id,
+      attackerId,
+      attackeeId,
+      battleStartTime,
+      battleEndTime: null,
+      winnerId: null,
+      loserId: null,
+      attackerWeaponCooldowns: attackerInitialCooldowns,
+      attackeeWeaponCooldowns: attackeeInitialCooldowns,
+      attackerStartStats,
+      attackeeStartStats,
+      attackerEndStats: null,
+      attackeeEndStats: null,
+      battleLog: [],
+      attackerTotalDamage: 0,
+      attackeeTotalDamage: 0
+    };
+
+    return battle;
+  } finally {
+    client.release();
+  }
 }
 
 /**
@@ -191,23 +182,24 @@ export async function updateBattleInDb<THeld extends IronLocks>(
   battle: Battle
 ): Promise<void> {
   const db = await getDatabase();
+  const client = await db.connect();
   
-  return new Promise((resolve, reject) => {
-    db.run(`
+  try {
+    await client.query(`
       UPDATE battles SET
-        attacker_weapon_cooldowns = ?,
-        attackee_weapon_cooldowns = ?,
-        attacker_start_stats = ?,
-        attackee_start_stats = ?,
-        attacker_end_stats = ?,
-        attackee_end_stats = ?,
-        battle_log = ?,
-        battle_end_time = ?,
-        winner_id = ?,
-        loser_id = ?,
-        attacker_total_damage = ?,
-        attackee_total_damage = ?
-      WHERE id = ?
+        attacker_weapon_cooldowns = $1,
+        attackee_weapon_cooldowns = $2,
+        attacker_start_stats = $3,
+        attackee_start_stats = $4,
+        attacker_end_stats = $5,
+        attackee_end_stats = $6,
+        battle_log = $7,
+        battle_end_time = $8,
+        winner_id = $9,
+        loser_id = $10,
+        attacker_total_damage = $11,
+        attackee_total_damage = $12
+      WHERE id = $13
     `, [
       JSON.stringify(battle.attackerWeaponCooldowns),
       JSON.stringify(battle.attackeeWeaponCooldowns),
@@ -222,14 +214,10 @@ export async function updateBattleInDb<THeld extends IronLocks>(
       battle.attackerTotalDamage,
       battle.attackeeTotalDamage,
       battle.id
-    ], (err) => {
-      if (err) {
-        reject(err);
-      } else {
-        resolve();
-      }
-    });
-  });
+    ]);
+  } finally {
+    client.release();
+  }
 }
 
 /**
@@ -242,16 +230,13 @@ export async function deleteBattleFromDb<THeld extends IronLocks>(
   battleId: number
 ): Promise<void> {
   const db = await getDatabase();
+  const client = await db.connect();
   
-  return new Promise((resolve, reject) => {
-    db.run(`DELETE FROM battles WHERE id = ?`, [battleId], (err) => {
-      if (err) {
-        reject(err);
-      } else {
-        resolve();
-      }
-    });
-  });
+  try {
+    await client.query(`DELETE FROM battles WHERE id = $1`, [battleId]);
+  } finally {
+    client.release();
+  }
 }
 
 /**
@@ -263,24 +248,19 @@ export async function deleteBattleFromDb<THeld extends IronLocks>(
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function getAllBattlesFromDb<THeld extends IronLocks>(_context: HasLock13Context<THeld>): Promise<Battle[]> {
   const db = await getDatabase();
+  const client = await db.connect();
 
-  return new Promise((resolve, reject) => {
+  try {
     const query = `
       SELECT * FROM battles 
       ORDER BY battle_start_time DESC
     `;
 
-    db.all(query, [], (err, rows) => {
-      if (err) {
-        reject(err);
-        return;
-      }
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const battles = (rows as any[]).map(row => deserializeBattle(row));
-      resolve(battles);
-    });
-  });
+    const result = await client.query(query, []);
+    return result.rows.map(row => deserializeBattle(row));
+  } finally {
+    client.release();
+  }
 }
 
 /**
@@ -293,25 +273,20 @@ export async function getBattlesForUserFromDb<THeld extends IronLocks>(
   userId: number
 ): Promise<Battle[]> {
   const db = await getDatabase();
+  const client = await db.connect();
 
-  return new Promise((resolve, reject) => {
+  try {
     const query = `
       SELECT * FROM battles 
-      WHERE attacker_id = ? OR attackee_id = ?
+      WHERE attacker_id = $1 OR attackee_id = $2
       ORDER BY battle_start_time DESC
     `;
 
-    db.all(query, [userId, userId], (err, rows) => {
-      if (err) {
-        reject(err);
-        return;
-      }
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const battles = (rows as any[]).map(row => deserializeBattle(row));
-      resolve(battles);
-    });
-  });
+    const result = await client.query(query, [userId, userId]);
+    return result.rows.map(row => deserializeBattle(row));
+  } finally {
+    client.release();
+  }
 }
 
 // ========================================
@@ -322,8 +297,24 @@ export async function getBattlesForUserFromDb<THeld extends IronLocks>(
  * Deserialize battle from database row
  * Helper function for converting DB rows to Battle objects
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function deserializeBattle(row: any): Battle {
+function deserializeBattle(row: {
+  id: number;
+  attacker_id: number;
+  attackee_id: number;
+  battle_start_time: number;
+  battle_end_time: number | null;
+  winner_id: number | null;
+  loser_id: number | null;
+  attacker_weapon_cooldowns: string;
+  attackee_weapon_cooldowns: string;
+  attacker_start_stats: string;
+  attackee_start_stats: string;
+  attacker_end_stats: string | null;
+  attackee_end_stats: string | null;
+  battle_log: string;
+  attacker_total_damage: number;
+  attackee_total_damage: number;
+}): Battle {
   return {
     id: row.id,
     attackerId: row.attacker_id,

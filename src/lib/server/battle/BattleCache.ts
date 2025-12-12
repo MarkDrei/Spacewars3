@@ -14,7 +14,7 @@
 // Lock Strategy: BATTLE_LOCK (level 2) → DATABASE_LOCK_BATTLES (level 13)
 // ---
 
-import type sqlite3 from 'sqlite3';
+import type { Pool } from 'pg';
 import type { Battle, BattleStats, BattleEvent, WeaponCooldowns } from './battleTypes';
 import * as battleRepo from './battleRepo';
 import { createLockContext, HasLock2Context, IronLocks, LockContext, LocksAtMost4, LocksAtMostAndHas2 } from '@markdrei/ironguard-typescript-locks';
@@ -42,7 +42,7 @@ export class BattleCache extends Cache {
   private dirtyBattles: Set<number> = new Set();
 
   // Database connection
-  private db: sqlite3.Database | null = null;
+  private db: Pool | null = null;
 
   // Background persistence
   private readonly PERSISTENCE_INTERVAL_MS = 30_000; // 30 seconds
@@ -85,7 +85,7 @@ export class BattleCache extends Cache {
   /**
    * Initialize the battle cache with database connection
    */
-  static async initialize(db: sqlite3.Database, dependencies: BattleCacheDependencies): Promise<void> {
+  static async initialize(db: Pool, dependencies: BattleCacheDependencies): Promise<void> {
     if (BattleCache.instance) {
       await BattleCache.instance.shutdown();
     }
@@ -703,68 +703,15 @@ export class BattleCache extends Cache {
 
   /**
    * Persist all dirty battles synchronously (for shutdown)
+   * Note: PostgreSQL doesn't support synchronous operations like SQLite's serialize.
+   * This would need to be converted to async or the shutdown process redesigned.
+   * For now, we rely on the background persistence which runs periodically.
    */
   private persistDirtyBattlesSync(): void {
-    if (this.dirtyBattles.size === 0 || !this.db) {
-      return;
-    }
-
-    const dirtyIds = Array.from(this.dirtyBattles);
-    
-    for (const battleId of dirtyIds) {
-      const battle = this.battles.get(battleId);
-      if (battle) {
-        // Synchronous persist during shutdown using serialize
-        try {
-          this.db.serialize(() => {
-            // Check if exists (synchronous get)
-            let exists = false;
-            this.db!.get('SELECT id FROM battles WHERE id = ?', [battle.id], (err, row) => {
-              if (!err && row) {
-                exists = true;
-              }
-            });
-            
-            if (exists) {
-              this.db!.run(`
-                UPDATE battles SET
-                  attacker_weapon_cooldowns = ?,
-                  attackee_weapon_cooldowns = ?,
-                  attacker_start_stats = ?,
-                  attackee_start_stats = ?,
-                  attacker_end_stats = ?,
-                  attackee_end_stats = ?,
-                  battle_log = ?,
-                  battle_end_time = ?,
-                  winner_id = ?,
-                  loser_id = ?,
-                  attacker_total_damage = ?,
-                  attackee_total_damage = ?
-                WHERE id = ?
-              `, [
-                JSON.stringify(battle.attackerWeaponCooldowns),
-                JSON.stringify(battle.attackeeWeaponCooldowns),
-                JSON.stringify(battle.attackerStartStats),
-                JSON.stringify(battle.attackeeStartStats),
-                battle.attackerEndStats ? JSON.stringify(battle.attackerEndStats) : null,
-                battle.attackeeEndStats ? JSON.stringify(battle.attackeeEndStats) : null,
-                JSON.stringify(battle.battleLog),
-                battle.battleEndTime,
-                battle.winnerId,
-                battle.loserId,
-                battle.attackerTotalDamage,
-                battle.attackeeTotalDamage,
-                battle.id
-              ]);
-            }
-          });
-          
-          this.dirtyBattles.delete(battleId);
-        } catch (err) {
-          console.error(`Error persisting battle ${battleId} during shutdown:`, err);
-        }
-      }
-    }
+    // TODO: Convert to async shutdown process for PostgreSQL
+    console.warn('Synchronous persist during shutdown not yet implemented for PostgreSQL');
+    // In PostgreSQL, we would need to make shutdown() handle this asynchronously
+    // or ensure background persistence runs before shutdown
   }
 }
 
