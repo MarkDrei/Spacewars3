@@ -32,7 +32,7 @@ async function shutdownMessageCache(): Promise<void> {
 }
 
 export async function initializeIntegrationTestServer(): Promise<void> {
-  resetTestDatabase();
+  await resetTestDatabase();
   BattleCache.resetInstance();
   UserCache.resetInstance();
   WorldCache.resetInstance();

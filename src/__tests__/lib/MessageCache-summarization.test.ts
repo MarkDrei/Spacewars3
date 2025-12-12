@@ -8,7 +8,7 @@ describe('MessageCache - Summarization', () => {
   beforeEach(async () => {
     // Reset database to ensure clean state
     const { resetTestDatabase } = await import('@/lib/server/database');
-    resetTestDatabase();
+    await resetTestDatabase();
     
     MessageCache.resetInstance();
     messageCache = MessageCache.getInstance({

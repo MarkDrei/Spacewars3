@@ -15,6 +15,21 @@ jobs:
     permissions:
       contents: read
     
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: spacewars
+          POSTGRES_PASSWORD: spacewars
+          POSTGRES_DB: spacewars_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -35,6 +50,11 @@ jobs:
         run: npm test
         env:
           NODE_ENV: test
+          POSTGRES_HOST: localhost
+          POSTGRES_PORT: 5432
+          POSTGRES_DB: spacewars_test
+          POSTGRES_USER: spacewars
+          POSTGRES_PASSWORD: spacewars
 
   docker-integration:
     name: Docker Integration Tests

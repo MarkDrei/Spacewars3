@@ -78,12 +78,14 @@
 - Tables: users (authentication + game stats), space_objects (game world), battles, messages
 - All database operations should go through the server-side utilities
 - Seeding: Default user "a" and space objects (asteroids, shipwrecks, escape pods) created automatically
-- Use `docker-compose up db` to start PostgreSQL locally for development
+- Use `docker-compose up db -d` to start PostgreSQL locally for development
+- Use `docker-compose up db-test -d` to start PostgreSQL test database (port 5433)
 
 ## Testing
 - All business logic must be covered by unit tests
 - Tests located in `src/__tests__/` directory
 - Test environment: Vitest with jsdom for React components, node for API routes
+- Test database: PostgreSQL test database (POSTGRES_TEST_DB, defaults to 'spacewars_test')
 - Test naming convention: whatIsTested_scenario_expectedOutcome
   - Example: `updateStats_researchDoesNotComplete_awardsAllIronAtOldRate`
   - Use descriptive names that explain the test's purpose
@@ -92,6 +94,7 @@
   - UI mode: `npm run test:ui`
   - Watch mode: `npm test -- --watch`
 - Tests should focus on business logic and avoid testing implementation details
+- Tests use the same PostgreSQL database engine as production for consistency
 
 ## Building and Running
 - Use `npm install` to install dependencies.

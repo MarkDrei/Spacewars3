@@ -11,6 +11,13 @@ export default defineConfig({
     env: {
       NODE_ENV: 'test'
     },
+    // Run tests in a single thread to avoid database conflicts with PostgreSQL
+    // This is necessary because tests reset/truncate shared database tables
+    poolOptions: {
+      threads: {
+        singleThread: true
+      }
+    },
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html', 'lcov'],
