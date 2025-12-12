@@ -3,9 +3,9 @@
 // ---
 
 import { describe, expect, it, afterEach, beforeEach } from 'vitest';
-import { Database } from 'sqlite3';
-import { CREATE_TABLES } from '@/lib/server/schema';
+import { DatabaseConnection, getDatabase, resetTestDatabase } from '@/lib/server/database';
 import { createUser, saveUserToDb } from '@/lib/server/user/userRepo';
+import { MessageCache } from '@/lib/server/messages/MessageCache';
 
 interface SpaceObjectRow {
   id: number;
@@ -18,43 +18,30 @@ interface SpaceObjectRow {
 }
 
 describe('User Ship Creation', () => {
-  let db: Database;
+  let db: DatabaseConnection;
 
   beforeEach(async () => {
-    // Create in-memory database for testing
-    db = new Database(':memory:');
+    // Reset MessageCache to avoid stale database references
+    MessageCache.resetInstance();
     
-    // Create tables
-    await new Promise<void>((resolve, reject) => {
-      let completed = 0;
-      const tables = CREATE_TABLES;
-      
-      tables.forEach((createTableSQL) => {
-        db.run(createTableSQL, (err) => {
-          if (err) {
-            reject(err);
-            return;
-          }
-          completed++;
-          if (completed === tables.length) {
-            resolve();
-          }
-        });
-      });
-    });
+    // Reset and get fresh test database
+    resetTestDatabase();
+    db = await getDatabase();
   });
 
   afterEach(async () => {
-    await new Promise<void>((resolve, reject) => {
-      try {
-        db.close((err) => {
-          if (err) reject(err);
-          else resolve();
-        });
-      } catch {
-        resolve();
-      }
-    });
+    // Wait for any pending message writes before resetting
+    try {
+      const cache = MessageCache.getInstance();
+      await cache.waitForPendingWrites();
+      await cache.shutdown();
+    } catch {
+      // Ignore if cache was never initialized
+    }
+    
+    // Reset cache and database
+    MessageCache.resetInstance();
+    resetTestDatabase();
   });
 
   it('createUser_newUser_createsShipAndLinksIt', async () => {
@@ -66,12 +53,8 @@ describe('User Ship Creation', () => {
     expect(user.ship_id).toBeGreaterThan(0);
     
     // Verify the ship exists in the database
-    const ship = await new Promise<SpaceObjectRow | null>((resolve, reject) => {
-      db.get('SELECT * FROM space_objects WHERE id = ? AND type = ?', [user.ship_id, 'player_ship'], (err, row) => {
-        if (err) reject(err);
-        else resolve(row as SpaceObjectRow | undefined || null);
-      });
-    });
+    const shipResult = await db.query('SELECT * FROM space_objects WHERE id = $1 AND type = $2', [user.ship_id, 'player_ship']);
+    const ship = shipResult.rows[0] as SpaceObjectRow | undefined;
     
     expect(ship).toBeDefined();
     expect(ship).not.toBeNull();
@@ -96,14 +79,10 @@ describe('User Ship Creation', () => {
     expect(user1.ship_id).not.toBe(user2.ship_id);
     
     // Verify both ships exist
-    const ships = await new Promise<SpaceObjectRow[]>((resolve, reject) => {
-      db.all('SELECT * FROM space_objects WHERE type = ?', ['player_ship'], (err, rows) => {
-        if (err) reject(err);
-        else resolve((rows as SpaceObjectRow[]) || []);
-      });
-    });
+    const shipsResult = await db.query('SELECT * FROM space_objects WHERE type = $1', ['player_ship']);
+    const ships = shipsResult.rows as SpaceObjectRow[];
     
-    expect(ships).toHaveLength(2);
+    // Note: There may be existing ships from seeded data, so check at least 2 ships with our user IDs
     expect(ships.map(s => s.id)).toContain(user1.ship_id);
     expect(ships.map(s => s.id)).toContain(user2.ship_id);
   });

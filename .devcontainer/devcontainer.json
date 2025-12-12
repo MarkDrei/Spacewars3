@@ -1,6 +1,10 @@
 {
   "name": "Spacewars3 Development",
-  "image": "mcr.microsoft.com/devcontainers/typescript-node:1-22-bookworm",
+  
+  // Use docker-compose to include PostgreSQL
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "devcontainer",
+  "workspaceFolder": "/workspaces/Spacewars3",
   
   // Configure tool-specific properties
   "customizations": {
@@ -18,26 +22,14 @@
   },
 
   // Use 'forwardPorts' to make a list of ports inside the container available locally
-  "forwardPorts": [3000],
-
-  // Fix workspace permissions first, then install dependencies
-  "onCreateCommand": "sudo chown -R node:node /workspaces/Spacewars3-container",
+  "forwardPorts": [3000, 5432],
+  
+  // Install dependencies after container is created
   "postCreateCommand": "npm install",
+  
+  // Show helpful message on attach
+  "postAttachCommand": "echo '✅ PostgreSQL is running and ready! Run \"npm run dev\" to start the development server.'",
 
   // Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root
-  "remoteUser": "node",
-  
-  // Add features for sudo support
-  "features": {
-    "ghcr.io/devcontainers/features/common-utils:2": {
-      "installZsh": false,
-      "installOhMyZsh": false,
-      "upgradePackages": false
-    }
-  },
-
-  // Set environment variables
-  "containerEnv": {
-    "NEXT_TELEMETRY_DISABLED": "1"
-  }
+  "remoteUser": "node"
 }

@@ -21,12 +21,12 @@ Spacewars is a browser-based game where players navigate a spaceship in a 2D tor
 
 - **Framework**: Next.js 15 (App Router)
 - **Frontend**: TypeScript, React, HTML5 Canvas
-- **Backend**: Next.js API Routes, SQLite, bcrypt authentication
+- **Backend**: Next.js API Routes, PostgreSQL, bcrypt authentication
 - **Session Management**: iron-session with HTTP-only cookies
 - **Concurrency**: Typed lock system with compile-time deadlock prevention
 - **Caching**: In-memory cache with database persistence
 - **Testing**: Vitest with jsdom (196 tests, 100% passing)
-- **Database**: SQLite with schema-first approach
+- **Database**: PostgreSQL with schema-first approach
 
 ## Architecture
 
@@ -81,6 +81,7 @@ src/
 
 - Node.js (v18+)
 - npm (v8+)
+- PostgreSQL (v14+) - for local development without Docker
 
 **Or use Docker** (recommended for consistent environment):
 - Docker (v20+)
@@ -88,12 +89,12 @@ src/
 
 ### Docker Development
 
-The project includes full Docker support for both local development and production deployment.
+The project includes full Docker support for both local development and production deployment, including a PostgreSQL database container.
 
 #### Quick Start with Docker
 
 ```bash
-# Development mode with hot reload
+# Development mode with hot reload (includes PostgreSQL)
 docker-compose up dev
 
 # Production mode (test production build locally)
@@ -106,15 +107,17 @@ The application will be available at `http://localhost:3000`.
 
 | Command | Description |
 |---------|-------------|
-| `docker-compose up dev` | Start development server with hot reload |
-| `docker-compose up prod` | Start production server |
+| `docker-compose up dev` | Start development server with hot reload + PostgreSQL |
+| `docker-compose up prod` | Start production server + PostgreSQL |
+| `docker-compose up db` | Start only the PostgreSQL database |
 | `docker-compose down` | Stop and remove containers |
+| `docker-compose down -v` | Stop and remove containers + data volumes |
 | `docker-compose build` | Rebuild containers after dependency changes |
 
 #### Docker Features
 
 - **Hot Reload**: Changes to source code automatically reflect in the running container
-- **Volume Mounts**: Database persists between container restarts
+- **PostgreSQL**: Database persists between container restarts via Docker volume
 - **Isolated Environment**: Consistent development environment across all platforms
 - **Multi-stage Builds**: Optimized production images with minimal size
 
@@ -124,8 +127,9 @@ This project is fully configured for GitHub Codespaces development:
 
 1. Click "Code" → "Codespaces" → "Create codespace on main"
 2. Wait for the container to build (automatically installs dependencies)
-3. Run `npm run dev` in the terminal
-4. Access the application through the forwarded port (3000)
+3. Start PostgreSQL: `docker-compose up db -d`
+4. Run `npm run dev` in the terminal
+5. Access the application through the forwarded port (3000)
 
 The Codespace includes:
 - Node.js 20 LTS
@@ -134,9 +138,12 @@ The Codespace includes:
 - Automatic dependency installation
 - Port forwarding for the application
 
-### Quick Start
+### Quick Start (Local Development)
 
 ```bash
+# Start PostgreSQL database (using Docker)
+docker-compose up db -d
+
 # Install dependencies
 npm install
 
@@ -166,10 +173,21 @@ npm run test
 
 ### Database
 
-- **Schema**: Defined in `src/lib/server/database.ts` with auto-initialization
-- **Location**: `database/users.db` (SQLite)
+- **Database**: PostgreSQL with schema-first approach
 - **Caching**: In-memory cache with typed lock system for optimal performance
 - **Concurrency**: Deadlock-free access patterns ensure data consistency
+- **Configuration**: Set via environment variables (see `.env.example`)
+
+#### Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `POSTGRES_HOST` | PostgreSQL host | `localhost` |
+| `POSTGRES_PORT` | PostgreSQL port | `5432` |
+| `POSTGRES_DB` | Database name | `spacewars` |
+| `POSTGRES_USER` | Database user | `spacewars` |
+| `POSTGRES_PASSWORD` | Database password | `spacewars` |
+| `SESSION_SECRET` | Session encryption key | - |
 
 ### Testing
 
@@ -196,10 +214,10 @@ The application is production-ready with multiple deployment options, featuring 
 ### Deployment Options
 
 - **Docker**: Use included `Dockerfile` for containerized deployment
-- **Docker Compose**: Use `docker-compose.yml` for orchestrated deployment
+- **Docker Compose**: Use `docker-compose.yml` for orchestrated deployment with PostgreSQL
 - **Render**: Use included `render.yaml`
-- **Vercel**: Use included `vercel.json` 
-- **Any Node.js host**: Standard Next.js build output
+- **Vercel**: Use included `vercel.json` (requires external PostgreSQL)
+- **Any Node.js host**: Standard Next.js build output (requires external PostgreSQL)
 
 #### Docker Production Deployment
 
@@ -207,11 +225,18 @@ The application is production-ready with multiple deployment options, featuring 
 # Build production image
 docker build -t spacewars3:latest .
 
-# Run production container
+# Run with docker-compose (includes PostgreSQL)
+docker-compose up prod
+
+# Or run standalone (requires external PostgreSQL)
 docker run -p 3000:3000 \
-  -v $(pwd)/database:/app/database \
   -e SESSION_SECRET=your-secret-here \
   -e NODE_ENV=production \
+  -e POSTGRES_HOST=your-postgres-host \
+  -e POSTGRES_PORT=5432 \
+  -e POSTGRES_DB=spacewars \
+  -e POSTGRES_USER=spacewars \
+  -e POSTGRES_PASSWORD=your-password \
   spacewars3:latest
 ```
 
@@ -221,6 +246,11 @@ Required for production:
 
 - `NODE_ENV`: `production`
 - `SESSION_SECRET`: Random secret for session encryption
+- `POSTGRES_HOST`: PostgreSQL host
+- `POSTGRES_PORT`: PostgreSQL port (default: 5432)
+- `POSTGRES_DB`: Database name
+- `POSTGRES_USER`: Database user
+- `POSTGRES_PASSWORD`: Database password
 
 ### Build Output
 
@@ -229,7 +259,7 @@ Required for production:
 - **API routes**: 7 endpoints with typed lock system
 - **Optimized bundles**: ~100kB first load JS
 
-The application uses SQLite database (included) and features a mathematically deadlock-free architecture, making it ready for high-traffic production deployment.
+The application uses PostgreSQL database and features a mathematically deadlock-free architecture, making it ready for high-traffic production deployment.
 
 ## Troubleshooting
 
@@ -251,11 +281,16 @@ docker-compose build dev
 docker-compose up dev
 ```
 
-**Database permission issues:**
+**Database connection issues:**
 ```bash
-# Ensure database directory has correct permissions
-mkdir -p database
-chmod 755 database
+# Check if PostgreSQL is running
+docker-compose ps
+
+# View PostgreSQL logs
+docker-compose logs db
+
+# Restart the database
+docker-compose restart db
 ```
 
 ### GitHub Codespaces Issues
@@ -276,10 +311,10 @@ This is expected in restricted network environments. The application still works
 
 ### General Issues
 
-**SQLite database locked:**
-- Stop all running instances of the application
-- Delete `database/*.db-wal` and `database/*.db-shm` files
-- Restart the application
+**Database connection failed:**
+- Ensure PostgreSQL is running (`docker-compose up db`)
+- Check environment variables match your PostgreSQL configuration
+- Verify network connectivity to the database host
 
 **Tests failing:**
 ```bash

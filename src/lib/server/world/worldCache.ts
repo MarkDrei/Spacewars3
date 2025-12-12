@@ -1,5 +1,5 @@
 import { createLockContext, LOCK_11, LockContext, LocksAtMostAndHas6 } from '@markdrei/ironguard-typescript-locks';
-import sqlite3 from 'sqlite3';
+import { DatabaseConnection } from '../database';
 import { WORLD_LOCK } from '../typedLocks';
 import { MessageCache } from '../messages/MessageCache';
 import { World } from './world';
@@ -34,7 +34,7 @@ export class WorldCache extends Cache {
     logStats: false,
   };
 
-  private db: sqlite3.Database | null = null;
+  private db: DatabaseConnection | null = null;
   private world: World | null = null;
   private worldDirty = false;
   private persistenceTimer: NodeJS.Timeout | null = null;
@@ -61,7 +61,7 @@ export class WorldCache extends Cache {
     globalThis.worldCacheInstance = value;
   }
 
-  static async initializeFromDb(db: sqlite3.Database, config?: Partial<WorldCacheConfig>): Promise<void> {
+  static async initializeFromDb(db: DatabaseConnection, config?: Partial<WorldCacheConfig>): Promise<void> {
     WorldCache.instance?.stopBackgroundPersistence();
     const cache = new WorldCache();
     cache.applyConfig(config);
@@ -77,7 +77,7 @@ export class WorldCache extends Cache {
     WorldCache.instance = cache;
   }
 
-  static initializeWithWorld(world: World, db: sqlite3.Database, config?: Partial<WorldCacheConfig>): void {
+  static initializeWithWorld(world: World, db: DatabaseConnection, config?: Partial<WorldCacheConfig>): void {
     WorldCache.instance?.stopBackgroundPersistence();
     const cache = new WorldCache();
     cache.applyConfig(config);

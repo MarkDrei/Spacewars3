@@ -2,80 +2,81 @@
 /**
  * Export Database to HTML
  * 
- * This script extracts all data from the SQLite database and generates
+ * This script extracts all data from the PostgreSQL database and generates
  * a nicely formatted HTML report with all tables and their contents.
  */
 
-import sqlite3 from 'sqlite3';
+import { Pool } from 'pg';
 import path from 'path';
 import fs from 'fs';
 
-const DB_PATH = path.join(process.cwd(), 'database', 'users.db');
 const OUTPUT_PATH = path.join(process.cwd(), 'test-output', 'database-export.html');
 
 interface TableInfo {
-  name: string;
-  sql: string;
+  table_name: string;
 }
 
 interface ColumnInfo {
-  cid: number;
-  name: string;
-  type: string;
-  notnull: number;
-  dflt_value: any;
-  pk: number;
+  column_name: string;
+  data_type: string;
+  is_nullable: string;
+  column_default: string | null;
+}
+
+/**
+ * Get database connection configuration from environment
+ */
+function getDatabaseConfig() {
+  return {
+    host: process.env.POSTGRES_HOST || 'localhost',
+    port: parseInt(process.env.POSTGRES_PORT || '5432', 10),
+    database: process.env.POSTGRES_DB || 'spacewars',
+    user: process.env.POSTGRES_USER || 'spacewars',
+    password: process.env.POSTGRES_PASSWORD || 'spacewars',
+  };
 }
 
 /**
  * Get all tables in the database
  */
-function getTables(db: sqlite3.Database): Promise<TableInfo[]> {
-  return new Promise((resolve, reject) => {
-    db.all(
-      "SELECT name, sql FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name",
-      (err, rows) => {
-        if (err) reject(err);
-        else resolve(rows as TableInfo[]);
-      }
-    );
-  });
+async function getTables(db: Pool): Promise<TableInfo[]> {
+  const result = await db.query(`
+    SELECT table_name 
+    FROM information_schema.tables 
+    WHERE table_schema = 'public' 
+    AND table_type = 'BASE TABLE'
+    ORDER BY table_name
+  `);
+  return result.rows;
 }
 
 /**
  * Get column information for a table
  */
-function getTableInfo(db: sqlite3.Database, tableName: string): Promise<ColumnInfo[]> {
-  return new Promise((resolve, reject) => {
-    db.all(`PRAGMA table_info(${tableName})`, (err, rows) => {
-      if (err) reject(err);
-      else resolve(rows as ColumnInfo[]);
-    });
-  });
+async function getTableInfo(db: Pool, tableName: string): Promise<ColumnInfo[]> {
+  const result = await db.query(`
+    SELECT column_name, data_type, is_nullable, column_default
+    FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = $1
+    ORDER BY ordinal_position
+  `, [tableName]);
+  return result.rows;
 }
 
 /**
  * Get all rows from a table
  */
-function getTableData(db: sqlite3.Database, tableName: string): Promise<any[]> {
-  return new Promise((resolve, reject) => {
-    db.all(`SELECT * FROM ${tableName}`, (err, rows) => {
-      if (err) reject(err);
-      else resolve(rows || []);
-    });
-  });
+async function getTableData(db: Pool, tableName: string): Promise<Record<string, unknown>[]> {
+  const result = await db.query(`SELECT * FROM ${tableName}`);
+  return result.rows || [];
 }
 
 /**
  * Get table row count
  */
-function getTableCount(db: sqlite3.Database, tableName: string): Promise<number> {
-  return new Promise((resolve, reject) => {
-    db.get(`SELECT COUNT(*) as count FROM ${tableName}`, (err, row: any) => {
-      if (err) reject(err);
-      else resolve(row?.count || 0);
-    });
-  });
+async function getTableCount(db: Pool, tableName: string): Promise<number> {
+  const result = await db.query(`SELECT COUNT(*) as count FROM ${tableName}`);
+  return parseInt(result.rows[0]?.count || '0', 10);
 }
 
 /**
@@ -158,23 +159,23 @@ function escapeHtml(text: string): string {
  * Generate HTML for a table
  */
 async function generateTableHtml(
-  db: sqlite3.Database,
+  db: Pool,
   table: TableInfo
 ): Promise<string> {
-  const columns = await getTableInfo(db, table.name);
-  const data = await getTableData(db, table.name);
-  const count = await getTableCount(db, table.name);
+  const columns = await getTableInfo(db, table.table_name);
+  const data = await getTableData(db, table.table_name);
+  const count = await getTableCount(db, table.table_name);
   
   let html = `
     <div class="table-section">
-      <h2 id="${table.name}" class="table-name">
-        📋 ${table.name}
+      <h2 id="${table.table_name}" class="table-name">
+        📋 ${table.table_name}
         <span class="row-count">${count} row${count !== 1 ? 's' : ''}</span>
       </h2>
       
       <div class="schema">
         <h3>Schema</h3>
-        <pre class="sql">${escapeHtml(table.sql || '')}</pre>
+        <pre class="sql">${columns.map(c => `${c.column_name} ${c.data_type}${c.is_nullable === 'NO' ? ' NOT NULL' : ''}${c.column_default ? ' DEFAULT ' + c.column_default : ''}`).join('\n')}</pre>
       </div>
       
       <div class="data">
@@ -193,9 +194,8 @@ async function generateTableHtml(
     
     // Table headers
     columns.forEach(col => {
-      const pkBadge = col.pk ? ' <span class="pk-badge">PK</span>' : '';
-      const notNullBadge = col.notnull ? ' <span class="notnull-badge">NOT NULL</span>' : '';
-      html += `<th>${escapeHtml(col.name)}${pkBadge}${notNullBadge}<br><span class="type">${col.type}</span></th>`;
+      const notNullBadge = col.is_nullable === 'NO' ? ' <span class="notnull-badge">NOT NULL</span>' : '';
+      html += `<th>${escapeHtml(col.column_name)}${notNullBadge}<br><span class="type">${col.data_type}</span></th>`;
     });
     
     html += `
@@ -208,7 +208,7 @@ async function generateTableHtml(
     data.forEach((row, index) => {
       html += `<tr class="${index % 2 === 0 ? 'even' : 'odd'}">`;
       columns.forEach(col => {
-        html += `<td>${formatValue(row[col.name])}</td>`;
+        html += `<td>${formatValue(row[col.column_name])}</td>`;
       });
       html += '</tr>';
     });
@@ -231,12 +231,12 @@ async function generateTableHtml(
 /**
  * Generate the complete HTML document
  */
-async function generateHtml(db: sqlite3.Database): Promise<string> {
+async function generateHtml(db: Pool): Promise<string> {
   const tables = await getTables(db);
   
   let tableOfContents = '<ul class="toc">';
   tables.forEach(table => {
-    tableOfContents += `<li><a href="#${table.name}">${table.name}</a></li>`;
+    tableOfContents += `<li><a href="#${table.table_name}">${table.table_name}</a></li>`;
   });
   tableOfContents += '</ul>';
   
@@ -245,6 +245,7 @@ async function generateHtml(db: sqlite3.Database): Promise<string> {
     tablesHtml += await generateTableHtml(db, table);
   }
   
+  const config = getDatabaseConfig();
   const now = new Date().toISOString();
   
   return `<!DOCTYPE html>
@@ -687,7 +688,7 @@ async function generateHtml(db: sqlite3.Database): Promise<string> {
     <header>
       <h1>🚀 Spacewars3 Database Export</h1>
       <p class="timestamp">Generated: ${now}</p>
-      <p class="timestamp">Database: ${DB_PATH}</p>
+      <p class="timestamp">Database: ${config.database}@${config.host}:${config.port}</p>
     </header>
     
     <div class="summary">
@@ -730,13 +731,6 @@ async function generateHtml(db: sqlite3.Database): Promise<string> {
 async function main() {
   console.log('🚀 Starting database export...');
   
-  // Check if database exists
-  if (!fs.existsSync(DB_PATH)) {
-    console.error(`❌ Database not found at: ${DB_PATH}`);
-    console.log('Please ensure the database exists before running this script.');
-    process.exit(1);
-  }
-  
   // Create output directory if it doesn't exist
   const outputDir = path.dirname(OUTPUT_PATH);
   if (!fs.existsSync(outputDir)) {
@@ -744,13 +738,8 @@ async function main() {
     console.log(`✅ Created output directory: ${outputDir}`);
   }
   
-  // Open database
-  const db = new (sqlite3.verbose().Database)(DB_PATH, sqlite3.OPEN_READONLY, (err) => {
-    if (err) {
-      console.error('❌ Error opening database:', err);
-      process.exit(1);
-    }
-  });
+  const config = getDatabaseConfig();
+  const db = new Pool(config);
   
   try {
     console.log('📊 Extracting database structure and data...');
@@ -772,9 +761,7 @@ async function main() {
     process.exit(1);
   } finally {
     // Close database
-    db.close((err) => {
-      if (err) console.error('⚠️ Error closing database:', err);
-    });
+    await db.end();
   }
 }
 

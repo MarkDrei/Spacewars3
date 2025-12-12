@@ -17,13 +17,9 @@ import { initializeIntegrationTestServer, shutdownIntegrationTestServer } from '
 // Helper to get user ID from username
 async function getUserIdByUsername(username: string): Promise<number> {
   const db = await getDatabase();
-  return new Promise((resolve, reject) => {
-    db.get('SELECT id FROM users WHERE username = ?', [username], (err, row) => {
-      if (err) return reject(err);
-      if (!row) return reject(new Error('User not found'));
-      resolve((row as { id: number }).id);
-    });
-  });
+  const result = await db.query('SELECT id FROM users WHERE username = $1', [username]);
+  if (result.rows.length === 0) throw new Error('User not found');
+  return (result.rows[0] as { id: number }).id;
 }
 
 // Helper to create a test battle between two users
@@ -140,12 +136,8 @@ describe('User battles API', () => {
 
     // Get their user data - the last two created users
     const db = await getDatabase();
-    const users = await new Promise<Array<{ id: number; username: string }>>((resolve, reject) => {
-      db.all('SELECT id, username FROM users ORDER BY id DESC LIMIT 2', [], (err, rows) => {
-        if (err) return reject(err);
-        resolve(rows as Array<{ id: number; username: string }>);
-      });
-    });
+    const usersResult = await db.query('SELECT id, username FROM users ORDER BY id DESC LIMIT 2');
+    const users = usersResult.rows as Array<{ id: number; username: string }>;
 
     const user1 = users[1]; // Second to last
     const user2 = users[0]; // Last
@@ -190,12 +182,8 @@ describe('User battles API', () => {
     const db = await getDatabase();
     
     // Get user data - last two users
-    const users = await new Promise<Array<{ id: number; username: string }>>((resolve, reject) => {
-      db.all('SELECT id, username FROM users ORDER BY id DESC LIMIT 2', [], (err, rows) => {
-        if (err) return reject(err);
-        resolve(rows as Array<{ id: number; username: string }>);
-      });
-    });
+    const usersResult = await db.query('SELECT id, username FROM users ORDER BY id DESC LIMIT 2');
+    const users = usersResult.rows as Array<{ id: number; username: string }>;
 
     const user1 = users[1]; // Second to last
     const user2 = users[0]; // Last
