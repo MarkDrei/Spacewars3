@@ -40,16 +40,11 @@ describe('User Persistence to Database', () => {
     });
     
     // Assert: Read directly from database to verify persistence
-    const userFromDb = await new Promise<{ iron: number; pulse_laser: number }>((resolve, reject) => {
-      db.get(
-        'SELECT iron, pulse_laser FROM users WHERE id = ?',
-        [user.id],
-        (err, row) => {
-          if (err) reject(err);
-          else resolve(row as { iron: number; pulse_laser: number });
-        }
-      );
-    });
+    const result = await db.query(
+      'SELECT iron, pulse_laser FROM users WHERE id = $1',
+      [user.id]
+    );
+    const userFromDb = result.rows[0] as { iron: number; pulse_laser: number };
     
     expect(userFromDb).toBeDefined();
     expect(userFromDb.iron).toBe(1000);
@@ -82,16 +77,11 @@ describe('User Persistence to Database', () => {
     await userWorldCache.shutdown();
     
     // Assert: Read directly from database to verify persistence on shutdown
-    const userFromDb = await new Promise<{ iron: number; auto_turret: number }>((resolve, reject) => {
-      db.get(
-        'SELECT iron, auto_turret FROM users WHERE id = ?',
-        [user.id],
-        (err, row) => {
-          if (err) reject(err);
-          else resolve(row as { iron: number; auto_turret: number });
-        }
-      );
-    });
+    const result = await db.query(
+      'SELECT iron, auto_turret FROM users WHERE id = $1',
+      [user.id]
+    );
+    const userFromDb = result.rows[0] as { iron: number; auto_turret: number };
     
     expect(userFromDb).toBeDefined();
     expect(userFromDb.iron).toBe(5000);

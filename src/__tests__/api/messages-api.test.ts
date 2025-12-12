@@ -5,19 +5,17 @@
 import { describe, test, expect, beforeEach } from 'vitest';
 import { GET } from '@/app/api/messages/route';
 import { POST } from '@/app/api/messages/mark-read/route';
-import { clearTestDatabase } from '../helpers/testDatabase';
+import { createTestDatabase } from '../helpers/testDatabase';
 import { createRequest } from '../helpers/apiTestHelpers';
 import { getMessageCache, MessageCache } from '@/lib/server/messages/MessageCache';
 
 describe('Messages API Route Handler', () => {
   beforeEach(async () => {
-    // Reset database singleton to ensure clean state
-    const { resetTestDatabase } = await import('../../lib/server/database');
-    resetTestDatabase();
-    
-    await clearTestDatabase();
     // Reset message cache before each test
     MessageCache.resetInstance();
+    
+    // Create fresh test database (this also creates test users 3-10)
+    await createTestDatabase();
   });
 
   test('messages_notAuthenticated_returns401', async () => {

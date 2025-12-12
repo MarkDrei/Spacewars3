@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  # Development container
+  devcontainer:
+    build:
+      context: ..
+      dockerfile: .devcontainer/Dockerfile
+    volumes:
+      - ..:/workspaces/Spacewars3:cached
+      - node_modules:/workspaces/Spacewars3/node_modules
+    command: sleep infinity
+    environment:
+      - NEXT_TELEMETRY_DISABLED=1
+      - POSTGRES_HOST=db
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=spacewars
+      - POSTGRES_USER=spacewars
+      - POSTGRES_PASSWORD=spacewars
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # PostgreSQL database
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: spacewars
+      POSTGRES_PASSWORD: spacewars
+      POSTGRES_DB: spacewars
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U spacewars"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  node_modules:
+  postgres_data:
