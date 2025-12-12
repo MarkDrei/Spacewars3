@@ -121,35 +121,35 @@ export async function closeDatabase(): Promise<void> {
 
 /**
  * Resets the test database to fresh state
- * Drops all tables and recreates them with seed data
+ * Truncates all tables and reseeds them with default data
  */
 export async function resetTestDatabase(): Promise<void> {
-  if (process.env.NODE_ENV === 'test' && pool) {
+  if (process.env.NODE_ENV === 'test') {
+    // If no pool exists, force reinitialization on next getDatabase() call
+    if (!pool) {
+      initializationPromise = null;
+      adapter = null;
+      return;
+    }
+
     try {
-      // Drop all tables in reverse order (respecting foreign keys)
-      await pool.query('DROP TABLE IF EXISTS battles CASCADE');
-      await pool.query('DROP TABLE IF EXISTS messages CASCADE');
-      await pool.query('DROP TABLE IF EXISTS users CASCADE');
-      await pool.query('DROP TABLE IF EXISTS space_objects CASCADE');
+      // Use TRUNCATE instead of DROP for faster reset
+      // CASCADE removes dependent rows in referencing tables
+      // RESTART IDENTITY resets sequences to 1
+      await pool.query('TRUNCATE TABLE battles, messages, users, space_objects RESTART IDENTITY CASCADE');
       
-      // Recreate tables
-      for (const createTableSQL of CREATE_TABLES) {
-        await pool.query(createTableSQL);
-      }
-      
-      // Seed the database with default data
-      await seedDatabase(pool);
+      // Reseed the database with default data (force=true to skip user count check)
+      await seedDatabase(adapter!, true);
       
       console.log('🔄 Test database reset complete');
     } catch (error) {
       console.error('❌ Error resetting test database:', error);
+      // If reset fails, we need to reinitialize from scratch
+      // Clear our state variables so next getDatabase() will reinitialize
+      initializationPromise = null;
+      adapter = null;
       throw error;
     }
-  } else if (process.env.NODE_ENV === 'test') {
-    // Clear the connection so next getDatabase() call will initialize fresh
-    pool = null;
-    initializationPromise = null;
-    adapter = null;
   }
 }
 

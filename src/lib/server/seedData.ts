@@ -169,14 +169,16 @@ export const DEFAULT_SPACE_OBJECTS: SeedSpaceObject[] = [
   { type: 'escape_pod', x: 400, y: 150, speed: 45, angle: 95 }
 ];
 
-export async function seedDatabase(db: DatabaseConnection): Promise<void> {
-  // Check if database already has data
-  const result = await db.query('SELECT COUNT(*) as count FROM users');
-  const userCount = parseInt(result.rows[0]?.count || '0', 10);
-  
-  if (userCount > 0) {
-    console.log('📊 Database already has users, skipping seed');
-    return;
+export async function seedDatabase(db: DatabaseConnection, force = false): Promise<void> {
+  // Check if database already has data (skip check if force is true)
+  if (!force) {
+    const result = await db.query('SELECT COUNT(*) as count FROM users');
+    const userCount = parseInt(result.rows[0]?.count || '0', 10);
+    
+    if (userCount > 0) {
+      console.log('📊 Database already has users, skipping seed');
+      return;
+    }
   }
 
   console.log('🌱 Seeding default data...');
