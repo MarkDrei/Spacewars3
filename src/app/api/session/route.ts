@@ -19,31 +19,29 @@ export async function GET(request: NextRequest) {
     }
     
     const db = await getDatabase();
+    const client = await db.connect();
     
-    const userRow = await new Promise<{ username: string; ship_id: number } | undefined>((resolve, reject) => {
-      db.get(
-        'SELECT username, ship_id FROM users WHERE id = ?',
-        [session.userId],
-        (err, row) => {
-          if (err) {
-            reject(err);
-          } else {
-            resolve(row as { username: string; ship_id: number } | undefined);
-          }
-        }
+    try {
+      const result = await client.query(
+        'SELECT username, ship_id FROM users WHERE id = $1',
+        [session.userId]
       );
-    });
-    
-    if (userRow) {
-      console.log(`✅ Session valid - user: ${userRow.username}, shipId: ${userRow.ship_id}`);
-      return NextResponse.json({ 
-        loggedIn: true, 
-        username: userRow.username, 
-        shipId: userRow.ship_id 
-      });
-    } else {
-      console.log(`❌ Session invalid - user not found for userId: ${session.userId}`);
-      return NextResponse.json({ loggedIn: false });
+      
+      const userRow = result.rows[0] as { username: string; ship_id: number } | undefined;
+      
+      if (userRow) {
+        console.log(`✅ Session valid - user: ${userRow.username}, shipId: ${userRow.ship_id}`);
+        return NextResponse.json({ 
+          loggedIn: true, 
+          username: userRow.username, 
+          shipId: userRow.ship_id 
+        });
+      } else {
+        console.log(`❌ Session invalid - user not found for userId: ${session.userId}`);
+        return NextResponse.json({ loggedIn: false });
+      }
+    } finally {
+      client.release();
     }
   } catch (error) {
     return handleApiError(error);
