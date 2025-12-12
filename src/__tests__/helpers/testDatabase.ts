@@ -9,12 +9,11 @@ let testDbInitialized = false;
 
 /**
  * Creates a test database with all tables and seed data.
- * Only resets the database once per test run for performance.
+ * Database is initialized once and shared across all tests.
  */
 export async function createTestDatabase(): Promise<DatabaseConnection> {
-  // Only reset on first call to avoid race conditions
+  // Database is initialized in setup.ts, just return the connection
   if (!testDbInitialized) {
-    await resetTestDatabase();
     testDbInitialized = true;
   }
   return await getDatabase();
@@ -25,10 +24,6 @@ export async function createTestDatabase(): Promise<DatabaseConnection> {
  * Always calls getDatabase() which handles its own state management.
  */
 export async function getTestDatabase(): Promise<DatabaseConnection> {
-  // Ensure database is initialized
-  if (!testDbInitialized) {
-    await createTestDatabase();
-  }
   return await getDatabase();
 }
 
@@ -38,7 +33,7 @@ export async function getTestDatabase(): Promise<DatabaseConnection> {
  */
 export async function closeTestDatabase(): Promise<void> {
   // Don't reset or close the database here - it's shared across tests
-  // Each test should clean up its own data using clearTestDatabase() or resetTestDatabase()
+  // Each test should clean up its own data using clearTestDatabase()
 }
 
 /**
