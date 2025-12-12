@@ -14,7 +14,7 @@
 // Lock Strategy: BATTLE_LOCK (level 2) → DATABASE_LOCK_BATTLES (level 13)
 // ---
 
-import type sqlite3 from 'sqlite3';
+import type { Pool } from 'pg';
 import type { Battle, BattleStats, BattleEvent, WeaponCooldowns } from './battleTypes';
 import * as battleRepo from './battleRepo';
 import { createLockContext, HasLock2Context, IronLocks, LockContext, LocksAtMost4, LocksAtMostAndHas2 } from '@markdrei/ironguard-typescript-locks';
@@ -42,7 +42,7 @@ export class BattleCache extends Cache {
   private dirtyBattles: Set<number> = new Set();
 
   // Database connection
-  private db: sqlite3.Database | null = null;
+  private db: Pool | null = null;
 
   // Background persistence
   private readonly PERSISTENCE_INTERVAL_MS = 30_000; // 30 seconds
@@ -85,7 +85,7 @@ export class BattleCache extends Cache {
   /**
    * Initialize the battle cache with database connection
    */
-  static async initialize(db: sqlite3.Database, dependencies: BattleCacheDependencies): Promise<void> {
+  static async initialize(db: Pool, dependencies: BattleCacheDependencies): Promise<void> {
     if (BattleCache.instance) {
       await BattleCache.instance.shutdown();
     }

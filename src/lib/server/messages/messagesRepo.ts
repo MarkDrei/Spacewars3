@@ -4,7 +4,7 @@
 // ---
 
 import { HasLock12Context, LockLevel } from '@markdrei/ironguard-typescript-locks';
-import sqlite3 from 'sqlite3';
+import { Pool } from 'pg';
 
 export interface Message {
   id: number;
@@ -35,9 +35,9 @@ export interface UnreadMessage {
  * - Handle locking (caller's responsibility, but verified via context type parameters)
  */
 export class MessagesRepo {
-  private db: sqlite3.Database;
+  private db: Pool;
 
-  constructor(database: sqlite3.Database) {
+  constructor(database: Pool) {
     this.db = database;
   }
 
