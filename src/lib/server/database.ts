@@ -125,10 +125,15 @@ export async function closeDatabase(): Promise<void> {
  */
 export async function resetTestDatabase(): Promise<void> {
   if (process.env.NODE_ENV === 'test') {
-    // If no pool exists, force reinitialization on next getDatabase() call
-    if (!pool) {
+    // If no pool exists, reinitialize everything
+    if (!pool || !adapter) {
+      // Clear state
+      pool = null;
       initializationPromise = null;
       adapter = null;
+      
+      // Reinitialize from scratch
+      await getDatabase();
       return;
     }
 
@@ -139,16 +144,17 @@ export async function resetTestDatabase(): Promise<void> {
       await pool.query('TRUNCATE TABLE battles, messages, users, space_objects RESTART IDENTITY CASCADE');
       
       // Reseed the database with default data (force=true to skip user count check)
-      await seedDatabase(adapter!, true);
+      await seedDatabase(adapter, true);
       
       console.log('🔄 Test database reset complete');
     } catch (error) {
       console.error('❌ Error resetting test database:', error);
-      // If reset fails, we need to reinitialize from scratch
-      // Clear our state variables so next getDatabase() will reinitialize
+      // If reset fails, force reinitialization
+      pool = null;
       initializationPromise = null;
       adapter = null;
-      throw error;
+      // Reinitialize
+      await getDatabase();
     }
   }
 }
