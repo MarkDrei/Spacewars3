@@ -17,7 +17,7 @@ describe('MessageCache', () => {
   beforeEach(async () => {
     // Reset database to ensure clean state
     const { resetTestDatabase } = await import('../../lib/server/database');
-    resetTestDatabase();
+    await resetTestDatabase();
     
     // Reset singleton before each test
     MessageCache.resetInstance();
@@ -35,7 +35,7 @@ describe('MessageCache', () => {
     
     // Reset database after each test
     const { resetTestDatabase } = await import('../../lib/server/database');
-    resetTestDatabase();
+    await resetTestDatabase();
   });
 
   describe('Singleton Pattern', () => {

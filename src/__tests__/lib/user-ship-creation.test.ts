@@ -25,7 +25,7 @@ describe('User Ship Creation', () => {
     MessageCache.resetInstance();
     
     // Reset and get fresh test database
-    resetTestDatabase();
+    await resetTestDatabase();
     db = await getDatabase();
   });
 
@@ -41,7 +41,7 @@ describe('User Ship Creation', () => {
     
     // Reset cache and database
     MessageCache.resetInstance();
-    resetTestDatabase();
+    await resetTestDatabase();
   });
 
   it('createUser_newUser_createsShipAndLinksIt', async () => {
