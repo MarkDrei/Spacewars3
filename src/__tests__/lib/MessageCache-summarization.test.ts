@@ -6,9 +6,9 @@ describe('MessageCache - Summarization', () => {
   let messageCache: MessageCache;
 
   beforeEach(async () => {
-    // Reset database to ensure clean state
-    const { resetTestDatabase } = await import('@/lib/server/database');
-    await resetTestDatabase();
+    // Clear messages from previous tests
+    const { clearTestDatabase } = await import('../helpers/testDatabase');
+    await clearTestDatabase();
     
     MessageCache.resetInstance();
     messageCache = MessageCache.getInstance({

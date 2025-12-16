@@ -15,9 +15,9 @@ import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 describe('MessageCache', () => {
   
   beforeEach(async () => {
-    // Reset database to ensure clean state
-    const { resetTestDatabase } = await import('../../lib/server/database');
-    await resetTestDatabase();
+    // Clear messages from previous tests
+    const { clearTestDatabase } = await import('../helpers/testDatabase');
+    await clearTestDatabase();
     
     // Reset singleton before each test
     MessageCache.resetInstance();
@@ -32,10 +32,6 @@ describe('MessageCache', () => {
     } catch {
       // Ignore cleanup errors
     }
-    
-    // Reset database after each test
-    const { resetTestDatabase } = await import('../../lib/server/database');
-    await resetTestDatabase();
   });
 
   describe('Singleton Pattern', () => {
