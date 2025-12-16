@@ -7,10 +7,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "vitest run",
+    "test": ".devcontainer/init-db.sh && vitest run",
     "ci": "npm run lint && npm test && npm run build",
-    "test:ui": "vitest --ui",
-    "test:watch": "vitest",
+    "test:ui": ".devcontainer/init-db.sh && vitest --ui",
+    "test:watch": ".devcontainer/init-db.sh && vitest",
     "export-db": "npx tsx scripts/export-database-to-html.ts"
   },
   "dependencies": {

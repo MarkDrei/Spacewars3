@@ -25,7 +25,7 @@
   "forwardPorts": [3000, 5432],
   
   // Install dependencies after container is created
-  "postCreateCommand": "npm install",
+  "postCreateCommand": "npm install && .devcontainer/init-db.sh",
   
   // Show helpful message on attach
   "postAttachCommand": "echo '✅ PostgreSQL is running and ready! Run \"npm run dev\" to start the development server.'",
