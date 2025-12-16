@@ -32,14 +32,23 @@ async function shutdownMessageCache(): Promise<void> {
 }
 
 export async function initializeIntegrationTestServer(): Promise<void> {
-  await resetTestDatabase();
+  // Only clear battles and messages, not users and space_objects
+  // This avoids foreign key violations and is much faster
+  const { clearTestDatabase, getTestDatabase } = await import('./testDatabase');
+  const db = await getTestDatabase();
+  
+  // Clear battles table explicitly (battles reference users, so this must come first)
+  await db.query('DELETE FROM battles', []);
+  // Clear messages
+  await clearTestDatabase();
+  
   BattleCache.resetInstance();
   UserCache.resetInstance();
   WorldCache.resetInstance();
   MessageCache.resetInstance();
   
-  // initializeServer will call getDatabase() which creates the test database
-  // with all users (including test users 3-10)
+  // initializeServer will call getDatabase() which uses the existing database
+  // with all users (including test users 3-10) already seeded
   await initializeServer();
 }
 
