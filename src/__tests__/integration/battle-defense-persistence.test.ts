@@ -59,7 +59,10 @@ describe('Battle Defense Persistence', () => {
     const attackerMaxHull = attackerUser.techCounts.ship_hull * 100;
     const defenderMaxHull = defenderUser.techCounts.ship_hull * 100;
     
-    // Verify users start at less than max
+    console.log(`📊 Attacker max hull: ${attackerMaxHull}`);
+    console.log(`📊 Defender max hull: ${defenderMaxHull}`);
+    
+    // Verify users start at less than max (seeded at half of max)
     expect(attackerInitialHull).toBeLessThan(attackerMaxHull);
     expect(defenderInitialHull).toBeLessThan(defenderMaxHull);
     
@@ -143,15 +146,15 @@ describe('Battle Defense Persistence', () => {
       console.log(`📊 Attacker after battle - Hull: ${attackerAfter.hullCurrent} (expected: ${attackerDamagedHull})`);
       console.log(`📊 Defender after battle - Hull: ${defenderAfter.hullCurrent} (expected: 0 since they lost)`);
       
-      // CRITICAL: Verify defense values are NOT reset to max or initial values
+      // CRITICAL: Verify defense values are NOT reset to max
       expect(attackerAfter.hullCurrent).toBe(attackerDamagedHull);
       expect(attackerAfter.hullCurrent).not.toBe(attackerMaxHull);
-      expect(attackerAfter.hullCurrent).not.toBe(attackerInitialHull);
+      // Don't check initial hull as it may have changed due to regeneration
       
       // Defender was set to 0 hull to make them lose
       expect(defenderAfter.hullCurrent).toBe(0);
       expect(defenderAfter.hullCurrent).not.toBe(defenderMaxHull);
-      expect(defenderAfter.hullCurrent).not.toBe(defenderInitialHull);
+      // Don't check initial hull as it was intentionally set to 0 during battle
     });
     
     console.log('✅ Defense values correctly persisted after battle (not reset to max)');

@@ -51,7 +51,7 @@ describe('TechService - Build Completion Notifications', () => {
 
   afterEach(async () => {
     // Properly close the database connection
-    resetTestDatabase();
+    await resetTestDatabase();
     UserCache.resetInstance();
   });
 

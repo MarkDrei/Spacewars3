@@ -43,7 +43,7 @@ const initializeCache = async (config?: TypedCacheConfig): Promise<void> => {
 describe('TypedCacheManager', () => {
   
   beforeEach(async () => {
-    resetTestDatabase();
+    await resetTestDatabase();
     UserCache.resetInstance();
     await initializeCache();
   });

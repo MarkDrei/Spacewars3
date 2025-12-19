@@ -15,27 +15,33 @@ import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 describe('MessageCache', () => {
   
   beforeEach(async () => {
-    // Reset database to ensure clean state
-    const { resetTestDatabase } = await import('../../lib/server/database');
-    resetTestDatabase();
+    // Ensure any previous cache is cleaned up before clearing database
+    try {
+      const cache = MessageCache.getInstance();
+      await cache.waitForPendingWrites();
+      await cache.shutdown();
+    } catch {
+      // Ignore if cache doesn't exist
+    }
     
-    // Reset singleton before each test
     MessageCache.resetInstance();
+    
+    // Clear messages from previous tests
+    const { clearTestDatabase } = await import('../helpers/testDatabase');
+    await clearTestDatabase();
   });
 
   afterEach(async () => {
-    // Clean up after each test
+    // Ensure cache is properly cleaned up
+    // Note: shutdown() does not wait for pending writes, so we must call waitForPendingWrites() first
     try {
       const cache = getMessageCache();
+      await cache.waitForPendingWrites();
       await cache.shutdown();
       MessageCache.resetInstance();
     } catch {
       // Ignore cleanup errors
     }
-    
-    // Reset database after each test
-    const { resetTestDatabase } = await import('../../lib/server/database');
-    resetTestDatabase();
   });
 
   describe('Singleton Pattern', () => {

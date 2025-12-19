@@ -14,10 +14,11 @@ describe('User Persistence to Database', () => {
   });
 
   it('userPersistence_dirtyUserModified_persitsToDatabase', async () => {
-    // Arrange: Create a test user
+    // Arrange: Create a test user with unique username
+    const username = `testuser_persist_${Date.now()}`;
     const db = await getDatabase();
     const saveCallback = saveUserToDb(db);
-    const user = await createUser(db, 'testuser_persist', 'hashedpass', saveCallback);
+    const user = await createUser(db, username, 'hashedpass', saveCallback);
     const initialIron = user.iron;
     const initialTechCount = user.techCounts.pulse_laser;
     
@@ -54,10 +55,11 @@ describe('User Persistence to Database', () => {
   });
 
   it('userPersistence_shutdownPersist_flushesUsers', async () => {
-    // Arrange: Create a test user
+    // Arrange: Create a test user with unique username
+    const username = `testuser_shutdown_${Date.now()}`;
     const db = await getDatabase();
     const saveCallback = saveUserToDb(db);
-    const user = await createUser(db, 'testuser_shutdown_persist', 'hashedpass', saveCallback);
+    const user = await createUser(db, username, 'hashedpass', saveCallback);
     
     const emptyCtx = createLockContext();
     const userWorldCache = UserCache.getInstance2();

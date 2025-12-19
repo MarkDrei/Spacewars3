@@ -4,14 +4,18 @@
 
 import { DatabaseConnection, getDatabase, resetTestDatabase } from '@/lib/server/database';
 
+// Track if database has been initialized for tests
+let testDbInitialized = false;
+
 /**
  * Creates a test database with all tables and seed data.
- * In the new architecture, the database module handles all setup including
- * additional test users.
+ * Database is initialized once and shared across all tests.
  */
 export async function createTestDatabase(): Promise<DatabaseConnection> {
-  // Reset and get fresh test database (SQLite in-memory for tests)
-  resetTestDatabase();
+  // Database is initialized in setup.ts, just return the connection
+  if (!testDbInitialized) {
+    testDbInitialized = true;
+  }
   return await getDatabase();
 }
 
@@ -20,15 +24,16 @@ export async function createTestDatabase(): Promise<DatabaseConnection> {
  * Always calls getDatabase() which handles its own state management.
  */
 export async function getTestDatabase(): Promise<DatabaseConnection> {
-  // The database module handles caching internally
   return await getDatabase();
 }
 
 /**
- * Closes the test database
+ * Closes the test database (no-op for shared PostgreSQL connection)
+ * The database connection is shared across all tests for performance
  */
 export async function closeTestDatabase(): Promise<void> {
-  resetTestDatabase();
+  // Don't reset or close the database here - it's shared across tests
+  // Each test should clean up its own data using clearTestDatabase()
 }
 
 /**
