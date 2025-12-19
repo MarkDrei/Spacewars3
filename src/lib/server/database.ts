@@ -4,6 +4,22 @@ import { seedDatabase } from './seedData';
 import { applyTechMigrations } from './migrations';
 import { DatabaseAdapter, PostgreSQLAdapter, QueryResult } from './databaseAdapter';
 
+// Dynamic import for transaction context in test environment
+let getTransactionContext: (() => PoolClient | undefined) | null = null;
+
+// Initialize transaction context getter in test environment
+async function initTransactionContext() {
+  if (process.env.NODE_ENV === 'test' && !getTransactionContext) {
+    try {
+      const { getTransactionContext: txContext } = await import('../../__tests__/helpers/transactionHelper.js');
+      getTransactionContext = txContext;
+    } catch (error) {
+      // Transaction helper not available, tests will use pool directly
+      console.log('⚠️ Transaction helper not available, using pool directly');
+    }
+  }
+}
+
 // Database connection pool (for both production and test PostgreSQL)
 let pool: Pool | null = null;
 let initializationPromise: Promise<Pool> | null = null;
@@ -33,13 +49,25 @@ function getDatabaseConfig() {
       : (process.env.POSTGRES_DB || 'spacewars'),
     user: process.env.POSTGRES_USER || 'spacewars',
     password: process.env.POSTGRES_PASSWORD || 'spacewars',
-    max: isTest ? 5 : 20, // Fewer connections for tests
+    max: isTest ? 10 : 20, // Increased from 5 to 10 for parallel test workers
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 5000,
   };
 }
 
 export async function getDatabase(): Promise<DatabaseConnection> {
+  // In test environment, check for transaction context first
+  if (process.env.NODE_ENV === 'test') {
+    await initTransactionContext();
+    if (getTransactionContext) {
+      const txContext = getTransactionContext();
+      if (txContext) {
+        // Return a wrapper that uses the transaction client
+        return new PostgreSQLAdapter(txContext);
+      }
+    }
+  }
+
   // If database is already initialized, return the adapter
   if (pool && adapter) {
     return adapter;

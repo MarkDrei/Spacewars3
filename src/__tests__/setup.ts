@@ -11,3 +11,9 @@ beforeAll(async () => {
   const { getDatabase } = await import('@/lib/server/database');
   await getDatabase(); // This will initialize the database with seed data
 });
+
+// Note: Transaction-based test isolation is implemented but not enabled globally yet
+// Individual integration tests use initializeIntegrationTestServer() which resets caches
+// Each test's database changes are automatically rolled back via withTransaction wrapper
+
+
