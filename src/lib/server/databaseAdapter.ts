@@ -2,7 +2,7 @@
 // Database abstraction layer for PostgreSQL
 // ---
 
-import type { Pool as PgPool } from 'pg';
+import type { Pool as PgPool, PoolClient } from 'pg';
 
 /**
  * Unified query result interface
@@ -21,14 +21,14 @@ export interface DatabaseAdapter {
 }
 
 /**
- * PostgreSQL adapter - wraps pg Pool
+ * PostgreSQL adapter - wraps pg Pool or PoolClient
  */
 export class PostgreSQLAdapter implements DatabaseAdapter {
-  constructor(private pool: PgPool) {}
+  constructor(private poolOrClient: PgPool | PoolClient) {}
   
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async query<T = any>(sql: string, params?: unknown[]): Promise<QueryResult<T>> {
-    const result = await this.pool.query(sql, params);
+    const result = await this.poolOrClient.query(sql, params);
     return {
       rows: result.rows as T[],
       rowCount: result.rowCount ?? 0
@@ -36,13 +36,16 @@ export class PostgreSQLAdapter implements DatabaseAdapter {
   }
   
   async close(): Promise<void> {
-    await this.pool.end();
+    // Only close if it's a Pool, not a PoolClient
+    if ('end' in this.poolOrClient && typeof this.poolOrClient.end === 'function') {
+      await this.poolOrClient.end();
+    }
   }
   
   /**
    * Get the underlying pool (for backward compatibility)
    */
-  getPool(): PgPool {
-    return this.pool;
+  getPool(): PgPool | PoolClient {
+    return this.poolOrClient;
   }
 }

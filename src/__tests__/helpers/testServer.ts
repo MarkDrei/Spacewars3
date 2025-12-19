@@ -32,27 +32,9 @@ async function shutdownMessageCache(): Promise<void> {
 }
 
 export async function initializeIntegrationTestServer(): Promise<void> {
-  // Only clear battles and messages, not users and space_objects
-  // This avoids foreign key violations and is much faster
-  const { clearTestDatabase, getTestDatabase } = await import('./testDatabase');
-  const db = await getTestDatabase();
-  
-  // Clear battles table explicitly (battles reference users, so this must come first)
-  await db.query('DELETE FROM battles', []);
-  // Clear messages
-  await clearTestDatabase();
-  
-  // Reset defense values for test users to their seed values
-  // User 1 ('a'): ship_hull=5 → max 500, reset to 250 (half)
-  // User 2 ('dummy'): ship_hull=7 → max 700, reset to 350 (half)
-  await db.query(
-    'UPDATE users SET hull_current = 250, armor_current = 250, shield_current = 250, defense_last_regen = $1 WHERE id = 1',
-    [Math.floor(Date.now() / 1000)]
-  );
-  await db.query(
-    'UPDATE users SET hull_current = 350, armor_current = 350, shield_current = 350, defense_last_regen = $1 WHERE id = 2',
-    [Math.floor(Date.now() / 1000)]
-  );
+  // With transaction-based isolation, we don't need to delete data
+  // The transaction rollback will handle cleanup
+  // We only need to reset the in-memory caches
   
   BattleCache.resetInstance();
   UserCache.resetInstance();
