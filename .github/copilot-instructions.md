@@ -20,6 +20,7 @@
 - Use `import`/`export` syntax only. Do not use CommonJS (`require`, `module.exports`).
 
 ## Project Structure
+
 - `src/app/`: Next.js App Router pages and API routes
   - `src/app/api/`: API routes for authentication and game logic
     - Endpoints: `/harvest`, `/login`, `/logout`, `/navigate`, `/register`, `/session`, `/ship-stats`, `/techtree`, `/trigger-research`, `/user-stats`, `/world`
@@ -53,6 +54,7 @@
 - `src/__tests__/`: Test files for all components and logic
 
 ## Development Guidelines
+
 - Do not delete the DB unless asked to.
 - The dev environment with Next.js is usually up and running. Don't start a new one unless necessary.
 - Use TypeScript features like interfaces and type definitions to ensure type safety.
@@ -65,6 +67,7 @@
 - Server-side logic (database operations, authentication) should be in `src/lib/server/`.
 
 ## Authentication & Session Management
+
 - Uses iron-session for secure session management with HTTP-only cookies
 - Authentication state managed via `useAuth` hook and session middleware
 - Protected routes automatically redirect to login page if not authenticated
@@ -72,16 +75,20 @@
 - Default test user: username "a", password "a" (created during database initialization)
 
 ## Database
+
 - PostgreSQL database with schema-first approach defined in `src/lib/server/schema.ts`
 - Auto-initialization on first API call - creates tables and seeds default data
 - Configuration via environment variables (POSTGRES_HOST, POSTGRES_PORT, POSTGRES_DB, POSTGRES_USER, POSTGRES_PASSWORD)
 - Tables: users (authentication + game stats), space_objects (game world), battles, messages
 - All database operations should go through the server-side utilities
-- Seeding: Default user "a" and space objects (asteroids, shipwrecks, escape pods) created automatically
+- Seeding:
+  - Production: Default user "a" and space objects (asteroids, shipwrecks, escape pods)
+  - Test: Additional test users (testuser3-10) are created only in test environment
 - Use `docker-compose up db -d` to start PostgreSQL locally for development
 - Use `docker-compose up db-test -d` to start PostgreSQL test database (port 5433)
 
 ## Testing
+
 - All business logic must be covered by unit tests
 - Tests located in `src/__tests__/` directory
 - Test environment: Vitest with jsdom for React components, node for API routes
@@ -97,6 +104,7 @@
 - Tests use the same PostgreSQL database engine as production for consistency
 
 ## Building and Running
+
 - Use `npm install` to install dependencies.
 - Use `docker-compose up db -d` to start PostgreSQL database.
 - Use `npm run dev` to start the Next.js development server (port 3000).
@@ -114,6 +122,7 @@
   - `/profile`: Profile page (protected by authentication)
 
 ## Game Architecture
+
 - **Client-side**: Game rendering, input handling, and UI components
 - **Server-side**: Game state persistence, physics calculations, collision detection
 - **Real-time updates**: Polling-based updates for game state synchronization
