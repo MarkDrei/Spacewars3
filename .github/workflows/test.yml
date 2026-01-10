@@ -2,19 +2,19 @@ name: Tests
 
 on:
   push:
-    branches: [ main, develop, "copilot/**" ]
+    branches: [main, develop, "copilot/**"]
   pull_request:
-    branches: [ main, develop ]
+    branches: [main, develop]
   workflow_dispatch:
 
 jobs:
   test:
     name: Run Tests
     runs-on: ubuntu-latest
-    
+
     permissions:
       contents: read
-    
+
     services:
       postgres:
         image: postgres:16-alpine
@@ -29,23 +29,23 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
-      
+          node-version: "20"
+          cache: "npm"
+
       - name: Install dependencies
         run: npm ci
-      
+
       - name: Run linting
         run: npm run lint
-      
+
       - name: Run tests
         run: npm run test:ci
         env:
@@ -59,10 +59,10 @@ jobs:
   docker-integration:
     name: Docker Integration Tests
     runs-on: ubuntu-latest
-    
+
     permissions:
       contents: read
-    
+
     services:
       postgres:
         image: postgres:16-alpine
@@ -77,20 +77,20 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
-      
+          node-version: "20"
+          cache: "npm"
+
       - name: Install dependencies
         run: npm ci
-      
+
       - name: Build application
         run: npm run build
         env:
@@ -99,7 +99,7 @@ jobs:
           POSTGRES_DB: spacewars
           POSTGRES_USER: spacewars
           POSTGRES_PASSWORD: spacewars
-      
+
       - name: Start and test application
         run: |
           npm run start &
