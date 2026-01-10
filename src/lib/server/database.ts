@@ -1,284 +1,191 @@
-import sqlite3 from 'sqlite3';
-import path from 'path';
-import fs from 'fs';
+import { Pool, PoolClient } from 'pg';
 import { CREATE_TABLES } from './schema';
-import { seedDatabase, DEFAULT_USERS, DEFAULT_SPACE_OBJECTS } from './seedData';
+import { seedDatabase } from './seedData';
 import { applyTechMigrations } from './migrations';
+import { DatabaseAdapter, PostgreSQLAdapter, QueryResult } from './databaseAdapter';
 
-let db: sqlite3.Database | null = null;
-let initializationPromise: Promise<sqlite3.Database> | null = null;
+// Dynamic import for transaction context in test environment
+let getTransactionContext: (() => PoolClient | undefined) | null = null;
 
-// Test database management
-let testDb: sqlite3.Database | null = null;
-let testDbInitialized = false;
-
-function initializeTestDatabase(): sqlite3.Database {
-  if (testDb && testDbInitialized) {
-    return testDb;
+// Initialize transaction context getter in test environment
+async function initTransactionContext() {
+  if (process.env.NODE_ENV === 'test' && !getTransactionContext) {
+    try {
+      const { getTransactionContext: txContext } = await import('../../__tests__/helpers/transactionHelper.js');
+      getTransactionContext = txContext;
+    } catch (error) {
+      // Transaction helper not available, tests will use pool directly
+      console.log('⚠️ Transaction helper not available, using pool directly');
+    }
   }
-  
-  testDb = new (sqlite3.verbose().Database)(':memory:');
-  
-  // Initialize synchronously using serialize to ensure order
-  testDb.serialize(() => {
-    // Create tables
-    CREATE_TABLES.forEach((createTableSQL) => {
-      testDb!.run(createTableSQL);
-    });
-    
-    // Seed with the same default data as production (synchronous version)
-    seedTestDatabase(testDb!);
-  });
-  
-  testDbInitialized = true;
-  return testDb;
+}
+
+// Database connection pool (for both production and test PostgreSQL)
+let pool: Pool | null = null;
+let initializationPromise: Promise<Pool> | null = null;
+
+// Cached adapter
+let adapter: PostgreSQLAdapter | null = null;
+
+/**
+ * Type for the database - PostgreSQL connection interface
+ */
+export interface DatabaseConnection {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  query<T = any>(sql: string, params?: unknown[]): Promise<QueryResult<T>>;
 }
 
 /**
- * Synchronous seeding for test database using the same data as production
+ * Get database connection configuration from environment
  */
-function seedTestDatabase(db: sqlite3.Database): void {
-  const now = Date.now();
+function getDatabaseConfig() {
+  const isTest = process.env.NODE_ENV === 'test';
   
-  try {
-    let shipIdCounter = 0;
-    
-    // Precomputed password hashes for test consistency (bcrypt with 10 rounds)
-    const passwordHashes: Record<string, string> = {
-      'a': '$2b$10$0q/od18qjo/fyCB8b.Dn2OZdKs1pKAOPwly98WEZzbsT.yavE6BY.',
-      'dummy': '$2b$10$GJ2Bjb5Ruhd1hCnDxzEzxOmDAlgIy9.0ci11khzvsH0ta7q17K4ay',
-    };
-    
-    // Create ships and users for all DEFAULT_USERS
-    DEFAULT_USERS.forEach((user) => {
-      // Create ship for this user
-      db.run(`
-        INSERT INTO space_objects (type, x, y, speed, angle, last_position_update_ms)
-        VALUES (?, ?, ?, ?, ?, ?)
-      `, ['player_ship', user.ship.x, user.ship.y, user.ship.speed, user.ship.angle, now]);
-      
-      shipIdCounter++;
-      const shipId = shipIdCounter; // Ships get sequential IDs starting from 1
-      
-      // Get precomputed hash for this user's password
-      const hashedPassword = passwordHashes[user.password] || passwordHashes['a']; // Fallback to 'a' hash
-      const techTreeJson = JSON.stringify(user.tech_tree);
-      
-      // Get defense values from user or use defaults
-      const hullCurrent = user.defense?.hull_current ?? 250.0;
-      const armorCurrent = user.defense?.armor_current ?? 250.0;
-      const shieldCurrent = user.defense?.shield_current ?? 250.0;
-      
-      // Build INSERT statement based on what optional fields are provided
-      const columns = ['username', 'password_hash', 'iron', 'last_updated', 'tech_tree', 'ship_id', 'hull_current', 'armor_current', 'shield_current', 'defense_last_regen'];
-      const values: (string | number)[] = [
-        user.username,
-        hashedPassword,
-        user.iron,
-        Math.floor(now / 1000),
-        techTreeJson,
-        shipId,
-        hullCurrent,
-        armorCurrent,
-        shieldCurrent,
-        Math.floor(now / 1000)
-      ];
-      
-      // Add tech_counts if provided
-      if (user.tech_counts) {
-        columns.push(
-          'pulse_laser', 'auto_turret', 'plasma_lance', 'gauss_rifle', 
-          'photon_torpedo', 'rocket_launcher', 'ship_hull', 'kinetic_armor', 
-          'energy_shield', 'missile_jammer'
-        );
-        values.push(
-          user.tech_counts.pulse_laser,
-          user.tech_counts.auto_turret,
-          user.tech_counts.plasma_lance,
-          user.tech_counts.gauss_rifle,
-          user.tech_counts.photon_torpedo,
-          user.tech_counts.rocket_launcher,
-          user.tech_counts.ship_hull,
-          user.tech_counts.kinetic_armor,
-          user.tech_counts.energy_shield,
-          user.tech_counts.missile_jammer
-        );
-      }
-      
-      const insertSQL = `
-        INSERT INTO users (${columns.join(', ')})
-        VALUES (${columns.map(() => '?').join(', ')})
-      `;
-      
-      // Create user
-      db.run(insertSQL, values);
-    });
-    
-    // Create other space objects (asteroids, shipwrecks, escape pods)
-    DEFAULT_SPACE_OBJECTS.forEach((obj) => {
-      db.run(`
-        INSERT INTO space_objects (type, x, y, speed, angle, last_position_update_ms)
-        VALUES (?, ?, ?, ?, ?, ?)
-      `, [obj.type, obj.x, obj.y, obj.speed, obj.angle, now]);
-    });
-    
-  } catch (error) {
-    console.error('❌ Error seeding test database:', error);
-  }
+  return {
+    host: process.env.POSTGRES_HOST || 'localhost',
+    port: parseInt(process.env.POSTGRES_PORT || '5432', 10),
+    database: isTest 
+      ? (process.env.POSTGRES_TEST_DB || 'spacewars_test')
+      : (process.env.POSTGRES_DB || 'spacewars'),
+    user: process.env.POSTGRES_USER || 'spacewars',
+    password: process.env.POSTGRES_PASSWORD || 'spacewars',
+    max: isTest ? 10 : 20, // Increased from 5 to 10 for parallel test workers
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 5000,
+  };
 }
 
-export async function getDatabase(): Promise<sqlite3.Database> {
-  // Use in-memory database for tests
+export async function getDatabase(): Promise<DatabaseConnection> {
+  // In test environment, check for transaction context first
   if (process.env.NODE_ENV === 'test') {
-    return initializeTestDatabase();
+    await initTransactionContext();
+    if (getTransactionContext) {
+      const txContext = getTransactionContext();
+      if (txContext) {
+        // Return a wrapper that uses the transaction client
+        return new PostgreSQLAdapter(txContext);
+      }
+    }
   }
 
-  // If database is already initialized, return it immediately
-  if (db) {
-    return db;
+  // If database is already initialized, return the adapter
+  if (pool && adapter) {
+    return adapter;
   }
 
   // If initialization is in progress, wait for it
   if (initializationPromise) {
-    return initializationPromise;
+    await initializationPromise;
+    return adapter!;
   }
 
   // Start initialization
-  initializationPromise = new Promise<sqlite3.Database>((resolve, reject) => {
-    const dbDir = path.join(process.cwd(), 'database');
-    const dbPath = path.join(dbDir, 'users.db');
+  initializationPromise = (async () => {
+    const config = getDatabaseConfig();
+    pool = new Pool(config);
+    adapter = new PostgreSQLAdapter(pool);
     
-    // Ensure database directory exists
-    if (!fs.existsSync(dbDir)) {
-      console.log('📁 Creating database directory...');
-      fs.mkdirSync(dbDir, { recursive: true });
-    }
+    const isTest = process.env.NODE_ENV === 'test';
+    const dbLabel = isTest ? 'test' : 'production';
+    console.log(`✅ Connected to PostgreSQL ${dbLabel} database: ${config.database}@${config.host}:${config.port}`);
     
-    const dbExists = fs.existsSync(dbPath);
-    
-    db = new sqlite3.Database(dbPath, async (err) => {
-      if (err) {
-        console.error('❌ Error opening database:', err);
-        initializationPromise = null;
-        db = null;
-        reject(err);
-        return;
+    const client = await pool.connect();
+    try {
+      // Check if tables exist
+      const tablesExist = await checkTablesExist(client);
+      
+      if (!tablesExist) {
+        console.log(`🆕 New ${dbLabel} database detected, initializing...`);
+        await initializeDatabase(client, pool);
+      } else if (!isTest) {
+        // Only run migrations in production, not in tests
+        console.log('📊 Existing database detected, checking for migrations...');
+        await applyTechMigrations(pool);
       }
       
-      console.log('✅ Connected to SQLite database at:', dbPath);
-      
-      // Set PRAGMA synchronous = FULL to ensure data is written to disk immediately
-      db!.run('PRAGMA synchronous = FULL', (pragmaErr) => {
-        if (pragmaErr) {
-          console.error('⚠️ Warning: Failed to set PRAGMA synchronous:', pragmaErr);
-        } else {
-          console.log('💾 Database synchronous mode set to FULL');
-        }
-      });
-      
-      try {
-        if (!dbExists) {
-          console.log('🆕 New database detected, initializing...');
-          await initializeDatabase(db!);
-        } else {
-          console.log('📊 Existing database detected, checking for migrations...');
-          await applyTechMigrations(db!);
-        }
-        
-
-        
-        // Don't clear initializationPromise - it's still valid
-        resolve(db!);
-      } catch (initError) {
-        console.error('❌ Database initialization failed:', initError);
-        initializationPromise = null;
-        db = null;
-        reject(initError);
-      }
-    });
-  });
-
-  return initializationPromise;
-}
-
-async function initializeDatabase(database: sqlite3.Database): Promise<void> {
-  return new Promise((resolve, reject) => {
-    console.log('🏗️ Creating database tables...');
-    
-    // Run table creation statements
-    let completedTables = 0;
-    const totalTables = CREATE_TABLES.length;
-    
-    CREATE_TABLES.forEach((tableSQL, index) => {
-      database.run(tableSQL, (err) => {
-        if (err) {
-          console.error(`❌ Error creating table ${index + 1}:`, err);
-          reject(err);
-          return;
-        }
-        
-        completedTables++;
-        console.log(`✅ Created table ${completedTables}/${totalTables}`);
-        
-        if (completedTables === totalTables) {
-          console.log('🌱 Tables created, seeding initial data...');
-          seedDatabase(database)
-            .then(() => {
-              console.log('✅ Database initialization complete!');
-              resolve();
-            })
-            .catch((seedErr) => {
-              console.error('❌ Error seeding database:', seedErr);
-              reject(seedErr);
-            });
-        }
-      });
-    });
-  });
-}
-
-export function closeDatabase(): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (db) {
-      db.close((err) => {
-        if (err) {
-          reject(err);
-        } else {
-          db = null;
-          resolve();
-        }
-      });
-    } else {
-      resolve();
+      return pool;
+    } finally {
+      client.release();
     }
-  });
+  })();
+
+  await initializationPromise;
+  return adapter!;
 }
 
-/**
- * Closes the test database (for cleanup in tests)
- */
-export async function closeTestDatabase(): Promise<void> {
-  if (testDb && process.env.NODE_ENV === 'test') {
-    return new Promise((resolve, reject) => {
-      testDb!.close((err) => {
-        if (err) {
-          reject(err);
-        } else {
-          testDb = null;
-          resolve();
-        }
-      });
-    });
+async function checkTablesExist(client: PoolClient): Promise<boolean> {
+  const result = await client.query(`
+    SELECT EXISTS (
+      SELECT FROM information_schema.tables 
+      WHERE table_schema = 'public' 
+      AND table_name = 'users'
+    )
+  `);
+  return result.rows[0].exists;
+}
+
+async function initializeDatabase(client: PoolClient, pool: Pool): Promise<void> {
+  console.log('🏗️ Creating database tables...');
+  
+  for (let i = 0; i < CREATE_TABLES.length; i++) {
+    const tableSQL = CREATE_TABLES[i];
+    await client.query(tableSQL);
+    console.log(`✅ Created table ${i + 1}/${CREATE_TABLES.length}`);
+  }
+  
+  console.log('🌱 Tables created, seeding initial data...');
+  await seedDatabase(pool);
+  console.log('✅ Database initialization complete!');
+}
+
+export async function closeDatabase(): Promise<void> {
+  if (pool) {
+    await pool.end();
+    pool = null;
+    initializationPromise = null;
+    adapter = null;
   }
 }
 
 /**
  * Resets the test database to fresh state
+ * Truncates all tables and reseeds them with default data
  */
-export function resetTestDatabase(): void {
+export async function resetTestDatabase(): Promise<void> {
   if (process.env.NODE_ENV === 'test') {
-    testDb = null;
-    testDbInitialized = false;
-    // Next call to getDatabase() will create a fresh database
+    // If no pool exists, reinitialize everything
+    if (!pool || !adapter) {
+      // Clear state
+      pool = null;
+      initializationPromise = null;
+      adapter = null;
+      
+      // Reinitialize from scratch
+      await getDatabase();
+      return;
+    }
+
+    try {
+      // Use TRUNCATE instead of DROP for faster reset
+      // CASCADE removes dependent rows in referencing tables
+      // RESTART IDENTITY resets sequences to 1
+      await pool.query('TRUNCATE TABLE battles, messages, users, space_objects RESTART IDENTITY CASCADE');
+      
+      // Reseed the database with default data (force=true to skip user count check)
+      await seedDatabase(adapter, true);
+      
+      console.log('🔄 Test database reset complete');
+    } catch (error) {
+      console.error('❌ Error resetting test database:', error);
+      // If reset fails, force reinitialization
+      pool = null;
+      initializationPromise = null;
+      adapter = null;
+      // Reinitialize
+      await getDatabase();
+    }
   }
 }
+
+// Export the adapter interface for type usage
+export type { DatabaseAdapter };

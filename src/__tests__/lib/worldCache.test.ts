@@ -1,19 +1,22 @@
 import { beforeEach, afterEach, describe, expect, test, vi } from 'vitest';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
-import type sqlite3 from 'sqlite3';
+import type { DatabaseConnection } from '@/lib/server/database';
 import { WORLD_LOCK } from '@/lib/server/typedLocks';
 import { World, type SpaceObject } from '@/lib/server/world/world';
 import { WorldCache } from '@/lib/server/world/worldCache';
 
 const createMockDb = () => {
   return {
-    run: vi.fn(function (_sql: string, _params: unknown[], callback: (err: Error | null) => void) {
-      callback(null);
-    })
-  } as unknown as sqlite3.Database;
+    query: vi.fn().mockResolvedValue({ rows: [], rowCount: 0, command: 'SELECT', oid: 0, fields: [] }),
+    connect: vi.fn().mockResolvedValue({
+      query: vi.fn().mockResolvedValue({ rows: [], rowCount: 0, command: 'SELECT', oid: 0, fields: [] }),
+      release: vi.fn()
+    }),
+    end: vi.fn().mockResolvedValue(undefined)
+  } as unknown as DatabaseConnection;
 };
 
-const createWorld = (db: sqlite3.Database, spaceObjects: SpaceObject[] = []): World => {
+const createWorld = (db: DatabaseConnection, spaceObjects: SpaceObject[] = []): World => {
   return new World(
     { width: 500, height: 500 },
     spaceObjects,
@@ -23,7 +26,7 @@ const createWorld = (db: sqlite3.Database, spaceObjects: SpaceObject[] = []): Wo
 };
 
 describe('WorldCache', () => {
-  let db: sqlite3.Database;
+  let db: DatabaseConnection;
 
   beforeEach(() => {
     db = createMockDb();

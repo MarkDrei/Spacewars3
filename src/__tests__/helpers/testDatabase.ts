@@ -2,75 +2,52 @@
 // Database test utilities for Next.js API route testing
 // ---
 
-import sqlite3 from 'sqlite3';
-import { CREATE_TABLES } from '@/lib/server/schema';
+import { DatabaseConnection, getDatabase, resetTestDatabase } from '@/lib/server/database';
 
-let testDb: sqlite3.Database | null = null;
-
-/**
- * Creates an in-memory test database with all tables
- */
-export async function createTestDatabase(): Promise<sqlite3.Database> {
-  const db = new (sqlite3.verbose().Database)(':memory:');
-  
-  // Create all tables
-  await Promise.all(
-    CREATE_TABLES.map(
-      (createTableSQL) =>
-        new Promise<void>((resolve, reject) => {
-          db.run(createTableSQL, (err) => {
-            if (err) reject(err);
-            else resolve();
-          });
-        })
-    )
-  );
-  
-  return db;
-}
+// Track if database has been initialized for tests
+let testDbInitialized = false;
 
 /**
- * Gets or creates a test database instance
+ * Creates a test database with all tables and seed data.
+ * Database is initialized once and shared across all tests.
  */
-export async function getTestDatabase(): Promise<sqlite3.Database> {
-  if (!testDb) {
-    testDb = await createTestDatabase();
+export async function createTestDatabase(): Promise<DatabaseConnection> {
+  // Database is initialized in setup.ts, just return the connection
+  if (!testDbInitialized) {
+    testDbInitialized = true;
   }
-  return testDb;
+  return await getDatabase();
 }
 
 /**
- * Closes the test database
+ * Gets or creates a test database instance.
+ * Always calls getDatabase() which handles its own state management.
+ */
+export async function getTestDatabase(): Promise<DatabaseConnection> {
+  return await getDatabase();
+}
+
+/**
+ * Closes the test database (no-op for shared PostgreSQL connection)
+ * The database connection is shared across all tests for performance
  */
 export async function closeTestDatabase(): Promise<void> {
-  if (testDb) {
-    await new Promise<void>((resolve, reject) => {
-      testDb!.close((err) => {
-        if (err) reject(err);
-        else resolve();
-      });
-    });
-    testDb = null;
-  }
+  // Don't reset or close the database here - it's shared across tests
+  // Each test should clean up its own data using clearTestDatabase()
 }
 
 /**
- * Clears all data from test database tables
+ * Clears test data from database tables (messages and battles only, preserves seed data)
+ * This allows tests to run with fresh data while keeping required seed users/space_objects
  */
 export async function clearTestDatabase(): Promise<void> {
   const db = await getTestDatabase();
   
-  const tables = ['users', 'space_objects', 'messages'];
+  // Only clear messages and battles - users and space_objects contain seed data
+  // that other tests depend on (foreign keys)
+  const tables = ['messages', 'battles'];
   
-  await Promise.all(
-    tables.map(
-      (table) =>
-        new Promise<void>((resolve, reject) => {
-          db.run(`DELETE FROM ${table}`, (err) => {
-            if (err) reject(err);
-            else resolve();
-          });
-        })
-    )
-  );
+  for (const table of tables) {
+    await db.query(`DELETE FROM ${table}`, []);
+  }
 }

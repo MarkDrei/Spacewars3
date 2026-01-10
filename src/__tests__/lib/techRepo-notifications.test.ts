@@ -4,18 +4,18 @@ import { createTestDatabase } from '../helpers/testDatabase';
 import { UserCache } from '@/lib/server/user/userCache';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 import { USER_LOCK } from '@/lib/server/typedLocks';
-import sqlite3 from 'sqlite3';
+import { DatabaseConnection, resetTestDatabase } from '@/lib/server/database';
 import { BuildQueueItem } from '@/lib/server/techs/TechFactory';
 import { MessageCache } from '@/lib/server/messages/MessageCache';
 
 describe('TechService - Build Completion Notifications', () => {
-  let testDb: sqlite3.Database;
+  let testDb: DatabaseConnection;
   let techService: TechService;
   let mockCreateMessage: ReturnType<typeof vi.fn>;
   const testUserId = 1;
 
   beforeEach(async () => {
-    // Create test database
+    // Create test database (includes seed data)
     testDb = await createTestDatabase();
 
     // Initialize userCache with test database
@@ -38,36 +38,20 @@ describe('TechService - Build Completion Notifications', () => {
     // Clear all mocks
     vi.clearAllMocks();
 
-    // Set up test user with initial tech counts
+    // Update the existing test user (id=1 from seed data) with our test data
     const now = Math.floor(Date.now() / 1000);
-    await new Promise<void>((resolve, reject) => {
-      const stmt = testDb.prepare(`
-        INSERT INTO users (
-          id, username, password_hash, iron, last_updated, tech_tree, 
-          pulse_laser, auto_turret, ship_hull, kinetic_armor, energy_shield,
-          build_queue, build_start_sec
-        )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `);
-
-      stmt.run([testUserId, 'testuser', 'hash', 1000, now, '{}', 1, 0, 1, 0, 5, '[]', null], (err) => {
-        stmt.finalize(); // Always finalize the statement
-        if (err) reject(err);
-        else resolve();
-      });
-    });
+    await testDb.query(`
+      UPDATE users SET 
+        iron = $1, last_updated = $2, tech_tree = $3, 
+        pulse_laser = $4, auto_turret = $5, ship_hull = $6, kinetic_armor = $7, energy_shield = $8,
+        build_queue = $9, build_start_sec = $10
+      WHERE id = $11
+    `, [1000, now, '{}', 1, 0, 1, 0, 5, '[]', null, testUserId]);
   });
 
   afterEach(async () => {
     // Properly close the database connection
-    await new Promise<void>((resolve) => {
-      testDb.close((err) => {
-        if (err) {
-          console.error('Error closing test database:', err);
-        }
-        resolve();
-      });
-    });
+    await resetTestDatabase();
     UserCache.resetInstance();
   });
 

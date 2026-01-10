@@ -20,6 +20,7 @@
 - Use `import`/`export` syntax only. Do not use CommonJS (`require`, `module.exports`).
 
 ## Project Structure
+
 - `src/app/`: Next.js App Router pages and API routes
   - `src/app/api/`: API routes for authentication and game logic
     - Endpoints: `/harvest`, `/login`, `/logout`, `/navigate`, `/register`, `/session`, `/ship-stats`, `/techtree`, `/trigger-research`, `/user-stats`, `/world`
@@ -41,8 +42,8 @@
     - `src/lib/client/game/`: Game engine classes (Game, World, Ship, etc.)
     - `src/lib/client/renderers/`: Canvas rendering classes
   - `src/lib/server/`: Server-side code (database, business logic)
-    - `src/lib/server/database.ts`: Database connection and initialization
-    - `src/lib/server/schema.ts`: Database schema definitions
+    - `src/lib/server/database.ts`: PostgreSQL database connection and initialization
+    - `src/lib/server/schema.ts`: Database schema definitions (PostgreSQL syntax)
     - `src/lib/server/seedData.ts`: Default data seeding functions
     - `src/lib/server/session.ts`: Session management utilities
     - `src/lib/server/user.ts`: User domain logic
@@ -51,9 +52,9 @@
     - `src/lib/server/TechFactory.ts`: Tech/defense calculations and specifications
 - `src/shared/`: Shared types and utilities used by both client and server (defenseValues, etc.)
 - `src/__tests__/`: Test files for all components and logic
-- `database/`: SQLite database files (auto-created)
 
 ## Development Guidelines
+
 - Do not delete the DB unless asked to.
 - The dev environment with Next.js is usually up and running. Don't start a new one unless necessary.
 - Use TypeScript features like interfaces and type definitions to ensure type safety.
@@ -66,6 +67,7 @@
 - Server-side logic (database operations, authentication) should be in `src/lib/server/`.
 
 ## Authentication & Session Management
+
 - Uses iron-session for secure session management with HTTP-only cookies
 - Authentication state managed via `useAuth` hook and session middleware
 - Protected routes automatically redirect to login page if not authenticated
@@ -73,17 +75,24 @@
 - Default test user: username "a", password "a" (created during database initialization)
 
 ## Database
-- SQLite database with schema-first approach defined in `src/lib/server/schema.ts`
-- Auto-initialization on first API call - creates database directory, tables, and seeds default data
-- Database file location: `database/users.db` (auto-created if missing)
-- Tables: users (authentication + game stats), space_objects (game world)
+
+- PostgreSQL database with schema-first approach defined in `src/lib/server/schema.ts`
+- Auto-initialization on first API call - creates tables and seeds default data
+- Configuration via environment variables (POSTGRES_HOST, POSTGRES_PORT, POSTGRES_DB, POSTGRES_USER, POSTGRES_PASSWORD)
+- Tables: users (authentication + game stats), space_objects (game world), battles, messages
 - All database operations should go through the server-side utilities
-- Seeding: Default user "a" and space objects (asteroids, shipwrecks, escape pods) created automatically
+- Seeding:
+  - Production: Default user "a" and space objects (asteroids, shipwrecks, escape pods)
+  - Test: Additional test users (testuser3-10) are created only in test environment
+- Use `docker-compose up db -d` to start PostgreSQL locally for development
+- Use `docker-compose up db-test -d` to start PostgreSQL test database (port 5433)
 
 ## Testing
+
 - All business logic must be covered by unit tests
 - Tests located in `src/__tests__/` directory
 - Test environment: Vitest with jsdom for React components, node for API routes
+- Test database: PostgreSQL test database (POSTGRES_TEST_DB, defaults to 'spacewars_test')
 - Test naming convention: whatIsTested_scenario_expectedOutcome
   - Example: `updateStats_researchDoesNotComplete_awardsAllIronAtOldRate`
   - Use descriptive names that explain the test's purpose
@@ -92,9 +101,12 @@
   - UI mode: `npm run test:ui`
   - Watch mode: `npm test -- --watch`
 - Tests should focus on business logic and avoid testing implementation details
+- Tests use the same PostgreSQL database engine as production for consistency
 
 ## Building and Running
+
 - Use `npm install` to install dependencies.
+- Use `docker-compose up db -d` to start PostgreSQL database.
 - Use `npm run dev` to start the Next.js development server (port 3000).
 - Use `npm run build` to build the optimized production bundle.
 - Use `npm start` to start the production server.
@@ -110,6 +122,7 @@
   - `/profile`: Profile page (protected by authentication)
 
 ## Game Architecture
+
 - **Client-side**: Game rendering, input handling, and UI components
 - **Server-side**: Game state persistence, physics calculations, collision detection
 - **Real-time updates**: Polling-based updates for game state synchronization

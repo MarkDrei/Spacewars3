@@ -30,6 +30,15 @@ export function handleApiError(error: unknown): NextResponse {
       );
     }
 
+    // Handle PostgreSQL unique constraint errors (error code 23505)
+    if (error.message.includes('duplicate key value violates unique constraint') || 
+        error.message.includes('username') && error.message.includes('already exists')) {
+      return NextResponse.json(
+        { error: 'Username taken' },
+        { status: 400 }
+      );
+    }
+
     // Handle other known errors
     return NextResponse.json(
       { error: 'Server error' },
