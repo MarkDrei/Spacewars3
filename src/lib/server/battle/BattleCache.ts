@@ -117,10 +117,13 @@ export class BattleCache extends Cache {
 
   /**
    * Reset singleton instance (for testing)
+   * WARNING: Call shutdown() and await it BEFORE calling this method to ensure clean state
    */
   static resetInstance(): void {
     if (BattleCache.instance) {
-      BattleCache.instance.shutdown();
+      // Note: shutdown() is async but we can't await in a sync method
+      // Callers MUST call shutdown() before resetInstance()
+      void BattleCache.instance.shutdown();
       BattleCache.instance = null;
     }
     BattleCache.initializationPromise = null;

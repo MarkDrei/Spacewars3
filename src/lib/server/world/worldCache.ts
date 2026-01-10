@@ -99,9 +99,15 @@ export class WorldCache extends Cache {
     return cache;
   }
 
+  /**
+   * Reset singleton instance (for testing)
+   * WARNING: Call shutdown() and await it BEFORE calling this method to ensure clean state
+   */
   static resetInstance(): void {
     if (WorldCache.instance) {
-      WorldCache.instance.stopBackgroundPersistence();
+      // Note: shutdown() is async but we can't await in a sync method
+      // Callers MUST call shutdown() before resetInstance()
+      void WorldCache.instance.shutdown();
     }
     WorldCache.instance = null;
   }

@@ -116,8 +116,16 @@ export class UserCache extends Cache {
     return this.instance;
   }
 
-  // Reset singleton for testing
+  /**
+   * Reset singleton for testing
+   * WARNING: Call shutdown() and await it BEFORE calling this method to ensure clean state
+   */
   static resetInstance(): void {
+    if (UserCache.instance) {
+      // Note: shutdown() is async but we can't await in a sync method
+      // Callers MUST call shutdown() before resetInstance()
+      void UserCache.instance.shutdown();
+    }
     this.instance = null;
     WorldCache.resetInstance();
   }
