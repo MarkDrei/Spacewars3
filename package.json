@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "test": ".devcontainer/init-db.sh && vitest run",
-    "ci": "npm run lint && npm test && npm run build",
+    "test:ci": "vitest run",
+    "ci": "npm run lint && npm run test:ci && npm run build",
     "test:ui": ".devcontainer/init-db.sh && vitest --ui",
     "test:watch": ".devcontainer/init-db.sh && vitest",
     "export-db": "npx tsx scripts/export-database-to-html.ts"
