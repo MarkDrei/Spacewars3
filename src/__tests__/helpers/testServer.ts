@@ -31,6 +31,15 @@ async function shutdownMessageCache(): Promise<void> {
   await cache.shutdown();
 }
 
+async function shutdownBattleCache(): Promise<void> {
+  try {
+    const cache = BattleCache.getInstance();
+    await cache.shutdown();
+  } catch {
+    // Ignore if cache was never initialized
+  }
+}
+
 /**
  * Initialize integration test server.
  * Clears test data and resets caches to ensure clean state for each test.
@@ -38,7 +47,21 @@ async function shutdownMessageCache(): Promise<void> {
 export async function initializeIntegrationTestServer(): Promise<void> {
   const db = await getDatabase();
   
-  // Clear battles and messages tables (keep users and space_objects for foreign key integrity)
+  // IMPORTANT: Shutdown caches BEFORE clearing data to ensure all pending async operations complete
+  // This prevents foreign key violations from async message persistence
+  // and race conditions with battle persistence
+  await shutdownUserWorldCache();
+  await shutdownWorldCache();
+  await shutdownMessageCache();
+  await shutdownBattleCache();
+  
+  // Reset all in-memory cache instances
+  BattleCache.resetInstance();
+  UserCache.resetInstance();
+  WorldCache.resetInstance();
+  MessageCache.resetInstance();
+  
+  // Now safe to clear battles and messages tables (keep users and space_objects for foreign key integrity)
   await db.query('DELETE FROM battles', []);
   await db.query('DELETE FROM messages', []);
   
@@ -55,12 +78,6 @@ export async function initializeIntegrationTestServer(): Promise<void> {
     [now]
   );
   
-  // Reset all in-memory caches
-  BattleCache.resetInstance();
-  UserCache.resetInstance();
-  WorldCache.resetInstance();
-  MessageCache.resetInstance();
-  
   // Initialize server (this will reinitialize caches)
   await initializeServer();
 }
@@ -72,6 +89,7 @@ export async function shutdownIntegrationTestServer(): Promise<void> {
   await shutdownUserWorldCache();
   await shutdownWorldCache();
   await shutdownMessageCache();
+  await shutdownBattleCache();
   BattleCache.resetInstance();
   UserCache.resetInstance();
   WorldCache.resetInstance();

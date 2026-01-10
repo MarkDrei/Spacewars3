@@ -124,18 +124,41 @@ async function checkTablesExist(client: PoolClient): Promise<boolean> {
   return result.rows[0].exists;
 }
 
+// Advisory lock ID for database initialization (arbitrary number, must be consistent)
+const DB_INIT_LOCK_ID = 123456789;
+
 async function initializeDatabase(client: PoolClient, pool: Pool): Promise<void> {
-  console.log('🏗️ Creating database tables...');
+  console.log('🔒 Acquiring database initialization lock...');
   
-  for (let i = 0; i < CREATE_TABLES.length; i++) {
-    const tableSQL = CREATE_TABLES[i];
-    await client.query(tableSQL);
-    console.log(`✅ Created table ${i + 1}/${CREATE_TABLES.length}`);
+  // Acquire advisory lock to prevent concurrent initialization from multiple processes
+  // pg_advisory_lock blocks until the lock is available
+  await client.query('SELECT pg_advisory_lock($1)', [DB_INIT_LOCK_ID]);
+  
+  try {
+    // Check again if tables exist (another process may have created them while we waited)
+    const tablesExist = await checkTablesExist(client);
+    
+    if (tablesExist) {
+      console.log('✅ Tables already exist (created by another process)');
+      return;
+    }
+    
+    console.log('🏗️ Creating database tables...');
+    
+    for (let i = 0; i < CREATE_TABLES.length; i++) {
+      const tableSQL = CREATE_TABLES[i];
+      await client.query(tableSQL);
+      console.log(`✅ Created table ${i + 1}/${CREATE_TABLES.length}`);
+    }
+    
+    console.log('🌱 Tables created, seeding initial data...');
+    await seedDatabase(pool);
+    console.log('✅ Database initialization complete!');
+  } finally {
+    // Always release the advisory lock
+    await client.query('SELECT pg_advisory_unlock($1)', [DB_INIT_LOCK_ID]);
+    console.log('🔓 Released database initialization lock');
   }
-  
-  console.log('🌱 Tables created, seeding initial data...');
-  await seedDatabase(pool);
-  console.log('✅ Database initialization complete!');
 }
 
 export async function closeDatabase(): Promise<void> {
