@@ -4,12 +4,13 @@ applyTo: "src/__tests__/**"
 
 ## Integration Test Bootstrapping
 - Prefer using the shared helper `initializeIntegrationTestServer()` from `src/__tests__/helpers/testServer.ts` for any integration-style test.
-- This helper calls `resetTestDatabase()` (from `src/lib/server/database.ts`) to ensure a clean in-memory SQLite database, resets all cache singletons, and then runs `initializeServer()` so caches are wired exactly as production code expects.
+- This helper calls `resetTestDatabase()` (from `src/lib/server/database.ts`) to ensure a clean PostgreSQL test database, resets all cache singletons, and then runs `initializeServer()` so caches are wired exactly as production code expects.
 - Pair every call to the initializer with `shutdownIntegrationTestServer()` in `afterEach`/`afterAll` hooks to flush dirty data, stop background persistence, and reset singletons for the next test.
 
-## In-Memory Database Behavior
-- `getDatabase()` automatically returns an in-memory SQLite database whenever `NODE_ENV === 'test'`. The helper `initializeTestDatabase()` creates tables, seeds default users/space objects, and mirrors production defaults so tests rely on realistic data.
-- Avoid manual calls to `createTestDatabase()` for integration tests; rely on `main.initializeServer()` + the in-memory DB to keep schema/seed logic in sync with production.
+## PostgreSQL Test Database Behavior
+- `getDatabase()` automatically connects to a PostgreSQL test database whenever `NODE_ENV === 'test'`. The database is configured via environment variables (POSTGRES_TEST_DB defaults to 'spacewars_test').
+- `resetTestDatabase()` drops all tables and recreates them with seed data, providing a clean state for each test run.
+- Avoid manual calls to `createTestDatabase()` for integration tests; rely on `main.initializeServer()` + the test DB to keep schema/seed logic in sync with production.
 - For unit tests that truly need isolated DB control, import from `src/__tests__/helpers/testDatabase.ts`, but document the reason in the test to avoid divergence from the standard flow.
 
 ## Cache Expectations
@@ -24,4 +25,4 @@ applyTo: "src/__tests__/**"
 
 ## ✅ Safe Commands to USE
 - `npm test` 
-- `npx vitest run` 
+- `npx vitest run`

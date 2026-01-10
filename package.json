@@ -7,10 +7,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "vitest run",
+    "test": ".devcontainer/init-db.sh && vitest run",
     "ci": "npm run lint && npm test && npm run build",
-    "test:ui": "vitest --ui",
-    "test:watch": "vitest",
+    "test:ui": ".devcontainer/init-db.sh && vitest --ui",
+    "test:watch": ".devcontainer/init-db.sh && vitest",
     "export-db": "npx tsx scripts/export-database-to-html.ts"
   },
   "dependencies": {
@@ -38,7 +38,6 @@
     "@testing-library/user-event": "^14.6.1",
     "@vitest/coverage-v8": "^4.0.12",
     "@vitest/ui": "^4.0.12",
-    "better-sqlite3": "^12.5.0",
     "eslint": "^9",
     "eslint-config-next": "15.4.6",
     "jsdom": "^26.1.0",

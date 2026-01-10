@@ -169,14 +169,16 @@ export const DEFAULT_SPACE_OBJECTS: SeedSpaceObject[] = [
   { type: 'escape_pod', x: 400, y: 150, speed: 45, angle: 95 }
 ];
 
-export async function seedDatabase(db: DatabaseConnection): Promise<void> {
-  // Check if database already has data
-  const result = await db.query('SELECT COUNT(*) as count FROM users');
-  const userCount = parseInt(result.rows[0]?.count || '0', 10);
-  
-  if (userCount > 0) {
-    console.log('📊 Database already has users, skipping seed');
-    return;
+export async function seedDatabase(db: DatabaseConnection, force = false): Promise<void> {
+  // Check if database already has data (skip check if force is true)
+  if (!force) {
+    const result = await db.query('SELECT COUNT(*) as count FROM users');
+    const userCount = parseInt(result.rows[0]?.count || '0', 10);
+    
+    if (userCount > 0) {
+      console.log('📊 Database already has users, skipping seed');
+      return;
+    }
   }
 
   console.log('🌱 Seeding default data...');
@@ -273,7 +275,34 @@ export async function seedDatabase(db: DatabaseConnection): Promise<void> {
       console.log(`✅ Created user: ${user.username} with ship ID ${shipId}${techInfo}${defenseInfo}`);
     }
 
-    console.log(`✅ Seeded ${DEFAULT_USERS.length} users and ${DEFAULT_SPACE_OBJECTS.length + DEFAULT_USERS.length} space objects for 500x500 world`);
+    // Create additional test users (IDs 3-10) ONLY in test environment
+    // These users are needed by tests that require multiple users
+    if (process.env.NODE_ENV === 'test') {
+      const testPasswordHash = await bcrypt.hash('a', 10);
+      const testTechTree = JSON.stringify({ ironHarvesting: 1, shipSpeed: 1 });
+      
+      for (let i = 3; i <= 10; i++) {
+        // Create ship for this test user
+        const shipResult = await db.query(
+          `INSERT INTO space_objects (type, x, y, speed, angle, last_position_update_ms)
+           VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+          ['player_ship', 250 + i * 10, 250 + i * 10, 0, 0, now]
+        );
+        
+        const shipId = shipResult.rows[0].id;
+        
+        // Create the test user
+        await db.query(
+          `INSERT INTO users (username, password_hash, iron, last_updated, tech_tree, ship_id, hull_current, armor_current, shield_current, defense_last_regen)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+          [`testuser${i}`, testPasswordHash, 1000, Math.floor(now / 1000), testTechTree, shipId, 250.0, 250.0, 250.0, Math.floor(now / 1000)]
+        );
+      }
+      
+      console.log(`✅ Seeded ${DEFAULT_USERS.length + 8} users (including 8 test users) and ${DEFAULT_SPACE_OBJECTS.length + DEFAULT_USERS.length + 8} space objects for 500x500 world`);
+    } else {
+      console.log(`✅ Seeded ${DEFAULT_USERS.length} users and ${DEFAULT_SPACE_OBJECTS.length + DEFAULT_USERS.length} space objects for 500x500 world`);
+    }
   } catch (error) {
     console.error('❌ Error seeding database:', error);
     throw error;
