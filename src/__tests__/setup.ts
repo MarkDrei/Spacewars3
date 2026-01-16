@@ -17,8 +17,8 @@ afterEach(async () => {
   // Brief delay to allow any lingering async operations to complete
   // This helps prevent foreign key violations in PostgreSQL when
   // subsequent tests reset the database
-  // 25ms is a compromise between safety and test performance
-  await new Promise(resolve => setTimeout(resolve, 25));
+  // 35ms balances safety with test performance (adds ~14s total for 403 tests)
+  await new Promise(resolve => setTimeout(resolve, 35));
 });
 
 // Note: Transaction-based test isolation is implemented but not enabled globally yet

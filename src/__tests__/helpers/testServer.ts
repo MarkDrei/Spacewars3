@@ -72,16 +72,26 @@ export async function initializeIntegrationTestServer(): Promise<void> {
   await db.query('DELETE FROM battles', []);
   await db.query('DELETE FROM messages', []);
   
-  // Reset defense values for test users to default values
-  // User 1 ('a'): reset to 250 (half of max 500)
-  // User 2 ('dummy'): reset to 350 (half of max 700) 
+  // Reset defense values and tech counts for test users to default values
+  // User 1 ('a'): 5 of each tech (default), reset to 250 (half of max 500)
+  // User 2 ('dummy'): 7 of each tech (as per seed), reset to 350 (half of max 700)
   const now = Math.floor(Date.now() / 1000);
+  
+  // Reset user 1 to default values
   await db.query(
-    'UPDATE users SET hull_current = 250, armor_current = 250, shield_current = 250, defense_last_regen = $1 WHERE id = 1',
+    `UPDATE users SET 
+      hull_current = 250, armor_current = 250, shield_current = 250, defense_last_regen = $1,
+      ship_hull = 5, kinetic_armor = 5, energy_shield = 5
+    WHERE id = 1`,
     [now]
   );
+  
+  // Reset user 2 to seed data values (7 of each tech)
   await db.query(
-    'UPDATE users SET hull_current = 350, armor_current = 350, shield_current = 350, defense_last_regen = $1 WHERE id = 2',
+    `UPDATE users SET 
+      hull_current = 350, armor_current = 350, shield_current = 350, defense_last_regen = $1,
+      ship_hull = 7, kinetic_armor = 7, energy_shield = 7
+    WHERE id = 2`,
     [now]
   );
   
