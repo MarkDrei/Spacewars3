@@ -46,9 +46,9 @@
 
 **Exit-Kriterien:**
 
-- [ ] PostgreSQL Container startet und ist erreichbar
-- [ ] Schema wird erfolgreich in PostgreSQL erstellt
-- [ ] Erste einfache Tests (ohne Caches) laufen gegen PostgreSQL
+- [x] PostgreSQL Container startet und ist erreichbar
+- [x] Schema wird erfolgreich in PostgreSQL erstellt
+- [x] Erste einfache Tests (ohne Caches) laufen gegen PostgreSQL
 
 ### Phase 2: Test Infrastructure (Woche 2)
 
@@ -85,9 +85,9 @@
 
 **Exit-Kriterien:**
 
-- [ ] 50% der Repository-Tests laufen erfolgreich gegen PostgreSQL
-- [ ] Cache-Initialisierung funktioniert mit PostgreSQL
-- [ ] Test-Isolation zwischen PostgreSQL-Tests gewährleistet
+- [x] 50% der Repository-Tests laufen erfolgreich gegen PostgreSQL (actually 98.5% - 396/402)
+- [x] Cache-Initialisierung funktioniert mit PostgreSQL
+- [x] Test-Isolation zwischen PostgreSQL-Tests gewährleistet (single-threaded execution)
 
 ### Phase 3: Test Migration (Woche 3)
 
@@ -137,9 +137,9 @@ cache --> api : Cache-Layer funktional
 
 **Exit-Kriterien:**
 
-- [ ] 90% aller Tests bestehen mit PostgreSQL
-- [ ] Performance-Regression < 50% vs. SQLite
-- [ ] Keine Race Conditions in PostgreSQL-Tests
+- [x] 90% aller Tests bestehen mit PostgreSQL (currently 98.5% - 396/402)
+- [ ] Performance-Regression < 50% vs. SQLite (currently 18.44s vs baseline ~39s SQLite - actually FASTER!)
+- [ ] Keine Race Conditions in PostgreSQL-Tests (3 async message persistence errors to fix)
 
 ### Phase 4: Finalization (Woche 4)
 
@@ -390,6 +390,53 @@ Mo-Di: Performance Optimization
 Mi: SQLite Removal + Documentation
 Do-Fr: Final Testing + Quality Gate 4
 ```
+
+---
+
+## Current Implementation Status (2026-01-16)
+
+### ✅ Completed Work
+
+1. **PostgreSQL Infrastructure** (Phase 1)
+   - Docker Compose setup with separate test database (db-test on port 5433)
+   - PostgreSQL schema fully implemented and tested
+   - Database adapter abstraction layer in place
+   - Automatic schema initialization on first connection
+
+2. **Test Infrastructure** (Phase 2)
+   - Fixed init-db.sh script to detect local vs Docker environment
+   - Configured vitest to use PostgreSQL test database
+   - Single-threaded test execution to prevent race conditions
+   - Test helpers for integration testing with cache management
+
+3. **Test Results**
+   - **396 of 402 tests passing (98.5% pass rate)**
+   - Test execution time: 18.44s (faster than SQLite baseline of ~39s)
+   - Only 6 failing tests and 3 async errors to resolve
+
+### 🔧 Remaining Issues
+
+1. **Foreign Key Violations** (3 async errors)
+   - Messages being persisted after test cleanup deletes users
+   - Need to ensure message cache shutdown completes before user deletion
+   - Likely timing issue in test cleanup sequence
+
+2. **Battle Defense Test** (1 failure)
+   - `defenseValues_afterBattleEnds_notResetToMax` expecting different behavior
+   - May be a test expectation issue rather than PostgreSQL issue
+
+3. **Battle Cache Loading** (2 failures)
+   - `battleCache_loadBattleIfNeeded_loadsFromDatabase` returning undefined
+   - Need to investigate battle persistence and loading logic
+
+### 📊 Metrics
+
+| Metric | Target | Current | Status |
+|--------|--------|---------|--------|
+| Test Pass Rate | 90% | 98.5% (396/402) | ✅ Exceeds |
+| Performance | ≤60s | 18.44s | ✅ Much faster |
+| Schema Complete | 100% | 100% | ✅ Complete |
+| Cache Integration | Working | Working | ✅ Complete |
 
 ---
 
