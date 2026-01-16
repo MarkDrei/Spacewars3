@@ -528,9 +528,19 @@ export class UserCache extends Cache {
 
       const worldCache = this.getWorldCacheOrNull();
       if (worldCache) {
-        console.log('💾 Final persist of world data before shutdown');
-        await worldCache.flushToDatabase();
-        await worldCache.shutdown();
+        try {
+          console.log('💾 Final persist of world data before shutdown');
+          await worldCache.flushToDatabase();
+          await worldCache.shutdown();
+        } catch (error) {
+          // WorldCache may have been shut down already by another process/test
+          // This is fine - we just skip the flush
+          if (error instanceof Error && error.message.includes('WorldCache not initialized')) {
+            console.log('⏭️ WorldCache already shut down, skipping flush');
+          } else {
+            throw error;
+          }
+        }
       }
 
       const messageCache = await this.getMessageCache();

@@ -50,16 +50,23 @@ export async function initializeIntegrationTestServer(): Promise<void> {
   // IMPORTANT: Shutdown caches BEFORE clearing data to ensure all pending async operations complete
   // This prevents foreign key violations from async message persistence
   // and race conditions with battle persistence
-  await shutdownUserWorldCache();
-  await shutdownWorldCache();
-  await shutdownMessageCache();
+  // 
+  // Shutdown order is critical (reverse dependency order):
+  // 1. BattleCache (depends on User/World/Message)
+  // 2. MessageCache (no dependencies on other caches)
+  // 3. UserCache (depends on World/Message) 
+  // 4. WorldCache (used by UserCache)
   await shutdownBattleCache();
+  await shutdownMessageCache();
+  await shutdownUserWorldCache(); // Must be before WorldCache!
+  await shutdownWorldCache();
   
-  // Reset all in-memory cache instances
+  // Now reset all in-memory cache instances
+  // Note: Must be done AFTER shutdown completes to avoid interfering with ongoing operations
+  // UserCache.resetInstance() also calls WorldCache.resetInstance() internally
   BattleCache.resetInstance();
-  UserCache.resetInstance();
-  WorldCache.resetInstance();
   MessageCache.resetInstance();
+  UserCache.resetInstance();
   
   // Now safe to clear battles and messages tables (keep users and space_objects for foreign key integrity)
   await db.query('DELETE FROM battles', []);
@@ -86,12 +93,16 @@ export async function initializeIntegrationTestServer(): Promise<void> {
  * Shutdown integration test server and clean up resources.
  */
 export async function shutdownIntegrationTestServer(): Promise<void> {
-  await shutdownUserWorldCache();
-  await shutdownWorldCache();
-  await shutdownMessageCache();
+  // Shutdown in reverse dependency order:
+  // Battle → Message → User → World
   await shutdownBattleCache();
+  await shutdownMessageCache();
+  await shutdownUserWorldCache(); // Must be before WorldCache!
+  await shutdownWorldCache();
+  
+  // Reset instances after shutdown completes
+  // UserCache.resetInstance() also resets WorldCache internally
   BattleCache.resetInstance();
-  UserCache.resetInstance();
-  WorldCache.resetInstance();
   MessageCache.resetInstance();
+  UserCache.resetInstance();
 }
