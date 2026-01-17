@@ -23,7 +23,7 @@ afterEach(async () => {
     if (messageCache) {
       await messageCache.waitForPendingWrites();
     }
-  } catch (error) {
+  } catch {
     // Ignore if MessageCache doesn't exist or isn't initialized
   }
 
@@ -36,7 +36,7 @@ afterEach(async () => {
     if (battleCache) {
       await battleCache.waitForPendingWrites();
     }
-  } catch (error) {
+  } catch {
     // Ignore if BattleCache doesn't exist or isn't initialized
   }
 

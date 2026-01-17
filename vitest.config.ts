@@ -11,7 +11,7 @@ export default defineConfig({
     env: {
       NODE_ENV: 'test',
       POSTGRES_HOST: process.env.POSTGRES_HOST || 'localhost',
-      POSTGRES_PORT: process.env.POSTGRES_PORT || '5433',
+      POSTGRES_PORT: process.env.POSTGRES_PORT || '5432',
       POSTGRES_DB: process.env.POSTGRES_TEST_DB || 'spacewars_test',
       POSTGRES_USER: process.env.POSTGRES_USER || 'spacewars',
       POSTGRES_PASSWORD: process.env.POSTGRES_PASSWORD || 'spacewars',

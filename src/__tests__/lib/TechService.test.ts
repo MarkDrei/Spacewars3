@@ -4,7 +4,7 @@ import { UserCache } from '@/lib/server/user/userCache';
 import { MessageCache } from '@/lib/server/messages/MessageCache';
 import { User } from '@/lib/server/user/user';
 import { TechCounts, BuildQueueItem } from '@/lib/server/techs/TechFactory';
-import { TechTree, ResearchType, createInitialTechTree } from '@/lib/server/techs/techtree';
+import { ResearchType, createInitialTechTree } from '@/lib/server/techs/techtree';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 import { USER_LOCK } from '@/lib/server/typedLocks';
 import { initializeIntegrationTestServer, shutdownIntegrationTestServer } from '../helpers/testServer';
@@ -27,12 +27,12 @@ describe('TechService - Unit Tests', () => {
 
         // Create mock caches
         mockUserCache = {
-            getUserByIdWithLock: mockGetUserByIdWithLock as any,
-            updateUserInCache: mockUpdateUserInCache as any
+            getUserByIdWithLock: mockGetUserByIdWithLock as (context: unknown, userId: number) => Promise<User | null>,
+            updateUserInCache: mockUpdateUserInCache as (context: unknown, user: User) => Promise<void>
         };
 
         mockMessageCache = {
-            createMessage: mockCreateMessage as any
+            createMessage: mockCreateMessage as (userId: number, message: string) => Promise<number>
         };
 
         // Get TechService instance and inject mocks

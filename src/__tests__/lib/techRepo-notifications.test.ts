@@ -31,7 +31,7 @@ describe('TechService - Build Completion Notifications', () => {
     // Create mock MessageCache and inject it
     mockCreateMessage = vi.fn().mockResolvedValue(1);
     const mockMessageCache: Partial<MessageCache> = {
-      createMessage: mockCreateMessage as any
+      createMessage: mockCreateMessage as (userId: number, message: string) => Promise<number>
     };
     techService.setMessageCacheForTesting(mockMessageCache as MessageCache);
 

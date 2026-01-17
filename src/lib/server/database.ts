@@ -13,7 +13,7 @@ async function initTransactionContext() {
     try {
       const { getTransactionContext: txContext } = await import('../../__tests__/helpers/transactionHelper.js');
       getTransactionContext = txContext;
-    } catch (error) {
+    } catch {
       // Transaction helper not available, tests will use pool directly
       console.log('⚠️ Transaction helper not available, using pool directly');
     }
