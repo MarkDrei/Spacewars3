@@ -2,6 +2,40 @@
 applyTo: "src/__tests__/**"
 ---
 
+## Test Isolation Strategy
+
+**Goal:** All integration tests use transaction-based isolation for perfect test independence and reproducibility.
+
+### Transaction Wrapper
+- **Every integration test** must wrap its body with `await withTransaction(async () => { ... })`
+- Import from: `import { withTransaction } from '../helpers/transactionHelper';`
+- Automatic ROLLBACK after test completion ensures zero data pollution
+- Enables future parallel test execution
+
+### Example
+```typescript
+import { withTransaction } from '../helpers/transactionHelper';
+
+it('myTest_scenario_expectedOutcome', async () => {
+  await withTransaction(async () => {
+    // All test code here
+    // Database changes automatically rolled back
+  });
+});
+```
+
+### Why Transactions?
+- **Perfect Isolation:** Each test starts with clean database state
+- **No Manual Cleanup:** No need for DELETE/UPDATE queries in test helpers
+- **Deterministic:** Tests always see the same initial data (from seedData)
+- **Parallel Ready:** Transaction isolation enables safe parallel execution
+- **Catches Bugs:** Exposes issues with background persistence escaping transaction scope
+
+### Background Persistence
+- Disabled in test mode (`NODE_ENV === 'test'`)
+- Cache mutations trigger immediate synchronous persistence instead
+- This ensures all database writes happen within the transaction boundary
+
 ## Integration Test Bootstrapping
 - Prefer using the shared helper `initializeIntegrationTestServer()` from `src/__tests__/helpers/testServer.ts` for any integration-style test.
 - This helper calls `resetTestDatabase()` (from `src/lib/server/database.ts`) to ensure a clean PostgreSQL test database, resets all cache singletons, and then runs `initializeServer()` so caches are wired exactly as production code expects.

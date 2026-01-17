@@ -315,6 +315,37 @@ Level 8: MESSAGE_DB_LOCK (Message DB ops)
 - ⚠️ Need to handle ID mapping and race conditions
 - ⚠️ Shutdown must wait for pending writes
 
+### 9.4 ADR-004: Transaction-Based Test Isolation
+
+**Context:** Tests were interfering with each other due to shared database state. Manual cleanup in `initializeIntegrationTestServer()` was brittle and masked issues with background persistence escaping transaction boundaries.
+
+**Decision:** 
+1. Wrap all integration tests in database transactions using `withTransaction()` helper
+2. Automatic ROLLBACK after each test provides perfect isolation
+3. Disable background persistence in test mode (synchronous persistence instead)
+4. Use AsyncLocalStorage to propagate transaction context throughout test execution
+
+**Implementation:**
+- `withTransaction()` helper in `src/__tests__/helpers/transactionHelper.ts`
+- AsyncLocalStorage for transaction context propagation
+- `getDatabasePool()` export for direct pool access in tests
+- Cache modifications detect test mode and persist immediately instead of using timers
+- Timer-based background persistence disabled when `NODE_ENV === 'test'`
+
+**Consequences:**
+- ✅ Perfect test isolation - no data pollution between tests
+- ✅ No manual cleanup needed - automatic ROLLBACK handles everything
+- ✅ Enables parallel test execution (future improvement)
+- ✅ Tests are deterministic and reproducible
+- ✅ Catches bugs where background persistence escapes transaction scope
+- ⚠️ Test mode has slightly different code path (synchronous vs async persistence)
+- ⚠️ Tests must use `withTransaction()` wrapper for proper isolation
+- ⚠️ Seeded test data must be visible within transaction (handled by database initialization)
+
+**Performance:**
+- Test suite: ~45s (sequential execution with 402 tests)
+- Expected ~33% improvement with parallel execution enabled
+
 ---
 
 ## 10. Quality Requirements
