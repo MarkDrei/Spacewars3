@@ -36,7 +36,6 @@ interface MessageCacheStats {
  */
 export class MessageCache extends Cache {
   private static instance: MessageCache | null = null;
-  private readonly isTestMode = process.env.NODE_ENV === 'test';
   
   private constructor() {
     super();
@@ -718,13 +717,8 @@ export class MessageCache extends Cache {
   }
 
   private startBackgroundPersistence(context: LockContext<LocksAtMostAndHas8>): void {
-    if (this.isTestMode) {
-      console.log('📬 Background persistence disabled in test mode');
-      return;
-    }
-    
-    if (!this.config.enableAutoPersistence) {
-      console.log('📬 Background persistence disabled by config');
+    if (!this.shouldEnableBackgroundPersistence(this.config.enableAutoPersistence)) {
+      console.log('📬 Background persistence disabled (test mode or config)');
       return;
     }
 

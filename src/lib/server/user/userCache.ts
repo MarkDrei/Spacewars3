@@ -48,7 +48,6 @@ declare global {
  */
 export class UserCache extends Cache {
   private static dependencies: userCacheDependencies = {};
-  private readonly isTestMode = process.env.NODE_ENV === 'test';
 
   // ===== FIELDS =====
 
@@ -473,13 +472,8 @@ export class UserCache extends Cache {
    * Start background persistence timer
    */
   private startBackgroundPersistence(): void {
-    if (this.isTestMode) {
-      console.log('📝 Background persistence disabled in test mode');
-      return;
-    }
-    
-    if (!this.config.enableAutoPersistence) {
-      console.log('📝 Background persistence disabled by config');
+    if (!this.shouldEnableBackgroundPersistence(this.config.enableAutoPersistence)) {
+      console.log('📝 Background persistence disabled (test mode or config)');
       return;
     }
 
