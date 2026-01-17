@@ -3,6 +3,7 @@ import { NextRequest } from 'next/server';
 
 // Import API routes
 import { GET as worldGET } from '@/app/api/world/route';
+import { withTransaction } from '../helpers/transactionHelper';
 
 // Helper function to create a Next.js request
 function createRequest(url: string, method: string, body?: unknown): NextRequest {
@@ -17,12 +18,14 @@ function createRequest(url: string, method: string, body?: unknown): NextRequest
 
 describe('World API', () => {
   test('world_notAuthenticated_returns401', async () => {
-    const request = createRequest('http://localhost:3000/api/world', 'GET');
+    await withTransaction(async () => {
+      const request = createRequest('http://localhost:3000/api/world', 'GET');
 
-    const response = await worldGET(request);
-    const data = await response.json();
+      const response = await worldGET(request);
+      const data = await response.json();
 
-    expect(response.status).toBe(401);
-    expect(data.error).toBe('Not authenticated');
+      expect(response.status).toBe(401);
+      expect(data.error).toBe('Not authenticated');
+    });
   });
 });
