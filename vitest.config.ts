@@ -16,11 +16,12 @@ export default defineConfig({
       POSTGRES_USER: process.env.POSTGRES_USER || 'spacewars',
       POSTGRES_PASSWORD: process.env.POSTGRES_PASSWORD || 'spacewars',
     },
-    // Run tests in a single thread to avoid database conflicts with PostgreSQL
-    // This is necessary because tests reset/truncate shared database tables
+    // Tests use transaction-based isolation for parallel execution
+    // Each test runs in its own transaction that is rolled back automatically
+    // This allows parallel execution without database conflicts
     poolOptions: {
       threads: {
-        singleThread: true
+        // singleThread: true  // REMOVED - parallel execution now enabled
       }
     },
     coverage: {
