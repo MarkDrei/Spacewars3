@@ -223,6 +223,19 @@ export class BattleCache extends Cache {
     this.db = null;
   }
 
+  /**
+   * Wait for all pending writes to complete
+   * Useful before shutdown or testing
+   * Similar to MessageCache.waitForPendingWrites()
+   */
+  async waitForPendingWrites(): Promise<void> {
+    if (this.dirtyBattles.size === 0) return;
+    
+    console.log(`⚔️ Flushing ${this.dirtyBattles.size} dirty battle(s)...`);
+    await this.persistDirtyBattlesAsync();
+    console.log('✅ All battle writes complete');
+  }
+
   // ========================================
   // Private Methods (internal use only - no locks needed as used within locked sections)
   // ========================================
