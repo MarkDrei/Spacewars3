@@ -32,6 +32,7 @@ Status: Work in Progress
 Spacewars Ironcore is a 2D space exploration game built with Next.js 15, TypeScript, and React. Players navigate space, collect resources, upgrade their ships through a technology tree, and engage in battles.
 
 **Key Features:**
+
 - Real-time space navigation with HTML5 Canvas rendering
 - Resource collection (iron) from asteroids, shipwrecks, and escape pods
 - Technology research system with resource costs and build times
@@ -41,20 +42,20 @@ Spacewars Ironcore is a 2D space exploration game built with Next.js 15, TypeScr
 
 ### 1.2 Quality Goals
 
-| Priority | Quality Goal | Scenario |
-|----------|-------------|----------|
-| 1 | **Correctness** | No race conditions or data corruption in concurrent operations |
-| 2 | **Performance** | Sub-100ms response times for game actions; async message creation ~0.5ms |
-| 3 | **Maintainability** | Clear separation of concerns; compile-time lock validation |
-| 4 | **Scalability** | Efficient caching to minimize database load |
+| Priority | Quality Goal        | Scenario                                                                 |
+| -------- | ------------------- | ------------------------------------------------------------------------ |
+| 1        | **Correctness**     | No race conditions or data corruption in concurrent operations           |
+| 2        | **Performance**     | Sub-100ms response times for game actions; async message creation ~0.5ms |
+| 3        | **Maintainability** | Clear separation of concerns; compile-time lock validation               |
+| 4        | **Scalability**     | Efficient caching to minimize database load                              |
 
 ### 1.3 Stakeholders
 
-| Role | Goal | Contact |
-|------|------|---------|
-| Game Developer | Implement features without deadlocks | Development team |
-| Players | Smooth gameplay experience | End users |
-| System Administrator | Monitor and maintain deployment | Ops team |
+| Role                 | Goal                                 | Contact          |
+| -------------------- | ------------------------------------ | ---------------- |
+| Game Developer       | Implement features without deadlocks | Development team |
+| Players              | Smooth gameplay experience           | End users        |
+| System Administrator | Monitor and maintain deployment      | Ops team         |
 
 ---
 
@@ -121,14 +122,14 @@ Spacewars Ironcore is a 2D space exploration game built with Next.js 15, TypeScr
 
 ### 4.2 Technology Stack
 
-| Layer | Technology | Purpose |
-|-------|-----------|---------|
-| Frontend | React 18 + Next.js 15 | UI framework |
-| Backend | Next.js API Routes | RESTful endpoints |
-| Database | SQLite3 | Persistent storage |
-| Lock System | IronGuard | Deadlock prevention |
-| Canvas | HTML5 Canvas API | Game rendering |
-| Authentication | iron-session | Secure sessions |
+| Layer          | Technology            | Purpose             |
+| -------------- | --------------------- | ------------------- |
+| Frontend       | React 18 + Next.js 15 | UI framework        |
+| Backend        | Next.js API Routes    | RESTful endpoints   |
+| Database       | SQLite3               | Persistent storage  |
+| Lock System    | IronGuard             | Deadlock prevention |
+| Canvas         | HTML5 Canvas API      | Game rendering      |
+| Authentication | iron-session          | Secure sessions     |
 
 ---
 
@@ -162,9 +163,11 @@ See [Building Blocks - Cache Systems](./building-blocks-cache-systems.md) for de
 The cache layer consists of two independent cache managers with distinct responsibilities:
 
 #### 5.2.1 TypedCacheManager
+
 **Responsibility:** User data, world state, username mappings
 
 **Key Features:**
+
 - Manages `User` objects with tech counts, iron, ship data
 - Manages `World` state with space objects
 - Username → UserID mapping cache
@@ -173,9 +176,11 @@ The cache layer consists of two independent cache managers with distinct respons
 - **Explicit initialization** required (loads world data, starts battle scheduler)
 
 #### 5.2.2 MessageCache
+
 **Responsibility:** User messages and notifications
 
 **Key Features:**
+
 - Independent message storage per user
 - Async message creation with temporary IDs
 - Read status tracking
@@ -183,7 +188,8 @@ The cache layer consists of two independent cache managers with distinct respons
 - Lock hierarchy: MESSAGE_CACHE_LOCK → MESSAGE_DATA_LOCK → MESSAGE_DB_LOCK
 - **Auto-initialization** on first access (lightweight)
 
-**Design Rationale:** 
+**Design Rationale:**
+
 - Separation ensures message operations don't block game state updates
 - Different initialization strategies: TypedCacheManager needs explicit init for heavy world loading; MessageCache auto-initializes for convenience
 
@@ -251,6 +257,7 @@ Player → POST /api/harvest
 ### 8.1 Lock Ordering (IronGuard)
 
 **Global Lock Hierarchy:**
+
 ```
 Level 1: CACHE_LOCK (Management operations)
 Level 2: WORLD_LOCK (World state)
@@ -286,6 +293,7 @@ Level 8: MESSAGE_DB_LOCK (Message DB ops)
 **Decision:** Extract MessageCache as independent singleton.
 
 **Consequences:**
+
 - ✅ Message operations don't block user/world updates
 - ✅ Simpler lock hierarchy for each domain
 - ✅ Async message creation without affecting game performance
@@ -298,6 +306,7 @@ Level 8: MESSAGE_DB_LOCK (Message DB ops)
 **Decision:** Migrate to IronGuard for compile-time deadlock prevention.
 
 **Consequences:**
+
 - ✅ Impossible to create deadlocks (compile-time enforcement)
 - ✅ Clear lock hierarchy documented in types
 - ✅ Better IDE support with type hints
@@ -310,6 +319,7 @@ Level 8: MESSAGE_DB_LOCK (Message DB ops)
 **Decision:** Use temporary negative IDs with async persistence.
 
 **Consequences:**
+
 - ✅ ~0.5ms message creation time (10-20x faster)
 - ✅ Messages immediately available in cache
 - ⚠️ Need to handle ID mapping and race conditions
@@ -319,13 +329,15 @@ Level 8: MESSAGE_DB_LOCK (Message DB ops)
 
 **Context:** Tests were interfering with each other due to shared database state. Manual cleanup in `initializeIntegrationTestServer()` was brittle and masked issues with background persistence escaping transaction boundaries.
 
-**Decision:** 
+**Decision:**
+
 1. Wrap all integration tests in database transactions using `withTransaction()` helper
 2. Automatic ROLLBACK after each test provides perfect isolation
 3. Disable background persistence in test mode (synchronous persistence instead)
 4. Use AsyncLocalStorage to propagate transaction context throughout test execution
 
 **Implementation:**
+
 - `withTransaction()` helper in `src/__tests__/helpers/transactionHelper.ts`
 - AsyncLocalStorage for transaction context propagation
 - `getDatabasePool()` export for direct pool access in tests
@@ -333,6 +345,7 @@ Level 8: MESSAGE_DB_LOCK (Message DB ops)
 - Timer-based background persistence disabled when `NODE_ENV === 'test'`
 
 **Consequences:**
+
 - ✅ Perfect test isolation - no data pollution between tests
 - ✅ No manual cleanup needed - automatic ROLLBACK handles everything
 - ✅ Enables parallel test execution (future improvement)
@@ -343,6 +356,7 @@ Level 8: MESSAGE_DB_LOCK (Message DB ops)
 - ⚠️ Seeded test data must be visible within transaction (handled by database initialization)
 
 **Performance:**
+
 - Test suite: ~45s (sequential execution with 402 tests)
 - Expected ~33% improvement with parallel execution enabled
 
@@ -352,11 +366,11 @@ Level 8: MESSAGE_DB_LOCK (Message DB ops)
 
 ### 10.1 Performance
 
-| Metric | Target | Actual |
-|--------|--------|--------|
-| Message creation | < 1ms | ~0.5ms |
-| User data load | < 50ms | ~10-20ms (cache hit: ~1ms) |
-| Game action (harvest) | < 100ms | ~30-50ms |
+| Metric                | Target  | Actual                     |
+| --------------------- | ------- | -------------------------- |
+| Message creation      | < 1ms   | ~0.5ms                     |
+| User data load        | < 50ms  | ~10-20ms (cache hit: ~1ms) |
+| Game action (harvest) | < 100ms | ~30-50ms                   |
 
 ### 10.2 Reliability
 
@@ -371,6 +385,7 @@ Level 8: MESSAGE_DB_LOCK (Message DB ops)
 See [TechnicalDebt.md](../../TechnicalDebt.md) for current issues.
 
 **Key Risks:**
+
 1. **SQLite Concurrency:** Single writer limitation may cause bottlenecks at scale
 2. **Cache Invalidation:** No distributed cache invalidation strategy
 3. **Session Storage:** In-memory sessions don't survive restarts
@@ -379,10 +394,10 @@ See [TechnicalDebt.md](../../TechnicalDebt.md) for current issues.
 
 ## 12. Glossary
 
-| Term | Definition |
-|------|------------|
-| **IronGuard** | TypeScript lock library with compile-time deadlock prevention |
-| **ValidLockContext** | Type constraint ensuring correct lock acquisition order |
-| **Dirty Tracking** | Marking cached data as modified for background persistence |
-| **Temporary ID** | Negative ID assigned to messages before DB insertion |
-| **Lock Hierarchy** | Ordered sequence of locks that must be acquired in ascending order |
+| Term                 | Definition                                                         |
+| -------------------- | ------------------------------------------------------------------ |
+| **IronGuard**        | TypeScript lock library with compile-time deadlock prevention      |
+| **ValidLockContext** | Type constraint ensuring correct lock acquisition order            |
+| **Dirty Tracking**   | Marking cached data as modified for background persistence         |
+| **Temporary ID**     | Negative ID assigned to messages before DB insertion               |
+| **Lock Hierarchy**   | Ordered sequence of locks that must be acquired in ascending order |
