@@ -28,6 +28,7 @@ declare global {
 
 export class WorldCache extends Cache {
   private static dependencies: WorldCacheDependencies = {};
+  private readonly isTestMode = process.env.NODE_ENV === 'test';
   private config: WorldCacheConfig = {
     persistenceIntervalMs: 30000,
     enableAutoPersistence: true,
@@ -138,10 +139,16 @@ export class WorldCache extends Cache {
     return this.world;
   }
 
-  updateWorldUnsafe(_context: LockContext<LocksAtMostAndHas6>, world: World): void {
+  async updateWorldUnsafe(context: LockContext<LocksAtMostAndHas6>, world: World): Promise<void> {
     this.ensureReady();
     this.world = world;
     this.worldDirty = true;
+    
+    // In test mode with auto-persistence enabled, persist immediately (within transaction context)
+    // If auto-persistence is disabled, respect that (for testing dirty flag behavior)
+    if (this.isTestMode && this.config.enableAutoPersistence) {
+      await this.persistDirtyWorld(context);
+    }
   }
 
   async flushToDatabase(): Promise<void> {
@@ -185,6 +192,11 @@ export class WorldCache extends Cache {
   }
 
   private startBackgroundPersistence(): void {
+    if (this.isTestMode) {
+      console.log('📝 World background persistence disabled in test mode');
+      return;
+    }
+    
     if (!this.config.enableAutoPersistence) {
       console.log('📝 World background persistence disabled by config');
       return;

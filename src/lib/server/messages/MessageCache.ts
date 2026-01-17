@@ -36,6 +36,7 @@ interface MessageCacheStats {
  */
 export class MessageCache extends Cache {
   private static instance: MessageCache | null = null;
+  private readonly isTestMode = process.env.NODE_ENV === 'test';
   
   private constructor() {
     super();
@@ -241,9 +242,14 @@ export class MessageCache extends Cache {
 
     console.log(`📬 Created message ${tempId} (pending) for user ${userId}`);
     
-    // Start async DB insertion (don't await)
-    const writePromise = this.persistMessageAsync(context, userId, tempId, newMessage);
-    this.pendingWrites.set(tempId, writePromise);
+    // In test mode, persist immediately (within transaction context)
+    // In production, persist asynchronously
+    if (this.isTestMode) {
+      await this.persistMessageAsync(context, userId, tempId, newMessage);
+    } else {
+      const writePromise = this.persistMessageAsync(context, userId, tempId, newMessage);
+      this.pendingWrites.set(tempId, writePromise);
+    }
     
     return tempId;
   }
@@ -712,6 +718,11 @@ export class MessageCache extends Cache {
   }
 
   private startBackgroundPersistence(context: LockContext<LocksAtMostAndHas8>): void {
+    if (this.isTestMode) {
+      console.log('📬 Background persistence disabled in test mode');
+      return;
+    }
+    
     if (!this.config.enableAutoPersistence) {
       console.log('📬 Background persistence disabled by config');
       return;

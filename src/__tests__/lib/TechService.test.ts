@@ -23,16 +23,16 @@ describe('TechService - Unit Tests', () => {
         // Create mock functions
         mockCreateMessage = vi.fn().mockResolvedValue(1);
         mockGetUserByIdWithLock = vi.fn();
-        mockUpdateUserInCache = vi.fn();
+        mockUpdateUserInCache = vi.fn().mockResolvedValue(undefined);
 
         // Create mock caches
         mockUserCache = {
-            getUserByIdWithLock: mockGetUserByIdWithLock,
-            updateUserInCache: mockUpdateUserInCache
+            getUserByIdWithLock: mockGetUserByIdWithLock as any,
+            updateUserInCache: mockUpdateUserInCache as any
         };
 
         mockMessageCache = {
-            createMessage: mockCreateMessage
+            createMessage: mockCreateMessage as any
         };
 
         // Get TechService instance and inject mocks

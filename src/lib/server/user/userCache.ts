@@ -48,6 +48,7 @@ declare global {
  */
 export class UserCache extends Cache {
   private static dependencies: userCacheDependencies = {};
+  private readonly isTestMode = process.env.NODE_ENV === 'test';
 
   // ===== FIELDS =====
 
@@ -231,11 +232,17 @@ export class UserCache extends Cache {
 
   /**
    * Update user data in the cache, marking as dirty (requires user lock context)
+   * In test mode, persists immediately to stay within transaction scope
    */
-  updateUserInCache(_context: LockContext<LocksAtMostAndHas4>, user: User): void {
+  async updateUserInCache(context: LockContext<LocksAtMostAndHas4>, user: User): Promise<void> {
     this.users.set(user.id, user);
     this.usernameToUserId.set(user.username, user.id); // Update username mapping
     this.dirtyUsers.add(user.id); // Mark as dirty for persistence
+    
+    // In test mode, persist immediately (within transaction context)
+    if (this.isTestMode) {
+      await this.persistDirtyUsers(context);
+    }
   }
 
   /**
@@ -264,7 +271,7 @@ export class UserCache extends Cache {
 
     if (user) {
       user.updateStats(Math.floor(Date.now() / 1000));
-      this.updateUserInCache(context, user);
+      await this.updateUserInCache(context, user);
       return user;
     }
     return null;
@@ -310,7 +317,7 @@ export class UserCache extends Cache {
 
     if (user) {
       user.updateStats(Math.floor(Date.now() / 1000));
-      this.updateUserInCache(context, user);
+      await this.updateUserInCache(context, user);
       return user;
     }
 
@@ -466,6 +473,11 @@ export class UserCache extends Cache {
    * Start background persistence timer
    */
   private startBackgroundPersistence(): void {
+    if (this.isTestMode) {
+      console.log('📝 Background persistence disabled in test mode');
+      return;
+    }
+    
     if (!this.config.enableAutoPersistence) {
       console.log('📝 Background persistence disabled by config');
       return;
