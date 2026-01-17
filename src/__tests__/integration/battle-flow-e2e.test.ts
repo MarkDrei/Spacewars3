@@ -10,6 +10,7 @@ import type { BattleStats, WeaponCooldowns } from '../../lib/server/battle/battl
 import { BATTLE_LOCK, USER_LOCK } from '@/lib/server/typedLocks';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 import { initializeIntegrationTestServer, shutdownIntegrationTestServer } from '../helpers/testServer';
+import { withTransaction } from '../helpers/transactionHelper';
 
 describe('Phase 5: End-to-End Battle Flow with BattleCache', () => {
 
@@ -28,9 +29,9 @@ describe('Phase 5: End-to-End Battle Flow with BattleCache', () => {
 
   describe('Complete Battle Lifecycle', () => {
     it('battleFlow_createToCompletion_properCacheIntegration', async () => {
-
-      const emptyCtx = createLockContext();
-      await emptyCtx.useLockWithAcquire(BATTLE_LOCK, async (battleCtx) => {
+      await withTransaction(async () => {
+        const emptyCtx = createLockContext();
+        await emptyCtx.useLockWithAcquire(BATTLE_LOCK, async (battleCtx) => {
         // === Phase 1: Setup ===
   
         // Use test user IDs (seeded by test database)
@@ -184,15 +185,16 @@ describe('Phase 5: End-to-End Battle Flow with BattleCache', () => {
         const foundBattle = userBattles.find(b => b.id === battle.id);
         expect(foundBattle).toBeDefined();
         expect(foundBattle?.battleEndTime).toBeDefined();
+        });
       });
     });
 
     // Note: This test is disabled because the methods it calls don't exist in battleService
     // The test should be updated when these methods are implemented
     it.skip('battleFlow_cacheIntegration_properDelegation', async () => {
-
-      // Use test user IDs (created by createTestDatabase)
-      const user1Id = 1;
+      await withTransaction(async () => {
+        // Use test user IDs (created by createTestDatabase)
+        const user1Id = 1;
       // const user2Id = 2;
 
       // TODO: Re-enable these tests after refactoring battleService API
@@ -225,13 +227,13 @@ describe('Phase 5: End-to-End Battle Flow with BattleCache', () => {
       // expect(typeof shipId).toBe('number');
       
       // Placeholder assertion to keep test valid
-      expect(user1Id).toBe(1);
-
-      
+        expect(user1Id).toBe(1);
+      });
     });
 
     it('battleFlow_concurrentBattles_cacheSeparation', async () => {
-      await emptyCtx.useLockWithAcquire(BATTLE_LOCK, async (battleCtx) => {
+      await withTransaction(async () => {
+        await emptyCtx.useLockWithAcquire(BATTLE_LOCK, async (battleCtx) => {
 
         // Use first 4 test users
         const userIds = [1, 2, 3, 4];
@@ -279,15 +281,16 @@ describe('Phase 5: End-to-End Battle Flow with BattleCache', () => {
           expect(user0Battle?.id).toBe(battle1.id);
           expect(user2Battle?.id).toBe(battle2.id);
         });
-
+        });
       });
     });
   });
 
   describe('BattleCache Performance', () => {
     it('battleCache_backgroundPersistence_worksCorrectly', async () => {
-      const emptyCtx = createLockContext();
-      await emptyCtx.useLockWithAcquire(BATTLE_LOCK, async (battleCtx) => {
+      await withTransaction(async () => {
+        const emptyCtx = createLockContext();
+        await emptyCtx.useLockWithAcquire(BATTLE_LOCK, async (battleCtx) => {
 
         // Use test users
         const user1Id = 1;
@@ -327,30 +330,32 @@ describe('Phase 5: End-to-End Battle Flow with BattleCache', () => {
 
         // Battle should still not be dirty
         expect(battleCache.getDirtyBattleIds().includes(battle.id)).toBe(false);
+        });
       });
     });
 
     it('battleCache_memoryUsage_reasonable', async () => {
-      const cache = getBattleCache();
-      const initialStats = cache.getStats();
+      await withTransaction(async () => {
+        const cache = getBattleCache();
+        const initialStats = cache.getStats();
 
-      
+        
 
-      // Cache stats should be reasonable
-      expect(initialStats.activeBattles).toBe(0);
-      expect(initialStats.cachedBattles).toBe(0);
-      expect(initialStats.dirtyBattles).toBe(0);
-
-      
+        // Cache stats should be reasonable
+        expect(initialStats.activeBattles).toBe(0);
+        expect(initialStats.cachedBattles).toBe(0);
+        expect(initialStats.dirtyBattles).toBe(0);
+      });
     });
   });
 
   describe('Error Handling', () => {
     it('battleCache_missingBattle_handlesGracefully', async () => {
-      const cache = getBattleCache();
-      
-      const emptyCtx = createLockContext();
-      await emptyCtx.useLockWithAcquire(BATTLE_LOCK, async (battleCtx) => {
+      await withTransaction(async () => {
+        const cache = getBattleCache();
+        
+        const emptyCtx = createLockContext();
+        await emptyCtx.useLockWithAcquire(BATTLE_LOCK, async (battleCtx) => {
         // Try to load non-existent battle
         const nonExistent = await cache.loadBattleIfNeeded(battleCtx, 99999);
         expect(nonExistent).toBeNull();
@@ -358,12 +363,13 @@ describe('Phase 5: End-to-End Battle Flow with BattleCache', () => {
         // Try to get ongoing battle for non-existent user
         const noBattle = await BattleRepo.getOngoingBattleForUser(battleCtx, 99999);
         expect(noBattle).toBeNull();
+        });
       });
-
     });
 
     it('battleCache_cacheOperations_threadsafe', async () => {
-      await emptyCtx.useLockWithAcquire(BATTLE_LOCK, async (battleCtx) => {
+      await withTransaction(async () => {
+        await emptyCtx.useLockWithAcquire(BATTLE_LOCK, async (battleCtx) => {
 
         // Use test users
         const user1Id = 1;
@@ -420,6 +426,7 @@ describe('Phase 5: End-to-End Battle Flow with BattleCache', () => {
         expect(!Array.isArray(ongoingBattleResult) && ongoingBattleResult?.id).toBe(battle.id); // getOngoingBattle
         expect(activeBattlesResult).toHaveLength(1);      // getActiveBattles
         // addBattleEvent returns void
+        });
       });
     });
   });
