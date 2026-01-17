@@ -16,12 +16,15 @@ export default defineConfig({
       POSTGRES_USER: process.env.POSTGRES_USER || 'spacewars',
       POSTGRES_PASSWORD: process.env.POSTGRES_PASSWORD || 'spacewars',
     },
-    // Tests use transaction-based isolation for parallel execution
-    // Each test runs in its own transaction that is rolled back automatically
-    // This allows parallel execution without database conflicts
+    // Transaction-based test isolation is implemented but requires refactoring
+    // Current issue: Background cache persistence writes happen outside transaction scope
+    // causing foreign key violations when transactions rollback
+    // 
+    // For now, using singleThread to ensure sequential execution
+    // TODO: Refactor caches to disable background persistence in test mode
     poolOptions: {
       threads: {
-        // singleThread: true  // REMOVED - parallel execution now enabled
+        singleThread: true  // Re-enabled until cache persistence is refactored
       }
     },
     coverage: {
