@@ -111,7 +111,7 @@ export class MessageCache extends Cache {
       await messageContext.useLockWithAcquire(DATABASE_LOCK_MESSAGES, async () => {
         console.log('📬 Initializing message cache...');
         this.db = await getDatabase();
-        this.messagesRepo = new MessagesRepo(this.db);
+        this.messagesRepo = new MessagesRepo();
         
         this.startBackgroundPersistence(messageContext);
         
