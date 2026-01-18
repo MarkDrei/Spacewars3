@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { MessageCache } from '@/lib/server/messages/MessageCache';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
+import { withTransaction } from '../helpers/transactionHelper';
 
 describe('MessageCache - Summarization', () => {
   let messageCache: MessageCache;
@@ -28,9 +29,20 @@ describe('MessageCache - Summarization', () => {
     }
   });
 
+  async function createTestUser(username: string): Promise<number> {
+    const { getDatabase } = await import('@/lib/server/database');
+    const db = await getDatabase();
+    const result = await db.query(
+      'INSERT INTO users (username, password_hash, iron, last_updated, tech_tree) VALUES ($1, $2, $3, $4, $5) RETURNING id',
+      [username, 'hash', 0, Math.floor(Date.now() / 1000), '{}']
+    );
+    return result.rows[0].id;
+  }
+
   describe('summarizeMessages', () => {
     it('messageSummarization_battleMessages_correctSummary', async () => {
-      const userId = 1;
+      await withTransaction(async () => {
+        const userId = await createTestUser('sumtest1');
 
       // Create typical battle messages
       await messageCache.createMessage(userId, 'P: ⚔️ Your **pulse laser** fired 5 shot(s), **3 hit** for **24 damage**! Enemy: Hull: 262, Armor: 0, Shield: 0');
@@ -78,10 +90,12 @@ describe('MessageCache - Summarization', () => {
 
       // All original messages should be marked as read in DB
       await messageCache.flushToDatabase(createLockContext());
+      });
     });
 
     it('messageSummarization_mixedMessages_preservesUnknown', async () => {
-      const userId = 2;
+      await withTransaction(async () => {
+        const userId = await createTestUser('sumtest2');
 
       // Create battle messages and unknown messages
       await messageCache.createMessage(userId, 'P: ⚔️ Your **pulse laser** fired 5 shot(s), **3 hit** for **24 damage**! Enemy: Hull: 262, Armor: 0, Shield: 0');
@@ -119,10 +133,12 @@ describe('MessageCache - Summarization', () => {
       unknownMessages.forEach(msg => {
         expect(msg.is_read).toBe(false);
       });
+      });
     });
 
     it('messageSummarization_multipleDefeatsBattles_correctCounts', async () => {
-      const userId = 3;
+      await withTransaction(async () => {
+        const userId = await createTestUser('sumtest3');
 
       // Create messages for multiple battles
       await messageCache.createMessage(userId, 'P: 🎉 **Victory!** You won the battle!');
@@ -144,10 +160,12 @@ describe('MessageCache - Summarization', () => {
       expect(summary).toContain('1 defeat(s)');
       expect(summary).toContain('Dealt 40');
       expect(summary).toContain('Received 50');
+      });
     });
 
     it('messageSummarization_noMessages_returnsEmptyMessage', async () => {
-      const userId = 4;
+      await withTransaction(async () => {
+        const userId = await createTestUser('sumtest4');
 
       // Summarize with no messages
       const summary = await messageCache.summarizeMessages(userId);
@@ -157,10 +175,12 @@ describe('MessageCache - Summarization', () => {
       // Verify no messages created
       const messages = await messageCache.getMessagesForUser(userId);
       expect(messages.length).toBe(0);
+      });
     });
 
     it('messageSummarization_onlyUnknownMessages_preservesAll', async () => {
-      const userId = 5;
+      await withTransaction(async () => {
+        const userId = await createTestUser('sumtest5');
 
       // Create only unknown messages
       await messageCache.createMessage(userId, 'Custom notification 1');
@@ -187,6 +207,7 @@ describe('MessageCache - Summarization', () => {
       // All 3 original messages should be preserved as unread
       const unknownMessages = messagesAfter.filter(m => !m.message.includes('Message Summary'));
       expect(unknownMessages.length).toBe(3);
+      });
     });
   });
 });
