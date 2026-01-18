@@ -13,7 +13,6 @@ describe('TechService - Build Completion Notifications', () => {
   let testDb: DatabaseConnection;
   let techService: TechService;
   let mockCreateMessage: ReturnType<typeof vi.fn>;
-  const testUserId = 1;
 
   beforeEach(async () => {
     // Create test database (includes seed data)
@@ -39,15 +38,6 @@ describe('TechService - Build Completion Notifications', () => {
     // Clear all mocks
     vi.clearAllMocks();
 
-    // Update the existing test user (id=1 from seed data) with our test data
-    const now = Math.floor(Date.now() / 1000);
-    await testDb.query(`
-      UPDATE users SET 
-        iron = $1, last_updated = $2, tech_tree = $3, 
-        pulse_laser = $4, auto_turret = $5, ship_hull = $6, kinetic_armor = $7, energy_shield = $8,
-        build_queue = $9, build_start_sec = $10
-      WHERE id = $11
-    `, [1000, now, '{}', 1, 0, 1, 0, 5, '[]', null, testUserId]);
   });
 
   afterEach(async () => {
@@ -56,6 +46,20 @@ describe('TechService - Build Completion Notifications', () => {
     UserCache.resetInstance();
   });
 
+  // Helper to initialize test user within transaction
+  async function initTestUser(userId: number) {
+    const now = Math.floor(Date.now() / 1000);
+    // Use a precomputed bcrypt hash for 'a' (from bcryptMock.ts)
+    const hashedPassword = '$2b$10$N9qo8uLOickgx2ZMRZoMye';
+    // INSERT test user in transaction
+    await testDb.query(`
+      INSERT INTO users (
+        id, username, password_hash, last_updated, iron, 
+        tech_tree, pulse_laser, auto_turret, ship_hull, kinetic_armor, energy_shield,
+        build_queue, build_start_sec
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+    `, [userId, `testuser_${userId}`, hashedPassword, now, 1000, '{}', 1, 0, 1, 0, 5, '[]', null]);
+  }
   // Helper to update build queue directly via userCache
   async function updateBuildQueue(userId: number, queue: BuildQueueItem[], startSec: number) {
     const context = createLockContext();
@@ -72,6 +76,10 @@ describe('TechService - Build Completion Notifications', () => {
 
   test('processCompletedBuilds_singleWeaponCompleted_sendsNotification', async () => {
     await withTransaction(async () => {
+      // Setup: Create test user in transaction
+      const testUserId = 9001;
+      await initTestUser(testUserId);
+
       // Arrange - Add a completed weapon to build queue
       // Pulse Laser duration is 2 minutes (120 seconds)
       const now = Math.floor(Date.now() / 1000);
@@ -110,6 +118,10 @@ describe('TechService - Build Completion Notifications', () => {
 
   test('processCompletedBuilds_singleDefenseCompleted_sendsNotification', async () => {
     await withTransaction(async () => {
+      // Setup: Create test user in transaction
+      const testUserId = 9002;
+      await initTestUser(testUserId);
+
       // Arrange - Add a completed defense item to build queue
       // Kinetic Armor duration? Let's assume 1 min for simplicity or check factory.
       // TechFactory: kinetic_armor buildDurationMinutes = 2 (from memory? no, let's check or just assume service uses factory)
@@ -147,6 +159,10 @@ describe('TechService - Build Completion Notifications', () => {
 
   test('processCompletedBuilds_multipleItemsCompleted_sendsMultipleNotifications', async () => {
     await withTransaction(async () => {
+      // Setup: Create test user in transaction
+      const testUserId = 9003;
+      await initTestUser(testUserId);
+
       // Arrange - Add multiple completed items to build queue
       // We need to set startSec such that multiple items are finished.
       // Item 1: Pulse Laser (2 min)
@@ -189,6 +205,10 @@ describe('TechService - Build Completion Notifications', () => {
 
   test('processCompletedBuilds_mixedCompletedAndPending_onlyNotifiesCompleted', async () => {
     await withTransaction(async () => {
+      // Setup: Create test user in transaction
+      const testUserId = 9004;
+      await initTestUser(testUserId);
+
       // Arrange - Mix of completed and pending items
       // Item 1: Pulse Laser (2 min) - Completed
       // Item 2: Auto Turret (1 min) - Pending
@@ -227,6 +247,10 @@ describe('TechService - Build Completion Notifications', () => {
 
   test('processCompletedBuilds_noCompletedBuilds_sendsNoNotifications', async () => {
     await withTransaction(async () => {
+      // Setup: Create test user in transaction
+      const testUserId = 9005;
+      await initTestUser(testUserId);
+
       // Arrange - Only pending builds
       // Item 1: Pulse Laser (2 min)
       // Start time: 1 min ago. Not done.
@@ -256,6 +280,10 @@ describe('TechService - Build Completion Notifications', () => {
 
   test('processCompletedBuilds_notificationFails_continuesWithOtherNotifications', async () => {
     await withTransaction(async () => {
+      // Setup: Create test user in transaction
+      const testUserId = 9006;
+      await initTestUser(testUserId);
+
       // Arrange - Multiple completed items, mock first notification to fail
       mockCreateMessage
         .mockRejectedValueOnce(new Error('Network error'))
