@@ -7,6 +7,7 @@ import { USER_LOCK } from '@/lib/server/typedLocks';
 import { DatabaseConnection, resetTestDatabase } from '@/lib/server/database';
 import { BuildQueueItem } from '@/lib/server/techs/TechFactory';
 import { MessageCache } from '@/lib/server/messages/MessageCache';
+import { withTransaction } from '../helpers/transactionHelper';
 
 describe('TechService - Build Completion Notifications', () => {
   let testDb: DatabaseConnection;
@@ -70,100 +71,105 @@ describe('TechService - Build Completion Notifications', () => {
   }
 
   test('processCompletedBuilds_singleWeaponCompleted_sendsNotification', async () => {
-    // Arrange - Add a completed weapon to build queue
-    // Pulse Laser duration is 2 minutes (120 seconds)
-    const now = Math.floor(Date.now() / 1000);
-    const completedTime = now - 10; // Completed 10 seconds ago
-    const duration = 120;
-    const startSec = completedTime - duration;
+    await withTransaction(async () => {
+      // Arrange - Add a completed weapon to build queue
+      // Pulse Laser duration is 2 minutes (120 seconds)
+      const now = Math.floor(Date.now() / 1000);
+      const completedTime = now - 10; // Completed 10 seconds ago
+      const duration = 120;
+      const startSec = completedTime - duration;
 
-    const buildQueue: BuildQueueItem[] = [
-      {
-        itemKey: 'pulse_laser',
-        itemType: 'weapon',
-        completionTime: 0 // Ignored by service, calculated dynamically
-      }
-    ];
+      const buildQueue: BuildQueueItem[] = [
+        {
+          itemKey: 'pulse_laser',
+          itemType: 'weapon',
+          completionTime: 0 // Ignored by service, calculated dynamically
+        }
+      ];
 
-    await updateBuildQueue(testUserId, buildQueue, startSec);
+      await updateBuildQueue(testUserId, buildQueue, startSec);
 
-    // Act - Process completed builds
-    const context = createLockContext();
-    const result = await context.useLockWithAcquire(USER_LOCK, async (userContext) => {
-      return await techService.processCompletedBuilds(testUserId, userContext);
+      // Act - Process completed builds
+      const context = createLockContext();
+      const result = await context.useLockWithAcquire(USER_LOCK, async (userContext) => {
+        return await techService.processCompletedBuilds(testUserId, userContext);
+      });
+
+      // Assert - Build was processed
+      expect(result.completed).toHaveLength(1);
+      expect(result.completed[0].itemKey).toBe('pulse_laser');
+
+      // Assert - Notification was sent
+      expect(mockCreateMessage).toHaveBeenCalledOnce();
+      expect(mockCreateMessage).toHaveBeenCalledWith(
+        testUserId,
+        expect.stringContaining('Build complete: Pulse Laser')
+      );
     });
-
-    // Assert - Build was processed
-    expect(result.completed).toHaveLength(1);
-    expect(result.completed[0].itemKey).toBe('pulse_laser');
-
-    // Assert - Notification was sent
-    expect(mockCreateMessage).toHaveBeenCalledOnce();
-    expect(mockCreateMessage).toHaveBeenCalledWith(
-      testUserId,
-      expect.stringContaining('Build complete: Pulse Laser')
-    );
   });
 
   test('processCompletedBuilds_singleDefenseCompleted_sendsNotification', async () => {
-    // Arrange - Add a completed defense item to build queue
-    // Kinetic Armor duration? Let's assume 1 min for simplicity or check factory.
-    // TechFactory: kinetic_armor buildDurationMinutes = 2 (from memory? no, let's check or just assume service uses factory)
-    // I will just set startSec far in the past to ensure completion.
-    const startSec = Math.floor(Date.now() / 1000) - 10000;
+    await withTransaction(async () => {
+      // Arrange - Add a completed defense item to build queue
+      // Kinetic Armor duration? Let's assume 1 min for simplicity or check factory.
+      // TechFactory: kinetic_armor buildDurationMinutes = 2 (from memory? no, let's check or just assume service uses factory)
+      // I will just set startSec far in the past to ensure completion.
+      const startSec = Math.floor(Date.now() / 1000) - 10000;
 
-    const buildQueue: BuildQueueItem[] = [
-      {
-        itemKey: 'kinetic_armor',
-        itemType: 'defense',
-        completionTime: 0
-      }
-    ];
+      const buildQueue: BuildQueueItem[] = [
+        {
+          itemKey: 'kinetic_armor',
+          itemType: 'defense',
+          completionTime: 0
+        }
+      ];
 
-    await updateBuildQueue(testUserId, buildQueue, startSec);
+      await updateBuildQueue(testUserId, buildQueue, startSec);
 
-    // Act - Process completed builds
-    const context = createLockContext();
-    const result = await context.useLockWithAcquire(USER_LOCK, async (userContext) => {
-      return await techService.processCompletedBuilds(testUserId, userContext);
+      // Act - Process completed builds
+      const context = createLockContext();
+      const result = await context.useLockWithAcquire(USER_LOCK, async (userContext) => {
+        return await techService.processCompletedBuilds(testUserId, userContext);
+      });
+
+      // Assert - Build was processed
+      expect(result.completed).toHaveLength(1);
+      expect(result.completed[0].itemKey).toBe('kinetic_armor');
+
+      // Assert - Notification was sent for defense
+      expect(mockCreateMessage).toHaveBeenCalledOnce();
+      expect(mockCreateMessage).toHaveBeenCalledWith(
+        testUserId,
+        expect.stringContaining('Build complete: Kinetic Armor') // Adjust string to match TechService output
+      );
     });
-
-    // Assert - Build was processed
-    expect(result.completed).toHaveLength(1);
-    expect(result.completed[0].itemKey).toBe('kinetic_armor');
-
-    // Assert - Notification was sent for defense
-    expect(mockCreateMessage).toHaveBeenCalledOnce();
-    expect(mockCreateMessage).toHaveBeenCalledWith(
-      testUserId,
-      expect.stringContaining('Build complete: Kinetic Armor') // Adjust string to match TechService output
-    );
   });
 
   test('processCompletedBuilds_multipleItemsCompleted_sendsMultipleNotifications', async () => {
-    // Arrange - Add multiple completed items to build queue
-    // We need to set startSec such that multiple items are finished.
-    // Item 1: Pulse Laser (2 min)
-    // Item 2: Kinetic Armor (assume 2 min)
-    // Item 3: Auto Turret (1 min)
-    // Total time: 5 mins.
-    // Set start time 6 mins ago.
+    await withTransaction(async () => {
+      // Arrange - Add multiple completed items to build queue
+      // We need to set startSec such that multiple items are finished.
+      // Item 1: Pulse Laser (2 min)
+      // Item 2: Kinetic Armor (assume 2 min)
+      // Item 3: Auto Turret (1 min)
+      // Total time: 5 mins.
+      // Set start time 6 mins ago.
 
-    const startSec = Math.floor(Date.now() / 1000) - (10 * 60);
+      const startSec = Math.floor(Date.now() / 1000) - (10 * 60);
 
-    const buildQueue: BuildQueueItem[] = [
-      { itemKey: 'pulse_laser', itemType: 'weapon', completionTime: 0 },
-      { itemKey: 'kinetic_armor', itemType: 'defense', completionTime: 0 },
-      { itemKey: 'auto_turret', itemType: 'weapon', completionTime: 0 }
-    ];
+      const buildQueue: BuildQueueItem[] = [
+        { itemKey: 'pulse_laser', itemType: 'weapon', completionTime: 0 },
+        { itemKey: 'kinetic_armor', itemType: 'defense', completionTime: 0 },
+        { itemKey: 'auto_turret', itemType: 'weapon', completionTime: 0 }
+      ];
 
-    await updateBuildQueue(testUserId, buildQueue, startSec);
+      await updateBuildQueue(testUserId, buildQueue, startSec);
 
-    // Act - Process completed builds
-    const context = createLockContext();
-    const result = await context.useLockWithAcquire(USER_LOCK, async (userContext) => {
-      return await techService.processCompletedBuilds(testUserId, userContext);
-    });
+      // Act - Process completed builds
+      const context = createLockContext();
+      const result = await context.useLockWithAcquire(USER_LOCK, async (userContext) => {
+        return await techService.processCompletedBuilds(testUserId, userContext);
+      });
 
     // Assert - All builds were processed
     expect(result.completed).toHaveLength(3);
@@ -171,103 +177,110 @@ describe('TechService - Build Completion Notifications', () => {
     // Assert - Multiple notifications were sent
     expect(mockCreateMessage).toHaveBeenCalledTimes(3);
 
-    // Check each notification was sent with correct content
-    const calls = mockCreateMessage.mock.calls;
-    expect(calls).toEqual(expect.arrayContaining([
-      [testUserId, expect.stringContaining('Pulse Laser')],
-      [testUserId, expect.stringContaining('Kinetic Armor')],
-      [testUserId, expect.stringContaining('Auto Turret')]
-    ]));
+      // Check each notification was sent with correct content
+      const calls = mockCreateMessage.mock.calls;
+      expect(calls).toEqual(expect.arrayContaining([
+        [testUserId, expect.stringContaining('Pulse Laser')],
+        [testUserId, expect.stringContaining('Kinetic Armor')],
+        [testUserId, expect.stringContaining('Auto Turret')]
+      ]));
+    });
   });
 
   test('processCompletedBuilds_mixedCompletedAndPending_onlyNotifiesCompleted', async () => {
-    // Arrange - Mix of completed and pending items
-    // Item 1: Pulse Laser (2 min) - Completed
-    // Item 2: Auto Turret (1 min) - Pending
-    // Set start time 2.5 mins ago. 
-    // Item 1 finishes at T+2. Item 2 starts at T+2, finishes at T+3.
-    // Current time is T+2.5. So Item 1 done, Item 2 halfway.
+    await withTransaction(async () => {
+      // Arrange - Mix of completed and pending items
+      // Item 1: Pulse Laser (2 min) - Completed
+      // Item 2: Auto Turret (1 min) - Pending
+      // Set start time 2.5 mins ago. 
+      // Item 1 finishes at T+2. Item 2 starts at T+2, finishes at T+3.
+      // Current time is T+2.5. So Item 1 done, Item 2 halfway.
 
-    const now = Math.floor(Date.now() / 1000);
-    const startSec = now - (2.5 * 60);
+      const now = Math.floor(Date.now() / 1000);
+      const startSec = now - (2.5 * 60);
 
-    const buildQueue: BuildQueueItem[] = [
-      { itemKey: 'pulse_laser', itemType: 'weapon', completionTime: 0 },
-      { itemKey: 'auto_turret', itemType: 'weapon', completionTime: 0 }
-    ];
+      const buildQueue: BuildQueueItem[] = [
+        { itemKey: 'pulse_laser', itemType: 'weapon', completionTime: 0 },
+        { itemKey: 'auto_turret', itemType: 'weapon', completionTime: 0 }
+      ];
 
-    await updateBuildQueue(testUserId, buildQueue, startSec);
+      await updateBuildQueue(testUserId, buildQueue, startSec);
 
-    // Act - Process completed builds
-    const context = createLockContext();
-    const result = await context.useLockWithAcquire(USER_LOCK, async (userContext) => {
-      return await techService.processCompletedBuilds(testUserId, userContext);
-    });
+      // Act - Process completed builds
+      const context = createLockContext();
+      const result = await context.useLockWithAcquire(USER_LOCK, async (userContext) => {
+        return await techService.processCompletedBuilds(testUserId, userContext);
+      });
 
     // Assert - Only completed item was processed
     expect(result.completed).toHaveLength(1);
     expect(result.completed[0].itemKey).toBe('pulse_laser');
 
-    // Assert - Only one notification sent (for completed item)
-    expect(mockCreateMessage).toHaveBeenCalledOnce();
-    expect(mockCreateMessage).toHaveBeenCalledWith(
-      testUserId,
-      expect.stringContaining('Pulse Laser')
-    );
+      // Assert - Only one notification sent (for completed item)
+      expect(mockCreateMessage).toHaveBeenCalledOnce();
+      expect(mockCreateMessage).toHaveBeenCalledWith(
+        testUserId,
+        expect.stringContaining('Pulse Laser')
+      );
+    });
   });
 
   test('processCompletedBuilds_noCompletedBuilds_sendsNoNotifications', async () => {
-    // Arrange - Only pending builds
-    // Item 1: Pulse Laser (2 min)
-    // Start time: 1 min ago. Not done.
+    await withTransaction(async () => {
+      // Arrange - Only pending builds
+      // Item 1: Pulse Laser (2 min)
+      // Start time: 1 min ago. Not done.
 
-    const now = Math.floor(Date.now() / 1000);
-    const startSec = now - (1 * 60);
+      const now = Math.floor(Date.now() / 1000);
+      const startSec = now - (1 * 60);
 
-    const buildQueue: BuildQueueItem[] = [
-      { itemKey: 'pulse_laser', itemType: 'weapon', completionTime: 0 }
-    ];
+      const buildQueue: BuildQueueItem[] = [
+        { itemKey: 'pulse_laser', itemType: 'weapon', completionTime: 0 }
+      ];
 
-    await updateBuildQueue(testUserId, buildQueue, startSec);
+      await updateBuildQueue(testUserId, buildQueue, startSec);
 
-    // Act - Process completed builds
-    const context = createLockContext();
-    const result = await context.useLockWithAcquire(USER_LOCK, async (userContext) => {
-      return await techService.processCompletedBuilds(testUserId, userContext);
+      // Act - Process completed builds
+      const context = createLockContext();
+      const result = await context.useLockWithAcquire(USER_LOCK, async (userContext) => {
+        return await techService.processCompletedBuilds(testUserId, userContext);
+      });
+
+      // Assert - No builds completed
+      expect(result.completed).toHaveLength(0);
+
+      // Assert - No notifications sent
+      expect(mockCreateMessage).not.toHaveBeenCalled();
     });
-
-    // Assert - No builds completed
-    expect(result.completed).toHaveLength(0);
-
-    // Assert - No notifications sent
-    expect(mockCreateMessage).not.toHaveBeenCalled();
   });
 
   test('processCompletedBuilds_notificationFails_continuesWithOtherNotifications', async () => {
-    // Arrange - Multiple completed items, mock first notification to fail
-    mockCreateMessage
-      .mockRejectedValueOnce(new Error('Network error'))
-      .mockResolvedValueOnce(2);
+    await withTransaction(async () => {
+      // Arrange - Multiple completed items, mock first notification to fail
+      mockCreateMessage
+        .mockRejectedValueOnce(new Error('Network error'))
+        .mockResolvedValueOnce(2);
 
-    const startSec = Math.floor(Date.now() / 1000) - (10 * 60); // All done
+      const startSec = Math.floor(Date.now() / 1000) - (10 * 60); // All done
 
-    const buildQueue: BuildQueueItem[] = [
-      { itemKey: 'pulse_laser', itemType: 'weapon', completionTime: 0 },
-      { itemKey: 'kinetic_armor', itemType: 'defense', completionTime: 0 }
-    ];
+      const buildQueue: BuildQueueItem[] = [
+        { itemKey: 'pulse_laser', itemType: 'weapon', completionTime: 0 },
+        { itemKey: 'kinetic_armor', itemType: 'defense', completionTime: 0 }
+      ];
 
-    await updateBuildQueue(testUserId, buildQueue, startSec);
+      await updateBuildQueue(testUserId, buildQueue, startSec);
 
-    // Act - Process completed builds (should not throw)
-    const context = createLockContext();
-    const result = await context.useLockWithAcquire(USER_LOCK, async (userContext) => {
-      return await techService.processCompletedBuilds(testUserId, userContext);
+      // Act - Process completed builds (should not throw)
+      const context = createLockContext();
+      const result = await context.useLockWithAcquire(USER_LOCK, async (userContext) => {
+        return await techService.processCompletedBuilds(testUserId, userContext);
+      });
+
+      // Assert - Both builds were still processed despite notification failure
+      expect(result.completed).toHaveLength(2);
+
+      // Assert - Both notifications were attempted
+      expect(mockCreateMessage).toHaveBeenCalledTimes(2);
     });
-
-    // Assert - Both builds were still processed despite notification failure
-    expect(result.completed).toHaveLength(2);
-
-    // Assert - Both notifications were attempted
-    expect(mockCreateMessage).toHaveBeenCalledTimes(2);
   });
 });

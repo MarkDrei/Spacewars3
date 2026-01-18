@@ -242,10 +242,22 @@ export class MessageCache extends Cache {
     console.log(`📬 Created message ${tempId} (pending) for user ${userId}`);
     
     // In test mode, persist immediately (within transaction context)
-    // In production, persist asynchronously
+    // CRITICAL: Must use direct DB call, not async persist, to preserve transaction context
     if (this.isTestMode) {
-      await this.persistMessageAsync(context, userId, tempId, newMessage);
+      const realId = await this.createMessageInDb(context, userId, newMessage.message);
+      
+      // Update cache with real ID
+      const messages = this.userMessages.get(userId);
+      if (messages) {
+        const msgIndex = messages.findIndex(m => m.id === tempId);
+        if (msgIndex !== -1) {
+          messages[msgIndex].id = realId;
+          messages[msgIndex].isPending = false;
+        }
+      }
+      this.pendingMessageIds.delete(tempId);
     } else {
+      // In production, persist asynchronously
       const writePromise = this.persistMessageAsync(context, userId, tempId, newMessage);
       this.pendingWrites.set(tempId, writePromise);
     }
