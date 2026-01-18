@@ -1,26 +1,21 @@
 import { describe, test, expect, beforeEach, vi, afterEach } from 'vitest';
 import { TechService } from '@/lib/server/techs/TechService';
-import { createTestDatabase } from '../helpers/testDatabase';
 import { UserCache } from '@/lib/server/user/userCache';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 import { USER_LOCK } from '@/lib/server/typedLocks';
-import { DatabaseConnection, resetTestDatabase } from '@/lib/server/database';
+import { resetTestDatabase, getDatabase } from '@/lib/server/database';
 import { BuildQueueItem } from '@/lib/server/techs/TechFactory';
 import { MessageCache } from '@/lib/server/messages/MessageCache';
 import { withTransaction } from '../helpers/transactionHelper';
 
 describe('TechService - Build Completion Notifications', () => {
-  let testDb: DatabaseConnection;
   let techService: TechService;
   let mockCreateMessage: ReturnType<typeof vi.fn>;
 
   beforeEach(async () => {
-    // Create test database (includes seed data)
-    testDb = await createTestDatabase();
-
-    // Initialize userCache with test database
+    // Initialize userCache (will use getDatabase() internally)
     UserCache.resetInstance();
-    await UserCache.intialize2(testDb);
+    await UserCache.intialize2(await getDatabase());
 
     // Get TechService instance
     techService = TechService.getInstance();
@@ -48,11 +43,12 @@ describe('TechService - Build Completion Notifications', () => {
 
   // Helper to initialize test user within transaction
   async function initTestUser(userId: number) {
+    const db = await getDatabase();
     const now = Math.floor(Date.now() / 1000);
     // Use a precomputed bcrypt hash for 'a' (from bcryptMock.ts)
     const hashedPassword = '$2b$10$N9qo8uLOickgx2ZMRZoMye';
     // INSERT test user in transaction
-    await testDb.query(`
+    await db.query(`
       INSERT INTO users (
         id, username, password_hash, last_updated, iron, 
         tech_tree, pulse_laser, auto_turret, ship_hull, kinetic_armor, energy_shield,
