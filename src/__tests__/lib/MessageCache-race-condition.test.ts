@@ -5,6 +5,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { MessageCache } from '@/lib/server/messages/MessageCache';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
+import { withTransaction } from '../helpers/transactionHelper';
 
 describe('MessageCache - Race Condition Fix', () => {
   let messageCache: MessageCache;
@@ -57,8 +58,9 @@ describe('MessageCache - Race Condition Fix', () => {
 
   describe('Multiple summarizations', () => {
     it('doubleSummarization_afterMarkingAsRead_onlyProcessesNewMessages', async () => {
-      // Create test user
-      const userId = await createTestUser('msgtest1');
+      await withTransaction(async () => {
+        // Create test user
+        const userId = await createTestUser('msgtest1');
 
       // Step 1: Create initial messages
       await messageCache.createMessage(userId, 'P: ⚔️ Your **pulse laser** fired 5 shot(s), **3 hit** for **24 damage**! Enemy: Hull: 262, Armor: 0, Shield: 0');
@@ -131,11 +133,13 @@ describe('MessageCache - Race Condition Fix', () => {
       const newUnreadMessages = messages.filter(m => !m.is_read);
       expect(newUnreadMessages.length).toBe(1);
       expect(newUnreadMessages[0].message).toBe(summary2); // New summary
+      });
     });
 
     it('tripleeSummarization_afterMarkingAsRead_neverReprocessesOldMessages', async () => {
-      // Create test user
-      const userId = await createTestUser('msgtest2');
+      await withTransaction(async () => {
+        // Create test user
+        const userId = await createTestUser('msgtest2');
 
       // Create and summarize messages 3 times, marking as read each time
       for (let i = 1; i <= 3; i++) {
@@ -162,15 +166,17 @@ describe('MessageCache - Race Condition Fix', () => {
         await messageCache.flushToDatabase(createLockContext());
       }
 
-      // Final verification: should have 3 read summaries
-      const messages = await messageCache.getMessagesForUser(userId);
-      expect(messages.length).toBe(3);
-      expect(messages.every(m => m.is_read)).toBe(true);
+        // Final verification: should have 3 read summaries
+        const messages = await messageCache.getMessagesForUser(userId);
+        expect(messages.length).toBe(3);
+        expect(messages.every(m => m.is_read)).toBe(true);
+      });
     });
 
     it('summarization_withNoUnreadMessages_returnsNoMessages', async () => {
-      // Create test user
-      const userId = await createTestUser('msgtest3');
+      await withTransaction(async () => {
+        // Create test user
+        const userId = await createTestUser('msgtest3');
 
       // Create and mark messages as read
       await messageCache.createMessage(userId, 'Message 1');
@@ -183,15 +189,17 @@ describe('MessageCache - Race Condition Fix', () => {
       const summary = await messageCache.summarizeMessages(userId);
       expect(summary).toBe('No messages to summarize.');
 
-      // Verify no new messages created
-      const messages = await messageCache.getMessagesForUser(userId);
-      expect(messages.length).toBe(2); // Still just the 2 original (read) messages
-      expect(messages.every(m => m.is_read)).toBe(true);
+        // Verify no new messages created
+        const messages = await messageCache.getMessagesForUser(userId);
+        expect(messages.length).toBe(2); // Still just the 2 original (read) messages
+        expect(messages.every(m => m.is_read)).toBe(true);
+      });
     });
 
     it('summarization_mixedReadAndUnread_onlyProcessesUnread', async () => {
-      // Create test user
-      const userId = await createTestUser('msgtest4');
+      await withTransaction(async () => {
+        // Create test user
+        const userId = await createTestUser('msgtest4');
 
       // Create some messages and mark as read
       await messageCache.createMessage(userId, 'P: ⚔️ Your **old weapon** fired 5 shot(s), **5 hit** for **100 damage**! Enemy: Hull: 0, Armor: 0, Shield: 0');
@@ -223,6 +231,7 @@ describe('MessageCache - Race Condition Fix', () => {
       expect(messages.length).toBe(3);
       expect(messages.filter(m => m.is_read).length).toBe(2);
       expect(messages.filter(m => !m.is_read).length).toBe(1);
+      });
     });
   });
 });
