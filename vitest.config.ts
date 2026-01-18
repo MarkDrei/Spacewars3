@@ -10,7 +10,8 @@ export default defineConfig({
     exclude: ['src/server/**'],
     env: {
       NODE_ENV: 'test',
-      POSTGRES_HOST: process.env.POSTGRES_HOST || 'localhost',
+      // Use 'db' as default for dev container, 'localhost' for local development
+      POSTGRES_HOST: process.env.POSTGRES_HOST || 'db',
       POSTGRES_PORT: process.env.POSTGRES_PORT || '5432',
       POSTGRES_DB: process.env.POSTGRES_TEST_DB || 'spacewars_test',
       POSTGRES_USER: process.env.POSTGRES_USER || 'spacewars',
