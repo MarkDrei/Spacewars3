@@ -4,7 +4,7 @@
 // ---
 
 import { createLockContext, HasLock4Context, IronLocks, LOCK_10, LockContext, LocksAtMost3, LocksAtMost4, LocksAtMostAndHas4 } from '@markdrei/ironguard-typescript-locks';
-import { DatabaseConnection } from '../database';
+import { DatabaseConnection, getDatabase } from '../database';
 import { MessageCache } from '../messages/MessageCache';
 import {
   USER_LOCK,
@@ -178,8 +178,8 @@ export class UserCache extends Cache {
     userId: number
   ): Promise<User | null> {
     return await context.useLockWithAcquire(LOCK_10, async () => {
-      if (!this.db) throw new Error('Database not initialized');
-      return await getUserByIdFromDb(this.db, userId, async () => { });
+      const db = await getDatabase();
+      return await getUserByIdFromDb(db, userId, async () => { });
     });
   }
 
@@ -191,8 +191,8 @@ export class UserCache extends Cache {
     username: string
   ): Promise<User | null> {
     return await context.useLockWithAcquire(LOCK_10, async () => {
-      if (!this.db) throw new Error('Database not initialized');
-      return await getUserByUsernameFromDb(this.db, username, async () => { });
+      const db = await getDatabase();
+      return await getUserByUsernameFromDb(db, username, async () => { });
     });
   }
 
