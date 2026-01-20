@@ -10,8 +10,9 @@ export default defineConfig({
     exclude: ['src/server/**'],
     env: {
       NODE_ENV: 'test',
-      POSTGRES_HOST: process.env.POSTGRES_HOST || 'localhost',
-      POSTGRES_PORT: process.env.POSTGRES_PORT || '5433',
+      // Use 'db' as default for dev container, 'localhost' for local development
+      POSTGRES_HOST: process.env.POSTGRES_HOST || 'db',
+      POSTGRES_PORT: process.env.POSTGRES_PORT || '5432',
       POSTGRES_DB: process.env.POSTGRES_TEST_DB || 'spacewars_test',
       POSTGRES_USER: process.env.POSTGRES_USER || 'spacewars',
       POSTGRES_PASSWORD: process.env.POSTGRES_PASSWORD || 'spacewars',
@@ -20,13 +21,13 @@ export default defineConfig({
     // Current issue: Background cache persistence writes happen outside transaction scope
     // causing foreign key violations when transactions rollback
     // 
-    // For now, using singleThread to ensure sequential execution
+    // For now, disable file parallelism to ensure sequential execution
     // TODO: Refactor caches to disable background persistence in test mode
-    poolOptions: {
-      threads: {
-        singleThread: true  // Re-enabled until cache persistence is refactored
-      }
-    },
+    fileParallelism: true,
+    // give concrete number of workers or 50% to give half of CPU cores to vitest
+    maxWorkers: 1,
+
+
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html', 'lcov'],

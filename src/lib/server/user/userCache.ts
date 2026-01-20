@@ -4,7 +4,7 @@
 // ---
 
 import { createLockContext, HasLock4Context, IronLocks, LOCK_10, LockContext, LocksAtMost3, LocksAtMost4, LocksAtMostAndHas4 } from '@markdrei/ironguard-typescript-locks';
-import { DatabaseConnection } from '../database';
+import { DatabaseConnection, getDatabase } from '../database';
 import { MessageCache } from '../messages/MessageCache';
 import {
   USER_LOCK,
@@ -48,7 +48,6 @@ declare global {
  */
 export class UserCache extends Cache {
   private static dependencies: userCacheDependencies = {};
-  private readonly isTestMode = process.env.NODE_ENV === 'test';
 
   // ===== FIELDS =====
 
@@ -179,8 +178,8 @@ export class UserCache extends Cache {
     userId: number
   ): Promise<User | null> {
     return await context.useLockWithAcquire(LOCK_10, async () => {
-      if (!this.db) throw new Error('Database not initialized');
-      return await getUserByIdFromDb(this.db, userId, async () => { });
+      const db = await getDatabase();
+      return await getUserByIdFromDb(db, userId, async () => { });
     });
   }
 
@@ -192,8 +191,8 @@ export class UserCache extends Cache {
     username: string
   ): Promise<User | null> {
     return await context.useLockWithAcquire(LOCK_10, async () => {
-      if (!this.db) throw new Error('Database not initialized');
-      return await getUserByUsernameFromDb(this.db, username, async () => { });
+      const db = await getDatabase();
+      return await getUserByUsernameFromDb(db, username, async () => { });
     });
   }
 
@@ -473,13 +472,8 @@ export class UserCache extends Cache {
    * Start background persistence timer
    */
   private startBackgroundPersistence(): void {
-    if (this.isTestMode) {
-      console.log('📝 Background persistence disabled in test mode');
-      return;
-    }
-    
-    if (!this.config.enableAutoPersistence) {
-      console.log('📝 Background persistence disabled by config');
+    if (!this.shouldEnableBackgroundPersistence(this.config.enableAutoPersistence)) {
+      console.log('📝 Background persistence disabled (test mode or config)');
       return;
     }
 

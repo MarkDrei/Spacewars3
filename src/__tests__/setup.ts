@@ -8,8 +8,19 @@ vi.mock('bcrypt', () => createBcryptMock());
 
 // Initialize test database once before all tests
 beforeAll(async () => {
-  const { getDatabase } = await import('@/lib/server/database');
-  await getDatabase(); // This will initialize the database with seed data
+  const { getDatabase, resetTestDatabase } = await import('@/lib/server/database');
+  const db = await getDatabase(); // This will initialize the database schema
+  
+  // Check if database has users, seed if empty
+  const result = await db.query('SELECT COUNT(*) as count FROM users', []);
+  const userCount = parseInt(result.rows[0].count, 10);
+  
+  if (userCount === 0) {
+    console.log('🌱 Test database is empty, seeding...');
+    const { seedDatabase } = await import('@/lib/server/seedData');
+    await seedDatabase(db, true);
+    console.log('✅ Test database seeded');
+  }
 });
 
 // Global cleanup after each test to prevent async operations from leaking
@@ -23,7 +34,7 @@ afterEach(async () => {
     if (messageCache) {
       await messageCache.waitForPendingWrites();
     }
-  } catch (error) {
+  } catch {
     // Ignore if MessageCache doesn't exist or isn't initialized
   }
 
@@ -36,7 +47,7 @@ afterEach(async () => {
     if (battleCache) {
       await battleCache.waitForPendingWrites();
     }
-  } catch (error) {
+  } catch {
     // Ignore if BattleCache doesn't exist or isn't initialized
   }
 

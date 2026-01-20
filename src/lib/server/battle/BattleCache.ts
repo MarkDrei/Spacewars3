@@ -38,7 +38,6 @@ declare global {
 export class BattleCache extends Cache {
   private static initializationPromise: Promise<BattleCache> | null = null;
   private static dependencies: BattleCacheDependencies = {};
-  private readonly isTestMode = process.env.NODE_ENV === 'test';
 
   // Storage
   private battles: Map<number, Battle> = new Map();
@@ -768,8 +767,8 @@ export class BattleCache extends Cache {
    * Start background persistence timer
    */
   private startPersistence(): void {
-    if (this.isTestMode) {
-      console.log('⚔️ Background persistence disabled in test mode');
+    if (!this.shouldEnableBackgroundPersistence(true)) {
+      console.log('⚔️ Background persistence disabled (test mode)');
       return;
     }
     

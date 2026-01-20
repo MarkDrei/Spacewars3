@@ -28,7 +28,6 @@ declare global {
 
 export class WorldCache extends Cache {
   private static dependencies: WorldCacheDependencies = {};
-  private readonly isTestMode = process.env.NODE_ENV === 'test';
   private config: WorldCacheConfig = {
     persistenceIntervalMs: 30000,
     enableAutoPersistence: true,
@@ -192,13 +191,8 @@ export class WorldCache extends Cache {
   }
 
   private startBackgroundPersistence(): void {
-    if (this.isTestMode) {
-      console.log('📝 World background persistence disabled in test mode');
-      return;
-    }
-    
-    if (!this.config.enableAutoPersistence) {
-      console.log('📝 World background persistence disabled by config');
+    if (!this.shouldEnableBackgroundPersistence(this.config.enableAutoPersistence)) {
+      console.log('📝 World background persistence disabled (test mode or config)');
       return;
     }
 
