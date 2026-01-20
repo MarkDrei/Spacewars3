@@ -4,7 +4,7 @@
 // ---
 
 import { createLockContext, HasLock4Context, IronLocks, LOCK_10, LockContext, LocksAtMost3, LocksAtMost4, LocksAtMostAndHas4 } from '@markdrei/ironguard-typescript-locks';
-import { DatabaseConnection } from '../database';
+import { DatabaseConnection, getDatabase } from '../database';
 import { MessageCache } from '../messages/MessageCache';
 import {
   USER_LOCK,
@@ -116,8 +116,16 @@ export class UserCache extends Cache {
     return this.instance;
   }
 
-  // Reset singleton for testing
+  /**
+   * Reset singleton for testing
+   * WARNING: Call shutdown() and await it BEFORE calling this method to ensure clean state
+   */
   static resetInstance(): void {
+    if (UserCache.instance) {
+      // Note: shutdown() is async but we can't await in a sync method
+      // Callers MUST call shutdown() before resetInstance()
+      void UserCache.instance.shutdown();
+    }
     this.instance = null;
     WorldCache.resetInstance();
   }
@@ -170,8 +178,8 @@ export class UserCache extends Cache {
     userId: number
   ): Promise<User | null> {
     return await context.useLockWithAcquire(LOCK_10, async () => {
-      if (!this.db) throw new Error('Database not initialized');
-      return await getUserByIdFromDb(this.db, userId, async () => { });
+      const db = await getDatabase();
+      return await getUserByIdFromDb(db, userId, async () => { });
     });
   }
 
@@ -183,8 +191,8 @@ export class UserCache extends Cache {
     username: string
   ): Promise<User | null> {
     return await context.useLockWithAcquire(LOCK_10, async () => {
-      if (!this.db) throw new Error('Database not initialized');
-      return await getUserByUsernameFromDb(this.db, username, async () => { });
+      const db = await getDatabase();
+      return await getUserByUsernameFromDb(db, username, async () => { });
     });
   }
 
@@ -223,11 +231,17 @@ export class UserCache extends Cache {
 
   /**
    * Update user data in the cache, marking as dirty (requires user lock context)
+   * In test mode, persists immediately to stay within transaction scope
    */
-  updateUserInCache(_context: LockContext<LocksAtMostAndHas4>, user: User): void {
+  async updateUserInCache(context: LockContext<LocksAtMostAndHas4>, user: User): Promise<void> {
     this.users.set(user.id, user);
     this.usernameToUserId.set(user.username, user.id); // Update username mapping
     this.dirtyUsers.add(user.id); // Mark as dirty for persistence
+    
+    // In test mode, persist immediately (within transaction context)
+    if (this.isTestMode) {
+      await this.persistDirtyUsers(context);
+    }
   }
 
   /**
@@ -256,7 +270,7 @@ export class UserCache extends Cache {
 
     if (user) {
       user.updateStats(Math.floor(Date.now() / 1000));
-      this.updateUserInCache(context, user);
+      await this.updateUserInCache(context, user);
       return user;
     }
     return null;
@@ -302,7 +316,7 @@ export class UserCache extends Cache {
 
     if (user) {
       user.updateStats(Math.floor(Date.now() / 1000));
-      this.updateUserInCache(context, user);
+      await this.updateUserInCache(context, user);
       return user;
     }
 
@@ -458,8 +472,8 @@ export class UserCache extends Cache {
    * Start background persistence timer
    */
   private startBackgroundPersistence(): void {
-    if (!this.config.enableAutoPersistence) {
-      console.log('📝 Background persistence disabled by config');
+    if (!this.shouldEnableBackgroundPersistence(this.config.enableAutoPersistence)) {
+      console.log('📝 Background persistence disabled (test mode or config)');
       return;
     }
 
@@ -520,9 +534,19 @@ export class UserCache extends Cache {
 
       const worldCache = this.getWorldCacheOrNull();
       if (worldCache) {
-        console.log('💾 Final persist of world data before shutdown');
-        await worldCache.flushToDatabase();
-        await worldCache.shutdown();
+        try {
+          console.log('💾 Final persist of world data before shutdown');
+          await worldCache.flushToDatabase();
+          await worldCache.shutdown();
+        } catch (error) {
+          // WorldCache may have been shut down already by another process/test
+          // This is fine - we just skip the flush
+          if (error instanceof Error && error.message.includes('WorldCache not initialized')) {
+            console.log('⏭️ WorldCache already shut down, skipping flush');
+          } else {
+            throw error;
+          }
+        }
       }
 
       const messageCache = await this.getMessageCache();

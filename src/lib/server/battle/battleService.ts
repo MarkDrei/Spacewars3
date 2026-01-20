@@ -132,7 +132,7 @@ async function setShipSpeed(context: LockContext<LocksAtMostAndHas4>, shipId: nu
     const ship = world.spaceObjects.find(obj => obj.id === shipId);
     if (ship) {
       ship.speed = speed;
-      worldCache.updateWorldUnsafe(worldContext, world);
+      await worldCache.updateWorldUnsafe(worldContext, world);
     }
   });
 }
@@ -194,7 +194,7 @@ async function teleportShip(context: LockContext<LocksAtMostAndHas4>, shipId: nu
       ship.y = y;
       ship.speed = 0;
       ship.last_position_update_ms = Date.now();
-      worldCache.updateWorldUnsafe(worldContext, world);
+      await worldCache.updateWorldUnsafe(worldContext, world);
     }
   });
 }
@@ -322,7 +322,7 @@ export async function initiateBattle<THeld extends IronLocks>(
     }
   };
 
-  await BattleRepo.addBattleEvent(contextBattle, battle.id, startEvent);
+  await BattleRepo.addBattleEvent(contextUser, battle.id, startEvent);
 
   console.log(`⚔️ Battle ${battle.id} started: User ${attacker.id} vs User ${attackee.id}`);
 

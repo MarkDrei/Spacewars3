@@ -1,6 +1,6 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
-import { getDatabase } from '../../lib/server/database.js';
-import type { Pool, PoolClient } from 'pg';
+import { getDatabasePool } from '../../lib/server/database.js';
+import type { PoolClient } from 'pg';
 
 const transactionStorage = new AsyncLocalStorage<PoolClient>();
 
@@ -20,8 +20,7 @@ const transactionStorage = new AsyncLocalStorage<PoolClient>();
 export async function withTransaction<T>(
   callback: () => Promise<T>
 ): Promise<T> {
-  const db = await getDatabase();
-  const pool = db as Pool;
+  const pool = await getDatabasePool();
   
   const client = await pool.connect();
 

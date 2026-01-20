@@ -111,7 +111,7 @@ async function performNavigationLogic(
   playerShip.last_position_update_ms = currentTime;
   
   // Update cache with new data (using unsafe methods because we have proper locks)
-  worldCache.updateWorldUnsafe(worldContext, world);
+  await worldCache.updateWorldUnsafe(worldContext, world);
   
   return NextResponse.json({ 
     success: true,

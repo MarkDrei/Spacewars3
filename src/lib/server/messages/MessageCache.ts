@@ -52,7 +52,16 @@ export class MessageCache extends Cache {
     return this.instance;
   }
 
+  /**
+   * Reset singleton instance (for testing)
+   * WARNING: Call shutdown() and await it BEFORE calling this method to ensure clean state
+   */
   static resetInstance(): void {
+    if (MessageCache.instance) {
+      // Note: shutdown() is async but we can't await in a sync method
+      // Callers MUST call shutdown() before resetInstance()
+      void MessageCache.instance.shutdown();
+    }
     this.instance = null;
   }
 
@@ -102,7 +111,7 @@ export class MessageCache extends Cache {
       await messageContext.useLockWithAcquire(DATABASE_LOCK_MESSAGES, async () => {
         console.log('📬 Initializing message cache...');
         this.db = await getDatabase();
-        this.messagesRepo = new MessagesRepo(this.db);
+        this.messagesRepo = new MessagesRepo();
         
         this.startBackgroundPersistence(messageContext);
         
@@ -232,9 +241,14 @@ export class MessageCache extends Cache {
 
     console.log(`📬 Created message ${tempId} (pending) for user ${userId}`);
     
-    // Start async DB insertion (don't await)
-    const writePromise = this.persistMessageAsync(context, userId, tempId, newMessage);
-    this.pendingWrites.set(tempId, writePromise);
+    // In test mode, persist immediately (within transaction context)
+    // In production, persist asynchronously
+    if (this.isTestMode) {
+      await this.persistMessageAsync(context, userId, tempId, newMessage);
+    } else {
+      const writePromise = this.persistMessageAsync(context, userId, tempId, newMessage);
+      this.pendingWrites.set(tempId, writePromise);
+    }
     
     return tempId;
   }
@@ -703,8 +717,8 @@ export class MessageCache extends Cache {
   }
 
   private startBackgroundPersistence(context: LockContext<LocksAtMostAndHas8>): void {
-    if (!this.config.enableAutoPersistence) {
-      console.log('📬 Background persistence disabled by config');
+    if (!this.shouldEnableBackgroundPersistence(this.config.enableAutoPersistence)) {
+      console.log('📬 Background persistence disabled (test mode or config)');
       return;
     }
 
