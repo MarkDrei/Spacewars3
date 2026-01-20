@@ -8,18 +8,42 @@ vi.mock('bcrypt', () => createBcryptMock());
 
 // Initialize test database once before all tests
 beforeAll(async () => {
-  const { getDatabase, resetTestDatabase } = await import('@/lib/server/database');
-  const db = await getDatabase(); // This will initialize the database schema
+  const { getDatabase, getDatabasePool } = await import('@/lib/server/database');
+  const { PostgreSQLAdapter } = await import('@/lib/server/databaseAdapter');
   
-  // Check if database has users, seed if empty
-  const result = await db.query('SELECT COUNT(*) as count FROM users', []);
-  const userCount = parseInt(result.rows[0].count, 10);
+  // Ensure database schema is initialized
+  await getDatabase(); 
   
-  if (userCount === 0) {
-    console.log('🌱 Test database is empty, seeding...');
-    const { seedDatabase } = await import('@/lib/server/seedData');
-    await seedDatabase(db, true);
-    console.log('✅ Test database seeded');
+  // Use a dedicated client and advisory lock for seeding to prevent race conditions
+  // when multiple test workers start simultaneously
+  const pool = await getDatabasePool();
+  const client = await pool.connect();
+  
+  try {
+    await client.query('BEGIN');
+    // Acquire advisory lock 987654321 for seeding coordination
+    // pg_advisory_xact_lock is automatically released at end of transaction
+    await client.query('SELECT pg_advisory_xact_lock(987654321)');
+    
+    // Check user count using the locked client
+    const result = await client.query('SELECT COUNT(*) as count FROM users');
+    const userCount = parseInt(result.rows[0].count, 10);
+    
+    if (userCount === 0) {
+      console.log(`🌱 Test database is empty (worker ${process.pid}), seeding...`);
+      const { seedDatabase } = await import('@/lib/server/seedData');
+      // Wrap client in adapter for seedDatabase
+      const adapter = new PostgreSQLAdapter(client);
+      await seedDatabase(adapter, true);
+      console.log('✅ Test database seeded');
+    }
+    
+    await client.query('COMMIT');
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
   }
 });
 

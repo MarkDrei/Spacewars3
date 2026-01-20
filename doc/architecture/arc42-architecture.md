@@ -340,7 +340,8 @@ Level 8: MESSAGE_DB_LOCK (Message DB ops)
 
 - `withTransaction()` helper in `src/__tests__/helpers/transactionHelper.ts`
 - AsyncLocalStorage for transaction context propagation
-- `getDatabasePool()` export for direct pool access in tests
+- `getDatabasePool()` export used by transaction helper to create isolated clients
+- `TestAwareAdapter` in `database.ts` dynamically switches between global pool and active transaction client, ensuring singletons respect test isolation
 - Cache modifications detect test mode and persist immediately instead of using timers
 - Timer-based background persistence disabled when `NODE_ENV === 'test'`
 
@@ -354,11 +355,6 @@ Level 8: MESSAGE_DB_LOCK (Message DB ops)
 - ⚠️ Test mode has slightly different code path (synchronous vs async persistence)
 - ⚠️ Tests must use `withTransaction()` wrapper for proper isolation
 - ⚠️ Seeded test data must be visible within transaction (handled by database initialization)
-
-**Performance:**
-
-- Test suite: ~45s (sequential execution with 402 tests)
-- Expected ~33% improvement with parallel execution enabled
 
 ---
 

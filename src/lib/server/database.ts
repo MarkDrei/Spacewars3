@@ -36,6 +36,34 @@ export interface DatabaseConnection {
 }
 
 /**
+ * Adapter that dynamically switches between global pool and transaction client
+ * based on the current execution context. Critical for proper test isolation
+ * with singletons like UserCache.
+ */
+class TestAwareAdapter implements DatabaseConnection {
+  constructor(private adapter: PostgreSQLAdapter) {}
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  async query<T = any>(sql: string, params?: unknown[]): Promise<QueryResult<T>> {
+    // Check if we are inside a test transaction
+    if (getTransactionContext) {
+      const txContext = getTransactionContext();
+      if (txContext) {
+        // Use the transaction client directly
+        const result = await txContext.query(sql, params);
+        return {
+          rows: result.rows as T[],
+          rowCount: result.rowCount ?? 0
+        };
+      }
+    }
+    
+    // Fallback to the main adapter (pool)
+    return this.adapter.query<T>(sql, params);
+  }
+}
+
+/**
  * Get database connection configuration from environment
  */
 function getDatabaseConfig() {
@@ -56,26 +84,30 @@ function getDatabaseConfig() {
 }
 
 export async function getDatabase(): Promise<DatabaseConnection> {
-  // In test environment, check for transaction context first
-  if (process.env.NODE_ENV === 'test') {
+  const isTest = process.env.NODE_ENV === 'test';
+
+  // In test environment, ensure transaction context is initialized
+  if (isTest) {
     await initTransactionContext();
-    if (getTransactionContext) {
-      const txContext = getTransactionContext();
-      if (txContext) {
-        // Return a wrapper that uses the transaction client
-        return new PostgreSQLAdapter(txContext);
-      }
-    }
   }
 
   // If database is already initialized, return the adapter
   if (pool && adapter) {
+    // In test environment, always return the context-aware adapter
+    // This ensures singletons initialized with this connection will 
+    // respect transactions started later
+    if (isTest) {
+      return new TestAwareAdapter(adapter);
+    }
     return adapter;
   }
 
   // If initialization is in progress, wait for it
   if (initializationPromise) {
     await initializationPromise;
+    if (isTest) {
+      return new TestAwareAdapter(adapter!);
+    }
     return adapter!;
   }
 
@@ -85,7 +117,6 @@ export async function getDatabase(): Promise<DatabaseConnection> {
     pool = new Pool(config);
     adapter = new PostgreSQLAdapter(pool);
     
-    const isTest = process.env.NODE_ENV === 'test';
     const dbLabel = isTest ? 'test' : 'production';
     console.log(`✅ Connected to PostgreSQL ${dbLabel} database: ${config.database}@${config.host}:${config.port}`);
     
@@ -110,6 +141,10 @@ export async function getDatabase(): Promise<DatabaseConnection> {
   })();
 
   await initializationPromise;
+  
+  if (isTest) {
+    return new TestAwareAdapter(adapter!);
+  }
   return adapter!;
 }
 

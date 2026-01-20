@@ -25,7 +25,7 @@ export default defineConfig({
     // TODO: Refactor caches to disable background persistence in test mode
     fileParallelism: true,
     // give concrete number of workers or 50% to give half of CPU cores to vitest
-    maxWorkers: 1,
+    maxWorkers: 16,
 
 
     coverage: {

@@ -40,7 +40,6 @@ describe('MessagesRepo', () => {
 
   afterEach(async () => {
     messageDbLockContext.dispose();
-    await resetTestDatabase();
   });
 
   describe('createMessage', () => {
