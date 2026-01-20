@@ -21,13 +21,13 @@ export default defineConfig({
     // Current issue: Background cache persistence writes happen outside transaction scope
     // causing foreign key violations when transactions rollback
     // 
-    // For now, using singleThread to ensure sequential execution
+    // For now, disable file parallelism to ensure sequential execution
     // TODO: Refactor caches to disable background persistence in test mode
-    poolOptions: {
-      threads: {
-        singleThread: true  // Re-enabled until cache persistence is refactored
-      }
-    },
+    fileParallelism: true,
+    // give concrete number of workers or 50% to give half of CPU cores to vitest
+    maxWorkers: 1,
+
+
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html', 'lcov'],
