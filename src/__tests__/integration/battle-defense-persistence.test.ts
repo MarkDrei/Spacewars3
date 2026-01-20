@@ -105,12 +105,15 @@ describe('Battle Defense Persistence', () => {
           throw new Error('Users not found for damage application');
         }
         
-        // Apply damage to attacker
+        // Apply damage to attacker and freeze regeneration
         attackerInCache.hullCurrent = attackerDamagedHull;
+        // Set defense_last_regen to current time + 1000 seconds to prevent regeneration during test
+        attackerInCache.defenseLastRegen = Math.floor(Date.now() / 1000) + 1000;
         userWorldCache.updateUserInCache(damageUserCtx, attackerInCache);
         
-        // Set defender to 0 hull (they will lose)
+        // Set defender to 0 hull (they will lose) and freeze regeneration
         defenderInCache.hullCurrent = 0;
+        defenderInCache.defenseLastRegen = Math.floor(Date.now() / 1000) + 1000;
         userWorldCache.updateUserInCache(damageUserCtx, defenderInCache);
         
         console.log(`💥 Simulated damage - Attacker hull: ${attackerDamagedHull}, Defender hull: 0`);

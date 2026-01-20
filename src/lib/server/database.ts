@@ -36,6 +36,8 @@ function initializeTestDatabase(): sqlite3.Database {
 
 /**
  * Synchronous seeding for test database using the same data as production
+ * IMPORTANT: This function uses prepared statements with immediate execution
+ * to ensure all data is inserted before returning control to the caller.
  */
 function seedTestDatabase(db: sqlite3.Database): void {
   const now = Date.now();
@@ -49,13 +51,16 @@ function seedTestDatabase(db: sqlite3.Database): void {
       'dummy': '$2b$10$GJ2Bjb5Ruhd1hCnDxzEzxOmDAlgIy9.0ci11khzvsH0ta7q17K4ay',
     };
     
+    // Use prepared statements for immediate, synchronous execution
+    const insertShipStmt = db.prepare(`
+      INSERT INTO space_objects (type, x, y, speed, angle, last_position_update_ms)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+    
     // Create ships and users for all DEFAULT_USERS
     DEFAULT_USERS.forEach((user) => {
-      // Create ship for this user
-      db.run(`
-        INSERT INTO space_objects (type, x, y, speed, angle, last_position_update_ms)
-        VALUES (?, ?, ?, ?, ?, ?)
-      `, ['player_ship', user.ship.x, user.ship.y, user.ship.speed, user.ship.angle, now]);
+      // Create ship for this user (synchronous within serialize block)
+      insertShipStmt.run('player_ship', user.ship.x, user.ship.y, user.ship.speed, user.ship.angle, now);
       
       shipIdCounter++;
       const shipId = shipIdCounter; // Ships get sequential IDs starting from 1
@@ -110,20 +115,29 @@ function seedTestDatabase(db: sqlite3.Database): void {
         VALUES (${columns.map(() => '?').join(', ')})
       `;
       
-      // Create user
-      db.run(insertSQL, values);
+      // Create user with prepared statement for immediate execution
+      const insertUserStmt = db.prepare(insertSQL);
+      insertUserStmt.run(...values);
+      insertUserStmt.finalize();
     });
     
+    insertShipStmt.finalize();
+    
     // Create other space objects (asteroids, shipwrecks, escape pods)
+    const insertObjectStmt = db.prepare(`
+      INSERT INTO space_objects (type, x, y, speed, angle, last_position_update_ms)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+    
     DEFAULT_SPACE_OBJECTS.forEach((obj) => {
-      db.run(`
-        INSERT INTO space_objects (type, x, y, speed, angle, last_position_update_ms)
-        VALUES (?, ?, ?, ?, ?, ?)
-      `, [obj.type, obj.x, obj.y, obj.speed, obj.angle, now]);
+      insertObjectStmt.run(obj.type, obj.x, obj.y, obj.speed, obj.angle, now);
     });
+    
+    insertObjectStmt.finalize();
     
   } catch (error) {
     console.error('❌ Error seeding test database:', error);
+    throw error; // Re-throw to prevent tests from running with incomplete data
   }
 }
 
