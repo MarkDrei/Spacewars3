@@ -4,7 +4,7 @@
 // ---
 
 import { HasLock12Context, LockLevel } from '@markdrei/ironguard-typescript-locks';
-import { DatabaseConnection } from '../database';
+import { getDatabase } from '../database';
 
 export interface Message {
   id: number;
@@ -35,12 +35,6 @@ export interface UnreadMessage {
  * - Handle locking (caller's responsibility, but verified via context type parameters)
  */
 export class MessagesRepo {
-  private db: DatabaseConnection;
-
-  constructor(database: DatabaseConnection) {
-    this.db = database;
-  }
-
   /**
    * Create a new message for a user
    * Returns the ID of the newly created message
@@ -50,8 +44,9 @@ export class MessagesRepo {
     recipientId: number,
     message: string
   ): Promise<number> {
+    const db = await getDatabase();
     const createdAt = Date.now();
-    const result = await this.db.query(
+    const result = await db.query(
       `INSERT INTO messages (recipient_id, created_at, is_read, message)
        VALUES ($1, $2, FALSE, $3) RETURNING id`,
       [recipientId, createdAt, message]
@@ -79,8 +74,9 @@ export class MessagesRepo {
          WHERE recipient_id = $1
          ORDER BY created_at DESC`;
     
+    const db = await getDatabase();
     const params = limit ? [userId, limit] : [userId];
-    const result = await this.db.query(query, params);
+    const result = await db.query(query, params);
     return result.rows || [];
   }
 
@@ -92,7 +88,8 @@ export class MessagesRepo {
     messageId: number, 
     isRead: boolean
   ): Promise<void> {
-    await this.db.query(
+    const db = await getDatabase();
+    await db.query(
       `UPDATE messages 
        SET is_read = $1
        WHERE id = $2`,
@@ -115,10 +112,11 @@ export class MessagesRepo {
       return;
     }
 
+    const db = await getDatabase();
     // Process updates individually for SQLite test compatibility
     // PostgreSQL production still works with individual queries
     for (const update of updates) {
-      await this.db.query(
+      await db.query(
         `UPDATE messages 
          SET is_read = $1
          WHERE id = $2`,
@@ -134,7 +132,8 @@ export class MessagesRepo {
     _context: HasLock12Context<THeld>,
     userId: number,
   ): Promise<void> {
-    await this.db.query(
+    const db = await getDatabase();
+    await db.query(
       `UPDATE messages 
        SET is_read = TRUE 
        WHERE recipient_id = $1 AND is_read = FALSE`,
@@ -150,8 +149,9 @@ export class MessagesRepo {
     _context: HasLock12Context<THeld>,
     olderThanDays = 30
   ): Promise<number> {
+    const db = await getDatabase();
     const cutoffTime = Date.now() - (olderThanDays * 24 * 60 * 60 * 1000);
-    const result = await this.db.query(
+    const result = await db.query(
       `DELETE FROM messages 
        WHERE is_read = TRUE AND created_at < $1`,
       [cutoffTime]
@@ -166,7 +166,8 @@ export class MessagesRepo {
     _context: HasLock12Context<THeld>,
     userId: number,
   ): Promise<number> {
-    const result = await this.db.query(
+    const db = await getDatabase();
+    const result = await db.query(
       `SELECT COUNT(*) as count
        FROM messages 
        WHERE recipient_id = $1 AND is_read = FALSE`,
@@ -183,7 +184,8 @@ export class MessagesRepo {
     _context: HasLock12Context<THeld>,
     userId: number,
   ): Promise<UnreadMessage[]> {
-    const result = await this.db.query(
+    const db = await getDatabase();
+    const result = await db.query(
       `SELECT id, created_at, message
        FROM messages 
        WHERE recipient_id = $1 AND is_read = FALSE

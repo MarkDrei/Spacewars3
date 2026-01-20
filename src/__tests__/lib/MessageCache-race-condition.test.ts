@@ -5,9 +5,11 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { MessageCache } from '@/lib/server/messages/MessageCache';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
+import { withTransaction } from '../helpers/transactionHelper';
 
 describe('MessageCache - Race Condition Fix', () => {
   let messageCache: MessageCache;
+  const testUserIds: number[] = [];
 
   beforeEach(async () => {
     // Clear messages from previous tests
@@ -26,14 +28,39 @@ describe('MessageCache - Race Condition Fix', () => {
     try {
       await messageCache.waitForPendingWrites();
       await messageCache.shutdown();
+      
+      // Clean up test users
+      if (testUserIds.length > 0) {
+        const { getDatabase } = await import('@/lib/server/database');
+        const db = await getDatabase();
+        for (const userId of testUserIds) {
+          await db.query('DELETE FROM messages WHERE recipient_id = $1', [userId]);
+          await db.query('DELETE FROM users WHERE id = $1', [userId]);
+        }
+        testUserIds.length = 0;
+      }
     } catch (error) {
       console.error('Error during cleanup:', error);
     }
   });
 
+  async function createTestUser(username: string): Promise<number> {
+    const { getDatabase } = await import('@/lib/server/database');
+    const db = await getDatabase();
+    const result = await db.query(
+      'INSERT INTO users (username, password_hash, iron, last_updated, tech_tree) VALUES ($1, $2, $3, $4, $5) RETURNING id',
+      [username, 'hash', 0, Math.floor(Date.now() / 1000), '{}']
+    );
+    const userId = result.rows[0].id;
+    testUserIds.push(userId);
+    return userId;
+  }
+
   describe('Multiple summarizations', () => {
     it('doubleSummarization_afterMarkingAsRead_onlyProcessesNewMessages', async () => {
-      const userId = 1;
+      await withTransaction(async () => {
+        // Create test user
+        const userId = await createTestUser('msgtest1');
 
       // Step 1: Create initial messages
       await messageCache.createMessage(userId, 'P: ⚔️ Your **pulse laser** fired 5 shot(s), **3 hit** for **24 damage**! Enemy: Hull: 262, Armor: 0, Shield: 0');
@@ -106,10 +133,13 @@ describe('MessageCache - Race Condition Fix', () => {
       const newUnreadMessages = messages.filter(m => !m.is_read);
       expect(newUnreadMessages.length).toBe(1);
       expect(newUnreadMessages[0].message).toBe(summary2); // New summary
+      });
     });
 
     it('tripleeSummarization_afterMarkingAsRead_neverReprocessesOldMessages', async () => {
-      const userId = 2;
+      await withTransaction(async () => {
+        // Create test user
+        const userId = await createTestUser('msgtest2');
 
       // Create and summarize messages 3 times, marking as read each time
       for (let i = 1; i <= 3; i++) {
@@ -136,14 +166,17 @@ describe('MessageCache - Race Condition Fix', () => {
         await messageCache.flushToDatabase(createLockContext());
       }
 
-      // Final verification: should have 3 read summaries
-      const messages = await messageCache.getMessagesForUser(userId);
-      expect(messages.length).toBe(3);
-      expect(messages.every(m => m.is_read)).toBe(true);
+        // Final verification: should have 3 read summaries
+        const messages = await messageCache.getMessagesForUser(userId);
+        expect(messages.length).toBe(3);
+        expect(messages.every(m => m.is_read)).toBe(true);
+      });
     });
 
     it('summarization_withNoUnreadMessages_returnsNoMessages', async () => {
-      const userId = 3;
+      await withTransaction(async () => {
+        // Create test user
+        const userId = await createTestUser('msgtest3');
 
       // Create and mark messages as read
       await messageCache.createMessage(userId, 'Message 1');
@@ -156,14 +189,17 @@ describe('MessageCache - Race Condition Fix', () => {
       const summary = await messageCache.summarizeMessages(userId);
       expect(summary).toBe('No messages to summarize.');
 
-      // Verify no new messages created
-      const messages = await messageCache.getMessagesForUser(userId);
-      expect(messages.length).toBe(2); // Still just the 2 original (read) messages
-      expect(messages.every(m => m.is_read)).toBe(true);
+        // Verify no new messages created
+        const messages = await messageCache.getMessagesForUser(userId);
+        expect(messages.length).toBe(2); // Still just the 2 original (read) messages
+        expect(messages.every(m => m.is_read)).toBe(true);
+      });
     });
 
     it('summarization_mixedReadAndUnread_onlyProcessesUnread', async () => {
-      const userId = 4;
+      await withTransaction(async () => {
+        // Create test user
+        const userId = await createTestUser('msgtest4');
 
       // Create some messages and mark as read
       await messageCache.createMessage(userId, 'P: ⚔️ Your **old weapon** fired 5 shot(s), **5 hit** for **100 damage**! Enemy: Hull: 0, Armor: 0, Shield: 0');
@@ -195,6 +231,7 @@ describe('MessageCache - Race Condition Fix', () => {
       expect(messages.length).toBe(3);
       expect(messages.filter(m => m.is_read).length).toBe(2);
       expect(messages.filter(m => !m.is_read).length).toBe(1);
+      });
     });
   });
 });

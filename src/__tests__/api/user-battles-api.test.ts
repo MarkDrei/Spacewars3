@@ -13,6 +13,7 @@ import { BattleStats } from '@/lib/server/battle/battleTypes';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 import { BATTLE_LOCK, USER_LOCK } from '@/lib/server/typedLocks';
 import { initializeIntegrationTestServer, shutdownIntegrationTestServer } from '../helpers/testServer';
+import { withTransaction } from '../helpers/transactionHelper';
 
 // Helper to get user ID from username
 async function getUserIdByUsername(username: string): Promise<number> {
@@ -106,112 +107,120 @@ describe('User battles API', () => {
   });
 
   test('userBattles_notAuthenticated_returns401', async () => {
-    const request = createRequest('http://localhost:3000/api/user-battles', 'GET');
-    const response = await userBattlesGET(request);
-    const data = await response.json();
+    await withTransaction(async () => {
+      const request = createRequest('http://localhost:3000/api/user-battles', 'GET');
+      const response = await userBattlesGET(request);
+      const data = await response.json();
 
-    expect(response.status).toBe(401);
-    expect(data.error).toBe('Not authenticated');
+      expect(response.status).toBe(401);
+      expect(data.error).toBe('Not authenticated');
+    });
   });
 
   test('userBattles_noBattles_returnsEmptyArray', async () => {
-    const sessionCookie = await createAuthenticatedSession('nobattlesuser');
+    await withTransaction(async () => {
+      const sessionCookie = await createAuthenticatedSession('nobattlesuser');
 
-    const request = createRequest('http://localhost:3000/api/user-battles', 'GET', undefined, sessionCookie);
-    const response = await userBattlesGET(request);
-    const data = await response.json();
+      const request = createRequest('http://localhost:3000/api/user-battles', 'GET', undefined, sessionCookie);
+      const response = await userBattlesGET(request);
+      const data = await response.json();
 
-    expect(response.status).toBe(200);
-    expect(data).toHaveProperty('battles');
-    expect(data).toHaveProperty('totalBattles');
-    expect(Array.isArray(data.battles)).toBe(true);
-    expect(data.battles.length).toBe(0);
-    expect(data.totalBattles).toBe(0);
+      expect(response.status).toBe(200);
+      expect(data).toHaveProperty('battles');
+      expect(data).toHaveProperty('totalBattles');
+      expect(Array.isArray(data.battles)).toBe(true);
+      expect(data.battles.length).toBe(0);
+      expect(data.totalBattles).toBe(0);
+    });
   });
 
   test('userBattles_withBattles_returnsBattleHistory', async () => {
-    // Create two users
-    const sessionCookie1 = await createAuthenticatedSession('battleuser1');
-    await createAuthenticatedSession('battleuser2'); // Create second user but don't need their session
+    await withTransaction(async () => {
+      // Create two users
+      const sessionCookie1 = await createAuthenticatedSession('battleuser1');
+      await createAuthenticatedSession('battleuser2'); // Create second user but don't need their session
 
-    // Get their user data - the last two created users
-    const db = await getDatabase();
-    const usersResult = await db.query('SELECT id, username FROM users ORDER BY id DESC LIMIT 2');
-    const users = usersResult.rows as Array<{ id: number; username: string }>;
+      // Get their user data - the last two created users
+      const db = await getDatabase();
+      const usersResult = await db.query('SELECT id, username FROM users ORDER BY id DESC LIMIT 2');
+      const users = usersResult.rows as Array<{ id: number; username: string }>;
 
-    const user1 = users[1]; // Second to last
-    const user2 = users[0]; // Last
+      const user1 = users[1]; // Second to last
+      const user2 = users[0]; // Last
 
-    // Create a battle between user1 and user2
-    await createTestBattle(user1.username, user2.username, true);
+      // Create a battle between user1 and user2
+      await createTestBattle(user1.username, user2.username, true);
 
-    // Fetch battles for user1
-    const request = createRequest('http://localhost:3000/api/user-battles', 'GET', undefined, sessionCookie1);
-    const response = await userBattlesGET(request);
-    const data = await response.json();
+      // Fetch battles for user1
+      const request = createRequest('http://localhost:3000/api/user-battles', 'GET', undefined, sessionCookie1);
+      const response = await userBattlesGET(request);
+      const data = await response.json();
 
-    expect(response.status).toBe(200);
-    expect(data.battles).toBeDefined();
-    expect(Array.isArray(data.battles)).toBe(true);
-    expect(data.battles.length).toBeGreaterThan(0);
-    expect(data.totalBattles).toBeGreaterThan(0);
+      expect(response.status).toBe(200);
+      expect(data.battles).toBeDefined();
+      expect(Array.isArray(data.battles)).toBe(true);
+      expect(data.battles.length).toBeGreaterThan(0);
+      expect(data.totalBattles).toBeGreaterThan(0);
 
-    // Verify battle data structure
-    const battle = data.battles[0];
-    expect(battle).toHaveProperty('id');
-    expect(battle).toHaveProperty('opponentUsername');
-    expect(battle).toHaveProperty('isAttacker');
-    expect(battle).toHaveProperty('didWin');
-    expect(battle).toHaveProperty('userDamage');
-    expect(battle).toHaveProperty('opponentDamage');
-    expect(battle).toHaveProperty('duration');
-    expect(battle).toHaveProperty('battleStartTime');
-    expect(battle).toHaveProperty('battleEndTime');
+      // Verify battle data structure
+      const battle = data.battles[0];
+      expect(battle).toHaveProperty('id');
+      expect(battle).toHaveProperty('opponentUsername');
+      expect(battle).toHaveProperty('isAttacker');
+      expect(battle).toHaveProperty('didWin');
+      expect(battle).toHaveProperty('userDamage');
+      expect(battle).toHaveProperty('opponentDamage');
+      expect(battle).toHaveProperty('duration');
+      expect(battle).toHaveProperty('battleStartTime');
+      expect(battle).toHaveProperty('battleEndTime');
 
-    // User1 was the attacker and won
-    expect(battle.isAttacker).toBe(true);
-    expect(battle.didWin).toBe(true);
-    expect(battle.opponentUsername).toBe(user2.username);
+      // User1 was the attacker and won
+      expect(battle.isAttacker).toBe(true);
+      expect(battle.didWin).toBe(true);
+      expect(battle.opponentUsername).toBe(user2.username);
+    });
   }, 10000); // Increase timeout to 10 seconds
 
   test('userBattles_battleStatistics_areAccurate', async () => {
-    // Create two users and a battle
-    const sessionCookie1 = await createAuthenticatedSession('statuser1');
-    await createAuthenticatedSession('statuser2'); // Create second user but don't need their session
+    await withTransaction(async () => {
+      // Create two users and a battle
+      const sessionCookie1 = await createAuthenticatedSession('statuser1');
+      await createAuthenticatedSession('statuser2'); // Create second user but don't need their session
 
-    const db = await getDatabase();
-    
-    // Get user data - last two users
-    const usersResult = await db.query('SELECT id, username FROM users ORDER BY id DESC LIMIT 2');
-    const users = usersResult.rows as Array<{ id: number; username: string }>;
+      const db = await getDatabase();
+      
+      // Get user data - last two users
+      const usersResult = await db.query('SELECT id, username FROM users ORDER BY id DESC LIMIT 2');
+      const users = usersResult.rows as Array<{ id: number; username: string }>;
 
-    const user1 = users[1]; // Second to last
-    const user2 = users[0]; // Last
+      const user1 = users[1]; // Second to last
+      const user2 = users[0]; // Last
 
-    // Create a battle where user2 wins (user1 is attacker but loses)
-    await createTestBattle(user1.username, user2.username, false);
+      // Create a battle where user2 wins (user1 is attacker but loses)
+      await createTestBattle(user1.username, user2.username, false);
 
-    // Fetch battles for user1 (the loser)
-    const request = createRequest('http://localhost:3000/api/user-battles', 'GET', undefined, sessionCookie1);
-    const response = await userBattlesGET(request);
-    const data = await response.json();
+      // Fetch battles for user1 (the loser)
+      const request = createRequest('http://localhost:3000/api/user-battles', 'GET', undefined, sessionCookie1);
+      const response = await userBattlesGET(request);
+      const data = await response.json();
 
-    expect(response.status).toBe(200);
-    expect(data.battles.length).toBeGreaterThan(0);
+      expect(response.status).toBe(200);
+      expect(data.battles.length).toBeGreaterThan(0);
 
-    const battle = data.battles[0];
-    
-    // User1 was the attacker but lost
-    expect(battle.isAttacker).toBe(true);
-    expect(battle.didWin).toBe(false);
-    expect(battle.opponentUsername).toBe(user2.username);
-    
-    // Verify damage values are numbers
-    expect(typeof battle.userDamage).toBe('number');
-    expect(typeof battle.opponentDamage).toBe('number');
-    
-    // Verify duration is calculated
-    expect(typeof battle.duration).toBe('number');
-    expect(battle.duration).toBeGreaterThanOrEqual(0);
+      const battle = data.battles[0];
+      
+      // User1 was the attacker but lost
+      expect(battle.isAttacker).toBe(true);
+      expect(battle.didWin).toBe(false);
+      expect(battle.opponentUsername).toBe(user2.username);
+      
+      // Verify damage values are numbers
+      expect(typeof battle.userDamage).toBe('number');
+      expect(typeof battle.opponentDamage).toBe('number');
+      
+      // Verify duration is calculated
+      expect(typeof battle.duration).toBe('number');
+      expect(battle.duration).toBeGreaterThanOrEqual(0);
+    });
   }, 10000); // Increase timeout to 10 seconds
 });

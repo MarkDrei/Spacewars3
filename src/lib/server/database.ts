@@ -13,7 +13,7 @@ async function initTransactionContext() {
     try {
       const { getTransactionContext: txContext } = await import('../../__tests__/helpers/transactionHelper.js');
       getTransactionContext = txContext;
-    } catch (error) {
+    } catch {
       // Transaction helper not available, tests will use pool directly
       console.log('⚠️ Transaction helper not available, using pool directly');
     }
@@ -212,3 +212,18 @@ export async function resetTestDatabase(): Promise<void> {
 
 // Export the adapter interface for type usage
 export type { DatabaseAdapter };
+
+/**
+ * Get the database pool for transaction management.
+ * Should only be used by transaction helper in tests.
+ */
+export async function getDatabasePool(): Promise<Pool> {
+  if (!pool) {
+    await getDatabase(); // Initialize if needed
+  }
+  if (!pool) {
+    throw new Error('Database pool not initialized');
+  }
+  return pool;
+}
+

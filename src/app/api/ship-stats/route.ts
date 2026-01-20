@@ -7,7 +7,6 @@ import { handleApiError, requireAuth, ApiError } from '@/lib/server/errors';
 import { USER_LOCK, WORLD_LOCK } from '@/lib/server/typedLocks';
 import { User } from '@/lib/server/user/user';
 import { World } from '@/lib/server/world/world';
-import { TechFactory } from '@/lib/server/techs/TechFactory';
 import { TechService } from '@/lib/server/techs/TechService';
 import { createLockContext, LockContext, LocksAtMostAndHas6 } from '@markdrei/ironguard-typescript-locks';
 import { WorldCache } from '@/lib/server/world/worldCache';

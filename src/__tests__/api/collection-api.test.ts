@@ -6,6 +6,7 @@ import { POST as collectPOST } from '@/app/api/harvest/route';
 // Import shared test helpers
 import { createRequest, createAuthenticatedSession } from '../helpers/apiTestHelpers';
 import { initializeIntegrationTestServer, shutdownIntegrationTestServer } from '../helpers/testServer';
+import { withTransaction } from '../helpers/transactionHelper';
 
 describe('Collection API', () => {
   beforeEach(async () => {
@@ -17,50 +18,56 @@ describe('Collection API', () => {
   });
 
   test('collect_notAuthenticated_returns401', async () => {
-    const request = createRequest('http://localhost:3000/api/harvest', 'POST', {
-      objectId: 1
+    await withTransaction(async () => {
+      const request = createRequest('http://localhost:3000/api/harvest', 'POST', {
+        objectId: 1
+      });
+
+      const response = await collectPOST(request);
+
+      if (!response) {
+        throw new Error('No response from collection API');
+      }
+
+      const data = await response.json();
+      expect(response.status).toBe(401);
+      expect(data.error).toBe('Not authenticated');
     });
-
-    const response = await collectPOST(request);
-
-    if (!response) {
-      throw new Error('No response from collection API');
-    }
-
-    const data = await response.json();
-    expect(response.status).toBe(401);
-    expect(data.error).toBe('Not authenticated');
   });
 
   test('collect_invalidObjectId_returns400', async () => {
-    const sessionCookie = await createAuthenticatedSession('collectuser');
-    
-    const request = createRequest('http://localhost:3000/api/harvest', 'POST', {
-      objectId: 'invalid'
-    }, sessionCookie);
+    await withTransaction(async () => {
+      const sessionCookie = await createAuthenticatedSession('collectuser');
+      
+      const request = createRequest('http://localhost:3000/api/harvest', 'POST', {
+        objectId: 'invalid'
+      }, sessionCookie);
 
-    const response = await collectPOST(request);
-    if (!response) {
-      throw new Error('No response from collection API');
-    }
-    const data = await response.json();
+      const response = await collectPOST(request);
+      if (!response) {
+        throw new Error('No response from collection API');
+      }
+      const data = await response.json();
 
-    expect(response.status).toBe(400);
-    expect(data.error).toBe('Missing or invalid object ID');
+      expect(response.status).toBe(400);
+      expect(data.error).toBe('Missing or invalid object ID');
+    });
   });
 
   test('collect_missingObjectId_returns400', async () => {
-    const sessionCookie = await createAuthenticatedSession('collectuser');
-    
-    const request = createRequest('http://localhost:3000/api/harvest', 'POST', {}, sessionCookie);
+    await withTransaction(async () => {
+      const sessionCookie = await createAuthenticatedSession('collectuser');
+      
+      const request = createRequest('http://localhost:3000/api/harvest', 'POST', {}, sessionCookie);
 
-    const response = await collectPOST(request);
-    if (!response) {
-      throw new Error('No response from collection API');
-    }
-    const data = await response.json();
+      const response = await collectPOST(request);
+      if (!response) {
+        throw new Error('No response from collection API');
+      }
+      const data = await response.json();
 
-    expect(response.status).toBe(400);
-    expect(data.error).toBe('Missing or invalid object ID');
+      expect(response.status).toBe(400);
+      expect(data.error).toBe('Missing or invalid object ID');
+    });
   });
 });

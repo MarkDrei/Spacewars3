@@ -86,7 +86,7 @@ describe('WorldCache', () => {
     ]);
 
     await ctx.useLockWithAcquire(WORLD_LOCK, async (worldContext) => {
-      cache.updateWorldUnsafe(worldContext, updatedWorld);
+      await cache.updateWorldUnsafe(worldContext, updatedWorld);
     });
 
     expect(cache.getStats().worldDirty).toBe(true);
