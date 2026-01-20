@@ -2,7 +2,7 @@
 // Database test utilities for Next.js API route testing
 // ---
 
-import { DatabaseConnection, getDatabase, resetTestDatabase } from '@/lib/server/database';
+import { DatabaseConnection, getDatabase } from '@/lib/server/database';
 
 // Track if database has been initialized for tests
 let testDbInitialized = false;

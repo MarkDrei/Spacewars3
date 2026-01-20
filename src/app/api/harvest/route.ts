@@ -129,8 +129,8 @@ async function performCollectionLogic(
   const ironReward = user.iron - ironBefore;
   
   // Update cache with new data (using unsafe methods because we have proper locks)
-  userWorldCache.updateUserInCache(userCtx, user);
-  worldCache.updateWorldUnsafe(worldContext, world);
+  await userWorldCache.updateUserInCache(userCtx, user);
+  await worldCache.updateWorldUnsafe(worldContext, world);
   
   // Create notification message for the collection
   let notificationMessage = '';

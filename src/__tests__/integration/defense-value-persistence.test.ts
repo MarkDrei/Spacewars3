@@ -11,8 +11,10 @@ import type { BattleStats, WeaponCooldowns } from '../../lib/server/battle/battl
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 import { BATTLE_LOCK, USER_LOCK } from '@/lib/server/typedLocks';
 import { initializeIntegrationTestServer, shutdownIntegrationTestServer } from '../helpers/testServer';
-import { getDatabase } from '@/lib/server/database';
 import { UserCache } from '@/lib/server/user/userCache';
+import { withTransaction } from '../helpers/transactionHelper';
+import { TechService } from '../../lib/server/techs/TechService';
+import { getDatabase } from '../../lib/server/database';
 
 describe('Defense Value Persistence After Battle', () => {
   
@@ -25,61 +27,66 @@ describe('Defense Value Persistence After Battle', () => {
   });
 
   it('defenseValues_afterBattleResolution_persistCorrectly', async () => {
-    // === Phase 1: Setup ===
-    const battleCache = getBattleCache();
-    const emptyCtx = createLockContext();
-    const userWorldCache = UserCache.getInstance2();
+    await withTransaction(async () => {
+      // === Phase 1: Setup ===
+      const battleCache = getBattleCache();
+      const emptyCtx = createLockContext();
+      const userWorldCache = UserCache.getInstance2();
 
-    await emptyCtx.useLockWithAcquire(BATTLE_LOCK, async (battleContext) => {
-        // Load users from cache
-        const attacker = await userWorldCache.getUserById(battleContext, 1);
-        const defender = await userWorldCache.getUserById(battleContext, 2);
+      await emptyCtx.useLockWithAcquire(BATTLE_LOCK, async (battleContext) => {
+          // Load users from cache
+          const attacker = await userWorldCache.getUserById(battleContext, 1);
+          const defender = await userWorldCache.getUserById(battleContext, 2);
+      
+          expect(attacker).not.toBeNull();
+          expect(defender).not.toBeNull();
+      
+          // Record initial defense values
+          const initialAttackerHull = attacker!.hullCurrent;
+          const initialDefenderHull = defender!.hullCurrent;
+      
+          console.log(`Initial attacker hull: ${initialAttackerHull}`);
+          console.log(`Initial defender hull: ${initialDefenderHull}`);
+      
+      // Calculate max values using TechService
+      const attackerMaxStats = TechService.calculateMaxDefense(attacker!.techCounts, attacker!.techTree);
+      const defenderMaxStats = TechService.calculateMaxDefense(defender!.techCounts, defender!.techTree);
+  
+      // === Phase 2: Create Battle ===
+      const attackerStats: BattleStats = {
+        hull: { current: attacker!.hullCurrent, max: attackerMaxStats.hull },
+        armor: { current: attacker!.armorCurrent, max: attackerMaxStats.armor },
+        shield: { current: attacker!.shieldCurrent, max: attackerMaxStats.shield },
+        weapons: {
+          pulse_laser: { count: 5, damage: 100, cooldown: 2 }
+        }
+      };
     
-        expect(attacker).not.toBeNull();
-        expect(defender).not.toBeNull();
-    
-        // Record initial defense values
-        const initialAttackerHull = attacker!.hullCurrent;
-        const initialDefenderHull = defender!.hullCurrent;
-    
-        console.log(`Initial attacker hull: ${initialAttackerHull}`);
-        console.log(`Initial defender hull: ${initialDefenderHull}`);
-    
-        // === Phase 2: Create Battle ===
-        const attackerStats: BattleStats = {
-          hull: { current: initialAttackerHull, max: 500 },
-          armor: { current: 250, max: 500 },
-          shield: { current: 250, max: 500 },
-          weapons: {
-            pulse_laser: { count: 5, damage: 100, cooldown: 2 }
-          }
-        };
-        
-        const defenderStats: BattleStats = {
-          hull: { current: initialDefenderHull, max: 500 },
-          armor: { current: 250, max: 500 },
-          shield: { current: 250, max: 500 },
-          weapons: {
-            pulse_laser: { count: 1, damage: 10, cooldown: 2 }
-          }
-        };
-    
-        const attackerCooldowns: WeaponCooldowns = { pulse_laser: 0 };
-        const defenderCooldowns: WeaponCooldowns = { pulse_laser: 5 };
-    
-      await getBattleCacheInitialized();
-      const battle = await battleContext.useLockWithAcquire(USER_LOCK, async (userCtx) => {
-        return await battleCache.createBattle(
-          battleContext,
-          userCtx,
-          attacker!.id,
-          defender!.id,
-          attackerStats,
-          defenderStats,
-          attackerCooldowns,
-          defenderCooldowns
-        );
-      });
+      const defenderStats: BattleStats = {
+        hull: { current: defender!.hullCurrent, max: defenderMaxStats.hull },
+        armor: { current: defender!.armorCurrent, max: defenderMaxStats.armor },
+        shield: { current: defender!.shieldCurrent, max: defenderMaxStats.shield },
+        weapons: {
+          pulse_laser: { count: 1, damage: 10, cooldown: 2 }
+        }
+      };
+  
+      const attackerCooldowns: WeaponCooldowns = { pulse_laser: 0 };
+      const defenderCooldowns: WeaponCooldowns = { pulse_laser: 5 };
+  
+    await getBattleCacheInitialized();
+    const battle = await battleContext.useLockWithAcquire(USER_LOCK, async (userCtx) => {
+      return await battleCache.createBattle(
+        battleContext,
+        userCtx,
+        attacker!.id,
+        defender!.id,
+        attackerStats,
+        defenderStats,
+        attackerCooldowns,
+        defenderCooldowns
+      );
+    });
     
         console.log(`Battle ${battle.id} created`);
     
@@ -159,7 +166,7 @@ describe('Defense Value Persistence After Battle', () => {
         const defenderDestroyed = reloadedDefender.hull_current === 0;
         expect(attackerDestroyed || defenderDestroyed).toBe(true);
     
-    });
-
+      });
+    }); // End withTransaction
   });
 });

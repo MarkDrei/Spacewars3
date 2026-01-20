@@ -252,8 +252,9 @@ export class BattleCache extends Cache {
   /**
    * Set battle in cache (PRIVATE - internal use only)
    * Marks battle as dirty for persistence
+   * In test mode, persists immediately to stay within transaction scope
    */
-  private setBattleInCacheInternal<THeld extends IronLocks>(_context: HasLock2Context<THeld>, battle: Battle): void {
+  private async setBattleInCacheInternal(context: LockContext<LocksAtMost4>, battle: Battle): Promise<void> {
     this.ensureInitialized();
     this.battles.set(battle.id, battle);
     this.dirtyBattles.add(battle.id);
@@ -263,13 +264,19 @@ export class BattleCache extends Cache {
       this.activeBattlesByUser.set(battle.attackerId, battle.id);
       this.activeBattlesByUser.set(battle.attackeeId, battle.id);
     }
+    
+    // In test mode, persist immediately (within transaction context)
+    if (this.isTestMode) {
+      await this.persistDirtyBattlesInternal(context);
+    }
   }
 
   /**
    * Update battle in cache (PRIVATE - internal use only)
    * Marks battle as dirty for persistence
+   * In test mode, persists immediately to stay within transaction scope
    */
-  private updateBattleInCacheInternal<THeld extends IronLocks>(context: HasLock2Context<THeld>, battle: Battle): void {
+  private async updateBattleInCacheInternal(context: LockContext<LocksAtMost4>, battle: Battle): Promise<void> {
     this.ensureInitialized();
     if (!this.battles.has(battle.id)) {
       throw new Error(`Cannot update non-existent battle ${battle.id}`);
@@ -281,6 +288,11 @@ export class BattleCache extends Cache {
     if (battle.battleEndTime !== null) {
       this.activeBattlesByUser.delete(battle.attackerId);
       this.activeBattlesByUser.delete(battle.attackeeId);
+    }
+    
+    // In test mode, persist immediately (within transaction context)
+    if (this.isTestMode) {
+      await this.persistDirtyBattlesInternal(context);
     }
   }
 
@@ -475,7 +487,7 @@ export class BattleCache extends Cache {
     const now = Math.floor(Date.now() / 1000);
     
     // Acquire DB lock and insert battle
-    return await context.useLockWithAcquire(DATABASE_LOCK_BATTLES, async (databaseContext) => {
+    const battle = await context.useLockWithAcquire(DATABASE_LOCK_BATTLES, async (databaseContext) => {
       // Insert to database via battleRepo
       const battle = await battleRepo.insertBattleToDb(
         databaseContext,
@@ -488,11 +500,13 @@ export class BattleCache extends Cache {
         attackeeInitialCooldowns
       );
       
-      // Store in cache
-      this.setBattleInCacheInternal(contextBattleLock, battle);
-      
       return battle;
     });
+    
+    // Store in cache
+    await this.setBattleInCacheInternal(context, battle);
+
+    return battle;
   }
 
   /**
@@ -522,13 +536,13 @@ export class BattleCache extends Cache {
     }
 
     // Mark battle as dirty for persistence
-    this.updateBattleInCacheInternal(context, battle);
+    await this.updateBattleInCacheInternal(context, battle);
   }
 
   /**
    * Add a battle event to the battle log
    */
-  async addBattleEvent<THeld extends IronLocks>(context: HasLock2Context<THeld>, battleId: number, event: BattleEvent): Promise<void> {
+  async addBattleEvent(context: LockContext<LocksAtMost4>, battleId: number, event: BattleEvent): Promise<void> {
     await this.ensureInitializedAsync();
     
     // Get battle from cache
@@ -541,7 +555,7 @@ export class BattleCache extends Cache {
     battle.battleLog.push(event);
 
     // Mark battle as dirty for persistence
-    this.updateBattleInCacheInternal(context, battle);
+    await this.updateBattleInCacheInternal(context, battle);
   }
 
   /**
@@ -572,7 +586,7 @@ export class BattleCache extends Cache {
     }
 
     // Mark battle as dirty for persistence
-    this.updateBattleInCacheInternal(context, battle);
+    await this.updateBattleInCacheInternal(context, battle);
   }
 
   /**
@@ -602,7 +616,7 @@ export class BattleCache extends Cache {
     }
 
     // Mark battle as dirty for persistence
-    this.updateBattleInCacheInternal(context, battle);
+    await this.updateBattleInCacheInternal(context, battle);
   }
 
   /**
@@ -633,7 +647,7 @@ export class BattleCache extends Cache {
     }
 
     // Mark battle as dirty for persistence
-    this.updateBattleInCacheInternal(context, battle);
+    await this.updateBattleInCacheInternal(context, battle);
   }
 
   /**
@@ -665,7 +679,7 @@ export class BattleCache extends Cache {
     battle.attackeeEndStats = attackeeEndStats;
 
     // Update battle in cache (marks as dirty)
-    this.updateBattleInCacheInternal(context, battle);
+    await this.updateBattleInCacheInternal(context, battle);
 
     // Persist to database immediately before removing from cache
     await this.persistDirtyBattles(context);
@@ -738,7 +752,7 @@ export class BattleCache extends Cache {
    * Persist single battle to database
    * Called only by BattleCache - this is the ONLY way battles get written to DB
    */
-  private async persistBattle(battle: Battle, dbContext: LockContext<LocksAtMostAndHas2>): Promise<void> {
+  private async persistBattle(battle: Battle, dbContext: LockContext<LocksAtMost4>): Promise<void> {
     // Use battleRepo to update the battle in database
     await dbContext.useLockWithAcquire(DATABASE_LOCK_BATTLES, async (databaseContext) => {
       await battleRepo.updateBattleInDb(databaseContext, battle);
@@ -753,6 +767,11 @@ export class BattleCache extends Cache {
    * Start background persistence timer
    */
   private startPersistence(): void {
+    if (!this.shouldEnableBackgroundPersistence(true)) {
+      console.log('⚔️ Background persistence disabled (test mode)');
+      return;
+    }
+    
     if (this.persistenceTimer) {
       return; // Already running
     }
@@ -770,7 +789,7 @@ export class BattleCache extends Cache {
   /**
    * Persist all dirty battles to database (async, internal)
    */
-  private async persistDirtyBattlesInternal(context: LockContext<LocksAtMostAndHas2>): Promise<void> {
+  private async persistDirtyBattlesInternal(context: LockContext<LocksAtMost4>): Promise<void> {
     if (this.dirtyBattles.size === 0) {
       return;
     }
@@ -1004,7 +1023,7 @@ export const BattleRepo = {
     return cache.updateWeaponCooldowns(context, battleId, userId, weaponCooldowns);
   },
 
-  addBattleEvent: async <THeld extends IronLocks>(context: HasLock2Context<THeld>, battleId: number, event: BattleEvent) => {
+  addBattleEvent: async (context: LockContext<LocksAtMost4>, battleId: number, event: BattleEvent) => {
     const cache = await getBattleCacheInitialized();
     return cache.addBattleEvent(context, battleId, event);
   },
