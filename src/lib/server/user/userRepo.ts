@@ -35,7 +35,7 @@ interface UserRow {
   shield_current: number;
   defense_last_regen: number;
   // Battle state
-  in_battle?: number; // SQLite stores boolean as 0/1
+  in_battle?: boolean; // PostgreSQL stores as proper boolean
   current_battle_id?: number | null;
   // Build queue
   build_queue?: string;
@@ -77,7 +77,7 @@ function userFromRow(row: UserRow, saveCallback: SaveUserCallback): User {
   const defenseLastRegen = row.defense_last_regen || row.last_updated;
 
   // Extract battle state, with fallback for migration
-  const inBattle = row.in_battle ? row.in_battle === 1 : false;
+  const inBattle = row.in_battle ? row.in_battle : false;
   const currentBattleId = row.current_battle_id || null;
 
   // Extract build queue

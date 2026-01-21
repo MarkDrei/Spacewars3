@@ -53,7 +53,7 @@ export class MessagesRepo {
     const createdAt = Date.now();
     const result = await this.db.query(`
       INSERT INTO messages (recipient_id, created_at, is_read, message)
-      VALUES ($1, $2, 0, $3)
+      VALUES ($1, $2, false, $3)
       RETURNING id
     `, [recipientId, createdAt, message]);
     
@@ -118,7 +118,7 @@ export class MessagesRepo {
       UPDATE messages 
       SET is_read = $1
       WHERE id = $2
-    `, [isRead ? 1 : 0, messageId]);
+    `, [isRead, messageId]);
   }
 
   /**
@@ -137,7 +137,7 @@ export class MessagesRepo {
           UPDATE messages 
           SET is_read = $1
           WHERE id = $2
-        `, [update.isRead ? 1 : 0, update.id]);
+        `, [update.isRead, update.id]);
       }
       
       await this.db.query('COMMIT');
@@ -156,8 +156,8 @@ export class MessagesRepo {
   ): Promise<void> {
     await this.db.query(`
       UPDATE messages 
-      SET is_read = 1 
-      WHERE recipient_id = $1 AND is_read = 0
+      SET is_read = true 
+      WHERE recipient_id = $1 AND is_read = false
     `, [userId]);
   }
 
@@ -172,7 +172,7 @@ export class MessagesRepo {
     const cutoffTime = Date.now() - (olderThanDays * 24 * 60 * 60 * 1000);
     const result = await this.db.query(`
       DELETE FROM messages 
-      WHERE is_read = 1 AND created_at < $1
+      WHERE is_read = true AND created_at < $1
     `, [cutoffTime]);
     
     return result.rowCount || 0;
@@ -188,7 +188,7 @@ export class MessagesRepo {
     const result = await this.db.query(`
       SELECT COUNT(*) as count
       FROM messages 
-      WHERE recipient_id = $1 AND is_read = 0
+      WHERE recipient_id = $1 AND is_read = false
     `, [userId]);
     
     return result.rows[0]?.count || 0;
@@ -205,7 +205,7 @@ export class MessagesRepo {
     const result = await this.db.query(`
       SELECT id, created_at, message
       FROM messages 
-      WHERE recipient_id = $1 AND is_read = 0
+      WHERE recipient_id = $1 AND is_read = false
       ORDER BY created_at ASC
     `, [userId]);
     
