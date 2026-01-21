@@ -105,8 +105,9 @@ export async function GET(request: NextRequest) {
 
       const db = await getDatabase();
       // Get all users data
-      const users = await new Promise<UserData[]>((resolve, reject) => {
-        db.all(`
+      const client = await db.connect();
+      try {
+        const result = await client.query(`
           SELECT 
             id, username, iron, last_updated,
             build_queue, build_start_sec,
@@ -116,28 +117,27 @@ export async function GET(request: NextRequest) {
             tech_tree
           FROM users 
           ORDER BY id
-        `, [], (err, rows) => {
-          if (err) return reject(err);
-          
-          const userData = (rows as Array<{
-            id: number;
-            username: string;
-            iron: number;
-            last_updated: number;
-            build_queue: string | null;
-            build_start_sec: number | null;
-            pulse_laser: number;
-            auto_turret: number;
-            plasma_lance: number;
-            gauss_rifle: number;
-            photon_torpedo: number;
-            rocket_launcher: number;
-            ship_hull: number;
-            kinetic_armor: number;
-            energy_shield: number;
-            missile_jammer: number;
-            tech_tree: string;
-          }>).map(row => {
+        `, []);
+        
+        const userData = result.rows.map((row: {
+          id: number;
+          username: string;
+          iron: number;
+          last_updated: number;
+          build_queue: string | null;
+          build_start_sec: number | null;
+          pulse_laser: number;
+          auto_turret: number;
+          plasma_lance: number;
+          gauss_rifle: number;
+          photon_torpedo: number;
+          rocket_launcher: number;
+          ship_hull: number;
+          kinetic_armor: number;
+          energy_shield: number;
+          missile_jammer: number;
+          tech_tree: string;
+        }) => {
             // Parse tech tree to extract ALL research levels
             let researches: Record<string, number> = {};
             try {
@@ -177,21 +177,15 @@ export async function GET(request: NextRequest) {
             };
           });
           
-          resolve(userData);
-        });
-      });
-  
-      // Get all space objects
-      const spaceObjects = await new Promise<SpaceObject[]>((resolve, reject) => {
-        db.all(`
-          SELECT id, x, y, type, speed, angle, last_position_update_ms
-          FROM space_objects 
-          ORDER BY id
-        `, [], (err, rows) => {
-          if (err) return reject(err);
-          resolve(rows as SpaceObject[]);
-        });
-      });
+          const users = userData;
+          
+          // Get all space objects
+          const spaceObjectsResult = await client.query(`
+            SELECT id, x, y, type, speed, angle, last_position_update_ms
+            FROM space_objects 
+            ORDER BY id
+          `, []);
+          const spaceObjects = spaceObjectsResult.rows as SpaceObject[];
   
       // Get all battles
       const cache = getBattleCache();
@@ -208,6 +202,9 @@ export async function GET(request: NextRequest) {
       };
   
       return NextResponse.json(adminData);
+      } finally {
+        client.release();
+      }
     });
   } catch (error) {
     return handleApiError(error);

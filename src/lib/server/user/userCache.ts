@@ -4,7 +4,7 @@
 // ---
 
 import { createLockContext, HasLock4Context, IronLocks, LOCK_10, LockContext, LocksAtMost3, LocksAtMost4, LocksAtMostAndHas4 } from '@markdrei/ironguard-typescript-locks';
-import sqlite3 from 'sqlite3';
+import { Pool } from 'pg';
 import { MessageCache } from '../messages/MessageCache';
 import {
   USER_LOCK,
@@ -15,7 +15,7 @@ import { WorldCache } from '../world/worldCache';
 import { Cache } from '../caches/Cache';
 
 type userCacheDependencies = {
-  db?: sqlite3.Database;
+  db?: Pool;
   worldCache?: WorldCache;
   messageCache?: MessageCache;
 };
