@@ -124,9 +124,19 @@ export async function getDatabase(): Promise<DatabaseConnection> {
     try {
       // Check if tables exist
       const tablesExist = await checkTablesExist(client);
+      let needsInit = !tablesExist;
+
+      // If tables exist, make sure verify that seeding is complete
+      // (Another process might have created tables but is still seeding)
+      if (tablesExist) {
+        const isSeeded = await checkDatabaseSeeded(client);
+        if (!isSeeded) {
+          needsInit = true;
+        }
+      }
       
-      if (!tablesExist) {
-        console.log(`🆕 New ${dbLabel} database detected, initializing...`);
+      if (needsInit) {
+        console.log(`🆕 New ${dbLabel} database detected (or unseeded), initializing...`);
         await initializeDatabase(client, pool);
       } else if (!isTest) {
         // Only run migrations in production, not in tests
@@ -157,6 +167,24 @@ async function checkTablesExist(client: PoolClient): Promise<boolean> {
     )
   `);
   return result.rows[0].exists;
+}
+
+async function checkDatabaseSeeded(client: PoolClient): Promise<boolean> {
+  try {
+    const result = await client.query('SELECT COUNT(*) FROM users');
+    const count = parseInt(result.rows[0].count, 10);
+    
+    // In test environment, we expect test users too (2 defaults + 8 test users = 10)
+    // Use loosely coupled check in case we change number of test users
+    if (process.env.NODE_ENV === 'test') {
+       return count >= 10;
+    }
+    
+    // We expect at least the default users (a, dummy)
+    return count >= 2;
+  } catch {
+    return false;
+  }
 }
 
 // Advisory lock ID for database initialization (arbitrary number, must be consistent)

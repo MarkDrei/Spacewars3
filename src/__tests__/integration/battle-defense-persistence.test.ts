@@ -39,12 +39,13 @@ describe('Battle Defense Persistence', () => {
       let defender: User | null = null;
       
       await emptyCtx.useLockWithAcquire(USER_LOCK, async (userContext) => {
-        attacker = await userWorldCache.getUserByIdWithLock(userContext, 1);
-        defender = await userWorldCache.getUserByIdWithLock(userContext, 2);
+        // Use usernames instead of hardcoded IDs 1 and 2 to be robust against sequence changes
+        attacker = await userWorldCache.getUserByUsername(userContext, 'a');
+        defender = await userWorldCache.getUserByUsername(userContext, 'dummy');
       });
       
       if (!attacker || !defender) {
-        throw new Error('Test users not found');
+        throw new Error(`Test users not found (attacker=${attacker?.id}, defender=${defender?.id})`);
       }
       
       // TypeScript now knows these are not null

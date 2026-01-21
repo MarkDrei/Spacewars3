@@ -39,8 +39,12 @@ describe('Phase 5: BattleCache Integration Testing', () => {
         await emptyCtx.useLockWithAcquire(BATTLE_LOCK, async (battleCtx) => {
 
           // Use test user IDs (created by createTestDatabase)
-          const attackerId = 1;
-          const defenderId = 2;
+          const userCache = UserCache.getInstance2();
+          let attackerId = 0, defenderId = 0;
+          await battleCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
+             attackerId = (await userCache.getUserByUsername(userCtx, 'a'))!.id;
+             defenderId = (await userCache.getUserByUsername(userCtx, 'dummy'))!.id;
+          });
 
         // Define valid BattleStats with current/max structure
         const attackerStats: BattleStats = {
@@ -108,8 +112,12 @@ describe('Phase 5: BattleCache Integration Testing', () => {
       await withTransaction(async () => {
         await emptyCtx.useLockWithAcquire(BATTLE_LOCK, async (battleCtx) => {
 
-          const attackerId = 1;
-          const defenderId = 2;
+          const userCache = UserCache.getInstance2();
+          let attackerId = 0, defenderId = 0;
+          await battleCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
+             attackerId = (await userCache.getUserByUsername(userCtx, 'a'))!.id;
+             defenderId = (await userCache.getUserByUsername(userCtx, 'dummy'))!.id;
+          });
 
         const stats: BattleStats = {
           hull: { current: 100, max: 100 },
@@ -167,8 +175,12 @@ describe('Phase 5: BattleCache Integration Testing', () => {
     it('battleCache_getOngoingBattleForUser_findsUserBattle', async () => {
       await withTransaction(async () => {
         await emptyCtx.useLockWithAcquire(BATTLE_LOCK, async (battleCtx) => {
-          const attackerId = 1;
-          const defenderId = 2;
+          const userCache = UserCache.getInstance2();
+          let attackerId = 0, defenderId = 0;
+          await battleCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
+             attackerId = (await userCache.getUserByUsername(userCtx, 'a'))!.id;
+             defenderId = (await userCache.getUserByUsername(userCtx, 'dummy'))!.id;
+          });
 
         const stats: BattleStats = {
           hull: { current: 100, max: 100 },
@@ -243,10 +255,16 @@ describe('Phase 5: BattleCache Integration Testing', () => {
         console.log('🔄 Creating multiple battles...');
 
         await battleCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
+          const userCache = UserCache.getInstance2();
+          const u1 = (await userCache.getUserByUsername(userCtx, 'a'))!.id;
+          const u2 = (await userCache.getUserByUsername(userCtx, 'dummy'))!.id;
+          const u3 = (await userCache.getUserByUsername(userCtx, 'testuser3'))!.id;
+          const u4 = (await userCache.getUserByUsername(userCtx, 'testuser4'))!.id;
+          
           // Create first battle
           const battle1 = await battleCache.createBattle(
             battleCtx, userCtx,
-            1, 2, stats, stats, cooldowns, cooldowns
+            u1, u2, stats, stats, cooldowns, cooldowns
           );
   
           activeBattles = await BattleRepo.getActiveBattles(battleCtx);
@@ -256,7 +274,7 @@ describe('Phase 5: BattleCache Integration Testing', () => {
           // Create second battle
           const battle2 = await battleCache.createBattle(
             battleCtx, userCtx,
-            3, 4, stats, stats, cooldowns, cooldowns
+            u3, u4, stats, stats, cooldowns, cooldowns
           );
   
           activeBattles = await BattleRepo.getActiveBattles(battleCtx);
@@ -275,6 +293,12 @@ describe('Phase 5: BattleCache Integration Testing', () => {
     it('battleCache_addBattleEvent_marksBattleDirty', async () => {
       await withTransaction(async () => {
         await emptyCtx.useLockWithAcquire(BATTLE_LOCK, async (battleCtx) => {
+          const userCache = UserCache.getInstance2();
+          let user1Id = 0, user2Id = 0;
+          await battleCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
+             user1Id = (await userCache.getUserByUsername(userCtx, 'a'))!.id;
+             user2Id = (await userCache.getUserByUsername(userCtx, 'dummy'))!.id;
+          });
 
           const stats: BattleStats = {
           hull: { current: 100, max: 100 },
@@ -296,8 +320,8 @@ describe('Phase 5: BattleCache Integration Testing', () => {
           return await battleCache.createBattle(
             battleCtx,
             userCtx,
-            1,
-            2,
+            user1Id,
+            user2Id,
             stats,
             stats,
             cooldowns,
@@ -335,6 +359,12 @@ describe('Phase 5: BattleCache Integration Testing', () => {
     it('battleCache_endBattle_removesFromCache', async () => {
       await withTransaction(async () => {
         await emptyCtx.useLockWithAcquire(BATTLE_LOCK, async (battleCtx) => {
+          const userCache = UserCache.getInstance2();
+          let user1Id = 0, user2Id = 0;
+          await battleCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
+             user1Id = (await userCache.getUserByUsername(userCtx, 'a'))!.id;
+             user2Id = (await userCache.getUserByUsername(userCtx, 'dummy'))!.id;
+          });
 
           const stats: BattleStats = {
           hull: { current: 100, max: 100 },
@@ -365,8 +395,8 @@ describe('Phase 5: BattleCache Integration Testing', () => {
           return await battleCache.createBattle(
             battleCtx,
             userCtx,
-            1,
-            2,
+            user1Id,
+            user2Id,
             stats,
             stats,
             cooldowns,
@@ -386,8 +416,8 @@ describe('Phase 5: BattleCache Integration Testing', () => {
         await BattleRepo.endBattle(
           battleCtx,
           battle.id,
-          1, // Winner
-          2, // Loser
+          user1Id, // Winner
+          user2Id, // Loser
           stats, // Winner final stats
           defeatedStats // Loser final stats
         );
@@ -452,6 +482,14 @@ describe('Phase 5: BattleCache Integration Testing', () => {
     it('battleCache_statistics_accurateTracking', async () => {
       await withTransaction(async () => {
         await emptyCtx.useLockWithAcquire(BATTLE_LOCK, async (battleCtx) => {
+          const userCache = UserCache.getInstance2();
+          let user1Id = 0, user2Id = 0, user3Id = 0, user4Id = 0;
+          await battleCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
+             user1Id = (await userCache.getUserByUsername(userCtx, 'a'))!.id;
+             user2Id = (await userCache.getUserByUsername(userCtx, 'dummy'))!.id;
+             user3Id = (await userCache.getUserByUsername(userCtx, 'testuser3'))!.id;
+             user4Id = (await userCache.getUserByUsername(userCtx, 'testuser4'))!.id;
+          });
 
           // Initial stats
           let stats = battleCache.getStats();
@@ -480,8 +518,8 @@ describe('Phase 5: BattleCache Integration Testing', () => {
           return await battleCache.createBattle(
             battleCtx,
             userCtx,
-            1,
-            2,
+            user1Id,
+            user2Id,
             battleStats,
             battleStats,
             cooldowns,

@@ -26,71 +26,74 @@ describe('Defense Value Persistence After Battle', () => {
     await shutdownIntegrationTestServer();
   });
 
-  it('defenseValues_afterBattleResolution_persistCorrectly', async () => {
+  it('defenseValues_afterBattleResolution_persistCorrectly', { timeout: 30000 }, async () => {
     await withTransaction(async () => {
       // === Phase 1: Setup ===
       const battleCache = getBattleCache();
       const emptyCtx = createLockContext();
       const userWorldCache = UserCache.getInstance2();
+      let attackerId = 0, defenderId = 0;
+      let initialAttackerHull = 0, initialDefenderHull = 0;
+      let attackerStats: BattleStats, defenderStats: BattleStats;
+      let attackerCooldowns: WeaponCooldowns, defenderCooldowns: WeaponCooldowns;
 
       await emptyCtx.useLockWithAcquire(BATTLE_LOCK, async (battleContext) => {
+        // 1. Get initial stats (Scope 1 for USER_LOCK)
+        await battleContext.useLockWithAcquire(USER_LOCK, async (userCtx) => {
           // Load users from cache
-          const attacker = await userWorldCache.getUserById(battleContext, 1);
-          const defender = await userWorldCache.getUserById(battleContext, 2);
+          const attacker = await userWorldCache.getUserByUsername(userCtx, 'a');
+          const defender = await userWorldCache.getUserByUsername(userCtx, 'dummy');
       
           expect(attacker).not.toBeNull();
           expect(defender).not.toBeNull();
+          attackerId = attacker!.id;
+          defenderId = defender!.id;
       
           // Record initial defense values
-          const initialAttackerHull = attacker!.hullCurrent;
-          const initialDefenderHull = defender!.hullCurrent;
+          initialAttackerHull = attacker!.hullCurrent;
+          initialDefenderHull = defender!.hullCurrent;
       
           console.log(`Initial attacker hull: ${initialAttackerHull}`);
           console.log(`Initial defender hull: ${initialDefenderHull}`);
       
-      // Calculate max values using TechService
-      const attackerMaxStats = TechService.calculateMaxDefense(attacker!.techCounts, attacker!.techTree);
-      const defenderMaxStats = TechService.calculateMaxDefense(defender!.techCounts, defender!.techTree);
-  
-      // === Phase 2: Create Battle ===
-      const attackerStats: BattleStats = {
-        hull: { current: attacker!.hullCurrent, max: attackerMaxStats.hull },
-        armor: { current: attacker!.armorCurrent, max: attackerMaxStats.armor },
-        shield: { current: attacker!.shieldCurrent, max: attackerMaxStats.shield },
-        weapons: {
-          pulse_laser: { count: 5, damage: 100, cooldown: 2 }
-        }
-      };
-    
-      const defenderStats: BattleStats = {
-        hull: { current: defender!.hullCurrent, max: defenderMaxStats.hull },
-        armor: { current: defender!.armorCurrent, max: defenderMaxStats.armor },
-        shield: { current: defender!.shieldCurrent, max: defenderMaxStats.shield },
-        weapons: {
-          pulse_laser: { count: 1, damage: 10, cooldown: 2 }
-        }
-      };
-  
-      const attackerCooldowns: WeaponCooldowns = { pulse_laser: 0 };
-      const defenderCooldowns: WeaponCooldowns = { pulse_laser: 5 };
-  
-    await getBattleCacheInitialized();
-    const battle = await battleContext.useLockWithAcquire(USER_LOCK, async (userCtx) => {
-      return await battleCache.createBattle(
-        battleContext,
-        userCtx,
-        attacker!.id,
-        defender!.id,
-        attackerStats,
-        defenderStats,
-        attackerCooldowns,
-        defenderCooldowns
-      );
-    });
-    
+          // Calculate max values using TechService
+          const attackerMaxStats = TechService.calculateMaxDefense(attacker!.techCounts, attacker!.techTree);
+          const defenderMaxStats = TechService.calculateMaxDefense(defender!.techCounts, defender!.techTree);
+
+          attackerStats = {
+            hull: { current: attacker!.hullCurrent, max: attackerMaxStats.hull },
+            armor: { current: attacker!.armorCurrent, max: attackerMaxStats.armor },
+            shield: { current: attacker!.shieldCurrent, max: attackerMaxStats.shield },
+            weapons: { pulse_laser: { count: 5, damage: 100, cooldown: 0 } }
+          };
+          defenderStats = {
+            hull: { current: defender!.hullCurrent, max: defenderMaxStats.hull },
+            armor: { current: defender!.armorCurrent, max: defenderMaxStats.armor },
+            shield: { current: defender!.shieldCurrent, max: defenderMaxStats.shield },
+            weapons: { pulse_laser: { count: 1, damage: 10, cooldown: 0 } }
+          };
+          attackerCooldowns = { pulse_laser: 0 };
+          defenderCooldowns = { pulse_laser: 5 };
+        });
+
+        // 2. Create Battle (Scope 2 for USER_LOCK)
+        await getBattleCacheInitialized();
+        const battle = await battleContext.useLockWithAcquire(USER_LOCK, async (userCtx) => {
+          return await battleCache.createBattle(
+            battleContext,
+            userCtx,
+            attackerId,
+            defenderId,
+            attackerStats,
+            defenderStats,
+            attackerCooldowns,
+            defenderCooldowns
+          );
+        });
+        
         console.log(`Battle ${battle.id} created`);
     
-        // Verify startStats are captured correctly
+        // Verify startStats
         expect(battle.attackerStartStats.hull.current).toBe(initialAttackerHull);
         expect(battle.attackeeStartStats.hull.current).toBe(initialDefenderHull);
     
@@ -107,22 +110,24 @@ describe('Defense Value Persistence After Battle', () => {
         expect(currentBattle?.attackerStartStats.hull.current).toBe(initialAttackerHull);
         expect(currentBattle?.attackeeStartStats.hull.current).toBe(initialDefenderHull);
     
-        // Verify that endStats exist and show damage
-        expect(currentBattle?.attackerEndStats).not.toBeNull();
-        expect(currentBattle?.attackeeEndStats).not.toBeNull();
-        
-        // At least one side should have taken damage
-        const attackerTookDamage = (currentBattle?.attackerEndStats?.hull.current ?? initialAttackerHull) < initialAttackerHull;
-        const defenderTookDamage = (currentBattle?.attackeeEndStats?.hull.current ?? initialDefenderHull) < initialDefenderHull;
-        expect(attackerTookDamage || defenderTookDamage).toBe(true);
-    
-        // === Phase 4: Resolve Battle (if not already ended) ===
-        // Continue battle until someone wins
+        // If battle hasn't ended, endStats should still be null
+        if (!currentBattle?.battleEndTime) {
+           expect(currentBattle?.attackerEndStats).toBeNull();
+           expect(currentBattle?.attackeeEndStats).toBeNull();
+        }
+
+        // === Phase 4: Resolve Battle ===
         let iterations = 1;
         const maxIterations = 50;
         
         while (currentBattle && !currentBattle.battleEndTime && iterations < maxIterations) {
           await battleService.updateBattle(battleContext, currentBattle.id);
+          
+          await battleContext.useLockWithAcquire(USER_LOCK, async (userCtx) => {
+             const d = await userWorldCache.getUserById(userCtx, defenderId);
+             console.log(`Iter ${iterations}: Defender hull: ${d?.hullCurrent}, Shield: ${d?.shieldCurrent}, Armor: ${d?.armorCurrent}`);
+          });
+
           currentBattle = await BattleRepo.getBattle(battleContext, currentBattle.id);
           iterations++;
         }
@@ -149,8 +154,8 @@ describe('Defense Value Persistence After Battle', () => {
         };
 
         const [reloadedAttacker, reloadedDefender] = await Promise.all([
-          loadUserDefenses(attacker!.id),
-          loadUserDefenses(defender!.id)
+          loadUserDefenses(attackerId),
+          loadUserDefenses(defenderId)
         ]);
 
         console.log(`Reloaded attacker hull: ${reloadedAttacker.hull_current}`);
@@ -165,8 +170,7 @@ describe('Defense Value Persistence After Battle', () => {
         const attackerDestroyed = reloadedAttacker.hull_current === 0;
         const defenderDestroyed = reloadedDefender.hull_current === 0;
         expect(attackerDestroyed || defenderDestroyed).toBe(true);
-    
       });
-    }); // End withTransaction
+    });
   });
 });

@@ -5,6 +5,7 @@
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { BattleCache, getBattleCache } from '../../lib/server/battle/BattleCache';
+import { UserCache } from '../../lib/server/user/userCache';
 import * as BattleRepo from '../../lib/server/battle/BattleCache';
 import type { BattleStats, WeaponCooldowns } from '../../lib/server/battle/battleTypes';
 import { BATTLE_LOCK, USER_LOCK } from '@/lib/server/typedLocks';
@@ -15,12 +16,14 @@ import { withTransaction } from '../helpers/transactionHelper';
 describe('Phase 5: End-to-End Battle Flow with BattleCache', () => {
 
   let battleCache: BattleCache;
+  let userCache: UserCache;
   let emptyCtx: ReturnType<typeof createLockContext>;
   
   beforeEach(async () => {
     await initializeIntegrationTestServer();
     emptyCtx = createLockContext();
     battleCache = getBattleCache();
+    userCache = UserCache.getInstance2();
   });
 
   afterEach(async () => {
@@ -35,8 +38,11 @@ describe('Phase 5: End-to-End Battle Flow with BattleCache', () => {
         // === Phase 1: Setup ===
   
         // Use test user IDs (seeded by test database)
-        const attackerId = 1; // User 'a' at (250, 250)
-        const defenderId = 2; // User 'dummy' at (280, 280) - within 100 unit attack range
+        let attackerId = 0, defenderId = 0;
+        await battleCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
+          attackerId = (await userCache.getUserByUsername(userCtx, 'a'))!.id;
+          defenderId = (await userCache.getUserByUsername(userCtx, 'dummy'))!.id;
+        });
   
         // Initial battle stats
         const attackerStats: BattleStats = {
@@ -236,7 +242,14 @@ describe('Phase 5: End-to-End Battle Flow with BattleCache', () => {
         await emptyCtx.useLockWithAcquire(BATTLE_LOCK, async (battleCtx) => {
 
         // Use first 4 test users
-        const userIds = [1, 2, 3, 4];
+        let userIds: number[] = [];
+        await battleCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
+          const u1 = (await userCache.getUserByUsername(userCtx, 'a'))!.id;
+          const u2 = (await userCache.getUserByUsername(userCtx, 'dummy'))!.id;
+          const u3 = (await userCache.getUserByUsername(userCtx, 'testuser3'))!.id;
+          const u4 = (await userCache.getUserByUsername(userCtx, 'testuser4'))!.id;
+          userIds = [u1, u2, u3, u4];
+        });
 
         const battleStats: BattleStats = {
           hull: { current: 100, max: 100 },
@@ -293,8 +306,11 @@ describe('Phase 5: End-to-End Battle Flow with BattleCache', () => {
         await emptyCtx.useLockWithAcquire(BATTLE_LOCK, async (battleCtx) => {
 
         // Use test users
-        const user1Id = 1;
-        const user2Id = 2;
+        let user1Id = 0, user2Id = 0;
+        await battleCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
+          user1Id = (await userCache.getUserByUsername(userCtx, 'a'))!.id;
+          user2Id = (await userCache.getUserByUsername(userCtx, 'dummy'))!.id;
+        });
 
         const stats: BattleStats = {
           hull: { current: 100, max: 100 },
@@ -372,8 +388,11 @@ describe('Phase 5: End-to-End Battle Flow with BattleCache', () => {
         await emptyCtx.useLockWithAcquire(BATTLE_LOCK, async (battleCtx) => {
 
         // Use test users
-        const user1Id = 1;
-        const user2Id = 2;
+        let user1Id = 0, user2Id = 0;
+        await battleCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
+          user1Id = (await userCache.getUserByUsername(userCtx, 'a'))!.id;
+          user2Id = (await userCache.getUserByUsername(userCtx, 'dummy'))!.id;
+        });
 
         const stats: BattleStats = {
           hull: { current: 100, max: 100 },

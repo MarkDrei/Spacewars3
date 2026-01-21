@@ -10,7 +10,17 @@ import { createRequest } from '../helpers/apiTestHelpers';
 import { getMessageCache, MessageCache } from '@/lib/server/messages/MessageCache';
 import { withTransaction } from '../helpers/transactionHelper';
 
+import { getDatabase } from '@/lib/server/database';
+
 describe('Messages API Route Handler', () => {
+  // Helper to get user ID by username
+  async function getUserId(username: string): Promise<number> {
+    const db = await getDatabase();
+    const result = await db.query('SELECT id FROM users WHERE username = $1', [username]);
+    if (!result.rows[0]) throw new Error(`User ${username} not found`);
+    return result.rows[0].id;
+  }
+
   beforeEach(async () => {
     // Ensure previous test's cache is fully shut down
     try {
@@ -57,10 +67,11 @@ describe('Messages API Route Handler', () => {
     await withTransaction(async () => {
       // Test using MessageCache (single source of truth)
       // Use test user 3 for isolation from other tests
+      const userId = await getUserId('testuser3');
       const cache = getMessageCache();
       await cache.initialize();
       
-      const messages = await cache.getUnreadMessages(3);
+      const messages = await cache.getUnreadMessages(userId);
       
       expect(messages).toEqual([]);
     });
@@ -70,15 +81,16 @@ describe('Messages API Route Handler', () => {
     await withTransaction(async () => {
       // Test the MessageCache integration with database
       // Use test user 3 for isolation from other tests
+      const userId = await getUserId('testuser3');
       const cache = getMessageCache();
       await cache.initialize();
       
       // Create a message
-      await cache.createMessage(3, 'Test message');
+      await cache.createMessage(userId, 'Test message');
       await cache.waitForPendingWrites();
       
       // Retrieve it
-      const messages = await cache.getUnreadMessages(3);
+      const messages = await cache.getUnreadMessages(userId);
       
       expect(messages).toHaveLength(1);
       expect(messages[0].message).toBe('Test message');
@@ -112,24 +124,25 @@ describe('Messages API Route Handler', () => {
     test('markRead_withMessages_marksThemAsRead', async () => {
       await withTransaction(async () => {
         // Use test user 3 for isolation from other tests
+        const userId = await getUserId('testuser3');
         const cache = getMessageCache();
         await cache.initialize();
         
         // Create messages
-        await cache.createMessage(3, 'Message 1');
-        await cache.createMessage(3, 'Message 2');
+        await cache.createMessage(userId, 'Message 1');
+        await cache.createMessage(userId, 'Message 2');
         await cache.waitForPendingWrites();
         
         // Verify messages are unread
-        const unread = await cache.getUnreadMessages(3);
+        const unread = await cache.getUnreadMessages(userId);
         expect(unread).toHaveLength(2);
         
         // Mark as read
-        const markedCount = await cache.markAllMessagesAsRead(3);
+        const markedCount = await cache.markAllMessagesAsRead(userId);
         expect(markedCount).toBe(2);
         
         // Verify no more unread messages
-        const unreadAfter = await cache.getUnreadMessages(3);
+        const unreadAfter = await cache.getUnreadMessages(userId);
         expect(unreadAfter).toHaveLength(0);
       });
     });
@@ -137,28 +150,29 @@ describe('Messages API Route Handler', () => {
     test('getMessages_doesNotMarkAsRead_thenMarkReadWorks', async () => {
       await withTransaction(async () => {
         // Use test user 3 for isolation from other tests
+        const userId = await getUserId('testuser3');
         const cache = getMessageCache();
         await cache.initialize();
         
         // Create messages
-        await cache.createMessage(3, 'Message 1');
-        await cache.createMessage(3, 'Message 2');
+        await cache.createMessage(userId, 'Message 1');
+        await cache.createMessage(userId, 'Message 2');
         await cache.waitForPendingWrites();
         
         // Get messages - should NOT mark as read
-        const messages1 = await cache.getUnreadMessages(3);
+        const messages1 = await cache.getUnreadMessages(userId);
         expect(messages1).toHaveLength(2);
         
         // Messages should still be unread
-        const messages2 = await cache.getUnreadMessages(3);
+        const messages2 = await cache.getUnreadMessages(userId);
         expect(messages2).toHaveLength(2);
         
         // Now mark as read
-        const markedCount = await cache.markAllMessagesAsRead(3);
+        const markedCount = await cache.markAllMessagesAsRead(userId);
         expect(markedCount).toBe(2);
         
         // Should have no unread messages
-        const messages3 = await cache.getUnreadMessages(3);
+        const messages3 = await cache.getUnreadMessages(userId);
         expect(messages3).toHaveLength(0);
       });
     });
