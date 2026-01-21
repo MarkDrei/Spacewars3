@@ -399,63 +399,57 @@ export class UserCache extends Cache {
   private async persistUserToDb(user: User): Promise<void> {
     if (!this.dependencies.db) throw new Error('Database not initialized');
 
-    return new Promise<void>((resolve, reject) => {
-      this.dependencies.db!.run(
-        `UPDATE users SET 
-          iron = ?, 
-          last_updated = ?, 
-          tech_tree = ?, 
-          ship_id = ?,
-          pulse_laser = ?,
-          auto_turret = ?,
-          plasma_lance = ?,
-          gauss_rifle = ?,
-          photon_torpedo = ?,
-          rocket_launcher = ?,
-          ship_hull = ?,
-          kinetic_armor = ?,
-          energy_shield = ?,
-          missile_jammer = ?,
-          hull_current = ?,
-          armor_current = ?,
-          shield_current = ?,
-          defense_last_regen = ?,
-          in_battle = ?,
-          current_battle_id = ?,
-          build_queue = ?,
-          build_start_sec = ?
-        WHERE id = ?`,
-        [
-          user.iron,
-          user.last_updated,
-          JSON.stringify(user.techTree),
-          user.ship_id,
-          user.techCounts.pulse_laser,
-          user.techCounts.auto_turret,
-          user.techCounts.plasma_lance,
-          user.techCounts.gauss_rifle,
-          user.techCounts.photon_torpedo,
-          user.techCounts.rocket_launcher,
-          user.techCounts.ship_hull,
-          user.techCounts.kinetic_armor,
-          user.techCounts.energy_shield,
-          user.techCounts.missile_jammer,
-          user.hullCurrent,
-          user.armorCurrent,
-          user.shieldCurrent,
-          user.defenseLastRegen,
-          user.inBattle ? 1 : 0,
-          user.currentBattleId,
-          JSON.stringify(user.buildQueue),
-          user.buildStartSec,
-          user.id
-        ],
-        function (err) {
-          if (err) return reject(err);
-          resolve();
-        }
-      );
-    });
+    await this.dependencies.db.query(
+      `UPDATE users SET 
+        iron = $1, 
+        last_updated = $2, 
+        tech_tree = $3, 
+        ship_id = $4,
+        pulse_laser = $5,
+        auto_turret = $6,
+        plasma_lance = $7,
+        gauss_rifle = $8,
+        photon_torpedo = $9,
+        rocket_launcher = $10,
+        ship_hull = $11,
+        kinetic_armor = $12,
+        energy_shield = $13,
+        missile_jammer = $14,
+        hull_current = $15,
+        armor_current = $16,
+        shield_current = $17,
+        defense_last_regen = $18,
+        in_battle = $19,
+        current_battle_id = $20,
+        build_queue = $21,
+        build_start_sec = $22
+      WHERE id = $23`,
+      [
+        user.iron,
+        user.last_updated,
+        JSON.stringify(user.techTree),
+        user.ship_id,
+        user.techCounts.pulse_laser,
+        user.techCounts.auto_turret,
+        user.techCounts.plasma_lance,
+        user.techCounts.gauss_rifle,
+        user.techCounts.photon_torpedo,
+        user.techCounts.rocket_launcher,
+        user.techCounts.ship_hull,
+        user.techCounts.kinetic_armor,
+        user.techCounts.energy_shield,
+        user.techCounts.missile_jammer,
+        user.hullCurrent,
+        user.armorCurrent,
+        user.shieldCurrent,
+        user.defenseLastRegen,
+        user.inBattle,
+        user.currentBattleId,
+        JSON.stringify(user.buildQueue),
+        user.buildStartSec,
+        user.id
+      ]
+    );
   }
 
 
