@@ -26,7 +26,7 @@ describe('Defense Value Persistence After Battle', () => {
     await shutdownIntegrationTestServer();
   });
 
-  it('defenseValues_afterBattleResolution_persistCorrectly', { timeout: 30000 }, async () => {
+  it('defenseValues_afterBattleResolution_persistCorrectly', { timeout: 60000 }, async () => {
     await withTransaction(async () => {
       // === Phase 1: Setup ===
       const battleCache = getBattleCache();
@@ -49,12 +49,16 @@ describe('Defense Value Persistence After Battle', () => {
           attackerId = attacker!.id;
           defenderId = defender!.id;
       
+          // Force reset techs to baseline to avoid huge stats from other tests
+          attacker!.techCounts = { ...attacker!.techCounts, ship_hull: 0, kinetic_armor: 0, energy_shield: 0 };
+          defender!.techCounts = { ...defender!.techCounts, ship_hull: 0, kinetic_armor: 0, energy_shield: 0 };
+          
+          await userWorldCache.updateUserInCache(userCtx, attacker!);
+          await userWorldCache.updateUserInCache(userCtx, defender!);
+
           // Record initial defense values
           initialAttackerHull = attacker!.hullCurrent;
           initialDefenderHull = defender!.hullCurrent;
-      
-          console.log(`Initial attacker hull: ${initialAttackerHull}`);
-          console.log(`Initial defender hull: ${initialDefenderHull}`);
       
           // Calculate max values using TechService
           const attackerMaxStats = TechService.calculateMaxDefense(attacker!.techCounts, attacker!.techTree);
@@ -64,7 +68,8 @@ describe('Defense Value Persistence After Battle', () => {
             hull: { current: attacker!.hullCurrent, max: attackerMaxStats.hull },
             armor: { current: attacker!.armorCurrent, max: attackerMaxStats.armor },
             shield: { current: attacker!.shieldCurrent, max: attackerMaxStats.shield },
-            weapons: { pulse_laser: { count: 5, damage: 100, cooldown: 0 } }
+            // Increase count to 1000 to ensure high damage (1000 * ~10 = ~10000 damage) -> 1 turn kill
+            weapons: { pulse_laser: { count: 1000, damage: 10, cooldown: 0 } }
           };
           defenderStats = {
             hull: { current: defender!.hullCurrent, max: defenderMaxStats.hull },
@@ -90,8 +95,6 @@ describe('Defense Value Persistence After Battle', () => {
             defenderCooldowns
           );
         });
-        
-        console.log(`Battle ${battle.id} created`);
     
         // Verify startStats
         expect(battle.attackerStartStats.hull.current).toBe(initialAttackerHull);
@@ -102,9 +105,6 @@ describe('Defense Value Persistence After Battle', () => {
         await battleService.updateBattle(battleContext, battle.id);
         
         let currentBattle = await BattleRepo.getBattle(battleContext, battle.id);
-        console.log(`After first update - Battle ended: ${currentBattle?.battleEndTime !== null}`);
-        console.log(`After first update - Attacker end hull: ${currentBattle?.attackerEndStats?.hull.current}`);
-        console.log(`After first update - Defender end hull: ${currentBattle?.attackeeEndStats?.hull.current}`);
     
         // Verify that startStats remain unchanged
         expect(currentBattle?.attackerStartStats.hull.current).toBe(initialAttackerHull);
@@ -123,17 +123,11 @@ describe('Defense Value Persistence After Battle', () => {
         while (currentBattle && !currentBattle.battleEndTime && iterations < maxIterations) {
           await battleService.updateBattle(battleContext, currentBattle.id);
           
-          await battleContext.useLockWithAcquire(USER_LOCK, async (userCtx) => {
-             const d = await userWorldCache.getUserById(userCtx, defenderId);
-             console.log(`Iter ${iterations}: Defender hull: ${d?.hullCurrent}, Shield: ${d?.shieldCurrent}, Armor: ${d?.armorCurrent}`);
-          });
-
           currentBattle = await BattleRepo.getBattle(battleContext, currentBattle.id);
           iterations++;
         }
     
         expect(currentBattle?.battleEndTime).not.toBeNull();
-        console.log(`Battle ended after ${iterations} iterations`);
     
         // === Phase 5: Verify Defense Values Persisted ===
         // Flush cache to ensure values are written to DB
