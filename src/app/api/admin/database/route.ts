@@ -105,37 +105,39 @@ export async function GET(request: NextRequest) {
 
       const db = await getDatabase();
       // Get all users data
-      const usersResult = await db.query(`
-        SELECT 
-          id, username, iron, last_updated,
-          build_queue, build_start_sec,
-          pulse_laser, auto_turret, plasma_lance, gauss_rifle,
-          photon_torpedo, rocket_launcher,
-          ship_hull, kinetic_armor, energy_shield, missile_jammer,
-          tech_tree
-        FROM users 
-        ORDER BY id
-      `);
-      
-      const users: UserData[] = usersResult.rows.map((row: {
-        id: number;
-        username: string;
-        iron: number;
-        last_updated: number;
-        build_queue: string | null;
-        build_start_sec: number | null;
-        pulse_laser: number;
-        auto_turret: number;
-        plasma_lance: number;
-        gauss_rifle: number;
-        photon_torpedo: number;
-        rocket_launcher: number;
-        ship_hull: number;
-        kinetic_armor: number;
-        energy_shield: number;
-        missile_jammer: number;
-        tech_tree: string;
-      }) => {
+      const users = await new Promise<UserData[]>((resolve, reject) => {
+        db.all(`
+          SELECT 
+            id, username, iron, last_updated,
+            build_queue, build_start_sec,
+            pulse_laser, auto_turret, plasma_lance, gauss_rifle,
+            photon_torpedo, rocket_launcher,
+            ship_hull, kinetic_armor, energy_shield, missile_jammer,
+            tech_tree
+          FROM users 
+          ORDER BY id
+        `, [], (err, rows) => {
+          if (err) return reject(err);
+          
+          const userData = (rows as Array<{
+            id: number;
+            username: string;
+            iron: number;
+            last_updated: number;
+            build_queue: string | null;
+            build_start_sec: number | null;
+            pulse_laser: number;
+            auto_turret: number;
+            plasma_lance: number;
+            gauss_rifle: number;
+            photon_torpedo: number;
+            rocket_launcher: number;
+            ship_hull: number;
+            kinetic_armor: number;
+            energy_shield: number;
+            missile_jammer: number;
+            tech_tree: string;
+          }>).map(row => {
             // Parse tech tree to extract ALL research levels
             let researches: Record<string, number> = {};
             try {
@@ -174,14 +176,22 @@ export async function GET(request: NextRequest) {
               researches
             };
           });
+          
+          resolve(userData);
+        });
+      });
   
       // Get all space objects
-      const spaceObjectsResult = await db.query(`
-        SELECT id, x, y, type, speed, angle, last_position_update_ms
-        FROM space_objects 
-        ORDER BY id
-      `);
-      const spaceObjects: SpaceObject[] = spaceObjectsResult.rows;
+      const spaceObjects = await new Promise<SpaceObject[]>((resolve, reject) => {
+        db.all(`
+          SELECT id, x, y, type, speed, angle, last_position_update_ms
+          FROM space_objects 
+          ORDER BY id
+        `, [], (err, rows) => {
+          if (err) return reject(err);
+          resolve(rows as SpaceObject[]);
+        });
+      });
   
       // Get all battles
       const cache = getBattleCache();
