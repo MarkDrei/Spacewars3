@@ -151,10 +151,11 @@ async function columnExists(pool: Pool, tableName: string, columnName: string): 
 async function runMigrationStatement(pool: Pool, sql: string): Promise<void> {
   try {
     await pool.query(sql);
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const error = err as Error;
     // PostgreSQL uses "column already exists" or "duplicate column" errors
-    if (!err.message.includes('already exists') && !err.message.includes('duplicate column')) {
-      console.warn(`⚠️ Migration warning: ${err.message}`);
+    if (!error.message.includes('already exists') && !error.message.includes('duplicate column')) {
+      console.warn(`⚠️ Migration warning: ${error.message}`);
     }
     // Always resolve - we don't want to fail if column already exists
   }
