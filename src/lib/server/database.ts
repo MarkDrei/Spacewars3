@@ -68,6 +68,7 @@ class TestAwareAdapter implements DatabaseConnection {
  */
 function getDatabaseConfig() {
   const isTest = process.env.NODE_ENV === 'test';
+  const isProduction = process.env.NODE_ENV === 'production';
   
   return {
     host: process.env.POSTGRES_HOST || 'localhost',
@@ -80,6 +81,8 @@ function getDatabaseConfig() {
     max: isTest ? 10 : 20, // Increased from 5 to 10 for parallel test workers
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 5000,
+    // Render requires SSL for production databases
+    ssl: isProduction ? { rejectUnauthorized: false } : false,
   };
 }
 

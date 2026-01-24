@@ -1,6 +1,9 @@
 databases:
   - name: spacewars-db
+    databaseName: spacewars_production
+    user: spacewars_user
     plan: free
+    version: "16"
 
 services:
   - type: web
