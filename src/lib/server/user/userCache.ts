@@ -355,10 +355,21 @@ export class UserCache extends Cache {
   }
 
   /**
-   * Force flush all dirty data to database
+   * Force flush all dirty data to database (implements Cache base class)
+   * Creates its own lock context and delegates to flushAllToDatabaseWithContext
+   */
+  protected async flushAllToDatabase(): Promise<void> {
+    const ctx = createLockContext();
+    await ctx.useLockWithAcquire(USER_LOCK, async (userContext) => {
+      await this.flushAllToDatabaseWithContext(userContext);
+    });
+  }
+
+  /**
+   * Force flush all dirty data to database when already holding USER_LOCK
    * Useful for ensuring data is persisted before reading directly from DB
    */
-  async flushAllToDatabase(context: LockContext<LocksAtMostAndHas4>): Promise<void> {
+  async flushAllToDatabaseWithContext(context: LockContext<LocksAtMostAndHas4>): Promise<void> {
     console.log('🔄 Flushing all dirty data to database...');
 
     // Persist dirty users

@@ -299,3 +299,7 @@ export function stopBattleScheduler(): void {
     console.log('⚔️ Battle scheduler stopped');
   }
 }
+
+export function resetBattleScheduler(): void {
+  stopBattleScheduler();
+}
