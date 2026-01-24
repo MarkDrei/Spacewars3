@@ -1,4 +1,5 @@
 import sqlite3 from 'sqlite3';
+import { Pool } from 'pg';
 import bcrypt from 'bcrypt';
 
 export interface SeedUser {
@@ -169,7 +170,131 @@ export const DEFAULT_SPACE_OBJECTS: SeedSpaceObject[] = [
   { type: 'escape_pod', x: 400, y: 150, speed: 45, angle: 95 }
 ];
 
-export async function seedDatabase(db: sqlite3.Database): Promise<void> {
+export async function seedDatabase(db: sqlite3.Database | Pool): Promise<void> {
+  // Check if db is a Pool (PostgreSQL) or sqlite3.Database
+  if (db instanceof Pool) {
+    return seedDatabasePg(db);
+  } else {
+    return seedDatabaseSqlite(db);
+  }
+}
+
+// PostgreSQL seeding
+async function seedDatabasePg(pool: Pool): Promise<void> {
+  // Check if database already has data
+  const result = await pool.query('SELECT COUNT(*) as count FROM users');
+  const userCount = parseInt(result.rows[0].count);
+  
+  if (userCount > 0) {
+    console.log('📊 Database already has users, skipping seed');
+    return;
+  }
+
+  console.log('🌱 Seeding default data...');
+
+  try {
+    const now = Date.now();
+    
+    const shipIds: number[] = [];
+    
+    // Create ships for all users
+    for (const user of DEFAULT_USERS) {
+      const shipResult = await pool.query(`
+        INSERT INTO space_objects (type, x, y, speed, angle, last_position_update_ms)
+        VALUES ($1, $2, $3, $4, $5, $6)
+        RETURNING id
+      `, ['player_ship', user.ship.x, user.ship.y, user.ship.speed, user.ship.angle, now]);
+      
+      shipIds.push(shipResult.rows[0].id);
+      console.log(`✅ Created ship ${shipResult.rows[0].id} for user ${user.username}`);
+    }
+    
+    // Create collectible objects
+    for (const obj of DEFAULT_SPACE_OBJECTS) {
+      await pool.query(`
+        INSERT INTO space_objects (type, x, y, speed, angle, last_position_update_ms)
+        VALUES ($1, $2, $3, $4, $5, $6)
+      `, [obj.type, obj.x, obj.y, obj.speed, obj.angle, now]);
+      console.log(`✅ Created ${obj.type} at (${obj.x}, ${obj.y})`);
+    }
+    
+    // Create users
+    for (let i = 0; i < DEFAULT_USERS.length; i++) {
+      const user = DEFAULT_USERS[i];
+      const shipId = shipIds[i];
+
+      // Hash password with automatic salt generation
+      const passwordHash = await bcrypt.hash(user.password, 10);
+      
+      // Build INSERT statement based on what optional fields are provided
+      const columns = ['username', 'password_hash', 'iron', 'last_updated', 'tech_tree', 'ship_id'];
+      const values: (string | number)[] = [
+        user.username,
+        passwordHash,
+        user.iron,
+        Math.floor(now / 1000), // Convert to seconds
+        JSON.stringify(user.tech_tree),
+        shipId
+      ];
+      
+      // Add tech_counts if provided
+      if (user.tech_counts) {
+        columns.push(
+          'pulse_laser', 'auto_turret', 'plasma_lance', 'gauss_rifle', 
+          'photon_torpedo', 'rocket_launcher', 'ship_hull', 'kinetic_armor', 
+          'energy_shield', 'missile_jammer'
+        );
+        values.push(
+          user.tech_counts.pulse_laser,
+          user.tech_counts.auto_turret,
+          user.tech_counts.plasma_lance,
+          user.tech_counts.gauss_rifle,
+          user.tech_counts.photon_torpedo,
+          user.tech_counts.rocket_launcher,
+          user.tech_counts.ship_hull,
+          user.tech_counts.kinetic_armor,
+          user.tech_counts.energy_shield,
+          user.tech_counts.missile_jammer
+        );
+      }
+      
+      // Add defense values if provided
+      if (user.defense) {
+        columns.push('hull_current', 'armor_current', 'shield_current', 'defense_last_regen');
+        values.push(
+          user.defense.hull_current,
+          user.defense.armor_current,
+          user.defense.shield_current,
+          Math.floor(now / 1000) // defense_last_regen
+        );
+      }
+      
+      const placeholders = values.map((_, i) => `$${i + 1}`).join(', ');
+      const insertSQL = `
+        INSERT INTO users (${columns.join(', ')})
+        VALUES (${placeholders})
+      `;
+
+      await pool.query(insertSQL, values);
+      
+      const techInfo = user.tech_counts 
+        ? ` (tech_counts: hull=${user.tech_counts.ship_hull}, armor=${user.tech_counts.kinetic_armor}, shield=${user.tech_counts.energy_shield})`
+        : '';
+      const defenseInfo = user.defense 
+        ? ` (defense: ${user.defense.hull_current}/${user.defense.armor_current}/${user.defense.shield_current})`
+        : '';
+      console.log(`✅ Created user: ${user.username} with ship ID ${shipId}${techInfo}${defenseInfo}`);
+    }
+    
+    console.log(`✅ Seeded ${DEFAULT_USERS.length} users and ${DEFAULT_SPACE_OBJECTS.length + DEFAULT_USERS.length} space objects for 500x500 world`);
+  } catch (error) {
+    console.error('❌ Error seeding database:', error);
+    throw error;
+  }
+}
+
+// SQLite seeding
+async function seedDatabaseSqlite(db: sqlite3.Database): Promise<void> {
   return new Promise((resolve, reject) => {
     // Check if database already has data
     db.get('SELECT COUNT(*) as count FROM users', async (err, row: { count: number } | undefined) => {
