@@ -393,7 +393,7 @@ export class TechFactory {
     baseDamageModifier: number,
     ecmEffectiveness: number,
     spreadValue: number
-  ): { weaponsHit: number; shieldDamage: number; armorDamage: number; hullDamage: number } {
+  ): { weaponsHit: number; shieldDamage: number; armorDamage: number; hullDamage: number; overallDamage: number } {
     // Get weapon specification
     const weaponSpec = this.getWeaponSpec(weaponKey);
     if (!weaponSpec) {
@@ -403,7 +403,7 @@ export class TechFactory {
     // Get number of weapons of this type
     const weaponCount = this.getTechCount(techCounts, weaponKey);
     if (weaponCount === 0) {
-      return { weaponsHit: 0, shieldDamage: 0, armorDamage: 0, hullDamage: 0 };
+      return { weaponsHit: 0, shieldDamage: 0, armorDamage: 0, hullDamage: 0, overallDamage: 0 };
     }
 
     // Calculate overall accuracy based on weapon type
@@ -427,7 +427,7 @@ export class TechFactory {
     const weaponsHit = Math.min(Math.round(weaponsHitFloat), weaponCount);
 
     if (weaponsHit === 0) {
-      return { weaponsHit: 0, shieldDamage: 0, armorDamage: 0, hullDamage: 0 };
+      return { weaponsHit: 0, shieldDamage: 0, armorDamage: 0, hullDamage: 0, overallDamage: 0 };
     }
 
     // Calculate overall damage
@@ -468,7 +468,8 @@ export class TechFactory {
       weaponsHit,
       shieldDamage: Math.round(actualShieldDamage),
       armorDamage: Math.round(actualArmorDamage),
-      hullDamage: Math.round(hullDamageFloat)
+      hullDamage: Math.round(hullDamageFloat),
+      overallDamage: Math.round(overallDamage)
     };
   }
 }
