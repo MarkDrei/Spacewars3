@@ -245,17 +245,81 @@ Note: Not all 373 commits need individual review - many are intermediate commits
 - Battle system had major refactoring - handle with care
 - Many intermediate commits can be squashed in final history
 
-## Next Steps
+## Current Status - 2026-01-24
 
-1. Create this plan document and commit it
-2. Begin with Phase 1 (Foundation Updates)
-3. Progress through phases systematically
-4. Report progress after each phase
-5. Final validation before completion
+### Completed Work
 
----
+#### Phase 1: Foundation Updates ✅
+- ✅ Updated package.json scripts to remove .devcontainer/init-db.sh (matches master)
+- ✅ Added `resetBattleScheduler()` function to battleScheduler.ts
+- ✅ Updated test helpers (testServer.ts) to call resetBattleScheduler() in shutdown
+- ✅ Enhanced Cache base class with shutdown(), abstract methods, and persistence timer
+- ✅ Added flushAllToDatabaseWithContext() wrapper pattern to UserCache
+- ✅ Verified linting passes (only minor unused variable warnings)
 
-**Document Version**: 1.0  
-**Created**: 2026-01-24  
-**Last Updated**: 2026-01-24  
-**Status**: PLAN CREATED - Ready to begin implementation
+### Architectural Differences Discovered
+
+#### Cache System Patterns
+**Current Branch**:
+```typescript
+// Methods take lock context as parameter
+async flushAllToDatabase(context: LockContext<LocksAtMostAndHas4>): Promise<void>
+private startBackgroundPersistence(context: LockContext<...>): void
+```
+
+**Master Branch**:
+```typescript
+// Methods create their own lock contexts
+protected async flushAllToDatabase(): Promise<void> {
+  const ctx = createLockContext();
+  await ctx.useLockWithAcquire(USER_LOCK, async (userContext) => {
+    await this.flushAllToDatabaseWithContext(userContext);
+  });
+}
+```
+
+**Implication**: Master's pattern provides better encapsulation and matches the Cache base class interface better. However, adapting all caches requires significant refactoring.
+
+#### Battle System Architecture
+**Current Branch**:
+- battleScheduler.ts (10.9 KB)
+- battleEngine.ts (16.5 KB) - Separate combat mechanics
+- battleService.ts (17.5 KB) - Battle lifecycle orchestration
+
+**Master Branch**:
+- battleScheduler.ts (larger, consolidated)
+- battleSchedulerUtils.ts (new, ~70 lines) - Extracted utilities
+- battleService.ts (simplified, -190 lines)
+- battleEngine.ts (REMOVED - consolidated into battleScheduler)
+
+**Implication**: Master has consolidated battle mechanics into fewer, more focused files. This requires careful merging to preserve PostgreSQL operations.
+
+### Blocking Issues
+
+1. **Test Environment**: Tests require PostgreSQL database running (docker-compose db-test service)
+2. **Architectural Decision Needed**: Choose between current lock context pattern or master's pattern
+3. **Complex Refactoring**: Battle system consolidation affects many interconnected files
+
+### Recommendations
+
+#### Short-term (Low Risk, High Value)
+1. ✅ Merge package.json/test infrastructure updates
+2. ✅ Add resetBattleScheduler function
+3. ⏭️ Merge UI/frontend changes (low risk)
+4. ⏭️ Update documentation
+
+#### Medium-term (Moderate Risk)
+1. Create battleSchedulerUtils.ts with extracted utilities
+2. Merge message system improvements (preserving current lock patterns)
+3. Add battle scheduler tests
+
+#### Long-term (High Risk, High Value)  
+1. Evaluate adopting master's cache pattern (better encapsulation)
+2. Consolidate battle system (remove battleEngine.ts)
+3. Full refactoring of all cache implementations
+
+### Test Status
+- ✅ **Linting**: Passes (only minor warnings)
+- ⚠️ **TypeScript Compilation**: Has errors related to Cache class signatures
+- ❌ **Tests**: Cannot run without PostgreSQL database
+- ❌ **Build**: Blocked by network (fonts.googleapis.com unreachable)
