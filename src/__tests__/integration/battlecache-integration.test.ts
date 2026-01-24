@@ -483,7 +483,9 @@ describe('Phase 5: BattleCache Integration Testing', () => {
       await withTransaction(async () => {
         await emptyCtx.useLockWithAcquire(BATTLE_LOCK, async (battleCtx) => {
           const userCache = UserCache.getInstance2();
-          let user1Id = 0, user2Id = 0, user3Id = 0, user4Id = 0;
+          let user1Id = 0, user2Id = 0;
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          let user3Id = 0, user4Id = 0;
           await battleCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
              user1Id = (await userCache.getUserByUsername(userCtx, 'a'))!.id;
              user2Id = (await userCache.getUserByUsername(userCtx, 'dummy'))!.id;

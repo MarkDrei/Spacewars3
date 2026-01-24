@@ -4,7 +4,7 @@
 
 import { describe, test, expect, beforeEach, afterEach } from 'vitest';
 import { MessagesRepo } from '@/lib/server/messages/messagesRepo';
-import { resetTestDatabase, getDatabase } from '@/lib/server/database';
+import { getDatabase } from '@/lib/server/database';
 import { createLockContext, LOCK_12, LockContext } from '@markdrei/ironguard-typescript-locks';
 import { withTransaction } from '../helpers/transactionHelper';
 
