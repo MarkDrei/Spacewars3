@@ -25,7 +25,7 @@ import { TechFactory, TechCounts } from '../techs/TechFactory';
 import { sendMessageToUser } from '../messages/MessageCache';
 import { getBattleCache } from './BattleCache';
 import { BATTLE_LOCK, USER_LOCK } from '../typedLocks';
-import { createLockContext, LockContext, LocksAtMostAndHas2, LocksAtMostAndHas4 } from '@markdrei/ironguard-typescript-locks';
+import { createLockContext, LockContext, LocksAtMostAndHas2 } from '@markdrei/ironguard-typescript-locks';
 import { getWeaponDamageModifierFromTree } from '../techs/techtree';
 import { UserCache } from '../user/userCache';
 
@@ -287,7 +287,6 @@ async function fireWeapon(
     const nextReadyTime = currentTime + (weaponSpec.cooldown || 5);
     await BattleRepo.setWeaponCooldown(context, battle.id, attackerId, weaponType, nextReadyTime);
   });
-}
 }
 
 /**
