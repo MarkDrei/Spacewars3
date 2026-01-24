@@ -69,6 +69,11 @@ class TestAwareAdapter implements DatabaseConnection {
 function getDatabaseConfig() {
   const isTest = process.env.NODE_ENV === 'test';
   const isProduction = process.env.NODE_ENV === 'production';
+
+  if (isProduction && !process.env.POSTGRES_HOST) {
+    console.error('❌ POSTGRES_HOST is not defined in environment variables. Falling back to localhost, which will likely fail in production.');
+    console.log('Environment keys available:', Object.keys(process.env).filter(key => key.startsWith('POSTGRES')));
+  }
   
   return {
     host: process.env.POSTGRES_HOST || 'localhost',
