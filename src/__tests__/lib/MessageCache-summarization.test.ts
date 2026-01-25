@@ -226,8 +226,6 @@ describe('MessageCache - Summarization', () => {
       // Summarize
       const summary = await messageCache.summarizeMessages(userId);
 
-      console.log('Summary:', summary);
-
       // Verify summary content
       expect(summary).toContain('Message Summary');
       expect(summary).toContain('Collections:');
@@ -263,8 +261,6 @@ describe('MessageCache - Summarization', () => {
 
       // Summarize
       const summary = await messageCache.summarizeMessages(userId);
-
-      console.log('Summary:', summary);
 
       // Verify summary content contains both battle and collection sections
       expect(summary).toContain('Message Summary');
