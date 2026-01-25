@@ -407,6 +407,12 @@ export const AllResearches: Record<ResearchType, Research> = {
 };
 
 /**
+ * Weapon type categorization for damage modifier calculations
+ */
+const PROJECTILE_WEAPONS = ['machine_gun', 'flak_cannon', 'rocket_launcher'] as const;
+const ENERGY_WEAPONS = ['pulse_laser', 'plasma_cannon', 'photon_torpedo'] as const;
+
+/**
  * Represents the tech tree, which hosts all researches for a user.
  * Stores only the level for each research, all other data is immutable and referenced from AllResearches.
  * If a research is currently being upgraded, 'activeResearch' tracks which one and its remaining duration.
@@ -619,6 +625,37 @@ export function getResearchUpgradeDurationFromTree(tree: TechTree, type: Researc
 export function getResearchEffectFromTree(tree: TechTree, type: ResearchType): number {
   const level = getResearchLevelFromTree(tree, type);
   return getResearchEffect(AllResearches[type], level);
+}
+
+/**
+ * Returns the damage modifier for a weapon type based on the research in the tech tree.
+ * The modifier is calculated as the research effect divided by the base value,
+ * resulting in a decimal multiplier (e.g., 1.0 = 100%, 1.15 = 115%).
+ * 
+ * @param tree The tech tree to read research levels from
+ * @param weaponType The weapon key (e.g., 'pulse_laser', 'rocket_launcher', 'photon_torpedo')
+ * @returns The damage modifier as a decimal (e.g., 1.0 for 100%, 1.15 for 115%)
+ */
+export function getWeaponDamageModifierFromTree(tree: TechTree, weaponType: string): number {
+  // Determine research type based on weapon type
+  let researchType: ResearchType;
+  if (PROJECTILE_WEAPONS.includes(weaponType as typeof PROJECTILE_WEAPONS[number])) {
+    researchType = ResearchType.ProjectileDamage;
+  } else if (ENERGY_WEAPONS.includes(weaponType as typeof ENERGY_WEAPONS[number])) {
+    researchType = ResearchType.EnergyDamage;
+  } else {
+    // Default to 1.0 (100%) for unknown weapon types
+    return 1.0;
+  }
+  
+  const research = AllResearches[researchType];
+  // Guard against division by zero
+  if (research.baseValue === 0) {
+    return 1.0;
+  }
+  const effect = getResearchEffectFromTree(tree, researchType);
+  // Modifier = current effect / base value
+  return effect / research.baseValue;
 }
 
 /**
