@@ -26,6 +26,7 @@ import { HasLock2Context, IronLocks, LockContext, LocksAtMost4, LocksAtMostAndHa
 import { WORLD_LOCK, USER_LOCK, DATABASE_LOCK_USERS } from '../typedLocks';
 import { getUserByIdFromDb } from '../user/userRepo';
 import { WorldCache } from '../world/worldCache';
+import { calculateToroidalDistance, WorldBounds } from '@shared/physics';
 
 /**
  * Maximum distance to initiate battle (same as collection distance)
@@ -33,15 +34,16 @@ import { WorldCache } from '../world/worldCache';
 const BATTLE_RANGE = 100;
 
 /**
- * Minimum distance for teleportation after losing battle
+ * World dimensions (must match World class default size)
  */
-const MIN_TELEPORT_DISTANCE = 1000;
+const WORLD_WIDTH = 500;
+const WORLD_HEIGHT = 500;
 
 /**
- * World dimensions
+ * Minimum distance for teleportation after losing battle
+ * Dynamically calculated as world width / 3
  */
-const WORLD_WIDTH = 3000;
-const WORLD_HEIGHT = 3000;
+const MIN_TELEPORT_DISTANCE = WORLD_WIDTH / 3;
 
 /**
  * Get current defense values for a user
@@ -97,13 +99,12 @@ function createBattleStats(user: User): BattleStats {
 }
 
 /**
- * Calculate distance between two positions
+ * World bounds for physics calculations
  */
-function calculateDistance(x1: number, y1: number, x2: number, y2: number): number {
-  const dx = x2 - x1;
-  const dy = y2 - y1;
-  return Math.sqrt(dx * dx + dy * dy);
-}
+const WORLD_BOUNDS: WorldBounds = {
+  width: WORLD_WIDTH,
+  height: WORLD_HEIGHT
+};
 
 /**
  * Get ship position from World cache
@@ -162,17 +163,17 @@ function generateTeleportPosition(
   for (let i = 0; i < 100; i++) {
     x = Math.random() * WORLD_WIDTH;
     y = Math.random() * WORLD_HEIGHT;
-    distance = calculateDistance(fromX, fromY, x, y);
+    distance = calculateToroidalDistance({ x: fromX, y: fromY }, { x, y }, WORLD_BOUNDS);
 
     if (distance >= minDistance) {
       return { x, y };
     }
   }
 
-  // Fallback: place at opposite corner
+  // Fallback: place at opposite corner (stay within bounds)
   return {
-    x: fromX > WORLD_WIDTH / 2 ? 0 : WORLD_WIDTH,
-    y: fromY > WORLD_HEIGHT / 2 ? 0 : WORLD_HEIGHT
+    x: (fromX + WORLD_WIDTH / 2) % WORLD_WIDTH,
+    y: (fromY + WORLD_HEIGHT / 2) % WORLD_HEIGHT
   };
 }
 
@@ -251,12 +252,7 @@ export async function initiateBattle<THeld extends IronLocks>(
     throw new ApiError(500, 'Could not determine ship positions');
   }
 
-  const distance = calculateDistance(
-    attackerPos.x,
-    attackerPos.y,
-    attackeePos.x,
-    attackeePos.y
-  );
+  const distance = calculateToroidalDistance(attackerPos, attackeePos, WORLD_BOUNDS);
 
   if (distance > BATTLE_RANGE) {
     throw new ApiError(400, `Target is too far away (${distance.toFixed(1)} units, max ${BATTLE_RANGE})`);
