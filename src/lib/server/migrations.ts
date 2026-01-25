@@ -123,6 +123,18 @@ export const migrations: Migration[] = [
       'ALTER TABLE battles DROP COLUMN IF EXISTS attacker_end_stats',
       'ALTER TABLE battles DROP COLUMN IF EXISTS attackee_end_stats'
     ]
+  },
+  {
+    version: 8,
+    name: 'add_battle_damage_tracking',
+    up: [
+      'ALTER TABLE battles ADD COLUMN IF NOT EXISTS attacker_total_damage DOUBLE PRECISION NOT NULL DEFAULT 0.0',
+      'ALTER TABLE battles ADD COLUMN IF NOT EXISTS attackee_total_damage DOUBLE PRECISION NOT NULL DEFAULT 0.0'
+    ],
+    down: [
+      'ALTER TABLE battles DROP COLUMN IF EXISTS attacker_total_damage',
+      'ALTER TABLE battles DROP COLUMN IF EXISTS attackee_total_damage'
+    ]
   }
   // Future migrations go here
 ];
@@ -237,6 +249,9 @@ export async function applyTechMigrations(db: DatabaseConnection): Promise<void>
   
   // Apply battle end stats migration
   await applyBattleEndStatsMigration(db);
+  
+  // Apply battle damage tracking migration
+  await applyBattleDamageTrackingMigration(db);
 }
 
 /**
@@ -413,5 +428,38 @@ export async function applyBattleEndStatsMigration(db: DatabaseConnection): Prom
     console.log('✅ Battle end stats migration completed');
   } catch (error) {
     console.error('❌ Error applying battle end stats migration:', error);
+  }
+}
+
+/**
+ * Apply battle damage tracking migration to the database
+ */
+export async function applyBattleDamageTrackingMigration(db: DatabaseConnection): Promise<void> {
+  console.log('🔄 Checking for battle damage tracking migration...');
+  
+  try {
+    const exists = await columnExists(db, 'battles', 'attacker_total_damage');
+    if (exists) {
+      console.log('✅ Battle damage tracking columns already exist');
+      return;
+    }
+    
+    console.log('🚀 Adding battle damage tracking columns...');
+    
+    // Get battle damage tracking migration
+    const battleDamageMigration = migrations.find(m => m.name === 'add_battle_damage_tracking');
+    if (!battleDamageMigration) {
+      console.error('❌ Battle damage tracking migration not found');
+      return;
+    }
+    
+    // Apply each migration statement
+    for (const statement of battleDamageMigration.up) {
+      await runMigrationStatement(db, statement);
+    }
+    
+    console.log('✅ Battle damage tracking migration completed');
+  } catch (error) {
+    console.error('❌ Error applying battle damage tracking migration:', error);
   }
 }
