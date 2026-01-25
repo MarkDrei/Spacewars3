@@ -10,7 +10,8 @@ import {
   getResearchEffectFromTree,
   triggerResearch,
   updateTechTree,
-  getActiveResearch
+  getActiveResearch,
+  getWeaponDamageModifierFromTree
 } from '@/lib/server/techs/techtree';
 
 describe('getResearchUpgradeCost', () => {
@@ -249,5 +250,63 @@ describe('getActiveResearch', () => {
     triggerResearch(tree, ResearchType.Afterburner);
     updateTechTree(tree, 9999); // complete it
     expect(getActiveResearch(tree)).toBeUndefined();
+  });
+});
+
+describe('getWeaponDamageModifierFromTree', () => {
+  test('getWeaponDamageModifierFromTree_projectileWeaponAtLevel1_returns1', () => {
+    const tree = createInitialTechTree();
+    // Projectile damage starts at level 1 with baseValue 1 and effect 1
+    const modifier = getWeaponDamageModifierFromTree('auto_turret', tree);
+    expect(modifier).toBeCloseTo(1.0);
+  });
+
+  test('getWeaponDamageModifierFromTree_energyWeaponAtLevel1_returns1', () => {
+    const tree = createInitialTechTree();
+    // Energy damage starts at level 1 with baseValue 1 and effect 1
+    const modifier = getWeaponDamageModifierFromTree('pulse_laser', tree);
+    expect(modifier).toBeCloseTo(1.0);
+  });
+
+  test('getWeaponDamageModifierFromTree_projectileWeaponAtLevel2_returns115Percent', () => {
+    const tree = createInitialTechTree();
+    // Upgrade projectile damage to level 2
+    triggerResearch(tree, ResearchType.ProjectileDamage);
+    updateTechTree(tree, 9999); // complete the research
+    
+    // At level 2, effect should be 1.15 (factor 1.15 applied once)
+    const modifier = getWeaponDamageModifierFromTree('gauss_rifle', tree);
+    expect(modifier).toBeCloseTo(1.15);
+  });
+
+  test('getWeaponDamageModifierFromTree_energyWeaponAtLevel2_returns115Percent', () => {
+    const tree = createInitialTechTree();
+    // Upgrade energy damage to level 2
+    triggerResearch(tree, ResearchType.EnergyDamage);
+    updateTechTree(tree, 9999); // complete the research
+    
+    // At level 2, effect should be 1.15 (factor 1.15 applied once)
+    const modifier = getWeaponDamageModifierFromTree('plasma_lance', tree);
+    expect(modifier).toBeCloseTo(1.15);
+  });
+
+  test('getWeaponDamageModifierFromTree_projectileWeaponAtLevel3_returnsScaledModifier', () => {
+    const tree = createInitialTechTree();
+    // Upgrade projectile damage to level 3
+    triggerResearch(tree, ResearchType.ProjectileDamage);
+    updateTechTree(tree, 9999); // complete to level 2
+    triggerResearch(tree, ResearchType.ProjectileDamage);
+    updateTechTree(tree, 9999); // complete to level 3
+    
+    // At level 3, effect should be 1.3225 (1.15^2)
+    const modifier = getWeaponDamageModifierFromTree('rocket_launcher', tree);
+    expect(modifier).toBeCloseTo(1.3225);
+  });
+
+  test('getWeaponDamageModifierFromTree_unknownWeaponType_returns1', () => {
+    const tree = createInitialTechTree();
+    // Unknown weapon should return 1.0 as safe default
+    const modifier = getWeaponDamageModifierFromTree('unknown_weapon', tree);
+    expect(modifier).toBe(1.0);
   });
 });

@@ -188,5 +188,106 @@ describe('MessageCache - Summarization', () => {
       const unknownMessages = messagesAfter.filter(m => !m.message.includes('Message Summary'));
       expect(unknownMessages.length).toBe(3);
     });
+
+    it('messageSummarization_collectionMessages_correctSummary', async () => {
+      const userId = 6;
+
+      // Create collection messages
+      await messageCache.createMessage(userId, 'P: ⛏️ Collected 50 iron from an asteroid!');
+      await messageCache.createMessage(userId, 'P: ⛏️ Collected 100 iron from an asteroid!');
+      await messageCache.createMessage(userId, 'P: 🚢 Collected 200 iron from a shipwreck!');
+      await messageCache.createMessage(userId, 'P: 🛟 Rescued an escape pod! Received 150 iron as a reward.');
+
+      // Wait for async message creation to complete
+      await messageCache.waitForPendingWrites();
+
+      // Get messages before summarization
+      const messagesBefore = await messageCache.getMessagesForUser(userId);
+      expect(messagesBefore.length).toBe(4);
+
+      // Summarize
+      const summary = await messageCache.summarizeMessages(userId);
+
+      console.log('Collection Summary:', summary);
+
+      // Verify summary content
+      expect(summary).toContain('Message Summary');
+      expect(summary).toContain('Collections:');
+      expect(summary).toContain('2 asteroid(s)');
+      expect(summary).toContain('1 shipwreck(s)');
+      expect(summary).toContain('1 escape pod(s)');
+      expect(summary).toContain('Iron Collected:');
+      expect(summary).toContain('500'); // 50 + 100 + 200 + 150
+
+      // Wait for summary message to be persisted
+      await messageCache.waitForPendingWrites();
+
+      // Verify messages after summarization
+      const messagesAfter = await messageCache.getMessagesForUser(userId);
+      
+      // Should have exactly 1 message (the summary)
+      expect(messagesAfter.length).toBe(1);
+      expect(messagesAfter[0].message).toBe(summary);
+    });
+
+    it('messageSummarization_mixedBattleAndCollection_separateSummaries', async () => {
+      const userId = 7;
+
+      // Create mixed messages
+      await messageCache.createMessage(userId, 'P: ⚔️ Your **pulse laser** fired 5 shot(s), **3 hit** for **24 damage**!');
+      await messageCache.createMessage(userId, 'P: ⛏️ Collected 50 iron from an asteroid!');
+      await messageCache.createMessage(userId, 'P: 🎉 **Victory!** You won the battle!');
+      await messageCache.createMessage(userId, 'P: 🚢 Collected 200 iron from a shipwreck!');
+
+      // Wait for async message creation to complete
+      await messageCache.waitForPendingWrites();
+
+      // Summarize
+      const summary = await messageCache.summarizeMessages(userId);
+
+      console.log('Mixed Summary:', summary);
+
+      // Verify summary contains both battle and collection info
+      expect(summary).toContain('Message Summary');
+      expect(summary).toContain('Battles:');
+      expect(summary).toContain('1 victory(ies)');
+      expect(summary).toContain('Damage:');
+      expect(summary).toContain('Dealt 24');
+      expect(summary).toContain('Collections:');
+      expect(summary).toContain('1 asteroid(s)');
+      expect(summary).toContain('1 shipwreck(s)');
+      expect(summary).toContain('⛏️ **Iron Collected:** 250');
+    });
+
+    it('messageSummarization_preservesUnknownMessageTimestamps', async () => {
+      const userId = 8;
+
+      // Create messages with some unknown ones
+      await messageCache.createMessage(userId, 'P: ⚔️ Your **pulse laser** fired 5 shot(s), **3 hit** for **24 damage**!');
+      await messageCache.createMessage(userId, 'Some unknown message type');
+      await messageCache.createMessage(userId, 'P: 🎉 **Victory!** You won the battle!');
+      await messageCache.createMessage(userId, 'Another unknown message');
+
+      // Wait for async message creation to complete
+      await messageCache.waitForPendingWrites();
+
+      // Summarize
+      const summary = await messageCache.summarizeMessages(userId);
+
+      // Wait for summary message to be persisted
+      await messageCache.waitForPendingWrites();
+
+      // Get messages after summarization
+      const messagesAfter = await messageCache.getMessagesForUser(userId);
+      
+      // Should have 3 messages: summary + 2 unknown messages
+      expect(messagesAfter.length).toBe(3);
+      
+      // Unknown messages should be preserved
+      const unknownMessages = messagesAfter.filter(m => !m.message.includes('Message Summary'));
+      expect(unknownMessages.length).toBe(2);
+      expect(unknownMessages.some(m => m.message.includes('Some unknown message'))).toBe(true);
+      expect(unknownMessages.some(m => m.message.includes('Another unknown message'))).toBe(true);
+    });
   });
 });
