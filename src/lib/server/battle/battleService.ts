@@ -36,14 +36,15 @@ const BATTLE_RANGE = 100;
 
 /**
  * Minimum distance for teleportation after losing battle
+ * Calculated dynamically as world width / 3
  */
-const MIN_TELEPORT_DISTANCE = 1000;
+const getMinTeleportDistance = (worldWidth: number): number => worldWidth / 3;
 
 /**
- * World dimensions
+ * World dimensions (default from World class)
  */
-const WORLD_WIDTH = 3000;
-const WORLD_HEIGHT = 3000;
+const WORLD_WIDTH = 500;
+const WORLD_HEIGHT = 500;
 
 /**
  * Get current defense values for a user
@@ -99,12 +100,15 @@ function createBattleStats(user: User): BattleStats {
 }
 
 /**
- * Calculate distance between two positions
+ * Calculate toroidal distance between two positions
+ * Uses the shared physics module for consistent distance calculations
  */
 function calculateDistance(x1: number, y1: number, x2: number, y2: number): number {
-  const dx = x2 - x1;
-  const dy = y2 - y1;
-  return Math.sqrt(dx * dx + dy * dy);
+  return calculateToroidalDistance(
+    { x: x1, y: y1 },
+    { x: x2, y: y2 },
+    { width: WORLD_WIDTH, height: WORLD_HEIGHT }
+  );
 }
 
 /**
@@ -152,6 +156,7 @@ async function updateUserBattleState(context: LockContext<LocksAtMostAndHas4>, u
 
 /**
  * Generate random position with minimum distance from a point
+ * Ensures fallback positions stay within world bounds
  */
 function generateTeleportPosition(
   fromX: number,
@@ -171,10 +176,10 @@ function generateTeleportPosition(
     }
   }
 
-  // Fallback: place at opposite corner
+  // Fallback: place at opposite corner, staying within bounds
   return {
-    x: fromX > WORLD_WIDTH / 2 ? 0 : WORLD_WIDTH,
-    y: fromY > WORLD_HEIGHT / 2 ? 0 : WORLD_HEIGHT
+    x: fromX > WORLD_WIDTH / 2 ? 10 : WORLD_WIDTH - 10,
+    y: fromY > WORLD_HEIGHT / 2 ? 10 : WORLD_HEIGHT - 10
   };
 }
 
@@ -489,7 +494,7 @@ export async function resolveBattle(
       const teleportPos = generateTeleportPosition(
         winnerPos.x,
         winnerPos.y,
-        MIN_TELEPORT_DISTANCE
+        getMinTeleportDistance(WORLD_WIDTH)
       );
 
       await teleportShip(userContext, loserShipId, teleportPos.x, teleportPos.y);
