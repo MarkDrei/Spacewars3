@@ -20,11 +20,92 @@ import { BattleRepo } from './BattleCache';
 import { BattleEngine } from './battleEngine';
 import { resolveBattle } from './battleService';
 import type { Battle, BattleEvent } from './battleTypes';
+import { DAMAGE_CALC_DEFAULTS } from './battleTypes';
 import { TechFactory } from '../techs/TechFactory';
+import { getWeaponDamageModifierFromTree } from '../techs/techtree';
 import { sendMessageToUser } from '../messages/MessageCache';
 import { getBattleCache } from './BattleCache';
 import { BATTLE_LOCK } from '../typedLocks';
 import { createLockContext, LockContext, LocksAtMostAndHas2 } from '@markdrei/ironguard-typescript-locks';
+import type { TimeProvider } from './battleSchedulerUtils';
+import { realTimeProvider, setupBattleScheduler, cancelBattleScheduler } from './battleSchedulerUtils';
+import { getUserWorldCache } from '../user/userCache';
+
+/**
+ * Battle scheduler configuration interface
+ */
+interface BattleSchedulerConfig {
+  intervalMs?: number;
+  timeProvider?: TimeProvider;
+  processCallback?: () => Promise<void>;
+}
+
+/**
+ * Internal state for the battle scheduler
+ */
+let schedulerInterval: NodeJS.Timeout | null = null;
+let timeProvider: TimeProvider = realTimeProvider;
+
+/**
+ * Initialize the battle scheduler with injectable dependencies
+ * @param config Configuration options for the scheduler
+ */
+export function initializeBattleScheduler(config: BattleSchedulerConfig = {}): void {
+  const {
+    intervalMs = 1000,
+    timeProvider: providedTimeProvider = realTimeProvider,
+    processCallback
+  } = config;
+  
+  // Set the time provider
+  timeProvider = providedTimeProvider;
+  
+  // Stop existing scheduler if running
+  if (schedulerInterval) {
+    cancelBattleScheduler(schedulerInterval);
+    schedulerInterval = null;
+  }
+  
+  console.log(`⚔️ Initializing battle scheduler (interval: ${intervalMs}ms)`);
+  
+  // Use provided callback or default to processActiveBattles
+  const callback = processCallback || (async () => {
+    const ctx = createLockContext();
+    await ctx.useLockWithAcquire(BATTLE_LOCK, async (battleContext) => {
+      await processActiveBattles(battleContext).catch(error => {
+        console.error('❌ Battle scheduler error:', error);
+      });
+    });
+  });
+  
+  schedulerInterval = setupBattleScheduler(callback, intervalMs);
+}
+
+/**
+ * Reset the battle scheduler (for testing)
+ */
+export function resetBattleScheduler(): void {
+  if (schedulerInterval) {
+    cancelBattleScheduler(schedulerInterval);
+    schedulerInterval = null;
+  }
+  timeProvider = realTimeProvider;
+  console.log('⚔️ Battle scheduler reset');
+}
+
+/**
+ * @deprecated Use initializeBattleScheduler instead
+ */
+export function startBattleScheduler(intervalMs: number = 1000): void {
+  initializeBattleScheduler({ intervalMs });
+}
+
+/**
+ * @deprecated Use resetBattleScheduler instead
+ */
+export function stopBattleScheduler(): void {
+  resetBattleScheduler;
+}
 
 // /**
 //  * Helper to update user's battle state via TypedCacheManager
@@ -212,9 +293,20 @@ async function fireWeapon(
     return;
   }
   
-  // Calculate damage
-  const damagePerHit = weaponSpec.damage || 10;
-  const totalDamage = hits * damagePerHit;
+  // Calculate damage with dynamic damage modifier from tech tree
+  const baseDamagePerHit = weaponSpec.damage || 10;
+  
+  // Get attacker's tech tree to calculate damage modifier
+  const userWorldCache = getUserWorldCache();
+  const attackerUser = await userWorldCache.getUserByIdWithLock(context, attackerId);
+  
+  let damageModifier = DAMAGE_CALC_DEFAULTS.BASE_DAMAGE_MODIFIER; // Default to 1.0
+  if (attackerUser && attackerUser.techTree) {
+    damageModifier = getWeaponDamageModifierFromTree(attackerUser.techTree, weaponType.replace(/_/g, ' '));
+  }
+  
+  const damagePerHit = baseDamagePerHit * damageModifier;
+  const totalDamage = Math.round(hits * damagePerHit);
   
   // Apply damage using BattleEngine to ensure User cache is updated
   const battleEngine = new BattleEngine(battle);
@@ -270,32 +362,8 @@ async function fireWeapon(
 }
 
 /**
- * Start the battle scheduler (call from server startup)
+ * Get the configured time provider (for testing)
  */
-let schedulerInterval: NodeJS.Timeout | null = null;
-
-export function startBattleScheduler(intervalMs: number = 1000): void {
-  if (schedulerInterval) {
-    console.log('⚔️ Battle scheduler already running');
-    return;
-  }
-  
-  console.log(`⚔️ Starting battle scheduler (interval: ${intervalMs}ms)`);
-  
-  schedulerInterval = setInterval(async () => {
-    const ctx = createLockContext();
-    await ctx.useLockWithAcquire(BATTLE_LOCK, async (battleContext) => {
-      await processActiveBattles(battleContext).catch(error => {
-        console.error('❌ Battle scheduler error:', error);
-      });
-    });
-  }, intervalMs);
-}
-
-export function stopBattleScheduler(): void {
-  if (schedulerInterval) {
-    clearInterval(schedulerInterval);
-    schedulerInterval = null;
-    console.log('⚔️ Battle scheduler stopped');
-  }
+export function getTimeProvider(): TimeProvider {
+  return timeProvider;
 }
