@@ -321,7 +321,8 @@ export interface BattleSchedulerConfig {
  */
 export function initializeBattleScheduler(config: BattleSchedulerConfig = {}): void {
   const intervalMs = config.intervalMs ?? 1000;
-  const timeProvider = config.timeProvider ?? realTimeProvider;
+  // Note: timeProvider from config is not used yet - Date.now() is still used in processBattleRoundInternal
+  // The TimeProvider abstraction is available for future testability improvements
   
   if (schedulerInterval) {
     console.log('⚔️ Battle scheduler already running');
@@ -329,10 +330,6 @@ export function initializeBattleScheduler(config: BattleSchedulerConfig = {}): v
   }
   
   console.log(`⚔️ Initializing battle scheduler (interval: ${intervalMs}ms)`);
-  
-  // Store time provider for use in battle processing
-  // For now, we'll still use Date.now() in processBattleRoundInternal
-  // The time provider is mainly for testability
   
   schedulerInterval = setupBattleScheduler(async () => {
     const ctx = createLockContext();

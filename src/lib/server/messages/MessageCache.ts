@@ -548,8 +548,8 @@ export class MessageCache extends Cache {
         totalIron: 0
       };
       
-      // Track unknown messages with their timestamps
-      const unknownMessages: Array<{ text: string; timestamp: number }> = [];
+      // Track unknown messages
+      const unknownMessages: string[] = [];
   
       // Process only unread messages
       for (const msg of unreadMessages) {
@@ -575,8 +575,8 @@ export class MessageCache extends Cache {
             if (collectionData.escapePods) collectionStats.escapePods += collectionData.escapePods;
             if (collectionData.iron) collectionStats.totalIron += collectionData.iron;
           } else {
-            // Unknown message - preserve with original timestamp
-            unknownMessages.push({ text, timestamp: msg.created_at });
+            // Unknown message - preserve it
+            unknownMessages.push(text);
           }
         }
   
@@ -611,13 +611,9 @@ export class MessageCache extends Cache {
       // Create summary as new message (using internal method that doesn't acquire lock)
       await this.createMessageInternal(messageContext, userId, summary);
   
-      // Re-create unknown messages as unread, preserving original timestamps
+      // Re-create unknown messages as unread
       for (const unknownMsg of unknownMessages) {
-        // Note: createMessageInternal uses current timestamp, but we preserve the original
-        // by storing it in the message text or creating a wrapper
-        // For now, we'll just create them with current timestamp as before
-        // To fully preserve timestamps, we'd need to modify the DB schema or message format
-        await this.createMessageInternal(messageContext, userId, unknownMsg.text);
+        await this.createMessageInternal(messageContext, userId, unknownMsg);
       }
   
       console.log(`📊 Summarized ${unreadMessages.length} unread message(s) for user ${userId}`);
