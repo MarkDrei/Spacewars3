@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getIronSession } from 'iron-session';
 import { calculateToroidalDistance } from '@shared/physics';
 import { UserCache } from '@/lib/server/user/userCache';
-import { getMessageCache } from '@/lib/server/messages/MessageCache';
+import { sendMessageToUser } from '@/lib/server/messages/MessageCache';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth, ApiError } from '@/lib/server/errors';
 import { USER_LOCK, WORLD_LOCK } from '@/lib/server/typedLocks';
@@ -129,8 +129,8 @@ async function performCollectionLogic(
   const ironReward = user.iron - ironBefore;
   
   // Update cache with new data (using unsafe methods because we have proper locks)
-  userWorldCache.updateUserInCache(userCtx, user);
-  worldCache.updateWorldUnsafe(worldContext, world);
+  await userWorldCache.updateUserInCache(userCtx, user);
+  await worldCache.updateWorldUnsafe(worldContext, world);
   
   // Create notification message for the collection
   let notificationMessage = '';
@@ -143,7 +143,7 @@ async function performCollectionLogic(
   console.log(`📝 Creating notification for user ${user.id}: "${notificationMessage}"`);
   
   // Send notification to user (async, doesn't block response)
-  getMessageCache().createMessage(user.id, notificationMessage).catch((error: Error) => {
+  sendMessageToUser(user.id, notificationMessage).catch((error: Error) => {
     console.error('❌ Failed to send collection notification:', error);
   });
   

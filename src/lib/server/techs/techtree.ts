@@ -657,6 +657,7 @@ export function getWeaponDamageModifierFromTree(tree: TechTree, weaponType: stri
   // Modifier = current effect / base value
   return effect / research.baseValue;
 }
+
 /**
  * Triggers a research upgrade on the tech tree if no research is currently in progress.
  * Sets the activeResearch and its initial remainingDuration based on the next upgrade duration.

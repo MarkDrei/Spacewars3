@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
       world.updatePhysics(worldContext, currentTime);
       
       // Mark world as dirty for persistence (critical fix!)
-      worldCache.updateWorldUnsafe(worldContext, world);
+      await worldCache.updateWorldUnsafe(worldContext, world);
       
       // Return world data
       const worldData = world.getWorldData(worldContext);

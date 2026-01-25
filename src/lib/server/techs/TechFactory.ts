@@ -2,7 +2,6 @@
 // TechFactory - Manages ship technology and equipment
 // ---
 
-
 export type WeaponSubtype = 'Projectile' | 'Energy';
 export type WeaponStrength = 'Weak' | 'Medium' | 'Strong';
 
@@ -383,47 +382,6 @@ export class TechFactory {
 
   /**
    * Calculate weapon damage effects against a target
-   * 
-   * @param weaponKey - The key of the weapon from the weapon catalog (e.g., 'pulse_laser', 'rocket_launcher')
-   * @param techCounts - Object containing the count of each tech/weapon owned by the attacker
-   * @param opponentShieldValue - Current shield value of the target (remaining HP)
-   * @param opponentArmorValue - Current armor value of the target (remaining HP)
-   * @param positiveAccuracyModifier - Bonus accuracy percentage (0-100+) from attacker's systems
-   * @param negativeAccuracyModifier - Accuracy penalty as decimal (0-1) from target's evasion/agility
-   * @param baseDamageModifier - Damage multiplier as decimal (e.g., 1.0 = 100%, 1.5 = 150%)
-   * @param ecmEffectiveness - ECM jamming effectiveness as decimal (0-1), affects guided weapons
-   * @param spreadValue - Damage spread multiplier as decimal (e.g., 0.8-1.2 for randomization)
-   * 
-   * @returns Object containing:
-   *   - weaponsHit: Number of weapons that successfully hit the target
-   *   - shieldDamage: Damage dealt to shields (capped at current shield value)
-   *   - armorDamage: Damage dealt to armor (capped at current armor value)
-   *   - hullDamage: Damage dealt to hull (includes excess damage from shields/armor)
-   *   - overallDamage: Total raw damage before distribution to shields/armor/hull
-   * 
-   * @remarks
-   * Damage calculation follows these rules:
-   * - Accuracy varies by weapon type: guided weapons (rockets/torpedoes) use ECM, others use evasion
-   * - Projectile weapons deal half damage to shields; excess is doubled for armor/hull
-   * - Energy weapons deal half damage to armor; excess is doubled for hull
-   * - Damage is distributed according to weapon's shieldDamageRatio and armorDamageRatio
-   * - Excess damage from shields flows to armor, excess armor damage flows to hull
-   * 
-   * @example
-   * ```typescript
-   * const result = TechFactory.calculateWeaponDamage(
-   *   'pulse_laser',
-   *   { pulse_laser: 5, ...otherTechs },
-   *   100, // shield
-   *   50,  // armor
-   *   10,  // +10% accuracy
-   *   0.2, // 20% evasion penalty
-   *   1.0, // normal damage
-   *   0,   // no ECM
-   *   1.0  // no spread
-   * );
-   * // result: { weaponsHit: 4, shieldDamage: 28, armorDamage: 3, hullDamage: 0, overallDamage: 35 }
-   * ```
    */
   static calculateWeaponDamage(
     weaponKey: string,
@@ -435,7 +393,7 @@ export class TechFactory {
     baseDamageModifier: number,
     ecmEffectiveness: number,
     spreadValue: number
-  ): { weaponsHit: number; shieldDamage: number; armorDamage: number; hullDamage: number; overallDamage: number } {
+  ): { weaponsHit: number; shieldDamage: number; armorDamage: number; hullDamage: number } {
     // Get weapon specification
     const weaponSpec = this.getWeaponSpec(weaponKey);
     if (!weaponSpec) {
@@ -445,7 +403,7 @@ export class TechFactory {
     // Get number of weapons of this type
     const weaponCount = this.getTechCount(techCounts, weaponKey);
     if (weaponCount === 0) {
-      return { weaponsHit: 0, shieldDamage: 0, armorDamage: 0, hullDamage: 0, overallDamage: 0 };
+      return { weaponsHit: 0, shieldDamage: 0, armorDamage: 0, hullDamage: 0 };
     }
 
     // Calculate overall accuracy based on weapon type
@@ -469,7 +427,7 @@ export class TechFactory {
     const weaponsHit = Math.min(Math.round(weaponsHitFloat), weaponCount);
 
     if (weaponsHit === 0) {
-      return { weaponsHit: 0, shieldDamage: 0, armorDamage: 0, hullDamage: 0, overallDamage: 0 };
+      return { weaponsHit: 0, shieldDamage: 0, armorDamage: 0, hullDamage: 0 };
     }
 
     // Calculate overall damage
@@ -510,8 +468,7 @@ export class TechFactory {
       weaponsHit,
       shieldDamage: Math.round(actualShieldDamage),
       armorDamage: Math.round(actualArmorDamage),
-      hullDamage: Math.round(hullDamageFloat),
-      overallDamage: Math.round(overallDamage)
+      hullDamage: Math.round(hullDamageFloat)
     };
   }
 }

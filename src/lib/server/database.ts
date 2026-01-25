@@ -1,284 +1,300 @@
-import sqlite3 from 'sqlite3';
-import path from 'path';
-import fs from 'fs';
+import { Pool, PoolClient } from 'pg';
 import { CREATE_TABLES } from './schema';
-import { seedDatabase, DEFAULT_USERS, DEFAULT_SPACE_OBJECTS } from './seedData';
+import { seedDatabase } from './seedData';
 import { applyTechMigrations } from './migrations';
+import { DatabaseAdapter, PostgreSQLAdapter, QueryResult } from './databaseAdapter';
 
-let db: sqlite3.Database | null = null;
-let initializationPromise: Promise<sqlite3.Database> | null = null;
+// Dynamic import for transaction context in test environment
+let getTransactionContext: (() => PoolClient | undefined) | null = null;
 
-// Test database management
-let testDb: sqlite3.Database | null = null;
-let testDbInitialized = false;
-
-function initializeTestDatabase(): sqlite3.Database {
-  if (testDb && testDbInitialized) {
-    return testDb;
+// Initialize transaction context getter in test environment
+async function initTransactionContext() {
+  if (process.env.NODE_ENV === 'test' && !getTransactionContext) {
+    try {
+      const { getTransactionContext: txContext } = await import('../../__tests__/helpers/transactionHelper.js');
+      getTransactionContext = txContext;
+    } catch {
+      // Transaction helper not available, tests will use pool directly
+      console.log('⚠️ Transaction helper not available, using pool directly');
+    }
   }
-  
-  testDb = new (sqlite3.verbose().Database)(':memory:');
-  
-  // Initialize synchronously using serialize to ensure order
-  testDb.serialize(() => {
-    // Create tables
-    CREATE_TABLES.forEach((createTableSQL) => {
-      testDb!.run(createTableSQL);
-    });
-    
-    // Seed with the same default data as production (synchronous version)
-    seedTestDatabase(testDb!);
-  });
-  
-  testDbInitialized = true;
-  return testDb;
+}
+
+// Database connection pool (for both production and test PostgreSQL)
+let pool: Pool | null = null;
+let initializationPromise: Promise<Pool> | null = null;
+
+// Cached adapter
+let adapter: PostgreSQLAdapter | null = null;
+
+/**
+ * Type for the database - PostgreSQL connection interface
+ */
+export interface DatabaseConnection {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  query<T = any>(sql: string, params?: unknown[]): Promise<QueryResult<T>>;
 }
 
 /**
- * Synchronous seeding for test database using the same data as production
+ * Adapter that dynamically switches between global pool and transaction client
+ * based on the current execution context. Critical for proper test isolation
+ * with singletons like UserCache.
  */
-function seedTestDatabase(db: sqlite3.Database): void {
-  const now = Date.now();
-  
-  try {
-    let shipIdCounter = 0;
-    
-    // Precomputed password hashes for test consistency (bcrypt with 10 rounds)
-    const passwordHashes: Record<string, string> = {
-      'a': '$2b$10$0q/od18qjo/fyCB8b.Dn2OZdKs1pKAOPwly98WEZzbsT.yavE6BY.',
-      'dummy': '$2b$10$GJ2Bjb5Ruhd1hCnDxzEzxOmDAlgIy9.0ci11khzvsH0ta7q17K4ay',
-    };
-    
-    // Create ships and users for all DEFAULT_USERS
-    DEFAULT_USERS.forEach((user) => {
-      // Create ship for this user
-      db.run(`
-        INSERT INTO space_objects (type, x, y, speed, angle, last_position_update_ms)
-        VALUES (?, ?, ?, ?, ?, ?)
-      `, ['player_ship', user.ship.x, user.ship.y, user.ship.speed, user.ship.angle, now]);
-      
-      shipIdCounter++;
-      const shipId = shipIdCounter; // Ships get sequential IDs starting from 1
-      
-      // Get precomputed hash for this user's password
-      const hashedPassword = passwordHashes[user.password] || passwordHashes['a']; // Fallback to 'a' hash
-      const techTreeJson = JSON.stringify(user.tech_tree);
-      
-      // Get defense values from user or use defaults
-      const hullCurrent = user.defense?.hull_current ?? 250.0;
-      const armorCurrent = user.defense?.armor_current ?? 250.0;
-      const shieldCurrent = user.defense?.shield_current ?? 250.0;
-      
-      // Build INSERT statement based on what optional fields are provided
-      const columns = ['username', 'password_hash', 'iron', 'last_updated', 'tech_tree', 'ship_id', 'hull_current', 'armor_current', 'shield_current', 'defense_last_regen'];
-      const values: (string | number)[] = [
-        user.username,
-        hashedPassword,
-        user.iron,
-        Math.floor(now / 1000),
-        techTreeJson,
-        shipId,
-        hullCurrent,
-        armorCurrent,
-        shieldCurrent,
-        Math.floor(now / 1000)
-      ];
-      
-      // Add tech_counts if provided
-      if (user.tech_counts) {
-        columns.push(
-          'pulse_laser', 'auto_turret', 'plasma_lance', 'gauss_rifle', 
-          'photon_torpedo', 'rocket_launcher', 'ship_hull', 'kinetic_armor', 
-          'energy_shield', 'missile_jammer'
-        );
-        values.push(
-          user.tech_counts.pulse_laser,
-          user.tech_counts.auto_turret,
-          user.tech_counts.plasma_lance,
-          user.tech_counts.gauss_rifle,
-          user.tech_counts.photon_torpedo,
-          user.tech_counts.rocket_launcher,
-          user.tech_counts.ship_hull,
-          user.tech_counts.kinetic_armor,
-          user.tech_counts.energy_shield,
-          user.tech_counts.missile_jammer
-        );
+class TestAwareAdapter implements DatabaseConnection {
+  constructor(private adapter: PostgreSQLAdapter) {}
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  async query<T = any>(sql: string, params?: unknown[]): Promise<QueryResult<T>> {
+    // Check if we are inside a test transaction
+    if (getTransactionContext) {
+      const txContext = getTransactionContext();
+      if (txContext) {
+        // Use the transaction client directly
+        const result = await txContext.query(sql, params);
+        return {
+          rows: result.rows as T[],
+          rowCount: result.rowCount ?? 0
+        };
       }
-      
-      const insertSQL = `
-        INSERT INTO users (${columns.join(', ')})
-        VALUES (${columns.map(() => '?').join(', ')})
-      `;
-      
-      // Create user
-      db.run(insertSQL, values);
-    });
+    }
     
-    // Create other space objects (asteroids, shipwrecks, escape pods)
-    DEFAULT_SPACE_OBJECTS.forEach((obj) => {
-      db.run(`
-        INSERT INTO space_objects (type, x, y, speed, angle, last_position_update_ms)
-        VALUES (?, ?, ?, ?, ?, ?)
-      `, [obj.type, obj.x, obj.y, obj.speed, obj.angle, now]);
-    });
-    
-  } catch (error) {
-    console.error('❌ Error seeding test database:', error);
+    // Fallback to the main adapter (pool)
+    return this.adapter.query<T>(sql, params);
   }
 }
 
-export async function getDatabase(): Promise<sqlite3.Database> {
-  // Use in-memory database for tests
-  if (process.env.NODE_ENV === 'test') {
-    return initializeTestDatabase();
+/**
+ * Get database connection configuration from environment
+ */
+function getDatabaseConfig() {
+  const isTest = process.env.NODE_ENV === 'test';
+  const isProduction = process.env.NODE_ENV === 'production';
+
+  if (isProduction && !process.env.POSTGRES_HOST) {
+    console.error('❌ POSTGRES_HOST is not defined in environment variables. Falling back to localhost, which will likely fail in production.');
+    console.log('Environment keys available:', Object.keys(process.env).filter(key => key.startsWith('POSTGRES')));
+  }
+  
+  return {
+    host: process.env.POSTGRES_HOST || 'localhost',
+    port: parseInt(process.env.POSTGRES_PORT || '5432', 10),
+    database: isTest 
+      ? (process.env.POSTGRES_TEST_DB || 'spacewars_test')
+      : (process.env.POSTGRES_DB || 'spacewars'),
+    user: process.env.POSTGRES_USER || 'spacewars',
+    password: process.env.POSTGRES_PASSWORD || 'spacewars',
+    max: isTest ? 10 : 20, // Increased from 5 to 10 for parallel test workers
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 5000,
+    // Render requires SSL for production databases
+    ssl: isProduction ? { rejectUnauthorized: false } : false,
+  };
+}
+
+export async function getDatabase(): Promise<DatabaseConnection> {
+  const isTest = process.env.NODE_ENV === 'test';
+
+  // In test environment, ensure transaction context is initialized
+  if (isTest) {
+    await initTransactionContext();
   }
 
-  // If database is already initialized, return it immediately
-  if (db) {
-    return db;
+  // If database is already initialized, return the adapter
+  if (pool && adapter) {
+    // In test environment, always return the context-aware adapter
+    // This ensures singletons initialized with this connection will 
+    // respect transactions started later
+    if (isTest) {
+      return new TestAwareAdapter(adapter);
+    }
+    return adapter;
   }
 
   // If initialization is in progress, wait for it
   if (initializationPromise) {
-    return initializationPromise;
+    await initializationPromise;
+    if (isTest) {
+      return new TestAwareAdapter(adapter!);
+    }
+    return adapter!;
   }
 
   // Start initialization
-  initializationPromise = new Promise<sqlite3.Database>((resolve, reject) => {
-    const dbDir = path.join(process.cwd(), 'database');
-    const dbPath = path.join(dbDir, 'users.db');
+  initializationPromise = (async () => {
+    const config = getDatabaseConfig();
+    pool = new Pool(config);
+    adapter = new PostgreSQLAdapter(pool);
     
-    // Ensure database directory exists
-    if (!fs.existsSync(dbDir)) {
-      console.log('📁 Creating database directory...');
-      fs.mkdirSync(dbDir, { recursive: true });
+    const dbLabel = isTest ? 'test' : 'production';
+    console.log(`✅ Connected to PostgreSQL ${dbLabel} database: ${config.database}@${config.host}:${config.port}`);
+    
+    const client = await pool.connect();
+    try {
+      // Check if tables exist
+      const tablesExist = await checkTablesExist(client);
+      let needsInit = !tablesExist;
+
+      // If tables exist, make sure verify that seeding is complete
+      // (Another process might have created tables but is still seeding)
+      if (tablesExist) {
+        const isSeeded = await checkDatabaseSeeded(client);
+        if (!isSeeded) {
+          needsInit = true;
+        }
+      }
+      
+      if (needsInit) {
+        console.log(`🆕 New ${dbLabel} database detected (or unseeded), initializing...`);
+        await initializeDatabase(client, pool);
+      } else if (!isTest) {
+        // Only run migrations in production, not in tests
+        console.log('📊 Existing database detected, checking for migrations...');
+        await applyTechMigrations(pool);
+      }
+      
+      return pool;
+    } finally {
+      client.release();
     }
-    
-    const dbExists = fs.existsSync(dbPath);
-    
-    db = new sqlite3.Database(dbPath, async (err) => {
-      if (err) {
-        console.error('❌ Error opening database:', err);
-        initializationPromise = null;
-        db = null;
-        reject(err);
-        return;
-      }
-      
-      console.log('✅ Connected to SQLite database at:', dbPath);
-      
-      // Set PRAGMA synchronous = FULL to ensure data is written to disk immediately
-      db!.run('PRAGMA synchronous = FULL', (pragmaErr) => {
-        if (pragmaErr) {
-          console.error('⚠️ Warning: Failed to set PRAGMA synchronous:', pragmaErr);
-        } else {
-          console.log('💾 Database synchronous mode set to FULL');
-        }
-      });
-      
-      try {
-        if (!dbExists) {
-          console.log('🆕 New database detected, initializing...');
-          await initializeDatabase(db!);
-        } else {
-          console.log('📊 Existing database detected, checking for migrations...');
-          await applyTechMigrations(db!);
-        }
-        
+  })();
 
-        
-        // Don't clear initializationPromise - it's still valid
-        resolve(db!);
-      } catch (initError) {
-        console.error('❌ Database initialization failed:', initError);
-        initializationPromise = null;
-        db = null;
-        reject(initError);
-      }
-    });
-  });
-
-  return initializationPromise;
+  await initializationPromise;
+  
+  if (isTest) {
+    return new TestAwareAdapter(adapter!);
+  }
+  return adapter!;
 }
 
-async function initializeDatabase(database: sqlite3.Database): Promise<void> {
-  return new Promise((resolve, reject) => {
+async function checkTablesExist(client: PoolClient): Promise<boolean> {
+  const result = await client.query(`
+    SELECT EXISTS (
+      SELECT FROM information_schema.tables 
+      WHERE table_schema = 'public' 
+      AND table_name = 'users'
+    )
+  `);
+  return result.rows[0].exists;
+}
+
+async function checkDatabaseSeeded(client: PoolClient): Promise<boolean> {
+  try {
+    const result = await client.query('SELECT COUNT(*) FROM users');
+    const count = parseInt(result.rows[0].count, 10);
+    
+    // In test environment, we expect test users too (2 defaults + 8 test users = 10)
+    // Use loosely coupled check in case we change number of test users
+    if (process.env.NODE_ENV === 'test') {
+       return count >= 10;
+    }
+    
+    // We expect at least the default users (a, dummy)
+    return count >= 2;
+  } catch {
+    return false;
+  }
+}
+
+// Advisory lock ID for database initialization (arbitrary number, must be consistent)
+const DB_INIT_LOCK_ID = 123456789;
+
+async function initializeDatabase(client: PoolClient, pool: Pool): Promise<void> {
+  console.log('🔒 Acquiring database initialization lock...');
+  
+  // Acquire advisory lock to prevent concurrent initialization from multiple processes
+  // pg_advisory_lock blocks until the lock is available
+  await client.query('SELECT pg_advisory_lock($1)', [DB_INIT_LOCK_ID]);
+  
+  try {
+    // Check again if tables exist (another process may have created them while we waited)
+    const tablesExist = await checkTablesExist(client);
+    
+    if (tablesExist) {
+      console.log('✅ Tables already exist (created by another process)');
+      return;
+    }
+    
     console.log('🏗️ Creating database tables...');
     
-    // Run table creation statements
-    let completedTables = 0;
-    const totalTables = CREATE_TABLES.length;
-    
-    CREATE_TABLES.forEach((tableSQL, index) => {
-      database.run(tableSQL, (err) => {
-        if (err) {
-          console.error(`❌ Error creating table ${index + 1}:`, err);
-          reject(err);
-          return;
-        }
-        
-        completedTables++;
-        console.log(`✅ Created table ${completedTables}/${totalTables}`);
-        
-        if (completedTables === totalTables) {
-          console.log('🌱 Tables created, seeding initial data...');
-          seedDatabase(database)
-            .then(() => {
-              console.log('✅ Database initialization complete!');
-              resolve();
-            })
-            .catch((seedErr) => {
-              console.error('❌ Error seeding database:', seedErr);
-              reject(seedErr);
-            });
-        }
-      });
-    });
-  });
-}
-
-export function closeDatabase(): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (db) {
-      db.close((err) => {
-        if (err) {
-          reject(err);
-        } else {
-          db = null;
-          resolve();
-        }
-      });
-    } else {
-      resolve();
+    for (let i = 0; i < CREATE_TABLES.length; i++) {
+      const tableSQL = CREATE_TABLES[i];
+      await client.query(tableSQL);
+      console.log(`✅ Created table ${i + 1}/${CREATE_TABLES.length}`);
     }
-  });
+    
+    console.log('🌱 Tables created, seeding initial data...');
+    await seedDatabase(pool);
+    console.log('✅ Database initialization complete!');
+  } finally {
+    // Always release the advisory lock
+    await client.query('SELECT pg_advisory_unlock($1)', [DB_INIT_LOCK_ID]);
+    console.log('🔓 Released database initialization lock');
+  }
 }
 
-/**
- * Closes the test database (for cleanup in tests)
- */
-export async function closeTestDatabase(): Promise<void> {
-  if (testDb && process.env.NODE_ENV === 'test') {
-    return new Promise((resolve, reject) => {
-      testDb!.close((err) => {
-        if (err) {
-          reject(err);
-        } else {
-          testDb = null;
-          resolve();
-        }
-      });
-    });
+export async function closeDatabase(): Promise<void> {
+  if (pool) {
+    await pool.end();
+    pool = null;
+    initializationPromise = null;
+    adapter = null;
   }
 }
 
 /**
  * Resets the test database to fresh state
+ * Truncates all tables and reseeds them with default data
  */
-export function resetTestDatabase(): void {
+export async function resetTestDatabase(): Promise<void> {
   if (process.env.NODE_ENV === 'test') {
-    testDb = null;
-    testDbInitialized = false;
-    // Next call to getDatabase() will create a fresh database
+    // If no pool exists, reinitialize everything
+    if (!pool || !adapter) {
+      // Clear state
+      pool = null;
+      initializationPromise = null;
+      adapter = null;
+      
+      // Reinitialize from scratch
+      await getDatabase();
+      return;
+    }
+
+    try {
+      // Use TRUNCATE instead of DROP for faster reset
+      // CASCADE removes dependent rows in referencing tables
+      // RESTART IDENTITY resets sequences to 1
+      await pool.query('TRUNCATE TABLE battles, messages, users, space_objects RESTART IDENTITY CASCADE');
+      
+      // Reseed the database with default data (force=true to skip user count check)
+      await seedDatabase(adapter, true);
+      
+      console.log('🔄 Test database reset complete');
+    } catch (error) {
+      console.error('❌ Error resetting test database:', error);
+      // If reset fails, force reinitialization
+      pool = null;
+      initializationPromise = null;
+      adapter = null;
+      // Reinitialize
+      await getDatabase();
+    }
   }
 }
+
+// Export the adapter interface for type usage
+export type { DatabaseAdapter };
+
+/**
+ * Get the database pool for transaction management.
+ * Should only be used by transaction helper in tests.
+ */
+export async function getDatabasePool(): Promise<Pool> {
+  if (!pool) {
+    await getDatabase(); // Initialize if needed
+  }
+  if (!pool) {
+    throw new Error('Database pool not initialized');
+  }
+  return pool;
+}
+

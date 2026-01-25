@@ -8,7 +8,6 @@ import { UserCache } from "./user/userCache";
 import { BattleCache } from "./battle/BattleCache";
 import { MessageCache } from "./messages/MessageCache";
 import { WorldCache } from "./world/worldCache";
-import { initializeBattleScheduler } from "./battle/battleScheduler";
 
 export async function initializeServer() {
 
@@ -39,29 +38,26 @@ export async function initializeServer() {
             console.warn('⚠️ Save world callback invoked - but no save is happening');
         });
 
-        await MessageCache.initialize(db);
         const messageCache = MessageCache.getInstance();
 
         WorldCache.configureDependencies({ messageCache });
         WorldCache.initializeWithWorld(world, db);
 
-        await UserCache.intialize2({
-            db,
+        await UserCache.intialize2(db, {
             worldCache: WorldCache.getInstance(),
             messageCache
         });
-        
-        // Initialize BattleCache
-        console.log('🌱🪴 Application startup - ⚔️ Initializing BattleCache...');
-        await BattleCache.initialize(db, {
+
+        BattleCache.configureDependencies({
             userCache: UserCache.getInstance2(),
             worldCache: WorldCache.getInstance(),
             messageCache
         });
-        console.log('🌱🪴 Application startup - ✅ BattleCache initialized');
 
-        // Initialize BattleScheduler (auto-starts the scheduler)
-        initializeBattleScheduler({ messageCache });
+        // Initialize BattleCache
+        console.log('🌱🪴 Application startup - ⚔️ Initializing BattleCache...');
+        await BattleCache.initialize2(db);
+        console.log('🌱🪴 Application startup - ✅ BattleCache initialized');
 
         console.log('🌱🪴 Application startup complete');
 

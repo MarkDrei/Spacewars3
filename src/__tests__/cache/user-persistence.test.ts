@@ -1,29 +1,24 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { UserCache } from '@/lib/server/user/userCache';
 import { getDatabase } from '@/lib/server/database';
 import { createUser } from '@/lib/server/user/userRepo';
 import { saveUserToDb } from '@/lib/server/user/userRepo';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 import { USER_LOCK } from '@/lib/server/typedLocks';
-import { initializeIntegrationTestServer, shutdownIntegrationTestServer } from '../helpers/testServer';
 
 describe('User Persistence to Database', () => {
   beforeEach(async () => {
-    await initializeIntegrationTestServer();
     UserCache.resetInstance();
     const db = await getDatabase();
-    await UserCache.intialize2({ db });
-  });
-
-  afterEach(async () => {
-    await shutdownIntegrationTestServer
+    await UserCache.intialize2(db);
   });
 
   it('userPersistence_dirtyUserModified_persitsToDatabase', async () => {
-    // Arrange: Create a test user
+    // Arrange: Create a test user with unique username
+    const username = `testuser_persist_${Date.now()}`;
     const db = await getDatabase();
     const saveCallback = saveUserToDb(db);
-    const user = await createUser(db, 'testuser_persist', 'hashedpass', saveCallback);
+    const user = await createUser(db, username, 'hashedpass', saveCallback);
     const initialIron = user.iron;
     const initialTechCount = user.techCounts.pulse_laser;
     
@@ -42,20 +37,15 @@ describe('User Persistence to Database', () => {
       
       userWorldCache.updateUserInCache(userCtx, user);
       // Force flush to database
-      await userWorldCache.flushAllToDatabaseWithLock(userCtx);
+      await userWorldCache.flushAllToDatabase(userCtx);
     });
     
     // Assert: Read directly from database to verify persistence
-    const userFromDb = await new Promise<{ iron: number; pulse_laser: number }>((resolve, reject) => {
-      db.get(
-        'SELECT iron, pulse_laser FROM users WHERE id = ?',
-        [user.id],
-        (err, row) => {
-          if (err) reject(err);
-          else resolve(row as { iron: number; pulse_laser: number });
-        }
-      );
-    });
+    const result = await db.query(
+      'SELECT iron, pulse_laser FROM users WHERE id = $1',
+      [user.id]
+    );
+    const userFromDb = result.rows[0] as { iron: number; pulse_laser: number };
     
     expect(userFromDb).toBeDefined();
     expect(userFromDb.iron).toBe(1000);
@@ -65,10 +55,11 @@ describe('User Persistence to Database', () => {
   });
 
   it('userPersistence_shutdownPersist_flushesUsers', async () => {
-    // Arrange: Create a test user
+    // Arrange: Create a test user with unique username
+    const username = `testuser_shutdown_${Date.now()}`;
     const db = await getDatabase();
     const saveCallback = saveUserToDb(db);
-    const user = await createUser(db, 'testuser_shutdown_persist', 'hashedpass', saveCallback);
+    const user = await createUser(db, username, 'hashedpass', saveCallback);
     
     const emptyCtx = createLockContext();
     const userWorldCache = UserCache.getInstance2();
@@ -88,16 +79,11 @@ describe('User Persistence to Database', () => {
     await userWorldCache.shutdown();
     
     // Assert: Read directly from database to verify persistence on shutdown
-    const userFromDb = await new Promise<{ iron: number; auto_turret: number }>((resolve, reject) => {
-      db.get(
-        'SELECT iron, auto_turret FROM users WHERE id = ?',
-        [user.id],
-        (err, row) => {
-          if (err) reject(err);
-          else resolve(row as { iron: number; auto_turret: number });
-        }
-      );
-    });
+    const result = await db.query(
+      'SELECT iron, auto_turret FROM users WHERE id = $1',
+      [user.id]
+    );
+    const userFromDb = result.rows[0] as { iron: number; auto_turret: number };
     
     expect(userFromDb).toBeDefined();
     expect(userFromDb.iron).toBe(5000);

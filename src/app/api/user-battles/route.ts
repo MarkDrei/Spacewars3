@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getIronSession } from 'iron-session';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth } from '@/lib/server/errors';
-import { getBattleCache } from '@/lib/server/battle/BattleCache';
+import { getBattleCacheInitialized } from '@/lib/server/battle/BattleCache';
 import { getDatabase } from '@/lib/server/database';
 import { Battle } from '@/lib/server/battle/battleTypes';
 
@@ -15,13 +15,9 @@ interface UserBasicInfo {
 async function getUsernameById(userId: number): Promise<string> {
   const db = await getDatabase();
   
-  return new Promise((resolve, reject) => {
-    db.get('SELECT username FROM users WHERE id = ?', [userId], (err, row) => {
-      if (err) return reject(err);
-      if (!row) return resolve('Unknown User');
-      resolve((row as UserBasicInfo).username);
-    });
-  });
+  const result = await db.query('SELECT username FROM users WHERE id = $1', [userId]);
+  if (result.rows.length === 0) return 'Unknown User';
+  return (result.rows[0] as UserBasicInfo).username;
 }
 
 // Helper to calculate battle duration in seconds
@@ -61,7 +57,7 @@ export async function GET(request: NextRequest) {
     requireAuth(session.userId);
     
     // Fetch all battles for this user
-    const cache = getBattleCache();
+    const cache = await getBattleCacheInitialized();
     const battles = await cache.getBattlesForUser(session.userId!);
     
     // Filter only completed battles and transform data

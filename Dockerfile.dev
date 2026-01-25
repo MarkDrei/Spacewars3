@@ -1,0 +1,25 @@
+# Development Dockerfile with hot reload support
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Install git and bash for development
+RUN apk add --no-cache git bash
+
+# Copy package files
+COPY package.json package-lock.json* ./
+
+# Install all dependencies (including devDependencies)
+RUN npm ci
+
+# Copy the rest of the application
+COPY . .
+
+# Expose the development port
+EXPOSE 3000
+
+# Disable Next.js telemetry
+ENV NEXT_TELEMETRY_DISABLED=1
+
+# Start the development server
+CMD ["npm", "run", "dev"]

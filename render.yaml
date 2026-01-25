@@ -1,3 +1,10 @@
+databases:
+  - name: spacewars-db
+    databaseName: spacewars_production
+    user: spacewars_user
+    plan: free
+    version: "16"
+
 services:
   - type: web
     name: spacewars-nextjs
@@ -12,6 +19,26 @@ services:
         generateValue: true
       - key: HOSTNAME
         value: "0.0.0.0"
+      - key: POSTGRES_HOST
+        fromDatabase:
+          name: spacewars-db
+          property: host
+      - key: POSTGRES_PORT
+        fromDatabase:
+          name: spacewars-db
+          property: port
+      - key: POSTGRES_DB
+        fromDatabase:
+          name: spacewars-db
+          property: database
+      - key: POSTGRES_USER
+        fromDatabase:
+          name: spacewars-db
+          property: user
+      - key: POSTGRES_PASSWORD
+        fromDatabase:
+          name: spacewars-db
+          property: password
     healthCheckPath: /
     domains:
       - spacewars-nextjs.onrender.com

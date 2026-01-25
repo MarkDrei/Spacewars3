@@ -4,7 +4,7 @@
 // ---
 
 import { createLockContext, HasLock4Context, IronLocks, LOCK_10, LockContext, LocksAtMost3, LocksAtMost4, LocksAtMostAndHas4 } from '@markdrei/ironguard-typescript-locks';
-import sqlite3 from 'sqlite3';
+import { DatabaseConnection, getDatabase } from '../database';
 import { MessageCache } from '../messages/MessageCache';
 import {
   USER_LOCK,
@@ -15,7 +15,6 @@ import { WorldCache } from '../world/worldCache';
 import { Cache } from '../caches/Cache';
 
 type userCacheDependencies = {
-  db?: sqlite3.Database;
   worldCache?: WorldCache;
   messageCache?: MessageCache;
 };
@@ -40,7 +39,7 @@ export interface TypedCacheStats {
 }
 
 declare global {
-  var userCacheInstance: UserCache | null;
+  var userWorldCacheInstance: UserCache | null;
 }
 
 /**
@@ -48,6 +47,7 @@ declare global {
  * Enforces singleton pattern and lock ordering
  */
 export class UserCache extends Cache {
+  private static dependencies: userCacheDependencies = {};
 
   // ===== FIELDS =====
 
@@ -58,6 +58,9 @@ export class UserCache extends Cache {
     enableAutoPersistence: true,
     logStats: false
   };
+
+  private db: DatabaseConnection | null = null;
+  private persistenceTimer: NodeJS.Timeout | null = null;
 
   // In-memory cache storage
   private users: Map<number, User> = new Map();
@@ -71,20 +74,22 @@ export class UserCache extends Cache {
   };
 
   private dependencies: userCacheDependencies = {};
+  private worldCacheRef: WorldCache | null = null;
 
 
   // Singleton enforcement
   private constructor() {
     super();
+    this.dependencies = UserCache.dependencies;
     console.log('🧠 Typed cache manager initialized');
   }
 
   private static get instance(): UserCache | null {
-    return globalThis.userCacheInstance || null;
+    return globalThis.userWorldCacheInstance || null;
   }
 
   private static set instance(value: UserCache | null) {
-    globalThis.userCacheInstance = value;
+    globalThis.userWorldCacheInstance = value;
   }
 
   /**
@@ -92,17 +97,13 @@ export class UserCache extends Cache {
    * 
    * @param config optional configuration for the cache
    */
-  static async intialize2(dependencies: userCacheDependencies = {}, config?: TypedCacheConfig): Promise<void> {
-    if (this.instance) {
-      await this.instance.shutdown();
-    }
-
+  static async intialize2(db: DatabaseConnection, dependencies: userCacheDependencies = {}, config?: TypedCacheConfig): Promise<void> {
+    UserCache.configureDependencies(dependencies);
     this.instance = new UserCache();
-    this.instance.dependencies = dependencies;
     if (config) {
       this.instance.config = config;
     }
-    this.instance.startBackgroundPersistence();
+    this.instance.db = db;
   }
 
   /**
@@ -115,14 +116,43 @@ export class UserCache extends Cache {
     return this.instance;
   }
 
-  // Reset singleton for testing
+  /**
+   * Reset singleton for testing
+   * WARNING: Call shutdown() and await it BEFORE calling this method to ensure clean state
+   */
   static resetInstance(): void {
+    if (UserCache.instance) {
+      // Note: shutdown() is async but we can't await in a sync method
+      // Callers MUST call shutdown() before resetInstance()
+      void UserCache.instance.shutdown();
+    }
     this.instance = null;
     WorldCache.resetInstance();
   }
 
+  static configureDependencies(dependencies: userCacheDependencies): void {
+    UserCache.dependencies = dependencies;
+    if (UserCache.instance) {
+      UserCache.instance.dependencies = dependencies;
+      UserCache.instance.worldCacheRef = dependencies.worldCache ?? null;
+    }
+  }
+
+  /**
+   * Get database connection (for BattleCache and other components)
+   * Returns the database connection after ensuring initialization
+   */
+  // needs _context for compile time lock checking
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async getDatabaseConnection(_context: LockContext<LocksAtMostAndHas4>): Promise<DatabaseConnection> {
+    if (!this.db) {
+      throw new Error('Database not initialized');
+    }
+    return this.db;
+  }
+
   private getWorldCacheOrNull(): WorldCache | null {
-    return this.dependencies.worldCache ?? null;
+    return this.worldCacheRef ?? this.dependencies.worldCache ?? null;
   }
 
   private async getMessageCache(): Promise<MessageCache | null> {
@@ -148,8 +178,8 @@ export class UserCache extends Cache {
     userId: number
   ): Promise<User | null> {
     return await context.useLockWithAcquire(LOCK_10, async () => {
-      if (!this.dependencies.db) throw new Error('Database not initialized');
-      return await getUserByIdFromDb(this.dependencies.db, userId, async () => { });
+      const db = await getDatabase();
+      return await getUserByIdFromDb(db, userId, async () => { });
     });
   }
 
@@ -161,8 +191,8 @@ export class UserCache extends Cache {
     username: string
   ): Promise<User | null> {
     return await context.useLockWithAcquire(LOCK_10, async () => {
-      if (!this.dependencies.db) throw new Error('Database not initialized');
-      return await getUserByUsernameFromDb(this.dependencies.db, username, async () => { });
+      const db = await getDatabase();
+      return await getUserByUsernameFromDb(db, username, async () => { });
     });
   }
 
@@ -201,11 +231,17 @@ export class UserCache extends Cache {
 
   /**
    * Update user data in the cache, marking as dirty (requires user lock context)
+   * In test mode, persists immediately to stay within transaction scope
    */
-  updateUserInCache(_context: LockContext<LocksAtMostAndHas4>, user: User): void {
+  async updateUserInCache(context: LockContext<LocksAtMostAndHas4>, user: User): Promise<void> {
     this.users.set(user.id, user);
     this.usernameToUserId.set(user.username, user.id); // Update username mapping
     this.dirtyUsers.add(user.id); // Mark as dirty for persistence
+    
+    // In test mode, persist immediately (within transaction context)
+    if (this.isTestMode) {
+      await this.persistDirtyUsers(context);
+    }
   }
 
   /**
@@ -234,7 +270,7 @@ export class UserCache extends Cache {
 
     if (user) {
       user.updateStats(Math.floor(Date.now() / 1000));
-      this.updateUserInCache(context, user);
+      await this.updateUserInCache(context, user);
       return user;
     }
     return null;
@@ -246,7 +282,9 @@ export class UserCache extends Cache {
    * - Updates user before returning
    */
   async getUserById(context: LockContext<LocksAtMost3>, userId: number): Promise<User | null> {
-    return await context.useLockWithAcquire(USER_LOCK, async (userContext) => {
+
+    const ctx = createLockContext();
+    return await ctx.useLockWithAcquire(USER_LOCK, async (userContext) => {
       return await this.getUserByIdWithLock(userContext, userId);
     });
   }
@@ -278,7 +316,7 @@ export class UserCache extends Cache {
 
     if (user) {
       user.updateStats(Math.floor(Date.now() / 1000));
-      this.updateUserInCache(context, user);
+      await this.updateUserInCache(context, user);
       return user;
     }
 
@@ -317,31 +355,10 @@ export class UserCache extends Cache {
   }
 
   /**
-   * Force flush all dirty data to database (implements abstract method from Cache)
-   * Useful for ensuring data is persisted before reading directly from DB
-   * This method acquires the USER_LOCK internally.
-   */
-  protected async flushAllToDatabase(): Promise<void> {
-    const ctx = createLockContext();
-    await ctx.useLockWithAcquire(USER_LOCK, async (userContext) => {
-      await this.flushAllToDatabaseWithContext(userContext);
-    });
-  }
-
-  /**
-   * Force flush all dirty data to database when already holding USER_LOCK
-   * Useful for ensuring data is persisted before reading directly from DB
-   * @deprecated Use flushAllToDatabaseWithContext instead
-   */
-  async flushAllToDatabaseWithLock(context: LockContext<LocksAtMostAndHas4>): Promise<void> {
-    return this.flushAllToDatabaseWithContext(context);
-  }
-
-  /**
-   * Force flush all dirty data to database when already holding USER_LOCK
+   * Force flush all dirty data to database
    * Useful for ensuring data is persisted before reading directly from DB
    */
-  async flushAllToDatabaseWithContext(context: LockContext<LocksAtMostAndHas4>): Promise<void> {
+  async flushAllToDatabase(context: LockContext<LocksAtMostAndHas4>): Promise<void> {
     console.log('🔄 Flushing all dirty data to database...');
 
     // Persist dirty users
@@ -357,10 +374,8 @@ export class UserCache extends Cache {
       await worldCache.flushToDatabase();
     }
 
-    // Persist dirty message data via message cache
     const messageCache = await this.getMessageCache();
     if (messageCache) {
-      console.log('💾 Flushing message data');
       await messageCache.flushToDatabase(context);
     }
 
@@ -397,74 +412,68 @@ export class UserCache extends Cache {
    * Persist a single user to database
    */
   private async persistUserToDb(user: User): Promise<void> {
-    if (!this.dependencies.db) throw new Error('Database not initialized');
+    if (!this.db) throw new Error('Database not initialized');
 
-    return new Promise<void>((resolve, reject) => {
-      this.dependencies.db!.run(
-        `UPDATE users SET 
-          iron = ?, 
-          last_updated = ?, 
-          tech_tree = ?, 
-          ship_id = ?,
-          pulse_laser = ?,
-          auto_turret = ?,
-          plasma_lance = ?,
-          gauss_rifle = ?,
-          photon_torpedo = ?,
-          rocket_launcher = ?,
-          ship_hull = ?,
-          kinetic_armor = ?,
-          energy_shield = ?,
-          missile_jammer = ?,
-          hull_current = ?,
-          armor_current = ?,
-          shield_current = ?,
-          defense_last_regen = ?,
-          in_battle = ?,
-          current_battle_id = ?,
-          build_queue = ?,
-          build_start_sec = ?
-        WHERE id = ?`,
-        [
-          user.iron,
-          user.last_updated,
-          JSON.stringify(user.techTree),
-          user.ship_id,
-          user.techCounts.pulse_laser,
-          user.techCounts.auto_turret,
-          user.techCounts.plasma_lance,
-          user.techCounts.gauss_rifle,
-          user.techCounts.photon_torpedo,
-          user.techCounts.rocket_launcher,
-          user.techCounts.ship_hull,
-          user.techCounts.kinetic_armor,
-          user.techCounts.energy_shield,
-          user.techCounts.missile_jammer,
-          user.hullCurrent,
-          user.armorCurrent,
-          user.shieldCurrent,
-          user.defenseLastRegen,
-          user.inBattle ? 1 : 0,
-          user.currentBattleId,
-          JSON.stringify(user.buildQueue),
-          user.buildStartSec,
-          user.id
-        ],
-        function (err) {
-          if (err) return reject(err);
-          resolve();
-        }
-      );
-    });
+    await this.db.query(
+      `UPDATE users SET 
+        iron = $1, 
+        last_updated = $2, 
+        tech_tree = $3, 
+        ship_id = $4,
+        pulse_laser = $5,
+        auto_turret = $6,
+        plasma_lance = $7,
+        gauss_rifle = $8,
+        photon_torpedo = $9,
+        rocket_launcher = $10,
+        ship_hull = $11,
+        kinetic_armor = $12,
+        energy_shield = $13,
+        missile_jammer = $14,
+        hull_current = $15,
+        armor_current = $16,
+        shield_current = $17,
+        defense_last_regen = $18,
+        in_battle = $19,
+        current_battle_id = $20,
+        build_queue = $21,
+        build_start_sec = $22
+      WHERE id = $23`,
+      [
+        user.iron,
+        user.last_updated,
+        JSON.stringify(user.techTree),
+        user.ship_id,
+        user.techCounts.pulse_laser,
+        user.techCounts.auto_turret,
+        user.techCounts.plasma_lance,
+        user.techCounts.gauss_rifle,
+        user.techCounts.photon_torpedo,
+        user.techCounts.rocket_launcher,
+        user.techCounts.ship_hull,
+        user.techCounts.kinetic_armor,
+        user.techCounts.energy_shield,
+        user.techCounts.missile_jammer,
+        user.hullCurrent,
+        user.armorCurrent,
+        user.shieldCurrent,
+        user.defenseLastRegen,
+        user.inBattle ? 1 : 0,
+        user.currentBattleId,
+        JSON.stringify(user.buildQueue),
+        user.buildStartSec,
+        user.id
+      ]
+    );
   }
 
 
   /**
    * Start background persistence timer
    */
-  protected startBackgroundPersistence(): void {
-    if (!this.config.enableAutoPersistence) {
-      console.log('📝 Background persistence disabled by config');
+  private startBackgroundPersistence(): void {
+    if (!this.shouldEnableBackgroundPersistence(this.config.enableAutoPersistence)) {
+      console.log('📝 Background persistence disabled (test mode or config)');
       return;
     }
 
@@ -483,6 +492,17 @@ export class UserCache extends Cache {
   }
 
   /**
+   * Stop background persistence timer
+   */
+  private stopBackgroundPersistence(): void {
+    if (this.persistenceTimer) {
+      clearInterval(this.persistenceTimer);
+      this.persistenceTimer = null;
+      console.log('⏹️ Background persistence stopped');
+    }
+  }
+
+  /**
    * Background persistence operation
    */
   private async backgroundPersist(context: LockContext<LocksAtMostAndHas4>): Promise<void> {
@@ -495,37 +515,48 @@ export class UserCache extends Cache {
   }
 
   /**
-   * Shutdown the cache manager. You need to call intialize2() again to restart.
+   * Shutdown the cache manager
    * Currently only used in tests
    */
   async shutdown(): Promise<void> {
-    console.log('🔄 Shutting down typed cache manager...');
-
-    // Stop background persistence
-    this.stopBackgroundPersistence();
-
-    // Final persist of any dirty data using internal locking
     const ctx = createLockContext();
     await ctx.useLockWithAcquire(USER_LOCK, async (userContext) => {
+      console.log('🔄 Shutting down typed cache manager...');
+
+      // Stop background persistence
+      this.stopBackgroundPersistence();
+
+      // Final persist of any dirty data
       if (this.dirtyUsers.size > 0) {
         console.log('💾 Final persist of dirty users before shutdown');
         await this.persistDirtyUsers(userContext);
       }
+
+      const worldCache = this.getWorldCacheOrNull();
+      if (worldCache) {
+        try {
+          console.log('💾 Final persist of world data before shutdown');
+          await worldCache.flushToDatabase();
+          await worldCache.shutdown();
+        } catch (error) {
+          // WorldCache may have been shut down already by another process/test
+          // This is fine - we just skip the flush
+          if (error instanceof Error && error.message.includes('WorldCache not initialized')) {
+            console.log('⏭️ WorldCache already shut down, skipping flush');
+          } else {
+            throw error;
+          }
+        }
+      }
+
+      const messageCache = await this.getMessageCache();
+      if (messageCache) {
+        await messageCache.flushToDatabase(userContext);
+        await messageCache.shutdown();
+      }
+
+      console.log('✅ Typed cache manager shutdown complete');
     });
-
-    const worldCache = this.getWorldCacheOrNull();
-    if (worldCache) {
-      console.log('💾 Final persist of world data before shutdown');
-      await worldCache.flushToDatabase();
-      await worldCache.shutdown();
-    }
-
-    const messageCache = await this.getMessageCache();
-    if (messageCache) {
-      await messageCache.shutdown();
-    }
-
-    console.log('✅ Typed cache manager shutdown complete');
   }
 }
 

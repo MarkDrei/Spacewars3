@@ -11,7 +11,8 @@ import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 import { USER_LOCK } from '@/lib/server/typedLocks';
 import type { WorldCache } from '@/lib/server/world/worldCache';
 import type { MessageCache } from '@/lib/server/messages/MessageCache';
-import { getDatabase, resetTestDatabase } from '@/lib/server/database';
+import { getDatabase } from '@/lib/server/database';
+import { withTransaction } from '../helpers/transactionHelper';
 
 const createWorldCacheStub = (): WorldCache => ({
   getWorldFromCache: vi.fn(() => {
@@ -34,8 +35,7 @@ const createMessageCacheStub = (): MessageCache => ({
 
 const initializeCache = async (config?: TypedCacheConfig): Promise<void> => {
   const db = await getDatabase();
-  await UserCache.intialize2({
-    db,
+  await UserCache.intialize2(db, {
     worldCache: createWorldCacheStub(),
     messageCache: createMessageCacheStub(),
   }, config);
@@ -44,7 +44,6 @@ const initializeCache = async (config?: TypedCacheConfig): Promise<void> => {
 describe('TypedCacheManager', () => {
   
   beforeEach(async () => {
-    resetTestDatabase();
     UserCache.resetInstance();
     await initializeCache();
   });
@@ -97,29 +96,33 @@ describe('TypedCacheManager', () => {
 
   describe('Basic Functionality', () => {
     test('getUserById_nonExistentUser_returnsNull', async () => {
-      const emptyCtx = createLockContext();
-      const manager = UserCache.getInstance2();
-      await emptyCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
-        const user = await manager.getUserByIdWithLock(userCtx, 999); // Non-existent user
-        expect(user).toBeNull();
+      await withTransaction(async () => {
+        const emptyCtx = createLockContext();
+        const manager = UserCache.getInstance2();
+        await emptyCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
+          const user = await manager.getUserByIdWithLock(userCtx, 999); // Non-existent user
+          expect(user).toBeNull();
+        });
       });
     });
 
     test('getStats_returnsValidStats', async () => {
-      const emptyCtx = createLockContext();
-      const manager = UserCache.getInstance2();
-      await emptyCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
+      await withTransaction(async () => {
+        const emptyCtx = createLockContext();
+        const manager = UserCache.getInstance2();
+        await emptyCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
 
-        const stats = await manager.getStats(userCtx);
-        
-        expect(stats).toBeDefined();
-        expect(stats.userCacheSize).toBe(0);
-        expect(stats.worldCacheHits).toBeGreaterThanOrEqual(0);
-        expect(stats.worldCacheMisses).toBeGreaterThanOrEqual(0);
-        expect(stats.userCacheHits).toBe(0);
-        expect(stats.userCacheMisses).toBe(0);
-        expect(stats.dirtyUsers).toBe(0);
-        expect(typeof stats.worldDirty).toBe('boolean');
+          const stats = await manager.getStats(userCtx);
+          
+          expect(stats).toBeDefined();
+          expect(stats.userCacheSize).toBe(0);
+          expect(stats.worldCacheHits).toBeGreaterThanOrEqual(0);
+          expect(stats.worldCacheMisses).toBeGreaterThanOrEqual(0);
+          expect(stats.userCacheHits).toBe(0);
+          expect(stats.userCacheMisses).toBe(0);
+          expect(stats.dirtyUsers).toBe(0);
+          expect(typeof stats.worldDirty).toBe('boolean');
+        });
       });
     });
   });
@@ -127,25 +130,27 @@ describe('TypedCacheManager', () => {
 
   describe('Concurrency', () => {
     test('concurrentOperations_completeSuccessfully', async () => {
-      const emptyCtx = createLockContext();
-      const manager = UserCache.getInstance2();
-      await emptyCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
-  
-        // Start multiple concurrent operations
-        const operations = [
-          manager.getUserByIdWithLock(userCtx, 999),
-          manager.getUserByIdWithLock(userCtx, 998),
-          manager.getStats(userCtx),
-          manager.getStats(userCtx)
-        ];
-  
-        const results = await Promise.all(operations);
-        
-        expect(results).toHaveLength(4);
-        expect(results[0]).toBeNull(); // Non-existent user
-        expect(results[1]).toBeNull(); // Non-existent user
-        expect(results[2]).toBeDefined(); // Stats object
-        expect(results[3]).toBeDefined(); // Stats object
+      await withTransaction(async () => {
+        const emptyCtx = createLockContext();
+        const manager = UserCache.getInstance2();
+        await emptyCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
+    
+          // Start multiple concurrent operations
+          const operations = [
+            manager.getUserByIdWithLock(userCtx, 999),
+            manager.getUserByIdWithLock(userCtx, 998),
+            manager.getStats(userCtx),
+            manager.getStats(userCtx)
+          ];
+    
+          const results = await Promise.all(operations);
+          
+          expect(results).toHaveLength(4);
+          expect(results[0]).toBeNull(); // Non-existent user
+          expect(results[1]).toBeNull(); // Non-existent user
+          expect(results[2]).toBeDefined(); // Stats object
+          expect(results[3]).toBeDefined(); // Stats object
+        });
       });
     });
   });
