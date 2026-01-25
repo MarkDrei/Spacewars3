@@ -10,7 +10,8 @@ import {
   getResearchEffectFromTree,
   triggerResearch,
   updateTechTree,
-  getActiveResearch
+  getActiveResearch,
+  getWeaponDamageModifierFromTree
 } from '@/lib/server/techs/techtree';
 
 describe('getResearchUpgradeCost', () => {
@@ -249,5 +250,51 @@ describe('getActiveResearch', () => {
     triggerResearch(tree, ResearchType.Afterburner);
     updateTechTree(tree, 9999); // complete it
     expect(getActiveResearch(tree)).toBeUndefined();
+  });
+});
+
+describe('getWeaponDamageModifierFromTree', () => {
+  test('getWeaponDamageModifierFromTree_projectileWeaponAtLevel1_returns1', () => {
+    const tree = createInitialTechTree();
+    // At level 1, modifier should be 1.0 (base effect / base value = 50 / 50 = 1.0)
+    expect(getWeaponDamageModifierFromTree(tree, 'auto turret')).toBeCloseTo(1.0);
+    expect(getWeaponDamageModifierFromTree(tree, 'multi turret')).toBeCloseTo(1.0);
+    expect(getWeaponDamageModifierFromTree(tree, 'heavy turret')).toBeCloseTo(1.0);
+  });
+
+  test('getWeaponDamageModifierFromTree_energyWeaponAtLevel1_returns1', () => {
+    const tree = createInitialTechTree();
+    // At level 1, modifier should be 1.0 (base effect / base value = 20 / 20 = 1.0)
+    expect(getWeaponDamageModifierFromTree(tree, 'pulse laser')).toBeCloseTo(1.0);
+    expect(getWeaponDamageModifierFromTree(tree, 'beam laser')).toBeCloseTo(1.0);
+    expect(getWeaponDamageModifierFromTree(tree, 'plasma cannon')).toBeCloseTo(1.0);
+  });
+
+  test('getWeaponDamageModifierFromTree_projectileWeaponAtLevel2_returns115Percent', () => {
+    const tree = createInitialTechTree();
+    tree.projectileDamage = 2; // Increase to level 2
+    // At level 2, effect = 50 * 1.15 = 57.5, modifier = 57.5 / 50 = 1.15
+    expect(getWeaponDamageModifierFromTree(tree, 'auto turret')).toBeCloseTo(1.15);
+  });
+
+  test('getWeaponDamageModifierFromTree_energyWeaponAtLevel2_returns115Percent', () => {
+    const tree = createInitialTechTree();
+    tree.energyDamage = 2; // Increase to level 2
+    // At level 2, effect = 20 * 1.15 = 23, modifier = 23 / 20 = 1.15
+    expect(getWeaponDamageModifierFromTree(tree, 'pulse laser')).toBeCloseTo(1.15);
+  });
+
+  test('getWeaponDamageModifierFromTree_projectileWeaponAtLevel3_returnsScaledModifier', () => {
+    const tree = createInitialTechTree();
+    tree.projectileDamage = 3; // Increase to level 3
+    // At level 3, effect = 50 * 1.15^2 = 66.125, modifier = 66.125 / 50 = 1.3225
+    expect(getWeaponDamageModifierFromTree(tree, 'auto turret')).toBeCloseTo(1.3225, 2);
+  });
+
+  test('getWeaponDamageModifierFromTree_unknownWeaponType_returns1', () => {
+    const tree = createInitialTechTree();
+    // Unknown weapon types should return 1.0 (no modifier)
+    expect(getWeaponDamageModifierFromTree(tree, 'unknown weapon')).toBe(1.0);
+    expect(getWeaponDamageModifierFromTree(tree, 'laser sword')).toBe(1.0);
   });
 });

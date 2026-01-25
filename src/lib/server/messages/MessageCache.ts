@@ -27,6 +27,11 @@ interface MessageCacheStats {
   dirtyUsers: number;
 }
 
+// Declare global singleton for MessageCache
+declare global {
+  var messageCacheInstance: MessageCache | null;
+}
+
 /**
  * MessageCache - Manages in-memory cache of user messages
  * - Independent from other cache systems
@@ -35,25 +40,31 @@ interface MessageCacheStats {
  * - Thread-safe with IronGuard locks
  */
 export class MessageCache extends Cache {
-  private static instance: MessageCache | null = null;
-  
   private constructor() {
     super();
     console.log('📬 Message cache initialized');
   }
 
+  private static get instance(): MessageCache | null {
+    return globalThis.messageCacheInstance || null;
+  }
+
+  private static set instance(value: MessageCache | null) {
+    globalThis.messageCacheInstance = value;
+  }
+
   static getInstance(config?: MessageCacheConfig): MessageCache {
-    if (!this.instance) {
-      this.instance = new MessageCache();
+    if (!MessageCache.instance) {
+      MessageCache.instance = new MessageCache();
       if (config) {
-        this.instance.config = config;
+        MessageCache.instance.config = config;
       }
     }
-    return this.instance;
+    return MessageCache.instance;
   }
 
   static resetInstance(): void {
-    this.instance = null;
+    MessageCache.instance = null;
   }
 
   // Configuration
