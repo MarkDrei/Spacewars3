@@ -323,7 +323,7 @@ async function fireWeapon(
     defenderUser.armorCurrent,
     DAMAGE_CALC_DEFAULTS.POSITIVE_ACCURACY_MODIFIER,
     DAMAGE_CALC_DEFAULTS.NEGATIVE_ACCURACY_MODIFIER,
-    damageModifier, // Use dynamic damage modifier from tech tree
+    damageModifier,
     DAMAGE_CALC_DEFAULTS.ECM_EFFECTIVENESS,
     DAMAGE_CALC_DEFAULTS.SPREAD_VALUE
   );
