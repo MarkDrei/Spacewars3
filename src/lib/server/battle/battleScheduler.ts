@@ -25,6 +25,7 @@ import { sendMessageToUser } from '../messages/MessageCache';
 import { getBattleCache } from './BattleCache';
 import { BATTLE_LOCK } from '../typedLocks';
 import { createLockContext, LockContext, LocksAtMostAndHas2 } from '@markdrei/ironguard-typescript-locks';
+import { setupBattleScheduler, cancelBattleScheduler, TimeProvider, realTimeProvider } from './battleSchedulerUtils';
 
 // /**
 //  * Helper to update user's battle state via TypedCacheManager
@@ -270,10 +271,59 @@ async function fireWeapon(
 }
 
 /**
- * Start the battle scheduler (call from server startup)
+ * Configuration for battle scheduler dependency injection
+ */
+interface BattleSchedulerConfig {
+  intervalMs?: number;
+  timeProvider?: TimeProvider;
+  scheduler?: (callback: () => void, intervalMs: number) => NodeJS.Timeout;
+  canceller?: (intervalId: NodeJS.Timeout) => void;
+}
+
+/**
+ * Battle scheduler state
  */
 let schedulerInterval: NodeJS.Timeout | null = null;
+let currentConfig: BattleSchedulerConfig = {
+  intervalMs: 1000,
+  timeProvider: realTimeProvider,
+  scheduler: setInterval,
+  canceller: clearInterval
+};
 
+/**
+ * Initialize battle scheduler with optional configuration for dependency injection
+ * This enables testing with fake time providers and schedulers
+ */
+export function initializeBattleScheduler(config?: BattleSchedulerConfig): void {
+  // Merge config with defaults
+  currentConfig = {
+    intervalMs: config?.intervalMs ?? 1000,
+    timeProvider: config?.timeProvider ?? realTimeProvider,
+    scheduler: config?.scheduler ?? setInterval,
+    canceller: config?.canceller ?? clearInterval
+  };
+  
+  startBattleScheduler(currentConfig.intervalMs);
+}
+
+/**
+ * Reset battle scheduler (for testing)
+ * Stops the scheduler and resets configuration to defaults
+ */
+export function resetBattleScheduler(): void {
+  stopBattleScheduler();
+  currentConfig = {
+    intervalMs: 1000,
+    timeProvider: realTimeProvider,
+    scheduler: setInterval,
+    canceller: clearInterval
+  };
+}
+
+/**
+ * Start the battle scheduler (call from server startup)
+ */
 export function startBattleScheduler(intervalMs: number = 1000): void {
   if (schedulerInterval) {
     console.log('⚔️ Battle scheduler already running');
@@ -282,19 +332,23 @@ export function startBattleScheduler(intervalMs: number = 1000): void {
   
   console.log(`⚔️ Starting battle scheduler (interval: ${intervalMs}ms)`);
   
-  schedulerInterval = setInterval(async () => {
+  const processCallback = async () => {
     const ctx = createLockContext();
     await ctx.useLockWithAcquire(BATTLE_LOCK, async (battleContext) => {
-      await processActiveBattles(battleContext).catch(error => {
-        console.error('❌ Battle scheduler error:', error);
-      });
+      await processActiveBattles(battleContext);
     });
-  }, intervalMs);
+  };
+  
+  schedulerInterval = setupBattleScheduler(
+    intervalMs, 
+    processCallback, 
+    currentConfig.scheduler
+  );
 }
 
 export function stopBattleScheduler(): void {
-  if (schedulerInterval) {
-    clearInterval(schedulerInterval);
+  if (schedulerInterval && currentConfig.canceller) {
+    cancelBattleScheduler(schedulerInterval, currentConfig.canceller);
     schedulerInterval = null;
     console.log('⚔️ Battle scheduler stopped');
   }

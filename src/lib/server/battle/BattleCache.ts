@@ -19,7 +19,7 @@ import type { Battle, BattleStats, BattleEvent, WeaponCooldowns } from './battle
 import * as battleRepo from './battleRepo';
 import { createLockContext, HasLock2Context, IronLocks, LockContext, LocksAtMost4, LocksAtMostAndHas2 } from '@markdrei/ironguard-typescript-locks';
 import { BATTLE_LOCK, DATABASE_LOCK_BATTLES, USER_LOCK } from '../typedLocks';
-import { startBattleScheduler } from './battleScheduler';
+import { startBattleScheduler, initializeBattleScheduler } from './battleScheduler';
 import { UserCache } from '../user/userCache';
 import { WorldCache } from '../world/worldCache';
 import { MessageCache } from '../messages/MessageCache';
@@ -82,7 +82,7 @@ export class BattleCache extends Cache {
   static async initialize2(db: sqlite3.Database): Promise<void> {
     const instance = new BattleCache();
     await instance.initialize(db);
-    startBattleScheduler();
+    initializeBattleScheduler();
   }
 
   /**

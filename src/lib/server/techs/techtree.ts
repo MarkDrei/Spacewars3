@@ -754,3 +754,64 @@ export function getActiveResearch(tree: TechTree): { type: ResearchType; nextLev
     remainingDuration: tree.activeResearch.remainingDuration,
   };
 }
+
+/**
+ * Weapon type categorization for damage modifier calculations
+ */
+const PROJECTILE_WEAPONS = [
+  'mass_driver',
+  'railgun',
+  'coilgun',
+  'gauss_cannon',
+  'kinetic_lance'
+] as const;
+
+const ENERGY_WEAPONS = [
+  'laser',
+  'plasma_cannon',
+  'ion_beam',
+  'particle_beam',
+  'antimatter_ray'
+] as const;
+
+/**
+ * Calculate weapon damage modifier based on tech tree research levels.
+ * Returns the damage multiplier (e.g., 1.0 = 100%, 1.15 = 115% damage).
+ * 
+ * @param tree - The user's tech tree
+ * @param weaponType - The type of weapon (e.g., 'mass_driver', 'laser')
+ * @returns Damage modifier as a decimal multiplier (default 1.0 for unknown weapons)
+ */
+export function getWeaponDamageModifierFromTree(tree: TechTree, weaponType: string): number {
+  // Determine weapon category
+  const isProjectile = PROJECTILE_WEAPONS.includes(weaponType as typeof PROJECTILE_WEAPONS[number]);
+  const isEnergy = ENERGY_WEAPONS.includes(weaponType as typeof ENERGY_WEAPONS[number]);
+  
+  if (!isProjectile && !isEnergy) {
+    // Unknown weapon type - return default modifier
+    console.warn(`Unknown weapon type for damage modifier calculation: ${weaponType}`);
+    return 1.0;
+  }
+  
+  // Get the appropriate research type
+  const researchType = isProjectile ? ResearchType.ProjectileDamage : ResearchType.EnergyDamage;
+  const research = AllResearches[researchType];
+  
+  // Get current effect and base value
+  const currentEffect = getResearchEffectFromTree(tree, researchType);
+  const baseValue = research.baseValue;
+  
+  // Guard against division by zero
+  if (baseValue === 0) {
+    console.error(`Base value for ${researchType} is zero - cannot calculate damage modifier`);
+    return 1.0;
+  }
+  
+  // Calculate modifier as currentEffect / baseValue
+  // At level 1: currentEffect = baseValue, so modifier = 1.0
+  // At level 2+: currentEffect increases, so modifier > 1.0
+  const modifier = currentEffect / baseValue;
+  
+  return modifier;
+}
+
