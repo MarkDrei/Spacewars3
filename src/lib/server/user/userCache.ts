@@ -107,6 +107,16 @@ export class UserCache extends Cache {
   }
 
   /**
+   * Implementation of abstract Cache.initialize() method
+   * This is a simplified version that delegates to the static intialize2 method
+   */
+  async initialize(): Promise<void> {
+    // This method is here to satisfy the abstract Cache class requirement
+    // The actual initialization happens via intialize2 static method
+    // This is a no-op as initialization is already done
+  }
+
+  /**
    * Synchronous non-locking getter for singleton instance, which was initialized at startup
    */
   static getInstance2(): UserCache {

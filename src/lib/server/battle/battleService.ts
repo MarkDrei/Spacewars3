@@ -28,6 +28,7 @@ import { HasLock2Context, IronLocks, LockContext, LocksAtMost4, LocksAtMostAndHa
 import { WORLD_LOCK, USER_LOCK, DATABASE_LOCK_USERS } from '../typedLocks';
 import { getUserByIdFromDb } from '../user/userRepo';
 import { WorldCache } from '../world/worldCache';
+import { calculateToroidalDistance } from '@shared/physics';
 
 /**
  * Maximum distance to initiate battle (same as collection distance)

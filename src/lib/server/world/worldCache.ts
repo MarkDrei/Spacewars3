@@ -91,6 +91,16 @@ export class WorldCache extends Cache {
     WorldCache.instance = cache;
   }
 
+  /**
+   * Implementation of abstract Cache.initialize() method
+   * This is a simplified version that delegates to the static initializeWithWorld method
+   */
+  async initialize(): Promise<void> {
+    // This method is here to satisfy the abstract Cache class requirement
+    // The actual initialization happens via initializeWithWorld static method
+    // This is a no-op as initialization is already done
+  }
+
   static getInstance(): WorldCache {
     const cache = WorldCache.instance;
     if (!cache || !cache.isInitialized) {
