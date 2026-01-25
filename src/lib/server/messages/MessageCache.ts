@@ -254,6 +254,52 @@ export class MessageCache extends Cache {
   }
 
   /**
+   * Create a new message with a specific timestamp (for preserving unknown message order)
+   * Similar to createMessageInternal but allows custom timestamp
+   */
+  private async createMessageWithTimestamp(
+    context: LockContext<LocksAtMostAndHas8>,
+    userId: number,
+    messageText: string,
+    timestamp: number
+  ): Promise<number> {
+    // Ensure user's messages are loaded first (so we don't lose pending messages)
+    await this.ensureMessagesLoaded(context, userId);
+    
+    // Generate temporary ID (negative to avoid conflicts)
+    const tempId = this.nextTempId--;
+    
+    // Create message in cache immediately with temporary ID and custom timestamp
+    const newMessage: Message = {
+      id: tempId,
+      recipient_id: userId,
+      created_at: timestamp, // Use provided timestamp instead of Date.now()
+      is_read: false,
+      message: messageText,
+      isPending: true
+    };
+
+    // Messages are guaranteed to exist now due to ensureMessagesLoaded above
+    this.userMessages.get(userId)!.push(newMessage);
+
+    // Track as pending
+    this.pendingMessageIds.add(tempId);
+
+    console.log(`📬 Created message ${tempId} (pending) for user ${userId} with timestamp ${timestamp}`);
+    
+    // In test mode, persist immediately (within transaction context)
+    // In production, persist asynchronously
+    if (this.isTestMode) {
+      await this.persistMessageAsync(context, userId, tempId, newMessage);
+    } else {
+      const writePromise = this.persistMessageAsync(context, userId, tempId, newMessage);
+      this.pendingWrites.set(tempId, writePromise);
+    }
+    
+    return tempId;
+  }
+
+  /**
    * Create a new message for a user
    * Message is immediately added to cache with temporary ID and persisted asynchronously
    * 
@@ -361,7 +407,14 @@ export class MessageCache extends Cache {
         shotsMissed: 0,
         enemyShotsHit: 0,
         enemyShotsMissed: 0,
-        unknownMessages: [] as string[]
+        // Collection statistics
+        asteroidsCollected: 0,
+        asteroidIron: 0,
+        shipwrecksCollected: 0,
+        shipwreckIron: 0,
+        escapePodsCollected: 0,
+        escapePodIron: 0,
+        unknownMessages: [] as { text: string; timestamp: number }[]
       };
   
       // Process only unread messages
@@ -424,9 +477,33 @@ export class MessageCache extends Cache {
         else if (text.includes('Defeat!') || text.startsWith('A:') && text.includes('lost the battle')) {
           stats.defeats++;
         }
-        // Unknown message - preserve it
+        // Parse collection messages - asteroid
+        else if (text.startsWith('P:') && text.includes('Successfully collected asteroid')) {
+          stats.asteroidsCollected++;
+          const ironMatch = text.match(/received \*\*(\d+)\*\* iron/);
+          if (ironMatch) {
+            stats.asteroidIron += parseInt(ironMatch[1]);
+          }
+        }
+        // Parse collection messages - shipwreck
+        else if (text.startsWith('P:') && text.includes('Successfully collected shipwreck')) {
+          stats.shipwrecksCollected++;
+          const ironMatch = text.match(/received \*\*(\d+)\*\* iron/);
+          if (ironMatch) {
+            stats.shipwreckIron += parseInt(ironMatch[1]);
+          }
+        }
+        // Parse collection messages - escape pod
+        else if (text.startsWith('P:') && text.includes('Successfully collected escape pod')) {
+          stats.escapePodsCollected++;
+          const ironMatch = text.match(/received \*\*(\d+)\*\* iron/);
+          if (ironMatch) {
+            stats.escapePodIron += parseInt(ironMatch[1]);
+          }
+        }
+        // Unknown message - preserve it with timestamp
         else {
-          stats.unknownMessages.push(text);
+          stats.unknownMessages.push({ text, timestamp: msg.timestamp });
         }
   
         // Mark as read
@@ -471,14 +548,33 @@ export class MessageCache extends Cache {
         summaryParts.push(`🛡️ **Enemy Accuracy:** ${stats.enemyShotsHit}/${totalEnemyShots} hits (${enemyAccuracy}%)`);
       }
   
+      // Add collection summary if any collections occurred
+      const totalCollections = stats.asteroidsCollected + stats.shipwrecksCollected + stats.escapePodsCollected;
+      const totalCollectionIron = stats.asteroidIron + stats.shipwreckIron + stats.escapePodIron;
+      
+      if (totalCollections > 0) {
+        const collectionDetails: string[] = [];
+        if (stats.asteroidsCollected > 0) {
+          collectionDetails.push(`${stats.asteroidsCollected} asteroid(s) (${stats.asteroidIron} iron)`);
+        }
+        if (stats.shipwrecksCollected > 0) {
+          collectionDetails.push(`${stats.shipwrecksCollected} shipwreck(s) (${stats.shipwreckIron} iron)`);
+        }
+        if (stats.escapePodsCollected > 0) {
+          collectionDetails.push(`${stats.escapePodsCollected} escape pod(s) (${stats.escapePodIron} iron)`);
+        }
+        summaryParts.push(`🔧 **Collections:** ${collectionDetails.join(', ')} - Total: ${totalCollectionIron} iron`);
+      }
+  
       const summary = summaryParts.join('\n');
   
       // Create summary as new message (using internal method that doesn't acquire lock)
       await this.createMessageInternal(messageContext, userId, summary);
   
-      // Re-create unknown messages as unread
+      // Re-create unknown messages as unread, preserving their original timestamps
       for (const unknownMsg of stats.unknownMessages) {
-        await this.createMessageInternal(messageContext, userId, unknownMsg);
+        // Create with the original timestamp to preserve message order
+        await this.createMessageWithTimestamp(messageContext, userId, unknownMsg.text, unknownMsg.timestamp);
       }
   
       console.log(`📊 Summarized ${unreadMessages.length} unread message(s) for user ${userId}`);
