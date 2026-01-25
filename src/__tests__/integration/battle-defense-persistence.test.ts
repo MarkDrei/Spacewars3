@@ -45,7 +45,7 @@ describe('Battle Defense Persistence', () => {
       });
       
       if (!attacker || !defender) {
-        throw new Error(`Test users not found (attacker=${attacker?.id}, defender=${defender?.id})`);
+        throw new Error(`Test users not found`);
       }
       
       // TypeScript now knows these are not null

@@ -5,8 +5,8 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
-  initializeBattleScheduler,
-  resetBattleScheduler,
+  startBattleScheduler,
+  stopBattleScheduler,
   processActiveBattles
 } from '../../../lib/server/battle/battleScheduler';
 import {
@@ -70,18 +70,18 @@ describe('BattleSchedulerUtils', () => {
 });
 
 describe('BattleScheduler', () => {
-  describe('initializeBattleScheduler', () => {
+  describe('startBattleScheduler', () => {
     afterEach(() => {
-      resetBattleScheduler();
+      stopBattleScheduler();
     });
 
-    it('initializeBattleScheduler_withMinimalConfig_startsScheduler', () => {
+    it('startBattleScheduler_withMinimalConfig_startsScheduler', () => {
       const mockMessageCache = {
         createMessage: vi.fn().mockResolvedValue(1)
       } as unknown as import('../../../lib/server/messages/MessageCache').MessageCache;
       const mockScheduler = vi.fn().mockReturnValue(123 as unknown as NodeJS.Timeout);
       
-      initializeBattleScheduler(
+      startBattleScheduler(
         { messageCache: mockMessageCache },
         mockScheduler as unknown as typeof setInterval,
         vi.fn() as unknown as typeof clearInterval
@@ -92,13 +92,13 @@ describe('BattleScheduler', () => {
       expect(mockScheduler).toHaveBeenCalledWith(expect.any(Function), 1000);
     });
 
-    it('initializeBattleScheduler_withCustomInterval_usesCustomInterval', () => {
+    it('startBattleScheduler_withCustomInterval_usesCustomInterval', () => {
       const mockMessageCache = {
         createMessage: vi.fn().mockResolvedValue(1)
       } as unknown as import('../../../lib/server/messages/MessageCache').MessageCache;
       const mockScheduler = vi.fn().mockReturnValue(123 as unknown as NodeJS.Timeout);
       
-      initializeBattleScheduler(
+      startBattleScheduler(
         { 
           messageCache: mockMessageCache,
           schedulerIntervalMs: 2000
@@ -110,7 +110,7 @@ describe('BattleScheduler', () => {
       expect(mockScheduler).toHaveBeenCalledWith(expect.any(Function), 2000);
     });
 
-    it('initializeBattleScheduler_withCustomTimeProvider_usesCustomTimeProvider', () => {
+    it('startBattleScheduler_withCustomTimeProvider_usesCustomTimeProvider', () => {
       const mockTime = 1000;
       const mockTimeProvider: TimeProvider = {
         now: () => mockTime
@@ -120,7 +120,7 @@ describe('BattleScheduler', () => {
       } as unknown as import('../../../lib/server/messages/MessageCache').MessageCache;
       const mockScheduler = vi.fn().mockReturnValue(123 as unknown as NodeJS.Timeout);
       
-      initializeBattleScheduler(
+      startBattleScheduler(
         { 
           messageCache: mockMessageCache,
           timeProvider: mockTimeProvider
@@ -134,8 +134,8 @@ describe('BattleScheduler', () => {
     });
   });
 
-  describe('resetBattleScheduler', () => {
-    it('resetBattleScheduler_afterInit_callsCanceller', () => {
+  describe('stopBattleScheduler', () => {
+    it('stopBattleScheduler_afterInit_callsCanceller', () => {
       const mockMessageCache = {
         createMessage: vi.fn().mockResolvedValue(1)
       } as unknown as import('../../../lib/server/messages/MessageCache').MessageCache;
@@ -143,20 +143,20 @@ describe('BattleScheduler', () => {
       const mockScheduler = vi.fn().mockReturnValue(mockIntervalId);
       const mockCanceller = vi.fn();
       
-      initializeBattleScheduler(
+      startBattleScheduler(
         { messageCache: mockMessageCache },
         mockScheduler as unknown as typeof setInterval,
         mockCanceller as unknown as typeof clearInterval
       );
       
-      resetBattleScheduler();
+      stopBattleScheduler();
       
       expect(mockCanceller).toHaveBeenCalledWith(mockIntervalId);
     });
 
-    it('resetBattleScheduler_withoutInit_doesNotThrow', () => {
+    it('stopBattleScheduler_withoutInit_doesNotThrow', () => {
       // Should not throw even if never initialized
-      expect(() => resetBattleScheduler()).not.toThrow();
+      expect(() => stopBattleScheduler()).not.toThrow();
     });
   });
 });
@@ -166,13 +166,13 @@ describe('BattleScheduler Integration', () => {
 
   beforeEach(async () => {
     // Reset before initializing to clear any previous state
-    resetBattleScheduler();
+    stopBattleScheduler();
     await initializeIntegrationTestServer();
     emptyCtx = createLockContext();
   });
 
   afterEach(async () => {
-    resetBattleScheduler();
+    stopBattleScheduler();
     await shutdownIntegrationTestServer();
   });
 
