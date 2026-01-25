@@ -299,3 +299,11 @@ export function stopBattleScheduler(): void {
     console.log('⚔️ Battle scheduler stopped');
   }
 }
+
+/**
+ * Reset the battle scheduler (for testing)
+ * Stops the scheduler and clears state
+ */
+export function resetBattleScheduler(): void {
+  stopBattleScheduler();
+}

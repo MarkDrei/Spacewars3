@@ -3,6 +3,7 @@ import { BattleCache } from '@/lib/server/battle/BattleCache';
 import { UserCache } from '@/lib/server/user/userCache';
 import { WorldCache } from '@/lib/server/world/worldCache';
 import { MessageCache } from '@/lib/server/messages/MessageCache';
+import { resetBattleScheduler } from '@/lib/server/battle/battleScheduler';
 
 async function shutdownUserWorldCache(): Promise<void> {
   try {
@@ -65,6 +66,9 @@ export async function initializeIntegrationTestServer(): Promise<void> {
   await shutdownUserWorldCache(); // Must be before WorldCache!
   await shutdownWorldCache();
   
+  // Reset battle scheduler to ensure clean state
+  resetBattleScheduler();
+  
   // Reset all in-memory cache instances
   // Note: Must be done AFTER shutdown completes to avoid interfering with ongoing operations
   // UserCache.resetInstance() also calls WorldCache.resetInstance() internally
@@ -81,6 +85,9 @@ export async function initializeIntegrationTestServer(): Promise<void> {
  * Shutdown integration test server and clean up resources.
  */
 export async function shutdownIntegrationTestServer(): Promise<void> {
+  // Reset battle scheduler first
+  resetBattleScheduler();
+  
   // Shutdown in reverse dependency order:
   // Battle → Message → User → World
   await shutdownBattleCache();
