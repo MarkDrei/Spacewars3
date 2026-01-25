@@ -408,9 +408,10 @@ export const AllResearches: Record<ResearchType, Research> = {
 
 /**
  * Weapon type categorization for damage modifier calculations
+ * Based on weapon subtypes in TechFactory
  */
-const PROJECTILE_WEAPONS = ['machine_gun', 'flak_cannon', 'rocket_launcher'] as const;
-const ENERGY_WEAPONS = ['pulse_laser', 'plasma_cannon', 'photon_torpedo'] as const;
+const PROJECTILE_WEAPONS = ['auto_turret', 'gauss_rifle', 'rocket_launcher'] as const;
+const ENERGY_WEAPONS = ['pulse_laser', 'plasma_lance', 'photon_torpedo'] as const;
 
 /**
  * Represents the tech tree, which hosts all researches for a user.

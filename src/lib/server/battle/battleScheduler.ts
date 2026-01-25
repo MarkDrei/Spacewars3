@@ -2,46 +2,30 @@
 // BattleScheduler: Automates periodic processing of active battles.
 // Responsibilities:
 //   - Triggers battle rounds at regular intervals
-//   - Processes weapon firing and damage application
+//   - Processes weapon firing and damage application through TechFactory.calculateWeaponDamage
 //   - Sends notifications/messages to users
 //   - Calls BattleService.resolveBattle when battle ends
 // Main interaction partners:
 //   - BattleCache (via BattleRepo compatibility layer)
-//   - BattleEngine (for combat mechanics)
+//   - TechFactory (for weapon damage calculations)
 //   - BattleService (for battle resolution)
-//   - getUserWorldCache (for user state updates)
+//   - UserCache (for user state updates and tech tree access)
 //   - MessageCache (for notifications)
-// Status: ✅ Uses proper cache delegation, no direct DB access
-// Note: Has helper functions that duplicate battleService (updateUserBattleState, etc.)
-//       This is acceptable as each uses them in different contexts.
+// Status: ✅ Uses proper cache delegation, consolidated damage system
+// Note: Inlines helper functions from former BattleEngine for direct battle processing
 // ---
 
 import { BattleRepo } from './BattleCache';
-import { BattleEngine } from './battleEngine';
 import { resolveBattle } from './battleService';
 import type { Battle, BattleEvent } from './battleTypes';
+import { DAMAGE_CALC_DEFAULTS } from './battleTypes';
 import { TechFactory } from '../techs/TechFactory';
 import { sendMessageToUser } from '../messages/MessageCache';
 import { getBattleCache } from './BattleCache';
-import { BATTLE_LOCK } from '../typedLocks';
-import { createLockContext, LockContext, LocksAtMostAndHas2 } from '@markdrei/ironguard-typescript-locks';
-
-// /**
-//  * Helper to update user's battle state via TypedCacheManager
-//  * Uses proper cache delegation instead of direct DB access
-//  */
-// async function updateUserBattleState(userId: number, inBattle: boolean, battleId: number | null): Promise<void> {
-//   const userWorldCache = getUserWorldCache();
-//   const ctx = createLockContext();
-//   await ctx.useLockWithAcquire(USER_LOCK, async (userContext) => {
-//     const user = userWorldCache.getUserByIdFromCache(userContext, userId);
-//     if (user) {
-//       user.inBattle = inBattle;
-//       user.currentBattleId = battleId;
-//       userWorldCache.updateUserInCache(userContext, user);
-//     }
-//   });
-// }
+import { BATTLE_LOCK, USER_LOCK } from '../typedLocks';
+import { createLockContext, LockContext, LocksAtMostAndHas2, LocksAtMostAndHas4 } from '@markdrei/ironguard-typescript-locks';
+import { UserCache } from '../user/userCache';
+import { getWeaponDamageModifierFromTree } from '../techs/techtree';
 
 /**
  * Helper to create a message for a user via MessageCache
@@ -49,6 +33,140 @@ import { createLockContext, LockContext, LocksAtMostAndHas2 } from '@markdrei/ir
  */
 async function createMessage(userId: number, message: string): Promise<void> {
   await sendMessageToUser(userId, message);
+}
+
+/**
+ * Check if a weapon is ready to fire (cooldown expired)
+ */
+function isWeaponReady(battle: Battle, userId: number, weaponType: string, currentTime: number): boolean {
+  const isAttacker = battle.attackerId === userId;
+  const cooldowns = isAttacker ? battle.attackerWeaponCooldowns : battle.attackeeWeaponCooldowns;
+  const nextReadyTime = cooldowns[weaponType] || 0;
+  return currentTime >= nextReadyTime;
+}
+
+/**
+ * Get all weapons that are ready to fire for a user
+ */
+function getReadyWeapons(battle: Battle, userId: number, currentTime: number): string[] {
+  const isAttacker = battle.attackerId === userId;
+  const stats = isAttacker ? battle.attackerStartStats : battle.attackeeStartStats;
+  const readyWeapons: string[] = [];
+
+  for (const [weaponType, weaponData] of Object.entries(stats.weapons)) {
+    if (weaponData.count > 0 && isWeaponReady(battle, userId, weaponType, currentTime)) {
+      readyWeapons.push(weaponType);
+    }
+  }
+
+  return readyWeapons;
+}
+
+/**
+ * Apply damage to a target's defenses (shield → armor → hull)
+ * Updates User defense values through cache
+ */
+async function applyDamage(
+  context: LockContext<LocksAtMostAndHas4>,
+  targetUserId: number,
+  totalDamage: number
+): Promise<{
+  shieldDamage: number;
+  armorDamage: number;
+  hullDamage: number;
+  remainingShield: number;
+  remainingArmor: number;
+  remainingHull: number;
+}> {
+  const userWorldCache = UserCache.getInstance2();
+  const user = await userWorldCache.getUserByIdWithLock(context, targetUserId);
+
+  if (!user) {
+    throw new Error(`User ${targetUserId} not found during battle`);
+  }
+
+  let remainingDamage = totalDamage;
+  let shieldDamage = 0;
+  let armorDamage = 0;
+  let hullDamage = 0;
+
+  // 1. Apply to shield first
+  if (user.shieldCurrent > 0 && remainingDamage > 0) {
+    shieldDamage = Math.min(remainingDamage, user.shieldCurrent);
+    user.shieldCurrent -= shieldDamage;
+    remainingDamage -= shieldDamage;
+  }
+
+  // 2. Apply to armor second
+  if (user.armorCurrent > 0 && remainingDamage > 0) {
+    armorDamage = Math.min(remainingDamage, user.armorCurrent);
+    user.armorCurrent -= armorDamage;
+    remainingDamage -= armorDamage;
+  }
+
+  // 3. Apply to hull last
+  if (user.hullCurrent > 0 && remainingDamage > 0) {
+    hullDamage = Math.min(remainingDamage, user.hullCurrent);
+    user.hullCurrent -= hullDamage;
+    remainingDamage -= hullDamage;
+  }
+
+  // Update user in cache (marks as dirty for persistence)
+  userWorldCache.updateUserInCache(context, user);
+
+  return {
+    shieldDamage,
+    armorDamage,
+    hullDamage,
+    remainingShield: user.shieldCurrent,
+    remainingArmor: user.armorCurrent,
+    remainingHull: user.hullCurrent
+  };
+}
+
+/**
+ * Check if the battle is over (someone's hull reached 0)
+ */
+async function isBattleOver(context: LockContext<LocksAtMostAndHas4>, battle: Battle): Promise<boolean> {
+  const userWorldCache = UserCache.getInstance2();
+  const attacker = await userWorldCache.getUserByIdWithLock(context, battle.attackerId);
+  const attackee = await userWorldCache.getUserByIdWithLock(context, battle.attackeeId);
+
+  if (!attacker || !attackee) {
+    throw new Error('Users not found during battle');
+  }
+
+  return attacker.hullCurrent <= 0 || attackee.hullCurrent <= 0;
+}
+
+/**
+ * Get the battle outcome (winner and loser)
+ */
+async function getBattleOutcome(context: LockContext<LocksAtMostAndHas4>, battle: Battle): Promise<{ winnerId: number; loserId: number } | null> {
+  const isOver = await isBattleOver(context, battle);
+  if (!isOver) {
+    return null;
+  }
+
+  const userWorldCache = UserCache.getInstance2();
+  const attacker = await userWorldCache.getUserByIdWithLock(context, battle.attackerId);
+  const attackee = await userWorldCache.getUserByIdWithLock(context, battle.attackeeId);
+
+  if (!attacker || !attackee) {
+    throw new Error('Users not found during battle');
+  }
+
+  if (attacker.hullCurrent <= 0) {
+    return {
+      winnerId: battle.attackeeId,
+      loserId: battle.attackerId
+    };
+  } else {
+    return {
+      winnerId: battle.attackerId,
+      loserId: battle.attackeeId
+    };
+  }
 }
 
 /**
@@ -90,12 +208,11 @@ async function processBattleRoundInternal(context: LockContext<LocksAtMostAndHas
     return;
   }
   
-  const battleEngine = new BattleEngine(battle);
   const currentTime = Math.floor(Date.now() / 1000);
     
     // Get all ready weapons for both players
-    const attackerReadyWeapons = battleEngine.getReadyWeapons(battle.attackerId, currentTime);
-    const attackeeReadyWeapons = battleEngine.getReadyWeapons(battle.attackeeId, currentTime);
+    const attackerReadyWeapons = getReadyWeapons(battle, battle.attackerId, currentTime);
+    const attackeeReadyWeapons = getReadyWeapons(battle, battle.attackeeId, currentTime);
     
     // Process attacker's weapons
     for (const weaponType of attackerReadyWeapons) {
@@ -126,23 +243,24 @@ async function processBattleRoundInternal(context: LockContext<LocksAtMostAndHas
     // Check if battle is over after this round
     const updatedBattle = await BattleRepo.getBattle(context, battleId);
     if (updatedBattle) {
-      const updatedEngine = new BattleEngine(updatedBattle);
-      if (await updatedEngine.isBattleOver(context)) {
-        const outcome = await updatedEngine.getBattleOutcome(context);
-        if (outcome) {
-          // Use battleService.resolveBattle instead of local endBattle
-          // This ensures proper endStats snapshotting and teleportation
-          await resolveBattle(context, battleId, outcome.winnerId);
-          
-          // Send victory/defeat messages (battleService doesn't do this)
-          const winnerId = outcome.winnerId;
-          const loserId = outcome.loserId;
-          await createMessage(winnerId, `P: 🎉 **Victory!** You won the battle!`);
-          await createMessage(loserId, `A: 💀 **Defeat!** You lost the battle and have been teleported away.`);
-          
-          console.log(`⚔️ Battle ${battleId} ended: Winner ${winnerId}, Loser ${loserId}`);
+      await context.useLockWithAcquire(USER_LOCK, async (userContext) => {
+        if (await isBattleOver(userContext, updatedBattle)) {
+          const outcome = await getBattleOutcome(userContext, updatedBattle);
+          if (outcome) {
+            // Use battleService.resolveBattle instead of local endBattle
+            // This ensures proper endStats snapshotting and teleportation
+            await resolveBattle(context, battleId, outcome.winnerId);
+            
+            // Send victory/defeat messages (battleService doesn't do this)
+            const winnerId = outcome.winnerId;
+            const loserId = outcome.loserId;
+            await createMessage(winnerId, `P: 🎉 **Victory!** You won the battle!`);
+            await createMessage(loserId, `A: 💀 **Defeat!** You lost the battle and have been teleported away.`);
+            
+            console.log(`⚔️ Battle ${battleId} ended: Winner ${winnerId}, Loser ${loserId}`);
+          }
         }
-      }
+      });
     }
 }
 
@@ -172,19 +290,49 @@ async function fireWeapon(
   if (!weaponData || weaponData.count === 0) {
     return;
   }
-  
-  // Calculate number of shots that hit
-  const shotsPerSalvo = weaponData.count;
-  const accuracy = (weaponSpec.baseAccuracy || 80) / 100; // Convert percentage to decimal
-  let hits = 0;
-  
-  for (let i = 0; i < shotsPerSalvo; i++) {
-    if (Math.random() < accuracy) {
-      hits++;
-    }
+
+  // Get attacker's user for tech tree access
+  const userCache = UserCache.getInstance2();
+  const attackerUser = await context.useLockWithAcquire(USER_LOCK, async (userContext) => {
+    return await userCache.getUserByIdWithLock(userContext, attackerId);
+  });
+
+  if (!attackerUser) {
+    console.error(`❌ Attacker user ${attackerId} not found`);
+    return;
   }
-  
-  if (hits === 0) {
+
+  // Get defender for current defense values
+  const defenderUser = await context.useLockWithAcquire(USER_LOCK, async (userContext) => {
+    return await userCache.getUserByIdWithLock(userContext, defenderId);
+  });
+
+  if (!defenderUser) {
+    console.error(`❌ Defender user ${defenderId} not found`);
+    return;
+  }
+
+  // Calculate dynamic damage modifier from tech tree
+  const damageModifier = getWeaponDamageModifierFromTree(attackerUser.techTree, weaponType);
+
+  // Use TechFactory.calculateWeaponDamage for consolidated damage calculation
+  const damageResult = TechFactory.calculateWeaponDamage(
+    weaponType,
+    attackerUser.techCounts,
+    defenderUser.shieldCurrent,
+    defenderUser.armorCurrent,
+    DAMAGE_CALC_DEFAULTS.POSITIVE_ACCURACY_MODIFIER,
+    DAMAGE_CALC_DEFAULTS.NEGATIVE_ACCURACY_MODIFIER,
+    damageModifier, // Use dynamic damage modifier from tech tree
+    DAMAGE_CALC_DEFAULTS.ECM_EFFECTIVENESS,
+    DAMAGE_CALC_DEFAULTS.SPREAD_VALUE
+  );
+
+  const { weaponsHit, shieldDamage, armorDamage, hullDamage } = damageResult;
+  const totalDamage = shieldDamage + armorDamage + hullDamage;
+  const shotsPerSalvo = weaponData.count;
+
+  if (weaponsHit === 0) {
     // All shots missed
     const missEvent: BattleEvent = {
       timestamp: currentTime,
@@ -212,23 +360,24 @@ async function fireWeapon(
     return;
   }
   
-  // Calculate damage
-  const damagePerHit = weaponSpec.damage || 10;
-  const totalDamage = hits * damagePerHit;
+  // Apply damage through cache system
+  await context.useLockWithAcquire(USER_LOCK, async (userContext) => {
+    await applyDamage(userContext, defenderId, totalDamage);
+  });
   
-  // Apply damage using BattleEngine to ensure User cache is updated
-  const battleEngine = new BattleEngine(battle);
-  const damageResult = await battleEngine.applyDamage(context, defenderId, totalDamage);
-  
-  // Extract damage amounts from result
-  const shieldDamage = damageResult.shieldDamage;
-  const armorDamage = damageResult.armorDamage;
-  const hullDamage = damageResult.hullDamage;
-  
-  // Extract remaining defense values
-  const remainingShield = damageResult.remainingShield;
-  const remainingArmor = damageResult.remainingArmor;
-  const remainingHull = damageResult.remainingHull;
+  // Get updated defense values after damage
+  const updatedDefender = await context.useLockWithAcquire(USER_LOCK, async (userContext) => {
+    return await userCache.getUserByIdWithLock(userContext, defenderId);
+  });
+
+  if (!updatedDefender) {
+    console.error(`❌ Could not get updated defender state`);
+    return;
+  }
+
+  const remainingShield = updatedDefender.shieldCurrent;
+  const remainingArmor = updatedDefender.armorCurrent;
+  const remainingHull = updatedDefender.hullCurrent;
   
   // Track total damage dealt by attacker/attackee
   await BattleRepo.updateTotalDamage(context, battle.id, attackerId, totalDamage);
@@ -241,12 +390,12 @@ async function fireWeapon(
     data: {
       weaponType,
       shots: shotsPerSalvo,
-      hits,
+      hits: weaponsHit,
       damage: totalDamage,
       shieldDamage,
       armorDamage,
       hullDamage,
-      message: `${weaponType.replace(/_/g, ' ')} fired ${shotsPerSalvo} shot(s), ${hits} hit for ${totalDamage} damage (Shield: ${shieldDamage}, Armor: ${armorDamage}, Hull: ${hullDamage})`
+      message: `${weaponType.replace(/_/g, ' ')} fired ${shotsPerSalvo} shot(s), ${weaponsHit} hit for ${totalDamage} damage (Shield: ${shieldDamage}, Armor: ${armorDamage}, Hull: ${hullDamage})`
     }
   };
   
@@ -256,8 +405,8 @@ async function fireWeapon(
   const defenseStatus = `Hull: ${remainingHull}, Armor: ${remainingArmor}, Shield: ${remainingShield}`;
   
   // Send detailed messages to both players
-  const attackerMessage = `P: ⚔️ Your **${weaponType.replace(/_/g, ' ')}** fired ${shotsPerSalvo} shot(s), **${hits} hit** for **${totalDamage} damage**! Enemy: ${defenseStatus}`;
-  const defenderMessage = `N: 🛡️ Enemy **${weaponType.replace(/_/g, ' ')}** fired ${shotsPerSalvo} shot(s), **${hits} hit** you for **${totalDamage} damage**! Your defenses: ${defenseStatus}`;
+  const attackerMessage = `P: ⚔️ Your **${weaponType.replace(/_/g, ' ')}** fired ${shotsPerSalvo} shot(s), **${weaponsHit} hit** for **${totalDamage} damage**! Enemy: ${defenseStatus}`;
+  const defenderMessage = `N: 🛡️ Enemy **${weaponType.replace(/_/g, ' ')}** fired ${shotsPerSalvo} shot(s), **${weaponsHit} hit** you for **${totalDamage} damage**! Your defenses: ${defenseStatus}`;
   
   await createMessage(attackerId, attackerMessage);
   await createMessage(defenderId, defenderMessage);
@@ -266,7 +415,7 @@ async function fireWeapon(
   const nextReadyTime = currentTime + (weaponSpec.cooldown || 5);
   await BattleRepo.setWeaponCooldown(context, battle.id, attackerId, weaponType, nextReadyTime);
   
-  console.log(`⚔️ Battle ${battle.id}: User ${attackerId} ${weaponType} - ${hits}/${shotsPerSalvo} hits, ${totalDamage} damage`);
+  console.log(`⚔️ Battle ${battle.id}: User ${attackerId} ${weaponType} - ${weaponsHit}/${shotsPerSalvo} hits, ${totalDamage} damage`);
 }
 
 /**
