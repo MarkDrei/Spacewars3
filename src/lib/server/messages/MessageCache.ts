@@ -258,8 +258,7 @@ export class MessageCache extends Cache {
       created_at: timestamp ?? Date.now(),
       is_read: false,
       message: messageText,
-      isPending: true,
-      timestamp: timestamp ?? Math.floor(Date.now() / 1000)
+      isPending: true
     };
 
     // Messages are guaranteed to exist now due to ensureMessagesLoaded above
@@ -412,12 +411,12 @@ export class MessageCache extends Cache {
       return true;
     }
     // Parse victory
-    else if (text.includes('Victory!') || text.startsWith('P:') && text.includes('won the battle')) {
+    else if (text.includes('Victory!') || (text.startsWith('P:') && text.includes('won the battle'))) {
       stats.victories++;
       return true;
     }
     // Parse defeat
-    else if (text.includes('Defeat!') || text.startsWith('A:') && text.includes('lost the battle')) {
+    else if (text.includes('Defeat!') || (text.startsWith('A:') && text.includes('lost the battle'))) {
       stats.defeats++;
       return true;
     }
@@ -583,7 +582,8 @@ export class MessageCache extends Cache {
         }
         // Unknown message - preserve it with timestamp
         else {
-          unknownMessages.push({ text, timestamp: msg.timestamp });
+          // Convert created_at from milliseconds to seconds for storage
+          unknownMessages.push({ text, timestamp: Math.floor(msg.created_at / 1000) });
         }
   
         // Mark as read
