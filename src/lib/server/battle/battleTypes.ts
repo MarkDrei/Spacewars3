@@ -54,6 +54,23 @@ export interface BattleEvent {
 
 export type BattleState = 'not_in_battle' | 'in_battle';
 
+/**
+ * Default values for damage calculation parameters
+ * Used when calling TechFactory.calculateWeaponDamage
+ */
+export const DAMAGE_CALC_DEFAULTS = {
+  /** Positive accuracy bonus (e.g., targeting computer bonus) */
+  POSITIVE_ACCURACY_MODIFIER: 0,
+  /** Negative accuracy penalty (e.g., evasion, ECM) */
+  NEGATIVE_ACCURACY_MODIFIER: 0,
+  /** Base damage multiplier (1.0 = normal damage, modified by tech tree) */
+  BASE_DAMAGE_MODIFIER: 1.0,
+  /** Electronic countermeasure effectiveness (0 = no ECM) */
+  ECM_EFFECTIVENESS: 0,
+  /** Damage spread/variance (1.0 = normal spread) */
+  SPREAD_VALUE: 1.0
+} as const;
+
 // For database row mapping (used in battleRepo)
 export interface BattleRow {
   id: number;

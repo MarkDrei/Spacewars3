@@ -754,3 +754,43 @@ export function getActiveResearch(tree: TechTree): { type: ResearchType; nextLev
     remainingDuration: tree.activeResearch.remainingDuration,
   };
 }
+
+/**
+ * Weapon type arrays for damage modifier calculations
+ */
+export const PROJECTILE_WEAPONS = ['auto_turret', 'gauss_rifle', 'rocket_launcher'] as const;
+export const ENERGY_WEAPONS = ['pulse_laser', 'plasma_lance', 'photon_torpedo'] as const;
+
+/**
+ * Calculate weapon damage modifier based on tech tree research levels
+ * @param weaponKey The weapon type (e.g., 'auto_turret', 'pulse_laser')
+ * @param tree The tech tree with research levels
+ * @returns The damage modifier as a multiplier (e.g., 1.15 for +15% damage)
+ */
+export function getWeaponDamageModifierFromTree(weaponKey: string, tree: TechTree): number {
+  // Determine weapon type
+  const isProjectile = (PROJECTILE_WEAPONS as readonly string[]).includes(weaponKey);
+  const isEnergy = (ENERGY_WEAPONS as readonly string[]).includes(weaponKey);
+
+  if (!isProjectile && !isEnergy) {
+    // Unknown weapon type - return 1.0 as safe default
+    return 1.0;
+  }
+
+  // Get the appropriate research type
+  const researchType = isProjectile ? ResearchType.ProjectileDamage : ResearchType.EnergyDamage;
+  const research = AllResearches[researchType];
+
+  // Calculate current effect at this level
+  const level = getResearchLevelFromTree(tree, researchType);
+  const currentEffect = getResearchEffect(research, level);
+
+  // Guard against division by zero
+  if (research.baseValue === 0) {
+    console.warn(`[getWeaponDamageModifierFromTree] baseValue is 0 for ${researchType}, returning 1.0`);
+    return 1.0;
+  }
+
+  // Calculate modifier as currentEffect / baseValue
+  return currentEffect / research.baseValue;
+}
