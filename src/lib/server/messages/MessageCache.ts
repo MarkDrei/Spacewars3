@@ -237,11 +237,13 @@ export class MessageCache extends Cache {
   /**
    * Internal method to create a message when already holding MESSAGE_DATA_LOCK
    * Does not acquire locks - must be called from within a lock context
+   * @param timestamp Optional timestamp (defaults to current time)
    */
   private async createMessageInternal(
     context: LockContext<LocksAtMostAndHas8>,
     userId: number,
-    messageText: string
+    messageText: string,
+    timestamp?: number
   ): Promise<number> {
     // Ensure user's messages are loaded first (so we don't lose pending messages)
     await this.ensureMessagesLoaded(context, userId);
@@ -253,10 +255,11 @@ export class MessageCache extends Cache {
     const newMessage: Message = {
       id: tempId,
       recipient_id: userId,
-      created_at: Date.now(),
+      created_at: timestamp ?? Date.now(),
       is_read: false,
       message: messageText,
-      isPending: true
+      isPending: true,
+      timestamp: timestamp ?? Math.floor(Date.now() / 1000)
     };
 
     // Messages are guaranteed to exist now due to ensureMessagesLoaded above
@@ -617,7 +620,8 @@ export class MessageCache extends Cache {
   
       // Re-create unknown messages as unread, preserving original timestamps
       for (const unknownMsg of unknownMessages) {
-        await this.createMessageInternal(messageContext, userId, unknownMsg.text);
+        // Convert timestamp from seconds to milliseconds for created_at
+        await this.createMessageInternal(messageContext, userId, unknownMsg.text, unknownMsg.timestamp * 1000);
       }
   
       console.log(`📊 Summarized ${unreadMessages.length} unread message(s) for user ${userId}`);
