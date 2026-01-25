@@ -422,6 +422,36 @@ async function fireWeapon(
  * Start the battle scheduler (call from server startup)
  */
 let schedulerInterval: NodeJS.Timeout | null = null;
+let currentConfig: {
+  timeProvider?: () => number;
+  messageCache?: typeof sendMessageToUser;
+} | null = null;
+
+/**
+ * Initialize the battle scheduler with dependency injection
+ * Allows for testability by injecting custom dependencies
+ * @param config Optional configuration for testing
+ */
+export function initializeBattleScheduler(config?: {
+  timeProvider?: () => number;
+  messageCache?: typeof sendMessageToUser;
+  intervalMs?: number;
+}): void {
+  // Save config for testing
+  currentConfig = config || null;
+  
+  const intervalMs = config?.intervalMs || 1000;
+  startBattleScheduler(intervalMs);
+}
+
+/**
+ * Reset the battle scheduler (cleanup for tests)
+ * Stops the scheduler and clears any stored configuration
+ */
+export function resetBattleScheduler(): void {
+  stopBattleScheduler();
+  currentConfig = null;
+}
 
 export function startBattleScheduler(intervalMs: number = 1000): void {
   if (schedulerInterval) {
