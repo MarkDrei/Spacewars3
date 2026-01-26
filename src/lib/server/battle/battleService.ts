@@ -4,10 +4,10 @@
 //   - Initiate battles (initiateBattle)
 //   - Update battles (updateBattle - process combat rounds)
 //   - Resolve battles (resolveBattle - determine winner, apply consequences)
-//   - Coordinate between BattleCache, BattleEngine, and User/World caches
+//   - Coordinate between BattleCache, BattleScheduler, and User/World caches
 // Main interaction partners:
 //   - BattleCache (via BattleRepo compatibility layer)
-//   - BattleEngine (for combat mechanics)
+//   - BattleScheduler (for automated battle processing)
 //   - getUserWorldCache (for user state updates)
 //   - World cache (for ship positioning and teleportation)
 // Status: ✅ Proper orchestration layer, uses cache delegation
@@ -16,7 +16,6 @@
 // ---
 
 import { BattleRepo } from './BattleCache';
-import { BattleEngine } from './battleEngine';
 import type { Battle, BattleStats, BattleEvent, WeaponCooldowns } from './battleTypes';
 import type { User } from '../user/user';
 import { TechFactory } from '../techs/TechFactory';
@@ -331,6 +330,8 @@ export async function initiateBattle<THeld extends IronLocks>(
 
 /**
  * Update an ongoing battle (process one combat round)
+ * Note: In production, battles are processed automatically by battleScheduler.
+ * This method is primarily for testing and manual battle progression.
  */
 export async function updateBattle(context: LockContext<LocksAtMostAndHas2>, battleId: number): Promise<Battle> {
   const battle = await BattleRepo.getBattle(context, battleId);
@@ -344,34 +345,19 @@ export async function updateBattle(context: LockContext<LocksAtMostAndHas2>, bat
     throw new ApiError(400, 'Battle has already ended');
   }
 
-  // Create battle engine instance
-  const battleEngine = new BattleEngine(battle);
+  // Import processActiveBattles to avoid circular dependency
+  const { processActiveBattles } = await import('./battleScheduler');
+  
+  // Process all active battles using the production code path
+  await processActiveBattles(context);
 
-  // Process combat until next shot (max 100 turns)
-  const events = await battleEngine.processBattleUntilNextShot(context, 100);
-
-  // Save events to database
-  for (const event of events) {
-    await BattleRepo.addBattleEvent(context, battleId, event);
+  // Return updated battle state
+  const updatedBattle = await BattleRepo.getBattle(context, battleId);
+  if (!updatedBattle) {
+    throw new ApiError(404, 'Battle not found after processing');
   }
 
-  // Update weapon cooldowns
-  await BattleRepo.updateWeaponCooldowns(context, battleId, battle.attackerId, battle.attackerWeaponCooldowns);
-  await BattleRepo.updateWeaponCooldowns(context, battleId, battle.attackeeId, battle.attackeeWeaponCooldowns);
-
-  // Note: Defense values are updated directly in User objects during combat
-  // We don't need to call updateBattleDefenses here anymore
-
-  // Check if battle is over
-  if (await battleEngine.isBattleOver(context)) {
-    const outcome = await battleEngine.getBattleOutcome(context);
-    if (outcome) {
-      await resolveBattle(context, battleId, outcome.winnerId);
-    }
-  }
-
-  // Return updated battle
-  return BattleRepo.getBattle(context, battleId) as Promise<Battle>;
+  return updatedBattle;
 }
 
 /**

@@ -3,21 +3,18 @@
 // Responsibilities:
 //   - Triggers battle rounds at regular intervals
 //   - Processes weapon firing using TechFactory.calculateWeaponDamage for centralized damage calculation
-//   - Applies damage via BattleEngine.applyDamageWithLock for proper cache delegation
+//   - Applies damage directly to user defense values via cache
 //   - Sends notifications/messages to users about battle events
 //   - Calls BattleService.resolveBattle when battle ends
 // Main interaction partners:
 //   - BattleCache (via BattleRepo compatibility layer)
-//   - BattleEngine (for damage application)
 //   - BattleService (for battle resolution)
 //   - UserCache (for user state access)
 //   - MessageCache (for notifications)
 //   - TechFactory (for centralized weapon damage calculations)
-// Status: ✅ Uses TechFactory.calculateWeaponDamage + applyDamageWithLock for consistent damage calculation
 // ---
 
 import { BattleRepo } from './BattleCache';
-import { BattleEngine } from './battleEngine';
 import { resolveBattle } from './battleService';
 import type { Battle, BattleEvent } from './battleTypes';
 import { DAMAGE_CALC_DEFAULTS } from './battleTypes';
@@ -25,25 +22,138 @@ import { TechFactory, TechCounts } from '../techs/TechFactory';
 import { sendMessageToUser } from '../messages/MessageCache';
 import { getBattleCache } from './BattleCache';
 import { BATTLE_LOCK, USER_LOCK } from '../typedLocks';
-import { createLockContext, LockContext, LocksAtMostAndHas2 } from '@markdrei/ironguard-typescript-locks';
+import { createLockContext, LockContext, LocksAtMostAndHas2, LocksAtMost3, LocksAtMostAndHas4 } from '@markdrei/ironguard-typescript-locks';
 import { UserCache } from '../user/userCache';
 
-// /**
-//  * Helper to update user's battle state via TypedCacheManager
-//  * Uses proper cache delegation instead of direct DB access
-//  */
-// async function updateUserBattleState(userId: number, inBattle: boolean, battleId: number | null): Promise<void> {
-//   const userWorldCache = getUserWorldCache();
-//   const ctx = createLockContext();
-//   await ctx.useLockWithAcquire(USER_LOCK, async (userContext) => {
-//     const user = userWorldCache.getUserByIdFromCache(userContext, userId);
-//     if (user) {
-//       user.inBattle = inBattle;
-//       user.currentBattleId = battleId;
-//       userWorldCache.updateUserInCache(userContext, user);
-//     }
-//   });
-// }
+// ========================================
+// Battle Helper Functions
+// ========================================
+
+/**
+ * Check if a weapon is ready to fire (cooldown expired)
+ */
+function isWeaponReady(battle: Battle, userId: number, weaponType: string, currentTime: number): boolean {
+  const isAttacker = battle.attackerId === userId;
+  const cooldowns = isAttacker ? battle.attackerWeaponCooldowns : battle.attackeeWeaponCooldowns;
+  const nextReadyTime = cooldowns[weaponType] || 0;
+  
+  // Cooldown stores "next ready time" - weapon is ready if current time >= that
+  return currentTime >= nextReadyTime;
+}
+
+/**
+ * Get all weapons that are ready to fire for a user
+ */
+function getReadyWeapons(battle: Battle, userId: number, currentTime: number): string[] {
+  const isAttacker = battle.attackerId === userId;
+  const stats = isAttacker ? battle.attackerStartStats : battle.attackeeStartStats;
+  const readyWeapons: string[] = [];
+
+  for (const [weaponType, weaponData] of Object.entries(stats.weapons)) {
+    if (weaponData.count > 0 && isWeaponReady(battle, userId, weaponType, currentTime)) {
+      readyWeapons.push(weaponType);
+    }
+  }
+
+  return readyWeapons;
+}
+
+/**
+ * Apply pre-calculated damage values directly to user's defenses
+ * 
+ * CRITICAL: This method applies damage values already calculated by TechFactory.calculateWeaponDamage
+ * which accounts for weapon types, defense penetration, and damage distribution.
+ */
+async function applyDamageWithLock(
+  context: LockContext<LocksAtMostAndHas4>,
+  targetUserId: number,
+  shieldDamage: number,
+  armorDamage: number,
+  hullDamage: number
+): Promise<{
+  remainingShield: number;
+  remainingArmor: number;
+  remainingHull: number;
+}> {
+  const userWorldCache = UserCache.getInstance2();
+  const user = await userWorldCache.getUserByIdWithLock(context, targetUserId);
+
+  if (!user) {
+    throw new Error(`User ${targetUserId} not found during battle`);
+  }
+
+  // Apply pre-calculated damage to each defense layer
+  user.shieldCurrent = Math.max(0, user.shieldCurrent - shieldDamage);
+  user.armorCurrent = Math.max(0, user.armorCurrent - armorDamage);
+  user.hullCurrent = Math.max(0, user.hullCurrent - hullDamage);
+
+  // Update user in cache (marks as dirty for persistence)
+  userWorldCache.updateUserInCache(context, user);
+
+  return {
+    remainingShield: user.shieldCurrent,
+    remainingArmor: user.armorCurrent,
+    remainingHull: user.hullCurrent
+  };
+}
+
+/**
+ * Check if the battle is over (someone's hull reached 0)
+ * Checks actual User defense values from cache
+ */
+async function isBattleOverWithLock(context: LockContext<LocksAtMostAndHas4>, battle: Battle): Promise<boolean> {
+  const userWorldCache = UserCache.getInstance2();
+  const attacker = await userWorldCache.getUserByIdWithLock(context, battle.attackerId);
+  const attackee = await userWorldCache.getUserByIdWithLock(context, battle.attackeeId);
+
+  if (!attacker || !attackee) {
+    throw new Error('Users not found during battle');
+  }
+
+  return attacker.hullCurrent <= 0 || attackee.hullCurrent <= 0;
+}
+
+/**
+ * Check if the battle is over (wrapper that acquires USER_LOCK)
+ */
+async function isBattleOver(context: LockContext<LocksAtMost3>, battle: Battle): Promise<boolean> {
+  return await context.useLockWithAcquire(USER_LOCK, async (userContext) => {
+    return isBattleOverWithLock(userContext, battle);
+  });
+}
+
+/**
+ * Get the winner and loser IDs
+ * Checks actual User defense values from cache
+ */
+async function getBattleOutcome(context: LockContext<LocksAtMost3>, battle: Battle): Promise<{ winnerId: number; loserId: number } | null> {
+  return await context.useLockWithAcquire(USER_LOCK, async (userContext) => {
+    const isOver = await isBattleOverWithLock(userContext, battle);
+    if (!isOver) {
+      return null;
+    }
+
+    const userWorldCache = UserCache.getInstance2();
+    const attacker = await userWorldCache.getUserByIdWithLock(userContext, battle.attackerId);
+    const attackee = await userWorldCache.getUserByIdWithLock(userContext, battle.attackeeId);
+
+    if (!attacker || !attackee) {
+      throw new Error('Users not found during battle');
+    }
+
+    if (attacker.hullCurrent <= 0) {
+      return {
+        winnerId: battle.attackeeId,
+        loserId: battle.attackerId
+      };
+    } else {
+      return {
+        winnerId: battle.attackerId,
+        loserId: battle.attackeeId
+      };
+    }
+  });
+}
 
 /**
  * Helper to create a message for a user via MessageCache
@@ -92,12 +202,11 @@ async function processBattleRoundInternal(context: LockContext<LocksAtMostAndHas
     return;
   }
   
-  const battleEngine = new BattleEngine(battle);
   const currentTime = Math.floor(Date.now() / 1000);
     
     // Get all ready weapons for both players
-    const attackerReadyWeapons = battleEngine.getReadyWeapons(battle.attackerId, currentTime);
-    const attackeeReadyWeapons = battleEngine.getReadyWeapons(battle.attackeeId, currentTime);
+    const attackerReadyWeapons = getReadyWeapons(battle, battle.attackerId, currentTime);
+    const attackeeReadyWeapons = getReadyWeapons(battle, battle.attackeeId, currentTime);
     
     // Process attacker's weapons
     for (const weaponType of attackerReadyWeapons) {
@@ -128,9 +237,8 @@ async function processBattleRoundInternal(context: LockContext<LocksAtMostAndHas
     // Check if battle is over after this round
     const updatedBattle = await BattleRepo.getBattle(context, battleId);
     if (updatedBattle) {
-      const updatedEngine = new BattleEngine(updatedBattle);
-      if (await updatedEngine.isBattleOver(context)) {
-        const outcome = await updatedEngine.getBattleOutcome(context);
+      if (await isBattleOver(context, updatedBattle)) {
+        const outcome = await getBattleOutcome(context, updatedBattle);
         if (outcome) {
           // Use battleService.resolveBattle instead of local endBattle
           // This ensures proper endStats snapshotting and teleportation
@@ -233,9 +341,8 @@ async function fireWeapon(
       return;
     }
     
-    // Apply the pre-calculated damage values to each defense layer using BattleEngine
-    const battleEngine = new BattleEngine(battle);
-    const damageResult = await battleEngine.applyDamageWithLock(
+    // Apply the pre-calculated damage values to each defense layer
+    const damageResult = await applyDamageWithLock(
       userContext,
       defenderId,
       damageCalc.shieldDamage,
