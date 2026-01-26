@@ -532,7 +532,7 @@ export class MessageCache extends Cache {
     // or "P: Successfully collected {type}." (no iron)
     if (text.startsWith('P:') && text.includes('Successfully collected')) {
       // Extract object type - match only known collection types
-      const typeMatch = text.match(/Successfully collected\s+(asteroid|shipwreck|ship\s+wreck|escape\s+pod)/i);
+      const typeMatch = text.match(/Successfully collected\s+(asteroid|shipwreck|escape\s+pod)/i);
       if (!typeMatch) return false;
 
       const objectType = typeMatch[1].toLowerCase();
@@ -546,7 +546,7 @@ export class MessageCache extends Cache {
         stats.asteroids++;
         stats.asteroidsIron += ironAmount;
         return true;
-      } else if (objectType === 'shipwreck' || objectType === 'ship wreck') {
+      } else if (objectType === 'shipwreck') {
         stats.shipwrecks++;
         stats.shipwrecksIron += ironAmount;
         return true;
