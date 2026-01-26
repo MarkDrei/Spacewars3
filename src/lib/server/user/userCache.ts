@@ -390,8 +390,10 @@ export class UserCache extends Cache {
       await worldCache.flushToDatabase();
     }
 
+    // Persist dirty message data via message cache
     const messageCache = await this.getMessageCache();
     if (messageCache) {
+      console.log('💾 Flushing message data');
       await messageCache.flushToDatabase(context);
     }
 
