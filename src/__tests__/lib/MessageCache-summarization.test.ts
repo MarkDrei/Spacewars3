@@ -12,11 +12,11 @@ describe('MessageCache - Summarization', () => {
     await clearTestDatabase();
     
     MessageCache.resetInstance();
-    messageCache = MessageCache.getInstance({
+    await MessageCache.initialize({
       persistenceIntervalMs: 30000,
       enableAutoPersistence: false // Disable auto-persistence to avoid background timers
     });
-    await messageCache.initialize();
+    messageCache = MessageCache.getInstance();
   });
 
   afterEach(async () => {

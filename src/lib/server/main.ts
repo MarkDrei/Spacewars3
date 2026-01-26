@@ -38,6 +38,7 @@ export async function initializeServer() {
             console.warn('⚠️ Save world callback invoked - but no save is happening');
         });
 
+        await MessageCache.initialize();
         const messageCache = MessageCache.getInstance();
 
         WorldCache.configureDependencies({ messageCache });

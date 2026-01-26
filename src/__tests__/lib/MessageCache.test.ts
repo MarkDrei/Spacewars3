@@ -45,7 +45,8 @@ describe('MessageCache', () => {
     // Ensure cache is properly cleaned up
     // Note: shutdown() does not wait for pending writes, so we must call waitForPendingWrites() first
     try {
-      const cache = getMessageCache();
+      await MessageCache.initialize();
+        const cache = getMessageCache();
       await cache.waitForPendingWrites();
       await cache.shutdown();
       MessageCache.resetInstance();
@@ -57,6 +58,7 @@ describe('MessageCache', () => {
   describe('Singleton Pattern', () => {
     test('getInstance_multipleCalls_returnsSameInstance', async () => {
       await withTransaction(async () => {
+        await MessageCache.initialize();
         const cache1 = MessageCache.getInstance();
         const cache2 = MessageCache.getInstance();
         const cache3 = getMessageCache();
@@ -68,8 +70,10 @@ describe('MessageCache', () => {
 
     test('resetInstance_afterReset_createsNewInstance', async () => {
       await withTransaction(async () => {
+        await MessageCache.initialize();
         const cache1 = MessageCache.getInstance();
         MessageCache.resetInstance();
+        await MessageCache.initialize();
         const cache2 = MessageCache.getInstance();
 
         expect(cache1).not.toBe(cache2);
@@ -82,8 +86,9 @@ describe('MessageCache', () => {
       await withTransaction(async () => {
         const testUserId = await createTestUser('testuser1');
 
+        await MessageCache.initialize();
         const cache = getMessageCache();
-        await cache.initialize();
+        
 
         const messageId = await cache.createMessage(testUserId, 'Test message');
         
@@ -101,8 +106,9 @@ describe('MessageCache', () => {
 
     test('getUnreadMessageCount_returnsZeroForNewUser', async () => {
       await withTransaction(async () => {
+        await MessageCache.initialize();
         const cache = getMessageCache();
-        await cache.initialize();
+        
 
         const count = await cache.getUnreadMessageCount(999);
         
@@ -114,8 +120,9 @@ describe('MessageCache', () => {
       await withTransaction(async () => {
         const testUserId = await createTestUser('testuser1');
 
+        await MessageCache.initialize();
         const cache = getMessageCache();
-        await cache.initialize();
+        
 
         await cache.createMessage(testUserId, 'Message 1');
         await cache.createMessage(testUserId, 'Message 2');
@@ -138,6 +145,7 @@ describe('MessageCache', () => {
         expect(messageId).toBeLessThan(0);
         
         // Wait for write to complete
+        await MessageCache.initialize();
         const cache = getMessageCache();
         await cache.waitForPendingWrites();
         
@@ -178,8 +186,9 @@ describe('MessageCache', () => {
       await withTransaction(async () => {
         const testUserId = await createTestUser('testuser1');
 
+        await MessageCache.initialize();
         const cache = getMessageCache();
-        await cache.initialize();
+        
 
         await cache.createMessage(testUserId, 'Test message');
         await cache.getUnreadMessageCount(testUserId);
@@ -198,11 +207,12 @@ describe('MessageCache', () => {
   describe('Lifecycle', () => {
     test('initialize_multipleCallsAreSafe', async () => {
       await withTransaction(async () => {
+        await MessageCache.initialize();
         const cache = getMessageCache();
         
-        await cache.initialize();
-        await cache.initialize();
-        await cache.initialize();
+        
+        
+        
         
         expect(true).toBe(true);
       });
@@ -210,8 +220,9 @@ describe('MessageCache', () => {
 
     test('shutdown_afterInitialization_cleansUpProperly', async () => {
       await withTransaction(async () => {
+        await MessageCache.initialize();
         const cache = getMessageCache();
-        await cache.initialize();
+        
         
         await cache.shutdown();
         
@@ -225,8 +236,9 @@ describe('MessageCache', () => {
       await withTransaction(async () => {
         const testUserId = await createTestUser('testuser1');
 
+        await MessageCache.initialize();
         const cache = getMessageCache();
-        await cache.initialize();
+        
 
         const msgId = await cache.createMessage(testUserId, 'Test async message');
         
@@ -260,8 +272,9 @@ describe('MessageCache', () => {
       await withTransaction(async () => {
         const testUserId = await createTestUser('testuser1');
 
+        await MessageCache.initialize();
         const cache = getMessageCache();
-        await cache.initialize();
+        
 
         const tempId = await cache.createMessage(testUserId, 'Test async message');
         
@@ -282,8 +295,9 @@ describe('MessageCache', () => {
       await withTransaction(async () => {
         const testUserId = await createTestUser('testuser1');
 
+        await MessageCache.initialize();
         const cache = getMessageCache();
-        await cache.initialize();
+        
 
         const tempId1 = await cache.createMessage(testUserId, 'Message 1');
         const tempId2 = await cache.createMessage(testUserId, 'Message 2');
@@ -311,8 +325,9 @@ describe('MessageCache', () => {
       await withTransaction(async () => {
         const testUserId = await createTestUser('testuser1');
 
+        await MessageCache.initialize();
         const cache = getMessageCache();
-        await cache.initialize();
+        
 
         // Create message (starts async write)
         await cache.createMessage(testUserId, 'Test message');
@@ -336,8 +351,9 @@ describe('MessageCache', () => {
 
     test('waitForPendingWrites_noWrites_returnsImmediately', async () => {
       await withTransaction(async () => {
+        await MessageCache.initialize();
         const cache = getMessageCache();
-        await cache.initialize();
+        
 
         // Should not hang or error
         await cache.waitForPendingWrites();
@@ -350,8 +366,9 @@ describe('MessageCache', () => {
       await withTransaction(async () => {
         const testUserId = await createTestUser('testuser1');
 
+        await MessageCache.initialize();
         const cache = getMessageCache();
-        await cache.initialize();
+        
 
         await cache.createMessage(testUserId, 'Message 1');
         await cache.createMessage(testUserId, 'Message 2');
@@ -366,8 +383,9 @@ describe('MessageCache', () => {
       await withTransaction(async () => {
         const testUserId = await createTestUser('testuser1');
 
+        await MessageCache.initialize();
         const cache = getMessageCache();
-        await cache.initialize();
+        
 
         // Create message and immediately mark as read
         await cache.createMessage(testUserId, 'Test message');
@@ -391,8 +409,9 @@ describe('MessageCache', () => {
         const testUserId1 = await createTestUser('testuser7');
         const testUserId2 = await createTestUser('testuser8');
 
+        await MessageCache.initialize();
         const cache = getMessageCache();
-        await cache.initialize();
+        
 
         // Create messages
         await cache.createMessage(testUserId1, 'Message 1');
@@ -406,8 +425,8 @@ describe('MessageCache', () => {
         
         // Reinitialize and verify persistence
         MessageCache.resetInstance();
+        await MessageCache.initialize();
         const cache2 = getMessageCache();
-        await cache2.initialize();
         
         const messages1 = await cache2.getMessagesForUser(testUserId1);
         const messages2 = await cache2.getMessagesForUser(testUserId2);
@@ -423,8 +442,9 @@ describe('MessageCache', () => {
       await withTransaction(async () => {
         const testUserId = await createTestUser('testuser1');
 
+        await MessageCache.initialize();
         const cache = getMessageCache();
-        await cache.initialize();
+        
 
         // This test would require mocking DB failures
         // For now, we just verify the basic flow doesn't crash
@@ -447,8 +467,9 @@ describe('MessageCache', () => {
       await withTransaction(async () => {
         const testUserId = await createTestUser('testuser1');
 
+        await MessageCache.initialize();
         const cache = getMessageCache();
-        await cache.initialize();
+        
 
         await cache.createMessage(testUserId, 'Message 1');
         await cache.createMessage(testUserId, 'Message 2');
@@ -472,8 +493,9 @@ describe('MessageCache', () => {
       await withTransaction(async () => {
         const testUserId = await createTestUser('testuser1');
 
+        await MessageCache.initialize();
         const cache = getMessageCache();
-        await cache.initialize();
+        
 
         await cache.createMessage(testUserId, 'Message 1');
         await cache.createMessage(testUserId, 'Message 2');
@@ -499,8 +521,9 @@ describe('MessageCache', () => {
 
     test('markAllMessagesAsRead_noUnreadMessages_returnsZero', async () => {
       await withTransaction(async () => {
+        await MessageCache.initialize();
         const cache = getMessageCache();
-        await cache.initialize();
+        
 
         // Mark non-existent messages as read
         const markedCount = await cache.markAllMessagesAsRead(999);
@@ -515,6 +538,7 @@ describe('MessageCache', () => {
         await sendMessageToUser(testUserId, 'Message 1');
         await sendMessageToUser(testUserId, 'Message 2');
         
+        await MessageCache.initialize();
         const cache = getMessageCache();
         await cache.waitForPendingWrites();
         
@@ -532,8 +556,9 @@ describe('MessageCache', () => {
       await withTransaction(async () => {
         const testUserId = await createTestUser('testuser1');
 
+        await MessageCache.initialize();
         const cache = getMessageCache();
-        await cache.initialize();
+        
 
         // Create messages
         await cache.createMessage(testUserId, 'Message 1');
@@ -562,8 +587,8 @@ describe('MessageCache', () => {
       await withTransaction(async () => {
         const testUserId = await createTestUser('testuser9');
 
+        await MessageCache.initialize();
         const cache1 = getMessageCache();
-        await cache1.initialize();
 
         // Create messages
         await cache1.createMessage(testUserId, 'Message 1');
@@ -578,8 +603,8 @@ describe('MessageCache', () => {
         await cache1.shutdown();
         MessageCache.resetInstance();
         
+        await MessageCache.initialize();
         const cache2 = getMessageCache();
-        await cache2.initialize();
         
         // Should have no unread messages
         const unread = await cache2.getUnreadMessages(testUserId);

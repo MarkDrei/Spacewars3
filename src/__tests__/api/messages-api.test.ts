@@ -24,6 +24,7 @@ describe('Messages API Route Handler', () => {
   beforeEach(async () => {
     // Ensure previous test's cache is fully shut down
     try {
+      await MessageCache.initialize();
       const cache = getMessageCache();
       await cache.shutdown();
     } catch {
@@ -44,6 +45,7 @@ describe('Messages API Route Handler', () => {
   afterEach(async () => {
     // Ensure cache is shut down after each test
     try {
+      await MessageCache.initialize();
       const cache = getMessageCache();
       await cache.shutdown();
       MessageCache.resetInstance();
@@ -68,8 +70,9 @@ describe('Messages API Route Handler', () => {
       // Test using MessageCache (single source of truth)
       // Use test user 3 for isolation from other tests
       const userId = await getUserId('testuser3');
+      await MessageCache.initialize();
       const cache = getMessageCache();
-      await cache.initialize();
+      
       
       const messages = await cache.getUnreadMessages(userId);
       
@@ -82,8 +85,9 @@ describe('Messages API Route Handler', () => {
       // Test the MessageCache integration with database
       // Use test user 3 for isolation from other tests
       const userId = await getUserId('testuser3');
+      await MessageCache.initialize();
       const cache = getMessageCache();
-      await cache.initialize();
+      
       
       // Create a message
       await cache.createMessage(userId, 'Test message');
@@ -112,8 +116,9 @@ describe('Messages API Route Handler', () => {
 
     test('markRead_noMessages_returnsZero', async () => {
       await withTransaction(async () => {
-        const cache = getMessageCache();
-        await cache.initialize();
+        await MessageCache.initialize();
+      const cache = getMessageCache();
+        
         
         const markedCount = await cache.markAllMessagesAsRead(999);
         
@@ -125,8 +130,9 @@ describe('Messages API Route Handler', () => {
       await withTransaction(async () => {
         // Use test user 3 for isolation from other tests
         const userId = await getUserId('testuser3');
-        const cache = getMessageCache();
-        await cache.initialize();
+        await MessageCache.initialize();
+      const cache = getMessageCache();
+        
         
         // Create messages
         await cache.createMessage(userId, 'Message 1');
@@ -151,8 +157,9 @@ describe('Messages API Route Handler', () => {
       await withTransaction(async () => {
         // Use test user 3 for isolation from other tests
         const userId = await getUserId('testuser3');
-        const cache = getMessageCache();
-        await cache.initialize();
+        await MessageCache.initialize();
+      const cache = getMessageCache();
+        
         
         // Create messages
         await cache.createMessage(userId, 'Message 1');
