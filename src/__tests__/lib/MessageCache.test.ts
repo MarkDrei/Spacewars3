@@ -210,10 +210,6 @@ describe('MessageCache', () => {
         await MessageCache.initialize();
         const cache = getMessageCache();
         
-        
-        
-        
-        
         expect(true).toBe(true);
       });
     });

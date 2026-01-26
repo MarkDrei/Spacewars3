@@ -24,8 +24,7 @@ describe('Messages API Route Handler', () => {
   beforeEach(async () => {
     // Ensure previous test's cache is fully shut down
     try {
-      await MessageCache.initialize();
-      const cache = getMessageCache();
+      const cache = MessageCache.getInstance();
       await cache.shutdown();
     } catch {
       // Ignore if cache doesn't exist
@@ -45,8 +44,7 @@ describe('Messages API Route Handler', () => {
   afterEach(async () => {
     // Ensure cache is shut down after each test
     try {
-      await MessageCache.initialize();
-      const cache = getMessageCache();
+      const cache = MessageCache.getInstance();
       await cache.shutdown();
       MessageCache.resetInstance();
     } catch {
@@ -117,8 +115,7 @@ describe('Messages API Route Handler', () => {
     test('markRead_noMessages_returnsZero', async () => {
       await withTransaction(async () => {
         await MessageCache.initialize();
-      const cache = getMessageCache();
-        
+        const cache = getMessageCache();
         
         const markedCount = await cache.markAllMessagesAsRead(999);
         
@@ -131,8 +128,7 @@ describe('Messages API Route Handler', () => {
         // Use test user 3 for isolation from other tests
         const userId = await getUserId('testuser3');
         await MessageCache.initialize();
-      const cache = getMessageCache();
-        
+        const cache = getMessageCache();
         
         // Create messages
         await cache.createMessage(userId, 'Message 1');
@@ -158,8 +154,7 @@ describe('Messages API Route Handler', () => {
         // Use test user 3 for isolation from other tests
         const userId = await getUserId('testuser3');
         await MessageCache.initialize();
-      const cache = getMessageCache();
-        
+        const cache = getMessageCache();
         
         // Create messages
         await cache.createMessage(userId, 'Message 1');
