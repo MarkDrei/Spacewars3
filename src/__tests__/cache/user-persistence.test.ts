@@ -37,7 +37,7 @@ describe('User Persistence to Database', () => {
       
       userWorldCache.updateUserInCache(userCtx, user);
       // Force flush to database
-      await userWorldCache.flushAllToDatabase(userCtx);
+      await userWorldCache.flushAllToDatabaseWithLock(userCtx);
     });
     
     // Assert: Read directly from database to verify persistence

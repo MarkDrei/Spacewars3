@@ -190,7 +190,10 @@ export class WorldCache extends Cache {
     }
   }
 
-  private startBackgroundPersistence(): void {
+  /**
+   * Start background persistence timer (implements abstract method from Cache)
+   */
+  protected startBackgroundPersistence(): void {
     if (!this.shouldEnableBackgroundPersistence(this.config.enableAutoPersistence)) {
       console.log('📝 World background persistence disabled (test mode or config)');
       return;
@@ -210,19 +213,21 @@ export class WorldCache extends Cache {
     }, this.config.persistenceIntervalMs);
   }
 
-  private stopBackgroundPersistence(): void {
-    if (this.persistenceTimer) {
-      clearInterval(this.persistenceTimer);
-      this.persistenceTimer = null;
-      console.log('⏹️ World background persistence stopped');
-    }
-  }
-
+  /**
+   * Background persistence operation
+   */
   private async backgroundPersist(context: LockContext<LocksAtMostAndHas6>): Promise<void> {
     if (this.worldDirty) {
       console.log('💾 Background persisting world data...');
       await this.persistDirtyWorld(context);
     }
+  }
+
+  /**
+   * Flush all world data to database (implements abstract method from Cache)
+   */
+  protected async flushAllToDatabase(): Promise<void> {
+    await this.flushToDatabase();
   }
 
   async shutdown(): Promise<void> {

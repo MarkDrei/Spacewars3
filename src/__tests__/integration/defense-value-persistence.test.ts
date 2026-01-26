@@ -132,7 +132,7 @@ describe('Defense Value Persistence After Battle', () => {
         // === Phase 5: Verify Defense Values Persisted ===
         // Flush cache to ensure values are written to DB
         await battleContext.useLockWithAcquire(USER_LOCK, async (userContext) => {
-          await userWorldCache.flushAllToDatabase(userContext);
+          await userWorldCache.flushAllToDatabaseWithLock(userContext);
         });
 
         const loadUserDefenses = async (userId: number) => {

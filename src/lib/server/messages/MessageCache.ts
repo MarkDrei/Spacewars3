@@ -683,7 +683,10 @@ export class MessageCache extends Cache {
     }
   }
 
-  private startBackgroundPersistence(): void {
+  /**
+   * Start background persistence timer (implements abstract method from Cache)
+   */
+  protected startBackgroundPersistence(): void {
     if (!this.shouldEnableBackgroundPersistence(this.config.enableAutoPersistence)) {
       console.log('📬 Background persistence disabled (test mode or config)');
       return;
@@ -706,12 +709,14 @@ export class MessageCache extends Cache {
     }, this.config.persistenceIntervalMs);
   }
 
-  private stopBackgroundPersistence(): void {
-    if (this.persistenceTimer) {
-      clearInterval(this.persistenceTimer);
-      this.persistenceTimer = null;
-      console.log('📬 Background persistence stopped');
-    }
+  /**
+   * Flush all dirty messages to database (implements abstract method from Cache)
+   * Acquires MESSAGE_LOCK internally
+   */
+  protected async flushAllToDatabase(context: LockContext<LocksAtMostAndHas4>): Promise<void> {
+    await context.useLockWithAcquire(MESSAGE_LOCK, async (messageContext) => {
+      await this.flushToDatabaseWithLock(messageContext);
+    });
   }
 }
 
