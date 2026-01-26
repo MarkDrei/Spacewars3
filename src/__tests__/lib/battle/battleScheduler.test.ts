@@ -5,14 +5,16 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
-  startBattleScheduler,
+  initializeBattleScheduler,
+  resetBattleScheduler,
   stopBattleScheduler,
   processActiveBattles
 } from '../../../lib/server/battle/battleScheduler';
 import {
   realTimeProvider,
   setupBattleScheduler,
-  cancelBattleScheduler
+  cancelBattleScheduler,
+  type BattleSchedulerConfig
 } from '../../../lib/server/battle/battleSchedulerUtils';
 import { getBattleCache } from '../../../lib/server/battle/BattleCache';
 import { UserCache } from '../../../lib/server/user/userCache';
@@ -20,6 +22,7 @@ import type { BattleStats, WeaponCooldowns } from '../../../lib/server/battle/ba
 import { BATTLE_LOCK, USER_LOCK } from '../../../lib/server/typedLocks';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 import { initializeIntegrationTestServer, shutdownIntegrationTestServer } from '../../helpers/testServer';
+import { MessageCache } from '../../../lib/server/messages/MessageCache';
 
 describe('BattleSchedulerUtils', () => {
   describe('realTimeProvider', () => {
@@ -69,32 +72,75 @@ describe('BattleSchedulerUtils', () => {
 });
 
 describe('BattleScheduler', () => {
-  describe('startBattleScheduler', () => {
+  describe('initializeBattleScheduler', () => {
     afterEach(() => {
-      stopBattleScheduler();
+      resetBattleScheduler();
     });
 
-    it('startBattleScheduler_calledOnce_startsScheduler', () => {
-      // Should not throw when starting
-      expect(() => startBattleScheduler()).not.toThrow();
+    it('initializeBattleScheduler_withMinimalConfig_startsScheduler', () => {
+      const messageCache = MessageCache.getInstance();
+      const config: BattleSchedulerConfig = {
+        timeProvider: realTimeProvider,
+        messageCache
+      };
+      
+      // Should not throw when starting with minimal config
+      expect(() => initializeBattleScheduler(config)).not.toThrow();
     });
 
-    it('startBattleScheduler_calledTwice_doesNotStartSecondScheduler', () => {
+    it('initializeBattleScheduler_calledTwice_stopsAndRestartsScheduler', () => {
+      const messageCache = MessageCache.getInstance();
+      const config: BattleSchedulerConfig = {
+        timeProvider: realTimeProvider,
+        messageCache
+      };
+      
       // First call starts the scheduler
-      startBattleScheduler();
-      // Second call should be a no-op (logs "already running")
-      expect(() => startBattleScheduler()).not.toThrow();
+      initializeBattleScheduler(config);
+      // Second call should stop and restart (logs "already running")
+      expect(() => initializeBattleScheduler(config)).not.toThrow();
     });
 
-    it('startBattleScheduler_withCustomInterval_usesCustomInterval', () => {
+    it('initializeBattleScheduler_withCustomInterval_usesCustomInterval', () => {
+      const messageCache = MessageCache.getInstance();
+      const config: BattleSchedulerConfig = {
+        timeProvider: realTimeProvider,
+        messageCache,
+        schedulerIntervalMs: 2000
+      };
+      
       // Should accept custom interval
-      expect(() => startBattleScheduler(2000)).not.toThrow();
+      expect(() => initializeBattleScheduler(config)).not.toThrow();
+    });
+  });
+
+  describe('resetBattleScheduler', () => {
+    it('resetBattleScheduler_afterInit_cleansUpResources', () => {
+      const messageCache = MessageCache.getInstance();
+      const config: BattleSchedulerConfig = {
+        timeProvider: realTimeProvider,
+        messageCache
+      };
+      
+      initializeBattleScheduler(config);
+      expect(() => resetBattleScheduler()).not.toThrow();
+    });
+
+    it('resetBattleScheduler_withoutInit_doesNotThrow', () => {
+      // Should not throw even if never initialized
+      expect(() => resetBattleScheduler()).not.toThrow();
     });
   });
 
   describe('stopBattleScheduler', () => {
-    it('stopBattleScheduler_afterStart_stopsScheduler', () => {
-      startBattleScheduler();
+    it('stopBattleScheduler_afterInit_stopsScheduler', () => {
+      const messageCache = MessageCache.getInstance();
+      const config: BattleSchedulerConfig = {
+        timeProvider: realTimeProvider,
+        messageCache
+      };
+      
+      initializeBattleScheduler(config);
       expect(() => stopBattleScheduler()).not.toThrow();
     });
 
@@ -110,13 +156,13 @@ describe('BattleScheduler Integration', () => {
 
   beforeEach(async () => {
     // Reset before initializing to clear any previous state
-    stopBattleScheduler();
+    resetBattleScheduler();
     await initializeIntegrationTestServer();
     emptyCtx = createLockContext();
   });
 
   afterEach(async () => {
-    stopBattleScheduler();
+    resetBattleScheduler();
     await shutdownIntegrationTestServer();
   });
 
