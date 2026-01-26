@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getIronSession } from 'iron-session';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth } from '@/lib/server/errors';
-import { getBattleCacheInitialized } from '@/lib/server/battle/BattleCache';
+import { BattleCache } from '@/lib/server/battle/BattleCache';
 import { getDatabase } from '@/lib/server/database';
 import { Battle } from '@/lib/server/battle/battleTypes';
 
@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
     requireAuth(session.userId);
     
     // Fetch all battles for this user
-    const cache = await getBattleCacheInitialized();
+    const cache = BattleCache.getInstance();
     const battles = await cache.getBattlesForUser(session.userId!);
     
     // Filter only completed battles and transform data

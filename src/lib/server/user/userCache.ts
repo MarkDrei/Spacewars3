@@ -160,8 +160,8 @@ export class UserCache extends Cache {
     }
 
     try {
-      const { getMessageCache } = await import('../messages/MessageCache');
-      return getMessageCache();
+      const { MessageCache } = await import('../messages/MessageCache');
+      return MessageCache.getInstance();
     } catch {
       return null;
     }

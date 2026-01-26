@@ -37,7 +37,7 @@ export class WorldCache extends Cache {
   private db: DatabaseConnection | null = null;
   private world: World | null = null;
   private worldDirty = false;
-  private persistenceTimer: NodeJS.Timeout | null = null;
+  protected persistenceTimer: NodeJS.Timeout | null = null;
   private isInitialized = false;
 
   private stats = {

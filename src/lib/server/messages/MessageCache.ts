@@ -8,6 +8,7 @@ import {
   LOCK_12,
   LockContext,
   LocksAtMost7,
+  LocksAtMostAndHas4,
   LocksAtMostAndHas8,
 } from '@markdrei/ironguard-typescript-locks';
 import { getDatabase } from '../database';
@@ -107,7 +108,7 @@ export class MessageCache extends Cache {
   // Database connection and repo
   private db: Awaited<ReturnType<typeof getDatabase>> | null = null;
   private messagesRepo: MessagesRepo | null = null;
-  private persistenceTimer: NodeJS.Timeout | null = null;
+  protected persistenceTimer: NodeJS.Timeout | null = null;
 
   // In-memory cache storage
   private userMessages: Map<number, Message[]> = new Map(); // userId -> messages

@@ -17,7 +17,7 @@
 import type { DatabaseConnection } from '../database';
 import type { Battle, BattleStats, BattleEvent, WeaponCooldowns } from './battleTypes';
 import * as battleRepo from './battleRepo';
-import { createLockContext, HasLock2Context, IronLocks, LockContext, LocksAtMost4, LocksAtMostAndHas2 } from '@markdrei/ironguard-typescript-locks';
+import { createLockContext, HasLock2Context, IronLocks, LockContext, LocksAtMost4, LocksAtMostAndHas2, LocksAtMostAndHas4 } from '@markdrei/ironguard-typescript-locks';
 import { BATTLE_LOCK, DATABASE_LOCK_BATTLES, USER_LOCK } from '../typedLocks';
 import { startBattleScheduler } from './battleScheduler';
 import { UserCache } from '../user/userCache';
@@ -768,6 +768,15 @@ export class BattleCache extends Cache {
         }
       }
     }));
+  }
+
+  /**
+   * Flush all dirty battles to database (implements abstract method from Cache)
+   */
+  protected async flushAllToDatabase(context: LockContext<LocksAtMostAndHas4>): Promise<void> {
+    // Just flush directly - caller handles locks
+    // Convert LocksAtMostAndHas4 context to LocksAtMost4 for persistDirtyBattlesInternal
+    await this.persistDirtyBattlesInternal(context as unknown as LockContext<LocksAtMost4>);
   }
 }
 

@@ -472,10 +472,8 @@ describe('Phase 5: BattleCache Integration Testing', () => {
       await emptyCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
         userWorldCache = UserCache.getInstance2();
         
-        // Initialize BattleCache manually for tests
+        // Get BattleCache instance (already initialized by test server)
         battleCache = getBattleCache();
-        const db = await userWorldCache.getDatabaseConnection(userCtx);
-        await battleCache.initialize(db);
       });
     });
 
