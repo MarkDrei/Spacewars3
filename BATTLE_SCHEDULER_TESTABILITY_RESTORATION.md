@@ -276,8 +276,12 @@ All integration tests:
 
 1. **TypeScript Compilation**: ✅ No errors (`npx tsc --noEmit`)
 2. **Linting**: ✅ Only warnings, no errors (`npm run lint`)
-3. **Code Review**: Pending
-4. **Full Test Suite**: Pending
+3. **Code Review**: ✅ Addressed all feedback:
+   - Added constants for magic numbers (SECONDS_TO_MILLISECONDS, MAX_TELEPORT_ATTEMPTS)
+   - Added TODO for future WorldCache integration
+   - Fixed Date.now() to use getCurrentTime() for consistency
+4. **Security Check**: ✅ No vulnerabilities found (CodeQL)
+5. **Full Test Suite**: Pending (requires DB connection for integration tests)
 
 ## Known Issues
 
@@ -296,10 +300,35 @@ None identified during implementation.
 - **Phase 2**: Battle Damage (BATTLE_DAMAGE_RESTORATION.md)
 - **Phase 3**: This document (Battle Scheduler Testability)
 
+## Code Quality Improvements
+
+Based on code review feedback, the following improvements were made:
+
+1. **Magic Number Elimination**:
+   - Added `SECONDS_TO_MILLISECONDS` constant (1000) for time unit conversion
+   - Added `MAX_TELEPORT_ATTEMPTS` constant (100) for teleport position generation
+
+2. **Time Provider Consistency**:
+   - Changed `Date.now()` to `getCurrentTime() * SECONDS_TO_MILLISECONDS` in teleportShip
+   - Ensures all time operations use the injectable TimeProvider for testability
+
+3. **Future Refactoring Notes**:
+   - Added TODO in `getWorldSize()` to refactor for getting actual size from WorldCache
+   - Currently hardcoded to 500x500 to avoid lock context complexity
+
 ## Technical Debt
 
+**World Size Hardcoding (Low Priority)**:
+- `getWorldSize()` currently returns hardcoded 500x500
+- Should be refactored to read from WorldCache
+- Requires passing lock context through call chain
+- Documented with TODO for future enhancement
+- Not critical as world size is consistent across codebase
+
+**Previous Technical Debt Resolved**:
 None added. The changes actually improve code quality by:
 - Making the scheduler more testable
 - Fixing incorrect world size and distance calculations
 - Centralizing battle resolution logic
 - Adding proper dependency injection
+- Eliminating magic numbers
