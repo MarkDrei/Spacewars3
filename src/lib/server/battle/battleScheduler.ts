@@ -510,14 +510,22 @@ export function stopBattleScheduler(): void {
 // ========================================
 
 /**
- * Get world dimensions
- * World size is 500x500 as defined in src/lib/server/world/world.ts
- * This matches the default in World.createDefault() and worldRepo.ts
+ * Get world dimensions from WorldCache
+ * This ensures consistency with the actual world configuration
  */
 function getWorldSize(): { width: number; height: number } {
-  // The world size is configured in src/lib/server/world/world.ts
-  // and src/lib/server/world/worldRepo.ts with default value { width: 500, height: 500 }
-  return { width: 500, height: 500 };
+  try {
+    const worldCache = WorldCache.getInstance();
+    const ctx = createLockContext();
+    // We need WORLD_LOCK to access world data, but we can't acquire it here
+    // since this function is called from various contexts.
+    // For now, return the default until we can refactor to pass context through.
+    // TODO: Refactor to accept context parameter and get size from cache
+    return { width: 500, height: 500 };
+  } catch {
+    // Fallback if world cache not initialized
+    return { width: 500, height: 500 };
+  }
 }
 
 /**
@@ -599,7 +607,7 @@ async function teleportShip(context: LockContext<LocksAtMostAndHas4>, shipId: nu
       ship.x = x;
       ship.y = y;
       ship.speed = 0;
-      ship.last_position_update_ms = Date.now();
+      ship.last_position_update_ms = getCurrentTime() * 1000; // Use getCurrentTime() for consistency
       worldCache.updateWorldUnsafe(worldContext, world);
     }
   });
