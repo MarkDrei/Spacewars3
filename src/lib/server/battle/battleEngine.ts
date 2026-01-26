@@ -11,6 +11,7 @@
 // ---
 
 import type { Battle, BattleStats, BattleEvent } from './battleTypes';
+import { DAMAGE_CALC_DEFAULTS } from './battleTypes';
 import { TechFactory } from '../techs/TechFactory';
 import { LockContext } from '@markdrei/ironguard-typescript-locks';
 import { LocksAtMost3, LocksAtMostAndHas2, LocksAtMostAndHas4 } from '@markdrei/ironguard-typescript-locks/dist/core/ironGuardTypes';
@@ -391,11 +392,11 @@ export class BattleEngine {
         attackerUser.techCounts as TechCounts,
         targetUser.shieldCurrent,
         targetUser.armorCurrent,
-        0, // positiveAccuracyModifier - hardcoded for now
-        0, // negativeAccuracyModifier - hardcoded for now
-        1.0, // baseDamageModifier - hardcoded for now
-        0, // ecmEffectiveness - hardcoded for now
-        1.0 // spreadValue - hardcoded for now
+        DAMAGE_CALC_DEFAULTS.POSITIVE_ACCURACY_MODIFIER,
+        DAMAGE_CALC_DEFAULTS.NEGATIVE_ACCURACY_MODIFIER,
+        DAMAGE_CALC_DEFAULTS.BASE_DAMAGE_MODIFIER,
+        DAMAGE_CALC_DEFAULTS.ECM_EFFECTIVENESS,
+        DAMAGE_CALC_DEFAULTS.SPREAD_VALUE
       );
 
       // Apply the pre-calculated damage values to each defense layer
