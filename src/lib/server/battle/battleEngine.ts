@@ -167,8 +167,8 @@ export class BattleEngine {
   }
 
   /**
-   * Apply damage to a target's defenses (shield → armor → hull)
-   * Returns the amount of damage actually dealt to each layer and remaining defense values
+   * Apply pre-calculated damage to a target's defenses (shield, armor, hull)
+   * Accepts separate damage values for each defense layer from TechFactory.calculateWeaponDamage
    * 
    * CRITICAL: This method reads and updates User defense values from userWorldCache
    * startStats and endStats are NOT modified here - they are write-once snapshots
@@ -176,7 +176,9 @@ export class BattleEngine {
   async applyDamageWithLock(
     context: LockContext<LocksAtMostAndHas4>,
     targetUserId: number,
-    totalDamage: number
+    shieldDamage: number,
+    armorDamage: number,
+    hullDamage: number
   ): Promise<{
     shieldDamage: number;
     armorDamage: number;
@@ -192,31 +194,10 @@ export class BattleEngine {
       throw new Error(`User ${targetUserId} not found during battle`);
     }
 
-    let remainingDamage = totalDamage;
-    let shieldDamage = 0;
-    let armorDamage = 0;
-    let hullDamage = 0;
-
-    // 1. Apply to shield first
-    if (user.shieldCurrent > 0 && remainingDamage > 0) {
-      shieldDamage = Math.min(remainingDamage, user.shieldCurrent);
-      user.shieldCurrent -= shieldDamage;
-      remainingDamage -= shieldDamage;
-    }
-
-    // 2. Apply to armor second
-    if (user.armorCurrent > 0 && remainingDamage > 0) {
-      armorDamage = Math.min(remainingDamage, user.armorCurrent);
-      user.armorCurrent -= armorDamage;
-      remainingDamage -= armorDamage;
-    }
-
-    // 3. Apply to hull last
-    if (user.hullCurrent > 0 && remainingDamage > 0) {
-      hullDamage = Math.min(remainingDamage, user.hullCurrent);
-      user.hullCurrent -= hullDamage;
-      remainingDamage -= hullDamage;
-    }
+    // Apply pre-calculated damage to each defense layer
+    user.shieldCurrent = Math.max(0, user.shieldCurrent - shieldDamage);
+    user.armorCurrent = Math.max(0, user.armorCurrent - armorDamage);
+    user.hullCurrent = Math.max(0, user.hullCurrent - hullDamage);
 
     // Update user in cache (marks as dirty for persistence)
     userWorldCache.updateUserInCache(context, user);
@@ -232,7 +213,13 @@ export class BattleEngine {
   }
 
   /**
-   * Apply damage to a target's defenses
+   * Apply damage to a target's defenses (legacy method - no longer used)
+   * Uses simple waterfall logic: shield → armor → hull
+   * 
+   * NOTE: This method is deprecated. Both battleEngine.executeTurn and 
+   * battleScheduler.fireWeapon now use TechFactory.calculateWeaponDamage + applyDamageWithLock.
+   * This method is kept for backward compatibility with any external code that may depend on it.
+   * @deprecated Use TechFactory.calculateWeaponDamage + applyDamageWithLock directly.
    */
   async applyDamage(
     context: LockContext<LocksAtMost3>,
@@ -247,7 +234,47 @@ export class BattleEngine {
     remainingHull: number;
   }> {
     return await context.useLockWithAcquire(USER_LOCK, async (userContext) => {
-      return this.applyDamageWithLock(userContext, targetUserId, totalDamage);
+      const userWorldCache = UserCache.getInstance2();
+      const user = await userWorldCache.getUserByIdWithLock(userContext, targetUserId);
+
+      if (!user) {
+        throw new Error(`User ${targetUserId} not found during battle`);
+      }
+
+      let remainingDamage = totalDamage;
+      let shieldDamage = 0;
+      let armorDamage = 0;
+      let hullDamage = 0;
+
+      // 1. Apply to shield first
+      if (user.shieldCurrent > 0 && remainingDamage > 0) {
+        shieldDamage = Math.min(remainingDamage, user.shieldCurrent);
+        remainingDamage -= shieldDamage;
+      }
+
+      // 2. Apply to armor second
+      if (user.armorCurrent > 0 && remainingDamage > 0) {
+        armorDamage = Math.min(remainingDamage, user.armorCurrent);
+        remainingDamage -= armorDamage;
+      }
+
+      // 3. Apply to hull last
+      if (user.hullCurrent > 0 && remainingDamage > 0) {
+        hullDamage = Math.min(remainingDamage, user.hullCurrent);
+        remainingDamage -= hullDamage;
+      }
+
+      // Apply the calculated damage
+      const result = await this.applyDamageWithLock(userContext, targetUserId, shieldDamage, armorDamage, hullDamage);
+
+      return {
+        shieldDamage,
+        armorDamage,
+        hullDamage,
+        remainingShield: result.remainingShield,
+        remainingArmor: result.remainingArmor,
+        remainingHull: result.remainingHull
+      };
     });
   }
 
@@ -326,6 +353,7 @@ export class BattleEngine {
   /**
    * Execute a single combat turn (one weapon fires)
    * Returns the event generated from this turn
+   * Uses TechFactory.calculateWeaponDamage for centralized damage calculation
    */
   async executeTurn(context: LockContext<LocksAtMostAndHas2>, currentTime: number): Promise<BattleEvent | null> {
     // Find next weapon ready to fire
@@ -348,9 +376,39 @@ export class BattleEngine {
     }
 
     return await context.useLockWithAcquire(USER_LOCK, async (userContext) => {
-      // Calculate and apply damage
-      const totalDamage = this.calculateDamage(weaponType, weaponData.count);
-      const damageResult = await this.applyDamageWithLock(userContext, targetUserId, totalDamage);
+      // Get attacker and target users for TechFactory calculation
+      const userWorldCache = UserCache.getInstance2();
+      const attackerUser = await userWorldCache.getUserByIdWithLock(userContext, userId);
+      const targetUser = await userWorldCache.getUserByIdWithLock(userContext, targetUserId);
+
+      if (!attackerUser || !targetUser) {
+        throw new Error(`Users not found during battle: attacker=${userId}, target=${targetUserId}`);
+      }
+
+      // Calculate damage using TechFactory with actual defense values and tech counts
+      const damageCalc = TechFactory.calculateWeaponDamage(
+        weaponType,
+        attackerUser.techCounts as TechCounts,
+        targetUser.shieldCurrent,
+        targetUser.armorCurrent,
+        0, // positiveAccuracyModifier - hardcoded for now
+        0, // negativeAccuracyModifier - hardcoded for now
+        1.0, // baseDamageModifier - hardcoded for now
+        0, // ecmEffectiveness - hardcoded for now
+        1.0 // spreadValue - hardcoded for now
+      );
+
+      // Apply the pre-calculated damage values to each defense layer
+      const damageResult = await this.applyDamageWithLock(
+        userContext,
+        targetUserId,
+        damageCalc.shieldDamage,
+        damageCalc.armorDamage,
+        damageCalc.hullDamage
+      );
+
+      // Calculate total damage dealt
+      const totalDamage = damageCalc.shieldDamage + damageCalc.armorDamage + damageCalc.hullDamage;
 
       // Track total damage dealt by attacker/attackee
       if (isAttacker) {
@@ -389,8 +447,7 @@ export class BattleEngine {
       this.battle.battleLog.push(event);
 
       // Check for defense layer destruction by reading current user values
-      const userWorldCache = UserCache.getInstance2();
-      const targetUser = await userWorldCache.getUserByIdWithLock(userContext, targetUserId);
+      const updatedTargetUser = await userWorldCache.getUserByIdWithLock(userContext, targetUserId);
 
       if (targetUser) {
         if (damageResult.shieldDamage > 0 && targetUser.shieldCurrent === 0) {
