@@ -721,9 +721,13 @@ export class MessageCache extends Cache {
   }
 }
 
-// Convenience function to get singleton instance
-export function getMessageCache(): MessageCache {
-  return MessageCache.getInstance();
+// Convenience function to get singleton instance (returns null if not initialized)
+export function getMessageCache(): MessageCache | null {
+  try {
+    return MessageCache.getInstance();
+  } catch {
+    return null;
+  }
 }
 
 // Re-export types from MessagesRepo for convenience

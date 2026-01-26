@@ -53,8 +53,8 @@ afterEach(async () => {
   // This prevents foreign key violations when tests delete users
   // while MessageCache is still asynchronously persisting messages
   try {
-    const { MessageCache } = await import('@/lib/server/messages/MessageCache');
-    const messageCache = MessageCache.getInstance();
+    const { getMessageCache } = await import('@/lib/server/messages/MessageCache');
+    const messageCache = getMessageCache();
     if (messageCache) {
       await messageCache.waitForPendingWrites();
     }

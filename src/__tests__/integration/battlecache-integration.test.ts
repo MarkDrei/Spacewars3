@@ -25,7 +25,7 @@ describe('Phase 5: BattleCache Integration Testing', () => {
 
   describe('Core BattleCache Functionality', () => {
 
-    let battleCache: BattleCache;
+    let battleCache: BattleCache | null;
     let emptyCtx: ReturnType<typeof createLockContext>;
 
     beforeEach(async () => {
@@ -463,7 +463,7 @@ describe('Phase 5: BattleCache Integration Testing', () => {
 
   describe('Cache Statistics', () => {
     
-    let battleCache: BattleCache;
+    let battleCache: BattleCache | null;
     let userWorldCache: UserCache;
     let emptyCtx: ReturnType<typeof createLockContext>;
 

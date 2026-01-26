@@ -15,7 +15,7 @@ import { withTransaction } from '../helpers/transactionHelper';
 
 describe('Phase 5: End-to-End Battle Flow with BattleCache', () => {
 
-  let battleCache: BattleCache;
+  let battleCache: BattleCache | null;
   let userCache: UserCache;
   let emptyCtx: ReturnType<typeof createLockContext>;
   

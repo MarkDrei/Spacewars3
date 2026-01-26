@@ -14,7 +14,7 @@ import { initializeIntegrationTestServer, shutdownIntegrationTestServer } from '
 import { withTransaction } from '../helpers/transactionHelper';
 
 describe('Phase 5: BattleCache Integration Testing', () => {
-  let battleCache: BattleCache;
+  let battleCache: BattleCache | null;
   let emptyCtx: ReturnType<typeof createLockContext>;
 
   beforeEach(async () => {
