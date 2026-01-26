@@ -209,5 +209,113 @@ describe('MessageCache - Summarization', () => {
       expect(unknownMessages.length).toBe(3);
       });
     });
+
+    it('messageSummarization_collectionMessages_correctSummary', async () => {
+      await withTransaction(async () => {
+        const userId = await createTestUser('sumtest6');
+
+        // Create collection messages
+        await messageCache.createMessage(userId, 'P: Successfully collected asteroid and received **150** iron.');
+        await messageCache.createMessage(userId, 'P: Successfully collected asteroid and received **200** iron.');
+        await messageCache.createMessage(userId, 'P: Successfully collected shipwreck and received **500** iron.');
+        await messageCache.createMessage(userId, 'P: Successfully collected escape pod and received **1000** iron.');
+
+        // Wait for async message creation to complete
+        await messageCache.waitForPendingWrites();
+
+        // Get messages before summarization
+        const messagesBefore = await messageCache.getMessagesForUser(userId);
+        expect(messagesBefore.length).toBe(4);
+
+        // Summarize
+        const summary = await messageCache.summarizeMessages(userId);
+
+        console.log('Summary:', summary);
+
+        // Verify summary content
+        expect(summary).toContain('Message Summary');
+        expect(summary).toContain('Collections:');
+        expect(summary).toContain('Asteroids: 2 (350 iron)');
+        expect(summary).toContain('Shipwrecks: 1 (500 iron)');
+        expect(summary).toContain('Escape Pods: 1 (1000 iron)');
+
+        // Wait for summary message to be persisted
+        await messageCache.waitForPendingWrites();
+
+        // Verify messages after summarization
+        const messagesAfter = await messageCache.getMessagesForUser(userId);
+        
+        // Should have exactly 1 message (the summary)
+        expect(messagesAfter.length).toBe(1);
+        expect(messagesAfter[0].message).toBe(summary);
+        expect(messagesAfter[0].is_read).toBe(false);
+      });
+    });
+
+    it('messageSummarization_mixedBattleAndCollection_separateSummaries', async () => {
+      await withTransaction(async () => {
+        const userId = await createTestUser('sumtest7');
+
+        // Create mixed messages
+        await messageCache.createMessage(userId, 'P: ⚔️ Your **pulse laser** fired 5 shot(s), **3 hit** for **24 damage**! Enemy: Hull: 262, Armor: 0, Shield: 0');
+        await messageCache.createMessage(userId, 'P: Successfully collected asteroid and received **150** iron.');
+        await messageCache.createMessage(userId, 'N: 🛡️ Enemy **pulse laser** fired 1 shot(s), **1 hit** you for **8 damage**! Your defenses: Hull: 600, Armor: 600, Shield: 288');
+        await messageCache.createMessage(userId, 'P: Successfully collected shipwreck and received **500** iron.');
+        await messageCache.createMessage(userId, 'P: 🎉 **Victory!** You won the battle!');
+
+        // Wait for async message creation to complete
+        await messageCache.waitForPendingWrites();
+
+        // Summarize
+        const summary = await messageCache.summarizeMessages(userId);
+
+        console.log('Summary:', summary);
+
+        // Verify summary contains both battle and collection info
+        expect(summary).toContain('Message Summary');
+        expect(summary).toContain('Battles:');
+        expect(summary).toContain('1 victory(ies)');
+        expect(summary).toContain('Damage:');
+        expect(summary).toContain('Dealt 24');
+        expect(summary).toContain('Received 8');
+        expect(summary).toContain('Collections:');
+        expect(summary).toContain('Asteroids: 1 (150 iron)');
+        expect(summary).toContain('Shipwrecks: 1 (500 iron)');
+
+        // Wait for summary message to be persisted
+        await messageCache.waitForPendingWrites();
+
+        // Verify messages after summarization
+        const messagesAfter = await messageCache.getMessagesForUser(userId);
+        
+        // Should have exactly 1 message (the summary)
+        expect(messagesAfter.length).toBe(1);
+        expect(messagesAfter[0].message).toBe(summary);
+        expect(messagesAfter[0].is_read).toBe(false);
+      });
+    });
+
+    it('messageSummarization_collectionWithoutIron_countsCorrectly', async () => {
+      await withTransaction(async () => {
+        const userId = await createTestUser('sumtest8');
+
+        // Create collection messages without iron
+        await messageCache.createMessage(userId, 'P: Successfully collected escape pod.');
+        await messageCache.createMessage(userId, 'P: Successfully collected asteroid and received **100** iron.');
+
+        // Wait for async message creation to complete
+        await messageCache.waitForPendingWrites();
+
+        // Summarize
+        const summary = await messageCache.summarizeMessages(userId);
+
+        console.log('Summary:', summary);
+
+        // Verify summary content
+        expect(summary).toContain('Collections:');
+        expect(summary).toContain('Asteroids: 1 (100 iron)');
+        expect(summary).toContain('Escape Pods: 1 (0 iron)');
+      });
+    });
   });
 });

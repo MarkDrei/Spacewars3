@@ -27,6 +27,26 @@ interface MessageCacheStats {
   dirtyUsers: number;
 }
 
+interface BattleStats {
+  damageDealt: number;
+  damageReceived: number;
+  victories: number;
+  defeats: number;
+  shotsHit: number;
+  shotsMissed: number;
+  enemyShotsHit: number;
+  enemyShotsMissed: number;
+}
+
+interface CollectionStats {
+  asteroids: number;
+  asteroidsIron: number;
+  shipwrecks: number;
+  shipwrecksIron: number;
+  escapePods: number;
+  escapePodsIron: number;
+}
+
 /**
  * MessageCache - Manages in-memory cache of user messages
  * - Independent from other cache systems
@@ -328,7 +348,7 @@ export class MessageCache extends Cache {
   /**
    * Summarize messages for a user
    * - Marks all UNREAD messages as read
-   * - Parses and summarizes known message types (battle damage, victories, defeats)
+   * - Parses and summarizes known message types (battle damage, victories, defeats, collections)
    * - Preserves unknown messages as new unread messages
    * Returns the summary message
    * 
@@ -352,7 +372,7 @@ export class MessageCache extends Cache {
       }
   
       // Track statistics
-      const stats = {
+      const battleStats: BattleStats = {
         damageDealt: 0,
         damageReceived: 0,
         victories: 0,
@@ -360,73 +380,35 @@ export class MessageCache extends Cache {
         shotsHit: 0,
         shotsMissed: 0,
         enemyShotsHit: 0,
-        enemyShotsMissed: 0,
-        unknownMessages: [] as string[]
+        enemyShotsMissed: 0
       };
+
+      const collectionStats: CollectionStats = {
+        asteroids: 0,
+        asteroidsIron: 0,
+        shipwrecks: 0,
+        shipwrecksIron: 0,
+        escapePods: 0,
+        escapePodsIron: 0
+      };
+
+      const unknownMessages: string[] = [];
   
       // Process only unread messages
       for (const msg of unreadMessages) {
         const text = msg.message;
         
-        // Parse battle damage dealt (P: prefix, with "hit for X damage")
-        if (text.startsWith('P:') && text.includes('hit') && text.includes('for') && text.includes('damage')) {
-          const damageMatch = text.match(/\*\*(\d+)\s+hit\*\*\s+for\s+\*\*(\d+)\s+damage/);
-          if (damageMatch) {
-            const hits = parseInt(damageMatch[1]);
-            const damage = parseInt(damageMatch[2]);
-            stats.damageDealt += damage;
-            stats.shotsHit += hits;
-            
-            // Count missed shots from this salvo
-            const shotsMatch = text.match(/fired\s+(\d+)\s+shot\(s\)/);
-            if (shotsMatch) {
-              const totalShots = parseInt(shotsMatch[1]);
-              stats.shotsMissed += (totalShots - hits);
-            }
-          }
+        // Try to parse as battle message
+        if (this.parseBattleMessage(text, battleStats)) {
+          // Successfully parsed as battle message
         }
-        // Parse battle damage received (N: prefix, with "hit you for X damage")
-        else if (text.startsWith('N:') && text.includes('hit') && text.includes('you for') && text.includes('damage')) {
-          const damageMatch = text.match(/\*\*(\d+)\s+hit\*\*\s+you\s+for\s+\*\*(\d+)\s+damage\*\*/);
-          if (damageMatch) {
-            const hits = parseInt(damageMatch[1]);
-            const damage = parseInt(damageMatch[2]);
-            stats.damageReceived += damage;
-            stats.enemyShotsHit += hits;
-            
-            // Count missed shots from this salvo
-            const shotsMatch = text.match(/fired\s+(\d+)\s+shot\(s\)/);
-            if (shotsMatch) {
-              const totalShots = parseInt(shotsMatch[1]);
-              stats.enemyShotsMissed += (totalShots - hits);
-            }
-          }
-        }
-        // Parse missed shots (Your weapon)
-        else if (text.includes('Your') && text.includes('but all missed!')) {
-          const shotsMatch = text.match(/(\d+)\s+shot\(s\)/);
-          if (shotsMatch) {
-            stats.shotsMissed += parseInt(shotsMatch[1]);
-          }
-        }
-        // Parse missed shots (Enemy weapon with A: prefix)
-        else if (text.startsWith('A:') && text.includes('but all missed!')) {
-          const shotsMatch = text.match(/(\d+)\s+shot\(s\)/);
-          if (shotsMatch) {
-            stats.enemyShotsMissed += parseInt(shotsMatch[1]);
-          }
-        }
-        // Parse victory
-        else if (text.includes('Victory!') || text.startsWith('P:') && text.includes('won the battle')) {
-          stats.victories++;
-        }
-        // Parse defeat
-        else if (text.includes('Defeat!') || text.startsWith('A:') && text.includes('lost the battle')) {
-          stats.defeats++;
+        // Try to parse as collection message
+        else if (this.parseCollectionMessage(text, collectionStats)) {
+          // Successfully parsed as collection message
         }
         // Unknown message - preserve it
         else {
-          stats.unknownMessages.push(text);
+          unknownMessages.push(text);
         }
   
         // Mark as read
@@ -445,31 +427,15 @@ export class MessageCache extends Cache {
       );
   
       // Build summary
-      const summaryParts: string[] = [];
-      summaryParts.push('📊 **Message Summary**');
+      const summaryParts: string[] = ['📊 **Message Summary**'];
       
-      if (stats.victories > 0 || stats.defeats > 0) {
-        const battleResults: string[] = [];
-        if (stats.victories > 0) battleResults.push(`${stats.victories} victory(ies)`);
-        if (stats.defeats > 0) battleResults.push(`${stats.defeats} defeat(s)`);
-        summaryParts.push(`⚔️ **Battles:** ${battleResults.join(', ')}`);
-      }
-  
-      if (stats.damageDealt > 0 || stats.damageReceived > 0) {
-        summaryParts.push(`💥 **Damage:** Dealt ${stats.damageDealt}, Received ${stats.damageReceived}`);
-      }
-  
-      if (stats.shotsHit > 0 || stats.shotsMissed > 0) {
-        const totalShots = stats.shotsHit + stats.shotsMissed;
-        const accuracy = totalShots > 0 ? Math.round((stats.shotsHit / totalShots) * 100) : 0;
-        summaryParts.push(`🎯 **Your Accuracy:** ${stats.shotsHit}/${totalShots} hits (${accuracy}%)`);
-      }
-  
-      if (stats.enemyShotsHit > 0 || stats.enemyShotsMissed > 0) {
-        const totalEnemyShots = stats.enemyShotsHit + stats.enemyShotsMissed;
-        const enemyAccuracy = totalEnemyShots > 0 ? Math.round((stats.enemyShotsHit / totalEnemyShots) * 100) : 0;
-        summaryParts.push(`🛡️ **Enemy Accuracy:** ${stats.enemyShotsHit}/${totalEnemyShots} hits (${enemyAccuracy}%)`);
-      }
+      // Add battle summary
+      const battleSummary = this.buildBattleSummary(battleStats);
+      summaryParts.push(...battleSummary);
+
+      // Add collection summary
+      const collectionSummary = this.buildCollectionSummary(collectionStats);
+      summaryParts.push(...collectionSummary);
   
       const summary = summaryParts.join('\n');
   
@@ -477,13 +443,180 @@ export class MessageCache extends Cache {
       await this.createMessageInternal(messageContext, userId, summary);
   
       // Re-create unknown messages as unread
-      for (const unknownMsg of stats.unknownMessages) {
+      for (const unknownMsg of unknownMessages) {
         await this.createMessageInternal(messageContext, userId, unknownMsg);
       }
   
       console.log(`📊 Summarized ${unreadMessages.length} unread message(s) for user ${userId}`);
       return summary;
     });
+  }
+
+  /**
+   * Parse a battle message and update battle statistics
+   * Returns true if the message was successfully parsed as a battle message
+   */
+  private parseBattleMessage(text: string, stats: BattleStats): boolean {
+    // Parse battle damage dealt (P: prefix, with "hit for X damage")
+    if (text.startsWith('P:') && text.includes('hit') && text.includes('for') && text.includes('damage')) {
+      const damageMatch = text.match(/\*\*(\d+)\s+hit\*\*\s+for\s+\*\*(\d+)\s+damage/);
+      if (damageMatch) {
+        const hits = parseInt(damageMatch[1]);
+        const damage = parseInt(damageMatch[2]);
+        stats.damageDealt += damage;
+        stats.shotsHit += hits;
+        
+        // Count missed shots from this salvo
+        const shotsMatch = text.match(/fired\s+(\d+)\s+shot\(s\)/);
+        if (shotsMatch) {
+          const totalShots = parseInt(shotsMatch[1]);
+          stats.shotsMissed += (totalShots - hits);
+        }
+        return true;
+      }
+    }
+    // Parse battle damage received (N: prefix, with "hit you for X damage")
+    else if (text.startsWith('N:') && text.includes('hit') && text.includes('you for') && text.includes('damage')) {
+      const damageMatch = text.match(/\*\*(\d+)\s+hit\*\*\s+you\s+for\s+\*\*(\d+)\s+damage\*\*/);
+      if (damageMatch) {
+        const hits = parseInt(damageMatch[1]);
+        const damage = parseInt(damageMatch[2]);
+        stats.damageReceived += damage;
+        stats.enemyShotsHit += hits;
+        
+        // Count missed shots from this salvo
+        const shotsMatch = text.match(/fired\s+(\d+)\s+shot\(s\)/);
+        if (shotsMatch) {
+          const totalShots = parseInt(shotsMatch[1]);
+          stats.enemyShotsMissed += (totalShots - hits);
+        }
+        return true;
+      }
+    }
+    // Parse missed shots (Your weapon)
+    else if (text.includes('Your') && text.includes('but all missed!')) {
+      const shotsMatch = text.match(/(\d+)\s+shot\(s\)/);
+      if (shotsMatch) {
+        stats.shotsMissed += parseInt(shotsMatch[1]);
+        return true;
+      }
+    }
+    // Parse missed shots (Enemy weapon with A: prefix)
+    else if (text.startsWith('A:') && text.includes('but all missed!')) {
+      const shotsMatch = text.match(/(\d+)\s+shot\(s\)/);
+      if (shotsMatch) {
+        stats.enemyShotsMissed += parseInt(shotsMatch[1]);
+        return true;
+      }
+    }
+    // Parse victory
+    else if (text.includes('Victory!') || (text.startsWith('P:') && text.includes('won the battle'))) {
+      stats.victories++;
+      return true;
+    }
+    // Parse defeat
+    else if (text.includes('Defeat!') || (text.startsWith('A:') && text.includes('lost the battle'))) {
+      stats.defeats++;
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
+   * Parse a collection message and update collection statistics
+   * Returns true if the message was successfully parsed as a collection message
+   */
+  private parseCollectionMessage(text: string, stats: CollectionStats): boolean {
+    // Parse collection messages: "P: Successfully collected {type} and received **{iron}** iron."
+    // or "P: Successfully collected {type}." (no iron)
+    if (text.startsWith('P:') && text.includes('Successfully collected')) {
+      // Extract object type and iron amount
+      const typeMatch = text.match(/Successfully collected\s+(\w+(?:\s+\w+)?)/);
+      if (!typeMatch) return false;
+
+      const objectType = typeMatch[1].toLowerCase();
+      
+      // Extract iron amount if present
+      const ironMatch = text.match(/received\s+\*\*(\d+)\*\*\s+iron/);
+      const ironAmount = ironMatch ? parseInt(ironMatch[1]) : 0;
+
+      // Match against known object types
+      if (objectType === 'asteroid') {
+        stats.asteroids++;
+        stats.asteroidsIron += ironAmount;
+        return true;
+      } else if (objectType === 'shipwreck' || objectType === 'ship wreck') {
+        stats.shipwrecks++;
+        stats.shipwrecksIron += ironAmount;
+        return true;
+      } else if (objectType === 'escape pod') {
+        stats.escapePods++;
+        stats.escapePodsIron += ironAmount;
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  /**
+   * Build battle summary text from statistics
+   */
+  private buildBattleSummary(stats: BattleStats): string[] {
+    const parts: string[] = [];
+
+    if (stats.victories > 0 || stats.defeats > 0) {
+      const battleResults: string[] = [];
+      if (stats.victories > 0) battleResults.push(`${stats.victories} victory(ies)`);
+      if (stats.defeats > 0) battleResults.push(`${stats.defeats} defeat(s)`);
+      parts.push(`⚔️ **Battles:** ${battleResults.join(', ')}`);
+    }
+
+    if (stats.damageDealt > 0 || stats.damageReceived > 0) {
+      parts.push(`💥 **Damage:** Dealt ${stats.damageDealt}, Received ${stats.damageReceived}`);
+    }
+
+    if (stats.shotsHit > 0 || stats.shotsMissed > 0) {
+      const totalShots = stats.shotsHit + stats.shotsMissed;
+      const accuracy = totalShots > 0 ? Math.round((stats.shotsHit / totalShots) * 100) : 0;
+      parts.push(`🎯 **Your Accuracy:** ${stats.shotsHit}/${totalShots} hits (${accuracy}%)`);
+    }
+
+    if (stats.enemyShotsHit > 0 || stats.enemyShotsMissed > 0) {
+      const totalEnemyShots = stats.enemyShotsHit + stats.enemyShotsMissed;
+      const enemyAccuracy = totalEnemyShots > 0 ? Math.round((stats.enemyShotsHit / totalEnemyShots) * 100) : 0;
+      parts.push(`🛡️ **Enemy Accuracy:** ${stats.enemyShotsHit}/${totalEnemyShots} hits (${enemyAccuracy}%)`);
+    }
+
+    return parts;
+  }
+
+  /**
+   * Build collection summary text from statistics
+   */
+  private buildCollectionSummary(stats: CollectionStats): string[] {
+    const parts: string[] = [];
+    const items: string[] = [];
+
+    if (stats.asteroids > 0) {
+      items.push(`Asteroids: ${stats.asteroids} (${stats.asteroidsIron} iron)`);
+    }
+
+    if (stats.shipwrecks > 0) {
+      items.push(`Shipwrecks: ${stats.shipwrecks} (${stats.shipwrecksIron} iron)`);
+    }
+
+    if (stats.escapePods > 0) {
+      items.push(`Escape Pods: ${stats.escapePods} (${stats.escapePodsIron} iron)`);
+    }
+
+    if (items.length > 0) {
+      parts.push('🪨 **Collections:**');
+      items.forEach(item => parts.push(`- ${item}`));
+    }
+
+    return parts;
   }
 
   /**
