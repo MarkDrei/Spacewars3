@@ -39,7 +39,7 @@ export interface TypedCacheStats {
 }
 
 declare global {
-  var userWorldCacheInstance: UserCache | null;
+  var userCacheInstance: UserCache | null;
 }
 
 /**
@@ -60,7 +60,6 @@ export class UserCache extends Cache {
   };
 
   private db: DatabaseConnection | null = null;
-  private persistenceTimer: NodeJS.Timeout | null = null;
 
   // In-memory cache storage
   private users: Map<number, User> = new Map();
@@ -85,11 +84,11 @@ export class UserCache extends Cache {
   }
 
   private static get instance(): UserCache | null {
-    return globalThis.userWorldCacheInstance || null;
+    return globalThis.userCacheInstance || null;
   }
 
   private static set instance(value: UserCache | null) {
-    globalThis.userWorldCacheInstance = value;
+    globalThis.userCacheInstance = value;
   }
 
   /**
@@ -118,16 +117,11 @@ export class UserCache extends Cache {
 
   /**
    * Reset singleton for testing
-   * WARNING: Call shutdown() and await it BEFORE calling this method to ensure clean state
    */
   static resetInstance(): void {
-    if (UserCache.instance) {
-      // Note: shutdown() is async but we can't await in a sync method
-      // Callers MUST call shutdown() before resetInstance()
-      void UserCache.instance.shutdown();
-    }
     this.instance = null;
     WorldCache.resetInstance();
+  }
   }
 
   static configureDependencies(dependencies: userCacheDependencies): void {
@@ -355,10 +349,22 @@ export class UserCache extends Cache {
   }
 
   /**
-   * Force flush all dirty data to database
+   * Force flush all dirty data to database (implements abstract method from Cache)
+   * Useful for ensuring data is persisted before reading directly from DB
+   * This method acquires the USER_LOCK internally.
+   */
+  protected async flushAllToDatabase(): Promise<void> {
+    const ctx = createLockContext();
+    await ctx.useLockWithAcquire(USER_LOCK, async (userContext) => {
+      await this.flushAllToDatabaseWithContext(userContext);
+    });
+  }
+
+  /**
+   * Force flush all dirty data to database when already holding USER_LOCK
    * Useful for ensuring data is persisted before reading directly from DB
    */
-  async flushAllToDatabase(context: LockContext<LocksAtMostAndHas4>): Promise<void> {
+  async flushAllToDatabaseWithContext(context: LockContext<LocksAtMostAndHas4>): Promise<void> {
     console.log('🔄 Flushing all dirty data to database...');
 
     // Persist dirty users
@@ -374,8 +380,10 @@ export class UserCache extends Cache {
       await worldCache.flushToDatabase();
     }
 
+    // Persist dirty message data via message cache
     const messageCache = await this.getMessageCache();
     if (messageCache) {
+      console.log('💾 Flushing message data');
       await messageCache.flushToDatabase(context);
     }
 
@@ -471,12 +479,7 @@ export class UserCache extends Cache {
   /**
    * Start background persistence timer
    */
-  private startBackgroundPersistence(): void {
-    if (!this.shouldEnableBackgroundPersistence(this.config.enableAutoPersistence)) {
-      console.log('📝 Background persistence disabled (test mode or config)');
-      return;
-    }
-
+  protected startBackgroundPersistence(): void {
     console.log(`📝 Starting background persistence (interval: ${this.config.persistenceIntervalMs}ms)`);
 
     this.persistenceTimer = setInterval(async () => {
@@ -519,44 +522,33 @@ export class UserCache extends Cache {
    * Currently only used in tests
    */
   async shutdown(): Promise<void> {
+    console.log('🔄 Shutting down typed cache manager...');
+
+    // Stop background persistence
+    this.stopBackgroundPersistence();
+
+    // Final persist of any dirty data using internal locking
     const ctx = createLockContext();
     await ctx.useLockWithAcquire(USER_LOCK, async (userContext) => {
-      console.log('🔄 Shutting down typed cache manager...');
-
-      // Stop background persistence
-      this.stopBackgroundPersistence();
-
-      // Final persist of any dirty data
       if (this.dirtyUsers.size > 0) {
         console.log('💾 Final persist of dirty users before shutdown');
         await this.persistDirtyUsers(userContext);
       }
-
-      const worldCache = this.getWorldCacheOrNull();
-      if (worldCache) {
-        try {
-          console.log('💾 Final persist of world data before shutdown');
-          await worldCache.flushToDatabase();
-          await worldCache.shutdown();
-        } catch (error) {
-          // WorldCache may have been shut down already by another process/test
-          // This is fine - we just skip the flush
-          if (error instanceof Error && error.message.includes('WorldCache not initialized')) {
-            console.log('⏭️ WorldCache already shut down, skipping flush');
-          } else {
-            throw error;
-          }
-        }
-      }
-
-      const messageCache = await this.getMessageCache();
-      if (messageCache) {
-        await messageCache.flushToDatabase(userContext);
-        await messageCache.shutdown();
-      }
-
-      console.log('✅ Typed cache manager shutdown complete');
     });
+
+    const worldCache = this.getWorldCacheOrNull();
+    if (worldCache) {
+      console.log('💾 Final persist of world data before shutdown');
+      await worldCache.flushToDatabase();
+      await worldCache.shutdown();
+    }
+
+    const messageCache = await this.getMessageCache();
+    if (messageCache) {
+      await messageCache.shutdown();
+    }
+
+    console.log('✅ Typed cache manager shutdown complete');
   }
 }
 

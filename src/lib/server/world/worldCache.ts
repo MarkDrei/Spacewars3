@@ -37,7 +37,6 @@ export class WorldCache extends Cache {
   private db: DatabaseConnection | null = null;
   private world: World | null = null;
   private worldDirty = false;
-  private persistenceTimer: NodeJS.Timeout | null = null;
   private isInitialized = false;
 
   private stats = {
@@ -101,13 +100,10 @@ export class WorldCache extends Cache {
 
   /**
    * Reset singleton instance (for testing)
-   * WARNING: Call shutdown() and await it BEFORE calling this method to ensure clean state
    */
   static resetInstance(): void {
     if (WorldCache.instance) {
-      // Note: shutdown() is async but we can't await in a sync method
-      // Callers MUST call shutdown() before resetInstance()
-      void WorldCache.instance.shutdown();
+      WorldCache.instance.stopBackgroundPersistence();
     }
     WorldCache.instance = null;
   }
@@ -138,16 +134,10 @@ export class WorldCache extends Cache {
     return this.world;
   }
 
-  async updateWorldUnsafe(context: LockContext<LocksAtMostAndHas6>, world: World): Promise<void> {
+  async updateWorldUnsafe(_context: LockContext<LocksAtMostAndHas6>, world: World): Promise<void> {
     this.ensureReady();
     this.world = world;
     this.worldDirty = true;
-    
-    // In test mode with auto-persistence enabled, persist immediately (within transaction context)
-    // If auto-persistence is disabled, respect that (for testing dirty flag behavior)
-    if (this.isTestMode && this.config.enableAutoPersistence) {
-      await this.persistDirtyWorld(context);
-    }
   }
 
   async flushToDatabase(): Promise<void> {
@@ -190,12 +180,7 @@ export class WorldCache extends Cache {
     }
   }
 
-  private startBackgroundPersistence(): void {
-    if (!this.shouldEnableBackgroundPersistence(this.config.enableAutoPersistence)) {
-      console.log('📝 World background persistence disabled (test mode or config)');
-      return;
-    }
-
+  protected startBackgroundPersistence(): void {
     console.log(`📝 Starting world background persistence (interval: ${this.config.persistenceIntervalMs}ms)`);
 
     this.persistenceTimer = setInterval(async () => {
@@ -208,6 +193,10 @@ export class WorldCache extends Cache {
         console.error('❌ World background persistence error:', error);
       }
     }, this.config.persistenceIntervalMs);
+  }
+
+  protected async flushAllToDatabase(): Promise<void> {
+    await this.flushToDatabase();
   }
 
   private stopBackgroundPersistence(): void {
@@ -227,7 +216,10 @@ export class WorldCache extends Cache {
 
   async shutdown(): Promise<void> {
     this.stopBackgroundPersistence();
+    await this.flushAllToDatabase();
     this.world = null;
+    this.isInitialized = false;
+  }
     this.db = null;
     this.worldDirty = false;
     this.isInitialized = false;

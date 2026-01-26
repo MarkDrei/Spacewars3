@@ -48,7 +48,6 @@ export class BattleCache extends Cache {
   private db: DatabaseConnection | null = null;
 
   // Background persistence
-  private persistenceTimer: NodeJS.Timeout | null = null;
   private readonly PERSISTENCE_INTERVAL_MS = 30_000; // 30 seconds
 
   private initialized = false;
@@ -117,15 +116,9 @@ export class BattleCache extends Cache {
 
   /**
    * Reset singleton instance (for testing)
-   * WARNING: Call shutdown() and await it BEFORE calling this method to ensure clean state
    */
   static resetInstance(): void {
-    if (BattleCache.instance) {
-      // Note: shutdown() is async but we can't await in a sync method
-      // Callers MUST call shutdown() before resetInstance()
-      void BattleCache.instance.shutdown();
-      BattleCache.instance = null;
-    }
+    BattleCache.instance = null;
     BattleCache.initializationPromise = null;
   }
 
@@ -151,7 +144,7 @@ export class BattleCache extends Cache {
     await this.loadActiveBattlesFromDb();
     
     // Start background persistence
-    this.startPersistence();
+    this.startBackgroundPersistence();
     
     this.initialized = true;
   }
@@ -209,16 +202,8 @@ export class BattleCache extends Cache {
    * Shutdown the cache (flush dirty data, stop timers)
    */
   async shutdown(): Promise<void> {
-    if (this.persistenceTimer) {
-      clearInterval(this.persistenceTimer);
-      this.persistenceTimer = null;
-    }
-
-    // Flush any remaining dirty battles
-    if (this.dirtyBattles.size > 0) {
-      await this.persistDirtyBattlesAsync();
-    }
-
+    this.stopBackgroundPersistence();
+    await this.flushAllToDatabase();
     this.initialized = false;
     this.db = null;
   }
@@ -764,14 +749,9 @@ export class BattleCache extends Cache {
   // ========================================
 
   /**
-   * Start background persistence timer
+   * Start background persistence timer (implements abstract method from Cache)
    */
-  private startPersistence(): void {
-    if (!this.shouldEnableBackgroundPersistence(true)) {
-      console.log('⚔️ Background persistence disabled (test mode)');
-      return;
-    }
-    
+  protected startBackgroundPersistence(): void {
     if (this.persistenceTimer) {
       return; // Already running
     }
@@ -784,6 +764,20 @@ export class BattleCache extends Cache {
         });
       });
     }, this.PERSISTENCE_INTERVAL_MS);
+  }
+
+  /**
+   * Flush all dirty data to database (implements abstract method from Cache)
+   * Acquires BATTLE_LOCK internally
+   */
+  protected async flushAllToDatabase(): Promise<void> {
+    if (this.dirtyBattles.size === 0) {
+      return;
+    }
+    const ctx = createLockContext();
+    await ctx.useLockWithAcquire(BATTLE_LOCK, async (battleContext) => {
+      await this.persistDirtyBattlesInternal(battleContext);
+    });
   }
 
   /**

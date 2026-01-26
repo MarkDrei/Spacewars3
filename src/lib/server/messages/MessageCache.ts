@@ -27,6 +27,10 @@ interface MessageCacheStats {
   dirtyUsers: number;
 }
 
+declare global {
+  var messageCacheInstance: MessageCache | null;
+}
+
 /**
  * MessageCache - Manages in-memory cache of user messages
  * - Independent from other cache systems
@@ -35,11 +39,18 @@ interface MessageCacheStats {
  * - Thread-safe with IronGuard locks
  */
 export class MessageCache extends Cache {
-  private static instance: MessageCache | null = null;
   
   private constructor() {
     super();
     console.log('📬 Message cache initialized');
+  }
+
+  private static get instance(): MessageCache | null {
+    return globalThis.messageCacheInstance || null;
+  }
+
+  private static set instance(value: MessageCache | null) {
+    globalThis.messageCacheInstance = value;
   }
 
   static getInstance(config?: MessageCacheConfig): MessageCache {
@@ -54,14 +65,8 @@ export class MessageCache extends Cache {
 
   /**
    * Reset singleton instance (for testing)
-   * WARNING: Call shutdown() and await it BEFORE calling this method to ensure clean state
    */
   static resetInstance(): void {
-    if (MessageCache.instance) {
-      // Note: shutdown() is async but we can't await in a sync method
-      // Callers MUST call shutdown() before resetInstance()
-      void MessageCache.instance.shutdown();
-    }
     this.instance = null;
   }
 
@@ -75,7 +80,6 @@ export class MessageCache extends Cache {
   private db: Awaited<ReturnType<typeof getDatabase>> | null = null;
   private messagesRepo: MessagesRepo | null = null;
   private isInitialized = false;
-  private persistenceTimer: NodeJS.Timeout | null = null;
 
   // In-memory cache storage
   private userMessages: Map<number, Message[]> = new Map(); // userId -> messages
@@ -113,7 +117,7 @@ export class MessageCache extends Cache {
         this.db = await getDatabase();
         this.messagesRepo = new MessagesRepo();
         
-        this.startBackgroundPersistence(messageContext);
+        this.startBackgroundPersistence();
         
         this.isInitialized = true;
         console.log('✅ Message cache initialization complete');
@@ -556,7 +560,7 @@ export class MessageCache extends Cache {
    */
   async shutdown(): Promise<void> {
     const ctx = createLockContext();
-    ctx.useLockWithAcquire(MESSAGE_LOCK, async (messageContext) => {
+    await ctx.useLockWithAcquire(MESSAGE_LOCK, async (messageContext) => {
       console.log('📬 Shutting down message cache...');
       
       this.stopBackgroundPersistence();
@@ -565,10 +569,7 @@ export class MessageCache extends Cache {
       await this.waitForPendingWrites();
       
       // Final flush of read status updates
-      if (this.dirtyUsers.size > 0) {
-        console.log('📬 Final flush of dirty messages before shutdown');
-        await this.flushToDatabaseWithLock(messageContext);
-      }
+      await this.flushAllToDatabase();
       
       this.isInitialized = false;
       console.log('✅ Message cache shutdown complete');
@@ -716,24 +717,32 @@ export class MessageCache extends Cache {
     }
   }
 
-  private startBackgroundPersistence(context: LockContext<LocksAtMostAndHas8>): void {
-    if (!this.shouldEnableBackgroundPersistence(this.config.enableAutoPersistence)) {
-      console.log('📬 Background persistence disabled (test mode or config)');
-      return;
-    }
-
+  protected startBackgroundPersistence(): void {
     console.log(`📬 Starting background persistence (interval: ${this.config.persistenceIntervalMs}ms)`);
     
     this.persistenceTimer = setInterval(async () => {
       try {
         if (this.dirtyUsers.size > 0) {
           console.log(`📬 Background persisting messages for ${this.dirtyUsers.size} user(s)`);
-          await this.flushToDatabaseWithLock(context);
+          await this.flushAllToDatabase();
         }
       } catch (error) {
         console.error('❌ Message persistence error:', error);
       }
     }, this.config.persistenceIntervalMs);
+  }
+
+  protected async flushAllToDatabase(): Promise<void> {
+    if (this.dirtyUsers.size === 0) {
+      return;
+    }
+    const ctx = createLockContext();
+    await ctx.useLockWithAcquire(MESSAGE_LOCK, async (messageContext) => {
+      if (this.dirtyUsers.size > 0) {
+        console.log('📬 Flushing dirty messages to database');
+        await this.flushToDatabaseWithLock(messageContext);
+      }
+    });
   }
 
   private stopBackgroundPersistence(): void {
