@@ -3,6 +3,7 @@ import { BattleCache } from '@/lib/server/battle/BattleCache';
 import { UserCache } from '@/lib/server/user/userCache';
 import { WorldCache } from '@/lib/server/world/worldCache';
 import { MessageCache } from '@/lib/server/messages/MessageCache';
+import { stopBattleScheduler } from '@/lib/server/battle/battleScheduler';
 
 async function shutdownUserWorldCache(): Promise<void> {
   try {
@@ -81,6 +82,9 @@ export async function initializeIntegrationTestServer(): Promise<void> {
  * Shutdown integration test server and clean up resources.
  */
 export async function shutdownIntegrationTestServer(): Promise<void> {
+  // Stop battle scheduler first
+  stopBattleScheduler();
+  
   // Shutdown in reverse dependency order:
   // Battle → Message → User → World
   await shutdownBattleCache();
