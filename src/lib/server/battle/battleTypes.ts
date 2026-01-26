@@ -1,5 +1,10 @@
 // ---
 // Battle system type definitions - shared between client and server
+// Contains:
+//   - Battle state and stats interfaces
+//   - Battle event types for logging
+//   - DAMAGE_CALC_DEFAULTS constants for TechFactory.calculateWeaponDamage
+//   - Database row mapping types for battleRepo
 // ---
 
 /**

@@ -1,12 +1,15 @@
 // ---
 // BattleEngine: Encapsulates pure domain battle mechanics and calculations.
 // Responsibilities:
-//   - Executes combat turns, damage calculations, cooldown logic, and determines battle outcome.
-//   - Updates user defense values through cache manager (proper delegation)
+//   - Executes combat turns using TechFactory.calculateWeaponDamage for centralized damage calculation
+//   - Applies damage to user defense values through applyDamageWithLock (proper cache delegation)
+//   - Manages weapon cooldowns and determines battle outcome
 //   - Remains stateless (operates on Battle object passed in constructor)
 // Main interaction partners:
 //   - BattleService (for orchestration)
-//   - getUserWorldCache (for updating user defense values)
+//   - BattleScheduler (for automated battle processing)
+//   - UserCache (for updating user defense values)
+//   - TechFactory (for centralized weapon damage calculations)
 // Status: ✅ Properly delegates user state updates to cache manager
 // ---
 
@@ -211,72 +214,6 @@ export class BattleEngine {
       remainingArmor: user.armorCurrent,
       remainingHull: user.hullCurrent
     };
-  }
-
-  /**
-   * Apply damage to a target's defenses (legacy method - no longer used)
-   * Uses simple waterfall logic: shield → armor → hull
-   * 
-   * NOTE: This method is deprecated. Both battleEngine.executeTurn and 
-   * battleScheduler.fireWeapon now use TechFactory.calculateWeaponDamage + applyDamageWithLock.
-   * This method is kept for backward compatibility with any external code that may depend on it.
-   * @deprecated Use TechFactory.calculateWeaponDamage + applyDamageWithLock directly.
-   */
-  async applyDamage(
-    context: LockContext<LocksAtMost3>,
-    targetUserId: number,
-    totalDamage: number
-  ): Promise<{
-    shieldDamage: number;
-    armorDamage: number;
-    hullDamage: number;
-    remainingShield: number;
-    remainingArmor: number;
-    remainingHull: number;
-  }> {
-    return await context.useLockWithAcquire(USER_LOCK, async (userContext) => {
-      const userWorldCache = UserCache.getInstance2();
-      const user = await userWorldCache.getUserByIdWithLock(userContext, targetUserId);
-
-      if (!user) {
-        throw new Error(`User ${targetUserId} not found during battle`);
-      }
-
-      let remainingDamage = totalDamage;
-      let shieldDamage = 0;
-      let armorDamage = 0;
-      let hullDamage = 0;
-
-      // 1. Apply to shield first
-      if (user.shieldCurrent > 0 && remainingDamage > 0) {
-        shieldDamage = Math.min(remainingDamage, user.shieldCurrent);
-        remainingDamage -= shieldDamage;
-      }
-
-      // 2. Apply to armor second
-      if (user.armorCurrent > 0 && remainingDamage > 0) {
-        armorDamage = Math.min(remainingDamage, user.armorCurrent);
-        remainingDamage -= armorDamage;
-      }
-
-      // 3. Apply to hull last
-      if (user.hullCurrent > 0 && remainingDamage > 0) {
-        hullDamage = Math.min(remainingDamage, user.hullCurrent);
-        remainingDamage -= hullDamage;
-      }
-
-      // Apply the calculated damage
-      const result = await this.applyDamageWithLock(userContext, targetUserId, shieldDamage, armorDamage, hullDamage);
-
-      return {
-        shieldDamage,
-        armorDamage,
-        hullDamage,
-        remainingShield: result.remainingShield,
-        remainingArmor: result.remainingArmor,
-        remainingHull: result.remainingHull
-      };
-    });
   }
 
   /**
