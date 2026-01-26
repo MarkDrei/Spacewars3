@@ -510,6 +510,12 @@ export function stopBattleScheduler(): void {
 // ========================================
 
 /**
+ * Constants for battle resolution
+ */
+const SECONDS_TO_MILLISECONDS = 1000;
+const MAX_TELEPORT_ATTEMPTS = 100;
+
+/**
  * Get world dimensions from WorldCache
  * This ensures consistency with the actual world configuration
  */
@@ -573,8 +579,8 @@ function generateTeleportPosition(
   const worldSize = getWorldSize();
   let x: number, y: number, distance: number;
 
-  // Try up to 100 times to find a valid position
-  for (let i = 0; i < 100; i++) {
+  // Try up to MAX_TELEPORT_ATTEMPTS times to find a valid position
+  for (let i = 0; i < MAX_TELEPORT_ATTEMPTS; i++) {
     x = Math.random() * worldSize.width;
     y = Math.random() * worldSize.height;
     distance = calculateToroidalDistance(
@@ -607,7 +613,7 @@ async function teleportShip(context: LockContext<LocksAtMostAndHas4>, shipId: nu
       ship.x = x;
       ship.y = y;
       ship.speed = 0;
-      ship.last_position_update_ms = getCurrentTime() * 1000; // Use getCurrentTime() for consistency
+      ship.last_position_update_ms = getCurrentTime() * SECONDS_TO_MILLISECONDS;
       worldCache.updateWorldUnsafe(worldContext, world);
     }
   });
