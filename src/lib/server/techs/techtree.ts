@@ -4,6 +4,12 @@
 // ---
 
 /**
+ * Weapon type constants for damage modifier calculation
+ */
+const PROJECTILE_WEAPONS = ['machine_gun', 'flak_cannon', 'rocket_launcher'] as const;
+const ENERGY_WEAPONS = ['pulse_laser', 'plasma_cannon', 'photon_torpedo'] as const;
+
+/**
  * Enum of all available research types in the tech tree.
  */
 export enum ResearchType {
@@ -639,21 +645,25 @@ export function getResearchEffectFromTree(tree: TechTree, type: ResearchType): n
 export function getWeaponDamageModifierFromTree(tree: TechTree, weaponType: string): number {
   // Determine research type based on weapon type
   let researchType: ResearchType;
-  if (PROJECTILE_WEAPONS.includes(weaponType as typeof PROJECTILE_WEAPONS[number])) {
+  if (PROJECTILE_WEAPONS.includes(weaponType as any)) {
     researchType = ResearchType.ProjectileDamage;
-  } else if (ENERGY_WEAPONS.includes(weaponType as typeof ENERGY_WEAPONS[number])) {
+  } else if (ENERGY_WEAPONS.includes(weaponType as any)) {
     researchType = ResearchType.EnergyDamage;
   } else {
     // Default to 1.0 (100%) for unknown weapon types
+    console.warn(`Unknown weapon type '${weaponType}', defaulting to damage modifier 1.0`);
     return 1.0;
   }
   
   const research = AllResearches[researchType];
+  const effect = getResearchEffectFromTree(tree, researchType);
+  
   // Guard against division by zero
   if (research.baseValue === 0) {
+    console.error(`Base value is 0 for ${researchType}, returning modifier 1.0`);
     return 1.0;
   }
-  const effect = getResearchEffectFromTree(tree, researchType);
+  
   // Modifier = current effect / base value
   return effect / research.baseValue;
 }
@@ -790,4 +800,45 @@ export function getActiveResearch(tree: TechTree): { type: ResearchType; nextLev
     nextLevel: currentLevel + 1,
     remainingDuration: tree.activeResearch.remainingDuration,
   };
+}
+
+/**
+ * Weapon type constants for damage modifier calculation
+ */
+const PROJECTILE_WEAPONS = ['machine_gun', 'flak_cannon', 'rocket_launcher'];
+const ENERGY_WEAPONS = ['pulse_laser', 'plasma_cannon', 'photon_torpedo'];
+
+/**
+ * Returns the damage modifier for a weapon type based on the research in the tech tree.
+ * The modifier is calculated as the research effect divided by the base value,
+ * resulting in a decimal multiplier (e.g., 1.0 = 100%, 1.15 = 115%).
+ * 
+ * @param tree The tech tree to read research levels from
+ * @param weaponType The weapon key (e.g., 'pulse_laser', 'rocket_launcher', 'photon_torpedo')
+ * @returns The damage modifier as a decimal (e.g., 1.0 for 100%, 1.15 for 115%)
+ */
+export function getWeaponDamageModifierFromTree(tree: TechTree, weaponType: string): number {
+  // Determine research type based on weapon type
+  let researchType: ResearchType;
+  if (PROJECTILE_WEAPONS.includes(weaponType)) {
+    researchType = ResearchType.ProjectileDamage;
+  } else if (ENERGY_WEAPONS.includes(weaponType)) {
+    researchType = ResearchType.EnergyDamage;
+  } else {
+    // Default to 1.0 (100%) for unknown weapon types
+    console.warn(`Unknown weapon type '${weaponType}', defaulting to damage modifier 1.0`);
+    return 1.0;
+  }
+  
+  const research = AllResearches[researchType];
+  const effect = getResearchEffectFromTree(tree, researchType);
+  
+  // Guard against division by zero
+  if (research.baseValue === 0) {
+    console.error(`Base value is 0 for ${researchType}, returning modifier 1.0`);
+    return 1.0;
+  }
+  
+  // Modifier = current effect / base value
+  return effect / research.baseValue;
 }
