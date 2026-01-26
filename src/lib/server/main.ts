@@ -8,6 +8,8 @@ import { UserCache } from "./user/userCache";
 import { BattleCache } from "./battle/BattleCache";
 import { MessageCache } from "./messages/MessageCache";
 import { WorldCache } from "./world/worldCache";
+import { initializeBattleScheduler } from "./battle/battleScheduler";
+import { realTimeProvider } from "./battle/battleSchedulerUtils";
 
 export async function initializeServer() {
 
@@ -58,6 +60,15 @@ export async function initializeServer() {
         console.log('🌱🪴 Application startup - ⚔️ Initializing BattleCache...');
         await BattleCache.initialize2(db);
         console.log('🌱🪴 Application startup - ✅ BattleCache initialized');
+
+        // Initialize Battle Scheduler with injectable dependencies
+        console.log('🌱🪴 Application startup - ⚔️ Initializing Battle Scheduler...');
+        initializeBattleScheduler({
+                timeProvider: realTimeProvider,
+                messageCache,
+                schedulerIntervalMs: 1000
+        });
+        console.log('🌱🪴 Application startup - ✅ Battle Scheduler initialized');
 
         console.log('🌱🪴 Application startup complete');
 

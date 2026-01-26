@@ -4,51 +4,177 @@
 //   - Triggers battle rounds at regular intervals
 //   - Processes weapon firing and damage application
 //   - Sends notifications/messages to users
-//   - Calls BattleService.resolveBattle when battle ends
+//   - Resolves battles when they end
 // Main interaction partners:
 //   - BattleCache (via BattleRepo compatibility layer)
 //   - BattleEngine (for combat mechanics)
-//   - BattleService (for battle resolution)
 //   - getUserWorldCache (for user state updates)
 //   - MessageCache (for notifications)
 // Status: ✅ Uses proper cache delegation, no direct DB access
-// Note: Has helper functions that duplicate battleService (updateUserBattleState, etc.)
-//       This is acceptable as each uses them in different contexts.
 // ---
 
 import { BattleRepo } from './BattleCache';
 import { BattleEngine } from './battleEngine';
-import { resolveBattle } from './battleService';
-import type { Battle, BattleEvent } from './battleTypes';
+import type { Battle, BattleEvent, BattleStats } from './battleTypes';
 import { TechFactory } from '../techs/TechFactory';
-import { sendMessageToUser } from '../messages/MessageCache';
 import { getBattleCache } from './BattleCache';
-import { BATTLE_LOCK } from '../typedLocks';
-import { createLockContext, LockContext, LocksAtMostAndHas2 } from '@markdrei/ironguard-typescript-locks';
+import { BATTLE_LOCK, USER_LOCK, WORLD_LOCK, DATABASE_LOCK_USERS } from '../typedLocks';
+import { createLockContext, LockContext, LocksAtMostAndHas2, LocksAtMostAndHas4 } from '@markdrei/ironguard-typescript-locks';
+import { setupBattleScheduler, cancelBattleScheduler, type BattleSchedulerConfig, type TimeProvider } from './battleSchedulerUtils';
+import type { MessageCache } from '../messages/MessageCache';
+import { getWeaponDamageModifierFromTree } from '../techs/techtree';
+import { calculateToroidalDistance } from '@shared/physics';
+import { UserCache } from '../user/userCache';
+import { WorldCache } from '../world/worldCache';
+import { getUserByIdFromDb } from '../user/userRepo';
+import { ApiError } from '../errors';
 
-// /**
-//  * Helper to update user's battle state via TypedCacheManager
-//  * Uses proper cache delegation instead of direct DB access
-//  */
-// async function updateUserBattleState(userId: number, inBattle: boolean, battleId: number | null): Promise<void> {
-//   const userWorldCache = getUserWorldCache();
-//   const ctx = createLockContext();
-//   await ctx.useLockWithAcquire(USER_LOCK, async (userContext) => {
-//     const user = userWorldCache.getUserByIdFromCache(userContext, userId);
-//     if (user) {
-//       user.inBattle = inBattle;
-//       user.currentBattleId = battleId;
-//       userWorldCache.updateUserInCache(userContext, user);
-//     }
-//   });
-// }
+/**
+ * World dimensions (matching World class default)
+ */
+const WORLD_WIDTH = 500;
+const WORLD_HEIGHT = 500;
+
+/**
+ * Minimum distance for teleportation after losing battle
+ * Dynamic calculation: world.width / 3
+ */
+const calculateMinTeleportDistance = (): number => WORLD_WIDTH / 3;
+
+/**
+ * Battle scheduler configuration
+ */
+let schedulerConfig: BattleSchedulerConfig | null = null;
+let schedulerInterval: NodeJS.Timeout | null = null;
+
+/**
+ * Initialize battle scheduler with injectable dependencies
+ * @param config - Configuration with time provider, message cache, and optional settings
+ */
+export function initializeBattleScheduler(config: BattleSchedulerConfig): void {
+  if (schedulerInterval) {
+    console.log('⚔️ Battle scheduler already running, stopping existing scheduler');
+    stopBattleScheduler();
+  }
+  
+  schedulerConfig = config;
+  
+  const intervalMs = config.schedulerIntervalMs ?? 1000;
+  console.log(`⚔️ Starting battle scheduler (interval: ${intervalMs}ms)`);
+  
+  schedulerInterval = setupBattleScheduler(async () => {
+    const ctx = createLockContext();
+    await ctx.useLockWithAcquire(BATTLE_LOCK, async (battleContext) => {
+      await processActiveBattles(battleContext).catch(error => {
+        console.error('❌ Battle scheduler error:', error);
+      });
+    });
+  }, intervalMs);
+}
+
+/**
+ * Reset battle scheduler (for tests)
+ * Stops the scheduler and clears configuration
+ */
+export function resetBattleScheduler(): void {
+  stopBattleScheduler();
+  schedulerConfig = null;
+}
 
 /**
  * Helper to create a message for a user via MessageCache
- * Uses the cache system to ensure consistency
+ * Uses the injected message cache from configuration
  */
 async function createMessage(userId: number, message: string): Promise<void> {
-  await sendMessageToUser(userId, message);
+  if (!schedulerConfig) {
+    throw new Error('Battle scheduler not initialized');
+  }
+  await schedulerConfig.messageCache.createMessage(userId, message);
+}
+
+/**
+ * Update user battle state via User cache
+ */
+async function updateUserBattleState(context: LockContext<LocksAtMostAndHas4>, userId: number, inBattle: boolean, battleId: number | null): Promise<void> {
+  const userWorldCache = UserCache.getInstance2();
+  const user = userWorldCache.getUserByIdFromCache(context, userId);
+  if (user) {
+    user.inBattle = inBattle;
+    user.currentBattleId = battleId;
+    userWorldCache.updateUserInCache(context, user);
+  }
+}
+
+/**
+ * Get ship position from World cache
+ */
+async function getShipPosition(context: LockContext<LocksAtMostAndHas4>, shipId: number): Promise<{ x: number; y: number } | null> {
+  const worldCache = WorldCache.getInstance();
+  return await context.useLockWithAcquire(WORLD_LOCK, async (worldContext) => {
+    const world = worldCache.getWorldFromCache(worldContext);
+    const ship = world.spaceObjects.find(obj => obj.id === shipId);
+    return ship ? { x: ship.x, y: ship.y } : null;
+  });
+}
+
+/**
+ * Get user's ship ID from User cache
+ */
+async function getUserShipId(context: LockContext<LocksAtMostAndHas4>, userId: number): Promise<number> {
+  const userWorldCache = UserCache.getInstance2();
+  const user = userWorldCache.getUserByIdFromCache(context, userId);
+  if (!user || user.ship_id === undefined) {
+    throw new Error('User not found or has no ship');
+  }
+  return user.ship_id;
+}
+
+/**
+ * Generate random teleport position with minimum distance from a point
+ * Uses toroidal distance calculation for accuracy
+ */
+function generateTeleportPosition(
+  fromX: number,
+  fromY: number,
+  minDistance: number
+): { x: number; y: number } {
+  const worldBounds = { width: WORLD_WIDTH, height: WORLD_HEIGHT };
+  
+  // Try up to 100 times to find a valid position
+  for (let i = 0; i < 100; i++) {
+    const x = Math.random() * WORLD_WIDTH;
+    const y = Math.random() * WORLD_HEIGHT;
+    const distance = calculateToroidalDistance({ x: fromX, y: fromY }, { x, y }, worldBounds);
+
+    if (distance >= minDistance) {
+      return { x, y };
+    }
+  }
+
+  // Fallback: place at opposite side (toroidally)
+  // Calculate opposite position through wrapping
+  const oppositeX = (fromX + WORLD_WIDTH / 2) % WORLD_WIDTH;
+  const oppositeY = (fromY + WORLD_HEIGHT / 2) % WORLD_HEIGHT;
+  
+  return { x: oppositeX, y: oppositeY };
+}
+
+/**
+ * Teleport ship to new position via World cache
+ */
+async function teleportShip(context: LockContext<LocksAtMostAndHas4>, shipId: number, x: number, y: number): Promise<void> {
+  const worldCache = WorldCache.getInstance();
+  await context.useLockWithAcquire(WORLD_LOCK, async (worldContext) => {
+    const world = worldCache.getWorldFromCache(worldContext);
+    const ship = world.spaceObjects.find(obj => obj.id === shipId);
+    if (ship) {
+      ship.x = x;
+      ship.y = y;
+      ship.speed = 0;
+      ship.last_position_update_ms = Date.now();
+      await worldCache.updateWorldUnsafe(worldContext, world);
+    }
+  });
 }
 
 /**
@@ -84,6 +210,10 @@ export async function processActiveBattles(context: LockContext<LocksAtMostAndHa
  * Called from processActiveBattles which already holds BATTLE write lock
  */
 async function processBattleRoundInternal(context: LockContext<LocksAtMostAndHas2>, battleId: number): Promise<void> {
+  if (!schedulerConfig) {
+    throw new Error('Battle scheduler not initialized');
+  }
+  
   const battle = await BattleRepo.getBattle(context, battleId);
   
   if (!battle || battle.battleEndTime) {
@@ -91,7 +221,7 @@ async function processBattleRoundInternal(context: LockContext<LocksAtMostAndHas
   }
   
   const battleEngine = new BattleEngine(battle);
-  const currentTime = Math.floor(Date.now() / 1000);
+  const currentTime = schedulerConfig.timeProvider.now();
     
     // Get all ready weapons for both players
     const attackerReadyWeapons = battleEngine.getReadyWeapons(battle.attackerId, currentTime);
@@ -130,11 +260,10 @@ async function processBattleRoundInternal(context: LockContext<LocksAtMostAndHas
       if (await updatedEngine.isBattleOver(context)) {
         const outcome = await updatedEngine.getBattleOutcome(context);
         if (outcome) {
-          // Use battleService.resolveBattle instead of local endBattle
-          // This ensures proper endStats snapshotting and teleportation
+          // Resolve battle and send messages
           await resolveBattle(context, battleId, outcome.winnerId);
           
-          // Send victory/defeat messages (battleService doesn't do this)
+          // Send victory/defeat messages
           const winnerId = outcome.winnerId;
           const loserId = outcome.loserId;
           await createMessage(winnerId, `P: 🎉 **Victory!** You won the battle!`);
@@ -173,16 +302,57 @@ async function fireWeapon(
     return;
   }
   
-  // Calculate number of shots that hit
-  const shotsPerSalvo = weaponData.count;
-  const accuracy = (weaponSpec.baseAccuracy || 80) / 100; // Convert percentage to decimal
-  let hits = 0;
-  
-  for (let i = 0; i < shotsPerSalvo; i++) {
-    if (Math.random() < accuracy) {
-      hits++;
+  // Get attacker and defender from UserCache to access techTree and techCounts
+  const userCache = UserCache.getInstance2();
+  const [attacker, defender] = await context.useLockWithAcquire(USER_LOCK, async (userContext) => {
+    let attackerUser = userCache.getUserByIdFromCache(userContext, attackerId);
+    let defenderUser = userCache.getUserByIdFromCache(userContext, defenderId);
+    
+    // Load from DB if not in cache
+    if (!attackerUser) {
+      attackerUser = await userContext.useLockWithAcquire(DATABASE_LOCK_USERS, async () => {
+        const db = await userCache.getDatabaseConnection(userContext);
+        const loaded = await getUserByIdFromDb(db, attackerId, async () => { });
+        if (loaded) userCache.setUserUnsafe(userContext, loaded);
+        return loaded;
+      });
     }
+    
+    if (!defenderUser) {
+      defenderUser = await userContext.useLockWithAcquire(DATABASE_LOCK_USERS, async () => {
+        const db = await userCache.getDatabaseConnection(userContext);
+        const loaded = await getUserByIdFromDb(db, defenderId, async () => { });
+        if (loaded) userCache.setUserUnsafe(userContext, loaded);
+        return loaded;
+      });
+    }
+    
+    return [attackerUser, defenderUser] as const;
+  });
+  
+  if (!attacker || !defender) {
+    console.error(`❌ Could not load users for battle ${battle.id}`);
+    return;
   }
+  
+  // Get weapon damage modifier from attacker's tech tree
+  const baseDamageModifier = getWeaponDamageModifierFromTree(attacker.techTree, weaponType);
+  
+  // Use TechFactory.calculateWeaponDamage for consolidated damage calculation
+  const damageResult = TechFactory.calculateWeaponDamage(
+    weaponType,
+    attacker.techCounts,
+    defender.shieldCurrent,
+    defender.armorCurrent,
+    0, // POSITIVE_ACCURACY_MODIFIER - using default
+    0, // NEGATIVE_ACCURACY_MODIFIER - using default
+    baseDamageModifier, // from tech tree research
+    0, // ECM_EFFECTIVENESS - using default
+    1.0 // SPREAD_VALUE - using default
+  );
+  
+  const hits = damageResult.weaponsHit;
+  const shotsPerSalvo = weaponData.count;
   
   if (hits === 0) {
     // All shots missed
@@ -212,23 +382,28 @@ async function fireWeapon(
     return;
   }
   
-  // Calculate damage
-  const damagePerHit = weaponSpec.damage || 10;
-  const totalDamage = hits * damagePerHit;
-  
-  // Apply damage using BattleEngine to ensure User cache is updated
-  const battleEngine = new BattleEngine(battle);
-  const damageResult = await battleEngine.applyDamage(context, defenderId, totalDamage);
-  
-  // Extract damage amounts from result
+  // Apply damage to defender's defense values
   const shieldDamage = damageResult.shieldDamage;
   const armorDamage = damageResult.armorDamage;
   const hullDamage = damageResult.hullDamage;
+  const totalDamage = shieldDamage + armorDamage + hullDamage;
   
-  // Extract remaining defense values
-  const remainingShield = damageResult.remainingShield;
-  const remainingArmor = damageResult.remainingArmor;
-  const remainingHull = damageResult.remainingHull;
+  // Update defender's defense values in cache
+  await context.useLockWithAcquire(USER_LOCK, async (userContext) => {
+    const defenderUser = userCache.getUserByIdFromCache(userContext, defenderId);
+    if (defenderUser) {
+      // Apply damage in order: shield -> armor -> hull
+      defenderUser.shieldCurrent = Math.max(0, defenderUser.shieldCurrent - shieldDamage);
+      defenderUser.armorCurrent = Math.max(0, defenderUser.armorCurrent - armorDamage);
+      defenderUser.hullCurrent = Math.max(0, defenderUser.hullCurrent - hullDamage);
+      userCache.updateUserInCache(userContext, defenderUser);
+    }
+  });
+  
+  // Get remaining defense values after damage
+  const remainingShield = Math.max(0, defender.shieldCurrent - shieldDamage);
+  const remainingArmor = Math.max(0, defender.armorCurrent - armorDamage);
+  const remainingHull = Math.max(0, defender.hullCurrent - hullDamage);
   
   // Track total damage dealt by attacker/attackee
   await BattleRepo.updateTotalDamage(context, battle.id, attackerId, totalDamage);
@@ -270,31 +445,129 @@ async function fireWeapon(
 }
 
 /**
- * Start the battle scheduler (call from server startup)
+ * Resolve a battle (determine winner and apply consequences)
+ * Moved from battleService.ts to keep battle resolution logic centralized
  */
-let schedulerInterval: NodeJS.Timeout | null = null;
+export async function resolveBattle(
+  context: LockContext<LocksAtMostAndHas2>,
+  battleId: number,
+  winnerId: number
+): Promise<void> {
+  const battle = await BattleRepo.getBattle(context, battleId);
 
-export function startBattleScheduler(intervalMs: number = 1000): void {
-  if (schedulerInterval) {
-    console.log('⚔️ Battle scheduler already running');
-    return;
+  if (!battle) {
+    throw new ApiError(404, 'Battle not found');
   }
-  
-  console.log(`⚔️ Starting battle scheduler (interval: ${intervalMs}ms)`);
-  
-  schedulerInterval = setInterval(async () => {
-    const ctx = createLockContext();
-    await ctx.useLockWithAcquire(BATTLE_LOCK, async (battleContext) => {
-      await processActiveBattles(battleContext).catch(error => {
-        console.error('❌ Battle scheduler error:', error);
+
+  if (battle.battleEndTime) {
+    throw new ApiError(400, 'Battle has already ended');
+  }
+
+  const loserId = winnerId === battle.attackerId ? battle.attackeeId : battle.attackerId;
+
+  // Snapshot final defense values from User objects to create endStats
+  const userWorldCache = UserCache.getInstance2();
+  const [attackerEndStats, attackeeEndStats] = await context.useLockWithAcquire(USER_LOCK, async (userContext) => {
+    let attacker = userWorldCache.getUserByIdFromCache(userContext, battle.attackerId);
+    let attackee = userWorldCache.getUserByIdFromCache(userContext, battle.attackeeId);
+
+    // Load from DB if not in cache
+    if (!attacker) {
+      attacker = await userContext.useLockWithAcquire(DATABASE_LOCK_USERS, async () => {
+        const db = await userWorldCache.getDatabaseConnection(userContext);
+        const loadedAttacker = await getUserByIdFromDb(db, battle.attackerId, async () => { });
+        if (loadedAttacker) userWorldCache.setUserUnsafe(userContext, loadedAttacker);
+        return loadedAttacker;
       });
-    });
-  }, intervalMs);
+    }
+
+    if (!attackee) {
+      attackee = await userContext.useLockWithAcquire(DATABASE_LOCK_USERS, async () => {
+        const db = await userWorldCache.getDatabaseConnection(userContext);
+        const loadedAttackee = await getUserByIdFromDb(db, battle.attackeeId, async () => { });
+        if (loadedAttackee) userWorldCache.setUserUnsafe(userContext, loadedAttackee);
+        return loadedAttackee;
+      });
+    }
+
+    if (!attacker || !attackee) {
+      throw new Error('Users not found when resolving battle');
+    }
+
+    // Create endStats from current user defense values
+    const attackerStats: BattleStats = {
+      hull: { current: attacker.hullCurrent, max: attacker.techCounts.ship_hull * 100 },
+      armor: { current: attacker.armorCurrent, max: attacker.techCounts.kinetic_armor * 100 },
+      shield: { current: attacker.shieldCurrent, max: attacker.techCounts.energy_shield * 100 },
+      weapons: battle.attackerStartStats.weapons // Weapons don't change
+    };
+
+    const attackeeStats: BattleStats = {
+      hull: { current: attackee.hullCurrent, max: attackee.techCounts.ship_hull * 100 },
+      armor: { current: attackee.armorCurrent, max: attackee.techCounts.kinetic_armor * 100 },
+      shield: { current: attackee.shieldCurrent, max: attackee.techCounts.energy_shield * 100 },
+      weapons: battle.attackeeStartStats.weapons // Weapons don't change
+    };
+
+    return [attackerStats, attackeeStats] as const;
+  });
+
+  // Log battle end event BEFORE ending battle
+  try {
+    const endEvent: BattleEvent = {
+      timestamp: schedulerConfig?.timeProvider.now() ?? Math.floor(Date.now() / 1000),
+      type: 'battle_ended',
+      actor: winnerId === battle.attackerId ? 'attacker' : 'attackee',
+      data: {
+        message: `Battle ended. Winner: User ${winnerId}`
+      }
+    };
+
+    await BattleRepo.addBattleEvent(context, battleId, endEvent);
+  } catch (error) {
+    console.error(`⚠️ Failed to log battle end event for battle ${battleId}:`, error);
+  }
+
+  // End the battle in database (this removes it from cache)
+  await BattleRepo.endBattle(
+    context,
+    battleId,
+    winnerId,
+    loserId,
+    attackerEndStats,
+    attackeeEndStats
+  );
+
+  await context.useLockWithAcquire(USER_LOCK, async (userContext) => {
+    // Clear battle state for both users
+    await updateUserBattleState(userContext, battle.attackerId, false, null);
+    await updateUserBattleState(userContext, battle.attackeeId, false, null);
+
+    // Get ship IDs for teleportation
+    const winnerShipId = await getUserShipId(userContext, winnerId);
+    const loserShipId = await getUserShipId(userContext, loserId);
+
+    const winnerPos = await getShipPosition(userContext, winnerShipId);
+
+    if (winnerPos) {
+      // Teleport loser to random position (minimum distance away)
+      const minTeleportDistance = calculateMinTeleportDistance();
+      const teleportPos = generateTeleportPosition(
+        winnerPos.x,
+        winnerPos.y,
+        minTeleportDistance
+      );
+
+      await teleportShip(userContext, loserShipId, teleportPos.x, teleportPos.y);
+
+      console.log(`⚔️ Battle ${battleId} ended: Winner ${winnerId}, Loser ${loserId} teleported to (${teleportPos.x.toFixed(0)}, ${teleportPos.y.toFixed(0)})`);
+    }
+  });
 }
 
 export function stopBattleScheduler(): void {
   if (schedulerInterval) {
-    clearInterval(schedulerInterval);
+    cancelBattleScheduler(schedulerInterval);
     schedulerInterval = null;
     console.log('⚔️ Battle scheduler stopped');
   }
