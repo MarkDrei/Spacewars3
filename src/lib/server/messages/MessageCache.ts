@@ -461,15 +461,15 @@ export class MessageCache extends Cache {
     if (text.startsWith('P:') && text.includes('hit') && text.includes('for') && text.includes('damage')) {
       const damageMatch = text.match(/\*\*(\d+)\s+hit\*\*\s+for\s+\*\*(\d+)\s+damage/);
       if (damageMatch) {
-        const hits = parseInt(damageMatch[1]);
-        const damage = parseInt(damageMatch[2]);
+        const hits = parseInt(damageMatch[1], 10);
+        const damage = parseInt(damageMatch[2], 10);
         stats.damageDealt += damage;
         stats.shotsHit += hits;
         
         // Count missed shots from this salvo
         const shotsMatch = text.match(/fired\s+(\d+)\s+shot\(s\)/);
         if (shotsMatch) {
-          const totalShots = parseInt(shotsMatch[1]);
+          const totalShots = parseInt(shotsMatch[1], 10);
           stats.shotsMissed += (totalShots - hits);
         }
         return true;
@@ -479,15 +479,15 @@ export class MessageCache extends Cache {
     else if (text.startsWith('N:') && text.includes('hit') && text.includes('you for') && text.includes('damage')) {
       const damageMatch = text.match(/\*\*(\d+)\s+hit\*\*\s+you\s+for\s+\*\*(\d+)\s+damage\*\*/);
       if (damageMatch) {
-        const hits = parseInt(damageMatch[1]);
-        const damage = parseInt(damageMatch[2]);
+        const hits = parseInt(damageMatch[1], 10);
+        const damage = parseInt(damageMatch[2], 10);
         stats.damageReceived += damage;
         stats.enemyShotsHit += hits;
         
         // Count missed shots from this salvo
         const shotsMatch = text.match(/fired\s+(\d+)\s+shot\(s\)/);
         if (shotsMatch) {
-          const totalShots = parseInt(shotsMatch[1]);
+          const totalShots = parseInt(shotsMatch[1], 10);
           stats.enemyShotsMissed += (totalShots - hits);
         }
         return true;
@@ -497,7 +497,7 @@ export class MessageCache extends Cache {
     else if (text.includes('Your') && text.includes('but all missed!')) {
       const shotsMatch = text.match(/(\d+)\s+shot\(s\)/);
       if (shotsMatch) {
-        stats.shotsMissed += parseInt(shotsMatch[1]);
+        stats.shotsMissed += parseInt(shotsMatch[1], 10);
         return true;
       }
     }
@@ -505,7 +505,7 @@ export class MessageCache extends Cache {
     else if (text.startsWith('A:') && text.includes('but all missed!')) {
       const shotsMatch = text.match(/(\d+)\s+shot\(s\)/);
       if (shotsMatch) {
-        stats.enemyShotsMissed += parseInt(shotsMatch[1]);
+        stats.enemyShotsMissed += parseInt(shotsMatch[1], 10);
         return true;
       }
     }
@@ -531,15 +531,15 @@ export class MessageCache extends Cache {
     // Parse collection messages: "P: Successfully collected {type} and received **{iron}** iron."
     // or "P: Successfully collected {type}." (no iron)
     if (text.startsWith('P:') && text.includes('Successfully collected')) {
-      // Extract object type and iron amount
-      const typeMatch = text.match(/Successfully collected\s+(\w+(?:\s+\w+)?)/);
+      // Extract object type - match only known collection types
+      const typeMatch = text.match(/Successfully collected\s+(asteroid|shipwreck|ship\s+wreck|escape\s+pod)/i);
       if (!typeMatch) return false;
 
       const objectType = typeMatch[1].toLowerCase();
       
       // Extract iron amount if present
       const ironMatch = text.match(/received\s+\*\*(\d+)\*\*\s+iron/);
-      const ironAmount = ironMatch ? parseInt(ironMatch[1]) : 0;
+      const ironAmount = ironMatch ? parseInt(ironMatch[1], 10) : 0;
 
       // Match against known object types
       if (objectType === 'asteroid') {
