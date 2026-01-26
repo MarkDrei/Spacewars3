@@ -46,7 +46,7 @@ export abstract class Cache {
    */
   protected abstract startBackgroundPersistence(): void;
 
-    /**
+  /**
    * Stop background persistence timer
    */
   protected stopBackgroundPersistence(): void {
