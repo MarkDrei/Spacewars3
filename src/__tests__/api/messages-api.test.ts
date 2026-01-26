@@ -7,7 +7,7 @@ import { GET } from '@/app/api/messages/route';
 import { POST } from '@/app/api/messages/mark-read/route';
 import { createTestDatabase } from '../helpers/testDatabase';
 import { createRequest } from '../helpers/apiTestHelpers';
-import { getMessageCache, MessageCache } from '@/lib/server/messages/MessageCache';
+import { MessageCache } from '@/lib/server/messages/MessageCache';
 import { withTransaction } from '../helpers/transactionHelper';
 
 import { getDatabase } from '@/lib/server/database';
