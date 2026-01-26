@@ -245,14 +245,9 @@ export class MessageCache extends Cache {
 
     console.log(`📬 Created message ${tempId} (pending) for user ${userId}`);
     
-    // In test mode, persist immediately (within transaction context)
-    // In production, persist asynchronously
-    if (this.isTestMode) {
-      await this.persistMessageAsync(context, userId, tempId, newMessage);
-    } else {
-      const writePromise = this.persistMessageAsync(context, userId, tempId, newMessage);
-      this.pendingWrites.set(tempId, writePromise);
-    }
+    // Persist asynchronously
+    const writePromise = this.persistMessageAsync(context, userId, tempId, newMessage);
+    this.pendingWrites.set(tempId, writePromise);
     
     return tempId;
   }
@@ -745,7 +740,7 @@ export class MessageCache extends Cache {
     });
   }
 
-  private stopBackgroundPersistence(): void {
+  protected stopBackgroundPersistence(): void {
     if (this.persistenceTimer) {
       clearInterval(this.persistenceTimer);
       this.persistenceTimer = null;

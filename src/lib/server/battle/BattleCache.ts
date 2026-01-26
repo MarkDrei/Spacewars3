@@ -249,11 +249,6 @@ export class BattleCache extends Cache {
       this.activeBattlesByUser.set(battle.attackerId, battle.id);
       this.activeBattlesByUser.set(battle.attackeeId, battle.id);
     }
-    
-    // In test mode, persist immediately (within transaction context)
-    if (this.isTestMode) {
-      await this.persistDirtyBattlesInternal(context);
-    }
   }
 
   /**
@@ -273,11 +268,6 @@ export class BattleCache extends Cache {
     if (battle.battleEndTime !== null) {
       this.activeBattlesByUser.delete(battle.attackerId);
       this.activeBattlesByUser.delete(battle.attackeeId);
-    }
-    
-    // In test mode, persist immediately (within transaction context)
-    if (this.isTestMode) {
-      await this.persistDirtyBattlesInternal(context);
     }
   }
 

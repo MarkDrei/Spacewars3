@@ -122,7 +122,6 @@ export class UserCache extends Cache {
     this.instance = null;
     WorldCache.resetInstance();
   }
-  }
 
   static configureDependencies(dependencies: userCacheDependencies): void {
     UserCache.dependencies = dependencies;
@@ -231,11 +230,6 @@ export class UserCache extends Cache {
     this.users.set(user.id, user);
     this.usernameToUserId.set(user.username, user.id); // Update username mapping
     this.dirtyUsers.add(user.id); // Mark as dirty for persistence
-    
-    // In test mode, persist immediately (within transaction context)
-    if (this.isTestMode) {
-      await this.persistDirtyUsers(context);
-    }
   }
 
   /**
@@ -497,7 +491,7 @@ export class UserCache extends Cache {
   /**
    * Stop background persistence timer
    */
-  private stopBackgroundPersistence(): void {
+  protected stopBackgroundPersistence(): void {
     if (this.persistenceTimer) {
       clearInterval(this.persistenceTimer);
       this.persistenceTimer = null;

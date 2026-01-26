@@ -199,7 +199,7 @@ export class WorldCache extends Cache {
     await this.flushToDatabase();
   }
 
-  private stopBackgroundPersistence(): void {
+  protected stopBackgroundPersistence(): void {
     if (this.persistenceTimer) {
       clearInterval(this.persistenceTimer);
       this.persistenceTimer = null;
@@ -218,10 +218,6 @@ export class WorldCache extends Cache {
     this.stopBackgroundPersistence();
     await this.flushAllToDatabase();
     this.world = null;
-    this.isInitialized = false;
-  }
-    this.db = null;
-    this.worldDirty = false;
     this.isInitialized = false;
   }
 }
