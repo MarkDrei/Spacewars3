@@ -381,7 +381,24 @@ export class TechFactory {
   }
 
   /**
-   * Calculate weapon damage effects against a target
+   * Calculate weapon damage effects against a target using centralized damage calculation
+   * 
+   * This is the single source of truth for battle damage calculations, properly handling:
+   * - Weapon-specific accuracy modifiers (rockets affected by ECM, torpedoes partially affected)
+   * - Defense type effectiveness (projectiles vs shields, energy vs armor)
+   * - Damage penetration (excess shield/armor damage carries over to next layer)
+   * - Hit calculation with spread randomization
+   * 
+   * @param weaponKey - Weapon type identifier (e.g., 'pulse_laser', 'rocket_launcher')
+   * @param techCounts - Attacker's tech counts containing weapon quantities
+   * @param opponentShieldValue - Defender's current shield value
+   * @param opponentArmorValue - Defender's current armor value
+   * @param positiveAccuracyModifier - Bonus accuracy percentage added to base (e.g., 10 = +10%)
+   * @param negativeAccuracyModifier - Accuracy penalty as decimal multiplier (e.g., 0.2 = 20% reduction)
+   * @param baseDamageModifier - Damage multiplier as decimal (e.g., 1.5 = 150% damage)
+   * @param ecmEffectiveness - ECM jamming effectiveness as decimal (0-1), strongly affects rockets
+   * @param spreadValue - Hit randomization multiplier as decimal (e.g., 1.0 = normal distribution)
+   * @returns Damage calculation result including hits and damage to each defense layer
    */
   static calculateWeaponDamage(
     weaponKey: string,
@@ -393,7 +410,7 @@ export class TechFactory {
     baseDamageModifier: number,
     ecmEffectiveness: number,
     spreadValue: number
-  ): { weaponsHit: number; shieldDamage: number; armorDamage: number; hullDamage: number } {
+  ): { weaponsHit: number; overallDamage: number; shieldDamage: number; armorDamage: number; hullDamage: number } {
     // Get weapon specification
     const weaponSpec = this.getWeaponSpec(weaponKey);
     if (!weaponSpec) {
@@ -403,7 +420,7 @@ export class TechFactory {
     // Get number of weapons of this type
     const weaponCount = this.getTechCount(techCounts, weaponKey);
     if (weaponCount === 0) {
-      return { weaponsHit: 0, shieldDamage: 0, armorDamage: 0, hullDamage: 0 };
+      return { weaponsHit: 0, overallDamage: 0, shieldDamage: 0, armorDamage: 0, hullDamage: 0 };
     }
 
     // Calculate overall accuracy based on weapon type
@@ -427,7 +444,7 @@ export class TechFactory {
     const weaponsHit = Math.min(Math.round(weaponsHitFloat), weaponCount);
 
     if (weaponsHit === 0) {
-      return { weaponsHit: 0, shieldDamage: 0, armorDamage: 0, hullDamage: 0 };
+      return { weaponsHit: 0, overallDamage: 0, shieldDamage: 0, armorDamage: 0, hullDamage: 0 };
     }
 
     // Calculate overall damage
@@ -466,6 +483,7 @@ export class TechFactory {
 
     return {
       weaponsHit,
+      overallDamage: Math.round(overallDamage),
       shieldDamage: Math.round(actualShieldDamage),
       armorDamage: Math.round(actualArmorDamage),
       hullDamage: Math.round(hullDamageFloat)

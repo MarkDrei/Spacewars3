@@ -1,17 +1,20 @@
 // ---
 // BattleEngine: Encapsulates pure domain battle mechanics and calculations.
 // Responsibilities:
-//   - Executes combat turns, damage calculations, cooldown logic, and determines battle outcome.
-//   - Updates user defense values through cache manager (proper delegation)
+//   - Applies pre-calculated damage to user defense values through applyDamageWithLock
+//   - Manages weapon cooldowns and determines battle outcome
+//   - Provides helper methods for battle state checking
 //   - Remains stateless (operates on Battle object passed in constructor)
 // Main interaction partners:
 //   - BattleService (for orchestration)
-//   - getUserWorldCache (for updating user defense values)
+//   - BattleScheduler (for automated battle processing)
+//   - UserCache (for updating user defense values)
 // Status: ✅ Properly delegates user state updates to cache manager
+// Note: Damage calculation is now centralized in TechFactory.calculateWeaponDamage
 // ---
 
 import type { Battle, BattleStats, BattleEvent } from './battleTypes';
-import { TechFactory } from '../techs/TechFactory';
+import { TechFactory, TechCounts } from '../techs/TechFactory';
 import { LockContext } from '@markdrei/ironguard-typescript-locks';
 import { LocksAtMost3, LocksAtMostAndHas2, LocksAtMostAndHas4 } from '@markdrei/ironguard-typescript-locks/dist/core/ironGuardTypes';
 import { USER_LOCK } from '../typedLocks';
@@ -19,7 +22,6 @@ import { USER_LOCK } from '../typedLocks';
 import { UserCache } from '../user/userCache';
 import { TechService } from '../techs/TechService';
 import { TechTree, createInitialTechTree } from '../techs/techtree';
-import { TechCounts } from '../techs/TechFactory';
 
 /**
  * Battle class - Encapsulates battle state and combat mechanics
@@ -167,20 +169,31 @@ export class BattleEngine {
   }
 
   /**
-   * Apply damage to a target's defenses (shield → armor → hull)
-   * Returns the amount of damage actually dealt to each layer and remaining defense values
+   * Apply pre-calculated damage values directly to a target's defense layers
    * 
-   * CRITICAL: This method reads and updates User defense values from userWorldCache
-   * startStats and endStats are NOT modified here - they are write-once snapshots
+   * This method applies damage values already calculated by TechFactory.calculateWeaponDamage,
+   * which properly accounts for weapon types, defense penetration, and damage distribution.
+   * 
+   * The damage values are applied directly to each defense layer (no waterfall logic here).
+   * TechFactory already calculated which layers take damage and how much.
+   * 
+   * CRITICAL: This method reads and updates User defense values from userWorldCache.
+   * startStats and endStats are NOT modified here - they are write-once snapshots.
+   * 
+   * @param context - Lock context with USER_LOCK acquired
+   * @param targetUserId - User ID of the target taking damage
+   * @param shieldDamage - Pre-calculated shield damage from TechFactory
+   * @param armorDamage - Pre-calculated armor damage from TechFactory
+   * @param hullDamage - Pre-calculated hull damage from TechFactory
+   * @returns Remaining defense values after damage application
    */
   async applyDamageWithLock(
     context: LockContext<LocksAtMostAndHas4>,
     targetUserId: number,
-    totalDamage: number
+    shieldDamage: number,
+    armorDamage: number,
+    hullDamage: number
   ): Promise<{
-    shieldDamage: number;
-    armorDamage: number;
-    hullDamage: number;
     remainingShield: number;
     remainingArmor: number;
     remainingHull: number;
@@ -192,63 +205,19 @@ export class BattleEngine {
       throw new Error(`User ${targetUserId} not found during battle`);
     }
 
-    let remainingDamage = totalDamage;
-    let shieldDamage = 0;
-    let armorDamage = 0;
-    let hullDamage = 0;
-
-    // 1. Apply to shield first
-    if (user.shieldCurrent > 0 && remainingDamage > 0) {
-      shieldDamage = Math.min(remainingDamage, user.shieldCurrent);
-      user.shieldCurrent -= shieldDamage;
-      remainingDamage -= shieldDamage;
-    }
-
-    // 2. Apply to armor second
-    if (user.armorCurrent > 0 && remainingDamage > 0) {
-      armorDamage = Math.min(remainingDamage, user.armorCurrent);
-      user.armorCurrent -= armorDamage;
-      remainingDamage -= armorDamage;
-    }
-
-    // 3. Apply to hull last
-    if (user.hullCurrent > 0 && remainingDamage > 0) {
-      hullDamage = Math.min(remainingDamage, user.hullCurrent);
-      user.hullCurrent -= hullDamage;
-      remainingDamage -= hullDamage;
-    }
+    // Apply pre-calculated damage to each defense layer
+    user.shieldCurrent = Math.max(0, user.shieldCurrent - shieldDamage);
+    user.armorCurrent = Math.max(0, user.armorCurrent - armorDamage);
+    user.hullCurrent = Math.max(0, user.hullCurrent - hullDamage);
 
     // Update user in cache (marks as dirty for persistence)
     userWorldCache.updateUserInCache(context, user);
 
     return {
-      shieldDamage,
-      armorDamage,
-      hullDamage,
       remainingShield: user.shieldCurrent,
       remainingArmor: user.armorCurrent,
       remainingHull: user.hullCurrent
     };
-  }
-
-  /**
-   * Apply damage to a target's defenses
-   */
-  async applyDamage(
-    context: LockContext<LocksAtMost3>,
-    targetUserId: number,
-    totalDamage: number
-  ): Promise<{
-    shieldDamage: number;
-    armorDamage: number;
-    hullDamage: number;
-    remainingShield: number;
-    remainingArmor: number;
-    remainingHull: number;
-  }> {
-    return await context.useLockWithAcquire(USER_LOCK, async (userContext) => {
-      return this.applyDamageWithLock(userContext, targetUserId, totalDamage);
-    });
   }
 
   /**
@@ -324,7 +293,7 @@ export class BattleEngine {
   }
 
   /**
-   * Execute a single combat turn (one weapon fires)
+   * Execute a single combat turn (one weapon fires) using TechFactory for damage calculation
    * Returns the event generated from this turn
    */
   async executeTurn(context: LockContext<LocksAtMostAndHas2>, currentTime: number): Promise<BattleEvent | null> {
@@ -348,33 +317,60 @@ export class BattleEngine {
     }
 
     return await context.useLockWithAcquire(USER_LOCK, async (userContext) => {
-      // Calculate and apply damage
-      const totalDamage = this.calculateDamage(weaponType, weaponData.count);
-      const damageResult = await this.applyDamageWithLock(userContext, targetUserId, totalDamage);
+      // Get user data for damage calculation
+      const userWorldCache = UserCache.getInstance2();
+      const attackerUser = await userWorldCache.getUserByIdWithLock(userContext, userId);
+      const targetUser = await userWorldCache.getUserByIdWithLock(userContext, targetUserId);
+
+      if (!attackerUser || !targetUser) {
+        throw new Error('Users not found during battle turn');
+      }
+
+      // Calculate damage using TechFactory with actual defense values
+      const damageCalc = TechFactory.calculateWeaponDamage(
+        weaponType,
+        attackerUser.techCounts as TechCounts,
+        targetUser.shieldCurrent,
+        targetUser.armorCurrent,
+        0, // POSITIVE_ACCURACY_MODIFIER - using defaults for executeTurn
+        0, // NEGATIVE_ACCURACY_MODIFIER
+        1.0, // BASE_DAMAGE_MODIFIER
+        0, // ECM_EFFECTIVENESS
+        1.0 // SPREAD_VALUE
+      );
+
+      // Apply pre-calculated damage values
+      const damageResult = await this.applyDamageWithLock(
+        userContext,
+        targetUserId,
+        damageCalc.shieldDamage,
+        damageCalc.armorDamage,
+        damageCalc.hullDamage
+      );
 
       // Track total damage dealt by attacker/attackee
       if (isAttacker) {
-        this.battle.attackerTotalDamage += totalDamage;
+        this.battle.attackerTotalDamage += damageCalc.overallDamage;
       } else {
-        this.battle.attackeeTotalDamage += totalDamage;
+        this.battle.attackeeTotalDamage += damageCalc.overallDamage;
       }
 
       // Fire the weapon (update cooldown)
       this.updateWeaponCooldown(userId, weaponType, currentTime);
 
-      // Create damage event
+      // Determine which defense layer was primarily hit
       let targetDefense: 'shield' | 'armor' | 'hull' = 'shield';
-      let damageDealt = damageResult.shieldDamage;
+      let damageDealt = damageCalc.shieldDamage;
 
-      if (damageResult.shieldDamage > 0) {
+      if (damageCalc.shieldDamage > 0) {
         targetDefense = 'shield';
-        damageDealt = damageResult.shieldDamage;
-      } else if (damageResult.armorDamage > 0) {
+        damageDealt = damageCalc.shieldDamage;
+      } else if (damageCalc.armorDamage > 0) {
         targetDefense = 'armor';
-        damageDealt = damageResult.armorDamage;
-      } else if (damageResult.hullDamage > 0) {
+        damageDealt = damageCalc.armorDamage;
+      } else if (damageCalc.hullDamage > 0) {
         targetDefense = 'hull';
-        damageDealt = damageResult.hullDamage;
+        damageDealt = damageCalc.hullDamage;
       }
 
       const event = this.createBattleEvent('damage_dealt', actor, {
@@ -382,39 +378,35 @@ export class BattleEngine {
         damageDealt: damageDealt,
         targetDefense,
         remainingValue: damageResult.remainingHull,
-        message: `${actor} fired ${weaponType} dealing ${totalDamage} damage to ${targetActor}'s ${targetDefense}`
+        message: `${actor} fired ${weaponType} dealing ${damageCalc.overallDamage} damage to ${targetActor}'s ${targetDefense}`
       });
 
       // Add event to battle log
       this.battle.battleLog.push(event);
 
-      // Check for defense layer destruction by reading current user values
-      const userWorldCache = UserCache.getInstance2();
-      const targetUser = await userWorldCache.getUserByIdWithLock(userContext, targetUserId);
-
-      if (targetUser) {
-        if (damageResult.shieldDamage > 0 && targetUser.shieldCurrent === 0) {
-          const shieldBrokenEvent = this.createBattleEvent('shield_broken', targetActor, {
-            message: `${targetActor}'s shield has been destroyed!`
-          });
-          this.battle.battleLog.push(shieldBrokenEvent);
-        }
-
-        if (damageResult.armorDamage > 0 && targetUser.armorCurrent === 0) {
-          const armorBrokenEvent = this.createBattleEvent('armor_broken', targetActor, {
-            message: `${targetActor}'s armor has been destroyed!`
-          });
-          this.battle.battleLog.push(armorBrokenEvent);
-        }
-
-        // Check for hull destruction (battle over)
-        if (targetUser.hullCurrent <= 0) {
-          const hullDestroyedEvent = this.createBattleEvent('hull_destroyed', targetActor, {
-            message: `${targetActor}'s hull has been destroyed! Battle over.`
-          });
-          this.battle.battleLog.push(hullDestroyedEvent);
-        }
+      // Check for defense layer destruction
+      if (damageCalc.shieldDamage > 0 && damageResult.remainingShield === 0) {
+        const shieldBrokenEvent = this.createBattleEvent('shield_broken', targetActor, {
+          message: `${targetActor}'s shield has been destroyed!`
+        });
+        this.battle.battleLog.push(shieldBrokenEvent);
       }
+
+      if (damageCalc.armorDamage > 0 && damageResult.remainingArmor === 0) {
+        const armorBrokenEvent = this.createBattleEvent('armor_broken', targetActor, {
+          message: `${targetActor}'s armor has been destroyed!`
+        });
+        this.battle.battleLog.push(armorBrokenEvent);
+      }
+
+      // Check for hull destruction (battle over)
+      if (damageResult.remainingHull <= 0) {
+        const hullDestroyedEvent = this.createBattleEvent('hull_destroyed', targetActor, {
+          message: `${targetActor}'s hull has been destroyed! Battle over.`
+        });
+        this.battle.battleLog.push(hullDestroyedEvent);
+      }
+
       return event;
     });
   }

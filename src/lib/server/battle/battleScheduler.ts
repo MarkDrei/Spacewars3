@@ -2,15 +2,17 @@
 // BattleScheduler: Automates periodic processing of active battles.
 // Responsibilities:
 //   - Triggers battle rounds at regular intervals
-//   - Processes weapon firing and damage application
+//   - Processes weapon firing using TechFactory.calculateWeaponDamage for centralized damage calculation
+//   - Applies damage directly to user defense values via battleEngine.applyDamageWithLock
 //   - Sends notifications/messages to users
 //   - Calls BattleService.resolveBattle when battle ends
 // Main interaction partners:
 //   - BattleCache (via BattleRepo compatibility layer)
-//   - BattleEngine (for combat mechanics)
+//   - BattleEngine (for applying pre-calculated damage)
 //   - BattleService (for battle resolution)
-//   - getUserWorldCache (for user state updates)
+//   - UserCache (for reading user state during damage calculation)
 //   - MessageCache (for notifications)
+//   - TechFactory (for centralized weapon damage calculations)
 // Status: ✅ Uses proper cache delegation, no direct DB access
 // Note: Has helper functions that duplicate battleService (updateUserBattleState, etc.)
 //       This is acceptable as each uses them in different contexts.
@@ -20,11 +22,13 @@ import { BattleRepo } from './BattleCache';
 import { BattleEngine } from './battleEngine';
 import { resolveBattle } from './battleService';
 import type { Battle, BattleEvent } from './battleTypes';
-import { TechFactory } from '../techs/TechFactory';
+import { DAMAGE_CALC_DEFAULTS } from './battleTypes';
+import { TechFactory, TechCounts } from '../techs/TechFactory';
 import { sendMessageToUser } from '../messages/MessageCache';
 import { getBattleCache } from './BattleCache';
-import { BATTLE_LOCK } from '../typedLocks';
+import { BATTLE_LOCK, USER_LOCK } from '../typedLocks';
 import { createLockContext, LockContext, LocksAtMostAndHas2 } from '@markdrei/ironguard-typescript-locks';
+import { UserCache } from '../user/userCache';
 
 // /**
 //  * Helper to update user's battle state via TypedCacheManager
@@ -147,7 +151,10 @@ async function processBattleRoundInternal(context: LockContext<LocksAtMostAndHas
 }
 
 /**
- * Fire a weapon and apply damage
+ * Fire a weapon and apply damage using TechFactory.calculateWeaponDamage
+ * 
+ * This function uses the centralized damage calculation from TechFactory
+ * which properly handles weapon types, defense penetration, and damage distribution.
  */
 async function fireWeapon(
   context: LockContext<LocksAtMostAndHas2>,
@@ -173,100 +180,117 @@ async function fireWeapon(
     return;
   }
   
-  // Calculate number of shots that hit
   const shotsPerSalvo = weaponData.count;
-  const accuracy = (weaponSpec.baseAccuracy || 80) / 100; // Convert percentage to decimal
-  let hits = 0;
   
-  for (let i = 0; i < shotsPerSalvo; i++) {
-    if (Math.random() < accuracy) {
-      hits++;
+  // Use TechFactory.calculateWeaponDamage for centralized damage calculation
+  // Acquire USER_LOCK to access user data from cache
+  await context.useLockWithAcquire(USER_LOCK, async (userContext) => {
+    const userWorldCache = UserCache.getInstance2();
+    const attackerUser = await userWorldCache.getUserByIdWithLock(userContext, attackerId);
+    const defenderUser = await userWorldCache.getUserByIdWithLock(userContext, defenderId);
+    
+    if (!attackerUser || !defenderUser) {
+      console.error(`❌ User not found: attacker=${attackerId}, defender=${defenderId}`);
+      return;
     }
-  }
-  
-  if (hits === 0) {
-    // All shots missed
-    const missEvent: BattleEvent = {
+    
+    // Calculate damage using TechFactory with actual defense values and tech counts
+    const damageCalc = TechFactory.calculateWeaponDamage(
+      weaponType,
+      attackerUser.techCounts as TechCounts,
+      defenderUser.shieldCurrent,
+      defenderUser.armorCurrent,
+      DAMAGE_CALC_DEFAULTS.POSITIVE_ACCURACY_MODIFIER,
+      DAMAGE_CALC_DEFAULTS.NEGATIVE_ACCURACY_MODIFIER,
+      DAMAGE_CALC_DEFAULTS.BASE_DAMAGE_MODIFIER,
+      DAMAGE_CALC_DEFAULTS.ECM_EFFECTIVENESS,
+      DAMAGE_CALC_DEFAULTS.SPREAD_VALUE
+    );
+    
+    if (damageCalc.weaponsHit === 0) {
+      // All shots missed
+      const missEvent: BattleEvent = {
+        timestamp: currentTime,
+        type: 'shot_fired',
+        actor: actorLabel,
+        data: {
+          weaponType,
+          shots: shotsPerSalvo,
+          hits: 0,
+          damage: 0,
+          message: `${weaponType.replace(/_/g, ' ')} fired ${shotsPerSalvo} shot(s) - all missed!`
+        }
+      };
+      
+      await BattleRepo.addBattleEvent(context, battle.id, missEvent);
+      
+      // Send message to both players
+      await createMessage(attackerId, `Your ${weaponType.replace(/_/g, ' ')} fired ${shotsPerSalvo} shot(s) but all missed!`);
+      await createMessage(defenderId, `A: Enemy ${weaponType.replace(/_/g, ' ')} fired ${shotsPerSalvo} shot(s) but all missed!`);
+      
+      // Update cooldown - set to when weapon will be ready next
+      const nextReadyTime = currentTime + (weaponSpec.cooldown || 5);
+      await BattleRepo.setWeaponCooldown(context, battle.id, attackerId, weaponType, nextReadyTime);
+      
+      return;
+    }
+    
+    // Apply the pre-calculated damage values using BattleEngine
+    const battleEngine = new BattleEngine(battle);
+    const damageResult = await battleEngine.applyDamageWithLock(
+      userContext,
+      defenderId,
+      damageCalc.shieldDamage,
+      damageCalc.armorDamage,
+      damageCalc.hullDamage
+    );
+    
+    // Extract remaining defense values
+    const remainingShield = damageResult.remainingShield;
+    const remainingArmor = damageResult.remainingArmor;
+    const remainingHull = damageResult.remainingHull;
+    
+    // Track total damage dealt by attacker/attackee
+    await BattleRepo.updateTotalDamage(context, battle.id, attackerId, damageCalc.overallDamage);
+    
+    // Create battle event
+    const hitEvent: BattleEvent = {
       timestamp: currentTime,
       type: 'shot_fired',
       actor: actorLabel,
       data: {
         weaponType,
         shots: shotsPerSalvo,
-        hits: 0,
-        damage: 0,
-        message: `${weaponType.replace(/_/g, ' ')} fired ${shotsPerSalvo} shot(s) - all missed!`
+        hits: damageCalc.weaponsHit,
+        damage: damageCalc.overallDamage,
+        shieldDamage: damageCalc.shieldDamage,
+        armorDamage: damageCalc.armorDamage,
+        hullDamage: damageCalc.hullDamage,
+        message: `${weaponType.replace(/_/g, ' ')} fired ${shotsPerSalvo} shot(s), ${damageCalc.weaponsHit} hit for ${damageCalc.overallDamage} damage (Shield: ${damageCalc.shieldDamage}, Armor: ${damageCalc.armorDamage}, Hull: ${damageCalc.hullDamage})`
       }
     };
     
-    await BattleRepo.addBattleEvent(context, battle.id, missEvent);
+    await BattleRepo.addBattleEvent(context, battle.id, hitEvent);
     
-    // Send message to both players
-    await createMessage(attackerId, `Your ${weaponType.replace(/_/g, ' ')} fired ${shotsPerSalvo} shot(s) but all missed!`);
-    await createMessage(defenderId, `A: Enemy ${weaponType.replace(/_/g, ' ')} fired ${shotsPerSalvo} shot(s) but all missed!`);
+    // Format defense status for messages - ALWAYS show all three defense values
+    const defenseStatus = `Hull: ${remainingHull}, Armor: ${remainingArmor}, Shield: ${remainingShield}`;
+    
+    // Format damage breakdown
+    const damageBreakdown = `Shield: ${damageCalc.shieldDamage}, Armor: ${damageCalc.armorDamage}, Hull: ${damageCalc.hullDamage}`;
+    
+    // Send detailed messages to both players
+    const attackerMessage = `P: ⚔️ Your **${weaponType.replace(/_/g, ' ')}** fired ${shotsPerSalvo} shot(s), **${damageCalc.weaponsHit} hit** for **${damageCalc.overallDamage} total damage** (${damageBreakdown})! Enemy remaining: ${defenseStatus}`;
+    const defenderMessage = `N: 🛡️ Enemy **${weaponType.replace(/_/g, ' ')}** fired ${shotsPerSalvo} shot(s), **${damageCalc.weaponsHit} hit** you for **${damageCalc.overallDamage} total damage** (${damageBreakdown})! Your remaining: ${defenseStatus}`;
+    
+    await createMessage(attackerId, attackerMessage);
+    await createMessage(defenderId, defenderMessage);
     
     // Update cooldown - set to when weapon will be ready next
     const nextReadyTime = currentTime + (weaponSpec.cooldown || 5);
     await BattleRepo.setWeaponCooldown(context, battle.id, attackerId, weaponType, nextReadyTime);
     
-    return;
-  }
-  
-  // Calculate damage
-  const damagePerHit = weaponSpec.damage || 10;
-  const totalDamage = hits * damagePerHit;
-  
-  // Apply damage using BattleEngine to ensure User cache is updated
-  const battleEngine = new BattleEngine(battle);
-  const damageResult = await battleEngine.applyDamage(context, defenderId, totalDamage);
-  
-  // Extract damage amounts from result
-  const shieldDamage = damageResult.shieldDamage;
-  const armorDamage = damageResult.armorDamage;
-  const hullDamage = damageResult.hullDamage;
-  
-  // Extract remaining defense values
-  const remainingShield = damageResult.remainingShield;
-  const remainingArmor = damageResult.remainingArmor;
-  const remainingHull = damageResult.remainingHull;
-  
-  // Track total damage dealt by attacker/attackee
-  await BattleRepo.updateTotalDamage(context, battle.id, attackerId, totalDamage);
-  
-  // Create battle event
-  const hitEvent: BattleEvent = {
-    timestamp: currentTime,
-    type: 'shot_fired',
-    actor: actorLabel,
-    data: {
-      weaponType,
-      shots: shotsPerSalvo,
-      hits,
-      damage: totalDamage,
-      shieldDamage,
-      armorDamage,
-      hullDamage,
-      message: `${weaponType.replace(/_/g, ' ')} fired ${shotsPerSalvo} shot(s), ${hits} hit for ${totalDamage} damage (Shield: ${shieldDamage}, Armor: ${armorDamage}, Hull: ${hullDamage})`
-    }
-  };
-  
-  await BattleRepo.addBattleEvent(context, battle.id, hitEvent);
-  
-  // Format defense status for messages - ALWAYS show all three defense values
-  const defenseStatus = `Hull: ${remainingHull}, Armor: ${remainingArmor}, Shield: ${remainingShield}`;
-  
-  // Send detailed messages to both players
-  const attackerMessage = `P: ⚔️ Your **${weaponType.replace(/_/g, ' ')}** fired ${shotsPerSalvo} shot(s), **${hits} hit** for **${totalDamage} damage**! Enemy: ${defenseStatus}`;
-  const defenderMessage = `N: 🛡️ Enemy **${weaponType.replace(/_/g, ' ')}** fired ${shotsPerSalvo} shot(s), **${hits} hit** you for **${totalDamage} damage**! Your defenses: ${defenseStatus}`;
-  
-  await createMessage(attackerId, attackerMessage);
-  await createMessage(defenderId, defenderMessage);
-  
-  // Update cooldown - set to when weapon will be ready next
-  const nextReadyTime = currentTime + (weaponSpec.cooldown || 5);
-  await BattleRepo.setWeaponCooldown(context, battle.id, attackerId, weaponType, nextReadyTime);
-  
-  console.log(`⚔️ Battle ${battle.id}: User ${attackerId} ${weaponType} - ${hits}/${shotsPerSalvo} hits, ${totalDamage} damage`);
+    console.log(`⚔️ Battle ${battle.id}: User ${attackerId} ${weaponType} - ${damageCalc.weaponsHit}/${shotsPerSalvo} hits, ${damageCalc.overallDamage} damage`);
+  });
 }
 
 /**
