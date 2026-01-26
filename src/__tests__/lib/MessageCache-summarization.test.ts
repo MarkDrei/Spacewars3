@@ -209,5 +209,134 @@ describe('MessageCache - Summarization', () => {
       expect(unknownMessages.length).toBe(3);
       });
     });
+
+    it('messageSummarization_collectionMessages_correctSummary', async () => {
+      await withTransaction(async () => {
+        const userId = await createTestUser('sumtest6');
+
+      // Create collection messages
+      await messageCache.createMessage(userId, 'P: Successfully collected asteroid and received **50** iron.');
+      await messageCache.createMessage(userId, 'P: Successfully collected shipwreck and received **100** iron.');
+      await messageCache.createMessage(userId, 'P: Successfully collected ship wreck and received **75** iron.'); // Note: space in "ship wreck"
+      await messageCache.createMessage(userId, 'P: Successfully collected escape pod.');
+      await messageCache.createMessage(userId, 'P: Successfully collected asteroid and received **30** iron.');
+
+      // Wait for async message creation to complete
+      await messageCache.waitForPendingWrites();
+
+      // Summarize
+      const summary = await messageCache.summarizeMessages(userId);
+
+      console.log('Collection Summary:', summary);
+
+      // Verify summary content
+      expect(summary).toContain('Collection Summary');
+      expect(summary).toContain('Collected:');
+      expect(summary).toContain('2 asteroid(s)');
+      expect(summary).toContain('2 shipwreck(s)');
+      expect(summary).toContain('1 escape pod(s)');
+      expect(summary).toContain('Iron Received:');
+      expect(summary).toContain('255'); // 50 + 100 + 75 + 30
+
+      // Wait for summary message to be persisted
+      await messageCache.waitForPendingWrites();
+
+      // Verify messages after summarization
+      const messagesAfter = await messageCache.getMessagesForUser(userId);
+      
+      // Should have exactly 1 message (the collection summary)
+      expect(messagesAfter.length).toBe(1);
+      expect(messagesAfter[0].message).toBe(summary);
+      expect(messagesAfter[0].is_read).toBe(false);
+      });
+    });
+
+    it('messageSummarization_mixedBattleAndCollection_separateSummaries', async () => {
+      await withTransaction(async () => {
+        const userId = await createTestUser('sumtest7');
+
+      // Create mixed battle and collection messages
+      await messageCache.createMessage(userId, 'P: ⚔️ Your **pulse laser** fired 5 shot(s), **3 hit** for **24 damage**! Enemy: Hull: 262, Armor: 0, Shield: 0');
+      await messageCache.createMessage(userId, 'P: Successfully collected asteroid and received **50** iron.');
+      await messageCache.createMessage(userId, 'N: 🛡️ Enemy **pulse laser** fired 1 shot(s), **1 hit** you for **8 damage**! Your defenses: Hull: 600, Armor: 600, Shield: 288');
+      await messageCache.createMessage(userId, 'P: Successfully collected shipwreck and received **100** iron.');
+      await messageCache.createMessage(userId, 'P: 🎉 **Victory!** You won the battle!');
+
+      // Wait for async message creation to complete
+      await messageCache.waitForPendingWrites();
+
+      // Summarize
+      const summary = await messageCache.summarizeMessages(userId);
+
+      console.log('Mixed Summary:', summary);
+
+      // Verify summary contains both battle and collection sections
+      expect(summary).toContain('Battle Summary');
+      expect(summary).toContain('Collection Summary');
+      expect(summary).toContain('1 victory(ies)');
+      expect(summary).toContain('Dealt 24');
+      expect(summary).toContain('Received 8');
+      expect(summary).toContain('1 asteroid(s)');
+      expect(summary).toContain('1 shipwreck(s)');
+      expect(summary).toContain('150'); // 50 + 100
+
+      // Wait for summary messages to be persisted
+      await messageCache.waitForPendingWrites();
+
+      // Verify messages after summarization
+      const messagesAfter = await messageCache.getMessagesForUser(userId);
+      
+      // Should have 2 messages (battle summary + collection summary)
+      expect(messagesAfter.length).toBe(2);
+      
+      const battleSummary = messagesAfter.find(m => m.message.includes('Battle Summary'));
+      const collectionSummary = messagesAfter.find(m => m.message.includes('Collection Summary'));
+      
+      expect(battleSummary).toBeDefined();
+      expect(collectionSummary).toBeDefined();
+      expect(battleSummary!.is_read).toBe(false);
+      expect(collectionSummary!.is_read).toBe(false);
+      });
+    });
+
+    it('messageSummarization_preservesUnknownMessageTimestamps', async () => {
+      await withTransaction(async () => {
+        const userId = await createTestUser('sumtest8');
+
+      // Create messages with specific timestamps
+      await messageCache.createMessage(userId, 'P: 🎉 **Victory!** You won the battle!');
+      
+      // Wait a bit to create timestamp difference
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      await messageCache.createMessage(userId, 'This is a custom message');
+
+      // Wait for async message creation to complete
+      await messageCache.waitForPendingWrites();
+
+      // Get the original timestamp of the unknown message
+      const messagesBefore = await messageCache.getMessagesForUser(userId);
+      const unknownMsgBefore = messagesBefore.find(m => m.message.includes('custom message'));
+      expect(unknownMsgBefore).toBeDefined();
+      const originalTimestamp = unknownMsgBefore!.created_at;
+
+      // Summarize
+      await messageCache.summarizeMessages(userId);
+
+      // Wait for new messages to be created
+      await messageCache.waitForPendingWrites();
+
+      // Get messages after summarization
+      const messagesAfter = await messageCache.getMessagesForUser(userId);
+      
+      // Find the preserved unknown message
+      const unknownMsgAfter = messagesAfter.find(m => m.message.includes('custom message'));
+      expect(unknownMsgAfter).toBeDefined();
+      
+      // Verify the timestamp was preserved (within a small margin for test timing)
+      expect(unknownMsgAfter!.created_at).toBe(originalTimestamp);
+      expect(unknownMsgAfter!.is_read).toBe(false);
+      });
+    });
   });
 });

@@ -55,6 +55,26 @@ export class MessagesRepo {
   }
 
   /**
+   * Create a new message for a user with a specific timestamp
+   * Used for preserving original timestamps when re-creating unknown messages
+   * Returns the ID of the newly created message
+   */
+  async createMessageWithTimestamp<THeld extends readonly LockLevel[]>(
+    _context: HasLock12Context<THeld>,
+    recipientId: number,
+    message: string,
+    timestamp: number
+  ): Promise<number> {
+    const db = await getDatabase();
+    const result = await db.query(
+      `INSERT INTO messages (recipient_id, created_at, is_read, message)
+       VALUES ($1, $2, FALSE, $3) RETURNING id`,
+      [recipientId, timestamp, message]
+    );
+    return result.rows[0].id;
+  }
+
+  /**
    * Get all messages for a user (both read and unread)
    * Returns messages in descending order by creation time (newest first)
    */
