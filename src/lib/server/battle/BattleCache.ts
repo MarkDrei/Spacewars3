@@ -796,13 +796,13 @@ export function getBattleCache(): BattleCache | null {
 export async function getBattle(context: LockContext<LocksAtMostAndHas2>, battleId: number): Promise<Battle | null> {
   const cache = getBattleCache();
   if (!cache) throw new Error('BattleCache not initialized');
-  return cache.loadBattleIfNeeded(context, battleId);
+  return cache!.loadBattleIfNeeded(context, battleId);
 }
 
 export async function getOngoingBattleForUser(context: LockContext<LocksAtMostAndHas2>, userId: number): Promise<Battle | null> {
   const cache = getBattleCache();
   if (!cache) throw new Error('BattleCache not initialized');
-  return cache.getOngoingBattleForUser(context, userId);
+  return cache!.getOngoingBattleForUser(context, userId);
 }
 
 export async function updateWeaponCooldowns(
@@ -813,13 +813,13 @@ export async function updateWeaponCooldowns(
 ): Promise<void> {
   const cache = getBattleCache();
   if (!cache) throw new Error('BattleCache not initialized');
-  return cache.updateWeaponCooldowns(context, battleId, userId, weaponCooldowns);
+  return cache!.updateWeaponCooldowns(context, battleId, userId, weaponCooldowns);
 }
 
 export async function addBattleEvent(context: LockContext<LocksAtMostAndHas2>, battleId: number, event: BattleEvent): Promise<void> {
   const cache = getBattleCache();
   if (!cache) throw new Error('BattleCache not initialized');
-  return cache.addBattleEvent(context, battleId, event);
+  return cache!.addBattleEvent(context, battleId, event);
 }
 
 export async function updateBattleDefenses(
@@ -830,7 +830,7 @@ export async function updateBattleDefenses(
 ): Promise<void> {
   const cache = getBattleCache();
   if (!cache) throw new Error('BattleCache not initialized');
-  return cache.updateBattleStats(context, battleId, attackerEndStats, attackeeEndStats);
+  return cache!.updateBattleStats(context, battleId, attackerEndStats, attackeeEndStats);
 }
 
 export async function endBattle(
@@ -843,25 +843,25 @@ export async function endBattle(
 ): Promise<void> {
   const cache = getBattleCache();
   if (!cache) throw new Error('BattleCache not initialized');
-  return cache.endBattle(context, battleId, winnerId, loserId, attackerEndStats, attackeeEndStats);
+  return cache!.endBattle(context, battleId, winnerId, loserId, attackerEndStats, attackeeEndStats);
 }
 
 export async function getAllBattles(): Promise<Battle[]> {
   const cache = getBattleCache();
   if (!cache) throw new Error('BattleCache not initialized');
-  return cache.getAllBattles();
+  return cache!.getAllBattles();
 }
 
 export async function getBattlesForUser(userId: number): Promise<Battle[]> {
   const cache = getBattleCache();
   if (!cache) throw new Error('BattleCache not initialized');
-  return cache.getBattlesForUser(userId);
+  return cache!.getBattlesForUser(userId);
 }
 
 export async function getActiveBattles(context: LockContext<LocksAtMostAndHas2>): Promise<Battle[]> {
   const cache = getBattleCache();
   if (!cache) throw new Error('BattleCache not initialized');
-  return cache.getActiveBattles(context);
+  return cache!.getActiveBattles(context);
 }
 
 export async function setWeaponCooldown(
@@ -873,7 +873,7 @@ export async function setWeaponCooldown(
 ): Promise<void> {
   const cache = getBattleCache();
   if (!cache) throw new Error('BattleCache not initialized');
-  return cache.setWeaponCooldown(context, battleId, userId, weaponType, cooldown);
+  return cache!.setWeaponCooldown(context, battleId, userId, weaponType, cooldown);
 }
 
 export async function updateBattleStats(
@@ -884,7 +884,7 @@ export async function updateBattleStats(
 ): Promise<void> {
   const cache = getBattleCache();
   if (!cache) throw new Error('BattleCache not initialized');
-  return cache.updateBattleStats(context, battleId, attackerEndStats, attackeeEndStats);
+  return cache!.updateBattleStats(context, battleId, attackerEndStats, attackeeEndStats);
 }
 
 export async function updateTotalDamage(
@@ -895,7 +895,7 @@ export async function updateTotalDamage(
 ): Promise<void> {
   const cache = getBattleCache();
   if (!cache) throw new Error('BattleCache not initialized');
-  return cache.updateTotalDamage(context, battleId, userId, additionalDamage);
+  return cache!.updateTotalDamage(context, battleId, userId, additionalDamage);
 }
 
 /**
@@ -916,7 +916,7 @@ export const BattleRepo = {
     await context.useLockWithAcquire(USER_LOCK, async (userContext) => {
       const cache = getBattleCache();
       if (!cache) throw new Error('BattleCache not initialized');
-      return cache.createBattle(
+      return cache!.createBattle(
         context,
         userContext,
         attackerId,
@@ -932,13 +932,13 @@ export const BattleRepo = {
   getBattle: async (context: LockContext<LocksAtMostAndHas2>, battleId: number) => {
     const cache = getBattleCache();
     if (!cache) throw new Error('BattleCache not initialized');
-    return cache.loadBattleIfNeeded(context, battleId);
+    return cache!.loadBattleIfNeeded(context, battleId);
   },
 
   getOngoingBattleForUser: async (context: LockContext<LocksAtMostAndHas2>, userId: number) => {
     const cache = getBattleCache();
     if (!cache) throw new Error('BattleCache not initialized');
-    return cache.getOngoingBattleForUser(context, userId);
+    return cache!.getOngoingBattleForUser(context, userId);
   },
 
   updateWeaponCooldowns: async (
@@ -949,13 +949,13 @@ export const BattleRepo = {
   ) => {
     const cache = getBattleCache();
     if (!cache) throw new Error('BattleCache not initialized');
-    return cache.updateWeaponCooldowns(context, battleId, userId, weaponCooldowns);
+    return cache!.updateWeaponCooldowns(context, battleId, userId, weaponCooldowns);
   },
 
   addBattleEvent: async (context: LockContext<LocksAtMost4>, battleId: number, event: BattleEvent) => {
     const cache = getBattleCache();
     if (!cache) throw new Error('BattleCache not initialized');
-    return cache.addBattleEvent(context, battleId, event);
+    return cache!.addBattleEvent(context, battleId, event);
   },
 
   updateBattleDefenses: async (
@@ -966,7 +966,7 @@ export const BattleRepo = {
   ) => {
     const cache = getBattleCache();
     if (!cache) throw new Error('BattleCache not initialized');
-    return cache.updateBattleStats(context, battleId, attackerEndStats, attackeeEndStats);
+    return cache!.updateBattleStats(context, battleId, attackerEndStats, attackeeEndStats);
   },
 
   endBattle: async (
@@ -979,25 +979,25 @@ export const BattleRepo = {
   ) => {
     const cache = getBattleCache();
     if (!cache) throw new Error('BattleCache not initialized');
-    return cache.endBattle(context, battleId, winnerId, loserId, attackerEndStats, attackeeEndStats);
+    return cache!.endBattle(context, battleId, winnerId, loserId, attackerEndStats, attackeeEndStats);
   },
 
   getAllBattles: async () => {
     const cache = getBattleCache();
     if (!cache) throw new Error('BattleCache not initialized');
-    return cache.getAllBattles();
+    return cache!.getAllBattles();
   },
 
   getBattlesForUser: async (userId: number) => {
     const cache = getBattleCache();
     if (!cache) throw new Error('BattleCache not initialized');
-    return cache.getBattlesForUser(userId);
+    return cache!.getBattlesForUser(userId);
   },
 
   getActiveBattles: async (context: LockContext<LocksAtMostAndHas2>) => {
     const cache = getBattleCache();
     if (!cache) throw new Error('BattleCache not initialized');
-    return cache.getActiveBattles(context);
+    return cache!.getActiveBattles(context);
   },
 
   setWeaponCooldown: async (
@@ -1009,7 +1009,7 @@ export const BattleRepo = {
   ) => {
     const cache = getBattleCache();
     if (!cache) throw new Error('BattleCache not initialized');
-    return cache.setWeaponCooldown(context, battleId, userId, weaponType, cooldown);
+    return cache!.setWeaponCooldown(context, battleId, userId, weaponType, cooldown);
   },
 
   updateBattleStats: async (
@@ -1020,7 +1020,7 @@ export const BattleRepo = {
   ) => {
     const cache = getBattleCache();
     if (!cache) throw new Error('BattleCache not initialized');
-    return cache.updateBattleStats(context, battleId, attackerEndStats, attackeeEndStats);
+    return cache!.updateBattleStats(context, battleId, attackerEndStats, attackeeEndStats);
   },
 
   updateTotalDamage: async (
@@ -1031,6 +1031,6 @@ export const BattleRepo = {
   ) => {
     const cache = getBattleCache();
     if (!cache) throw new Error('BattleCache not initialized');
-    return cache.updateTotalDamage(context, battleId, userId, additionalDamage);
+    return cache!.updateTotalDamage(context, battleId, userId, additionalDamage);
   }
 };

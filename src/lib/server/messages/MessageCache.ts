@@ -736,20 +736,20 @@ export type { Message, UnreadMessage } from './messagesRepo';
 // Convenience functions for message operations
 export async function sendMessageToUser(userId: number, message: string): Promise<number> {
   const cache = getMessageCache();
-  return await cache.createMessage(userId, message);
+  return await cache!.createMessage(userId, message);
 }
 
 export async function getUserMessages(userId: number): Promise<UnreadMessage[]> {
   const cache = getMessageCache();
-  return await cache.getUnreadMessages(userId);
+  return await cache!.getUnreadMessages(userId);
 }
 
 export async function markUserMessagesAsRead(userId: number): Promise<number> {
   const cache = getMessageCache();
-  return await cache.markAllMessagesAsRead(userId);
+  return await cache!.markAllMessagesAsRead(userId);
 }
 
 export async function getUserMessageCount(userId: number): Promise<number> {
   const cache = getMessageCache();
-  return await cache.getUnreadMessageCount(userId);
+  return await cache!.getUnreadMessageCount(userId);
 }

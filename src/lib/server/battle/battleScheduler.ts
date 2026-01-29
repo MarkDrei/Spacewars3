@@ -171,7 +171,7 @@ export async function processActiveBattles(context: LockContext<LocksAtMostAndHa
   try {
       const battleCache = getBattleCache();
       // Pass battleContext so getActiveBattles doesn't try to acquire another lock
-      const activeBattles = await battleCache.getActiveBattles(context);
+      const activeBattles = await battleCache!.getActiveBattles(context);
       
       if (activeBattles.length === 0) {
         return;

@@ -295,7 +295,7 @@ export async function initiateBattle<THeld extends IronLocks>(
   console.log(`⚔️ initiateBattle: Creating battle in database...`);
   // Create battle in database with initial cooldowns
   const battleCache = getBattleCache();
-  const battle = await battleCache.createBattle(
+  const battle = await battleCache!.createBattle(
     contextBattle,
     contextUser,
     attacker.id,

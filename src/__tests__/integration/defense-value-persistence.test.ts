@@ -84,7 +84,7 @@ describe('Defense Value Persistence After Battle', () => {
         // 2. Create Battle (Scope 2 for USER_LOCK)
         BattleCache.getInstance();
         const battle = await battleContext.useLockWithAcquire(USER_LOCK, async (userCtx) => {
-          return await battleCache.createBattle(
+          return await battleCache!.createBattle(
             battleContext,
             userCtx,
             attackerId,
