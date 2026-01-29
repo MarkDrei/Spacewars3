@@ -883,6 +883,7 @@ export async function updateBattleStats(
   attackeeEndStats: BattleStats | null
 ): Promise<void> {
   const cache = getBattleCache();
+  if (!cache) throw new Error('BattleCache not initialized');
   return cache.updateBattleStats(context, battleId, attackerEndStats, attackeeEndStats);
 }
 
@@ -893,6 +894,7 @@ export async function updateTotalDamage(
   additionalDamage: number
 ): Promise<void> {
   const cache = getBattleCache();
+  if (!cache) throw new Error('BattleCache not initialized');
   return cache.updateTotalDamage(context, battleId, userId, additionalDamage);
 }
 
@@ -913,6 +915,7 @@ export const BattleRepo = {
   ) => {
     await context.useLockWithAcquire(USER_LOCK, async (userContext) => {
       const cache = getBattleCache();
+      if (!cache) throw new Error('BattleCache not initialized');
       return cache.createBattle(
         context,
         userContext,
@@ -928,11 +931,13 @@ export const BattleRepo = {
 
   getBattle: async (context: LockContext<LocksAtMostAndHas2>, battleId: number) => {
     const cache = getBattleCache();
+    if (!cache) throw new Error('BattleCache not initialized');
     return cache.loadBattleIfNeeded(context, battleId);
   },
 
   getOngoingBattleForUser: async (context: LockContext<LocksAtMostAndHas2>, userId: number) => {
     const cache = getBattleCache();
+    if (!cache) throw new Error('BattleCache not initialized');
     return cache.getOngoingBattleForUser(context, userId);
   },
 
@@ -943,11 +948,13 @@ export const BattleRepo = {
     weaponCooldowns: WeaponCooldowns
   ) => {
     const cache = getBattleCache();
+    if (!cache) throw new Error('BattleCache not initialized');
     return cache.updateWeaponCooldowns(context, battleId, userId, weaponCooldowns);
   },
 
   addBattleEvent: async (context: LockContext<LocksAtMost4>, battleId: number, event: BattleEvent) => {
     const cache = getBattleCache();
+    if (!cache) throw new Error('BattleCache not initialized');
     return cache.addBattleEvent(context, battleId, event);
   },
 
@@ -958,6 +965,7 @@ export const BattleRepo = {
     attackeeEndStats: BattleStats | null
   ) => {
     const cache = getBattleCache();
+    if (!cache) throw new Error('BattleCache not initialized');
     return cache.updateBattleStats(context, battleId, attackerEndStats, attackeeEndStats);
   },
 
@@ -970,21 +978,25 @@ export const BattleRepo = {
     attackeeEndStats: BattleStats
   ) => {
     const cache = getBattleCache();
+    if (!cache) throw new Error('BattleCache not initialized');
     return cache.endBattle(context, battleId, winnerId, loserId, attackerEndStats, attackeeEndStats);
   },
 
   getAllBattles: async () => {
     const cache = getBattleCache();
+    if (!cache) throw new Error('BattleCache not initialized');
     return cache.getAllBattles();
   },
 
   getBattlesForUser: async (userId: number) => {
     const cache = getBattleCache();
+    if (!cache) throw new Error('BattleCache not initialized');
     return cache.getBattlesForUser(userId);
   },
 
   getActiveBattles: async (context: LockContext<LocksAtMostAndHas2>) => {
     const cache = getBattleCache();
+    if (!cache) throw new Error('BattleCache not initialized');
     return cache.getActiveBattles(context);
   },
 
@@ -996,6 +1008,7 @@ export const BattleRepo = {
     cooldown: number
   ) => {
     const cache = getBattleCache();
+    if (!cache) throw new Error('BattleCache not initialized');
     return cache.setWeaponCooldown(context, battleId, userId, weaponType, cooldown);
   },
 
@@ -1006,6 +1019,7 @@ export const BattleRepo = {
     attackeeEndStats: BattleStats | null
   ) => {
     const cache = getBattleCache();
+    if (!cache) throw new Error('BattleCache not initialized');
     return cache.updateBattleStats(context, battleId, attackerEndStats, attackeeEndStats);
   },
 
@@ -1016,6 +1030,7 @@ export const BattleRepo = {
     additionalDamage: number
   ) => {
     const cache = getBattleCache();
+    if (!cache) throw new Error('BattleCache not initialized');
     return cache.updateTotalDamage(context, battleId, userId, additionalDamage);
   }
 };
