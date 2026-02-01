@@ -123,6 +123,16 @@ export const migrations: Migration[] = [
       'ALTER TABLE battles DROP COLUMN IF EXISTS attacker_end_stats',
       'ALTER TABLE battles DROP COLUMN IF EXISTS attackee_end_stats'
     ]
+  },
+  {
+    version: 8,
+    name: 'add_ship_picture_id',
+    up: [
+      'ALTER TABLE users ADD COLUMN IF NOT EXISTS ship_picture_id INTEGER NOT NULL DEFAULT 1'
+    ],
+    down: [
+      'ALTER TABLE users DROP COLUMN IF EXISTS ship_picture_id'
+    ]
   }
   // Future migrations go here
 ];
@@ -237,6 +247,9 @@ export async function applyTechMigrations(db: DatabaseConnection): Promise<void>
   
   // Apply battle end stats migration
   await applyBattleEndStatsMigration(db);
+  
+  // Apply ship picture ID migration
+  await applyShipPictureIdMigration(db);
 }
 
 /**
@@ -413,5 +426,38 @@ export async function applyBattleEndStatsMigration(db: DatabaseConnection): Prom
     console.log('✅ Battle end stats migration completed');
   } catch (error) {
     console.error('❌ Error applying battle end stats migration:', error);
+  }
+}
+
+/**
+ * Apply ship picture ID migration to the database
+ */
+export async function applyShipPictureIdMigration(db: DatabaseConnection): Promise<void> {
+  console.log('🔄 Checking for ship picture ID migration...');
+  
+  try {
+    const exists = await columnExists(db, 'users', 'ship_picture_id');
+    if (exists) {
+      console.log('✅ Ship picture ID column already exists');
+      return;
+    }
+    
+    console.log('🚀 Adding ship picture ID column...');
+    
+    // Get ship picture ID migration
+    const shipPictureIdMigration = migrations.find(m => m.name === 'add_ship_picture_id');
+    if (!shipPictureIdMigration) {
+      console.error('❌ Ship picture ID migration not found');
+      return;
+    }
+    
+    // Apply each migration statement
+    for (const statement of shipPictureIdMigration.up) {
+      await runMigrationStatement(db, statement);
+    }
+    
+    console.log('✅ Ship picture ID migration completed');
+  } catch (error) {
+    console.error('❌ Error applying ship picture ID migration:', error);
   }
 }

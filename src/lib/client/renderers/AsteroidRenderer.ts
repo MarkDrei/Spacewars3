@@ -18,7 +18,7 @@ export class AsteroidRenderer extends SpaceObjectRendererBase {
     /**
      * Get the asteroid image
      */
-    protected getObjectImage(): HTMLImageElement | null {
+    protected getObjectImage(spaceObject?: SpaceObject): HTMLImageElement | null {
         return this.asteroidImage;
     }
     
