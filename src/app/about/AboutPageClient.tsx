@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import AuthenticatedLayout from '@/components/Layout/AuthenticatedLayout';
 import { ServerAuthState } from '@/lib/server/serverSession';
+import { shipSelectionService } from '@/lib/client/services/shipSelectionService';
 import './AboutPage.css';
 
 interface AboutPageClientProps {
@@ -14,6 +15,30 @@ const AboutPageClient: React.FC<AboutPageClientProps> = () => {
   const [availableShips, setAvailableShips] = useState<number[]>([]);
   const [selectedShip, setSelectedShip] = useState<number | null>(null);
   const [message, setMessage] = useState<string>('');
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+
+  useEffect(() => {
+    // Load current ship selection from session
+    const loadCurrentShip = async () => {
+      try {
+        const response = await fetch('/api/session', {
+          method: 'GET',
+          credentials: 'include',
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.loggedIn && data.shipPictureId) {
+            setSelectedShip(data.shipPictureId);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading current ship:', error);
+      }
+    };
+    
+    loadCurrentShip();
+  }, []);
 
   useEffect(() => {
     // Dynamically detect available ship images
@@ -47,9 +72,25 @@ const AboutPageClient: React.FC<AboutPageClientProps> = () => {
     }
   }, [message]);
 
-  const handleShipSelection = (shipNumber: number) => {
-    setSelectedShip(shipNumber);
-    setMessage(`You have selected Ship ${shipNumber}! 🚀`);
+  const handleShipSelection = async (shipNumber: number) => {
+    setIsLoading(true);
+    setMessage('Saving your selection...');
+    
+    try {
+      const result = await shipSelectionService.updateShipPicture(shipNumber);
+      
+      if ('error' in result) {
+        setMessage(`Error: ${result.error}`);
+      } else {
+        setSelectedShip(shipNumber);
+        setMessage(`You have selected Ship ${shipNumber}! 🚀`);
+      }
+    } catch (error) {
+      console.error('Error selecting ship:', error);
+      setMessage('Failed to save ship selection. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -73,8 +114,8 @@ const AboutPageClient: React.FC<AboutPageClientProps> = () => {
               {availableShips.map((shipNumber) => (
                 <div
                   key={shipNumber}
-                  className={`ship-card ${selectedShip === shipNumber ? 'selected' : ''}`}
-                  onClick={() => handleShipSelection(shipNumber)}
+                  className={`ship-card ${selectedShip === shipNumber ? 'selected' : ''} ${isLoading ? 'disabled' : ''}`}
+                  onClick={() => !isLoading && handleShipSelection(shipNumber)}
                 >
                   <div className="ship-image-container">
                     <Image

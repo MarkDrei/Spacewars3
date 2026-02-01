@@ -21,18 +21,19 @@ export async function GET(request: NextRequest) {
     const db = await getDatabase();
     
     const result = await db.query(
-      'SELECT username, ship_id FROM users WHERE id = $1',
+      'SELECT username, ship_id, ship_picture_id FROM users WHERE id = $1',
       [session.userId]
     );
     
-    const userRow = result.rows[0] as { username: string; ship_id: number } | undefined;
+    const userRow = result.rows[0] as { username: string; ship_id: number; ship_picture_id: number } | undefined;
     
     if (userRow) {
-      console.log(`✅ Session valid - user: ${userRow.username}, shipId: ${userRow.ship_id}`);
+      console.log(`✅ Session valid - user: ${userRow.username}, shipId: ${userRow.ship_id}, shipPictureId: ${userRow.ship_picture_id}`);
       return NextResponse.json({ 
         loggedIn: true, 
         username: userRow.username, 
-        shipId: userRow.ship_id 
+        shipId: userRow.ship_id,
+        shipPictureId: userRow.ship_picture_id
       });
     } else {
       console.log(`❌ Session invalid - user not found for userId: ${session.userId}`);
