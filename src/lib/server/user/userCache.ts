@@ -8,6 +8,7 @@ import { DatabaseConnection, getDatabase } from '../database';
 import { MessageCache } from '../messages/MessageCache';
 import {
   USER_LOCK,
+  DATABASE_LOCK_MESSAGES,
 } from '../typedLocks';
 import { User } from './user';
 import { getUserByIdFromDb, getUserByUsernameFromDb } from './userRepo';
@@ -60,7 +61,6 @@ export class UserCache extends Cache {
   };
 
   private db: DatabaseConnection | null = null;
-  private persistenceTimer: NodeJS.Timeout | null = null;
 
   // In-memory cache storage
   private users: Map<number, User> = new Map();
@@ -161,8 +161,8 @@ export class UserCache extends Cache {
     }
 
     try {
-      const { getMessageCache } = await import('../messages/MessageCache');
-      return getMessageCache();
+      const { MessageCache } = await import('../messages/MessageCache');
+      return MessageCache.getInstance();
     } catch {
       return null;
     }
@@ -355,10 +355,27 @@ export class UserCache extends Cache {
   }
 
   /**
-   * Force flush all dirty data to database
+   * Force flush all dirty data to database (implements abstract method from Cache)
+   * Acquires USER_LOCK internally
+   */
+  protected async flushAllToDatabase(context: LockContext<LocksAtMostAndHas4>): Promise<void> {
+    await this.flushAllToDatabaseWithContext(context);
+  }
+
+  /**
+   * Force flush all dirty data to database when already holding USER_LOCK
+   * Useful for ensuring data is persisted before reading directly from DB
+   * @deprecated Use flushAllToDatabaseWithContext instead
+   */
+  async flushAllToDatabaseWithLock(context: LockContext<LocksAtMostAndHas4>): Promise<void> {
+    return this.flushAllToDatabaseWithContext(context);
+  }
+
+  /**
+   * Force flush all dirty data to database when already holding USER_LOCK
    * Useful for ensuring data is persisted before reading directly from DB
    */
-  async flushAllToDatabase(context: LockContext<LocksAtMostAndHas4>): Promise<void> {
+  async flushAllToDatabaseWithContext(context: LockContext<LocksAtMostAndHas4>): Promise<void> {
     console.log('🔄 Flushing all dirty data to database...');
 
     // Persist dirty users
@@ -374,8 +391,10 @@ export class UserCache extends Cache {
       await worldCache.flushToDatabase();
     }
 
+    // Persist dirty message data via message cache
     const messageCache = await this.getMessageCache();
     if (messageCache) {
+      console.log('💾 Flushing message data');
       await messageCache.flushToDatabase(context);
     }
 
@@ -469,9 +488,9 @@ export class UserCache extends Cache {
 
 
   /**
-   * Start background persistence timer
+   * Start background persistence timer (implements abstract method from Cache)
    */
-  private startBackgroundPersistence(): void {
+  protected startBackgroundPersistence(): void {
     if (!this.shouldEnableBackgroundPersistence(this.config.enableAutoPersistence)) {
       console.log('📝 Background persistence disabled (test mode or config)');
       return;
@@ -492,15 +511,8 @@ export class UserCache extends Cache {
   }
 
   /**
-   * Stop background persistence timer
+   * Stop background persistence timer (implemented by base Cache class)
    */
-  private stopBackgroundPersistence(): void {
-    if (this.persistenceTimer) {
-      clearInterval(this.persistenceTimer);
-      this.persistenceTimer = null;
-      console.log('⏹️ Background persistence stopped');
-    }
-  }
 
   /**
    * Background persistence operation
@@ -552,7 +564,9 @@ export class UserCache extends Cache {
       const messageCache = await this.getMessageCache();
       if (messageCache) {
         await messageCache.flushToDatabase(userContext);
-        await messageCache.shutdown();
+        await userContext.useLockWithAcquire(DATABASE_LOCK_MESSAGES, async (msgCtx) => {
+          await messageCache.shutdown(msgCtx);
+        });
       }
 
       console.log('✅ Typed cache manager shutdown complete');

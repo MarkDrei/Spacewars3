@@ -15,7 +15,7 @@ import { withTransaction } from '../helpers/transactionHelper';
 
 describe('Phase 5: End-to-End Battle Flow with BattleCache', () => {
 
-  let battleCache: BattleCache;
+  let battleCache: BattleCache | null;
   let userCache: UserCache;
   let emptyCtx: ReturnType<typeof createLockContext>;
   
@@ -77,7 +77,7 @@ describe('Phase 5: End-to-End Battle Flow with BattleCache', () => {
         // === Phase 2: Create Battle ===
         
         const battle = await battleCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
-          return await battleCache.createBattle(
+          return await battleCache!.createBattle(
           battleCtx,
           userCtx,
           attackerId,
@@ -102,7 +102,7 @@ describe('Phase 5: End-to-End Battle Flow with BattleCache', () => {
         // === Phase 3: Verify BattleCache Integration ===
         
         // Battle should be in cache
-        const cachedBattle = battleCache.getBattleFromCache(battle.id);
+        const cachedBattle = battleCache!.getBattleFromCache(battle.id);
         expect(cachedBattle).toBeDefined();
         expect(cachedBattle?.id).toBe(battle.id);
   
@@ -132,7 +132,7 @@ describe('Phase 5: End-to-End Battle Flow with BattleCache', () => {
         });
   
         // Verify cache contains updated battle
-        const cachedUpdated = battleCache.getBattleFromCache(battle.id);
+        const cachedUpdated = battleCache!.getBattleFromCache(battle.id);
         expect(cachedUpdated).toBeDefined();
         
         // Battle log should have events
@@ -142,11 +142,18 @@ describe('Phase 5: End-to-End Battle Flow with BattleCache', () => {
         // === Phase 5: Cache Persistence (Skip scheduler test) ===
         
         // Force persistence
-        await battleCache.persistDirtyBattles(battleCtx);
+        await battleCache!.persistDirtyBattles(battleCtx);
         
-        // Reset cache and reload from DB
+        // Reset cache and reload from DB to test database persistence
         BattleCache.resetInstance();
-        const freshCache = getBattleCache();
+        
+        // Reinitialize cache (needed after reset)
+        const db = battleCache!['db']; // Access private field for test
+        const deps = battleCache!['dependencies']; // Access private field for test
+        await BattleCache.initialize(db, deps);
+        
+        const freshCache = getBattleCache()!;
+        expect(freshCache).not.toBeNull();
   
         // Battle should be loadable from database
         const reloadedBattle = await freshCache.loadBattleIfNeeded(battleCtx, battle.id);
@@ -263,18 +270,18 @@ describe('Phase 5: End-to-End Battle Flow with BattleCache', () => {
 
         await battleCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
           // Create multiple battles
-          const battle1 = await battleCache.createBattle(
+          const battle1 = await battleCache!.createBattle(
             battleCtx, userCtx,
             userIds[0], userIds[1], battleStats, battleStats, cooldowns, cooldowns
           );
           
-          const battle2 = await battleCache.createBattle(
+          const battle2 = await battleCache!.createBattle(
             battleCtx, userCtx,
             userIds[2], userIds[3], battleStats, battleStats, cooldowns, cooldowns
           );
   
           // Verify both battles are cached separately
-          const cache = getBattleCache();
+          const cache = getBattleCache()!;
           const cached1 = cache.getBattleFromCache(battle1.id);
           const cached2 = cache.getBattleFromCache(battle2.id);
   
@@ -323,7 +330,7 @@ describe('Phase 5: End-to-End Battle Flow with BattleCache', () => {
         const cooldowns: WeaponCooldowns = { pulse_laser: 0, auto_turret: 0, missile_launcher: 0 };
 
         const battle = await battleCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
-          return await battleCache.createBattle(
+          return await battleCache!.createBattle(
             battleCtx, userCtx,
             user1Id, user2Id, stats, stats, cooldowns, cooldowns
           );
@@ -339,20 +346,20 @@ describe('Phase 5: End-to-End Battle Flow with BattleCache', () => {
 
         // In test mode, battles are immediately persisted (not kept dirty)
         // Verify battle was persisted by checking it's not dirty
-        expect(battleCache.getDirtyBattleIds().includes(battle.id)).toBe(false);
+        expect(battleCache!.getDirtyBattleIds().includes(battle.id)).toBe(false);
 
         // Force persistence (should be no-op in test mode)
-        await battleCache.persistDirtyBattles(battleCtx);
+        await battleCache!.persistDirtyBattles(battleCtx);
 
         // Battle should still not be dirty
-        expect(battleCache.getDirtyBattleIds().includes(battle.id)).toBe(false);
+        expect(battleCache!.getDirtyBattleIds().includes(battle.id)).toBe(false);
         });
       });
     });
 
     it('battleCache_memoryUsage_reasonable', async () => {
       await withTransaction(async () => {
-        const cache = getBattleCache();
+        const cache = getBattleCache()!;
         const initialStats = cache.getStats();
 
         
@@ -368,7 +375,7 @@ describe('Phase 5: End-to-End Battle Flow with BattleCache', () => {
   describe('Error Handling', () => {
     it('battleCache_missingBattle_handlesGracefully', async () => {
       await withTransaction(async () => {
-        const cache = getBattleCache();
+        const cache = getBattleCache()!;
         
         const emptyCtx = createLockContext();
         await emptyCtx.useLockWithAcquire(BATTLE_LOCK, async (battleCtx) => {
@@ -405,7 +412,7 @@ describe('Phase 5: End-to-End Battle Flow with BattleCache', () => {
         const cooldowns: WeaponCooldowns = { pulse_laser: 0, auto_turret: 0, missile_launcher: 0 };
 
         const battle = await battleCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
-          return await battleCache.createBattle(
+          return await battleCache!.createBattle(
             battleCtx,
             userCtx,
             user1Id,

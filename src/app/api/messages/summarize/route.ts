@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 import { getIronSession } from 'iron-session';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { cookies } from 'next/headers';
-import { getMessageCache } from '@/lib/server/messages/MessageCache';
+import { MessageCache } from '@/lib/server/messages/MessageCache';
+import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 
 /**
  * POST /api/messages/summarize
@@ -19,8 +20,9 @@ export async function POST() {
       );
     }
 
-    const messageCache = getMessageCache();
-    const summary = await messageCache.summarizeMessages(session.userId);
+    const messageCache = MessageCache.getInstance();
+    const ctx = createLockContext();
+    const summary = await messageCache.summarizeMessages(ctx, session.userId);
 
     return NextResponse.json({
       success: true,

@@ -38,6 +38,7 @@ export async function initializeServer() {
             console.warn('⚠️ Save world callback invoked - but no save is happening');
         });
 
+        await MessageCache.initialize(ctx12);
         const messageCache = MessageCache.getInstance();
 
         WorldCache.configureDependencies({ messageCache });
@@ -47,16 +48,14 @@ export async function initializeServer() {
             worldCache: WorldCache.getInstance(),
             messageCache
         });
-
-        BattleCache.configureDependencies({
+        
+        // Initialize BattleCache
+        console.log('🌱🪴 Application startup - ⚔️ Initializing BattleCache...');
+        await BattleCache.initialize(db, {
             userCache: UserCache.getInstance2(),
             worldCache: WorldCache.getInstance(),
             messageCache
         });
-
-        // Initialize BattleCache
-        console.log('🌱🪴 Application startup - ⚔️ Initializing BattleCache...');
-        await BattleCache.initialize2(db);
         console.log('🌱🪴 Application startup - ✅ BattleCache initialized');
 
         console.log('🌱🪴 Application startup complete');

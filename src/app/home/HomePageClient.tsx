@@ -15,7 +15,7 @@ interface HomePageClientProps {
 }
 
 // Message type based on prefix
-type MessageType = 'neutral' | 'attack' | 'positive';
+type MessageType = 'neutral' | 'attack' | 'positive' | 'negative';
 
 interface ParsedMessage {
   type: MessageType;
@@ -25,6 +25,7 @@ interface ParsedMessage {
 /**
  * Parse message to determine type and extract content
  * A: prefix = attack (red background)
+ * N: prefix = negative (red background)
  * P: prefix = positive (green background)
  * No prefix = neutral (no special background)
  */
@@ -32,15 +33,15 @@ function parseMessage(message: string): ParsedMessage {
   if (message.startsWith('A: ')) {
     return { type: 'attack', content: message.substring(3) };
   }
+  if (message.startsWith('N: ')) {
+    return { type: 'negative', content: message.substring(3) };
+  }
   if (message.startsWith('P: ')) {
     return { type: 'positive', content: message.substring(3) };
   }
   return { type: 'neutral', content: message };
 }
 
-/**
- * Convert **text** to <strong>text</strong>
- */
 function formatBoldText(text: string): React.ReactNode {
   const parts = text.split(/(\*\*.*?\*\*)/g);
   return parts.map((part, index) => {

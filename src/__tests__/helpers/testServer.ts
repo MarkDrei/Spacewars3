@@ -3,6 +3,8 @@ import { BattleCache } from '@/lib/server/battle/BattleCache';
 import { UserCache } from '@/lib/server/user/userCache';
 import { WorldCache } from '@/lib/server/world/worldCache';
 import { MessageCache } from '@/lib/server/messages/MessageCache';
+import { createLockContext } from '@markdrei/ironguard-typescript-locks';
+import { DATABASE_LOCK_MESSAGES } from '@/lib/server/typedLocks';
 
 async function shutdownUserWorldCache(): Promise<void> {
   try {
@@ -27,7 +29,10 @@ async function shutdownMessageCache(): Promise<void> {
   if (!cache) {
     return;
   }
-  await cache.shutdown();
+  const ctx = createLockContext();
+  await ctx.useLockWithAcquire(DATABASE_LOCK_MESSAGES, async (lockCtx) => {
+    await cache.shutdown(lockCtx);
+  });
 }
 
 async function shutdownBattleCache(): Promise<void> {
@@ -69,7 +74,8 @@ export async function initializeIntegrationTestServer(): Promise<void> {
   // Note: Must be done AFTER shutdown completes to avoid interfering with ongoing operations
   // UserCache.resetInstance() also calls WorldCache.resetInstance() internally
   BattleCache.resetInstance();
-  MessageCache.resetInstance();
+  const ctx = createLockContext();
+  MessageCache.resetInstance(ctx);
   UserCache.resetInstance();
   
   // Initialize server (this will reinitialize caches)
@@ -91,6 +97,7 @@ export async function shutdownIntegrationTestServer(): Promise<void> {
   // Reset instances after shutdown completes
   // UserCache.resetInstance() also resets WorldCache internally
   BattleCache.resetInstance();
-  MessageCache.resetInstance();
+  const ctx = createLockContext();
+  MessageCache.resetInstance(ctx);
   UserCache.resetInstance();
 }

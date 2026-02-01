@@ -33,7 +33,7 @@ describe('TechService - Unit Tests', () => {
         };
 
         mockMessageCache = {
-            createMessage: mockCreateMessage as (userId: number, message: string) => Promise<number>
+            createMessage: mockCreateMessage as (context: unknown, userId: number, message: string) => Promise<number>
         };
 
         // Get TechService instance and inject mocks
@@ -162,7 +162,7 @@ describe('TechService - Unit Tests', () => {
                 expect(result.completed[0].itemKey).toBe('pulse_laser');
                 expect((mockUser.techCounts as TechCounts).pulse_laser).toBe(3); // Incremented
                 expect(mockUser.buildQueue).toHaveLength(0); // Removed from queue
-                expect(mockCreateMessage).toHaveBeenCalledWith(1, expect.stringContaining('Pulse Laser'));
+                expect(mockCreateMessage).toHaveBeenCalledWith(expect.anything(), 1, expect.stringContaining('Pulse Laser'));
                 expect(mockUpdateUserInCache).toHaveBeenCalled();
             });
         });

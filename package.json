@@ -12,6 +12,7 @@
     "ci": "npm run lint && npm run test:ci && npm run build",
     "test:ui": ".devcontainer/init-db.sh && vitest --ui",
     "test:watch": ".devcontainer/init-db.sh && vitest",
+    "test:bc": ".devcontainer/init-db.sh && vitest run --reporter=tap | perl -pe \"s/ - ([^#]*) #/ - \\e[33m\\$1\\e[0m #/g\" | grep --line-buffered \"not ok\"",
     "export-db": "npx tsx scripts/export-database-to-html.ts"
   },
   "dependencies": {
