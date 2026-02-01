@@ -69,6 +69,7 @@ class TestAwareAdapter implements DatabaseConnection {
 function getDatabaseConfig() {
   const isTest = process.env.NODE_ENV === 'test';
   const isProduction = process.env.NODE_ENV === 'production';
+  const isLocalDb = process.env.POSTGRES_HOST === 'db' || process.env.POSTGRES_HOST === 'localhost' || !process.env.POSTGRES_HOST;
 
   if (isProduction && !process.env.POSTGRES_HOST) {
     console.error('❌ POSTGRES_HOST is not defined in environment variables. Falling back to localhost, which will likely fail in production.');
@@ -86,8 +87,9 @@ function getDatabaseConfig() {
     max: isTest ? 10 : 20, // Increased from 5 to 10 for parallel test workers
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 5000,
-    // Render requires SSL for production databases
-    ssl: isProduction ? { rejectUnauthorized: false } : false,
+    // Only use SSL for remote databases (like Render), not for local development
+    // Local databases (localhost/db) typically don't have SSL enabled
+    ssl: (isProduction && !isLocalDb) ? { rejectUnauthorized: false } : false,
   };
 }
 
