@@ -9,11 +9,12 @@
     "lint": "next lint",
     "test": ".devcontainer/init-db.sh && vitest run",
     "test:ci": "vitest run",
-    "ci": "npm run lint && npm run test:ci && npm run build",
+    "ci": "npm run lint && npm run typecheck && npm run test:ci && npm run build",
     "test:ui": ".devcontainer/init-db.sh && vitest --ui",
     "test:watch": ".devcontainer/init-db.sh && vitest",
     "test:bc": ".devcontainer/init-db.sh && vitest run --reporter=tap | perl -pe \"s/ - ([^#]*) #/ - \\e[33m\\$1\\e[0m #/g\" | grep --line-buffered \"not ok\"",
-    "export-db": "npx tsx scripts/export-database-to-html.ts"
+    "export-db": "npx tsx scripts/export-database-to-html.ts",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@markdrei/ironguard-typescript-locks": "0.2.3",

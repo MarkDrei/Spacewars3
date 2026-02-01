@@ -151,8 +151,8 @@ describe('Phase 5: BattleCache Integration Testing', () => {
         BattleCache.resetInstance();
         
         // Reinitialize cache (needed after reset in test mode)
-        const db = battleCache!['db']; // Access private field for test
-        const deps = battleCache!['dependencies']; // Access private field for test
+        const db = battleCache!['db']!; // Access private field for test, assert non-null
+        const deps = battleCache!['dependencies']!; // Access private field for test, assert non-null
         await BattleCache.initialize(db, deps);
         
         const freshCache = getBattleCache()!;

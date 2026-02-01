@@ -21,7 +21,7 @@ describe('TechService - Build Completion Notifications', () => {
     const ctx = createLockContext();
     MessageCache.resetInstance(ctx);
     await ctx.useLockWithAcquire(DATABASE_LOCK_MESSAGES, async (msgCtx) => {
-      await MessageCache.initialize(msgCtx, { flushIntervalMs: 60000 });
+      await MessageCache.initialize(msgCtx, { persistenceIntervalMs: 60000, enableAutoPersistence: false});
     });
 
     // Get TechService instance
