@@ -143,7 +143,7 @@ async function performCollectionLogic(
   console.log(`📝 Creating notification for user ${user.id}: "${notificationMessage}"`);
   
   // Send notification to user (async, doesn't block response)
-  sendMessageToUser(user.id, notificationMessage).catch((error: Error) => {
+  sendMessageToUser(worldContext, user.id, notificationMessage).catch((error: Error) => {
     console.error('❌ Failed to send collection notification:', error);
   });
   

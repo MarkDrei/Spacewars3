@@ -160,7 +160,8 @@ async function getBattleOutcome(context: LockContext<LocksAtMost3>, battle: Batt
  * Uses the cache system to ensure consistency
  */
 async function createMessage(userId: number, message: string): Promise<void> {
-  await sendMessageToUser(userId, message);
+  const ctx = createLockContext();
+  await sendMessageToUser(ctx, userId, message);
 }
 
 /**

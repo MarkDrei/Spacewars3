@@ -11,6 +11,7 @@ import {
   getUserMessageCount,
 } from '../../lib/server/messages/MessageCache';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
+import { DATABASE_LOCK_MESSAGES } from '@/lib/server/typedLocks';
 import { withTransaction } from '../helpers/transactionHelper';
 import { getDatabase } from '../../lib/server/database';
 
@@ -33,23 +34,33 @@ describe('MessageCache', () => {
     try {
       const cache = MessageCache.getInstance();
       await cache.waitForPendingWrites();
-      await cache.shutdown();
+      const ctx = createLockContext();
+      await ctx.useLockWithAcquire(DATABASE_LOCK_MESSAGES, async (lockCtx) => {
+        await cache.shutdown(lockCtx);
+      });
     } catch {
       // Ignore if cache doesn't exist
     }
     
-    MessageCache.resetInstance();
+    const ctx = createLockContext();
+    MessageCache.resetInstance(ctx);
   });
 
   afterEach(async () => {
     // Ensure cache is properly cleaned up
     // Note: shutdown() does not wait for pending writes, so we must call waitForPendingWrites() first
     try {
-      await MessageCache.initialize();
-        const cache = MessageCache.getInstance();
+      const ctx = createLockContext();
+      await ctx.useLockWithAcquire(DATABASE_LOCK_MESSAGES, async (lockCtx) => {
+        await MessageCache.initialize(lockCtx);
+      });
+      const cache = MessageCache.getInstance();
       await cache.waitForPendingWrites();
-      await cache.shutdown();
-      MessageCache.resetInstance();
+      const ctx2 = createLockContext();
+      await ctx2.useLockWithAcquire(DATABASE_LOCK_MESSAGES, async (lockCtx) => {
+        await cache.shutdown(lockCtx);
+      });
+      MessageCache.resetInstance(ctx2);
     } catch {
       // Ignore cleanup errors
     }
@@ -58,7 +69,10 @@ describe('MessageCache', () => {
   describe('Singleton Pattern', () => {
     test('getInstance_multipleCalls_returnsSameInstance', async () => {
       await withTransaction(async () => {
-        await MessageCache.initialize();
+        const ctx = createLockContext();
+        await ctx.useLockWithAcquire(DATABASE_LOCK_MESSAGES, async (lockCtx) => {
+          await MessageCache.initialize(lockCtx);
+        });
         const cache1 = MessageCache.getInstance();
         const cache2 = MessageCache.getInstance();
         const cache3 = MessageCache.getInstance();
@@ -70,10 +84,16 @@ describe('MessageCache', () => {
 
     test('resetInstance_afterReset_createsNewInstance', async () => {
       await withTransaction(async () => {
-        await MessageCache.initialize();
+        const ctx = createLockContext();
+        await ctx.useLockWithAcquire(DATABASE_LOCK_MESSAGES, async (lockCtx) => {
+          await MessageCache.initialize(lockCtx);
+        });
         const cache1 = MessageCache.getInstance();
-        MessageCache.resetInstance();
-        await MessageCache.initialize();
+        const ctx2 = createLockContext();
+        MessageCache.resetInstance(ctx2);
+        await ctx2.useLockWithAcquire(DATABASE_LOCK_MESSAGES, async (lockCtx) => {
+          await MessageCache.initialize(lockCtx);
+        });
         const cache2 = MessageCache.getInstance();
 
         expect(cache1).not.toBe(cache2);
@@ -86,11 +106,14 @@ describe('MessageCache', () => {
       await withTransaction(async () => {
         const testUserId = await createTestUser('testuser1');
 
-        await MessageCache.initialize();
+        const ctx = createLockContext();
+        await ctx.useLockWithAcquire(DATABASE_LOCK_MESSAGES, async (lockCtx) => {
+          await MessageCache.initialize(lockCtx);
+        });
         const cache = MessageCache.getInstance();
         
 
-        const messageId = await cache.createMessage(testUserId, 'Test message');
+        const messageId = await cache.createMessage(ctx, testUserId, 'Test message');
         
         // Now returns temporary negative ID immediately
         expect(messageId).toBeLessThan(0);
@@ -99,18 +122,21 @@ describe('MessageCache', () => {
         await cache.waitForPendingWrites();
         
         // Message should now have real ID in cache
-        const messages = await cache.getMessagesForUser(testUserId);
+        const messages = await cache.getMessagesForUser(ctx, testUserId);
         expect(messages[0].id).toBeGreaterThan(0);
       });
     });
 
     test('getUnreadMessageCount_returnsZeroForNewUser', async () => {
       await withTransaction(async () => {
-        await MessageCache.initialize();
+        const ctx = createLockContext();
+        await ctx.useLockWithAcquire(DATABASE_LOCK_MESSAGES, async (lockCtx) => {
+          await MessageCache.initialize(lockCtx);
+        });
         const cache = MessageCache.getInstance();
         
 
-        const count = await cache.getUnreadMessageCount(999);
+        const count = await cache.getUnreadMessageCount(ctx, 999);
         
         expect(count).toBe(0);
       });
@@ -120,14 +146,17 @@ describe('MessageCache', () => {
       await withTransaction(async () => {
         const testUserId = await createTestUser('testuser1');
 
-        await MessageCache.initialize();
+        const ctx = createLockContext();
+        await ctx.useLockWithAcquire(DATABASE_LOCK_MESSAGES, async (lockCtx) => {
+          await MessageCache.initialize(lockCtx);
+        });
         const cache = MessageCache.getInstance();
         
 
-        await cache.createMessage(testUserId, 'Message 1');
-        await cache.createMessage(testUserId, 'Message 2');
+        await cache.createMessage(ctx, testUserId, 'Message 1');
+        await cache.createMessage(ctx, testUserId, 'Message 2');
         
-        const count = await cache.getUnreadMessageCount(testUserId);
+        const count = await cache.getUnreadMessageCount(ctx, testUserId);
         
         expect(count).toBe(2);
       });
@@ -139,18 +168,21 @@ describe('MessageCache', () => {
       await withTransaction(async () => {
         const testUserId = await createTestUser('testuser1');
 
-        const messageId = await sendMessageToUser(testUserId, 'Test via convenience function');
+        const ctx = createLockContext();
+        const messageId = await sendMessageToUser(ctx, testUserId, 'Test via convenience function');
         
         // Now returns temporary negative ID immediately
         expect(messageId).toBeLessThan(0);
         
         // Wait for write to complete
-        await MessageCache.initialize();
+        await ctx.useLockWithAcquire(DATABASE_LOCK_MESSAGES, async (lockCtx) => {
+          await MessageCache.initialize(lockCtx);
+        });
         const cache = MessageCache.getInstance();
         await cache.waitForPendingWrites();
         
         // Verify message has real ID
-        const messages = await cache.getMessagesForUser(testUserId);
+        const messages = await cache.getMessagesForUser(ctx, testUserId);
         expect(messages[0].id).toBeGreaterThan(0);
       });
     });
@@ -159,10 +191,11 @@ describe('MessageCache', () => {
       await withTransaction(async () => {
         const testUserId = await createTestUser('testuser1');
 
-        await sendMessageToUser(testUserId, 'Message 1');
-        await sendMessageToUser(testUserId, 'Message 2');
+        const ctx = createLockContext();
+        await sendMessageToUser(ctx, testUserId, 'Message 1');
+        await sendMessageToUser(ctx, testUserId, 'Message 2');
         
-        const messages = await getUserMessages(testUserId);
+        const messages = await getUserMessages(ctx, testUserId);
         
         expect(messages).toHaveLength(2);
       });
@@ -172,9 +205,10 @@ describe('MessageCache', () => {
       await withTransaction(async () => {
         const testUserId = await createTestUser('testuser1');
 
-        await sendMessageToUser(testUserId, 'Message 1');
+        const ctx = createLockContext();
+        await sendMessageToUser(ctx, testUserId, 'Message 1');
         
-        const count = await getUserMessageCount(testUserId);
+        const count = await getUserMessageCount(ctx, testUserId);
         
         expect(count).toBe(1);
       });
@@ -186,14 +220,17 @@ describe('MessageCache', () => {
       await withTransaction(async () => {
         const testUserId = await createTestUser('testuser1');
 
-        await MessageCache.initialize();
+        const ctx = createLockContext();
+        await ctx.useLockWithAcquire(DATABASE_LOCK_MESSAGES, async (lockCtx) => {
+          await MessageCache.initialize(lockCtx);
+        });
         const cache = MessageCache.getInstance();
         
 
-        await cache.createMessage(testUserId, 'Test message');
-        await cache.getUnreadMessageCount(testUserId);
+        await cache.createMessage(ctx, testUserId, 'Test message');
+        await cache.getUnreadMessageCount(ctx, testUserId);
         
-        const stats = await cache.getStats();
+        const stats = await cache.getStats(ctx);
         
         expect(stats).toBeDefined();
         expect(stats.messageCacheSize).toBeGreaterThanOrEqual(0);
@@ -207,8 +244,11 @@ describe('MessageCache', () => {
   describe('Lifecycle', () => {
     test('initialize_multipleCallsAreSafe', async () => {
       await withTransaction(async () => {
-        await MessageCache.initialize();
-        const cache = MessageCache.getInstance();
+        const ctx = createLockContext();
+        await ctx.useLockWithAcquire(DATABASE_LOCK_MESSAGES, async (lockCtx) => {
+          await MessageCache.initialize(lockCtx);
+        });
+        MessageCache.getInstance();
         
         expect(true).toBe(true);
       });
@@ -216,11 +256,15 @@ describe('MessageCache', () => {
 
     test('shutdown_afterInitialization_cleansUpProperly', async () => {
       await withTransaction(async () => {
-        await MessageCache.initialize();
+        const ctx = createLockContext();
+        await ctx.useLockWithAcquire(DATABASE_LOCK_MESSAGES, async (lockCtx) => {
+          await MessageCache.initialize(lockCtx);
+        });
         const cache = MessageCache.getInstance();
         
-        
-        await cache.shutdown();
+        await ctx.useLockWithAcquire(DATABASE_LOCK_MESSAGES, async (lockCtx) => {
+          await cache.shutdown(lockCtx);
+        });
         
         expect(true).toBe(true);
       });
@@ -232,14 +276,17 @@ describe('MessageCache', () => {
       await withTransaction(async () => {
         const testUserId = await createTestUser('testuser1');
 
-        await MessageCache.initialize();
+        const ctx = createLockContext();
+        await ctx.useLockWithAcquire(DATABASE_LOCK_MESSAGES, async (lockCtx) => {
+          await MessageCache.initialize(lockCtx);
+        });
         const cache = MessageCache.getInstance();
         
 
-        const msgId = await cache.createMessage(testUserId, 'Test async message');
+        const msgId = await cache.createMessage(ctx, testUserId, 'Test async message');
         
         // Message should be available in cache (either pending or persisted depending on timing)
-        const messages = await cache.getMessagesForUser(testUserId);
+        const messages = await cache.getMessagesForUser(ctx, testUserId);
         expect(messages).toHaveLength(1);
         expect(messages[0].message).toBe('Test async message');
         
@@ -247,7 +294,7 @@ describe('MessageCache', () => {
         await cache.waitForPendingWrites();
         
         // After waiting, message should have real ID
-        const finalMessages = await cache.getMessagesForUser(testUserId);
+        const finalMessages = await cache.getMessagesForUser(ctx, testUserId);
         expect(finalMessages).toHaveLength(1);
         expect(finalMessages[0].id).toBeGreaterThan(0);
         expect(finalMessages[0].isPending).toBe(false);
@@ -268,17 +315,20 @@ describe('MessageCache', () => {
       await withTransaction(async () => {
         const testUserId = await createTestUser('testuser1');
 
-        await MessageCache.initialize();
+        const ctx = createLockContext();
+        await ctx.useLockWithAcquire(DATABASE_LOCK_MESSAGES, async (lockCtx) => {
+          await MessageCache.initialize(lockCtx);
+        });
         const cache = MessageCache.getInstance();
         
 
-        const tempId = await cache.createMessage(testUserId, 'Test async message');
+        const tempId = await cache.createMessage(ctx, testUserId, 'Test async message');
         
         // Wait for async DB write to complete
         await cache.waitForPendingWrites();
         
         // Message should now have real ID
-        const messages = await cache.getMessagesForUser(testUserId);
+        const messages = await cache.getMessagesForUser(ctx, testUserId);
         expect(messages).toHaveLength(1);
         expect(messages[0].id).toBeGreaterThan(0);
         expect(messages[0].id).not.toBe(tempId);
@@ -291,13 +341,16 @@ describe('MessageCache', () => {
       await withTransaction(async () => {
         const testUserId = await createTestUser('testuser1');
 
-        await MessageCache.initialize();
+        const ctx = createLockContext();
+        await ctx.useLockWithAcquire(DATABASE_LOCK_MESSAGES, async (lockCtx) => {
+          await MessageCache.initialize(lockCtx);
+        });
         const cache = MessageCache.getInstance();
         
 
-        const tempId1 = await cache.createMessage(testUserId, 'Message 1');
-        const tempId2 = await cache.createMessage(testUserId, 'Message 2');
-        const tempId3 = await cache.createMessage(testUserId, 'Message 3');
+        const tempId1 = await cache.createMessage(ctx, testUserId, 'Message 1');
+        const tempId2 = await cache.createMessage(ctx, testUserId, 'Message 2');
+        const tempId3 = await cache.createMessage(ctx, testUserId, 'Message 3');
         
         expect(tempId1).toBeLessThan(0);
         expect(tempId2).toBeLessThan(0);
@@ -306,7 +359,7 @@ describe('MessageCache', () => {
         // Wait for all writes
         await cache.waitForPendingWrites();
         
-        const messages = await cache.getMessagesForUser(testUserId);
+        const messages = await cache.getMessagesForUser(ctx, testUserId);
         expect(messages).toHaveLength(3);
         
         // All should have real IDs now
@@ -321,15 +374,18 @@ describe('MessageCache', () => {
       await withTransaction(async () => {
         const testUserId = await createTestUser('testuser1');
 
-        await MessageCache.initialize();
+        const ctx = createLockContext();
+        await ctx.useLockWithAcquire(DATABASE_LOCK_MESSAGES, async (lockCtx) => {
+          await MessageCache.initialize(lockCtx);
+        });
         const cache = MessageCache.getInstance();
         
 
         // Create message (starts async write)
-        await cache.createMessage(testUserId, 'Test message');
+        await cache.createMessage(ctx, testUserId, 'Test message');
         
         // Immediately mark as read (before async write completes)
-        await cache.markAllMessagesAsRead(testUserId);
+        await cache.markAllMessagesAsRead(ctx, testUserId);
         
         // Wait for async write to complete
         await cache.waitForPendingWrites();
@@ -338,7 +394,7 @@ describe('MessageCache', () => {
         await cache.flushToDatabase(createLockContext());
         
         // Verify: message should have real ID and be marked as read
-        const messages = await cache.getMessagesForUser(testUserId);
+        const messages = await cache.getMessagesForUser(ctx, testUserId);
         expect(messages).toHaveLength(1);
         expect(messages[0].id).toBeGreaterThan(0);
         expect(messages[0].is_read).toBe(true);
@@ -347,7 +403,10 @@ describe('MessageCache', () => {
 
     test('waitForPendingWrites_noWrites_returnsImmediately', async () => {
       await withTransaction(async () => {
-        await MessageCache.initialize();
+        const ctx = createLockContext();
+        await ctx.useLockWithAcquire(DATABASE_LOCK_MESSAGES, async (lockCtx) => {
+          await MessageCache.initialize(lockCtx);
+        });
         const cache = MessageCache.getInstance();
         
 
@@ -362,15 +421,18 @@ describe('MessageCache', () => {
       await withTransaction(async () => {
         const testUserId = await createTestUser('testuser1');
 
-        await MessageCache.initialize();
+        const ctx = createLockContext();
+        await ctx.useLockWithAcquire(DATABASE_LOCK_MESSAGES, async (lockCtx) => {
+          await MessageCache.initialize(lockCtx);
+        });
         const cache = MessageCache.getInstance();
         
 
-        await cache.createMessage(testUserId, 'Message 1');
-        await cache.createMessage(testUserId, 'Message 2');
+        await cache.createMessage(ctx, testUserId, 'Message 1');
+        await cache.createMessage(ctx, testUserId, 'Message 2');
         
         // Should count pending messages immediately
-        const count = await cache.getUnreadMessageCount(testUserId);
+        const count = await cache.getUnreadMessageCount(ctx, testUserId);
         expect(count).toBe(2);
       });
     });
@@ -379,13 +441,16 @@ describe('MessageCache', () => {
       await withTransaction(async () => {
         const testUserId = await createTestUser('testuser1');
 
-        await MessageCache.initialize();
+        const ctx = createLockContext();
+        await ctx.useLockWithAcquire(DATABASE_LOCK_MESSAGES, async (lockCtx) => {
+          await MessageCache.initialize(lockCtx);
+        });
         const cache = MessageCache.getInstance();
         
 
         // Create message and immediately mark as read
-        await cache.createMessage(testUserId, 'Test message');
-        await cache.markAllMessagesAsRead(testUserId);
+        await cache.createMessage(ctx, testUserId, 'Test message');
+        await cache.markAllMessagesAsRead(ctx, testUserId);
         
         // Try to persist before async write completes
         // Should not fail even though message has temp ID
@@ -395,7 +460,7 @@ describe('MessageCache', () => {
         await cache.waitForPendingWrites();
         
         // Message should have real ID now
-        const messages = await cache.getMessagesForUser(testUserId);
+        const messages = await cache.getMessagesForUser(ctx, testUserId);
         expect(messages[0].id).toBeGreaterThan(0);
       });
     });
@@ -405,27 +470,37 @@ describe('MessageCache', () => {
         const testUserId1 = await createTestUser('testuser7');
         const testUserId2 = await createTestUser('testuser8');
 
-        await MessageCache.initialize();
+        const ctx = createLockContext();
+        await ctx.useLockWithAcquire(DATABASE_LOCK_MESSAGES, async (lockCtx) => {
+          await MessageCache.initialize(lockCtx);
+        });
         const cache = MessageCache.getInstance();
         
 
         // Create messages
-        await cache.createMessage(testUserId1, 'Message 1');
-        await cache.createMessage(testUserId2, 'Message 2');
+        await cache.createMessage(ctx, testUserId1, 'Message 1');
+        await cache.createMessage(ctx, testUserId2, 'Message 2');
         
         // Mark one as read
-        await cache.markAllMessagesAsRead(testUserId1);
+        await cache.markAllMessagesAsRead(ctx, testUserId1);
         
+
         // Shutdown should wait for pending writes and flush dirty users
-        await cache.shutdown();
+        await ctx.useLockWithAcquire(DATABASE_LOCK_MESSAGES, async (lockCtx) => {
+          await cache.shutdown(lockCtx);
+          // Reinitialize and verify persistence
+          
+        });
+
+        MessageCache.resetInstance(ctx);
         
-        // Reinitialize and verify persistence
-        MessageCache.resetInstance();
-        await MessageCache.initialize();
+        await ctx.useLockWithAcquire(DATABASE_LOCK_MESSAGES, async (lockCtx) => {
+          await MessageCache.initialize(lockCtx);
+        });
         const cache2 = MessageCache.getInstance();
         
-        const messages1 = await cache2.getMessagesForUser(testUserId1);
-        const messages2 = await cache2.getMessagesForUser(testUserId2);
+        const messages1 = await cache2.getMessagesForUser(ctx, testUserId1);
+        const messages2 = await cache2.getMessagesForUser(ctx, testUserId2);
         
         expect(messages1).toHaveLength(1);
         expect(messages1[0].is_read).toBeTruthy(); // DB returns 1 for true
@@ -438,13 +513,16 @@ describe('MessageCache', () => {
       await withTransaction(async () => {
         const testUserId = await createTestUser('testuser1');
 
-        await MessageCache.initialize();
+        const ctx = createLockContext();
+        await ctx.useLockWithAcquire(DATABASE_LOCK_MESSAGES, async (lockCtx) => {
+          await MessageCache.initialize(lockCtx);
+        });
         const cache = MessageCache.getInstance();
         
 
         // This test would require mocking DB failures
         // For now, we just verify the basic flow doesn't crash
-        const tempId = await cache.createMessage(testUserId, 'Test message');
+        const tempId = await cache.createMessage(ctx, testUserId, 'Test message');
         
         expect(tempId).toBeLessThan(0);
         
@@ -452,7 +530,7 @@ describe('MessageCache', () => {
         await cache.waitForPendingWrites();
         
         // Message should be in cache with real ID (success case)
-        const messages = await cache.getMessagesForUser(testUserId);
+        const messages = await cache.getMessagesForUser(ctx, testUserId);
         expect(messages).toHaveLength(1);
       });
     });
@@ -463,24 +541,27 @@ describe('MessageCache', () => {
       await withTransaction(async () => {
         const testUserId = await createTestUser('testuser1');
 
-        await MessageCache.initialize();
+        const ctx = createLockContext();
+        await ctx.useLockWithAcquire(DATABASE_LOCK_MESSAGES, async (lockCtx) => {
+          await MessageCache.initialize(lockCtx);
+        });
         const cache = MessageCache.getInstance();
         
 
-        await cache.createMessage(testUserId, 'Message 1');
-        await cache.createMessage(testUserId, 'Message 2');
+        await cache.createMessage(ctx, testUserId, 'Message 1');
+        await cache.createMessage(ctx, testUserId, 'Message 2');
         await cache.waitForPendingWrites();
         
         // Get unread messages
-        const unread1 = await cache.getUnreadMessages(testUserId);
+        const unread1 = await cache.getUnreadMessages(ctx, testUserId);
         expect(unread1).toHaveLength(2);
         
         // Should still have 2 unread messages
-        const unread2 = await cache.getUnreadMessages(testUserId);
+        const unread2 = await cache.getUnreadMessages(ctx, testUserId);
         expect(unread2).toHaveLength(2);
         
         // Count should still be 2
-        const count = await cache.getUnreadMessageCount(testUserId);
+        const count = await cache.getUnreadMessageCount(ctx, testUserId);
         expect(count).toBe(2);
       });
     });
@@ -489,40 +570,46 @@ describe('MessageCache', () => {
       await withTransaction(async () => {
         const testUserId = await createTestUser('testuser1');
 
-        await MessageCache.initialize();
+        const ctx = createLockContext();
+        await ctx.useLockWithAcquire(DATABASE_LOCK_MESSAGES, async (lockCtx) => {
+          await MessageCache.initialize(lockCtx);
+        });
         const cache = MessageCache.getInstance();
         
 
-        await cache.createMessage(testUserId, 'Message 1');
-        await cache.createMessage(testUserId, 'Message 2');
-        await cache.createMessage(testUserId, 'Message 3');
+        await cache.createMessage(ctx, testUserId, 'Message 1');
+        await cache.createMessage(ctx, testUserId, 'Message 2');
+        await cache.createMessage(ctx, testUserId, 'Message 3');
         await cache.waitForPendingWrites();
         
         // Verify 3 unread messages
-        const unread = await cache.getUnreadMessages(testUserId);
+        const unread = await cache.getUnreadMessages(ctx, testUserId);
         expect(unread).toHaveLength(3);
         
         // Mark all as read
-        const markedCount = await cache.markAllMessagesAsRead(testUserId);
+        const markedCount = await cache.markAllMessagesAsRead(ctx, testUserId);
         expect(markedCount).toBe(3);
         
         // Should have no unread messages now
-        const unreadAfter = await cache.getUnreadMessages(testUserId);
+        const unreadAfter = await cache.getUnreadMessages(ctx, testUserId);
         expect(unreadAfter).toHaveLength(0);
         
-        const count = await cache.getUnreadMessageCount(testUserId);
+        const count = await cache.getUnreadMessageCount(ctx, testUserId);
         expect(count).toBe(0);
       });
     });
 
     test('markAllMessagesAsRead_noUnreadMessages_returnsZero', async () => {
       await withTransaction(async () => {
-        await MessageCache.initialize();
+        const ctx = createLockContext();
+        await ctx.useLockWithAcquire(DATABASE_LOCK_MESSAGES, async (lockCtx) => {
+          await MessageCache.initialize(lockCtx);
+        });
         const cache = MessageCache.getInstance();
         
 
         // Mark non-existent messages as read
-        const markedCount = await cache.markAllMessagesAsRead(999);
+        const markedCount = await cache.markAllMessagesAsRead(ctx, 999);
         expect(markedCount).toBe(0);
       });
     });
@@ -531,19 +618,22 @@ describe('MessageCache', () => {
       await withTransaction(async () => {
         const testUserId = await createTestUser('testuser1');
 
-        await sendMessageToUser(testUserId, 'Message 1');
-        await sendMessageToUser(testUserId, 'Message 2');
+        const ctx = createLockContext();
+        await sendMessageToUser(ctx, testUserId, 'Message 1');
+        await sendMessageToUser(ctx, testUserId, 'Message 2');
         
-        await MessageCache.initialize();
+        await ctx.useLockWithAcquire(DATABASE_LOCK_MESSAGES, async (lockCtx) => {
+          await MessageCache.initialize(lockCtx);
+        });
         const cache = MessageCache.getInstance();
         await cache.waitForPendingWrites();
         
         // Get messages
-        const messages1 = await getUserMessages(testUserId);
+        const messages1 = await getUserMessages(ctx, testUserId);
         expect(messages1).toHaveLength(2);
         
         // Should still have 2 unread
-        const messages2 = await getUserMessages(testUserId);
+        const messages2 = await getUserMessages(ctx, testUserId);
         expect(messages2).toHaveLength(2);
       });
     });
@@ -552,29 +642,32 @@ describe('MessageCache', () => {
       await withTransaction(async () => {
         const testUserId = await createTestUser('testuser1');
 
-        await MessageCache.initialize();
+        const ctx = createLockContext();
+        await ctx.useLockWithAcquire(DATABASE_LOCK_MESSAGES, async (lockCtx) => {
+          await MessageCache.initialize(lockCtx);
+        });
         const cache = MessageCache.getInstance();
         
 
         // Create messages
-        await cache.createMessage(testUserId, 'Message 1');
-        await cache.createMessage(testUserId, 'Message 2');
-        await cache.createMessage(testUserId, 'Message 3');
+        await cache.createMessage(ctx, testUserId, 'Message 1');
+        await cache.createMessage(ctx, testUserId, 'Message 2');
+        await cache.createMessage(ctx, testUserId, 'Message 3');
         await cache.waitForPendingWrites();
         
         // Step 1: Get unread messages to display
-        const unread = await cache.getUnreadMessages(testUserId);
+        const unread = await cache.getUnreadMessages(ctx, testUserId);
         expect(unread).toHaveLength(3);
         expect(unread[0].message).toBe('Message 1');
         expect(unread[1].message).toBe('Message 2');
         expect(unread[2].message).toBe('Message 3');
         
         // Step 2: User clicks "Mark All as Read"
-        const markedCount = await cache.markAllMessagesAsRead(testUserId);
+        const markedCount = await cache.markAllMessagesAsRead(ctx, testUserId);
         expect(markedCount).toBe(3);
         
         // Step 3: Verify no more unread messages
-        const unreadAfter = await cache.getUnreadMessages(testUserId);
+        const unreadAfter = await cache.getUnreadMessages(ctx, testUserId);
         expect(unreadAfter).toHaveLength(0);
       });
     });
@@ -583,27 +676,35 @@ describe('MessageCache', () => {
       await withTransaction(async () => {
         const testUserId = await createTestUser('testuser9');
 
-        await MessageCache.initialize();
+        const ctx = createLockContext();
+        await ctx.useLockWithAcquire(DATABASE_LOCK_MESSAGES, async (lockCtx) => {
+          await MessageCache.initialize(lockCtx);
+        });
         const cache1 = MessageCache.getInstance();
 
         // Create messages
-        await cache1.createMessage(testUserId, 'Message 1');
-        await cache1.createMessage(testUserId, 'Message 2');
+        await cache1.createMessage(ctx, testUserId, 'Message 1');
+        await cache1.createMessage(ctx, testUserId, 'Message 2');
         await cache1.waitForPendingWrites();
         
         // Mark as read
-        await cache1.markAllMessagesAsRead(testUserId);
+        await cache1.markAllMessagesAsRead(ctx, testUserId);
         await cache1.flushToDatabase(createLockContext());
-        
-        // Shutdown and reinitialize
-        await cache1.shutdown();
-        MessageCache.resetInstance();
-        
-        await MessageCache.initialize();
+
+        await ctx.useLockWithAcquire(DATABASE_LOCK_MESSAGES, async (lockCtx) => {
+          // Shutdown and reinitialize
+          await cache1.shutdown(lockCtx);
+          
+          await MessageCache.initialize(lockCtx);
+        });
+        MessageCache.resetInstance(ctx);
+        await ctx.useLockWithAcquire(DATABASE_LOCK_MESSAGES, async (lockCtx) => {
+          await MessageCache.initialize(lockCtx);
+        });
         const cache2 = MessageCache.getInstance();
         
         // Should have no unread messages
-        const unread = await cache2.getUnreadMessages(testUserId);
+        const unread = await cache2.getUnreadMessages(ctx, testUserId);
         expect(unread).toHaveLength(0);
       });
     });

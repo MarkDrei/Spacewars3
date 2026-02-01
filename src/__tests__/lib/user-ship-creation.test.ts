@@ -7,6 +7,8 @@ import { DatabaseConnection, getDatabase, resetTestDatabase } from '@/lib/server
 import { createUser, saveUserToDb } from '@/lib/server/user/userRepo';
 import { MessageCache } from '@/lib/server/messages/MessageCache';
 import { withTransaction } from '../helpers/transactionHelper';
+import { createLockContext } from '@markdrei/ironguard-typescript-locks';
+import { DATABASE_LOCK_MESSAGES } from '@/lib/server/typedLocks';
 
 interface SpaceObjectRow {
   id: number;
@@ -23,7 +25,9 @@ describe('User Ship Creation', () => {
 
   beforeEach(async () => {
     // Reset MessageCache to avoid stale database references
-    MessageCache.resetInstance();
+    const ctx = createLockContext();
+    
+    MessageCache.resetInstance(ctx);
     
     // Get database connection
     db = await getDatabase();
@@ -31,16 +35,19 @@ describe('User Ship Creation', () => {
 
   afterEach(async () => {
     // Wait for any pending message writes before resetting
+    const ctx = createLockContext();
     try {
       const cache = MessageCache.getInstance();
       await cache.waitForPendingWrites();
-      await cache.shutdown();
+      await ctx.useLockWithAcquire(DATABASE_LOCK_MESSAGES, async (lockCtx) => {
+        await cache.shutdown(lockCtx);
+      });
     } catch {
       // Ignore if cache was never initialized
     }
     
     // Reset cache
-    MessageCache.resetInstance();
+    MessageCache.resetInstance(ctx);
   });
 
   it('createUser_newUser_createsShipAndLinksIt', async () => {

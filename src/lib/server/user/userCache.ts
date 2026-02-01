@@ -8,6 +8,7 @@ import { DatabaseConnection, getDatabase } from '../database';
 import { MessageCache } from '../messages/MessageCache';
 import {
   USER_LOCK,
+  DATABASE_LOCK_MESSAGES,
 } from '../typedLocks';
 import { User } from './user';
 import { getUserByIdFromDb, getUserByUsernameFromDb } from './userRepo';
@@ -563,7 +564,9 @@ export class UserCache extends Cache {
       const messageCache = await this.getMessageCache();
       if (messageCache) {
         await messageCache.flushToDatabase(userContext);
-        await messageCache.shutdown();
+        await userContext.useLockWithAcquire(DATABASE_LOCK_MESSAGES, async (msgCtx) => {
+          await messageCache.shutdown(msgCtx);
+        });
       }
 
       console.log('✅ Typed cache manager shutdown complete');

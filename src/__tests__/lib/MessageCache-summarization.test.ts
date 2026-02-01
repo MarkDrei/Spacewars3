@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { MessageCache } from '@/lib/server/messages/MessageCache';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
+import { DATABASE_LOCK_MESSAGES } from '@/lib/server/typedLocks';
 import { withTransaction } from '../helpers/transactionHelper';
 
 describe('MessageCache - Summarization', () => {
@@ -11,10 +12,13 @@ describe('MessageCache - Summarization', () => {
     const { clearTestDatabase } = await import('../helpers/testDatabase');
     await clearTestDatabase();
     
-    MessageCache.resetInstance();
-    await MessageCache.initialize({
-      persistenceIntervalMs: 30000,
-      enableAutoPersistence: false // Disable auto-persistence to avoid background timers
+    const ctx = createLockContext();
+    MessageCache.resetInstance(ctx);
+    await ctx.useLockWithAcquire(DATABASE_LOCK_MESSAGES, async (lockCtx) => {
+      await MessageCache.initialize(lockCtx, {
+        persistenceIntervalMs: 30000,
+        enableAutoPersistence: false // Disable auto-persistence to avoid background timers
+      });
     });
     messageCache = MessageCache.getInstance();
   });
@@ -23,7 +27,10 @@ describe('MessageCache - Summarization', () => {
     try {
       // Ensure all pending writes complete before shutdown
       await messageCache.waitForPendingWrites();
-      await messageCache.shutdown();
+      const ctx = createLockContext();
+      await ctx.useLockWithAcquire(DATABASE_LOCK_MESSAGES, async (lockCtx) => {
+        await messageCache.shutdown(lockCtx);
+      });
     } catch (error) {
       console.error('Error during cleanup:', error);
     }
@@ -45,23 +52,24 @@ describe('MessageCache - Summarization', () => {
         const userId = await createTestUser('sumtest1');
 
       // Create typical battle messages
-      await messageCache.createMessage(userId, 'P: ⚔️ Your **pulse laser** fired 5 shot(s), **3 hit** for **24 damage**! Enemy: Hull: 262, Armor: 0, Shield: 0');
-      await messageCache.createMessage(userId, 'P: ⚔️ Your **auto turret** fired 5 shot(s), **4 hit** for **40 damage**! Enemy: Hull: 222, Armor: 0, Shield: 0');
-      await messageCache.createMessage(userId, 'N: 🛡️ Enemy **pulse laser** fired 1 shot(s), **1 hit** you for **8 damage**! Your defenses: Hull: 600, Armor: 600, Shield: 288');
-      await messageCache.createMessage(userId, 'N: 🛡️ Enemy **auto turret** fired 2 shot(s), **1 hit** you for **10 damage**! Your defenses: Hull: 600, Armor: 600, Shield: 278');
-      await messageCache.createMessage(userId, 'Your pulse laser fired 5 shot(s) but all missed!');
-      await messageCache.createMessage(userId, 'A: Enemy pulse laser fired 1 shot(s) but all missed!');
-      await messageCache.createMessage(userId, 'P: 🎉 **Victory!** You won the battle!');
+      await messageCache.createMessage(createLockContext(), userId, 'P: ⚔️ Your **pulse laser** fired 5 shot(s), **3 hit** for **24 damage**! Enemy: Hull: 262, Armor: 0, Shield: 0');
+      await messageCache.createMessage(createLockContext(), userId, 'P: ⚔️ Your **auto turret** fired 5 shot(s), **4 hit** for **40 damage**! Enemy: Hull: 222, Armor: 0, Shield: 0');
+      await messageCache.createMessage(createLockContext(), userId, 'N: 🛡️ Enemy **pulse laser** fired 1 shot(s), **1 hit** you for **8 damage**! Your defenses: Hull: 600, Armor: 600, Shield: 288');
+      await messageCache.createMessage(createLockContext(), userId, 'N: 🛡️ Enemy **auto turret** fired 2 shot(s), **1 hit** you for **10 damage**! Your defenses: Hull: 600, Armor: 600, Shield: 278');
+      await messageCache.createMessage(createLockContext(), userId, 'Your pulse laser fired 5 shot(s) but all missed!');
+      await messageCache.createMessage(createLockContext(), userId, 'A: Enemy pulse laser fired 1 shot(s) but all missed!');
+      await messageCache.createMessage(createLockContext(), userId, 'P: 🎉 **Victory!** You won the battle!');
 
       // Wait for async message creation to complete
       await messageCache.waitForPendingWrites();
 
       // Get messages before summarization
-      const messagesBefore = await messageCache.getMessagesForUser(userId);
+      const ctx = createLockContext();
+      const messagesBefore = await messageCache.getMessagesForUser(ctx, userId);
       expect(messagesBefore.length).toBe(7);
 
       // Summarize
-      const summary = await messageCache.summarizeMessages(userId);
+      const summary = await messageCache.summarizeMessages(ctx, userId);
 
       console.log('Summary:', summary);
 
@@ -81,7 +89,7 @@ describe('MessageCache - Summarization', () => {
       await messageCache.waitForPendingWrites();
 
       // Verify messages after summarization
-      const messagesAfter = await messageCache.getMessagesForUser(userId);
+      const messagesAfter = await messageCache.getMessagesForUser(ctx, userId);
       
       // Should have exactly 1 message (the summary)
       expect(messagesAfter.length).toBe(1);
@@ -89,7 +97,7 @@ describe('MessageCache - Summarization', () => {
       expect(messagesAfter[0].is_read).toBe(false);
 
       // All original messages should be marked as read in DB
-      await messageCache.flushToDatabase(createLockContext());
+      await messageCache.flushToDatabase(ctx);
       });
     });
 
@@ -97,17 +105,19 @@ describe('MessageCache - Summarization', () => {
       await withTransaction(async () => {
         const userId = await createTestUser('sumtest2');
 
+      const ctx = createLockContext();
+
       // Create battle messages and unknown messages
-      await messageCache.createMessage(userId, 'P: ⚔️ Your **pulse laser** fired 5 shot(s), **3 hit** for **24 damage**! Enemy: Hull: 262, Armor: 0, Shield: 0');
-      await messageCache.createMessage(userId, 'This is a custom message that cannot be parsed');
-      await messageCache.createMessage(userId, 'N: 🛡️ Enemy **pulse laser** fired 1 shot(s), **1 hit** you for **8 damage**! Your defenses: Hull: 600, Armor: 600, Shield: 288');
-      await messageCache.createMessage(userId, 'Another unknown message type');
+      await messageCache.createMessage(ctx, userId, 'P: ⚔️ Your **pulse laser** fired 5 shot(s), **3 hit** for **24 damage**! Enemy: Hull: 262, Armor: 0, Shield: 0');
+      await messageCache.createMessage(ctx, userId, 'This is a custom message that cannot be parsed');
+      await messageCache.createMessage(ctx, userId, 'N: 🛡️ Enemy **pulse laser** fired 1 shot(s), **1 hit** you for **8 damage**! Your defenses: Hull: 600, Armor: 600, Shield: 288');
+      await messageCache.createMessage(ctx, userId, 'Another unknown message type');
 
       // Wait for async message creation to complete
       await messageCache.waitForPendingWrites();
 
       // Summarize
-      const summary = await messageCache.summarizeMessages(userId);
+      const summary = await messageCache.summarizeMessages(ctx, userId);
 
       console.log('Summary:', summary);
 
@@ -115,7 +125,7 @@ describe('MessageCache - Summarization', () => {
       await messageCache.waitForPendingWrites();
 
       // Verify messages after summarization
-      const messagesAfter = await messageCache.getMessagesForUser(userId);
+      const messagesAfter = await messageCache.getMessagesForUser(ctx, userId);
       
       // Should have 3 messages: summary + 2 unknown messages
       expect(messagesAfter.length).toBe(3);
@@ -139,19 +149,20 @@ describe('MessageCache - Summarization', () => {
     it('messageSummarization_multipleDefeatsBattles_correctCounts', async () => {
       await withTransaction(async () => {
         const userId = await createTestUser('sumtest3');
+      const ctx = createLockContext();
 
       // Create messages for multiple battles
-      await messageCache.createMessage(userId, 'P: 🎉 **Victory!** You won the battle!');
-      await messageCache.createMessage(userId, 'P: ⚔️ Your **pulse laser** fired 5 shot(s), **5 hit** for **40 damage**! Enemy: Hull: 100, Armor: 0, Shield: 0');
-      await messageCache.createMessage(userId, 'A: 💀 **Defeat!** You lost the battle and have been teleported away.');
-      await messageCache.createMessage(userId, 'N: 🛡️ Enemy **auto turret** fired 5 shot(s), **5 hit** you for **50 damage**! Your defenses: Hull: 0, Armor: 0, Shield: 0');
-      await messageCache.createMessage(userId, 'P: 🎉 **Victory!** You won the battle!');
+      await messageCache.createMessage(ctx, userId, 'P: 🎉 **Victory!** You won the battle!');
+      await messageCache.createMessage(ctx, userId, 'P: ⚔️ Your **pulse laser** fired 5 shot(s), **5 hit** for **40 damage**! Enemy: Hull: 100, Armor: 0, Shield: 0');
+      await messageCache.createMessage(ctx, userId, 'A: 💀 **Defeat!** You lost the battle and have been teleported away.');
+      await messageCache.createMessage(ctx, userId, 'N: 🛡️ Enemy **auto turret** fired 5 shot(s), **5 hit** you for **50 damage**! Your defenses: Hull: 0, Armor: 0, Shield: 0');
+      await messageCache.createMessage(ctx, userId, 'P: 🎉 **Victory!** You won the battle!');
 
       // Wait for async message creation to complete
       await messageCache.waitForPendingWrites();
 
       // Summarize
-      const summary = await messageCache.summarizeMessages(userId);
+      const summary = await messageCache.summarizeMessages(ctx, userId);
 
       console.log('Summary:', summary);
 
@@ -167,13 +178,14 @@ describe('MessageCache - Summarization', () => {
       await withTransaction(async () => {
         const userId = await createTestUser('sumtest4');
 
+      const ctx = createLockContext();
       // Summarize with no messages
-      const summary = await messageCache.summarizeMessages(userId);
+      const summary = await messageCache.summarizeMessages(ctx, userId);
 
       expect(summary).toBe('No messages to summarize.');
 
       // Verify no messages created
-      const messages = await messageCache.getMessagesForUser(userId);
+      const messages = await messageCache.getMessagesForUser(ctx, userId);
       expect(messages.length).toBe(0);
       });
     });
@@ -182,16 +194,17 @@ describe('MessageCache - Summarization', () => {
       await withTransaction(async () => {
         const userId = await createTestUser('sumtest5');
 
+      const ctx = createLockContext();
       // Create only unknown messages
-      await messageCache.createMessage(userId, 'Custom notification 1');
-      await messageCache.createMessage(userId, 'Custom notification 2');
-      await messageCache.createMessage(userId, 'Custom notification 3');
+      await messageCache.createMessage(ctx, userId, 'Custom notification 1');
+      await messageCache.createMessage(ctx, userId, 'Custom notification 2');
+      await messageCache.createMessage(ctx, userId, 'Custom notification 3');
 
       // Wait for async message creation to complete
       await messageCache.waitForPendingWrites();
 
       // Summarize
-      const summary = await messageCache.summarizeMessages(userId);
+      const summary = await messageCache.summarizeMessages(ctx, userId);
 
       console.log('Summary:', summary);
 
@@ -199,7 +212,7 @@ describe('MessageCache - Summarization', () => {
       await messageCache.waitForPendingWrites();
 
       // Verify messages after summarization
-      const messagesAfter = await messageCache.getMessagesForUser(userId);
+      const messagesAfter = await messageCache.getMessagesForUser(ctx, userId);
       
       // Should have 4 messages: summary + 3 unknown messages
       expect(messagesAfter.length).toBe(4);

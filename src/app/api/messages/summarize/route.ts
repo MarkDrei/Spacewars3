@@ -3,6 +3,7 @@ import { getIronSession } from 'iron-session';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { cookies } from 'next/headers';
 import { MessageCache } from '@/lib/server/messages/MessageCache';
+import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 
 /**
  * POST /api/messages/summarize
@@ -20,7 +21,8 @@ export async function POST() {
     }
 
     const messageCache = MessageCache.getInstance();
-    const summary = await messageCache.summarizeMessages(session.userId);
+    const ctx = createLockContext();
+    const summary = await messageCache.summarizeMessages(ctx, session.userId);
 
     return NextResponse.json({
       success: true,

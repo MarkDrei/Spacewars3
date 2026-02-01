@@ -3,6 +3,7 @@ import { getIronSession } from 'iron-session';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { requireAuth, handleApiError } from '@/lib/server/errors';
 import { markUserMessagesAsRead } from '@/lib/server/messages/MessageCache';
+import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 
 /**
  * POST /api/messages/mark-read
@@ -21,7 +22,8 @@ export async function POST(request: NextRequest) {
     console.log(`📬 Marking messages as read for user: ${session.userId}`);
     
     // Mark all unread messages as read
-    const markedCount = await markUserMessagesAsRead(session.userId!);
+    const ctx = createLockContext();
+    const markedCount = await markUserMessagesAsRead(ctx, session.userId!);
     
     console.log(`✅ Marked ${markedCount} message(s) as read for user ${session.userId}`);
     

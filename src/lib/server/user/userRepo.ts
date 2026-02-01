@@ -8,6 +8,7 @@ import { createInitialTechTree } from '../techs/techtree';
 import { sendMessageToUser } from '../messages/MessageCache';
 import { TechCounts, BuildQueueItem } from '../techs/TechFactory';
 import { TechService } from '../techs/TechService';
+import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 
 interface UserRow {
   id: number;
@@ -178,7 +179,8 @@ async function createUserWithShip(db: DatabaseConnection, username: string, pass
     const user = new User(userId, username, password_hash, 0.0, now, techTree, saveCallback, defaultTechCounts, initialMaxStats.hull, initialMaxStats.armor, initialMaxStats.shield, now, false, null, [], null, shipId);
 
     // Send welcome message to new user
-    await sendMessageToUser(userId, `Welcome to Spacewars, ${username}! Your journey among the stars begins now. Navigate wisely and collect resources to upgrade your ship.`);
+    const ctx = createLockContext();
+    await sendMessageToUser(ctx, userId, `Welcome to Spacewars, ${username}! Your journey among the stars begins now. Navigate wisely and collect resources to upgrade your ship.`);
 
     return user;
   } else {

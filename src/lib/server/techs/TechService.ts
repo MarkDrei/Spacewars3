@@ -1,4 +1,4 @@
-import { LockContext, LocksAtMostAndHas4 } from '@markdrei/ironguard-typescript-locks';
+import { LockContext, LocksAtMostAndHas4, createLockContext } from '@markdrei/ironguard-typescript-locks';
 import { UserCache } from '../user/userCache';
 import { User } from '../user/user';
 import { TechFactory, TechCounts, BuildQueueItem } from './TechFactory';
@@ -207,7 +207,8 @@ export class TechService {
 
                 // Send notification
                 try {
-                    await this.messageCacheInstance.createMessage(userId, `Build complete: ${spec.name}`);
+                    const ctx = createLockContext();
+                    await this.messageCacheInstance.createMessage(ctx, userId, `Build complete: ${spec.name}`);
                 } catch (error) {
                     console.error(`Failed to send build completion notification to user ${userId}:`, error);
                 }

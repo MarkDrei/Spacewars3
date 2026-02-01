@@ -33,7 +33,7 @@ describe('TechService - Unit Tests', () => {
         };
 
         mockMessageCache = {
-            createMessage: mockCreateMessage as (userId: number, message: string) => Promise<number>
+            createMessage: mockCreateMessage as (context: unknown, userId: number, message: string) => Promise<number>
         };
 
         // Get TechService instance and inject mocks

@@ -5,6 +5,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { MessageCache } from '@/lib/server/messages/MessageCache';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
+import { DATABASE_LOCK_MESSAGES } from '@/lib/server/typedLocks';
 import { withTransaction } from '../helpers/transactionHelper';
 
 describe('MessageCache - Race Condition Fix', () => {
@@ -16,10 +17,13 @@ describe('MessageCache - Race Condition Fix', () => {
     const { clearTestDatabase } = await import('../helpers/testDatabase');
     await clearTestDatabase();
     
-    MessageCache.resetInstance();
-    await MessageCache.initialize({
-      persistenceIntervalMs: 30000,
-      enableAutoPersistence: false
+    const ctx = createLockContext();
+    MessageCache.resetInstance(ctx);
+    await ctx.useLockWithAcquire(DATABASE_LOCK_MESSAGES, async (lockCtx) => {
+      await MessageCache.initialize(lockCtx, {
+        persistenceIntervalMs: 30000,
+        enableAutoPersistence: false
+      });
     });
     messageCache = MessageCache.getInstance();
   });
@@ -27,7 +31,10 @@ describe('MessageCache - Race Condition Fix', () => {
   afterEach(async () => {
     try {
       await messageCache.waitForPendingWrites();
-      await messageCache.shutdown();
+      const ctx = createLockContext();
+      await ctx.useLockWithAcquire(DATABASE_LOCK_MESSAGES, async (lockCtx) => {
+        await messageCache.shutdown(lockCtx);
+      });
       
       // Clean up test users
       if (testUserIds.length > 0) {
@@ -63,20 +70,21 @@ describe('MessageCache - Race Condition Fix', () => {
         const userId = await createTestUser('msgtest1');
 
       // Step 1: Create initial messages
-      await messageCache.createMessage(userId, 'P: ⚔️ Your **pulse laser** fired 5 shot(s), **3 hit** for **24 damage**! Enemy: Hull: 262, Armor: 0, Shield: 0');
-      await messageCache.createMessage(userId, 'N: 🛡️ Enemy **pulse laser** fired 1 shot(s), **1 hit** you for **8 damage**! Your defenses: Hull: 600, Armor: 600, Shield: 288');
-      await messageCache.createMessage(userId, 'P: 🎉 **Victory!** You won the battle!');
+      await messageCache.createMessage(createLockContext(), userId, 'P: ⚔️ Your **pulse laser** fired 5 shot(s), **3 hit** for **24 damage**! Enemy: Hull: 262, Armor: 0, Shield: 0');
+      await messageCache.createMessage(createLockContext(), userId, 'N: 🛡️ Enemy **pulse laser** fired 1 shot(s), **1 hit** you for **8 damage**! Your defenses: Hull: 600, Armor: 600, Shield: 288');
+      await messageCache.createMessage(createLockContext(), userId, 'P: 🎉 **Victory!** You won the battle!');
       await messageCache.waitForPendingWrites();
 
       // Verify initial state
-      let messages = await messageCache.getMessagesForUser(userId);
+      const ctx = createLockContext();
+      let messages = await messageCache.getMessagesForUser(ctx, userId);
       expect(messages.length).toBe(3);
       expect(messages.every(m => !m.is_read)).toBe(true);
 
       // Step 2: First summarization
-      const summary1 = await messageCache.summarizeMessages(userId);
+      const summary1 = await messageCache.summarizeMessages(ctx, userId);
       await messageCache.waitForPendingWrites();
-      await messageCache.flushToDatabase(createLockContext());
+      await messageCache.flushToDatabase(ctx);
 
       // Verify summary contains battle stats
       expect(summary1).toContain('Message Summary');
@@ -85,33 +93,33 @@ describe('MessageCache - Race Condition Fix', () => {
       expect(summary1).toContain('Received 8');
 
       // Verify only summary message remains (unread)
-      messages = await messageCache.getMessagesForUser(userId);
+      messages = await messageCache.getMessagesForUser(ctx, userId);
       expect(messages.length).toBe(1);
       expect(messages[0].message).toBe(summary1);
       expect(messages[0].is_read).toBe(false);
 
       // Step 3: Manually mark summary as read (simulating user action)
-      await messageCache.markAllMessagesAsRead(userId);
-      await messageCache.flushToDatabase(createLockContext());
+      await messageCache.markAllMessagesAsRead(ctx, userId);
+      await messageCache.flushToDatabase(ctx);
 
       // Verify summary is now marked as read
-      messages = await messageCache.getMessagesForUser(userId);
+      messages = await messageCache.getMessagesForUser(ctx, userId);
       expect(messages.length).toBe(1);
       expect(messages[0].is_read).toBe(true);
 
       // Step 4: Create new messages
-      await messageCache.createMessage(userId, 'P: ⚔️ Your **auto turret** fired 3 shot(s), **2 hit** for **20 damage**! Enemy: Hull: 180, Armor: 0, Shield: 0');
-      await messageCache.createMessage(userId, 'N: 🛡️ Enemy **auto turret** fired 2 shot(s), **1 hit** you for **10 damage**! Your defenses: Hull: 600, Armor: 600, Shield: 268');
+      await messageCache.createMessage(ctx, userId, 'P: ⚔️ Your **auto turret** fired 3 shot(s), **2 hit** for **20 damage**! Enemy: Hull: 180, Armor: 0, Shield: 0');
+      await messageCache.createMessage(ctx, userId, 'N: 🛡️ Enemy **auto turret** fired 2 shot(s), **1 hit** you for **10 damage**! Your defenses: Hull: 600, Armor: 600, Shield: 268');
       await messageCache.waitForPendingWrites();
 
       // Verify we have 3 messages (1 read summary + 2 new unread)
-      messages = await messageCache.getMessagesForUser(userId);
+      messages = await messageCache.getMessagesForUser(ctx, userId);
       expect(messages.length).toBe(3);
       const unreadMessages = messages.filter(m => !m.is_read);
       expect(unreadMessages.length).toBe(2);
 
       // Step 5: Second summarization - SHOULD ONLY PROCESS NEW UNREAD MESSAGES
-      const summary2 = await messageCache.summarizeMessages(userId);
+      const summary2 = await messageCache.summarizeMessages(ctx, userId);
       await messageCache.waitForPendingWrites();
 
       // Verify second summary only contains stats from new messages
@@ -123,7 +131,7 @@ describe('MessageCache - Race Condition Fix', () => {
       expect(summary2).not.toContain('Received 8'); // Not from old messages
 
       // Verify final state: old read summary + new summary (unread)
-      messages = await messageCache.getMessagesForUser(userId);
+      messages = await messageCache.getMessagesForUser(ctx, userId);
       expect(messages.length).toBe(2);
       
       const readMessages = messages.filter(m => m.is_read);
@@ -141,16 +149,17 @@ describe('MessageCache - Race Condition Fix', () => {
         // Create test user
         const userId = await createTestUser('msgtest2');
 
+      const ctx = createLockContext();
       // Create and summarize messages 3 times, marking as read each time
       for (let i = 1; i <= 3; i++) {
         // Create new messages
-        await messageCache.createMessage(userId, `P: ⚔️ Your **weapon** fired 1 shot(s), **1 hit** for **${i}0 damage**! Enemy: Hull: 100, Armor: 0, Shield: 0`);
+        await messageCache.createMessage(createLockContext(), userId, `P: ⚔️ Your **weapon** fired 1 shot(s), **1 hit** for **${i}0 damage**! Enemy: Hull: 100, Armor: 0, Shield: 0`);
         await messageCache.waitForPendingWrites();
 
         // Summarize
-        const summary = await messageCache.summarizeMessages(userId);
+        const summary = await messageCache.summarizeMessages(ctx, userId);
         await messageCache.waitForPendingWrites();
-        await messageCache.flushToDatabase(createLockContext());
+        await messageCache.flushToDatabase(ctx);
 
         // Verify summary only contains current iteration's damage
         expect(summary).toContain(`Dealt ${i}0`);
@@ -162,12 +171,12 @@ describe('MessageCache - Race Condition Fix', () => {
         }
 
         // Mark as read before next iteration
-        await messageCache.markAllMessagesAsRead(userId);
+        await messageCache.markAllMessagesAsRead(createLockContext(), userId);
         await messageCache.flushToDatabase(createLockContext());
       }
 
         // Final verification: should have 3 read summaries
-        const messages = await messageCache.getMessagesForUser(userId);
+        const messages = await messageCache.getMessagesForUser(ctx, userId);
         expect(messages.length).toBe(3);
         expect(messages.every(m => m.is_read)).toBe(true);
       });
@@ -179,18 +188,19 @@ describe('MessageCache - Race Condition Fix', () => {
         const userId = await createTestUser('msgtest3');
 
       // Create and mark messages as read
-      await messageCache.createMessage(userId, 'Message 1');
-      await messageCache.createMessage(userId, 'Message 2');
+      await messageCache.createMessage(createLockContext(), userId, 'Message 1');
+      await messageCache.createMessage(createLockContext(), userId, 'Message 2');
       await messageCache.waitForPendingWrites();
-      await messageCache.markAllMessagesAsRead(userId);
+      await messageCache.markAllMessagesAsRead(createLockContext(), userId);
       await messageCache.flushToDatabase(createLockContext());
 
+      const ctx = createLockContext();
       // Try to summarize with no unread messages
-      const summary = await messageCache.summarizeMessages(userId);
+      const summary = await messageCache.summarizeMessages(ctx, userId);
       expect(summary).toBe('No messages to summarize.');
 
         // Verify no new messages created
-        const messages = await messageCache.getMessagesForUser(userId);
+        const messages = await messageCache.getMessagesForUser(ctx, userId);
         expect(messages.length).toBe(2); // Still just the 2 original (read) messages
         expect(messages.every(m => m.is_read)).toBe(true);
       });
@@ -201,25 +211,28 @@ describe('MessageCache - Race Condition Fix', () => {
         // Create test user
         const userId = await createTestUser('msgtest4');
 
+      const ctx = createLockContext();
+
       // Create some messages and mark as read
-      await messageCache.createMessage(userId, 'P: ⚔️ Your **old weapon** fired 5 shot(s), **5 hit** for **100 damage**! Enemy: Hull: 0, Armor: 0, Shield: 0');
-      await messageCache.createMessage(userId, 'Already read message');
+      await messageCache.createMessage(ctx, userId, 'P: ⚔️ Your **old weapon** fired 5 shot(s), **5 hit** for **100 damage**! Enemy: Hull: 0, Armor: 0, Shield: 0');
+      await messageCache.createMessage(ctx, userId, 'Already read message');
       await messageCache.waitForPendingWrites();
-      await messageCache.markAllMessagesAsRead(userId);
-      await messageCache.flushToDatabase(createLockContext());
+      await messageCache.markAllMessagesAsRead(ctx, userId);
+      await messageCache.flushToDatabase(ctx);
 
       // Create new unread messages
-      await messageCache.createMessage(userId, 'P: ⚔️ Your **new weapon** fired 1 shot(s), **1 hit** for **10 damage**! Enemy: Hull: 90, Armor: 0, Shield: 0');
+      await messageCache.createMessage(ctx, userId, 'P: ⚔️ Your **new weapon** fired 1 shot(s), **1 hit** for **10 damage**! Enemy: Hull: 90, Armor: 0, Shield: 0');
       await messageCache.waitForPendingWrites();
 
+      
       // Verify state: 2 read, 1 unread
-      let messages = await messageCache.getMessagesForUser(userId);
+      let messages = await messageCache.getMessagesForUser(ctx, userId);
       expect(messages.length).toBe(3);
       expect(messages.filter(m => m.is_read).length).toBe(2);
       expect(messages.filter(m => !m.is_read).length).toBe(1);
 
       // Summarize - should only process the 1 unread message
-      const summary = await messageCache.summarizeMessages(userId);
+      const summary = await messageCache.summarizeMessages(ctx, userId);
       await messageCache.waitForPendingWrites();
 
       // Verify summary only contains stats from new message
@@ -227,7 +240,7 @@ describe('MessageCache - Race Condition Fix', () => {
       expect(summary).not.toContain('Dealt 100'); // Not from old message
 
       // Verify final state: 2 old read + 1 new unread summary
-      messages = await messageCache.getMessagesForUser(userId);
+      messages = await messageCache.getMessagesForUser(ctx, userId);
       expect(messages.length).toBe(3);
       expect(messages.filter(m => m.is_read).length).toBe(2);
       expect(messages.filter(m => !m.is_read).length).toBe(1);
