@@ -9,6 +9,7 @@ import { UserCache } from '@/lib/server/user/userCache';
 import { WorldCache } from '@/lib/server/world/worldCache';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 import { USER_LOCK, WORLD_LOCK } from '@/lib/server/typedLocks';
+import { DEFAULT_SHIP_START_X, DEFAULT_SHIP_START_Y, DEFAULT_SHIP_START_SPEED, DEFAULT_SHIP_START_ANGLE } from '@/lib/server/constants';
 
 export async function POST(request: NextRequest) {
   try {
@@ -45,10 +46,10 @@ export async function POST(request: NextRequest) {
             const newShip = {
               id: user.ship_id!,
               type: 'player_ship' as const,
-              x: 250, // Starting position (from userRepo.ts)
-              y: 250,
-              speed: 0,
-              angle: 0,
+              x: DEFAULT_SHIP_START_X,
+              y: DEFAULT_SHIP_START_Y,
+              speed: DEFAULT_SHIP_START_SPEED,
+              angle: DEFAULT_SHIP_START_ANGLE,
               last_position_update_ms: Date.now(),
               username: user.username
             };

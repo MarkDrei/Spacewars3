@@ -9,6 +9,7 @@ import { sendMessageToUser } from '../messages/MessageCache';
 import { TechCounts, BuildQueueItem } from '../techs/TechFactory';
 import { TechService } from '../techs/TechService';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
+import { DEFAULT_SHIP_START_X, DEFAULT_SHIP_START_Y, DEFAULT_SHIP_START_SPEED, DEFAULT_SHIP_START_ANGLE } from '../constants';
 
 interface UserRow {
   id: number;
@@ -145,7 +146,7 @@ async function createUserWithShip(db: DatabaseConnection, username: string, pass
     // First create a player ship
     const shipResult = await db.query(
       'INSERT INTO space_objects (type, x, y, speed, angle, last_position_update_ms) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
-      ['player_ship', 250, 250, 0, 0, nowMs] // Start at center of 500x500 world
+      ['player_ship', DEFAULT_SHIP_START_X, DEFAULT_SHIP_START_Y, DEFAULT_SHIP_START_SPEED, DEFAULT_SHIP_START_ANGLE, nowMs]
     );
 
     const shipId = shipResult.rows[0].id;
