@@ -21,7 +21,7 @@ export class EscapePodRenderer extends SpaceObjectRendererBase {
     /**
      * Get the escape pod image
      */
-    protected getObjectImage(): HTMLImageElement | null {
+    protected getObjectImage(spaceObject?: SpaceObject): HTMLImageElement | null {
         return this.escapePodImage;
     }
     

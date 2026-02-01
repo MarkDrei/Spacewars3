@@ -105,11 +105,11 @@ export abstract class SpaceObjectRendererBase {
         this.drawPreEffects(ctx, spaceObject);
         
         // Draw the main object shape
-        const image = this.getObjectImage();
-        if (image && image.complete && image.naturalHeight !== 0) {
+        const image = this.getObjectImage(spaceObject);
+        if (image && this.isImageLoaded(spaceObject) && image.complete && image.naturalHeight !== 0) {
             // Draw the object image with proper aspect ratio
             const baseSize = this.getObjectSize();
-            const aspectRatio = this.getImageAspectRatio();
+            const aspectRatio = this.getImageAspectRatio(spaceObject);
             
             let width: number, height: number;
             if (aspectRatio > 1) {
@@ -152,7 +152,16 @@ export abstract class SpaceObjectRendererBase {
      * Get the image to use for this object type
      * Return null to use fallback shape instead
      */
-    protected abstract getObjectImage(): HTMLImageElement | null;
+    protected abstract getObjectImage(spaceObject?: SpaceObject): HTMLImageElement | null;
+    
+    /**
+     * Check if the image is loaded
+     * Can be overridden by subclasses to provide custom image loading checks
+     */
+    protected isImageLoaded(spaceObject?: SpaceObject): boolean {
+        const image = this.getObjectImage(spaceObject);
+        return image !== null && image.complete && image.naturalHeight !== 0;
+    }
     
     /**
      * Get the size to render the object at
@@ -171,8 +180,8 @@ export abstract class SpaceObjectRendererBase {
      * Get the aspect ratio of the image (width/height)
      * Can be overridden by subclasses to specify custom ratios
      */
-    protected getImageAspectRatio(): number {
-        const image = this.getObjectImage();
+    protected getImageAspectRatio(spaceObject?: SpaceObject): number {
+        const image = this.getObjectImage(spaceObject);
         if (image && image.complete && image.naturalHeight !== 0) {
             return image.naturalWidth / image.naturalHeight;
         }

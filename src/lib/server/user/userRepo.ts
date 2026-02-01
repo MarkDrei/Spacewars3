@@ -18,6 +18,7 @@ interface UserRow {
   last_updated: number;
   tech_tree: string;
   ship_id?: number;
+  ship_picture_id: number;
   // Tech counts (weapons)
   pulse_laser: number;
   auto_turret: number;
@@ -109,6 +110,7 @@ function userFromRow(row: UserRow, saveCallback: SaveUserCallback): User {
     currentBattleId,
     buildQueue,
     buildStartSec,
+    row.ship_picture_id || 1,
     row.ship_id
   );
 }
@@ -152,8 +154,8 @@ async function createUserWithShip(db: DatabaseConnection, username: string, pass
 
     // Then create the user with the ship_id (with default defense values)
     const userResult = await db.query(
-      'INSERT INTO users (username, password_hash, iron, last_updated, tech_tree, ship_id, hull_current, armor_current, shield_current, defense_last_regen) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id',
-      [username, password_hash, 0.0, now, JSON.stringify(techTree), shipId, 250.0, 250.0, 250.0, now]
+      'INSERT INTO users (username, password_hash, iron, last_updated, tech_tree, ship_id, ship_picture_id, hull_current, armor_current, shield_current, defense_last_regen) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id',
+      [username, password_hash, 0.0, now, JSON.stringify(techTree), shipId, 1, 250.0, 250.0, 250.0, now]
     );
 
     const userId = userResult.rows[0].id;
@@ -176,7 +178,7 @@ async function createUserWithShip(db: DatabaseConnection, username: string, pass
     // Calculate initial defense values based on default tech counts
     const initialMaxStats = TechService.calculateMaxDefense(defaultTechCounts, techTree);
 
-    const user = new User(userId, username, password_hash, 0.0, now, techTree, saveCallback, defaultTechCounts, initialMaxStats.hull, initialMaxStats.armor, initialMaxStats.shield, now, false, null, [], null, shipId);
+    const user = new User(userId, username, password_hash, 0.0, now, techTree, saveCallback, defaultTechCounts, initialMaxStats.hull, initialMaxStats.armor, initialMaxStats.shield, now, false, null, [], null, 1, shipId);
 
     // Send welcome message to new user
     const ctx = createLockContext();
@@ -186,8 +188,8 @@ async function createUserWithShip(db: DatabaseConnection, username: string, pass
   } else {
     // Create user without ship (for testing, with default defense values)
     const userResult = await db.query(
-      'INSERT INTO users (username, password_hash, iron, last_updated, tech_tree, hull_current, armor_current, shield_current, defense_last_regen) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id',
-      [username, password_hash, 0.0, now, JSON.stringify(techTree), 250.0, 250.0, 250.0, now]
+      'INSERT INTO users (username, password_hash, iron, last_updated, tech_tree, ship_picture_id, hull_current, armor_current, shield_current, defense_last_regen) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id',
+      [username, password_hash, 0.0, now, JSON.stringify(techTree), 1, 250.0, 250.0, 250.0, now]
     );
 
     const id = userResult.rows[0].id;
@@ -209,7 +211,7 @@ async function createUserWithShip(db: DatabaseConnection, username: string, pass
     // Calculate initial defense values based on default tech counts
     const initialMaxStats = TechService.calculateMaxDefense(defaultTechCounts, techTree);
 
-    const user = new User(id, username, password_hash, 0.0, now, techTree, saveCallback, defaultTechCounts, initialMaxStats.hull, initialMaxStats.armor, initialMaxStats.shield, now, false, null, [], null);
+    const user = new User(id, username, password_hash, 0.0, now, techTree, saveCallback, defaultTechCounts, initialMaxStats.hull, initialMaxStats.armor, initialMaxStats.shield, now, false, null, [], null, 1);
 
     return user;
   }
@@ -223,30 +225,32 @@ export function saveUserToDb(db: DatabaseConnection): SaveUserCallback {
         last_updated = $2, 
         tech_tree = $3, 
         ship_id = $4,
-        pulse_laser = $5,
-        auto_turret = $6,
-        plasma_lance = $7,
-        gauss_rifle = $8,
-        photon_torpedo = $9,
-        rocket_launcher = $10,
-        ship_hull = $11,
-        kinetic_armor = $12,
-        energy_shield = $13,
-        missile_jammer = $14,
-        hull_current = $15,
-        armor_current = $16,
-        shield_current = $17,
-        defense_last_regen = $18,
-        in_battle = $19,
-        current_battle_id = $20,
-        build_queue = $21,
-        build_start_sec = $22
-      WHERE id = $23`,
+        ship_picture_id = $5,
+        pulse_laser = $6,
+        auto_turret = $7,
+        plasma_lance = $8,
+        gauss_rifle = $9,
+        photon_torpedo = $10,
+        rocket_launcher = $11,
+        ship_hull = $12,
+        kinetic_armor = $13,
+        energy_shield = $14,
+        missile_jammer = $15,
+        hull_current = $16,
+        armor_current = $17,
+        shield_current = $18,
+        defense_last_regen = $19,
+        in_battle = $20,
+        current_battle_id = $21,
+        build_queue = $22,
+        build_start_sec = $23
+      WHERE id = $24`,
       [
         user.iron,
         user.last_updated,
         JSON.stringify(user.techTree),
         user.ship_id,
+        user.shipPictureId,
         user.techCounts.pulse_laser,
         user.techCounts.auto_turret,
         user.techCounts.plasma_lance,

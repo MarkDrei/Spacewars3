@@ -5,15 +5,41 @@ import { SpaceObjectOld } from '../game/SpaceObject';
  * Renderer specifically for the player's own ship (always rendered in the center)
  */
 export class PlayerShipRenderer {
-    private shipImage: HTMLImageElement;
-    private imageLoaded: boolean = false;
+    private shipImages: Map<number, HTMLImageElement> = new Map();
+    private imagesLoaded: Set<number> = new Set();
+    private currentShipPictureId: number = 1;
 
     constructor() {
-        this.shipImage = new Image();
-        this.shipImage.onload = () => {
-            this.imageLoaded = true;
-        };
-        this.shipImage.src = '/assets/images/ship1.png';
+        // Preload all ship images
+        for (let i = 1; i <= 5; i++) {
+            const img = new Image();
+            img.onload = () => {
+                this.imagesLoaded.add(i);
+            };
+            img.src = `/assets/images/ship${i}.png`;
+            this.shipImages.set(i, img);
+        }
+    }
+
+    /**
+     * Set the ship picture ID for the player
+     */
+    setShipPictureId(shipPictureId: number): void {
+        this.currentShipPictureId = shipPictureId;
+    }
+
+    /**
+     * Get the current ship image based on shipPictureId
+     */
+    private getCurrentShipImage(): HTMLImageElement | null {
+        return this.shipImages.get(this.currentShipPictureId) || this.shipImages.get(1) || null;
+    }
+
+    /**
+     * Check if the current ship image is loaded
+     */
+    private isCurrentShipImageLoaded(): boolean {
+        return this.imagesLoaded.has(this.currentShipPictureId);
     }
 
     /**
@@ -34,8 +60,14 @@ export class PlayerShipRenderer {
             ctx.stroke();
         }
 
-        if (!this.imageLoaded) {
+        if (!this.isCurrentShipImageLoaded()) {
             // Fallback: draw a simple triangle if image not loaded
+            this.drawFallbackShip(ctx, centerX, centerY, ship);
+            return;
+        }
+
+        const shipImage = this.getCurrentShipImage();
+        if (!shipImage) {
             this.drawFallbackShip(ctx, centerX, centerY, ship);
             return;
         }
@@ -45,10 +77,19 @@ export class PlayerShipRenderer {
         ctx.translate(centerX, centerY);
         ctx.rotate(ship.getAngleRadians() + Math.PI / 2); // Convert degrees to radians, adjust for ship orientation
 
-        const scale = 0.15;
-        const width = this.shipImage.width * scale;
-        const height = this.shipImage.height * scale;
-        ctx.drawImage(this.shipImage, -width / 2, -height / 2, width, height);
+        // Calculate scale based on ship image size
+        // Ship1: 419x412, Ships 2-5: 1024x1024
+        // We want all ships to render at the same size as ship1 at scale 0.15
+        const targetWidth = 419 * 0.15;  // Target width based on ship1
+        const targetHeight = 412 * 0.15; // Target height based on ship1
+        
+        const scaleX = targetWidth / shipImage.width;
+        const scaleY = targetHeight / shipImage.height;
+        
+        const width = shipImage.width * scaleX;
+        const height = shipImage.height * scaleY;
+        
+        ctx.drawImage(shipImage, -width / 2, -height / 2, width, height);
 
         ctx.restore();
     }

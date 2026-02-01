@@ -21,7 +21,7 @@ export class ShipwreckRenderer extends SpaceObjectRendererBase {
     /**
      * Get the shipwreck image
      */
-    protected getObjectImage(): HTMLImageElement | null {
+    protected getObjectImage(spaceObject?: SpaceObject): HTMLImageElement | null {
         return this.shipwreckImage;
     }
     

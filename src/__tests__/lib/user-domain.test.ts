@@ -35,7 +35,8 @@ describe('User.updateStats with IronHarvesting research progression', () => {
       false, // inBattle
       null, // currentBattleId
       [], // buildQueue
-      null // buildStartSec
+      null, // buildStartSec
+      1 // shipPictureId
     );
   });
 
@@ -253,7 +254,8 @@ describe('User getter methods', () => {
       false, // inBattle
       null, // currentBattleId
       [], // buildQueue
-      null // buildStartSec
+      null, // buildStartSec
+      1 // shipPictureId
     );
   });
 
@@ -341,7 +343,8 @@ describe('User.updateDefenseValues with regeneration', () => {
       false, // inBattle
       null, // currentBattleId
       [], // buildQueue
-      null // buildStartSec
+      null, // buildStartSec
+      1 // shipPictureId
     );
   });
 

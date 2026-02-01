@@ -6,12 +6,20 @@ import { SpaceObjectRendererBase } from './SpaceObjectRendererBase';
  * Uses the base SpaceObjectRenderer for positioning and wrapping
  */
 export class OtherShipRenderer extends SpaceObjectRendererBase {
-    private shipImage: HTMLImageElement;
+    private shipImages: Map<number, HTMLImageElement> = new Map();
+    private imagesLoaded: Set<number> = new Set();
 
     constructor() {
         super();
-        this.shipImage = new Image();
-        this.shipImage.src = '/assets/images/ship1.png';
+        // Preload all ship images
+        for (let i = 1; i <= 5; i++) {
+            const img = new Image();
+            img.onload = () => {
+                this.imagesLoaded.add(i);
+            };
+            img.src = `/assets/images/ship${i}.png`;
+            this.shipImages.set(i, img);
+        }
     }
     
     /**
@@ -30,10 +38,25 @@ export class OtherShipRenderer extends SpaceObjectRendererBase {
     }
 
     /**
-     * Get the ship image
+     * Get the ship image based on shipPictureId
      */
-    protected getObjectImage(): HTMLImageElement | null {
-        return this.shipImage;
+    protected getObjectImage(spaceObject?: SpaceObject): HTMLImageElement | null {
+        if (!spaceObject || spaceObject.type !== 'player_ship') {
+            return this.shipImages.get(1) || null;
+        }
+        const shipPictureId = spaceObject.shipPictureId || 1;
+        return this.shipImages.get(shipPictureId) || this.shipImages.get(1) || null;
+    }
+    
+    /**
+     * Check if the ship image is loaded
+     */
+    protected override isImageLoaded(spaceObject?: SpaceObject): boolean {
+        if (!spaceObject || spaceObject.type !== 'player_ship') {
+            return this.imagesLoaded.has(1);
+        }
+        const shipPictureId = spaceObject.shipPictureId || 1;
+        return this.imagesLoaded.has(shipPictureId);
     }
     
     /**

@@ -14,6 +14,7 @@ class User {
   last_updated: number;
   techTree: TechTree;
   ship_id?: number; // Optional ship ID for linking to player's ship
+  shipPictureId: number; // Ship picture ID (1-5 for ship1.png to ship5.png)
   techCounts: TechCounts; // Tech counts for weapons and defense
 
   // Defense current values (persisted)
@@ -50,6 +51,7 @@ class User {
     currentBattleId: number | null,
     buildQueue: BuildQueueItem[],
     buildStartSec: number | null,
+    shipPictureId: number,
     ship_id?: number
   ) {
     this.id = id;
@@ -67,6 +69,7 @@ class User {
     this.currentBattleId = currentBattleId;
     this.buildQueue = buildQueue;
     this.buildStartSec = buildStartSec;
+    this.shipPictureId = shipPictureId;
     this.ship_id = ship_id;
     this.saveCallback = saveCallback;
   }

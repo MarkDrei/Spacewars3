@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS users (
   last_updated INTEGER NOT NULL,
   tech_tree TEXT NOT NULL,
   ship_id INTEGER,
+  ship_picture_id INTEGER NOT NULL DEFAULT 1,
   
   -- Tech counts (weapons)
   pulse_laser INTEGER NOT NULL DEFAULT 5,
@@ -140,5 +141,10 @@ export const MIGRATE_ADD_BATTLE_DAMAGE = [
   'ALTER TABLE battles ADD COLUMN IF NOT EXISTS attackee_total_damage DOUBLE PRECISION NOT NULL DEFAULT 0.0'
 ];
 
+// Migration to add ship picture ID (PostgreSQL syntax)
+export const MIGRATE_ADD_SHIP_PICTURE_ID = [
+  'ALTER TABLE users ADD COLUMN IF NOT EXISTS ship_picture_id INTEGER NOT NULL DEFAULT 1'
+];
+
 // Optional: Version management for migrations
-export const SCHEMA_VERSION = 10;
+export const SCHEMA_VERSION = 11;

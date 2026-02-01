@@ -12,6 +12,7 @@ export interface SeedUser {
     speed: number;
     angle: number;
   };
+  ship_picture_id: number; // Ship picture ID (1-5)
   tech_counts?: {
     // Weapons
     pulse_laser: number;
@@ -46,6 +47,7 @@ export const DEFAULT_USERS: SeedUser[] = [
     username: 'a',
     password: 'a',
     iron: 1000,
+    ship_picture_id: 1,
     tech_tree: { 
       ironHarvesting: 1, 
       shipSpeed: 1, 
@@ -91,6 +93,7 @@ export const DEFAULT_USERS: SeedUser[] = [
     username: 'dummy',
     password: 'dummy',
     iron: 0,
+    ship_picture_id: 2,
     tech_tree: { 
       ironHarvesting: 1, 
       shipSpeed: 1, 
@@ -146,6 +149,198 @@ export const DEFAULT_USERS: SeedUser[] = [
     },
     defense: {
       hull_current: 350,  // Half of max (700 / 2)
+      armor_current: 350,
+      shield_current: 350
+    }
+  },
+  {
+    username: 'dummy2',
+    password: 'dummy2',
+    iron: 0,
+    ship_picture_id: 3,
+    tech_tree: { 
+      ironHarvesting: 1, 
+      shipSpeed: 1, 
+      afterburner: 0,
+      // Projectile Weapons
+      projectileDamage: 1,
+      projectileReloadRate: 1,
+      projectileAccuracy: 1,
+      projectileWeaponTier: 0,
+      // Energy Weapons
+      energyDamage: 1,
+      energyRechargeRate: 1,
+      energyAccuracy: 1,
+      energyWeaponTier: 0,
+      // Defense
+      hullStrength: 1,
+      repairSpeed: 1,
+      armorEffectiveness: 1,
+      shieldEffectiveness: 1,
+      shieldRechargeRate: 1,
+      // Ship
+      afterburnerSpeedIncrease: 1,
+      afterburnerDuration: 1,
+      teleport: 0,
+      inventoryCapacity: 1,
+      constructionSpeed: 1,
+      // Spies
+      spyChance: 0,
+      spySpeed: 0,
+      spySabotageDamage: 0,
+      counterintelligence: 0,
+      stealIron: 0
+    },
+    ship: {
+      x: 320,
+      y: 220,
+      speed: 0,
+      angle: 0
+    },
+    tech_counts: {
+      // Weapons
+      pulse_laser: 1,
+      auto_turret: 2,
+      plasma_lance: 0,
+      gauss_rifle: 0,
+      photon_torpedo: 0,
+      rocket_launcher: 0,
+      // Defense - 7 of each (results in max of 700)
+      ship_hull: 7,
+      kinetic_armor: 7,
+      energy_shield: 7,
+      missile_jammer: 7
+    },
+    defense: {
+      hull_current: 350,
+      armor_current: 350,
+      shield_current: 350
+    }
+  },
+  {
+    username: 'dummy3',
+    password: 'dummy3',
+    iron: 0,
+    ship_picture_id: 4,
+    tech_tree: { 
+      ironHarvesting: 1, 
+      shipSpeed: 1, 
+      afterburner: 0,
+      // Projectile Weapons
+      projectileDamage: 1,
+      projectileReloadRate: 1,
+      projectileAccuracy: 1,
+      projectileWeaponTier: 0,
+      // Energy Weapons
+      energyDamage: 1,
+      energyRechargeRate: 1,
+      energyAccuracy: 1,
+      energyWeaponTier: 0,
+      // Defense
+      hullStrength: 1,
+      repairSpeed: 1,
+      armorEffectiveness: 1,
+      shieldEffectiveness: 1,
+      shieldRechargeRate: 1,
+      // Ship
+      afterburnerSpeedIncrease: 1,
+      afterburnerDuration: 1,
+      teleport: 0,
+      inventoryCapacity: 1,
+      constructionSpeed: 1,
+      // Spies
+      spyChance: 0,
+      spySpeed: 0,
+      spySabotageDamage: 0,
+      counterintelligence: 0,
+      stealIron: 0
+    },
+    ship: {
+      x: 180,
+      y: 280,
+      speed: 0,
+      angle: 0
+    },
+    tech_counts: {
+      // Weapons
+      pulse_laser: 1,
+      auto_turret: 2,
+      plasma_lance: 0,
+      gauss_rifle: 0,
+      photon_torpedo: 0,
+      rocket_launcher: 0,
+      // Defense - 7 of each (results in max of 700)
+      ship_hull: 7,
+      kinetic_armor: 7,
+      energy_shield: 7,
+      missile_jammer: 7
+    },
+    defense: {
+      hull_current: 350,
+      armor_current: 350,
+      shield_current: 350
+    }
+  },
+  {
+    username: 'dummy4',
+    password: 'dummy4',
+    iron: 0,
+    ship_picture_id: 5,
+    tech_tree: { 
+      ironHarvesting: 1, 
+      shipSpeed: 1, 
+      afterburner: 0,
+      // Projectile Weapons
+      projectileDamage: 1,
+      projectileReloadRate: 1,
+      projectileAccuracy: 1,
+      projectileWeaponTier: 0,
+      // Energy Weapons
+      energyDamage: 1,
+      energyRechargeRate: 1,
+      energyAccuracy: 1,
+      energyWeaponTier: 0,
+      // Defense
+      hullStrength: 1,
+      repairSpeed: 1,
+      armorEffectiveness: 1,
+      shieldEffectiveness: 1,
+      shieldRechargeRate: 1,
+      // Ship
+      afterburnerSpeedIncrease: 1,
+      afterburnerDuration: 1,
+      teleport: 0,
+      inventoryCapacity: 1,
+      constructionSpeed: 1,
+      // Spies
+      spyChance: 0,
+      spySpeed: 0,
+      spySabotageDamage: 0,
+      counterintelligence: 0,
+      stealIron: 0
+    },
+    ship: {
+      x: 220,
+      y: 320,
+      speed: 0,
+      angle: 0
+    },
+    tech_counts: {
+      // Weapons
+      pulse_laser: 1,
+      auto_turret: 2,
+      plasma_lance: 0,
+      gauss_rifle: 0,
+      photon_torpedo: 0,
+      rocket_launcher: 0,
+      // Defense - 7 of each (results in max of 700)
+      ship_hull: 7,
+      kinetic_armor: 7,
+      energy_shield: 7,
+      missile_jammer: 7
+    },
+    defense: {
+      hull_current: 350,
       armor_current: 350,
       shield_current: 350
     }
@@ -219,14 +414,15 @@ export async function seedDatabase(db: DatabaseConnection, force = false): Promi
       const passwordHash = await bcrypt.hash(user.password, 10);
       
       // Build INSERT statement based on what optional fields are provided
-      const columns = ['username', 'password_hash', 'iron', 'last_updated', 'tech_tree', 'ship_id'];
+      const columns = ['username', 'password_hash', 'iron', 'last_updated', 'tech_tree', 'ship_id', 'ship_picture_id'];
       const values: (string | number)[] = [
         user.username,
         passwordHash,
         user.iron,
         Math.floor(now / 1000), // Convert to seconds
         JSON.stringify(user.tech_tree),
-        shipId
+        shipId,
+        user.ship_picture_id
       ];
       
       // Add tech_counts if provided

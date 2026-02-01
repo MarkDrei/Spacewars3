@@ -12,6 +12,9 @@
 export const PRECOMPUTED_HASHES: Record<string, string> = {
   'a': '$2b$10$0q/od18qjo/fyCB8b.Dn2OZdKs1pKAOPwly98WEZzbsT.yavE6BY.',
   'dummy': '$2b$10$GJ2Bjb5Ruhd1hCnDxzEzxOmDAlgIy9.0ci11khzvsH0ta7q17K4ay',
+  'dummy2': '$2b$10$swnMe9aYsK58mNBWrUTItOXfyOcjJhtuJ/oNXzpqtPeo4OooBctQS',
+  'dummy3': '$2b$10$FUJRo73ubblOAaMA.y/p2euYlxJGLmAxw6aj1VUkVo9hdHF8H/oBe',
+  'dummy4': '$2b$10$.Iy0xN8JOe.k0lfUTcpV8OkoS1LpSjwzoO/qbHTih3HWT/M/.8qTm',
   'q': '$2b$10$mV0R0OSohm5YjLDdttWtQOZcANRDw.vwIH2JdV.mLBLUPhYvby1Ae',
   'testpass123': '$2b$10$d8dOM7A1Ll449rWUtQZWcepcInTyqySN80niJclYVYFtAPjI0PvIC',
   'testpass': '$2b$10$nHBeHr1QP3Z13msELpYFtOHl6Ltczgeo.ovhYUf34iXwG/Hvbr6B2',

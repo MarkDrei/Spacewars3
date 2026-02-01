@@ -171,6 +171,12 @@ export class GameRenderer {
             );
         }
         
+        // Update player ship renderer with current ship picture ID
+        const serverData = ship.getServerData();
+        if (serverData.shipPictureId) {
+            this.playerShipRenderer.setShipPictureId(serverData.shipPictureId);
+        }
+        
         // Draw player's ship in the center
         this.playerShipRenderer.drawPlayerShip(
             this.ctx,
