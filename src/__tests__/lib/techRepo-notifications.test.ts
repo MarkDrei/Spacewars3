@@ -2,8 +2,8 @@ import { describe, test, expect, beforeEach, vi, afterEach } from 'vitest';
 import { TechService } from '@/lib/server/techs/TechService';
 import { UserCache } from '@/lib/server/user/userCache';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
-import { USER_LOCK } from '@/lib/server/typedLocks';
-import { resetTestDatabase, getDatabase } from '@/lib/server/database';
+import { USER_LOCK, DATABASE_LOCK_MESSAGES } from '@/lib/server/typedLocks';
+import { getDatabase } from '@/lib/server/database';
 import { BuildQueueItem } from '@/lib/server/techs/TechFactory';
 import { MessageCache } from '@/lib/server/messages/MessageCache';
 import { withTransaction } from '../helpers/transactionHelper';
@@ -16,6 +16,13 @@ describe('TechService - Build Completion Notifications', () => {
     // Initialize userCache (will use getDatabase() internally)
     UserCache.resetInstance();
     await UserCache.intialize2(await getDatabase());
+    
+    // Initialize MessageCache before TechService (TechService constructor tries to get MessageCache)
+    const ctx = createLockContext();
+    MessageCache.resetInstance(ctx);
+    await ctx.useLockWithAcquire(DATABASE_LOCK_MESSAGES, async (msgCtx) => {
+      await MessageCache.initialize(msgCtx, { flushIntervalMs: 60000 });
+    });
 
     // Get TechService instance
     techService = TechService.getInstance();
@@ -105,6 +112,7 @@ describe('TechService - Build Completion Notifications', () => {
       // Assert - Notification was sent
       expect(mockCreateMessage).toHaveBeenCalledOnce();
       expect(mockCreateMessage).toHaveBeenCalledWith(
+        expect.anything(), // context parameter
         testUserId,
         expect.stringContaining('Build complete: Pulse Laser')
       );
@@ -146,6 +154,7 @@ describe('TechService - Build Completion Notifications', () => {
       // Assert - Notification was sent for defense
       expect(mockCreateMessage).toHaveBeenCalledOnce();
       expect(mockCreateMessage).toHaveBeenCalledWith(
+        expect.anything(), // context parameter
         testUserId,
         expect.stringContaining('Build complete: Kinetic Armor') // Adjust string to match TechService output
       );
@@ -191,9 +200,9 @@ describe('TechService - Build Completion Notifications', () => {
       // Check each notification was sent with correct content
       const calls = mockCreateMessage.mock.calls;
       expect(calls).toEqual(expect.arrayContaining([
-        [testUserId, expect.stringContaining('Pulse Laser')],
-        [testUserId, expect.stringContaining('Kinetic Armor')],
-        [testUserId, expect.stringContaining('Auto Turret')]
+        [expect.anything(), testUserId, expect.stringContaining('Pulse Laser')],
+        [expect.anything(), testUserId, expect.stringContaining('Kinetic Armor')],
+        [expect.anything(), testUserId, expect.stringContaining('Auto Turret')]
       ]));
     });
   });
@@ -234,6 +243,7 @@ describe('TechService - Build Completion Notifications', () => {
       // Assert - Only one notification sent (for completed item)
       expect(mockCreateMessage).toHaveBeenCalledOnce();
       expect(mockCreateMessage).toHaveBeenCalledWith(
+        expect.anything(), // context parameter
         testUserId,
         expect.stringContaining('Pulse Laser')
       );

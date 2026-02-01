@@ -4,13 +4,20 @@ import { getDatabase } from '@/lib/server/database';
 import { createUser } from '@/lib/server/user/userRepo';
 import { saveUserToDb } from '@/lib/server/user/userRepo';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
-import { USER_LOCK } from '@/lib/server/typedLocks';
+import { USER_LOCK, DATABASE_LOCK_MESSAGES } from '@/lib/server/typedLocks';
+import { MessageCache } from '@/lib/server/messages/MessageCache';
 
 describe('User Persistence to Database', () => {
   beforeEach(async () => {
     UserCache.resetInstance();
     const db = await getDatabase();
     await UserCache.intialize2(db);
+    
+    // Initialize MessageCache since createUser sends welcome messages
+    const ctx = createLockContext();
+    await ctx.useLockWithAcquire(DATABASE_LOCK_MESSAGES, async (msgCtx) => {
+      await MessageCache.initialize(msgCtx, { persistenceIntervalMs: 60000, enableAutoPersistence: false});
+    });
   });
 
   it('userPersistence_dirtyUserModified_persitsToDatabase', async () => {

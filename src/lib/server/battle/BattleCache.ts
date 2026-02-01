@@ -93,8 +93,10 @@ export class BattleCache extends Cache {
     BattleCache.instance.assertDependenciesConfigured();
     BattleCache.instance.db = db;
     
-    // Load active battles from database
-    await BattleCache.instance.loadActiveBattlesFromDb();
+    // Load active battles from database (skip in test mode to avoid loading battles from outside transaction context)
+    if (process.env.NODE_ENV !== 'test') {
+      await BattleCache.instance.loadActiveBattlesFromDb();
+    }
     
     // Start background tasks
     startBattleScheduler();

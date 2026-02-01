@@ -169,15 +169,15 @@ describe('MessageCache', () => {
         const testUserId = await createTestUser('testuser1');
 
         const ctx = createLockContext();
+        await ctx.useLockWithAcquire(DATABASE_LOCK_MESSAGES, async (lockCtx) => {
+          await MessageCache.initialize(lockCtx);
+        });
         const messageId = await sendMessageToUser(ctx, testUserId, 'Test via convenience function');
         
         // Now returns temporary negative ID immediately
         expect(messageId).toBeLessThan(0);
         
         // Wait for write to complete
-        await ctx.useLockWithAcquire(DATABASE_LOCK_MESSAGES, async (lockCtx) => {
-          await MessageCache.initialize(lockCtx);
-        });
         const cache = MessageCache.getInstance();
         await cache.waitForPendingWrites();
         
@@ -192,6 +192,9 @@ describe('MessageCache', () => {
         const testUserId = await createTestUser('testuser1');
 
         const ctx = createLockContext();
+        await ctx.useLockWithAcquire(DATABASE_LOCK_MESSAGES, async (lockCtx) => {
+          await MessageCache.initialize(lockCtx);
+        });
         await sendMessageToUser(ctx, testUserId, 'Message 1');
         await sendMessageToUser(ctx, testUserId, 'Message 2');
         
@@ -206,6 +209,9 @@ describe('MessageCache', () => {
         const testUserId = await createTestUser('testuser1');
 
         const ctx = createLockContext();
+        await ctx.useLockWithAcquire(DATABASE_LOCK_MESSAGES, async (lockCtx) => {
+          await MessageCache.initialize(lockCtx);
+        });
         await sendMessageToUser(ctx, testUserId, 'Message 1');
         
         const count = await getUserMessageCount(ctx, testUserId);
@@ -619,12 +625,12 @@ describe('MessageCache', () => {
         const testUserId = await createTestUser('testuser1');
 
         const ctx = createLockContext();
-        await sendMessageToUser(ctx, testUserId, 'Message 1');
-        await sendMessageToUser(ctx, testUserId, 'Message 2');
-        
         await ctx.useLockWithAcquire(DATABASE_LOCK_MESSAGES, async (lockCtx) => {
           await MessageCache.initialize(lockCtx);
         });
+        await sendMessageToUser(ctx, testUserId, 'Message 1');
+        await sendMessageToUser(ctx, testUserId, 'Message 2');
+        
         const cache = MessageCache.getInstance();
         await cache.waitForPendingWrites();
         

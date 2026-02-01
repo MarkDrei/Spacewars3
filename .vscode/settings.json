@@ -1,6 +1,6 @@
 {
     "chat.tools.terminal.autoApprove": {
-        "/tmp/fix-message-cache-summarization.sh": true,
-        "npx tsc": true
+        "npx tsc": true,
+        "timeout": true
     }
 }

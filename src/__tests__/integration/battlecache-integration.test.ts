@@ -149,12 +149,19 @@ describe('Phase 5: BattleCache Integration Testing', () => {
 
         // Reset cache to force database load
         BattleCache.resetInstance();
+        
+        // Reinitialize cache (needed after reset in test mode)
+        const db = battleCache!['db']; // Access private field for test
+        const deps = battleCache!['dependencies']; // Access private field for test
+        await BattleCache.initialize(db, deps);
+        
         const freshCache = getBattleCache()!;
+        expect(freshCache).not.toBeNull();
 
         console.log('🔄 Loading battle from database...');
 
         // Load battle (should come from database)
-        const loadedBattle = await freshCache!.loadBattleIfNeeded(battleCtx, battle.id);
+        const loadedBattle = await freshCache.loadBattleIfNeeded(battleCtx, battle.id);
 
         expect(loadedBattle).toBeDefined();
         expect(loadedBattle?.id).toBe(battle.id);

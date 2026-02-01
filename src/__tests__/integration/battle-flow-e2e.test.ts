@@ -144,9 +144,16 @@ describe('Phase 5: End-to-End Battle Flow with BattleCache', () => {
         // Force persistence
         await battleCache!.persistDirtyBattles(battleCtx);
         
-        // Reset cache and reload from DB
+        // Reset cache and reload from DB to test database persistence
         BattleCache.resetInstance();
+        
+        // Reinitialize cache (needed after reset)
+        const db = battleCache!['db']; // Access private field for test
+        const deps = battleCache!['dependencies']; // Access private field for test
+        await BattleCache.initialize(db, deps);
+        
         const freshCache = getBattleCache()!;
+        expect(freshCache).not.toBeNull();
   
         // Battle should be loadable from database
         const reloadedBattle = await freshCache.loadBattleIfNeeded(battleCtx, battle.id);
