@@ -41,7 +41,8 @@ function createTestUser(
     false, // inBattle
     null, // currentBattleId
     [], // buildQueue
-    null // buildStartSec
+    null, // buildStartSec
+    1 // shipPictureId
   );
 }
 
