@@ -18,33 +18,38 @@ const AboutPageClient: React.FC<AboutPageClientProps> = () => {
   useEffect(() => {
     // Dynamically detect available ship images
     const detectShips = async () => {
-      const ships: number[] = [];
       // Check for ship1.png through ship10.png (reasonable upper limit)
-      for (let i = 1; i <= 10; i++) {
+      const promises = Array.from({ length: 10 }, (_, i) => i + 1).map(async (i) => {
         try {
           const response = await fetch(`/assets/images/ship${i}.png`, { method: 'HEAD' });
-          if (response.ok) {
-            ships.push(i);
-          }
+          return response.ok ? i : null;
         } catch {
-          // Image doesn't exist, skip it
-          continue;
+          return null;
         }
-      }
+      });
+
+      const results = await Promise.all(promises);
+      const ships = results.filter((ship): ship is number => ship !== null);
       setAvailableShips(ships);
     };
 
     detectShips();
   }, []);
 
+  useEffect(() => {
+    // Clear message after 3 seconds when a new message is set
+    if (message) {
+      const timeoutId = setTimeout(() => {
+        setMessage('');
+      }, 3000);
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }, [message]);
+
   const handleShipSelection = (shipNumber: number) => {
     setSelectedShip(shipNumber);
     setMessage(`You have selected Ship ${shipNumber}! 🚀`);
-    
-    // Clear message after 3 seconds
-    setTimeout(() => {
-      setMessage('');
-    }, 3000);
   };
 
   return (
