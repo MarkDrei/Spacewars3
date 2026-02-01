@@ -136,11 +136,11 @@ describe('BattleScheduler Integration', () => {
     let defenderId: number;
     
     await emptyCtx.useLockWithAcquire(USER_LOCK, async (userContext) => {
-      const attacker = await userWorldCache.getUserByIdWithLock(userContext, 1);
-      const defender = await userWorldCache.getUserByIdWithLock(userContext, 2);
+      const attacker = await userWorldCache.getUserByUsername(userContext, 'a');
+      const defender = await userWorldCache.getUserByUsername(userContext, 'dummy');
       
-      expect(attacker).toBeDefined();
-      expect(defender).toBeDefined();
+      expect(attacker).not.toBeNull();
+      expect(defender).not.toBeNull();
       
       attackerId = attacker!.id;
       defenderId = defender!.id;
@@ -212,8 +212,11 @@ describe('BattleScheduler Integration', () => {
       let defenderId: number;
       
       await emptyCtx.useLockWithAcquire(USER_LOCK, async (userContext) => {
-        const attacker = await userWorldCache.getUserByIdWithLock(userContext, 1);
-        const defender = await userWorldCache.getUserByIdWithLock(userContext, 2);
+        const attacker = await userWorldCache.getUserByUsername(userContext, 'a');
+        const defender = await userWorldCache.getUserByUsername(userContext, 'dummy');
+        
+        expect(attacker).not.toBeNull();
+        expect(defender).not.toBeNull();
         
         attackerId = attacker!.id;
         defenderId = defender!.id;

@@ -49,9 +49,19 @@ describe('Defense Value Persistence After Battle', () => {
           attackerId = attacker!.id;
           defenderId = defender!.id;
       
-          // Force reset techs to baseline to avoid huge stats from other tests
-          attacker!.techCounts = { ...attacker!.techCounts, ship_hull: 0, kinetic_armor: 0, energy_shield: 0 };
-          defender!.techCounts = { ...defender!.techCounts, ship_hull: 0, kinetic_armor: 0, energy_shield: 0 };
+          // Set baseline techs (1 of each defense type = max 100 per defense layer)
+          // Set attacker to have 100 pulse lasers to match the battle stats
+          attacker!.techCounts = { ...attacker!.techCounts, ship_hull: 1, kinetic_armor: 1, energy_shield: 1, pulse_laser: 100 };
+          defender!.techCounts = { ...defender!.techCounts, ship_hull: 1, kinetic_armor: 1, energy_shield: 1, pulse_laser: 1 };
+          
+          // Set current defense values to reasonable amounts
+          attacker!.hullCurrent = 100;
+          attacker!.armorCurrent = 50;
+          attacker!.shieldCurrent = 50;
+          
+          defender!.hullCurrent = 100;
+          defender!.armorCurrent = 50;
+          defender!.shieldCurrent = 50;
           
           await userWorldCache.updateUserInCache(userCtx, attacker!);
           await userWorldCache.updateUserInCache(userCtx, defender!);
@@ -68,8 +78,8 @@ describe('Defense Value Persistence After Battle', () => {
             hull: { current: attacker!.hullCurrent, max: attackerMaxStats.hull },
             armor: { current: attacker!.armorCurrent, max: attackerMaxStats.armor },
             shield: { current: attacker!.shieldCurrent, max: attackerMaxStats.shield },
-            // Increase count to 1000 to ensure high damage (1000 * ~10 = ~10000 damage) -> 1 turn kill
-            weapons: { pulse_laser: { count: 1000, damage: 10, cooldown: 0 } }
+            // High weapon count to ensure battle ends quickly
+            weapons: { pulse_laser: { count: 100, damage: 10, cooldown: 0 } }
           };
           defenderStats = {
             hull: { current: defender!.hullCurrent, max: defenderMaxStats.hull },
@@ -117,7 +127,7 @@ describe('Defense Value Persistence After Battle', () => {
         }
 
         // === Phase 4: Resolve Battle ===
-        let iterations = 1;
+        let iterations = 0;
         const maxIterations = 50;
         
         while (currentBattle && !currentBattle.battleEndTime && iterations < maxIterations) {
@@ -151,9 +161,6 @@ describe('Defense Value Persistence After Battle', () => {
           loadUserDefenses(attackerId),
           loadUserDefenses(defenderId)
         ]);
-
-        console.log(`Reloaded attacker hull: ${reloadedAttacker.hull_current}`);
-        console.log(`Reloaded defender hull: ${reloadedDefender.hull_current}`);
 
         const finalAttackerHull = currentBattle?.attackerEndStats?.hull.current ?? initialAttackerHull;
         const finalDefenderHull = currentBattle?.attackeeEndStats?.hull.current ?? initialDefenderHull;
