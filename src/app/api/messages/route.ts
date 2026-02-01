@@ -3,6 +3,7 @@ import { getIronSession } from 'iron-session';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { requireAuth, handleApiError } from '@/lib/server/errors';
 import { getUserMessages } from '@/lib/server/messages/MessageCache';
+import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 
 /**
  * GET /api/messages
@@ -22,7 +23,8 @@ export async function GET(request: NextRequest) {
     console.log(`📬 Messages requested by user: ${session.userId}`);
     
     // Get unread messages
-    const unreadMessages = await getUserMessages(session.userId!);
+    const ctx = createLockContext();
+    const unreadMessages = await getUserMessages(ctx, session.userId!);
     
     console.log(`📨 Retrieved ${unreadMessages.length} unread message(s) for user ${session.userId}`);
     console.log('📨 Messages data:', unreadMessages);

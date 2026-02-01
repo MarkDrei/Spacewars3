@@ -48,7 +48,7 @@ async function createTestBattle(
     const battleCache = getBattleCache();
 
     const battle = await battleContext.useLockWithAcquire(USER_LOCK, async (userCtx) => {
-      return await battleCache.createBattle(
+      return await battleCache!.createBattle(
         battleContext,
         userCtx,
         attackerId,

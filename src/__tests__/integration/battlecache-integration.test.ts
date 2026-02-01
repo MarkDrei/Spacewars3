@@ -25,7 +25,7 @@ describe('Phase 5: BattleCache Integration Testing', () => {
 
   describe('Core BattleCache Functionality', () => {
 
-    let battleCache: BattleCache;
+    let battleCache: BattleCache | null;
     let emptyCtx: ReturnType<typeof createLockContext>;
 
     beforeEach(async () => {
@@ -75,7 +75,7 @@ describe('Phase 5: BattleCache Integration Testing', () => {
         console.log('🚀 Creating battle for cache test...');
 
         await battleCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
-          const battle = await battleCache.createBattle(
+          const battle = await battleCache!.createBattle(
             battleCtx,
             userCtx,
             attackerId,
@@ -95,7 +95,7 @@ describe('Phase 5: BattleCache Integration Testing', () => {
           console.log('✅ Battle created with ID:', battle.id);
   
           // Verify battle is in cache
-          const cachedBattle = battleCache.getBattleFromCache(battle.id);
+          const cachedBattle = battleCache!.getBattleFromCache(battle.id);
           expect(cachedBattle).toBeDefined();
           expect(cachedBattle?.id).toBe(battle.id);
           expect(cachedBattle?.attackerId).toBe(attackerId);
@@ -135,7 +135,7 @@ describe('Phase 5: BattleCache Integration Testing', () => {
         };
 
         const battle = await battleCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
-          return await battleCache.createBattle(
+          return await battleCache!.createBattle(
             battleCtx,
             userCtx,
             attackerId,
@@ -149,7 +149,14 @@ describe('Phase 5: BattleCache Integration Testing', () => {
 
         // Reset cache to force database load
         BattleCache.resetInstance();
-        const freshCache = getBattleCache();
+        
+        // Reinitialize cache (needed after reset in test mode)
+        const db = battleCache!['db']; // Access private field for test
+        const deps = battleCache!['dependencies']; // Access private field for test
+        await BattleCache.initialize(db, deps);
+        
+        const freshCache = getBattleCache()!;
+        expect(freshCache).not.toBeNull();
 
         console.log('🔄 Loading battle from database...');
 
@@ -163,7 +170,7 @@ describe('Phase 5: BattleCache Integration Testing', () => {
       
 
         // Should now be in cache
-        const cachedAfterLoad = freshCache.getBattleFromCache(battle.id);
+        const cachedAfterLoad = freshCache!.getBattleFromCache(battle.id);
         expect(cachedAfterLoad).toBeDefined();
         expect(cachedAfterLoad?.id).toBe(battle.id);
 
@@ -199,7 +206,7 @@ describe('Phase 5: BattleCache Integration Testing', () => {
 
         // Create battle
         const battle = await battleCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
-          return await battleCache.createBattle(
+          return await battleCache!.createBattle(
             battleCtx,
             userCtx,
             attackerId,
@@ -262,7 +269,7 @@ describe('Phase 5: BattleCache Integration Testing', () => {
           const u4 = (await userCache.getUserByUsername(userCtx, 'testuser4'))!.id;
           
           // Create first battle
-          const battle1 = await battleCache.createBattle(
+          const battle1 = await battleCache!.createBattle(
             battleCtx, userCtx,
             u1, u2, stats, stats, cooldowns, cooldowns
           );
@@ -272,7 +279,7 @@ describe('Phase 5: BattleCache Integration Testing', () => {
           expect(activeBattles[0].id).toBe(battle1.id);
   
           // Create second battle
-          const battle2 = await battleCache.createBattle(
+          const battle2 = await battleCache!.createBattle(
             battleCtx, userCtx,
             u3, u4, stats, stats, cooldowns, cooldowns
           );
@@ -317,7 +324,7 @@ describe('Phase 5: BattleCache Integration Testing', () => {
 
         // Create battle
         const battle = await battleCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
-          return await battleCache.createBattle(
+          return await battleCache!.createBattle(
             battleCtx,
             userCtx,
             user1Id,
@@ -330,7 +337,7 @@ describe('Phase 5: BattleCache Integration Testing', () => {
         });
 
         // Initially not dirty (just created)
-        const initialDirtyBattles = battleCache.getDirtyBattleIds();
+        const initialDirtyBattles = battleCache!.getDirtyBattleIds();
         console.log('🧹 Initial dirty battles:', initialDirtyBattles.length);
 
         // Add battle event
@@ -343,11 +350,11 @@ describe('Phase 5: BattleCache Integration Testing', () => {
 
         // In test mode, battles are immediately persisted (not kept dirty)
         // Verify battle was persisted by checking it's not dirty
-        const dirtyAfterEvent = battleCache.getDirtyBattleIds();
+        const dirtyAfterEvent = battleCache!.getDirtyBattleIds();
         expect(dirtyAfterEvent).not.toContain(battle.id);
 
         // Battle log should contain the event
-        const updatedBattle = battleCache.getBattleFromCache(battle.id);
+        const updatedBattle = battleCache!.getBattleFromCache(battle.id);
         expect(updatedBattle?.battleLog).toHaveLength(1);
         expect(updatedBattle?.battleLog[0].type).toBe('damage_dealt');
 
@@ -392,7 +399,7 @@ describe('Phase 5: BattleCache Integration Testing', () => {
 
         // Create battle
         const battle = await battleCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
-          return await battleCache.createBattle(
+          return await battleCache!.createBattle(
             battleCtx,
             userCtx,
             user1Id,
@@ -405,7 +412,7 @@ describe('Phase 5: BattleCache Integration Testing', () => {
         });
 
         // Verify battle is in cache and active
-        expect(battleCache.getBattleFromCache(battle.id)).toBeDefined();
+        expect(battleCache!.getBattleFromCache(battle.id)).toBeDefined();
         
         const activeBefore = await BattleRepo.getActiveBattles(battleCtx);
         expect(activeBefore).toHaveLength(1);
@@ -423,7 +430,7 @@ describe('Phase 5: BattleCache Integration Testing', () => {
         );
 
         // Battle should be removed from cache (completed battles aren't cached)
-        expect(battleCache.getBattleFromCache(battle.id)).toBeNull();
+        expect(battleCache!.getBattleFromCache(battle.id)).toBeNull();
 
         // Should not appear in active battles
         const activeAfter = await BattleRepo.getActiveBattles(battleCtx);
@@ -444,11 +451,11 @@ describe('Phase 5: BattleCache Integration Testing', () => {
 
         await createLockContext().useLockWithAcquire(BATTLE_LOCK, async (battleContext) => {
         // Try to load non-existent battle
-        const nonExistent = await battleCache.loadBattleIfNeeded(battleContext, 99999);
+        const nonExistent = await battleCache!.loadBattleIfNeeded(battleContext, 99999);
         expect(nonExistent).toBeNull();
   
         // Try to get from cache
-        const notInCache = battleCache.getBattleFromCache(99999);
+        const notInCache = battleCache!.getBattleFromCache(99999);
         expect(notInCache).toBeNull();
   
         // Try to get ongoing battle for non-existent user
@@ -463,7 +470,7 @@ describe('Phase 5: BattleCache Integration Testing', () => {
 
   describe('Cache Statistics', () => {
     
-    let battleCache: BattleCache;
+    let battleCache: BattleCache | null;
     let userWorldCache: UserCache;
     let emptyCtx: ReturnType<typeof createLockContext>;
 
@@ -472,10 +479,8 @@ describe('Phase 5: BattleCache Integration Testing', () => {
       await emptyCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
         userWorldCache = UserCache.getInstance2();
         
-        // Initialize BattleCache manually for tests
+        // Get BattleCache instance (already initialized by test server)
         battleCache = getBattleCache();
-        const db = await userWorldCache.getDatabaseConnection(userCtx);
-        await battleCache.initialize(db);
       });
     });
 
@@ -492,7 +497,7 @@ describe('Phase 5: BattleCache Integration Testing', () => {
           });
 
           // Initial stats
-          let stats = battleCache.getStats();
+          let stats = battleCache!.getStats();
         expect(stats.cachedBattles).toBe(0);
         expect(stats.activeBattles).toBe(0);
         expect(stats.dirtyBattles).toBe(0);
@@ -515,7 +520,7 @@ describe('Phase 5: BattleCache Integration Testing', () => {
         };
 
         await battleCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
-          return await battleCache.createBattle(
+          return await battleCache!.createBattle(
             battleCtx,
             userCtx,
             user1Id,
@@ -528,7 +533,7 @@ describe('Phase 5: BattleCache Integration Testing', () => {
         });
 
         // Stats should update
-        stats = battleCache.getStats();
+        stats = battleCache!.getStats();
         expect(stats.cachedBattles).toBe(1);
         expect(stats.activeBattles).toBe(1);
         // dirtyBattles depends on internal state

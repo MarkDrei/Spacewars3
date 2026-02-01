@@ -106,7 +106,7 @@ describe('Battle Defense Persistence', () => {
         const battle = await emptyCtx.useLockWithAcquire(USER_LOCK, async (damageUserCtx) => {
           // Create battle directly through BattleCache
           const battleCache = getBattleCache();
-          const battle = await battleCache.createBattle(
+          const battle = await battleCache!.createBattle(
             battleCtx,
             damageUserCtx,
             attackerUser.id,

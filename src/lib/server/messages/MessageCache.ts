@@ -5,9 +5,12 @@
 
 import {
   createLockContext,
+  HasLock12Context,
+  IronLocks,
   LOCK_12,
   LockContext,
   LocksAtMost7,
+  LocksAtMostAndHas4,
   LocksAtMostAndHas8,
 } from '@markdrei/ironguard-typescript-locks';
 import { getDatabase } from '../database';
@@ -27,6 +30,10 @@ interface MessageCacheStats {
   dirtyUsers: number;
 }
 
+declare global {
+  var messageCacheInstance: MessageCache | null;
+}
+
 /**
  * MessageCache - Manages in-memory cache of user messages
  * - Independent from other cache systems
@@ -34,20 +41,46 @@ interface MessageCacheStats {
  * - Automatic persistence to database
  * - Thread-safe with IronGuard locks
  */
-export class MessageCache extends Cache {
-  private static instance: MessageCache | null = null;
-  
+export class MessageCache extends Cache {  
   private constructor() {
     super();
     console.log('📬 Message cache initialized');
   }
 
-  static getInstance(config?: MessageCacheConfig): MessageCache {
+  private static get instance(): MessageCache | null {
+    return globalThis.messageCacheInstance || null;
+  }
+
+  private static set instance(value: MessageCache | null) {
+    globalThis.messageCacheInstance = value;
+  }
+
+  /**
+   * Initialize the message cache
+   */
+  static async initialize<THeld extends IronLocks>(context: HasLock12Context<THeld>, config?: MessageCacheConfig ): Promise<void> {
+    if (this.instance) {
+      await this.instance.shutdown(context);
+    }
+
+    this.instance = new MessageCache();
+
+    // Initialize database and repo
+    console.log('📬 Initializing message cache...');
+    this.instance!.db = await getDatabase();
+    this.instance!.messagesRepo = new MessagesRepo();
+    console.log('✅ Message cache initialization complete');
+
+    if (config) {
+      this.instance.config = config;
+    }
+    
+    this.instance.startBackgroundPersistence();
+  }
+
+  static getInstance(): MessageCache {
     if (!this.instance) {
-      this.instance = new MessageCache();
-      if (config) {
-        this.instance.config = config;
-      }
+      throw new Error('MessageCache not initialized.');
     }
     return this.instance;
   }
@@ -56,11 +89,15 @@ export class MessageCache extends Cache {
    * Reset singleton instance (for testing)
    * WARNING: Call shutdown() and await it BEFORE calling this method to ensure clean state
    */
-  static resetInstance(): void {
+  static resetInstance(context: LockContext<LocksAtMost7>): void {
     if (MessageCache.instance) {
       // Note: shutdown() is async but we can't await in a sync method
       // Callers MUST call shutdown() before resetInstance()
-      void MessageCache.instance.shutdown();
+      context.useLockWithAcquire(DATABASE_LOCK_MESSAGES, async (ctx) => {
+        if (MessageCache.instance) {
+          await MessageCache.instance.shutdown(ctx);
+        }
+      });
     }
     this.instance = null;
   }
@@ -74,8 +111,7 @@ export class MessageCache extends Cache {
   // Database connection and repo
   private db: Awaited<ReturnType<typeof getDatabase>> | null = null;
   private messagesRepo: MessagesRepo | null = null;
-  private isInitialized = false;
-  private persistenceTimer: NodeJS.Timeout | null = null;
+  protected persistenceTimer: NodeJS.Timeout | null = null;
 
   // In-memory cache storage
   private userMessages: Map<number, Message[]> = new Map(); // userId -> messages
@@ -93,45 +129,11 @@ export class MessageCache extends Cache {
   };
 
   /**
-   * Initialize the message cache
-   */
-  async initialize(): Promise<void> {
-    if (this.isInitialized) {
-      return;
-    }
-
-    const ctx = createLockContext();
-    // Return the value from the lock callback so the outer method resolves with Message[]
-    return await ctx.useLockWithAcquire(MESSAGE_LOCK, async (messageContext) => {
-      if (this.isInitialized) {
-        return; // Double-check inside lock
-      }
-
-      // need database connection
-      await messageContext.useLockWithAcquire(DATABASE_LOCK_MESSAGES, async () => {
-        console.log('📬 Initializing message cache...');
-        this.db = await getDatabase();
-        this.messagesRepo = new MessagesRepo();
-        
-        this.startBackgroundPersistence(messageContext);
-        
-        this.isInitialized = true;
-        console.log('✅ Message cache initialization complete');
-      });
-    });
-  }
-
-  /**
    * Get all messages for a user from cache or database
    * Cache is the single source of truth - once loaded, always use cache
    */
-  async getMessagesForUser(userId: number): Promise<Message[]> {
-    if (!this.isInitialized) {
-      await this.initialize();
-    }
-
-    const ctx = createLockContext();
-    return await ctx.useLockWithAcquire(MESSAGE_LOCK, async (messageContext) => {
+  async getMessagesForUser(context: LockContext<LocksAtMost7>, userId: number): Promise<Message[]> {
+    return await context.useLockWithAcquire(MESSAGE_LOCK, async (messageContext) => {
       // Check cache first - cache is source of truth
       if (this.userMessages.has(userId)) {
         this.stats.cacheHits++;
@@ -152,13 +154,8 @@ export class MessageCache extends Cache {
    * Returns all unread messages from cache, including pending messages
    * Cache is the single source of truth
    */
-  async getUnreadMessages(userId: number): Promise<UnreadMessage[]> {
-    if (!this.isInitialized) {
-      await this.initialize();
-    }
-
-    const ctx = createLockContext();
-    return await ctx.useLockWithAcquire(MESSAGE_LOCK, async (messageContext) => {
+  async getUnreadMessages(context: LockContext<LocksAtMost7>, userId: number): Promise<UnreadMessage[]> {
+    return await context.useLockWithAcquire(MESSAGE_LOCK, async (messageContext) => {
       const allMessages = await this.ensureMessagesLoaded(messageContext, userId);
       
       // Filter unread and convert to UnreadMessage format
@@ -178,13 +175,8 @@ export class MessageCache extends Cache {
   /**
    * Mark all unread messages as read for a user
    */
-  async markAllMessagesAsRead(userId: number): Promise<number> {
-    if (!this.isInitialized) {
-      await this.initialize();
-    }
-
-    const ctx = createLockContext();
-    return await ctx.useLockWithAcquire(MESSAGE_LOCK, async (messageContext) => {
+  async markAllMessagesAsRead(context: LockContext<LocksAtMost7>, userId: number): Promise<number> {
+    return await context.useLockWithAcquire(MESSAGE_LOCK, async (messageContext) => {
       const allMessages = await this.ensureMessagesLoaded(messageContext, userId);
       
       // Count unread messages
@@ -263,13 +255,8 @@ export class MessageCache extends Cache {
    * - DB write happens asynchronously, ID updated once complete
    * - No race conditions: locks ensure atomicity
    */
-  async createMessage(userId: number, messageText: string): Promise<number> {
-    if (!this.isInitialized) {
-      await this.initialize();
-    }
-
-    const ctx = createLockContext();
-    return await ctx.useLockWithAcquire(MESSAGE_LOCK, async (messageContext) => {
+  async createMessage(context: LockContext<LocksAtMost7>, userId: number, messageText: string): Promise<number> {
+    return await context.useLockWithAcquire(MESSAGE_LOCK, async (messageContext) => {
       return await this.createMessageInternal(messageContext, userId, messageText);
 
     });
@@ -278,13 +265,8 @@ export class MessageCache extends Cache {
   /**
    * Get count of unread messages for a user
    */
-  async getUnreadMessageCount(userId: number): Promise<number> {
-    if (!this.isInitialized) {
-      await this.initialize();
-    }
-
-    const ctx = createLockContext();
-    return await ctx.useLockWithAcquire(MESSAGE_LOCK, async (messageContext) => {
+  async getUnreadMessageCount(context: LockContext<LocksAtMost7>, userId: number): Promise<number> {
+    return await context.useLockWithAcquire(MESSAGE_LOCK, async (messageContext) => {
       let messages = this.userMessages.get(userId);
       
       if (!messages) {
@@ -303,13 +285,8 @@ export class MessageCache extends Cache {
   /**
    * Delete old read messages (cleanup operation)
    */
-  async deleteOldReadMessages(olderThanDays = 30): Promise<number> {
-    if (!this.isInitialized) {
-      await this.initialize();
-    }
-
-    const ctx = createLockContext();
-    return await ctx.useLockWithAcquire(MESSAGE_LOCK, async (messageContext) => {
+  async deleteOldReadMessages(olderThanDays = 30, context: LockContext<LocksAtMost7>): Promise<number> {
+    return await context.useLockWithAcquire(MESSAGE_LOCK, async (messageContext) => {
       if (!this.db) throw new Error('Database not initialized');
       
       const cutoffTime = Date.now() - (olderThanDays * 24 * 60 * 60 * 1000);
@@ -334,14 +311,8 @@ export class MessageCache extends Cache {
    * 
    * IMPORTANT: Only processes unread messages to avoid re-summarizing already-read messages
    */
-  async summarizeMessages(userId: number): Promise<string> {
-    if (!this.isInitialized) {
-      await this.initialize();
-    }
-
-    const ctx = createLockContext();
-
-    return await ctx.useLockWithAcquire(MESSAGE_LOCK, async (messageContext) => {
+  async summarizeMessages(context: LockContext<LocksAtMost7>, userId: number): Promise<string> {
+    return await context.useLockWithAcquire(MESSAGE_LOCK, async (messageContext) => {
       const allMessages = await this.ensureMessagesLoaded(messageContext, userId);
       
       // Filter for only unread messages - this prevents re-summarizing already-read messages
@@ -489,9 +460,8 @@ export class MessageCache extends Cache {
   /**
    * Get cache statistics
    */
-  async getStats(): Promise<MessageCacheStats> {
-    const ctx = createLockContext();
-    return await ctx.useLockWithAcquire(MESSAGE_LOCK, async () => {
+  async getStats(context: LockContext<LocksAtMost7>): Promise<MessageCacheStats> {
+    return await context.useLockWithAcquire(MESSAGE_LOCK, async () => {
       return {
         messageCacheSize: this.userMessages.size,
         cacheHits: this.stats.cacheHits,
@@ -505,11 +475,7 @@ export class MessageCache extends Cache {
    * Manually flush all dirty messages to database
    */
   async flushToDatabase(context: LockContext<LocksAtMost7>): Promise<void> {
-    if (!this.isInitialized) {
-      return;
-    }
-
-    await context.useLockWithAcquire(MESSAGE_LOCK, async (messageContext) => {
+    await context.useLockWithAcquire(DATABASE_LOCK_MESSAGES, async (messageContext) => {
       return await this.flushToDatabaseWithLock(messageContext);
     });
   }
@@ -517,12 +483,9 @@ export class MessageCache extends Cache {
    /**
    * Manually flush all dirty messages to database
    */
-  async flushToDatabaseWithLock(
-    context: LockContext<LocksAtMostAndHas8>
+  async flushToDatabaseWithLock<THeld extends IronLocks>(
+    context:  HasLock12Context<THeld>
   ): Promise<void> {
-    if (!this.isInitialized) {
-      return;
-    }
     const dirtyUserIds = Array.from(this.dirtyUsers);
 
     if (dirtyUserIds.length === 0) {
@@ -554,25 +517,22 @@ export class MessageCache extends Cache {
   /**
    * Shutdown the message cache
    */
-  async shutdown(): Promise<void> {
-    const ctx = createLockContext();
-    ctx.useLockWithAcquire(MESSAGE_LOCK, async (messageContext) => {
-      console.log('📬 Shutting down message cache...');
-      
-      this.stopBackgroundPersistence();
-      
-      // Wait for pending message creations
-      await this.waitForPendingWrites();
-      
-      // Final flush of read status updates
-      if (this.dirtyUsers.size > 0) {
-        console.log('📬 Final flush of dirty messages before shutdown');
-        await this.flushToDatabaseWithLock(messageContext);
-      }
-      
-      this.isInitialized = false;
-      console.log('✅ Message cache shutdown complete');
-    });
+  async shutdown<THeld extends IronLocks>(context:  HasLock12Context<THeld>): Promise<void> {
+    console.log('📬 Shutting down message cache...');
+    
+    this.stopBackgroundPersistence();
+    
+    // Wait for pending message creations
+    await this.waitForPendingWrites();
+    
+    // Final flush of read status updates
+    if (this.dirtyUsers.size > 0) {
+      console.log('📬 Final flush of dirty messages before shutdown');
+      await this.flushToDatabaseWithLock(context);
+    }
+    
+    console.log('✅ Message cache shutdown complete');
+
   }
 
   // ============================================
@@ -633,8 +593,8 @@ export class MessageCache extends Cache {
     });
   }
 
-  private async persistMessagesForUser(
-    context: LockContext<LocksAtMostAndHas8>,
+  private async persistMessagesForUser<THeld extends IronLocks>(
+    context:  HasLock12Context<THeld>,
     userId: number
   ): Promise<void> {
     const messages = this.userMessages.get(userId);
@@ -657,11 +617,7 @@ export class MessageCache extends Cache {
     }
     
     // Batch update all messages at once
-    await context.useLockWithAcquire(LOCK_12, async (databaseContext) => {
-      if (updates.length > 0) {
-        await this.messagesRepo!.updateMultipleReadStatuses(databaseContext, updates);
-      }
-    });
+    await this.messagesRepo!.updateMultipleReadStatuses(context, updates);
   }
 
   /**
@@ -716,7 +672,10 @@ export class MessageCache extends Cache {
     }
   }
 
-  private startBackgroundPersistence(context: LockContext<LocksAtMostAndHas8>): void {
+  /**
+   * Start background persistence timer (implements abstract method from Cache)
+   */
+  protected startBackgroundPersistence(): void {
     if (!this.shouldEnableBackgroundPersistence(this.config.enableAutoPersistence)) {
       console.log('📬 Background persistence disabled (test mode or config)');
       return;
@@ -726,50 +685,59 @@ export class MessageCache extends Cache {
     
     this.persistenceTimer = setInterval(async () => {
       try {
-        if (this.dirtyUsers.size > 0) {
-          console.log(`📬 Background persisting messages for ${this.dirtyUsers.size} user(s)`);
-          await this.flushToDatabaseWithLock(context);
-        }
+        const context = createLockContext();
+        await context.useLockWithAcquire(DATABASE_LOCK_MESSAGES, async (messageContext) => {
+          if (this.dirtyUsers.size > 0) {
+            console.log(`📬 Background persisting messages for ${this.dirtyUsers.size} user(s)`);
+            await this.flushToDatabaseWithLock(messageContext);
+          }
+        });
       } catch (error) {
         console.error('❌ Message persistence error:', error);
       }
     }, this.config.persistenceIntervalMs);
   }
 
-  private stopBackgroundPersistence(): void {
-    if (this.persistenceTimer) {
-      clearInterval(this.persistenceTimer);
-      this.persistenceTimer = null;
-      console.log('📬 Background persistence stopped');
-    }
+  /**
+   * Flush all dirty messages to database (implements abstract method from Cache)
+   * Acquires MESSAGE_LOCK internally
+   */
+  protected async flushAllToDatabase(context: LockContext<LocksAtMostAndHas4>): Promise<void> {
+    await context.useLockWithAcquire(DATABASE_LOCK_MESSAGES, async (messageContext) => {
+      await this.flushToDatabaseWithLock(messageContext);
+    });
   }
 }
 
-// Convenience function to get singleton instance
-export function getMessageCache(config?: MessageCacheConfig): MessageCache {
-  return MessageCache.getInstance(config);
+// Convenience function to get singleton instance (returns null if not initialized)
+export function getMessageCache(): MessageCache | null {
+  try {
+    return MessageCache.getInstance();
+  } catch {
+    return null;
+  }
 }
 
 // Re-export types from MessagesRepo for convenience
 export type { Message, UnreadMessage } from './messagesRepo';
 
 // Convenience functions for message operations
-export async function sendMessageToUser(userId: number, message: string): Promise<number> {
+export async function sendMessageToUser(context: LockContext<LocksAtMost7>, userId: number, message: string): Promise<number> {
   const cache = getMessageCache();
-  return await cache.createMessage(userId, message);
+  return await cache!.createMessage(context, userId, message);
 }
 
-export async function getUserMessages(userId: number): Promise<UnreadMessage[]> {
+export async function getUserMessages(context: LockContext<LocksAtMost7>, userId: number): Promise<UnreadMessage[]> {
   const cache = getMessageCache();
-  return await cache.getUnreadMessages(userId);
+  return await cache!.getUnreadMessages(context, userId);
 }
 
-export async function markUserMessagesAsRead(userId: number): Promise<number> {
+export async function markUserMessagesAsRead(context: LockContext<LocksAtMost7>, userId: number): Promise<number> {
   const cache = getMessageCache();
-  return await cache.markAllMessagesAsRead(userId);
+  return await cache!.markAllMessagesAsRead(context, userId);
 }
 
-export async function getUserMessageCount(userId: number): Promise<number> {
+export async function getUserMessageCount(context: LockContext<LocksAtMost7>, userId: number): Promise<number> {
   const cache = getMessageCache();
-  return await cache.getUnreadMessageCount(userId);
+  return await cache!.getUnreadMessageCount(context, userId);
 }

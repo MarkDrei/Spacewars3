@@ -136,11 +136,11 @@ describe('BattleScheduler Integration', () => {
     let defenderId: number;
     
     await emptyCtx.useLockWithAcquire(USER_LOCK, async (userContext) => {
-      const attacker = await userWorldCache.getUserByIdWithLock(userContext, 1);
-      const defender = await userWorldCache.getUserByIdWithLock(userContext, 2);
+      const attacker = await userWorldCache.getUserByUsername(userContext, 'a');
+      const defender = await userWorldCache.getUserByUsername(userContext, 'dummy');
       
-      expect(attacker).toBeDefined();
-      expect(defender).toBeDefined();
+      expect(attacker).not.toBeNull();
+      expect(defender).not.toBeNull();
       
       attackerId = attacker!.id;
       defenderId = defender!.id;
@@ -170,7 +170,7 @@ describe('BattleScheduler Integration', () => {
     await emptyCtx.useLockWithAcquire(BATTLE_LOCK, async (battleContext) => {
       await battleContext.useLockWithAcquire(USER_LOCK, async (userContext) => {
         // Create battle
-        const battle = await battleCache.createBattle(
+        const battle = await battleCache!.createBattle(
           battleContext,
           userContext,
           attackerId!,
@@ -185,7 +185,7 @@ describe('BattleScheduler Integration', () => {
         expect(battle.id).toBeGreaterThan(0);
 
         // Verify battle is active (at least our created battle)
-        const activeBattles = await battleCache.getActiveBattles(battleContext);
+        const activeBattles = await battleCache!.getActiveBattles(battleContext);
         expect(activeBattles.length).toBeGreaterThanOrEqual(1);
       });
 
@@ -193,7 +193,7 @@ describe('BattleScheduler Integration', () => {
       await processActiveBattles(battleContext);
 
       // Check that battle log has events (weapons fired)
-      const activeBattles = await battleCache.getActiveBattles(battleContext);
+      const activeBattles = await battleCache!.getActiveBattles(battleContext);
       if (activeBattles.length > 0) {
         const battle = activeBattles[0];
         // Battle should have some events after processing
@@ -212,8 +212,11 @@ describe('BattleScheduler Integration', () => {
       let defenderId: number;
       
       await emptyCtx.useLockWithAcquire(USER_LOCK, async (userContext) => {
-        const attacker = await userWorldCache.getUserByIdWithLock(userContext, 1);
-        const defender = await userWorldCache.getUserByIdWithLock(userContext, 2);
+        const attacker = await userWorldCache.getUserByUsername(userContext, 'a');
+        const defender = await userWorldCache.getUserByUsername(userContext, 'dummy');
+        
+        expect(attacker).not.toBeNull();
+        expect(defender).not.toBeNull();
         
         attackerId = attacker!.id;
         defenderId = defender!.id;
@@ -245,7 +248,7 @@ describe('BattleScheduler Integration', () => {
         let battleId: number;
         
         await battleContext.useLockWithAcquire(USER_LOCK, async (userContext) => {
-          const battle = await battleCache.createBattle(
+          const battle = await battleCache!.createBattle(
             battleContext,
             userContext,
             attackerId!,
@@ -262,7 +265,7 @@ describe('BattleScheduler Integration', () => {
         await processActiveBattles(battleContext);
 
         // Get the battle after first round
-        const battle = battleCache.getBattleFromCache(battleId!);
+        const battle = battleCache!.getBattleFromCache(battleId!);
         expect(battle).toBeDefined();
         
         // After firing, cooldown should be set to current time + cooldown period

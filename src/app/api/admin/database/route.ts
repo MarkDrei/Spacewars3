@@ -15,7 +15,7 @@ import { getIronSession } from 'iron-session';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth, ApiError } from '@/lib/server/errors';
 import { getDatabase } from '@/lib/server/database';
-import { getBattleCacheInitialized } from '@/lib/server/battle/BattleCache';
+import { BattleCache } from '@/lib/server/battle/BattleCache';
 import type { Battle } from '@/lib/server/battle/battleTypes';
 import { createLockContext, IronGuardManager, LOCK_4 } from '@markdrei/ironguard-typescript-locks';
 import { UserCache } from '@/lib/server/user/userCache';
@@ -100,7 +100,7 @@ export async function GET(request: NextRequest) {
       // CRITICAL: Flush all cache data to database before reading
       // This ensures the admin page shows current values, not stale cached data
       // TODO: should probably also flush other caches (e.g. battle cache) if they exist
-      await userWorldCache.flushAllToDatabase(userContext);
+      await userWorldCache.flushAllToDatabaseWithLock(userContext);
       console.log('✅ Cache flushed to database for admin query');
 
       const db = await getDatabase();
@@ -166,7 +166,7 @@ export async function GET(request: NextRequest) {
       const spaceObjects = spaceObjectsResult.rows as SpaceObject[];
   
       // Get all battles
-      const cache = await getBattleCacheInitialized();
+      const cache = BattleCache.getInstance();
       const battles = await cache.getAllBattles();
   
       const adminData: AdminData = {
