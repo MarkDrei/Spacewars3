@@ -28,7 +28,7 @@ const AboutPageClient: React.FC<AboutPageClientProps> = () => {
         
         if (response.ok) {
           const data = await response.json();
-          if (data.loggedIn && data.shipPictureId) {
+          if (data.loggedIn && typeof data.shipPictureId === 'number') {
             setSelectedShip(data.shipPictureId);
           }
         }
@@ -73,21 +73,24 @@ const AboutPageClient: React.FC<AboutPageClientProps> = () => {
   }, [message]);
 
   const handleShipSelection = async (shipNumber: number) => {
+    const previousSelection = selectedShip;
     setIsLoading(true);
     setMessage('Saving your selection...');
+    setSelectedShip(shipNumber); // Optimistically update UI
     
     try {
       const result = await shipSelectionService.updateShipPicture(shipNumber);
       
       if ('error' in result) {
         setMessage(`Error: ${result.error}`);
+        setSelectedShip(previousSelection); // Revert on error
       } else {
-        setSelectedShip(shipNumber);
         setMessage(`You have selected Ship ${shipNumber}! 🚀`);
       }
     } catch (error) {
       console.error('Error selecting ship:', error);
       setMessage('Failed to save ship selection. Please try again.');
+      setSelectedShip(previousSelection); // Revert on error
     } finally {
       setIsLoading(false);
     }
