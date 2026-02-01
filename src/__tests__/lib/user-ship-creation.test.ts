@@ -34,7 +34,7 @@ describe('User Ship Creation', () => {
     
     // Initialize MessageCache since createUser sends welcome messages
     await ctx.useLockWithAcquire(DATABASE_LOCK_MESSAGES, async (msgCtx) => {
-      await MessageCache.initialize(msgCtx, { flushIntervalMs: 60000 });
+      await MessageCache.initialize(msgCtx, { persistenceIntervalMs: 60000, enableAutoPersistence: false});
     });
   });
 
