@@ -40,8 +40,8 @@ describe('User Registration Cache Synchronization', () => {
 
       expect(user).not.toBeNull();
       expect(user?.username).toBe(username);
-      expect(user?.shipId).toBeDefined();
-      expect(user?.shipId).not.toBeNull();
+      expect(user?.ship_id).toBeDefined();
+      expect(user?.ship_id).not.toBeNull();
     });
   });
 

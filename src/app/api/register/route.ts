@@ -5,6 +5,10 @@ import { getDatabase } from '@/lib/server/database';
 import { createUser, saveUserToDb } from '@/lib/server/user/userRepo';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, validateRequired } from '@/lib/server/errors';
+import { UserCache } from '@/lib/server/user/userCache';
+import { WorldCache } from '@/lib/server/world/worldCache';
+import { createLockContext } from '@markdrei/ironguard-typescript-locks';
+import { USER_LOCK, WORLD_LOCK } from '@/lib/server/typedLocks';
 
 export async function POST(request: NextRequest) {
   try {
@@ -20,6 +24,40 @@ export async function POST(request: NextRequest) {
     const hash = await bcrypt.hash(password, 10);
     
     const user = await createUser(db, username, hash, saveUserToDb(db));
+    
+    // Add user and ship to cache immediately after creation
+    const ctx = createLockContext();
+    await ctx.useLockWithAcquire(USER_LOCK, async (userContext) => {
+      // Add user to cache
+      const userCache = UserCache.getInstance2();
+      userCache.setUserUnsafe(userContext, user);
+      
+      // Add ship to world cache if user has a ship
+      if (user.ship_id) {
+        await userContext.useLockWithAcquire(WORLD_LOCK, async (worldContext) => {
+          const worldCache = WorldCache.getInstance();
+          const world = worldCache.getWorldFromCache(worldContext);
+          
+          // Check if ship already exists in world
+          const existingShip = world.getSpaceObject(worldContext, user.ship_id!);
+          if (!existingShip) {
+            // Add the new ship to the world's space objects
+            const newShip = {
+              id: user.ship_id!,
+              type: 'player_ship' as const,
+              x: 250, // Starting position (from userRepo.ts)
+              y: 250,
+              speed: 0,
+              angle: 0,
+              last_position_update_ms: Date.now(),
+              username: user.username
+            };
+            world.spaceObjects.push(newShip);
+            console.log(`🚀 Added ship ${user.ship_id} for user ${user.username} to world cache`);
+          }
+        });
+      }
+    });
     
     // Create response
     const response = NextResponse.json({ success: true });
