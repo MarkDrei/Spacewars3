@@ -316,3 +316,43 @@
     align-items: flex-start;
   }
 }
+
+/* Logout Section */
+.logout-section {
+  margin-top: 3rem;
+  padding: 2rem;
+  text-align: center;
+  background-color: #1e1e1e;
+  border-radius: 8px;
+  border-top: 2px solid rgba(244, 67, 54, 0.3);
+}
+
+.logout-button {
+  background-color: #f44336;
+  color: white;
+  border: none;
+  padding: 0.75rem 2rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  min-width: 150px;
+}
+
+.logout-button:hover:not(:disabled) {
+  background-color: #d32f2f;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(244, 67, 54, 0.3);
+}
+
+.logout-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.logout-button:active:not(:disabled) {
+  transform: translateY(0);
+}

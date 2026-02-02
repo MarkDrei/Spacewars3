@@ -1,13 +1,27 @@
 @import "tailwindcss";
 
 :root {
-  --background: #000000;
-  --foreground: #171717;
+  /* Dark theme colors - always dark for space game */
+  --background: #0a0a0a;
+  --foreground: #ededed;
   
   /* Green theme colors */
   --primary-green: #4caf50;
   --primary-green-hover: #45a049;
   --primary-green-active: #3e8e41;
+  
+  /* Responsive breakpoint for mobile navigation */
+  --mobile-nav-breakpoint: 1280px;
+  
+  /* Min-width variables for consistent responsive design */
+  --min-width-time-cell: 100px;
+  --min-width-time-cell-mobile: 85px;
+  --min-width-value-cell: 80px;
+  --min-width-value-cell-mobile: 60px;
+  --min-width-action-cell: 150px;
+  --min-width-button: 120px;
+  --min-width-button-mobile: 100px;
+  --min-width-cooldown: 60px;
 }
 
 @theme inline {
@@ -15,13 +29,6 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
 }
 
 body {
@@ -157,17 +164,13 @@ code {
 
 .action-cell {
   text-align: center;
-  min-width: 150px;
+  min-width: var(--min-width-action-cell);
 }
 
 /* Responsive Design for Tables */
 @media (max-width: 1024px) {
   .data-table-container {
     overflow-x: auto;
-  }
-
-  .data-table {
-    min-width: 800px;
   }
 }
 
@@ -220,4 +223,12 @@ code {
 
 .retry-button:hover {
   background-color: var(--primary-green-hover);
+}
+
+/* Mobile Bottom Navigation Padding */
+@media (max-width: 1280px) {
+  /* Add padding to body to prevent content from being hidden by bottom nav */
+  body {
+    padding-bottom: 80px;
+  }
 }

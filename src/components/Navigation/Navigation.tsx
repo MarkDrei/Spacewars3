@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/client/hooks/useAuth';
+import NavigationIcon from './NavigationIcon';
 import './Navigation.css';
 
 interface NavigationProps {
@@ -46,8 +47,8 @@ const Navigation: React.FC<NavigationProps> = ({ onLogout }) => {
           <span className="navbar-toggle-icon"></span>
           <span className="navbar-toggle-icon"></span>
         </div>
-        
-        <div className={`navbar-menu ${isMenuOpen ? 'active' : ''}`}>
+        {/* Desktop Navigation - Top Bar */}
+        <div className={`navbar-menu navbar-menu-desktop ${isMenuOpen ? 'active' : ''}`}>
           <Link 
             href="/home" 
             className={`navbar-item ${isActive('/home') ? 'active' : ''}`}
@@ -108,6 +109,19 @@ const Navigation: React.FC<NavigationProps> = ({ onLogout }) => {
           >
             Logout
           </button>
+        </div>
+
+        {/* Mobile Navigation - Bottom Bar */}
+        <div className="navbar-menu navbar-menu-mobile">
+          <NavigationIcon route="/home" label="Home" isActive={isActive('/home')} />
+          <NavigationIcon route="/game" label="Game" isActive={isActive('/game')} />
+          <NavigationIcon route="/factory" label="Factory" isActive={isActive('/factory')} />
+          <NavigationIcon route="/research" label="Research" isActive={isActive('/research')} />
+          <NavigationIcon route="/about" label="About" isActive={isActive('/about')} />
+          <NavigationIcon route="/profile" label="Profile" isActive={isActive('/profile')} />
+          {hasAdminAccess && (
+            <NavigationIcon route="/admin" label="Admin" isActive={isActive('/admin')} />
+          )}
         </div>
       </div>
     </nav>

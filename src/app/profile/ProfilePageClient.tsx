@@ -1,8 +1,10 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import AuthenticatedLayout from '@/components/Layout/AuthenticatedLayout';
 import { ServerAuthState } from '@/lib/server/serverSession';
+import { useAuth } from '@/lib/client/hooks/useAuth';
 import './ProfilePage.css';
 
 interface ProfilePageClientProps {
@@ -22,8 +24,18 @@ interface BattleHistoryItem {
 }
 
 const ProfilePageClient: React.FC<ProfilePageClientProps> = ({ auth }) => {
+  const router = useRouter();
+  const { logout } = useAuth();
   const [battles, setBattles] = useState<BattleHistoryItem[]>([]);
   const [isLoadingBattles, setIsLoadingBattles] = useState(true);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  
+  // Handle logout
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    await logout();
+    router.push('/'); // Redirect to login page
+  };
   
   // Fetch battle history on component mount
   useEffect(() => {
@@ -187,6 +199,17 @@ const ProfilePageClient: React.FC<ProfilePageClientProps> = ({ auth }) => {
               ))}
             </div>
           )}
+        </div>
+
+        {/* Logout Section */}
+        <div className="logout-section">
+          <button 
+            className="logout-button" 
+            onClick={handleLogout}
+            disabled={isLoggingOut}
+          >
+            {isLoggingOut ? 'Logging out...' : 'Logout'}
+          </button>
         </div>
         </div>
       </div>

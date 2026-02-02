@@ -94,46 +94,6 @@
   background-color: #d32f2f;
 }
 
-/* Mobile styles */
-@media (max-width: 768px) {
-  .navbar-toggle {
-    display: flex;
-  }
-
-  .navbar-menu {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    width: 100%;
-    background-color: #1e1e1e;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0;
-    transform: translateY(-100%);
-    opacity: 0;
-    visibility: hidden;
-    transition: all 0.3s ease;
-    border-top: 1px solid var(--primary-green);
-  }
-
-  .navbar-menu.active {
-    transform: translateY(0);
-    opacity: 1;
-    visibility: visible;
-  }
-
-  .navbar-item {
-    padding: 1rem;
-    border-bottom: 1px solid #2d2d2d;
-    text-align: center;
-  }
-
-  .navbar-logout {
-    margin: 1rem;
-    text-align: center;
-  }
-}
-
 /* Admin link styling */
 .admin-link {
   border: 1px solid var(--primary-green);
@@ -144,4 +104,87 @@
 .admin-link:hover {
   background-color: rgba(76, 175, 80, 0.2);
   border-color: #66bb6a;
+}
+
+/* Mobile Bottom Navigation Bar */
+.navbar-menu-mobile {
+  display: none;
+}
+
+/* Desktop: Show desktop menu, hide mobile bottom bar */
+@media (min-width: 1281px) {
+  .navbar-menu-desktop {
+    display: flex !important;
+  }
+  
+  .navbar-menu-mobile {
+    display: none !important;
+  }
+}
+
+/* Mobile: Hide desktop menu, show mobile bottom bar */
+@media (max-width: 1280px) {
+  /* Hide desktop navigation */
+  .navbar-menu-desktop {
+    display: none !important;
+  }
+
+  /* Show mobile bottom bar */
+  .navbar-menu-mobile {
+    display: flex !important;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 70px;
+    background-color: #1e1e1e;
+    border-top: 2px solid var(--primary-green);
+    justify-content: space-around;
+    align-items: center;
+    z-index: 1000;
+    padding: 0 0.5rem;
+  }
+
+  /* Hide burger menu and navbar toggle on mobile */
+  .navbar-toggle {
+    display: none !important;
+  }
+}
+
+/* Navigation Icon Styles for Bottom Bar */
+.nav-icon-button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  padding: 0.5rem;
+  text-decoration: none;
+  color: #aaa;
+  transition: all 0.2s ease;
+  border-top: 3px solid transparent;
+  min-width: 60px;
+  position: relative;
+}
+
+.nav-icon-button:hover {
+  color: var(--primary-green);
+}
+
+.nav-icon-button.active {
+  color: var(--primary-green);
+  border-top-color: var(--primary-green);
+}
+
+.nav-icon {
+  width: 24px;
+  height: 24px;
+  stroke-width: 2;
+}
+
+.nav-label {
+  font-size: 11px;
+  font-weight: 500;
+  text-align: center;
+  white-space: nowrap;
 }

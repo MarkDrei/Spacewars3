@@ -89,7 +89,7 @@
   font-size: 0.9rem;
   font-weight: 500;
   transition: all 0.2s ease;
-  min-width: 120px;
+  min-width: var(--min-width-button);
 }
 
 .build-button:hover:not(:disabled) {
@@ -170,7 +170,7 @@
   }
   
   .build-button {
-    min-width: 100px;
+    min-width: var(--min-width-button-mobile);
     padding: 0.5rem 1rem;
     font-size: 0.8rem;
   }
