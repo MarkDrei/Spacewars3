@@ -132,14 +132,14 @@
 .control-button {
   padding: 0.5rem 1rem;
   font-size: 0.9rem;
-  min-width: 120px;
+  min-width: var(--min-width-button);
 }
 
 /* Max Speed Button */
 .max-speed-button {
   padding: 0.5rem 1rem;
   font-size: 0.9rem;
-  min-width: 140px;
+  min-width: var(--min-width-button);
 }
 
 /* Debug Toggle Switch */

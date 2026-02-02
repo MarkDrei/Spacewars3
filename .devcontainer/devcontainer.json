@@ -24,6 +24,18 @@
   // Use 'forwardPorts' to make a list of ports inside the container available locally
   "forwardPorts": [3000, 5432],
   
+  // Configure port attributes (visibility and labels)
+  "portsAttributes": {
+    "3000": {
+      "label": "Next.js App",
+      "visibility": "public"
+    },
+    "5432": {
+      "label": "PostgreSQL",
+      "visibility": "private"
+    }
+  },
+  
   // Install dependencies after container is created
   "postCreateCommand": "npm install && .devcontainer/init-db.sh",
   
