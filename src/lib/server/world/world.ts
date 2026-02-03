@@ -15,6 +15,7 @@ export interface SpaceObject {
   speed: number;
   angle: number;
   last_position_update_ms: number;
+  picture_id: number;
   username?: string; // Optional: only present for player_ship type
 }
 
