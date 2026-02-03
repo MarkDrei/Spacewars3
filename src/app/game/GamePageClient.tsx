@@ -18,6 +18,7 @@ interface GamePageClientProps {
 const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
   const router = useRouter();
   const gameInitializedRef = useRef(false);
+  const shipPictureFetchedRef = useRef(false);
   const gameInstanceRef = useRef<Game | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isSettingMaxSpeed, setIsSettingMaxSpeed] = useState(false);
@@ -91,6 +92,23 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
       gameInstanceRef.current.setNavigationCallback?.(updateInputFieldsFromShip);
       // Set the attack success callback to redirect to home page
       gameInstanceRef.current.setAttackSuccessCallback?.(handleAttackSuccess);
+      
+      // Fetch and set player ship picture (only once)
+      if (!shipPictureFetchedRef.current) {
+        shipPictureFetchedRef.current = true;
+        const fetchShipPicture = async () => {
+          try {
+            const response = await fetch('/api/ship-picture');
+            if (response.ok) {
+              const data = await response.json();
+              gameInstanceRef.current?.setPlayerShipPicture?.(data.shipPicture);
+            }
+          } catch (error) {
+            console.error('Failed to fetch ship picture:', error);
+          }
+        };
+        fetchShipPicture();
+      }
     }
   }, [worldData, auth.shipId, refetch, handleAttackSuccess]);
 

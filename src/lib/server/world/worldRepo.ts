@@ -9,7 +9,7 @@ import { World, SpaceObject, SaveWorldCallback } from './world';
  * Load world data from database (used internally by cache manager)
  */
 export async function loadWorldFromDb(db: DatabaseConnection, saveCallback: SaveWorldCallback): Promise<World> {
-  // Join with users table to get usernames for player ships
+  // Join with users table to get usernames and ship pictures for player ships
   const query = `
     SELECT
       so.id,
@@ -21,7 +21,8 @@ export async function loadWorldFromDb(db: DatabaseConnection, saveCallback: Save
       so.last_position_update_ms,
       u.username,
       u.id as user_id,
-      u.in_battle
+      u.in_battle,
+      u.ship_picture
     FROM space_objects so
     LEFT JOIN users u ON so.type = 'player_ship' AND so.id = u.ship_id
   `;
@@ -37,10 +38,11 @@ export async function loadWorldFromDb(db: DatabaseConnection, saveCallback: Save
     speed: (row.type === 'player_ship' && row.in_battle) ? 0 : row.speed,
     angle: row.angle,
     last_position_update_ms: row.last_position_update_ms,
-    // Only include username and userId for player ships
+    // Only include username, userId, and shipPicture for player ships
     ...(row.type === 'player_ship' && row.username ? { 
       username: row.username,
-      userId: row.user_id 
+      userId: row.user_id,
+      shipPicture: row.ship_picture || 1
     } : {})
   }));
 

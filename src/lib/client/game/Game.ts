@@ -356,6 +356,13 @@ export class Game {
     debugState.setDebugDrawingsEnabled(enabled);
   }
 
+  /**
+   * Set the ship picture to use for the player ship
+   */
+  public setPlayerShipPicture(shipPicture: number): void {
+    this.renderer.setPlayerShipPicture(shipPicture);
+  }
+
   public start(): void {
     if (!this.running) {
       this.running = true;

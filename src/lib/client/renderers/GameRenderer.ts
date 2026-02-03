@@ -188,4 +188,11 @@ export class GameRenderer {
             ship
         );
     }
+
+    /**
+     * Set the ship picture to use for the player ship
+     */
+    setPlayerShipPicture(shipPicture: number): void {
+        this.playerShipRenderer.setShipPicture(shipPicture);
+    }
 }

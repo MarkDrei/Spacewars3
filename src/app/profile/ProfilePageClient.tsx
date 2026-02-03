@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 import AuthenticatedLayout from '@/components/Layout/AuthenticatedLayout';
 import { ServerAuthState } from '@/lib/server/serverSession';
 import './ProfilePage.css';
@@ -24,24 +25,33 @@ interface BattleHistoryItem {
 const ProfilePageClient: React.FC<ProfilePageClientProps> = ({ auth }) => {
   const [battles, setBattles] = useState<BattleHistoryItem[]>([]);
   const [isLoadingBattles, setIsLoadingBattles] = useState(true);
+  const [shipPicture, setShipPicture] = useState<number>(1);
   
-  // Fetch battle history on component mount
+  // Fetch battle history and ship picture on component mount
   useEffect(() => {
-    const fetchBattles = async () => {
+    const fetchData = async () => {
       try {
-        const response = await fetch('/api/user-battles');
-        if (response.ok) {
-          const data = await response.json();
+        // Fetch battles
+        const battlesResponse = await fetch('/api/user-battles');
+        if (battlesResponse.ok) {
+          const data = await battlesResponse.json();
           setBattles(data.battles || []);
         }
+        
+        // Fetch ship picture
+        const shipPictureResponse = await fetch('/api/ship-picture');
+        if (shipPictureResponse.ok) {
+          const data = await shipPictureResponse.json();
+          setShipPicture(data.shipPicture);
+        }
       } catch (error) {
-        console.error('Failed to fetch battle history:', error);
+        console.error('Failed to fetch profile data:', error);
       } finally {
         setIsLoadingBattles(false);
       }
     };
     
-    fetchBattles();
+    fetchData();
   }, []);
   
   // Dummy user data - in a real app, this would come from state management or API
@@ -66,7 +76,14 @@ const ProfilePageClient: React.FC<ProfilePageClientProps> = ({ auth }) => {
         
         <div className="profile-header">
           <div className="avatar">
-            <span className="avatar-text">{userStats.username.charAt(0)}</span>
+            <Image
+              src={`/assets/images/ship${shipPicture}.png`}
+              alt={`Ship ${shipPicture}`}
+              width={120}
+              height={120}
+              style={{ objectFit: 'contain' }}
+              unoptimized
+            />
           </div>
           <div className="player-info">
             <h2>{userStats.username}</h2>
