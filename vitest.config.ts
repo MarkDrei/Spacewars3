@@ -1,13 +1,42 @@
 import { defineConfig } from 'vitest/config'
 import { resolve } from 'path'
 
+const baseInclude = ['src/**/*.test.ts', 'src/**/*.test.tsx']
+const baseExclude: string[] = []
+const jsdomInclude = [
+  'src/__tests__/components/**/*.test.ts',
+  'src/__tests__/components/**/*.test.tsx',
+  'src/__tests__/hooks/**/*.test.ts',
+  'src/__tests__/hooks/**/*.test.tsx',
+]
+
 export default defineConfig({
   test: {
     globals: true,
-    environment: 'jsdom',
+    environment: 'node',
+    projects: [
+      {
+        extends: true,
+        test: {
+          name: 'node',
+          environment: 'node',
+          include: baseInclude,
+          exclude: [...baseExclude, 'src/__tests__/components/**', 'src/__tests__/hooks/**'],
+        },
+      },
+      {
+        extends: true,
+        test: {
+          name: 'jsdom',
+          environment: 'jsdom',
+          include: jsdomInclude,
+          exclude: baseExclude,
+        },
+      },
+    ],
     setupFiles: ['./src/__tests__/setup.ts'],
-    include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
-    exclude: ['src/server/**'],
+    include: [],
+    exclude: [],
     env: {
       NODE_ENV: 'test',
       // Use 'db' as default for dev container, 'localhost' for local development
@@ -17,16 +46,11 @@ export default defineConfig({
       POSTGRES_USER: process.env.POSTGRES_USER || 'spacewars',
       POSTGRES_PASSWORD: process.env.POSTGRES_PASSWORD || 'spacewars',
     },
-    // Transaction-based test isolation is implemented but requires refactoring
-    // Current issue: Background cache persistence writes happen outside transaction scope
-    // causing foreign key violations when transactions rollback
-    // 
-    // For now, disable file parallelism to ensure sequential execution
-    // TODO: Refactor caches to disable background persistence in test mode
-    fileParallelism: true,
-    // give concrete number of workers or 50% to give half of CPU cores to vitest
-    maxWorkers: 16,
 
+    // parellelism settings
+    fileParallelism: true,
+    // give concrete number of workers or '50%' to give half of CPU cores to vitest
+    maxWorkers: '300%',
 
     coverage: {
       provider: 'v8',
