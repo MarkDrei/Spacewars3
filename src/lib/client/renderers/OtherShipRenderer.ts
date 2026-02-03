@@ -6,12 +6,68 @@ import { SpaceObjectRendererBase } from './SpaceObjectRendererBase';
  * Uses the base SpaceObjectRenderer for positioning and wrapping
  */
 export class OtherShipRenderer extends SpaceObjectRendererBase {
-    private shipImage: HTMLImageElement;
+    private shipImages: Map<number, HTMLImageElement> = new Map();
+    private imageLoadedStatus: Map<number, boolean> = new Map();
+    // Store the reference size of ship1.png for scaling other ships
+    private ship1Size: { width: number; height: number } | null = null;
 
     constructor() {
         super();
-        this.shipImage = new Image();
-        this.shipImage.src = '/assets/images/ship1.png';
+        // Pre-load ship1.png to get reference dimensions
+        this.loadShipImage(1);
+    }
+
+    /**
+     * Load a ship image with the given picture_id
+     */
+    private loadShipImage(pictureId: number): void {
+        if (!this.shipImages.has(pictureId)) {
+            const img = new Image();
+            img.onload = () => {
+                this.imageLoadedStatus.set(pictureId, true);
+                // Store ship1 dimensions as reference
+                if (pictureId === 1) {
+                    this.ship1Size = { width: img.naturalWidth, height: img.naturalHeight };
+                }
+            };
+            img.onerror = () => {
+                // On error, fall back to ship1
+                if (pictureId !== 1) {
+                    console.warn(`Failed to load ship${pictureId}.png, using ship1.png as fallback`);
+                    this.loadShipImage(1);
+                }
+            };
+            img.src = `/assets/images/ship${pictureId}.png`;
+            this.shipImages.set(pictureId, img);
+            this.imageLoadedStatus.set(pictureId, false);
+        }
+    }
+
+    /**
+     * Get the ship image for the given picture_id, falling back to ship1 if not available
+     */
+    private getShipImageForPictureId(pictureId: number): HTMLImageElement | null {
+        // Try to load the requested image if not already loaded
+        this.loadShipImage(pictureId);
+        
+        const img = this.shipImages.get(pictureId);
+        const isLoaded = this.imageLoadedStatus.get(pictureId);
+        
+        // If the image is loaded and valid, return it
+        if (img && isLoaded) {
+            return img;
+        }
+        
+        // Fall back to ship1 if the requested image isn't loaded or failed
+        if (pictureId !== 1) {
+            this.loadShipImage(1);
+            const fallbackImg = this.shipImages.get(1);
+            if (fallbackImg && this.imageLoadedStatus.get(1)) {
+                return fallbackImg;
+            }
+        }
+        
+        return null;
     }
     
     /**
@@ -25,22 +81,36 @@ export class OtherShipRenderer extends SpaceObjectRendererBase {
         viewportY: number, 
         ship: SpaceObject
     ): void {
+        // Store current ship being rendered so getObjectImage can access picture_id
+        this.currentShip = ship;
         // Use the base class method to handle positioning and wrapping
         this.drawSpaceObject(ctx, centerX, centerY, viewportX, viewportY, ship);
+        this.currentShip = null;
     }
+
+    private currentShip: SpaceObject | null = null;
 
     /**
      * Get the ship image
      */
     protected getObjectImage(): HTMLImageElement | null {
-        return this.shipImage;
+        if (this.currentShip) {
+            return this.getShipImageForPictureId(this.currentShip.picture_id);
+        }
+        return this.getShipImageForPictureId(1);
     }
     
     /**
      * Get the size to render the ship at
      */
     protected getObjectSize(): number {
-        return 60; // Slightly smaller than the player ship for distinction
+        // Scale all ships to match ship1's rendered size
+        if (this.ship1Size && this.currentShip && this.currentShip.picture_id !== 1) {
+            const scale = 0.15; // Same scale used for ship1
+            const ship1RenderedSize = Math.max(this.ship1Size.width, this.ship1Size.height) * scale;
+            return ship1RenderedSize;
+        }
+        return 60; // Default size that matches ship1 at 0.15 scale
     }
     
     /**

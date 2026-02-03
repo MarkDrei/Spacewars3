@@ -70,6 +70,10 @@ export abstract class SpaceObjectOld {
         return this.serverData.last_position_update_ms;
     }
 
+    getPictureId(): number {
+        return this.serverData.picture_id;
+    }
+
     // Update the object with new server data
     updateFromServer(newServerData: SharedSpaceObject): void {
         this.serverData = newServerData;

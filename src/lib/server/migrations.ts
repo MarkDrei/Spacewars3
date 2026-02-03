@@ -3,6 +3,7 @@
 // ---
 
 import { DatabaseConnection } from './database';
+import { MIGRATE_ADD_PICTURE_ID } from './schema';
 
 export interface Migration {
   version: number;
@@ -236,8 +237,35 @@ export async function applyTechMigrations(db: DatabaseConnection): Promise<void>
   await applyBattleStateMigration(db);
   
   // Apply battle end stats migration
-  await applyBattleEndStatsMigration(db);
+  await applyBattleEndStatsMigration(db);  
+  // Apply picture_id migration
+  await applyPictureIdMigration(db);
 }
+
+/**
+ * Apply picture_id column migration to space_objects table
+ */
+export async function applyPictureIdMigration(db: DatabaseConnection): Promise<void> {
+  console.log('🔄 Checking for picture_id column migration...');
+  
+  try {
+    const exists = await columnExists(db, 'space_objects', 'picture_id');
+    if (exists) {
+      console.log('✅ picture_id column already exists');
+      return;
+    }
+    
+    console.log('🚀 Adding picture_id column to space_objects...');
+    
+    // Apply each migration statement
+    for (const statement of MIGRATE_ADD_PICTURE_ID) {
+      await runMigrationStatement(db, statement);
+    }
+    
+    console.log('✅ picture_id migration completed');
+  } catch (error) {
+    console.error('❌ Error applying picture_id migration:', error);
+  }}
 
 /**
  * Apply messages table migrations to the database
