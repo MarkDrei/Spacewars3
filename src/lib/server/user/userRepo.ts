@@ -18,6 +18,7 @@ interface UserRow {
   last_updated: number;
   tech_tree: string;
   ship_id?: number;
+  ship_picture?: number;
   // Tech counts (weapons)
   pulse_laser: number;
   auto_turret: number;
@@ -109,7 +110,8 @@ function userFromRow(row: UserRow, saveCallback: SaveUserCallback): User {
     currentBattleId,
     buildQueue,
     buildStartSec,
-    row.ship_id
+    row.ship_id,
+    row.ship_picture || 1
   );
 }
 
@@ -240,8 +242,9 @@ export function saveUserToDb(db: DatabaseConnection): SaveUserCallback {
         in_battle = $19,
         current_battle_id = $20,
         build_queue = $21,
-        build_start_sec = $22
-      WHERE id = $23`,
+        build_start_sec = $22,
+        ship_picture = $23
+      WHERE id = $24`,
       [
         user.iron,
         user.last_updated,
@@ -265,6 +268,7 @@ export function saveUserToDb(db: DatabaseConnection): SaveUserCallback {
         user.currentBattleId,
         JSON.stringify(user.buildQueue),
         user.buildStartSec,
+        user.ship_picture,
         user.id
       ]
     );

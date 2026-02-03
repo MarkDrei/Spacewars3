@@ -123,6 +123,16 @@ export const migrations: Migration[] = [
       'ALTER TABLE battles DROP COLUMN IF EXISTS attacker_end_stats',
       'ALTER TABLE battles DROP COLUMN IF EXISTS attackee_end_stats'
     ]
+  },
+  {
+    version: 8,
+    name: 'add_ship_picture',
+    up: [
+      'ALTER TABLE users ADD COLUMN IF NOT EXISTS ship_picture INTEGER NOT NULL DEFAULT 1'
+    ],
+    down: [
+      'ALTER TABLE users DROP COLUMN IF EXISTS ship_picture'
+    ]
   }
   // Future migrations go here
 ];
@@ -237,6 +247,9 @@ export async function applyTechMigrations(db: DatabaseConnection): Promise<void>
   
   // Apply battle end stats migration
   await applyBattleEndStatsMigration(db);
+  
+  // Apply ship picture migration
+  await applyShipPictureMigration(db);
 }
 
 /**
@@ -413,5 +426,38 @@ export async function applyBattleEndStatsMigration(db: DatabaseConnection): Prom
     console.log('✅ Battle end stats migration completed');
   } catch (error) {
     console.error('❌ Error applying battle end stats migration:', error);
+  }
+}
+
+/**
+ * Apply ship picture migration to the database
+ */
+export async function applyShipPictureMigration(db: DatabaseConnection): Promise<void> {
+  console.log('🔄 Checking for ship picture migration...');
+  
+  try {
+    const exists = await columnExists(db, 'users', 'ship_picture');
+    if (exists) {
+      console.log('✅ Ship picture column already exists');
+      return;
+    }
+    
+    console.log('🚀 Adding ship picture column...');
+    
+    // Get ship picture migration
+    const shipPictureMigration = migrations.find(m => m.name === 'add_ship_picture');
+    if (!shipPictureMigration) {
+      console.error('❌ Ship picture migration not found');
+      return;
+    }
+    
+    // Apply each migration statement
+    for (const statement of shipPictureMigration.up) {
+      await runMigrationStatement(db, statement);
+    }
+    
+    console.log('✅ Ship picture migration completed');
+  } catch (error) {
+    console.error('❌ Error applying ship picture migration:', error);
   }
 }

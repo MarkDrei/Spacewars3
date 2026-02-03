@@ -39,6 +39,9 @@ CREATE TABLE IF NOT EXISTS users (
   -- Battle state
   in_battle INTEGER NOT NULL DEFAULT 0,
   current_battle_id INTEGER DEFAULT NULL,
+
+  -- Ship appearance
+  ship_picture INTEGER NOT NULL DEFAULT 1,
   
   FOREIGN KEY (ship_id) REFERENCES space_objects (id)
 )`;
@@ -140,5 +143,10 @@ export const MIGRATE_ADD_BATTLE_DAMAGE = [
   'ALTER TABLE battles ADD COLUMN IF NOT EXISTS attackee_total_damage DOUBLE PRECISION NOT NULL DEFAULT 0.0'
 ];
 
+// Migration to add ship picture selection (PostgreSQL syntax)
+export const MIGRATE_ADD_SHIP_PICTURE = [
+  'ALTER TABLE users ADD COLUMN IF NOT EXISTS ship_picture INTEGER NOT NULL DEFAULT 1'
+];
+
 // Optional: Version management for migrations
-export const SCHEMA_VERSION = 10;
+export const SCHEMA_VERSION = 11;
