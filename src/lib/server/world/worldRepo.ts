@@ -19,6 +19,7 @@ export async function loadWorldFromDb(db: DatabaseConnection, saveCallback: Save
       so.speed,
       so.angle,
       so.last_position_update_ms,
+      so.picture_id,
       u.username,
       u.id as user_id,
       u.in_battle
@@ -37,6 +38,7 @@ export async function loadWorldFromDb(db: DatabaseConnection, saveCallback: Save
     speed: (row.type === 'player_ship' && row.in_battle) ? 0 : row.speed,
     angle: row.angle,
     last_position_update_ms: row.last_position_update_ms,
+    picture_id: row.picture_id || 1, // Default to 1 if not set
     // Only include username and userId for player ships
     ...(row.type === 'player_ship' && row.username ? { 
       username: row.username,
@@ -82,8 +84,8 @@ export async function deleteSpaceObject(db: DatabaseConnection, objectId: number
  */
 export async function insertSpaceObject(db: DatabaseConnection, obj: Omit<SpaceObject, 'id'>): Promise<number> {
   const result = await db.query(
-    'INSERT INTO space_objects (type, x, y, speed, angle, last_position_update_ms) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
-    [obj.type, obj.x, obj.y, obj.speed, obj.angle, obj.last_position_update_ms]
+    'INSERT INTO space_objects (type, x, y, speed, angle, last_position_update_ms, picture_id) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id',
+    [obj.type, obj.x, obj.y, obj.speed, obj.angle, obj.last_position_update_ms, obj.picture_id || 1]
   );
   
   return result.rows[0].id;

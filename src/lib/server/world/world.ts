@@ -15,6 +15,7 @@ export interface SpaceObject {
   speed: number;
   angle: number;
   last_position_update_ms: number;
+  picture_id: number;
   username?: string; // Optional: only present for player_ship type
 }
 
@@ -169,7 +170,8 @@ class World {
       y,
       speed: Math.max(0, speed), // Ensure speed is not negative
       angle,
-      last_position_update_ms: Date.now()
+      last_position_update_ms: Date.now(),
+      picture_id: 1 // Default picture ID for collectibles
     };
 
     // Insert into database and get the new ID

@@ -14,7 +14,8 @@ class MockSpaceObject extends SpaceObjectOld {
             y: y,
             speed: speed,
             angle: angle,
-            last_position_update_ms: Date.now()
+            last_position_update_ms: Date.now(),
+            picture_id: 1
         };
         super(serverData);
     }
@@ -75,7 +76,8 @@ describe('World', () => {
             y: 50,
             speed: 20,
             angle: 0,
-            last_position_update_ms: Date.now()
+            last_position_update_ms: Date.now(),
+            picture_id: 1
         };
         const ship = new Ship(shipData);
         ship.setHovered(false); // Make sure ship is not hovered

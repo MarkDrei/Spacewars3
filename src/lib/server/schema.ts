@@ -51,7 +51,8 @@ CREATE TABLE IF NOT EXISTS space_objects (
   y DOUBLE PRECISION NOT NULL,
   speed DOUBLE PRECISION NOT NULL DEFAULT 0.0,
   angle DOUBLE PRECISION NOT NULL DEFAULT 0.0,
-  last_position_update_ms DOUBLE PRECISION NOT NULL
+  last_position_update_ms DOUBLE PRECISION NOT NULL,
+  picture_id INTEGER NOT NULL DEFAULT 1
 )`;
 
 export const CREATE_MESSAGES_TABLE = `
@@ -140,5 +141,10 @@ export const MIGRATE_ADD_BATTLE_DAMAGE = [
   'ALTER TABLE battles ADD COLUMN IF NOT EXISTS attackee_total_damage DOUBLE PRECISION NOT NULL DEFAULT 0.0'
 ];
 
+// Migration to add picture_id to space_objects table (PostgreSQL syntax)
+export const MIGRATE_ADD_PICTURE_ID = [
+  'ALTER TABLE space_objects ADD COLUMN IF NOT EXISTS picture_id INTEGER NOT NULL DEFAULT 1'
+];
+
 // Optional: Version management for migrations
-export const SCHEMA_VERSION = 10;
+export const SCHEMA_VERSION = 11;
