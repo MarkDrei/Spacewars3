@@ -81,44 +81,19 @@ export class OtherShipRenderer extends SpaceObjectRendererBase {
         viewportY: number, 
         ship: SpaceObject
     ): void {
+        // Store current ship being rendered so getObjectImage can access picture_id
+        this.currentShip = ship;
         // Use the base class method to handle positioning and wrapping
         this.drawSpaceObject(ctx, centerX, centerY, viewportX, viewportY, ship);
-    }
-
-    /**
-     * Get the ship image
-     */
-    protected getObjectImage(): HTMLImageElement | null {
-        // This method is called by the base class, but we need picture_id from the ship object
-        // We'll override getObjectSize to handle picture_id-specific logic
-        // For now, return ship1 as default
-        return this.getShipImageForPictureId(1);
-    }
-
-    /**
-     * Override to get the correct image based on picture_id
-     * We need to override drawObjectAtPosition to access the spaceObject
-     */
-    protected override drawSpaceObject(
-        ctx: CanvasRenderingContext2D,
-        centerX: number,
-        centerY: number,
-        viewportX: number,
-        viewportY: number,
-        spaceObject: SpaceObject
-    ): void {
-        // Store current ship being rendered so getObjectImage can access picture_id
-        this.currentShip = spaceObject;
-        super.drawSpaceObject(ctx, centerX, centerY, viewportX, viewportY, spaceObject);
         this.currentShip = null;
     }
 
     private currentShip: SpaceObject | null = null;
 
     /**
-     * Get the ship image based on current ship's picture_id
+     * Get the ship image
      */
-    protected override getObjectImage(): HTMLImageElement | null {
+    protected getObjectImage(): HTMLImageElement | null {
         if (this.currentShip) {
             return this.getShipImageForPictureId(this.currentShip.picture_id);
         }

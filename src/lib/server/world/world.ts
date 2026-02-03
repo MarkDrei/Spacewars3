@@ -170,7 +170,8 @@ class World {
       y,
       speed: Math.max(0, speed), // Ensure speed is not negative
       angle,
-      last_position_update_ms: Date.now()
+      last_position_update_ms: Date.now(),
+      picture_id: 1 // Default picture ID for collectibles
     };
 
     // Insert into database and get the new ID

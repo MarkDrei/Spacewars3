@@ -17,7 +17,8 @@ class MockSpaceObject extends SpaceObjectOld {
             y: y,
             speed: speed,
             angle: angle,
-            last_position_update_ms: Date.now()
+            last_position_update_ms: Date.now(),
+            picture_id: 1
         };
         super(serverData);
     }

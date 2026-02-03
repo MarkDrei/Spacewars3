@@ -36,7 +36,8 @@ export class World {
                 y: 250,
                 speed: 20,
                 angle: 0,
-                last_position_update_ms: Date.now()
+                last_position_update_ms: Date.now(),
+                picture_id: 1
             };
             const ship = new Ship(defaultShipData);
             
@@ -54,7 +55,8 @@ export class World {
                 y: 0,
                 speed: 0,
                 angle: 0,
-                last_position_update_ms: Date.now()
+                last_position_update_ms: Date.now(),
+                picture_id: 1
             };
             const dummyShip = new Ship(dummyShipData);
             this.player = new Player(dummyShip);

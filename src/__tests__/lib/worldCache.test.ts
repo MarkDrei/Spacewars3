@@ -81,7 +81,8 @@ describe('WorldCache', () => {
         y: 20,
         speed: 5,
         angle: 45,
-        last_position_update_ms: Date.now()
+        last_position_update_ms: Date.now(),
+        picture_id: 1
       }
     ]);
 
