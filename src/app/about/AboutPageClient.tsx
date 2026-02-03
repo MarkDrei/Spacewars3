@@ -64,7 +64,13 @@ const AboutPageClient: React.FC<AboutPageClientProps> = () => {
   }, [message]);
 
   const handleShipSelection = async (shipNumber: number) => {
-    if (isSaving || shipNumber === selectedShip) return;
+    if (isSaving) return;
+
+    // If clicking already selected ship, show a message
+    if (shipNumber === selectedShip) {
+      setMessage(`Ship ${shipNumber} is already selected! 🚀`);
+      return;
+    }
 
     setIsSaving(true);
     try {
