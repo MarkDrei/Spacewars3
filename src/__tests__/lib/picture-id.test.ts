@@ -49,7 +49,7 @@ describe('Picture ID', () => {
       `);
       
       // Check that we have the expected users
-      const userPictureIds = result.rows.reduce((acc: Record<string, number>, row: any) => {
+      const userPictureIds = result.rows.reduce((acc: Record<string, number>, row: { username: string; picture_id: number }) => {
         acc[row.username] = row.picture_id;
         return acc;
       }, {} as Record<string, number>);
@@ -103,12 +103,12 @@ describe('Picture ID', () => {
       expect(result.rows.length).toBe(4);
       
       // Verify all locations are unique
-      const locations = result.rows.map((row: any) => `${row.x},${row.y}`);
+      const locations = result.rows.map((row: { x: number; y: number }) => `${row.x},${row.y}`);
       const uniqueLocations = new Set(locations);
       expect(uniqueLocations.size).toBe(4);
       
       // Verify expected locations from seed data
-      const locationMap = result.rows.reduce((acc: Record<string, { x: number; y: number }>, row: any) => {
+      const locationMap = result.rows.reduce((acc: Record<string, { x: number; y: number }>, row: { username: string; x: number; y: number }) => {
         acc[row.username] = { x: row.x, y: row.y };
         return acc;
       }, {} as Record<string, { x: number; y: number }>);
@@ -193,6 +193,7 @@ describe('Picture ID', () => {
         speed: 10,
         angle: 45,
         last_position_update_ms: Date.now(),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         picture_id: undefined as any // Explicitly undefined to test fallback
       });
       
