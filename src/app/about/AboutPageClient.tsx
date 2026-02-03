@@ -29,8 +29,8 @@ const AboutPageClient: React.FC<AboutPageClientProps> = () => {
         }
 
         // Detect available ship images
-        // Check for ship1.png through ship10.png (reasonable upper limit)
-        const promises = Array.from({ length: 10 }, (_, i) => i + 1).map(async (i) => {
+        // Check for ship1.png through ship5.png
+        const promises = Array.from({ length: 5 }, (_, i) => i + 1).map(async (i) => {
           try {
             const response = await fetch(`/assets/images/ship${i}.png`, { method: 'HEAD' });
             return response.ok ? i : null;

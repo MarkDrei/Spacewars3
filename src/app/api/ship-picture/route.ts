@@ -44,9 +44,9 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { shipPicture } = body;
     
-    // Validate ship picture number
-    if (!shipPicture || typeof shipPicture !== 'number' || shipPicture < 1 || shipPicture > 10) {
-      throw new ApiError(400, 'Invalid ship picture number. Must be between 1 and 10.');
+    // Validate ship picture number (we have 5 ship images: ship1.png to ship5.png)
+    if (!shipPicture || typeof shipPicture !== 'number' || shipPicture < 1 || shipPicture > 5) {
+      throw new ApiError(400, 'Invalid ship picture number. Must be between 1 and 5.');
     }
     
     const emptyCtx = createLockContext();
