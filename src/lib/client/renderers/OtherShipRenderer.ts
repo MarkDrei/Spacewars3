@@ -6,12 +6,36 @@ import { SpaceObjectRendererBase } from './SpaceObjectRendererBase';
  * Uses the base SpaceObjectRenderer for positioning and wrapping
  */
 export class OtherShipRenderer extends SpaceObjectRendererBase {
-    private shipImage: HTMLImageElement;
+    private shipImages: Map<number, HTMLImageElement> = new Map();
+    private currentSpaceObject: SpaceObject | null = null;
 
     constructor() {
         super();
-        this.shipImage = new Image();
-        this.shipImage.src = '/assets/images/ship1.png';
+        // Preload common ship images (1-5)
+        for (let i = 1; i <= 5; i++) {
+            this.loadShipImage(i);
+        }
+    }
+
+    /**
+     * Load a ship image by number
+     */
+    private loadShipImage(shipNumber: number): void {
+        if (!this.shipImages.has(shipNumber)) {
+            const img = new Image();
+            img.src = `/assets/images/ship${shipNumber}.png`;
+            this.shipImages.set(shipNumber, img);
+        }
+    }
+
+    /**
+     * Get ship image for a specific ship picture number
+     */
+    private getShipImage(shipPicture?: number): HTMLImageElement | null {
+        const shipNumber = shipPicture || 1; // Default to ship1 if not specified
+        this.loadShipImage(shipNumber); // Ensure it's loaded
+        const img = this.shipImages.get(shipNumber);
+        return (img && img.complete) ? img : null;
     }
     
     /**
@@ -25,15 +49,18 @@ export class OtherShipRenderer extends SpaceObjectRendererBase {
         viewportY: number, 
         ship: SpaceObject
     ): void {
+        // Store current object for getObjectImage to access
+        this.currentSpaceObject = ship;
         // Use the base class method to handle positioning and wrapping
         this.drawSpaceObject(ctx, centerX, centerY, viewportX, viewportY, ship);
+        this.currentSpaceObject = null;
     }
 
     /**
      * Get the ship image
      */
     protected getObjectImage(): HTMLImageElement | null {
-        return this.shipImage;
+        return this.getShipImage(this.currentSpaceObject?.shipPicture);
     }
     
     /**

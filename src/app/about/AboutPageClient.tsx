@@ -14,26 +14,42 @@ const AboutPageClient: React.FC<AboutPageClientProps> = () => {
   const [availableShips, setAvailableShips] = useState<number[]>([]);
   const [selectedShip, setSelectedShip] = useState<number | null>(null);
   const [message, setMessage] = useState<string>('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    // Dynamically detect available ship images
-    const detectShips = async () => {
-      // Check for ship1.png through ship10.png (reasonable upper limit)
-      const promises = Array.from({ length: 10 }, (_, i) => i + 1).map(async (i) => {
-        try {
-          const response = await fetch(`/assets/images/ship${i}.png`, { method: 'HEAD' });
-          return response.ok ? i : null;
-        } catch {
-          return null;
+    // Load current ship picture and detect available ship images
+    const initialize = async () => {
+      try {
+        // Fetch current ship picture
+        const shipPictureResponse = await fetch('/api/ship-picture');
+        if (shipPictureResponse.ok) {
+          const data = await shipPictureResponse.json();
+          setSelectedShip(data.shipPicture);
         }
-      });
 
-      const results = await Promise.all(promises);
-      const ships = results.filter((ship): ship is number => ship !== null);
-      setAvailableShips(ships);
+        // Detect available ship images
+        // Check for ship1.png through ship10.png (reasonable upper limit)
+        const promises = Array.from({ length: 10 }, (_, i) => i + 1).map(async (i) => {
+          try {
+            const response = await fetch(`/assets/images/ship${i}.png`, { method: 'HEAD' });
+            return response.ok ? i : null;
+          } catch {
+            return null;
+          }
+        });
+
+        const results = await Promise.all(promises);
+        const ships = results.filter((ship): ship is number => ship !== null);
+        setAvailableShips(ships);
+      } catch (error) {
+        console.error('Failed to initialize ship selection:', error);
+      } finally {
+        setIsLoading(false);
+      }
     };
 
-    detectShips();
+    initialize();
   }, []);
 
   useEffect(() => {
@@ -47,9 +63,32 @@ const AboutPageClient: React.FC<AboutPageClientProps> = () => {
     }
   }, [message]);
 
-  const handleShipSelection = (shipNumber: number) => {
-    setSelectedShip(shipNumber);
-    setMessage(`You have selected Ship ${shipNumber}! 🚀`);
+  const handleShipSelection = async (shipNumber: number) => {
+    if (isSaving || shipNumber === selectedShip) return;
+
+    setIsSaving(true);
+    try {
+      const response = await fetch('/api/ship-picture', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ shipPicture: shipNumber }),
+      });
+
+      if (response.ok) {
+        setSelectedShip(shipNumber);
+        setMessage(`Ship ${shipNumber} selected successfully! 🚀`);
+      } else {
+        const data = await response.json();
+        setMessage(`Failed to select ship: ${data.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Failed to save ship selection:', error);
+      setMessage('Failed to save ship selection. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -69,37 +108,37 @@ const AboutPageClient: React.FC<AboutPageClientProps> = () => {
               Select your preferred ship design from the available options below:
             </p>
 
-            <div className="ship-grid">
-              {availableShips.map((shipNumber) => (
-                <div
-                  key={shipNumber}
-                  className={`ship-card ${selectedShip === shipNumber ? 'selected' : ''}`}
-                  onClick={() => handleShipSelection(shipNumber)}
-                >
-                  <div className="ship-image-container">
-                    <Image
-                      src={`/assets/images/ship${shipNumber}.png`}
-                      alt={`Ship ${shipNumber}`}
-                      className="ship-image"
-                      width={200}
-                      height={200}
-                      style={{ objectFit: 'contain' }}
-                      unoptimized
-                    />
-                  </div>
-                  <div className="ship-label">
-                    Ship {shipNumber}
-                  </div>
-                  {selectedShip === shipNumber && (
-                    <div className="selected-indicator">✓</div>
-                  )}
-                </div>
-              ))}
-            </div>
-
-            {availableShips.length === 0 && (
+            {isLoading ? (
               <div className="loading-message">
                 Loading available ships...
+              </div>
+            ) : (
+              <div className="ship-grid">
+                {availableShips.map((shipNumber) => (
+                  <div
+                    key={shipNumber}
+                    className={`ship-card ${selectedShip === shipNumber ? 'selected' : ''} ${isSaving ? 'disabled' : ''}`}
+                    onClick={() => handleShipSelection(shipNumber)}
+                  >
+                    <div className="ship-image-container">
+                      <Image
+                        src={`/assets/images/ship${shipNumber}.png`}
+                        alt={`Ship ${shipNumber}`}
+                        className="ship-image"
+                        width={200}
+                        height={200}
+                        style={{ objectFit: 'contain' }}
+                        unoptimized
+                      />
+                    </div>
+                    <div className="ship-label">
+                      Ship {shipNumber}
+                    </div>
+                    {selectedShip === shipNumber && (
+                      <div className="selected-indicator">✓</div>
+                    )}
+                  </div>
+                ))}
               </div>
             )}
           </section>
