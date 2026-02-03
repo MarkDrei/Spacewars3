@@ -13,7 +13,9 @@ interface AboutPageClientProps {
 const AboutPageClient: React.FC<AboutPageClientProps> = () => {
   const [availableShips, setAvailableShips] = useState<number[]>([]);
   const [selectedShip, setSelectedShip] = useState<number | null>(null);
+  const [currentShip, setCurrentShip] = useState<number | null>(null);
   const [message, setMessage] = useState<string>('');
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     // Dynamically detect available ship images
@@ -37,6 +39,24 @@ const AboutPageClient: React.FC<AboutPageClientProps> = () => {
   }, []);
 
   useEffect(() => {
+    // Load the user's current ship picture_id
+    const loadCurrentShip = async () => {
+      try {
+        const response = await fetch('/api/update-ship-picture');
+        if (response.ok) {
+          const data = await response.json();
+          setCurrentShip(data.pictureId);
+          setSelectedShip(data.pictureId);
+        }
+      } catch (error) {
+        console.error('Failed to load current ship:', error);
+      }
+    };
+
+    loadCurrentShip();
+  }, []);
+
+  useEffect(() => {
     // Clear message after 3 seconds when a new message is set
     if (message) {
       const timeoutId = setTimeout(() => {
@@ -47,9 +67,35 @@ const AboutPageClient: React.FC<AboutPageClientProps> = () => {
     }
   }, [message]);
 
-  const handleShipSelection = (shipNumber: number) => {
+  const handleShipSelection = async (shipNumber: number) => {
     setSelectedShip(shipNumber);
-    setMessage(`You have selected Ship ${shipNumber}! 🚀`);
+    setIsLoading(true);
+    
+    try {
+      const response = await fetch('/api/update-ship-picture', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ pictureId: shipNumber }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setCurrentShip(shipNumber);
+        setMessage(`✅ Ship ${shipNumber} selected successfully! 🚀`);
+      } else {
+        const error = await response.json();
+        setMessage(`❌ Failed to update ship: ${error.message || 'Unknown error'}`);
+        setSelectedShip(currentShip); // Revert selection on error
+      }
+    } catch (error) {
+      console.error('Error updating ship:', error);
+      setMessage('❌ Failed to update ship. Please try again.');
+      setSelectedShip(currentShip); // Revert selection on error
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -67,6 +113,7 @@ const AboutPageClient: React.FC<AboutPageClientProps> = () => {
           <section className="ship-selection-section">
             <p className="ship-selection-intro">
               Select your preferred ship design from the available options below:
+              {currentShip && <span> (Current: Ship {currentShip})</span>}
             </p>
 
             <div className="ship-grid">
@@ -74,7 +121,8 @@ const AboutPageClient: React.FC<AboutPageClientProps> = () => {
                 <div
                   key={shipNumber}
                   className={`ship-card ${selectedShip === shipNumber ? 'selected' : ''}`}
-                  onClick={() => handleShipSelection(shipNumber)}
+                  onClick={() => !isLoading && handleShipSelection(shipNumber)}
+                  style={{ cursor: isLoading ? 'not-allowed' : 'pointer', opacity: isLoading ? 0.6 : 1 }}
                 >
                   <div className="ship-image-container">
                     <Image
@@ -100,6 +148,12 @@ const AboutPageClient: React.FC<AboutPageClientProps> = () => {
             {availableShips.length === 0 && (
               <div className="loading-message">
                 Loading available ships...
+              </div>
+            )}
+            
+            {isLoading && (
+              <div className="loading-message">
+                Updating ship selection...
               </div>
             )}
           </section>
