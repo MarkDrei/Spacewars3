@@ -104,6 +104,9 @@ export class UserCache extends Cache {
       this.instance.config = config;
     }
     this.instance.db = db;
+    
+    // Start background persistence for production
+    this.instance.startBackgroundPersistence();
   }
 
   /**
@@ -492,11 +495,11 @@ export class UserCache extends Cache {
    */
   protected startBackgroundPersistence(): void {
     if (!this.shouldEnableBackgroundPersistence(this.config.enableAutoPersistence)) {
-      console.log('📝 Background persistence disabled (test mode or config)');
+      console.log('📝 User Cache background persistence disabled (test mode or config)');
       return;
     }
 
-    console.log(`📝 Starting background persistence (interval: ${this.config.persistenceIntervalMs}ms)`);
+    console.log(`📝 Starting background persistence for User Cache (interval: ${this.config.persistenceIntervalMs}ms)`);
 
     this.persistenceTimer = setInterval(async () => {
       try {
@@ -505,7 +508,7 @@ export class UserCache extends Cache {
           await this.backgroundPersist(userContext);
         });
       } catch (error) {
-        console.error('❌ Background persistence error:', error);
+        console.error('❌ User Cache background persistence error:', error);
       }
     }, this.config.persistenceIntervalMs);
   }

@@ -305,6 +305,97 @@ export class MessageCache extends Cache {
   }
 
   /**
+   * Parse a previous summary message and extract its statistics
+   * Returns null if the message is not a valid summary
+   */
+  private parsePreviousSummary(summaryText: string): {
+    victories: number,
+    defeats: number,
+    damageDealt: number,
+    damageReceived: number,
+    shotsHit: number,
+    shotsMissed: number,
+    enemyShotsHit: number,
+    enemyShotsMissed: number,
+    asteroidsCollected: number,
+    shipwrecksCollected: number,
+    escapePodsCollected: number,
+    totalIronCollected: number
+  } | null {
+    // Check if this is a summary message
+    if (!summaryText.includes('📊') || !summaryText.includes('Message Summary')) {
+      return null;
+    }
+
+    const stats = {
+      victories: 0,
+      defeats: 0,
+      damageDealt: 0,
+      damageReceived: 0,
+      shotsHit: 0,
+      shotsMissed: 0,
+      enemyShotsHit: 0,
+      enemyShotsMissed: 0,
+      asteroidsCollected: 0,
+      shipwrecksCollected: 0,
+      escapePodsCollected: 0,
+      totalIronCollected: 0
+    };
+
+    // Parse battles: "⚔️ **Battles:** X victory(ies), Y defeat(s)"
+    const battleMatch = summaryText.match(/⚔️ \*\*Battles:\*\* (.+)/);
+    if (battleMatch) {
+      const victoriesMatch = battleMatch[1].match(/(\d+) victory\(ies\)/);
+      const defeatsMatch = battleMatch[1].match(/(\d+) defeat\(s\)/);
+      if (victoriesMatch) stats.victories = parseInt(victoriesMatch[1]);
+      if (defeatsMatch) stats.defeats = parseInt(defeatsMatch[1]);
+    }
+
+    // Parse damage: "💥 **Damage:** Dealt X, Received Y"
+    const damageMatch = summaryText.match(/💥 \*\*Damage:\*\* Dealt (\d+), Received (\d+)/);
+    if (damageMatch) {
+      stats.damageDealt = parseInt(damageMatch[1]);
+      stats.damageReceived = parseInt(damageMatch[2]);
+    }
+
+    // Parse accuracy: "🎯 **Your Accuracy:** X/Y hits (Z%)"
+    const accuracyMatch = summaryText.match(/🎯 \*\*Your Accuracy:\*\* (\d+)\/(\d+) hits/);
+    if (accuracyMatch) {
+      stats.shotsHit = parseInt(accuracyMatch[1]);
+      const totalShots = parseInt(accuracyMatch[2]);
+      stats.shotsMissed = totalShots - stats.shotsHit;
+    }
+
+    // Parse enemy accuracy: "🛡️ **Enemy Accuracy:** X/Y hits (Z%)"
+    const enemyAccuracyMatch = summaryText.match(/🛡️ \*\*Enemy Accuracy:\*\* (\d+)\/(\d+) hits/);
+    if (enemyAccuracyMatch) {
+      stats.enemyShotsHit = parseInt(enemyAccuracyMatch[1]);
+      const totalEnemyShots = parseInt(enemyAccuracyMatch[2]);
+      stats.enemyShotsMissed = totalEnemyShots - stats.enemyShotsHit;
+    }
+
+    // Parse collections: "⛏️ **Collections:** X asteroid(s), Y shipwreck(s), Z escape pod(s)"
+    const collectionsMatch = summaryText.match(/⛏️ \*\*Collections:\*\* (.+)/);
+    if (collectionsMatch) {
+      const collectionText = collectionsMatch[1].split('\n')[0]; // Get just the collection line
+      const asteroidsMatch = collectionText.match(/(\d+) asteroid\(s\)/);
+      const shipwrecksMatch = collectionText.match(/(\d+) shipwreck\(s\)/);
+      const escapePodsMatch = collectionText.match(/(\d+) escape pod\(s\)/);
+      if (asteroidsMatch) stats.asteroidsCollected = parseInt(asteroidsMatch[1]);
+      if (shipwrecksMatch) stats.shipwrecksCollected = parseInt(shipwrecksMatch[1]);
+      if (escapePodsMatch) stats.escapePodsCollected = parseInt(escapePodsMatch[1]);
+    }
+
+    // Parse iron collected: "💎 **Iron Collected:** X"
+    const ironMatch = summaryText.match(/💎 \*\*Iron Collected:\*\* (\d+)/);
+    if (ironMatch) {
+      stats.totalIronCollected = parseInt(ironMatch[1]);
+    }
+
+    return stats;
+  }
+
+  /**
    * Summarize messages for a user
    * - Marks all UNREAD messages as read
    * - Parses and summarizes known message types:
@@ -316,6 +407,7 @@ export class MessageCache extends Cache {
    *   * Defeat: "A: 💀 **Defeat!** You lost the battle..."
    *   * Collections: "P: Successfully collected [type] and received **X** iron."
    * - Preserves unknown messages as new unread messages with original timestamps
+   * - Accumulates statistics from previous summaries to create a single comprehensive summary
    * Returns the summary message
    * 
    * IMPORTANT: Only processes unread messages to avoid re-summarizing already-read messages
@@ -347,9 +439,44 @@ export class MessageCache extends Cache {
         totalIronCollected: 0,
         unknownMessages: [] as { text: string, timestamp: number }[]
       };
-  
-      // Process only unread messages
+
+      // Check if there's a previous summary to accumulate
+      // Mark all previous summaries as read and accumulate their values
+      let previousSummaryCount = 0;
+      const messagesToProcess: typeof unreadMessages = [];
+      
       for (const msg of unreadMessages) {
+        const previousStats = this.parsePreviousSummary(msg.message);
+        if (previousStats) {
+          // Accumulate values from previous summary
+          stats.damageDealt += previousStats.damageDealt;
+          stats.damageReceived += previousStats.damageReceived;
+          stats.victories += previousStats.victories;
+          stats.defeats += previousStats.defeats;
+          stats.shotsHit += previousStats.shotsHit;
+          stats.shotsMissed += previousStats.shotsMissed;
+          stats.enemyShotsHit += previousStats.enemyShotsHit;
+          stats.enemyShotsMissed += previousStats.enemyShotsMissed;
+          stats.asteroidsCollected += previousStats.asteroidsCollected;
+          stats.shipwrecksCollected += previousStats.shipwrecksCollected;
+          stats.escapePodsCollected += previousStats.escapePodsCollected;
+          stats.totalIronCollected += previousStats.totalIronCollected;
+          previousSummaryCount++;
+          
+          // Mark the old summary as read (will be removed from cache)
+          msg.is_read = true;
+        } else {
+          // This is not a summary, add it to processing list
+          messagesToProcess.push(msg);
+        }
+      }
+
+      if (previousSummaryCount > 0) {
+        console.log(`📊 Accumulated statistics from ${previousSummaryCount} previous summar${previousSummaryCount === 1 ? 'y' : 'ies'}`);
+      }
+  
+      // Process only non-summary unread messages
+      for (const msg of messagesToProcess) {
         const text = msg.message;
         
         // Parse battle damage dealt (P: prefix, with "hit for X damage")
@@ -441,12 +568,12 @@ export class MessageCache extends Cache {
       // Mark user as dirty for persistence
       this.dirtyUsers.add(userId);
   
-      // Remove only the unread messages from cache (now marked as read and will be persisted)
-      // Keep already-read messages in cache
-      const readMessagesIds = new Set(unreadMessages.map(m => m.id));
+      // Remove all processed messages from cache (both summaries and regular messages)
+      // All unread messages are now either: converted to summary, marked as read (summaries), or re-created as unread (unknown)
+      const processedMessageIds = new Set(unreadMessages.map(m => m.id));
       this.userMessages.set(
         userId, 
-        allMessages.filter(m => !readMessagesIds.has(m.id))
+        allMessages.filter(m => !processedMessageIds.has(m.id))
       );
   
       // Build summary
@@ -722,18 +849,18 @@ export class MessageCache extends Cache {
    */
   protected startBackgroundPersistence(): void {
     if (!this.shouldEnableBackgroundPersistence(this.config.enableAutoPersistence)) {
-      console.log('📬 Background persistence disabled (test mode or config)');
+      console.log('📬 Message Cache background persistence disabled (test mode or config)');
       return;
     }
 
-    console.log(`📬 Starting background persistence (interval: ${this.config.persistenceIntervalMs}ms)`);
+    console.log(`📬 Starting background persistence for Message Cache (interval: ${this.config.persistenceIntervalMs}ms)`);
     
     this.persistenceTimer = setInterval(async () => {
       try {
         const context = createLockContext();
         await context.useLockWithAcquire(DATABASE_LOCK_MESSAGES, async (messageContext) => {
           if (this.dirtyUsers.size > 0) {
-            console.log(`📬 Background persisting messages for ${this.dirtyUsers.size} user(s)`);
+            console.log(`📬 Background persisting messages for ${this.dirtyUsers.size} user(s) in Message Cache`);
             await this.flushToDatabaseWithLock(messageContext);
           }
         });
