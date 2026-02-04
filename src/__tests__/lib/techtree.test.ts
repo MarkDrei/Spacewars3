@@ -119,8 +119,9 @@ describe('getResearchEffect', () => {
   });
 
   test('getResearchEffect_newShipResearches_calculatesCorrectly', () => {
-    expect(getResearchEffect(AllResearches[ResearchType.InventoryCapacity], 1)).toBeCloseTo(100);
-    expect(getResearchEffect(AllResearches[ResearchType.InventoryCapacity], 2)).toBeCloseTo(120);
+    // InventoryCapacity now has baseValue 5000 and doubles each level
+    expect(getResearchEffect(AllResearches[ResearchType.InventoryCapacity], 1)).toBeCloseTo(5000);
+    expect(getResearchEffect(AllResearches[ResearchType.InventoryCapacity], 2)).toBeCloseTo(10000);
     expect(getResearchEffect(AllResearches[ResearchType.Teleport], 0)).toBeCloseTo(0);
     expect(getResearchEffect(AllResearches[ResearchType.Teleport], 1)).toBeCloseTo(100);
   });
