@@ -79,7 +79,9 @@ describe('MessageCache - Persistence After Summarization', () => {
       expect(messagesAfterSummary[0].is_read).toBe(false);
 
       // Simulate app restart: shutdown cache and reinitialize
-      await messageCache.shutdown(ctx);
+      await ctx.useLockWithAcquire(DATABASE_LOCK_MESSAGES, async (lockCtx) => {
+        await messageCache.shutdown(lockCtx);
+      });
       
       // Clear the singleton to force reinitialization
       MessageCache.resetInstance(ctx);
@@ -141,7 +143,9 @@ describe('MessageCache - Persistence After Summarization', () => {
       await messageCache.waitForPendingWrites();
 
       // Simulate app restart
-      await messageCache.shutdown(ctx);
+      await ctx.useLockWithAcquire(DATABASE_LOCK_MESSAGES, async (lockCtx) => {
+        await messageCache.shutdown(lockCtx);
+      });
       MessageCache.resetInstance(ctx);
       await ctx.useLockWithAcquire(DATABASE_LOCK_MESSAGES, async (lockCtx) => {
         await MessageCache.initialize(lockCtx, {
@@ -183,10 +187,7 @@ describe('MessageCache - Persistence After Summarization', () => {
       const userId = await createTestUser('timestamp_test');
       const ctx = createLockContext();
 
-      // Create messages with known timestamps
-      const timestamp1 = Date.now() - 60000; // 1 minute ago
-      const timestamp2 = Date.now() - 30000; // 30 seconds ago
-      
+      // Create messages
       await messageCache.createMessage(ctx, userId, 'Message 1');
       await messageCache.createMessage(ctx, userId, 'Unknown message 1');
       await messageCache.createMessage(ctx, userId, 'Unknown message 2');
@@ -217,7 +218,9 @@ describe('MessageCache - Persistence After Summarization', () => {
       expect(recreatedMsg2!.created_at).toBe(unknownMsg2Timestamp);
 
       // Verify timestamps are also preserved in database after restart
-      await messageCache.shutdown(ctx);
+      await ctx.useLockWithAcquire(DATABASE_LOCK_MESSAGES, async (lockCtx) => {
+        await messageCache.shutdown(lockCtx);
+      });
       MessageCache.resetInstance(ctx);
       await ctx.useLockWithAcquire(DATABASE_LOCK_MESSAGES, async (lockCtx) => {
         await MessageCache.initialize(lockCtx, {
@@ -265,7 +268,9 @@ describe('MessageCache - Persistence After Summarization', () => {
       await messageCache.flushToDatabase(ctx);
 
       // Simulate app restart
-      await messageCache.shutdown(ctx);
+      await ctx.useLockWithAcquire(DATABASE_LOCK_MESSAGES, async (lockCtx) => {
+        await messageCache.shutdown(lockCtx);
+      });
       MessageCache.resetInstance(ctx);
       await ctx.useLockWithAcquire(DATABASE_LOCK_MESSAGES, async (lockCtx) => {
         await MessageCache.initialize(lockCtx, {
