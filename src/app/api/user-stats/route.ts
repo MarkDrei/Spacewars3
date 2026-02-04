@@ -43,7 +43,8 @@ function processUserStats(user: User, userWorldCache: UserCache, userCtx: LockCo
   const responseData = { 
     iron: user.iron, 
     ironPerSecond: user.getIronPerSecond(),
-    last_updated: user.last_updated
+    last_updated: user.last_updated,
+    maxIronCapacity: user.getMaxIronCapacity()
   };
   
   return NextResponse.json(responseData);

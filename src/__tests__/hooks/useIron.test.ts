@@ -23,7 +23,8 @@ describe('useIron', () => {
     const mockStats = {
       iron: 1500,
       last_updated: 1674567890,
-      ironPerSecond: 2
+      ironPerSecond: 2,
+      maxIronCapacity: 5000
     };
     mockUserStatsService.getUserStats.mockResolvedValueOnce(mockStats);
 
@@ -66,7 +67,8 @@ describe('useIron', () => {
     const mockStats = {
       iron: 1000,
       last_updated: 1674567890,
-      ironPerSecond: 2
+      ironPerSecond: 2,
+      maxIronCapacity: 5000
     };
     mockUserStatsService.getUserStats.mockResolvedValueOnce(mockStats);
 
@@ -109,7 +111,8 @@ describe('useIron', () => {
     mockUserStatsService.getUserStats.mockResolvedValueOnce({
       iron: 1000,
       last_updated: 1674567890,
-      ironPerSecond: 1
+      ironPerSecond: 1,
+      maxIronCapacity: 5000
     });
 
     renderHook(() => useIron());
@@ -127,7 +130,8 @@ describe('useIron', () => {
     const mockStats = {
       iron: 1000,
       last_updated: 1674567890,
-      ironPerSecond: 0 // No production
+      ironPerSecond: 0, // No production
+      maxIronCapacity: 5000
     };
     mockUserStatsService.getUserStats.mockResolvedValueOnce(mockStats);
 
@@ -147,7 +151,8 @@ describe('useIron', () => {
     const mockStats = {
       iron: 1000,
       last_updated: 1674567890,
-      ironPerSecond: 1
+      ironPerSecond: 1,
+      maxIronCapacity: 5000
     };
     mockUserStatsService.getUserStats.mockResolvedValue(mockStats);
 
@@ -180,7 +185,8 @@ describe('useIron', () => {
     const mockStats = {
       iron: 1000,
       last_updated: 1674567890,
-      ironPerSecond: 2
+      ironPerSecond: 2,
+      maxIronCapacity: 5000
     };
     mockUserStatsService.getUserStats.mockResolvedValueOnce(mockStats);
 
@@ -217,7 +223,8 @@ describe('useIron', () => {
     mockUserStatsService.getUserStats.mockResolvedValue({
       iron: 1000,
       last_updated: 1674567890,
-      ironPerSecond: 1
+      ironPerSecond: 1,
+      maxIronCapacity: 5000
     });
 
     const customInterval = 3000;

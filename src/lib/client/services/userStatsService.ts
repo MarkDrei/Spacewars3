@@ -7,6 +7,7 @@ export interface UserStatsResponse {
   iron: number;
   last_updated: number;
   ironPerSecond: number;
+  maxIronCapacity: number;
 }
 
 export interface UserStatsError {

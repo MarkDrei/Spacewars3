@@ -7,13 +7,14 @@ export interface IronData {
   serverAmount: number;
   ironPerSecond: number;
   lastUpdateTime: number;
+  maxCapacity: number;
 }
 
 /**
  * Calculate the predicted iron amount based on time elapsed and production rate
  * @param data - Current iron data from server
  * @param currentTime - Current timestamp (defaults to Date.now())
- * @returns Predicted iron amount (floored to integer)
+ * @returns Predicted iron amount (floored to integer), capped at maxCapacity
  */
 export function calculatePredictedIron(
   data: IronData,
@@ -25,8 +26,9 @@ export function calculatePredictedIron(
 
   const secondsElapsed = (currentTime - data.lastUpdateTime) / 1000;
   const predictedIron = data.serverAmount + (secondsElapsed * data.ironPerSecond);
+  const cappedIron = Math.min(predictedIron, data.maxCapacity);
   
-  return Math.floor(predictedIron);
+  return Math.floor(cappedIron);
 }
 
 /**
