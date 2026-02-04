@@ -72,7 +72,9 @@ function performResearchTrigger(
     throw new ApiError(400, 'Not enough iron');
   }
   
-  user.iron -= cost;
+  if (!user.subtractIron(cost)) {
+    throw new ApiError(400, 'Not enough iron');
+  }
   triggerResearch(user.techTree, researchType);
   
   // Update cache with new data (using unsafe methods because we have proper locks)

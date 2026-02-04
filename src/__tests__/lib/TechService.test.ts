@@ -94,7 +94,14 @@ describe('TechService - Unit Tests', () => {
                 const mockUser = {
                     iron: 1000,
                     buildQueue: [],
-                    buildStartSec: null
+                    buildStartSec: null,
+                    subtractIron: function(amount: number): boolean {
+                        if (this.iron >= amount) {
+                            this.iron -= amount;
+                            return true;
+                        }
+                        return false;
+                    }
                 } as unknown as User;
                 mockGetUserByIdWithLock.mockResolvedValue(mockUser);
                 const context = createLockContext();
@@ -117,9 +124,16 @@ describe('TechService - Unit Tests', () => {
             await withTransaction(async () => {
                 // Arrange
                 const mockUser = {
-                    iron: 10, // Not enough for pulse_laser (costs 100)
+                    iron: 10, // Not enough for pulse_laser (costs 150)
                     buildQueue: [],
-                    buildStartSec: null
+                    buildStartSec: null,
+                    subtractIron: function(amount: number): boolean {
+                        if (this.iron >= amount) {
+                            this.iron -= amount;
+                            return true;
+                        }
+                        return false;
+                    }
                 } as unknown as User;
                 mockGetUserByIdWithLock.mockResolvedValue(mockUser);
                 const context = createLockContext();
