@@ -95,7 +95,7 @@ describe('TechService - Unit Tests', () => {
                     iron: 1000,
                     buildQueue: [],
                     buildStartSec: null,
-                    subtractIron: function(amount: number): boolean {
+                    subtractIron: function(this: { iron: number }, amount: number): boolean {
                         if (this.iron >= amount) {
                             this.iron -= amount;
                             return true;
@@ -127,7 +127,7 @@ describe('TechService - Unit Tests', () => {
                     iron: 10, // Not enough for pulse_laser (costs 150)
                     buildQueue: [],
                     buildStartSec: null,
-                    subtractIron: function(amount: number): boolean {
+                    subtractIron: function(this: { iron: number }, amount: number): boolean {
                         if (this.iron >= amount) {
                             this.iron -= amount;
                             return true;
