@@ -160,8 +160,12 @@ describe('MessageCache - Persistence After Summarization', () => {
       await ctx.useLockWithAcquire(DATABASE_LOCK_MESSAGES, async (lockCtx) => {
         const allDbMessages = await messagesRepo.getAllMessages(lockCtx, userId);
         
-        // Should have 5 messages: 3 original (1 battle read, 2 unknown read) + 1 summary (unread) + 2 unknown re-created (unread)
-        expect(allDbMessages.length).toBe(5);
+        // Should have 6 messages: 
+        // - 3 original (1 battle read, 2 unknown read) 
+        // - 1 summary (unread) 
+        // - 2 unknown re-created (unread)
+        // Note: Old unknown messages are marked as read but not deleted
+        expect(allDbMessages.length).toBe(6);
         
         // The original battle message should be marked as read
         const originalBattleMsg = allDbMessages.find(m => 
@@ -170,6 +174,10 @@ describe('MessageCache - Persistence After Summarization', () => {
         );
         expect(originalBattleMsg).toBeDefined();
         expect(originalBattleMsg!.is_read).toBe(true);
+        
+        // Original unknown messages should be marked as read
+        const readMessages = allDbMessages.filter(m => m.is_read);
+        expect(readMessages.length).toBe(3); // 1 battle + 2 unknown
       });
 
       // Get unread messages

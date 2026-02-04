@@ -79,7 +79,12 @@ export class MessagesRepo {
     const db = await getDatabase();
     const params = limit ? [userId, limit] : [userId];
     const result = await db.query(query, params);
-    return result.rows || [];
+    
+    // Convert created_at from string to number if needed (PostgreSQL BIGINT returns as string)
+    return (result.rows || []).map(row => ({
+      ...row,
+      created_at: typeof row.created_at === 'string' ? parseInt(row.created_at, 10) : row.created_at
+    }));
   }
 
   /**
@@ -194,6 +199,11 @@ export class MessagesRepo {
        ORDER BY created_at ASC`,
       [userId]
     );
-    return result.rows || [];
+    
+    // Convert created_at from string to number if needed (PostgreSQL BIGINT returns as string)
+    return (result.rows || []).map(row => ({
+      ...row,
+      created_at: typeof row.created_at === 'string' ? parseInt(row.created_at, 10) : row.created_at
+    }));
   }
 }
