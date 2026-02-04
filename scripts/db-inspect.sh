@@ -18,6 +18,7 @@
 #   count    - Count rows in all tables (quick overview of database state)
 #   schema   - Show table structures (\d command for each table)
 #   clear    - Clear all data from the database (TRUNCATE with CASCADE)
+#   drop     - Drop all tables completely (removes table structure)
 #   seed     - Reseed the database with default test data
 #   connect  - Open an interactive psql session to the test database
 #
@@ -125,6 +126,21 @@ case "$1" in
     fi
     ;;
     
+  drop)
+    echo "💣 Dropping all tables from test database..."
+    echo "⚠️  WARNING: This will completely remove all tables and their structure!"
+    echo "⚠️  You will need to restart the application to recreate them."
+    read -p "Are you sure? (y/N) " -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+      query "DROP TABLE IF EXISTS battles, messages, users, space_objects CASCADE;"
+      echo "✅ All tables dropped!"
+      echo "💡 Tip: Restart the application to recreate tables automatically"
+    else
+      echo "❌ Cancelled"
+    fi
+    ;;
+    
   seed)
     echo "🌱 Seeding test database with default data..."
     echo ""
@@ -158,6 +174,7 @@ case "$1" in
     echo "  count    - Count rows in all tables"
     echo "  schema   - Show table structures"
     echo "  clear    - Clear all data (with confirmation)"
+    echo "  drop     - Drop all tables completely (with confirmation)"
     echo "  seed     - Reseed database with default test data"
     echo "  connect  - Open interactive psql session"
     echo ""
