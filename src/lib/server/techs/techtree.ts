@@ -40,6 +40,20 @@ export enum ResearchType {
   StealIron = 'stealIron',
 }
 
+// Subset of implemented researches for reference
+export const IMPLEMENTED_RESEARCHES: ReadonlySet<ResearchType> = new Set([
+  ResearchType.IronHarvesting,
+  ResearchType.ShipSpeed,
+  ResearchType.InventoryCapacity,
+  ResearchType.HullStrength,
+  ResearchType.ArmorEffectiveness,
+  ResearchType.ShieldEffectiveness,
+  ResearchType.ProjectileDamage,
+  ResearchType.ProjectileReloadRate,
+  ResearchType.EnergyDamage,
+  ResearchType.EnergyRechargeRate,
+]);
+
 /**
  * Represents a research item in the tech tree.
  */
