@@ -6,12 +6,17 @@ set -e
 echo "🔍 Checking for test database..."
 
 # Detect if we're running locally or in Docker
-# Try to connect to localhost:5433 first (local db-test), then fall back to db service (Docker)
+# Try to connect to localhost:5433 first (local db-test), then localhost:5432, then fall back to db service (Docker)
 if pg_isready -h localhost -p 5433 -U spacewars -t 1 2>/dev/null; then
   # Running locally - use db-test on port 5433
   PGHOST=localhost
   PGPORT=5433
   echo "🏠 Running locally, connecting to db-test at ${PGHOST}:${PGPORT}"
+elif pg_isready -h localhost -p 5432 -U spacewars -t 1 2>/dev/null; then
+  # Running with localhost:5432 (CI or local main db)
+  PGHOST=localhost
+  PGPORT=5432
+  echo "💻 Running with localhost db at ${PGHOST}:${PGPORT}"
 else
   # Running in Docker - use db service on port 5432
   PGHOST=db
