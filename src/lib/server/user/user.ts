@@ -96,6 +96,7 @@ class User {
    * @returns The actual amount added (may be less if cap is hit)
    */
   addIron(amount: number): number {
+    if (amount <= 0) return 0;
     const maxCapacity = this.getMaxIronCapacity();
     const newIron = this.iron + amount;
     const cappedIron = Math.min(newIron, maxCapacity);
