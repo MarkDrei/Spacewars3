@@ -4,13 +4,13 @@ import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import AuthenticatedLayout from '@/components/Layout/AuthenticatedLayout';
 import { ServerAuthState } from '@/lib/server/serverSession';
-import './AboutPage.css';
+import './ShipPage.css';
 
-interface AboutPageClientProps {
+interface ShipPageClientProps {
   auth: ServerAuthState;
 }
 
-const AboutPageClient: React.FC<AboutPageClientProps> = () => {
+const ShipPageClient: React.FC<ShipPageClientProps> = () => {
   const [availableShips, setAvailableShips] = useState<number[]>([]);
   const [selectedShip, setSelectedShip] = useState<number | null>(null);
   const [currentShip, setCurrentShip] = useState<number | null>(null);
@@ -100,8 +100,8 @@ const AboutPageClient: React.FC<AboutPageClientProps> = () => {
 
   return (
     <AuthenticatedLayout>
-      <div className="about-page">
-        <div className="about-container">
+      <div className="ship-page">
+        <div className="ship-container">
           <h1 className="page-heading">Choose Your Ship</h1>
           
           {message && (
@@ -163,4 +163,4 @@ const AboutPageClient: React.FC<AboutPageClientProps> = () => {
   );
 };
 
-export default AboutPageClient;
+export default ShipPageClient;

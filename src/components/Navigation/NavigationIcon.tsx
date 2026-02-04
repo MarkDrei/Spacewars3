@@ -6,7 +6,7 @@ import {
   BuildingIcon,
   BeakerIcon,
   UserIcon,
-  InformationCircleIcon,
+  RocketIcon,
   WrenchScrewdriverIcon,
 } from './icons';
 
@@ -24,7 +24,7 @@ const iconMapping: Record<string, React.FC<{ className?: string; size?: number }
   '/factory': BuildingIcon,
   '/research': BeakerIcon,
   '/profile': UserIcon,
-  '/about': InformationCircleIcon,
+  '/ship': RocketIcon,
   '/admin': WrenchScrewdriverIcon,
 };
 
