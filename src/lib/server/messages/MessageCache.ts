@@ -766,11 +766,13 @@ export class MessageCache extends Cache {
 
   private async createMessageInDb(
     context: LockContext<LocksAtMostAndHas8>,
-    userId: number, messageText: string
+    userId: number, 
+    messageText: string,
+    createdAt?: number
   ): Promise<number> {
     return await context.useLockWithAcquire(LOCK_12, async (databaseContext) => {
       if (!this.messagesRepo) throw new Error('MessagesRepo not initialized')
-      return await this.messagesRepo.createMessage(databaseContext, userId, messageText);
+      return await this.messagesRepo.createMessage(databaseContext, userId, messageText, createdAt);
     });
   }
 
@@ -823,8 +825,8 @@ export class MessageCache extends Cache {
     message: Message
   ): Promise<void> {
 
-    // Insert into DB
-    const realId = await this.createMessageInDb(context, userId, message.message);
+    // Insert into DB with the message's timestamp (preserves original timestamp for recreated messages)
+    const realId = await this.createMessageInDb(context, userId, message.message, message.created_at);
 
     try {
       const messages = this.userMessages.get(userId);

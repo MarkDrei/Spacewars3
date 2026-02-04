@@ -38,18 +38,20 @@ export class MessagesRepo {
   /**
    * Create a new message for a user
    * Returns the ID of the newly created message
+   * @param createdAt - Optional timestamp in milliseconds. Defaults to Date.now() if not provided.
    */
   async createMessage<THeld extends readonly LockLevel[]>(
     _context: HasLock12Context<THeld>,
     recipientId: number,
-    message: string
+    message: string,
+    createdAt?: number
   ): Promise<number> {
     const db = await getDatabase();
-    const createdAt = Date.now();
+    const timestamp = createdAt ?? Date.now();
     const result = await db.query(
       `INSERT INTO messages (recipient_id, created_at, is_read, message)
        VALUES ($1, $2, FALSE, $3) RETURNING id`,
-      [recipientId, createdAt, message]
+      [recipientId, timestamp, message]
     );
     return result.rows[0].id;
   }

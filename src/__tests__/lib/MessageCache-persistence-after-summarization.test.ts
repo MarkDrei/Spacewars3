@@ -178,6 +178,72 @@ describe('MessageCache - Persistence After Summarization', () => {
     });
   });
 
+  it('messageSummarization_preservesOriginalTimestamps', async () => {
+    await withTransaction(async () => {
+      const userId = await createTestUser('timestamp_test');
+      const ctx = createLockContext();
+
+      // Create messages with known timestamps
+      const timestamp1 = Date.now() - 60000; // 1 minute ago
+      const timestamp2 = Date.now() - 30000; // 30 seconds ago
+      
+      await messageCache.createMessage(ctx, userId, 'Message 1');
+      await messageCache.createMessage(ctx, userId, 'Unknown message 1');
+      await messageCache.createMessage(ctx, userId, 'Unknown message 2');
+
+      // Wait for async message creation to complete
+      await messageCache.waitForPendingWrites();
+
+      // Get the messages to capture their original timestamps
+      const messagesBefore = await messageCache.getMessagesForUser(ctx, userId);
+      const unknownMsg1Timestamp = messagesBefore.find(m => m.message === 'Unknown message 1')?.created_at;
+      const unknownMsg2Timestamp = messagesBefore.find(m => m.message === 'Unknown message 2')?.created_at;
+      
+      expect(unknownMsg1Timestamp).toBeDefined();
+      expect(unknownMsg2Timestamp).toBeDefined();
+
+      // Summarize messages
+      await messageCache.summarizeMessages(ctx, userId);
+      await messageCache.waitForPendingWrites();
+
+      // Check that unknown messages have been recreated with original timestamps
+      const messagesAfter = await messageCache.getMessagesForUser(ctx, userId);
+      const recreatedMsg1 = messagesAfter.find(m => m.message === 'Unknown message 1');
+      const recreatedMsg2 = messagesAfter.find(m => m.message === 'Unknown message 2');
+      
+      expect(recreatedMsg1).toBeDefined();
+      expect(recreatedMsg2).toBeDefined();
+      expect(recreatedMsg1!.created_at).toBe(unknownMsg1Timestamp);
+      expect(recreatedMsg2!.created_at).toBe(unknownMsg2Timestamp);
+
+      // Verify timestamps are also preserved in database after restart
+      await messageCache.shutdown(ctx);
+      MessageCache.resetInstance(ctx);
+      await ctx.useLockWithAcquire(DATABASE_LOCK_MESSAGES, async (lockCtx) => {
+        await MessageCache.initialize(lockCtx, {
+          persistenceIntervalMs: 30000,
+          enableAutoPersistence: false
+        });
+      });
+      messageCache = MessageCache.getInstance();
+
+      // Load from database and verify timestamps
+      const messagesRepo = new MessagesRepo();
+      await ctx.useLockWithAcquire(DATABASE_LOCK_MESSAGES, async (lockCtx) => {
+        const allDbMessages = await messagesRepo.getAllMessages(lockCtx, userId);
+        
+        const dbMsg1 = allDbMessages.find(m => m.message === 'Unknown message 1');
+        const dbMsg2 = allDbMessages.find(m => m.message === 'Unknown message 2');
+        
+        expect(dbMsg1).toBeDefined();
+        expect(dbMsg2).toBeDefined();
+        // Timestamps should match the original timestamps, not be new timestamps
+        expect(dbMsg1!.created_at).toBe(unknownMsg1Timestamp);
+        expect(dbMsg2!.created_at).toBe(unknownMsg2Timestamp);
+      });
+    });
+  });
+
   it('markAllAsRead_afterRestart_messagesStayRead', async () => {
     await withTransaction(async () => {
       const userId = await createTestUser('mark_read_test');
