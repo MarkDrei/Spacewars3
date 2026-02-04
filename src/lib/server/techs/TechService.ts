@@ -136,8 +136,10 @@ export class TechService {
             return { success: false, error: 'Insufficient iron' };
         }
 
-        // Deduct cost
-        user.iron -= spec.baseCost;
+        // Deduct cost using centralized method
+        if (!user.subtractIron(spec.baseCost)) {
+            return { success: false, error: 'Insufficient iron' };
+        }
 
         // Add to queue
         const queueItem: BuildQueueItem = {

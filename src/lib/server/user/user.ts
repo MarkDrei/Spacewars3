@@ -83,37 +83,72 @@ class User {
     return this.getIronPerSecond() * elapsedSeconds;
   }
 
+  /**
+   * Get the maximum iron capacity based on inventory capacity research
+   */
+  getMaxIronCapacity(): number {
+    return getResearchEffectFromTree(this.techTree, ResearchType.InventoryCapacity);
+  }
+
+  /**
+   * Add iron to the user's inventory with capacity enforcement
+   * @param amount Amount of iron to add
+   * @returns The actual amount added (may be less if cap is hit)
+   */
+  addIron(amount: number): number {
+    const maxCapacity = this.getMaxIronCapacity();
+    const newIron = this.iron + amount;
+    const cappedIron = Math.min(newIron, maxCapacity);
+    const actualAdded = cappedIron - this.iron;
+    this.iron = cappedIron;
+    return actualAdded;
+  }
+
+  /**
+   * Subtract iron from the user's inventory
+   * @param amount Amount of iron to subtract
+   * @returns true if successful, false if insufficient iron
+   */
+  subtractIron(amount: number): boolean {
+    if (this.iron < amount) {
+      return false;
+    }
+    this.iron -= amount;
+    return true;
+  }
+
   updateStats(now: number): void {
     const elapsed = now - this.last_updated;
     if (elapsed <= 0) return;
 
-    let iron = this.iron;
+    let ironToAdd = 0;
     const techTree = this.techTree;
     const active = techTree.activeResearch;
     if (!active || active.type !== ResearchType.IronHarvesting) {
       // No relevant research in progress, just award all time
-      iron += getResearchEffectFromTree(techTree, ResearchType.IronHarvesting) * elapsed;
+      ironToAdd += getResearchEffectFromTree(techTree, ResearchType.IronHarvesting) * elapsed;
       updateTechTree(techTree, elapsed);
     } else {
       const timeToComplete = active.remainingDuration;
       if (elapsed < timeToComplete) {
         // Research does not complete in this interval
-        iron += getResearchEffectFromTree(techTree, ResearchType.IronHarvesting) * elapsed;
+        ironToAdd += getResearchEffectFromTree(techTree, ResearchType.IronHarvesting) * elapsed;
         updateTechTree(techTree, elapsed);
       } else {
         // Research completes during this interval
         // 1. Award up to research completion at old rate
-        iron += getResearchEffectFromTree(techTree, ResearchType.IronHarvesting) * timeToComplete;
+        ironToAdd += getResearchEffectFromTree(techTree, ResearchType.IronHarvesting) * timeToComplete;
         updateTechTree(techTree, timeToComplete);
         // 2. After research completes, award remaining time at new rate (if any)
         const remaining = elapsed - timeToComplete;
         if (remaining > 0) {
-          iron += getResearchEffectFromTree(techTree, ResearchType.IronHarvesting) * remaining;
+          ironToAdd += getResearchEffectFromTree(techTree, ResearchType.IronHarvesting) * remaining;
           updateTechTree(techTree, remaining);
         }
       }
     }
-    this.iron = iron;
+    // Use centralized addIron method which enforces capacity cap
+    this.addIron(ironToAdd);
     this.last_updated = now;
 
     // Also update defense values (regeneration)
@@ -176,10 +211,10 @@ class User {
         ironReward = 0;
     }
 
-    // Award the iron
-    this.iron += ironReward;
+    // Award the iron using centralized method with capacity enforcement
+    const actualAdded = this.addIron(ironReward);
 
-    console.log(`User ${this.username} collected a ${objectType} and received ${ironReward} iron (total: ${this.iron})`);
+    console.log(`User ${this.username} collected a ${objectType} and received ${actualAdded} iron (total: ${this.iron})`);
   }
 }
 
