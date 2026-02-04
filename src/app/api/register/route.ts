@@ -51,6 +51,7 @@ export async function POST(request: NextRequest) {
               speed: DEFAULT_SHIP_START_SPEED,
               angle: DEFAULT_SHIP_START_ANGLE,
               last_position_update_ms: Date.now(),
+              picture_id: 1, // Default ship picture
               username: user.username
             };
             world.spaceObjects.push(newShip);
