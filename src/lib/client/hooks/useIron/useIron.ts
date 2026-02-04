@@ -16,7 +16,8 @@ export const useIron = (pollInterval: number = 5000): UseIronReturn => {
   const [ironData, setIronData] = useState<IronData>({
     serverAmount: 0,
     ironPerSecond: 0,
-    lastUpdateTime: Date.now()
+    lastUpdateTime: Date.now(),
+    maxCapacity: 5000 // Default to base capacity
   });
   const [displayIronAmount, setDisplayIronAmount] = useState<number>(0);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -54,7 +55,8 @@ export const useIron = (pollInterval: number = 5000): UseIronReturn => {
       const newData: IronData = {
         serverAmount: result.iron,
         ironPerSecond: result.ironPerSecond,
-        lastUpdateTime: Date.now()
+        lastUpdateTime: Date.now(),
+        maxCapacity: result.maxIronCapacity
       };
       
       setIronData(newData);

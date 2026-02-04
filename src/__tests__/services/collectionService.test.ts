@@ -36,7 +36,8 @@ describe('collectionService', () => {
       const mockUpdatedStats = {
         iron: 1150,
         last_updated: 1234567890,
-        ironPerSecond: 2.5
+        ironPerSecond: 2.5,
+        maxIronCapacity: 5000
       };
       
       mockFetch.mockResolvedValueOnce({
@@ -78,7 +79,8 @@ describe('collectionService', () => {
       const mockUpdatedStats = {
         iron: 1000,
         last_updated: 1234567890,
-        ironPerSecond: 2.5
+        ironPerSecond: 2.5,
+        maxIronCapacity: 5000
       };
       
       mockFetch.mockResolvedValueOnce({
@@ -108,7 +110,8 @@ describe('collectionService', () => {
       const mockUpdatedStats = {
         iron: 500,
         last_updated: 1234567890,
-        ironPerSecond: 2.5
+        ironPerSecond: 2.5,
+        maxIronCapacity: 5000
       };
       
       mockFetch.mockResolvedValueOnce({
@@ -173,7 +176,8 @@ describe('collectionService', () => {
       const mockUpdatedStats = {
         iron: 800,
         last_updated: 1234567890,
-        ironPerSecond: 2.5
+        ironPerSecond: 2.5,
+        maxIronCapacity: 5000
       };
       
       mockFetch.mockRejectedValueOnce(new Error('Network error'));
@@ -227,7 +231,8 @@ describe('collectionService', () => {
       const mockUpdatedStats = {
         iron: 600,
         last_updated: 1234567890,
-        ironPerSecond: 2.5
+        ironPerSecond: 2.5,
+        maxIronCapacity: 5000
       };
       
       mockFetch.mockResolvedValueOnce({
@@ -258,7 +263,8 @@ describe('collectionService', () => {
       const mockUpdatedStats = {
         iron: 700,
         last_updated: 1234567890,
-        ironPerSecond: 2.5
+        ironPerSecond: 2.5,
+        maxIronCapacity: 5000
       };
       
       mockFetch.mockResolvedValueOnce({
@@ -293,7 +299,8 @@ describe('collectionService', () => {
       const mockUpdatedStats = {
         iron: 2175,
         last_updated: 1234567890,
-        ironPerSecond: 2.5
+        ironPerSecond: 2.5,
+        maxIronCapacity: 5000
       };
       
       mockFetch.mockResolvedValueOnce({
@@ -334,7 +341,8 @@ describe('collectionService', () => {
       const mockUpdatedStats = {
         iron: 3750,
         last_updated: 1234567890,
-        ironPerSecond: 2.5
+        ironPerSecond: 2.5,
+        maxIronCapacity: 5000
       };
       
       vi.mocked(userStatsService.getUserStats).mockResolvedValueOnce(mockUpdatedStats);
@@ -365,7 +373,8 @@ describe('collectionService', () => {
       const mockUpdatedStats = {
         iron: 1000,
         last_updated: 1234567890,
-        ironPerSecond: 2.5
+        ironPerSecond: 2.5,
+        maxIronCapacity: 5000
       };
       
       mockFetch.mockResolvedValueOnce({
