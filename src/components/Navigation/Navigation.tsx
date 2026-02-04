@@ -78,11 +78,11 @@ const Navigation: React.FC<NavigationProps> = ({ onLogout }) => {
             Research
           </Link>
           <Link 
-            href="/about" 
-            className={`navbar-item ${isActive('/about') ? 'active' : ''}`}
+            href="/ship" 
+            className={`navbar-item ${isActive('/ship') ? 'active' : ''}`}
             onClick={closeMenu}
           >
-            About
+            Ship
           </Link>
           <Link 
             href="/profile" 
@@ -117,7 +117,7 @@ const Navigation: React.FC<NavigationProps> = ({ onLogout }) => {
           <NavigationIcon route="/game" label="Game" isActive={isActive('/game')} />
           <NavigationIcon route="/factory" label="Factory" isActive={isActive('/factory')} />
           <NavigationIcon route="/research" label="Research" isActive={isActive('/research')} />
-          <NavigationIcon route="/about" label="About" isActive={isActive('/about')} />
+          <NavigationIcon route="/ship" label="Ship" isActive={isActive('/ship')} />
           <NavigationIcon route="/profile" label="Profile" isActive={isActive('/profile')} />
           {hasAdminAccess && (
             <NavigationIcon route="/admin" label="Admin" isActive={isActive('/admin')} />

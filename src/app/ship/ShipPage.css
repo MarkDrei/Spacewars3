@@ -1,11 +1,11 @@
-.about-page {
+.ship-page {
   min-height: calc(100vh - 60px);
   background-color: #121212;
   color: white;
   padding: 2rem 1rem;
 }
 
-.about-container {
+.ship-container {
   max-width: 1200px;
   margin: 0 auto;
 }
@@ -143,7 +143,7 @@
 }
 
 @media (max-width: 768px) {
-  .about-page {
+  .ship-page {
     padding: 1rem 0.5rem;
   }
 
