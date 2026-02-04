@@ -16,7 +16,7 @@ interface FactoryPageClientProps {
   auth: ServerAuthState;
 }
 
-const FactoryPageClient: React.FC<FactoryPageClientProps> = () => {
+const FactoryPageClient: React.FC<FactoryPageClientProps> = ({ auth }) => {
   // Auth is guaranteed by server, so pass true to hooks
   const { ironAmount } = useIron();
   const {
@@ -134,16 +134,18 @@ const FactoryPageClient: React.FC<FactoryPageClientProps> = () => {
                 </table>
               </div>
 
-              {/* Cheat Mode Button */}
-              <div className="cheat-section">
-                <button
-                  className="cheat-button"
-                  onClick={completeBuild}
-                  disabled={isCompletingBuild || buildQueue.length === 0}
-                >
-                  {isCompletingBuild ? 'Completing...' : '⚡ Complete First Build (Cheat)'}
-                </button>
-              </div>
+              {/* Cheat Mode Button - Only for test users 'a' and 'q' */}
+              {(auth.username === 'a' || auth.username === 'q') && (
+                <div className="cheat-section">
+                  <button
+                    className="cheat-button"
+                    onClick={completeBuild}
+                    disabled={isCompletingBuild || buildQueue.length === 0}
+                  >
+                    {isCompletingBuild ? 'Completing...' : '⚡ Complete First Build (Cheat)'}
+                  </button>
+                </div>
+              )}
             </>
           )}
 
