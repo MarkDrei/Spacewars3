@@ -565,8 +565,28 @@ export class MessageCache extends Cache {
         msg.is_read = true;
       }
   
-      // Mark user as dirty for persistence
-      this.dirtyUsers.add(userId);
+      // Persist read status updates to database BEFORE removing messages from cache
+      // This ensures the read status is saved even though messages will be removed
+      await context.useLockWithAcquire(LOCK_12, async (databaseContext) => {
+        if (!this.messagesRepo) throw new Error('MessagesRepo not initialized');
+        
+        // Collect updates for all processed messages
+        const updates: Array<{id: number, isRead: boolean}> = [];
+        for (const msg of unreadMessages) {
+          // Only update messages that have real IDs (not pending)
+          if (!this.pendingMessageIds.has(msg.id)) {
+            updates.push({
+              id: msg.id,
+              isRead: msg.is_read
+            });
+          }
+        }
+        
+        if (updates.length > 0) {
+          console.log(`📬 Persisting read status for ${updates.length} summarized message(s)`);
+          await this.messagesRepo.updateMultipleReadStatuses(databaseContext, updates);
+        }
+      });
   
       // Remove all processed messages from cache (both summaries and regular messages)
       // All unread messages are now either: converted to summary, marked as read (summaries), or re-created as unread (unknown)
