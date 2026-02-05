@@ -65,10 +65,10 @@ Spacewars Ironcore is a 2D space exploration game built with Next.js 15, TypeScr
 
 - **Platform:** Next.js 15 with App Router
 - **Language:** TypeScript (strict mode)
-- **Database:** SQLite3 (file-based, single writer)
+- **Database:** PostgreSQL (relational, ACID-compliant)
 - **Lock System:** IronGuard TypeScript Locks for compile-time deadlock prevention
 - **Runtime:** Node.js v22.17.0
-- **Deployment:** Vercel-compatible (see `vercel.json`)
+- **Deployment:** Docker, Vercel, Render (see configuration files)
 
 ### 2.2 Organizational Constraints
 
@@ -87,7 +87,7 @@ Spacewars Ironcore is a 2D space exploration game built with Next.js 15, TypeScr
 │   Browser   │
 │   (Player)  │
 └──────┬──────┘
-       │ HTTP/WebSocket
+       │ HTTP
        ▼
 ┌─────────────────────────────┐
 │  Spacewars Ironcore Server  │
@@ -96,7 +96,7 @@ Spacewars Ironcore is a 2D space exploration game built with Next.js 15, TypeScr
            │
            ▼
     ┌──────────────┐
-    │   SQLite DB  │
+    │ PostgreSQL DB│
     └──────────────┘
 ```
 
@@ -114,19 +114,18 @@ Spacewars Ironcore is a 2D space exploration game built with Next.js 15, TypeScr
 ### 4.1 Core Architectural Decisions
 
 1. **Compile-Time Deadlock Prevention:** Using IronGuard lock system to enforce strict lock ordering at compile time
-2. **Two-Layer Caching:** Separate cache managers for different data domains:
-   - `TypedCacheManager`: User and world data
-   - `MessageCache`: User messages (independent)
-3. **Async-First Design:** Message creation is asynchronous with temporary IDs for immediate availability
-4. **Session-Based Authentication:** HTTP-only cookies with iron-session for security
+2. **Four-Layer Caching:** Separate cache managers for different data domains with explicit dependency injection
+3. **Repository Pattern:** Data access layer (repos) separate from business logic and caching
+4. **Async-First Design:** Message creation is asynchronous with temporary IDs for immediate availability
+5. **Session-Based Authentication:** HTTP-only cookies with iron-session for security
 
 ### 4.2 Technology Stack
 
 | Layer          | Technology            | Purpose             |
 | -------------- | --------------------- | ------------------- |
-| Frontend       | React 18 + Next.js 15 | UI framework        |
+| Frontend       | React 19 + Next.js 15 | UI framework        |
 | Backend        | Next.js API Routes    | RESTful endpoints   |
-| Database       | SQLite3               | Persistent storage  |
+| Database       | PostgreSQL            | Persistent storage  |
 | Lock System    | IronGuard             | Deadlock prevention |
 | Canvas         | HTML5 Canvas API      | Game rendering      |
 | Authentication | iron-session          | Secure sessions     |
@@ -152,46 +151,105 @@ See [Building Blocks - Cache Systems](./building-blocks-cache-systems.md) for de
 │         └─────────────────┴────────────────────┘             │
 │                           │                                   │
 │                    ┌──────▼──────┐                           │
-│                    │   SQLite    │                           │
+│                    │ PostgreSQL  │                           │
 │                    │   Database  │                           │
 │                    └─────────────┘                           │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### 5.2 Level 2: Cache Layer Architecture
+### 5.2 Level 2: Cache and Repository Architecture
 
-The cache layer consists of two independent cache managers with distinct responsibilities:
+The application employs a layered architecture separating caching, business logic, and data access:
 
-#### 5.2.1 TypedCacheManager
+#### 5.2.1 Cache Layer (Four Independent Caches)
 
-**Responsibility:** User data, world state, username mappings
+Four singleton cache managers handle different data domains with explicit dependency injection:
 
-**Key Features:**
+**UserCache** (`src/lib/server/user/userCache.ts`)
+- **Responsibility:** User data and username-to-ID mappings
+- **Storage:** Map<userId, User> + Map<username, userId>
+- **Lock Hierarchy:** USER_LOCK (3) → DATABASE_LOCK (4)
+- **Initialization:** Explicit via `intialize2()` during server startup
+- **Key Features:** Coordinates with WorldCache and MessageCache; dirty tracking for background persistence
 
-- Manages `User` objects with tech counts, iron, ship data
-- Manages `World` state with space objects
-- Username → UserID mapping cache
-- Dirty tracking for background persistence
-- Lock hierarchy: CACHE_LOCK → WORLD_LOCK → USER_LOCK → DATABASE_LOCK
-- **Explicit initialization** required (loads world data, starts battle scheduler)
+**WorldCache** (`src/lib/server/world/worldCache.ts`)
+- **Responsibility:** Authoritative game world state (space objects, boundaries)
+- **Storage:** Single World instance
+- **Lock Hierarchy:** WORLD_LOCK (2) → DATABASE_LOCK (10)
+- **Initialization:** Explicit via `initializeWithWorld()` or `initializeFromDb()`
+- **Key Features:** Save callback for dirty marking; delegates to worldRepo for persistence
 
-#### 5.2.2 MessageCache
+**MessageCache** (`src/lib/server/messages/MessageCache.ts`)
+- **Responsibility:** User messages and notifications
+- **Storage:** Map<userId, Message[]>
+- **Lock Hierarchy:** MESSAGE_LOCK (8) → DATABASE_LOCK_MESSAGES (12)
+- **Initialization:** Auto-initialize on first access (lightweight)
+- **Key Features:** Async message creation with temporary negative IDs (~0.5ms); uses MessagesRepo for all DB operations
 
-**Responsibility:** User messages and notifications
+**BattleCache** (`src/lib/server/battle/BattleCache.ts`)
+- **Responsibility:** Active battle state and combat data
+- **Storage:** Map<battleId, Battle> + Map<userId, battleId>
+- **Lock Hierarchy:** BATTLE_LOCK (2) → DATABASE_LOCK_BATTLES (13)
+- **Initialization:** Explicit via `initialize()` during server startup
+- **Key Features:** Starts battle scheduler; uses battleRepo for persistence
 
-**Key Features:**
+**Dependency Graph:**
+```
+MessageCache (standalone)
+  ↑
+WorldCache ──┐
+     │       │
+UserCache ───┤
+     │       │
+BattleCache ◀┘
+```
 
-- Independent message storage per user
-- Async message creation with temporary IDs
-- Read status tracking
-- Background persistence
-- Lock hierarchy: MESSAGE_CACHE_LOCK → MESSAGE_DATA_LOCK → MESSAGE_DB_LOCK
-- **Auto-initialization** on first access (lightweight)
+All caches are wired together explicitly during server startup (`main.ts`) via `configureDependencies()` helpers. This enables:
+- Clean separation of concerns (caching vs business logic)
+- Testability (mock dependencies easily)
+- Proper initialization order
+
+#### 5.2.2 Repository Pattern (Data Access Layer)
+
+Repositories provide a clean separation between caching/business logic and database operations:
+
+**Purpose:**
+- Single responsibility: Handle all direct database interactions for a specific domain
+- SQL query execution and data transformation
+- Type-safe database operations with lock context verification
+
+**Repository Implementations:**
+- **userRepo** (`src/lib/server/user/userRepo.ts`): User CRUD operations
+- **worldRepo** (`src/lib/server/world/worldRepo.ts`): World state persistence
+- **messagesRepo** (`src/lib/server/messages/messagesRepo.ts`): Message database operations
+- **battleRepo** (`src/lib/server/battle/battleRepo.ts`): Battle state persistence
+
+**Design Principles:**
+- Repos are called ONLY by their corresponding cache
+- No business logic in repos (pure data access)
+- Lock context passed via type parameters for compile-time safety
+- Stateless (no instance state, mostly static methods or simple classes)
+
+**Example Flow:**
+```
+API Route → UserCache → userRepo → PostgreSQL
+         (business)  (cache)  (data access)
+```
+
+#### 5.2.3 Shared Patterns
+
+All caches follow consistent patterns:
+
+1. **Singleton Pattern:** Global instances stored in `globalThis`
+2. **Write-Behind Persistence:** Updates modify cache immediately, background timer (30s) flushes dirty data
+3. **Dirty Tracking:** Separate tracking per entity (users, world, battles, messages)
+4. **IronGuard Locks:** Compile-time deadlock prevention through strict lock hierarchy
+5. **Graceful Shutdown:** Stop timers, flush dirty data, wait for pending operations
 
 **Design Rationale:**
-
-- Separation ensures message operations don't block game state updates
-- Different initialization strategies: TypedCacheManager needs explicit init for heavy world loading; MessageCache auto-initializes for convenience
+- Separation ensures message/battle operations don't block user/world updates
+- Different initialization strategies: heavy caches (User, World, Battle) initialized explicitly at startup; lightweight cache (Message) auto-initializes
+- Repository pattern keeps database logic separate and testable
 
 ---
 
@@ -234,18 +292,20 @@ Player → POST /api/harvest
 
 ```
 ┌────────────────────────────────────┐
-│         Vercel Platform             │
+│         Deployment Platform         │
+│  (Docker/Vercel/Render/etc.)       │
 ├────────────────────────────────────┤
 │  ┌──────────────────────────────┐  │
 │  │   Next.js Server (Node.js)   │  │
 │  │  - API Routes                │  │
 │  │  - SSR/SSG Pages             │  │
 │  │  - Game Logic                │  │
+│  │  - Cache Layer (4 caches)    │  │
 │  └──────────┬───────────────────┘  │
 │             │                       │
 │  ┌──────────▼───────────────────┐  │
-│  │   SQLite Database            │  │
-│  │   (Persistent Volume)        │  │
+│  │   PostgreSQL Database        │  │
+│  │   (Persistent Storage)       │  │
 │  └──────────────────────────────┘  │
 └────────────────────────────────────┘
 ```
@@ -259,15 +319,18 @@ Player → POST /api/harvest
 **Global Lock Hierarchy:**
 
 ```
-Level 1: CACHE_LOCK (Management operations)
-Level 2: WORLD_LOCK (World state)
-Level 3: USER_LOCK (User data)
-Level 4: MESSAGE_DATA_LOCK (Message data)
-Level 5: DATABASE_LOCK (Database writes)
-Level 8: MESSAGE_DB_LOCK (Message DB ops)
+Level 2:  BATTLE_LOCK          (Battle state operations)
+Level 4:  USER_LOCK            (User data access)
+Level 6:  WORLD_LOCK           (World state operations)
+Level 8:  MESSAGE_LOCK         (Message operations)
+Level 9:  CACHES_LOCK          (Cache management)
+Level 10: DATABASE_LOCK_USERS  (User DB persistence)
+Level 11: DATABASE_LOCK_SPACE_OBJECTS (World DB persistence)
+Level 12: DATABASE_LOCK_MESSAGES (Message DB persistence)
+Level 13: DATABASE_LOCK_BATTLES (Battle DB persistence)
 ```
 
-**Rule:** Locks must be acquired in ascending order. IronGuard enforces this at compile time.
+**Rule:** Locks must be acquired in ascending order. IronGuard enforces this at compile time through TypeScript type system.
 
 ### 8.2 Caching Strategy
 

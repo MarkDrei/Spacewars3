@@ -401,10 +401,10 @@ private pendingWrites: Map<number, Promise<void>> = new Map();
 - **BattleCache:** No statistics (simple cache)
 
 ### 7. Database Integration
-- SQLite3 with callback-based API wrapped in Promises
-- **TypedCacheManager & BattleCache:** Direct database operations
+- PostgreSQL with async/await Promise-based API
+- **UserCache & BattleCache & WorldCache:** Direct database operations via repos
 - **MessageCache:** Uses MessagesRepo for database abstraction layer
-- All managers use `sqlite3.Database` instance
+- All managers use the shared database connection pool
 
 ---
 
