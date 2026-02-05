@@ -12,13 +12,13 @@ The Spacewars application now uses four cache manager implementations to optimiz
 
 ## Cache Manager Comparison
 
-| Aspect | TypedCacheManager (UserWorldCache) | WorldCache | MessageCache | BattleCache |
+| Aspect | UserCache | WorldCache | MessageCache | BattleCache |
 |--------|-------------------|-----------|--------------|-------------|
 | **Primary Purpose** | User data, username mappings, coordination | Authoritative world state | User messages and notifications | Battle state and combat data |
 | **Data Scope** | Multi-entity (Users + indices) | Single-entity (World) | Single-entity (Messages) | Single-entity (Battles) |
 | **DB Abstraction** | Direct DB operations | Direct DB operations | MessagesRepo layer | Direct DB operations |
 | **Lock System** | Pure IronGuard | Pure IronGuard | Pure IronGuard | Pure IronGuard via delegation |
-| **Lock Hierarchy** | 4 levels (CACHE→WORLD→USER→DB) | WORLD + DB locks | 2 levels (CACHE→DATA) | 4 levels (via UserWorldCache + BATTLE) |
+| **Lock Hierarchy** | 4 levels (CACHE→WORLD→USER→DB) | WORLD + DB locks | 2 levels (CACHE→DATA) | 4 levels (via UserCache + BATTLE) |
 | **Async Operations** | Background persistence | Background persistence | Async creation + background persistence | Background persistence |
 | **Temporary IDs** | No | No | Yes (negative IDs) | No |
 | **Cache Structure** | Map<userId, User> | Single World instance | Map<userId, Message[]> | Map<battleId, Battle> + user→battle index |
@@ -36,25 +36,25 @@ MessageCache (standalone)
   ↑
 WorldCache ──┐
      │
-UserWorldCache ──┐
-      │
+UserCache ──┐
+     │
 BattleCache ◀─────┘
 ```
 
 - `main.ts` is responsible for creating the real cache instances and wiring them together via the new `configureDependencies(...)` helpers before regular initialization runs.
 - Each cache throws a descriptive error if it attempts to use a dependency that has not been configured. For test scenarios, mocks or lightweight substitutes can be provided through the same configuration surface.
-- To preserve backward compatibility, `UserWorldCache` can still bootstrap a `WorldCache` + `MessageCache` on-demand if no dependency was supplied. Production code **should** inject the shared instances instead of relying on this fallback.
+- To preserve backward compatibility, `UserCache` can still bootstrap a `WorldCache` + `MessageCache` on-demand if no dependency was supplied. Production code **should** inject the shared instances instead of relying on this fallback.
 
 ---
 
-## TypedCacheManager
+## UserCache
 
-**Location:** `src/lib/server/typedCacheManager.ts`
+**Location:** `src/lib/server/user/userCache.ts`
 
 ### Architecture
 
 ```
-TypedCacheManager (Singleton)
+UserCache (Singleton)
 ├── Configuration
 │   ├── persistenceIntervalMs: 30000
 │   ├── enableAutoPersistence: true
@@ -109,7 +109,7 @@ DATABASE_LOCK (5)
 **Usage Example:**
 ```typescript
 // High-level API - auto-initializes if needed
-const cacheManager = getTypedCacheManager();
+const cacheManager = UserCache.getInstance2();
 const user = await cacheManager.loadUserIfNeeded(userId);
 
 // Direct lock acquisition pattern
@@ -261,9 +261,9 @@ BattleCache (Singleton)
 │   ├── dirtyBattles: Set<number>
 │   └── initializationPromise: Promise<BattleCache> | null
 ├── Locks (via delegation)
-│   ├── Delegates to TypedCacheManager for User/World locks
+│   ├── Delegates to UserCache for User/World locks
 │   ├── BATTLE_LOCK (level 12) for battle-specific operations
-│   └── Uses DATABASE_LOCK via TypedCacheManager
+│   └── Uses DATABASE_LOCK via UserCache
 └── Operations
     ├── Mixed API: Sync getInstance() + Async getInitializedInstance()
     ├── High-level: Auto-initializing async methods
@@ -316,14 +316,14 @@ static async getInitializedInstance(): Promise<BattleCache> {
 ```
 
 **Lock Delegation Pattern:**
-Delegates database operations to TypedCacheManager instead of implementing own locks:
+Delegates database operations to UserCache instead of implementing own locks:
 
 ```typescript
 async loadBattleIfNeeded(battleId: number): Promise<Battle | null> {
   await this.ensureInitializedAsync();
-  const cacheManager = getTypedCacheManager();
+  const userCache = UserCache.getInstance2();
   const ctx = createLockContext();
-  const dbCtx = await cacheManager.acquireDatabaseRead(ctx);
+  const dbCtx = await userCache.acquireDatabaseRead(ctx);
   try {
     const battle = await this.loadBattleFromDb(battleId);
     return battle;
@@ -354,7 +354,7 @@ export async function createBattle(...) {
 **Write-Behind with Delegation:**
 1. Updates modify in-memory cache immediately
 2. Battle marked as "dirty" (added to `dirtyBattles`)
-3. Background timer (30s) flushes via TypedCacheManager locks
+3. Background timer (30s) flushes via UserCache locks
 4. Shutdown performs final flush
 
 ---
@@ -376,7 +376,7 @@ static resetInstance(): void  // For testing
 - Context-based lock acquisition with explicit `dispose()` in try-finally blocks
 
 ### 3. Initialization
-- **TypedCacheManager & MessageCache:** Internal auto-init with idempotent guards
+- **UserCache & MessageCache:** Internal auto-init with idempotent guards
 - **BattleCache:** Mixed strategy (sync + async) for callback compatibility
 - First call expensive (~10-200ms), subsequent calls instant (<1ms)
 
@@ -387,7 +387,7 @@ static resetInstance(): void  // For testing
 
 ### 5. Dirty Tracking
 ```typescript
-// TypedCacheManager & BattleCache
+// UserCache & BattleCache
 private dirtyUsers: Set<number> = new Set();
 private dirtyBattles: Set<number> = new Set();
 
@@ -397,7 +397,7 @@ private pendingWrites: Map<number, Promise<void>> = new Map();
 ```
 
 ### 6. Statistics Tracking
-- **TypedCacheManager & MessageCache:** Cache hits/misses, pending operations
+- **UserCache & MessageCache:** Cache hits/misses, pending operations
 - **BattleCache:** No statistics (simple cache)
 
 ### 7. Database Integration
@@ -412,15 +412,15 @@ private pendingWrites: Map<number, Promise<void>> = new Map();
 
 ### Database Abstraction
 - **MessageCache:** Uses MessagesRepo for all database operations (clean separation)
-- **TypedCacheManager & BattleCache:** Direct database operations with SQL in cache code
+- **UserCache & BattleCache:** Direct database operations via repos
 
 ### Lock Implementation
-- **TypedCacheManager:** Direct IronGuard usage with 4-level hierarchy
+- **UserCache:** Direct IronGuard usage with 4-level hierarchy
 - **MessageCache:** Direct IronGuard usage with 2-level hierarchy  
-- **BattleCache:** Delegates to TypedCacheManager for locks
+- **BattleCache:** Delegates to UserCache for locks
 
 ### Data Complexity
-- **TypedCacheManager:** Multi-entity (User + World + username index)
+- **UserCache:** Multi-entity (User + World + username index)
 - **MessageCache:** Single-entity (Messages per user)
 - **BattleCache:** Single-entity (Battles + user→battle index)
 
@@ -429,7 +429,7 @@ private pendingWrites: Map<number, Promise<void>> = new Map();
 - **Others:** Synchronous updates with background persistence
 
 ### Initialization Strategy
-- **TypedCacheManager & MessageCache:** Internal auto-init pattern in all public methods
+- **UserCache & MessageCache:** Internal auto-init pattern in all public methods
 - **BattleCache:** Dual API (sync `getInstance()` + async `getInitializedInstance()`) for database callback compatibility
 
 ---
@@ -438,16 +438,16 @@ private pendingWrites: Map<number, Promise<void>> = new Map();
 
 ### Known Issues
 
-**TechRepo bypassing TypedCacheManager:**
+**TechRepo bypassing UserCache:**
 - **Problem:** `TechRepo` directly reads/writes user data (iron, tech_counts, defense values)
-- **Impact:** TypedCacheManager can have stale cached data
+- **Impact:** UserCache can have stale cached data
 - **Affected routes:** `/api/build-item`, `/api/build-status`, `/api/complete-build`
-- **Recommended fix:** Make TechRepo coordinate with TypedCacheManager for cached fields
+- **Recommended fix:** Make TechRepo coordinate with UserCache for cached fields
 
 **Status:**
 - ✅ Message operations: All go through MessageCache
 - ✅ Battle operations: All go through BattleCache
-- ✅ User/World operations: Only accessed via TypedCacheManager
+- ✅ User/World operations: Only accessed via UserCache
 - ❌ Tech operations: TechRepo needs cache coordination
 
 ---
@@ -457,8 +457,9 @@ private pendingWrites: Map<number, Promise<void>> = new Map();
 All four cache managers use the IronGuard lock system for type-safe, deadlock-free concurrent access. They share core patterns (singleton, write-behind caching, dirty tracking, background persistence) while differing in complexity, initialization strategy, and async operation support.
 
 **Key characteristics:**
-- **TypedCacheManager:** Central multi-entity cache with 4-level lock hierarchy
+- **UserCache:** Central multi-entity cache with 4-level lock hierarchy
 - **MessageCache:** Fast async message creation with temporary IDs, uses MessagesRepo for DB abstraction
 - **BattleCache:** Simple delegation pattern for lock management
+- **WorldCache:** Authoritative world state with save callback pattern
 
 The separation ensures message operations don't block game updates, and battle operations don't interfere with user/world caching.
