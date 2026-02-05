@@ -262,7 +262,7 @@ Player → POST /api/login
          ↓
     Authenticate User
          ↓
-    Load from TypedCacheManager
+    Load from UserCache
          ↓
     Create Session Cookie
          ↓
@@ -276,7 +276,7 @@ Player → POST /api/harvest
          ↓
     Validate Session
          ↓
-    TypedCacheManager.loadUserIfNeeded()
+    UserCache.loadUserIfNeeded()
          ↓
     Calculate Iron Gain
          ↓
@@ -351,7 +351,7 @@ Level 13: DATABASE_LOCK_BATTLES (Battle DB persistence)
 
 ### 9.1 ADR-001: Separate Message Cache
 
-**Context:** Initial design had messages in TypedCacheManager, causing lock contention.
+**Context:** Initial design had messages in UserCache, causing lock contention.
 
 **Decision:** Extract MessageCache as independent singleton.
 
