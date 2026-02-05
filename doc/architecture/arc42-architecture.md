@@ -310,7 +310,7 @@ Level 8: MESSAGE_DB_LOCK (Message DB ops)
 - ✅ Impossible to create deadlocks (compile-time enforcement)
 - ✅ Clear lock hierarchy documented in types
 - ✅ Better IDE support with type hints
-- ⚠️ Learning curve for ValidLockContext patterns
+- ⚠️ Learning curve for lock context patterns
 
 ### 9.3 ADR-003: Async Message Creation
 
@@ -382,18 +382,16 @@ See [TechnicalDebt.md](../../TechnicalDebt.md) for current issues.
 
 **Key Risks:**
 
-1. **SQLite Concurrency:** Single writer limitation may cause bottlenecks at scale
-2. **Cache Invalidation:** No distributed cache invalidation strategy
-3. **Session Storage:** In-memory sessions don't survive restarts
+1. **Cache Invalidation:** No distributed cache invalidation strategy
+2. **Session Storage:** In-memory sessions don't survive restarts
 
 ---
 
 ## 12. Glossary
 
-| Term                 | Definition                                                         |
-| -------------------- | ------------------------------------------------------------------ |
-| **IronGuard**        | TypeScript lock library with compile-time deadlock prevention      |
-| **ValidLockContext** | Type constraint ensuring correct lock acquisition order            |
-| **Dirty Tracking**   | Marking cached data as modified for background persistence         |
-| **Temporary ID**     | Negative ID assigned to messages before DB insertion               |
-| **Lock Hierarchy**   | Ordered sequence of locks that must be acquired in ascending order |
+| Term               | Definition                                                         |
+| ------------------ | ------------------------------------------------------------------ |
+| **IronGuard**      | TypeScript lock library with compile-time deadlock prevention      |
+| **Dirty Tracking** | Marking cached data as modified for background persistence         |
+| **Temporary ID**   | Negative ID assigned to messages before DB insertion               |
+| **Lock Hierarchy** | Ordered sequence of locks that must be acquired in ascending order |
