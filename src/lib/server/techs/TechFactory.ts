@@ -271,12 +271,16 @@ export class TechFactory {
         case 'Weak': return reloadTimeSeconds / 240;
         case 'Medium': return reloadTimeSeconds / 180;
         case 'Strong': return reloadTimeSeconds / 120;
+        default:
+          throw new Error(`Invalid weapon strength: ${weaponSpec.strength} for Projectile weapon`);
       }
     } else { // Energy
       switch (weaponSpec.strength) {
         case 'Weak': return reloadTimeSeconds / 360;
         case 'Medium': return reloadTimeSeconds / 225;
         case 'Strong': return reloadTimeSeconds / 150;
+        default:
+          throw new Error(`Invalid weapon strength: ${weaponSpec.strength} for Energy weapon`);
       }
     }
   }

@@ -12,7 +12,6 @@ import { BATTLE_LOCK, USER_LOCK } from '@/lib/server/typedLocks';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 import { initializeIntegrationTestServer, shutdownIntegrationTestServer } from '../helpers/testServer';
 import { withTransaction } from '../helpers/transactionHelper';
-import { ResearchType, createInitialTechTree } from '../../lib/server/techs/techtree';
 
 describe('Battle Research Effects Integration', () => {
 
@@ -34,7 +33,6 @@ describe('Battle Research Effects Integration', () => {
   describe('Research Effects on Battle Cooldowns', () => {
     it('researchUpgrade_projectileWeapon_reducesReloadTime', async () => {
       await withTransaction(async () => {
-        const emptyCtx = createLockContext();
         await emptyCtx.useLockWithAcquire(BATTLE_LOCK, async (battleCtx) => {
           // === Phase 1: Get users and verify initial state ===
           let attackerId = 0, defenderId = 0;
@@ -127,7 +125,6 @@ describe('Battle Research Effects Integration', () => {
 
     it('researchUpgrade_energyWeapon_reducesReloadTime', async () => {
       await withTransaction(async () => {
-        const emptyCtx = createLockContext();
         await emptyCtx.useLockWithAcquire(BATTLE_LOCK, async (battleCtx) => {
           // === Phase 1: Get users and modify tech tree ===
           let attackerId = 0, defenderId = 0;
@@ -208,7 +205,6 @@ describe('Battle Research Effects Integration', () => {
 
     it('researchUpgrade_multipleWeapons_affectsOnlyCorrectType', async () => {
       await withTransaction(async () => {
-        const emptyCtx = createLockContext();
         await emptyCtx.useLockWithAcquire(BATTLE_LOCK, async (battleCtx) => {
           // === Phase 1: Setup user with both weapon types ===
           let attackerId = 0;
