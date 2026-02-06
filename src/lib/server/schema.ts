@@ -39,6 +39,9 @@ CREATE TABLE IF NOT EXISTS users (
   -- Battle state
   in_battle INTEGER NOT NULL DEFAULT 0,
   current_battle_id INTEGER DEFAULT NULL,
+
+  -- Experience and progression
+  xp DOUBLE PRECISION NOT NULL DEFAULT 0.0,
   
   FOREIGN KEY (ship_id) REFERENCES space_objects (id)
 )`;
@@ -146,5 +149,10 @@ export const MIGRATE_ADD_PICTURE_ID = [
   'ALTER TABLE space_objects ADD COLUMN IF NOT EXISTS picture_id INTEGER NOT NULL DEFAULT 1'
 ];
 
+// Migration to add XP column to users table (PostgreSQL syntax)
+export const MIGRATE_ADD_XP = [
+  'ALTER TABLE users ADD COLUMN IF NOT EXISTS xp DOUBLE PRECISION NOT NULL DEFAULT 0.0'
+];
+
 // Optional: Version management for migrations
-export const SCHEMA_VERSION = 11;
+export const SCHEMA_VERSION = 12;

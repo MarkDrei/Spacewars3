@@ -42,6 +42,8 @@ interface UserRow {
   // Build queue
   build_queue?: string;
   build_start_sec?: number | null;
+  // Experience
+  xp?: number;
 }
 
 function userFromRow(row: UserRow, saveCallback: SaveUserCallback): User {
@@ -110,7 +112,8 @@ function userFromRow(row: UserRow, saveCallback: SaveUserCallback): User {
     currentBattleId,
     buildQueue,
     buildStartSec,
-    row.ship_id
+    row.ship_id,
+    row.xp || 0.0
   );
 }
 
@@ -177,7 +180,7 @@ async function createUserWithShip(db: DatabaseConnection, username: string, pass
     // Calculate initial defense values based on default tech counts
     const initialMaxStats = TechService.calculateMaxDefense(defaultTechCounts, techTree);
 
-    const user = new User(userId, username, password_hash, 0.0, now, techTree, saveCallback, defaultTechCounts, initialMaxStats.hull, initialMaxStats.armor, initialMaxStats.shield, now, false, null, [], null, shipId);
+    const user = new User(userId, username, password_hash, 0.0, now, techTree, saveCallback, defaultTechCounts, initialMaxStats.hull, initialMaxStats.armor, initialMaxStats.shield, now, false, null, [], null, shipId, 0.0);
 
     // Send welcome message to new user
     const ctx = createLockContext();
@@ -210,7 +213,7 @@ async function createUserWithShip(db: DatabaseConnection, username: string, pass
     // Calculate initial defense values based on default tech counts
     const initialMaxStats = TechService.calculateMaxDefense(defaultTechCounts, techTree);
 
-    const user = new User(id, username, password_hash, 0.0, now, techTree, saveCallback, defaultTechCounts, initialMaxStats.hull, initialMaxStats.armor, initialMaxStats.shield, now, false, null, [], null);
+    const user = new User(id, username, password_hash, 0.0, now, techTree, saveCallback, defaultTechCounts, initialMaxStats.hull, initialMaxStats.armor, initialMaxStats.shield, now, false, null, [], null, undefined, 0.0);
 
     return user;
   }
@@ -241,8 +244,9 @@ export function saveUserToDb(db: DatabaseConnection): SaveUserCallback {
         in_battle = $19,
         current_battle_id = $20,
         build_queue = $21,
-        build_start_sec = $22
-      WHERE id = $23`,
+        build_start_sec = $22,
+        xp = $23
+      WHERE id = $24`,
       [
         user.iron,
         user.last_updated,
@@ -266,6 +270,7 @@ export function saveUserToDb(db: DatabaseConnection): SaveUserCallback {
         user.currentBattleId,
         JSON.stringify(user.buildQueue),
         user.buildStartSec,
+        user.xp,
         user.id
       ]
     );

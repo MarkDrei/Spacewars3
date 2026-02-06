@@ -16,6 +16,9 @@ class User {
   ship_id?: number; // Optional ship ID for linking to player's ship
   techCounts: TechCounts; // Tech counts for weapons and defense
 
+  // Experience and progression
+  xp: number;
+
   // Defense current values (persisted)
   hullCurrent: number;
   armorCurrent: number;
@@ -50,7 +53,8 @@ class User {
     currentBattleId: number | null,
     buildQueue: BuildQueueItem[],
     buildStartSec: number | null,
-    ship_id?: number
+    ship_id?: number,
+    xp?: number
   ) {
     this.id = id;
     this.username = username;
@@ -68,6 +72,7 @@ class User {
     this.buildQueue = buildQueue;
     this.buildStartSec = buildStartSec;
     this.ship_id = ship_id;
+    this.xp = xp ?? 0.0;
     this.saveCallback = saveCallback;
   }
 
@@ -217,6 +222,46 @@ class User {
 
     console.log(`User ${this.username} collected a ${objectType} and received ${actualAdded} iron (total: ${this.iron})`);
   }
+
+  /**
+   * Add XP to the user
+   * @param amount Amount of XP to add
+   */
+  addXP(amount: number): void {
+    if (amount <= 0) return;
+    this.xp += amount;
+  }
+
+  /**
+   * Get the current level based on XP
+   */
+  getLevel(): number {
+    return calculateLevelFromXP(this.xp);
+  }
+}
+
+/**
+ * Calculate level from XP using a logarithmic formula
+ * Level 1 = 0 XP
+ * Level 2 = 100 XP
+ * Level 3 = 300 XP (100 + 200)
+ * Level 4 = 600 XP (100 + 200 + 300)
+ * Formula: level = floor(sqrt(xp / 50)) + 1
+ */
+export function calculateLevelFromXP(xp: number): number {
+  if (xp < 0) return 1;
+  // Using a simple square root formula for progressive level scaling
+  return Math.floor(Math.sqrt(xp / 50)) + 1;
+}
+
+/**
+ * Calculate required XP for a given level
+ * Inverse of calculateLevelFromXP
+ */
+export function calculateXPForLevel(level: number): number {
+  if (level <= 1) return 0;
+  // Inverse: xp = 50 * (level - 1)^2
+  return 50 * Math.pow(level - 1, 2);
 }
 
 type SaveUserCallback = (user: User) => Promise<void>;
