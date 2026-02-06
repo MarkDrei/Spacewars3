@@ -80,10 +80,13 @@ function createBattleStats(user: User): BattleStats {
     if (count > 0) {
       const spec = TechFactory.getWeaponSpec(weaponType);
       if (spec) {
+        // Calculate reload time based on research effects
+        const reloadTime = TechFactory.calculateReloadTime(weaponType, user.techTree);
+        
         weapons[weaponType] = {
           count,
           damage: spec.damage,
-          cooldown: spec.cooldown
+          cooldown: reloadTime // Using calculated reload time instead of spec.cooldown
         };
       }
     }

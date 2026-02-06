@@ -206,6 +206,36 @@ export class TechFactory {
   }
 
   /**
+   * Calculate actual reload time for a weapon considering research effects
+   * @param weaponKey The weapon type (e.g., 'pulse_laser', 'auto_turret')
+   * @param techTree The user's research tree
+   * @returns Reload time in seconds for use in battles
+   */
+  static calculateReloadTime(weaponKey: string, techTree: { projectileReloadRate: number; energyRechargeRate: number }): number {
+    const spec = this.getWeaponSpec(weaponKey);
+    if (!spec) return 0;
+
+    // Base reload time in seconds (convert from minutes)
+    const baseReloadTimeSeconds = spec.reloadTimeMinutes * 60;
+
+    // Determine which research applies based on weapon subtype
+    let reloadRateReduction = 0;
+    if (spec.subtype === 'Projectile') {
+      // ProjectileReloadRate: 10% reduction per level
+      reloadRateReduction = techTree.projectileReloadRate * 10;
+    } else if (spec.subtype === 'Energy') {
+      // EnergyRechargeRate: 15% reduction per level
+      reloadRateReduction = techTree.energyRechargeRate * 15;
+    }
+
+    // Apply reduction (capped at 90% to prevent reload time from going to zero)
+    const effectiveReduction = Math.min(reloadRateReduction, 90);
+    const reloadTime = baseReloadTimeSeconds * (1 - effectiveReduction / 100);
+
+    return reloadTime;
+  }
+
+  /**
    * Get all available weapon specs
    */
   static getAllWeaponSpecs(): Record<string, WeaponSpec> {
