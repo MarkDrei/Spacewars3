@@ -11,7 +11,8 @@ import {
   triggerResearch,
   updateTechTree,
   getActiveResearch,
-  getWeaponDamageModifierFromTree
+  getWeaponDamageModifierFromTree,
+  getWeaponReloadTimeModifierFromTree
 } from '@/lib/server/techs/techtree';
 
 describe('getResearchUpgradeCost', () => {
@@ -297,3 +298,50 @@ describe('getWeaponDamageModifierFromTree', () => {
     expect(getWeaponDamageModifierFromTree(tree, 'unknown_weapon')).toBe(1.0);
   });
 });
+
+describe('getWeaponReloadTimeModifierFromTree', () => {
+  test('getWeaponReloadTimeModifierFromTree_projectileWeaponAtLevel1_returns09', () => {
+    const tree = createInitialTechTree();
+    // At level 1, effect = 10%, modifier = 1 - 0.10 = 0.9
+    const modifier = getWeaponReloadTimeModifierFromTree(tree, 'auto_turret');
+    expect(modifier).toBeCloseTo(0.9);
+  });
+
+  test('getWeaponReloadTimeModifierFromTree_energyWeaponAtLevel1_returns085', () => {
+    const tree = createInitialTechTree();
+    // At level 1, effect = 15%, modifier = 1 - 0.15 = 0.85
+    const modifier = getWeaponReloadTimeModifierFromTree(tree, 'pulse_laser');
+    expect(modifier).toBeCloseTo(0.85);
+  });
+
+  test('getWeaponReloadTimeModifierFromTree_projectileWeaponAtLevel3_returns07', () => {
+    const tree = createInitialTechTree();
+    tree.projectileReloadRate = 3;
+    // At level 3, effect = 10 + 10 + 10 = 30%, modifier = 1 - 0.30 = 0.7
+    const modifier = getWeaponReloadTimeModifierFromTree(tree, 'gauss_rifle');
+    expect(modifier).toBeCloseTo(0.7);
+  });
+
+  test('getWeaponReloadTimeModifierFromTree_energyWeaponAtLevel4_returns04', () => {
+    const tree = createInitialTechTree();
+    tree.energyRechargeRate = 4;
+    // At level 4, effect = 15 + 15 + 15 + 15 = 60%, modifier = 1 - 0.60 = 0.4
+    const modifier = getWeaponReloadTimeModifierFromTree(tree, 'plasma_lance');
+    expect(modifier).toBeCloseTo(0.4);
+  });
+
+  test('getWeaponReloadTimeModifierFromTree_highResearchLevel_respectsMinimumOf01', () => {
+    const tree = createInitialTechTree();
+    tree.energyRechargeRate = 10;
+    // At level 10, effect = 15 * 10 = 150%, modifier would be -0.5, but capped at 0.1
+    const modifier = getWeaponReloadTimeModifierFromTree(tree, 'photon_torpedo');
+    expect(modifier).toBe(0.1);
+  });
+
+  test('getWeaponReloadTimeModifierFromTree_unknownWeaponType_returns1', () => {
+    const tree = createInitialTechTree();
+    const modifier = getWeaponReloadTimeModifierFromTree(tree, 'unknown_weapon');
+    expect(modifier).toBe(1.0);
+  });
+});
+
