@@ -243,9 +243,10 @@ class User {
 /**
  * Calculate level from XP using a logarithmic formula
  * Level 1 = 0 XP
- * Level 2 = 100 XP
- * Level 3 = 300 XP (100 + 200)
- * Level 4 = 600 XP (100 + 200 + 300)
+ * Level 2 = 50 XP
+ * Level 3 = 200 XP
+ * Level 4 = 450 XP (200 + 250)
+ * Level 5 = 800 XP (450 + 350)
  * Formula: level = floor(sqrt(xp / 50)) + 1
  */
 export function calculateLevelFromXP(xp: number): number {

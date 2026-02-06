@@ -83,6 +83,12 @@ function createBattleStats(user: User): BattleStats {
         // Calculate reload time based on research effects
         const reloadTime = TechFactory.calculateReloadTime(weaponType, user.techTree);
         
+        // Skip weapon if reload time calculation fails
+        if (reloadTime === null) {
+          console.warn(`Failed to calculate reload time for ${weaponType}`);
+          continue;
+        }
+        
         weapons[weaponType] = {
           count,
           damage: spec.damage,

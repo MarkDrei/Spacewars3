@@ -7,7 +7,25 @@ import { TechFactory } from '../../lib/server/techs/TechFactory';
 
 describe('Reload Time Calculation', () => {
   describe('calculateReloadTime', () => {
-    it('calculateReloadTime_projectileWeaponNoResearch_returnsBaseReloadTime', () => {
+    it('calculateReloadTime_projectileWeaponLevel0Research_returnsBaseReloadTime', () => {
+      const techTree = { projectileReloadRate: 0, energyRechargeRate: 0 };
+      const reloadTime = TechFactory.calculateReloadTime('auto_turret', techTree);
+      
+      // auto_turret has reloadTimeMinutes: 12, so base is 12 * 60 = 720 seconds
+      // With level 0 ProjectileReloadRate (0% reduction): 720 * 1.0 = 720 seconds
+      expect(reloadTime).toBe(720);
+    });
+
+    it('calculateReloadTime_energyWeaponLevel0Research_returnsBaseReloadTime', () => {
+      const techTree = { projectileReloadRate: 0, energyRechargeRate: 0 };
+      const reloadTime = TechFactory.calculateReloadTime('pulse_laser', techTree);
+      
+      // pulse_laser has reloadTimeMinutes: 12, so base is 12 * 60 = 720 seconds
+      // With level 0 EnergyRechargeRate (0% reduction): 720 * 1.0 = 720 seconds
+      expect(reloadTime).toBe(720);
+    });
+
+    it('calculateReloadTime_projectileWeaponLevel1Research_appliesCorrectReduction', () => {
       const techTree = { projectileReloadRate: 1, energyRechargeRate: 1 };
       const reloadTime = TechFactory.calculateReloadTime('auto_turret', techTree);
       
@@ -16,7 +34,7 @@ describe('Reload Time Calculation', () => {
       expect(reloadTime).toBe(648);
     });
 
-    it('calculateReloadTime_energyWeaponNoResearch_returnsBaseReloadTime', () => {
+    it('calculateReloadTime_energyWeaponLevel1Research_appliesCorrectReduction', () => {
       const techTree = { projectileReloadRate: 1, energyRechargeRate: 1 };
       const reloadTime = TechFactory.calculateReloadTime('pulse_laser', techTree);
       
@@ -70,11 +88,11 @@ describe('Reload Time Calculation', () => {
       expect(reloadTime).toBe(840);
     });
 
-    it('calculateReloadTime_unknownWeapon_returns0', () => {
+    it('calculateReloadTime_unknownWeapon_returnsNull', () => {
       const techTree = { projectileReloadRate: 1, energyRechargeRate: 1 };
       const reloadTime = TechFactory.calculateReloadTime('unknown_weapon', techTree);
       
-      expect(reloadTime).toBe(0);
+      expect(reloadTime).toBeNull();
     });
   });
 });
