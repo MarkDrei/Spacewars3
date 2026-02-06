@@ -259,8 +259,8 @@ describe('getWeaponDamageModifierFromTree', () => {
   test('getWeaponDamageModifierFromTree_projectileWeaponAtLevel1_returns1', () => {
     const tree = createInitialTechTree();
     // At level 1, effect = baseValue = 50, modifier = 50/50 = 1.0
-    expect(getWeaponDamageModifierFromTree(tree, 'machine_gun')).toBeCloseTo(1.0);
-    expect(getWeaponDamageModifierFromTree(tree, 'flak_cannon')).toBeCloseTo(1.0);
+    expect(getWeaponDamageModifierFromTree(tree, 'auto_turret')).toBeCloseTo(1.0);
+    expect(getWeaponDamageModifierFromTree(tree, 'gauss_rifle')).toBeCloseTo(1.0);
     expect(getWeaponDamageModifierFromTree(tree, 'rocket_launcher')).toBeCloseTo(1.0);
   });
 
@@ -268,7 +268,7 @@ describe('getWeaponDamageModifierFromTree', () => {
     const tree = createInitialTechTree();
     // At level 1, effect = baseValue = 60, modifier = 60/60 = 1.0
     expect(getWeaponDamageModifierFromTree(tree, 'pulse_laser')).toBeCloseTo(1.0);
-    expect(getWeaponDamageModifierFromTree(tree, 'plasma_cannon')).toBeCloseTo(1.0);
+    expect(getWeaponDamageModifierFromTree(tree, 'plasma_lance')).toBeCloseTo(1.0);
     expect(getWeaponDamageModifierFromTree(tree, 'photon_torpedo')).toBeCloseTo(1.0);
   });
 
@@ -276,7 +276,7 @@ describe('getWeaponDamageModifierFromTree', () => {
     const tree = createInitialTechTree();
     tree.projectileDamage = 2;
     // At level 2, effect = 50 * 1.15 = 57.5, modifier = 57.5/50 = 1.15
-    expect(getWeaponDamageModifierFromTree(tree, 'machine_gun')).toBeCloseTo(1.15);
+    expect(getWeaponDamageModifierFromTree(tree, 'auto_turret')).toBeCloseTo(1.15);
   });
 
   test('getWeaponDamageModifierFromTree_energyWeaponAtLevel2_returns115Percent', () => {
