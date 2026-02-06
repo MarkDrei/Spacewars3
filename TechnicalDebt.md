@@ -22,114 +22,41 @@ Currently, marking a user as dirty for cache persistence requires explicit calls
 - Medium: Requires refactoring User class and cache manager
 
 **Related Files:**
-- src/lib/server/world/user.ts
-- src/lib/server/world/userWorldCache.ts
+- src/lib/server/user/user.ts
+- src/lib/server/user/userCache.ts
 
 ## Battle System - Cache Bypass Issue
 
-**Priority**: High  
+**Priority**: ~~High~~ **RESOLVED**  
 **Added**: 2025-10-11  
+**Resolved**: 2025-11-XX  
 **Component**: Battle System (battleScheduler.ts, battleService.ts)
 
 ### Problem
 
-The battle system currently bypasses the TypedCacheManager and writes directly to the database in multiple places:
+The battle system previously bypassed the cache layer and wrote directly to the database, creating cache consistency issues and violating architectural principles.
 
-1. **Battle State Updates** (`battleScheduler.ts`):
-   - `updateUserBattleState()` writes directly to DB via raw SQL
-   - Then tries to refresh cache as a workaround
-   - Violates single-source-of-truth principle
+### Solution Implemented
 
-2. **Battle Creation** (`battleService.ts`):
-   - `initiateBattle()` writes `in_battle` flags directly to DB
-   - Updates ship speeds directly via `setShipSpeed()`
-   - Creates battles in DB without going through cache
+The battle system has been refactored to use BattleCache as the single source of truth:
 
-3. **Battle Resolution** (`battleService.ts`):
-   - `resolveBattle()` updates defense values directly in DB
-   - Teleports ships directly
-   - Updates battle state without cache coordination
+1. **BattleCache** (`src/lib/server/battle/BattleCache.ts`):
+   - Manages all battle state in memory
+   - Single source of truth for ongoing battles
+   - Handles background persistence via battleRepo
+   - Proper lock hierarchy: BATTLE_LOCK (2) → DATABASE_LOCK_BATTLES (13)
 
-### Architecture Violation
+2. **BattleRepo** (`src/lib/server/battle/battleRepo.ts`):
+   - Pure database operations (no cache access, no business logic)
+   - Called ONLY by BattleCache for persistence
+   - Clean separation of concerns
 
-The TypedCacheManager is designed to be the **single source of truth** with these principles:
-- All data access should go through the cache manager
-- Cache manager handles DB synchronization via background persistence
-- Direct DB writes create synchronization issues and race conditions
-- Tests in `typedCacheManager.test.ts` verify proper lock ordering
+3. **BattleScheduler** (`src/lib/server/battle/battleScheduler.ts`):
+   - Uses BattleCache for all state access and updates
+   - Coordinates with UserCache and MessageCache via dependency injection
+   - No direct database writes
 
-### Current Workaround
-
-We're using a "write-through" pattern with manual cache refresh:
-```typescript
-// 1. Write to DB directly
-await db.run('UPDATE users SET in_battle = ?...');
-
-// 2. Force cache refresh
-await cacheManager.loadUserFromDbUnsafe(userId);
-cacheManager.setUserUnsafe(freshUser);
-```
-
-This works but is fragile and defeats the purpose of the cache architecture.
-
-### Proper Solution
-
-Refactor battle system to use TypedCacheManager APIs:
-
-1. **Update Users Through Cache**:
-   ```typescript
-   // Instead of direct DB writes:
-   await cacheManager.withUserLock(ctx, async (userCtx) => {
-     const user = cacheManager.getUserUnsafe(userId, userCtx);
-     user.inBattle = true;
-     user.currentBattleId = battleId;
-     cacheManager.setUserUnsafe(user, userCtx);
-     cacheManager.markUserDirty(userId);
-   });
-   ```
-
-2. **Battle Data in Cache**:
-   - Add battle cache to TypedCacheManager
-   - Battle updates go through cache
-   - Background persistence handles DB sync
-
-3. **Atomic Operations**:
-   - Use proper lock ordering (see `typedCacheManager.test.ts`)
-   - Ensure cache-management → world → user → database ordering
-   - Avoid deadlocks with compile-time safety
-
-### Impact
-
-**Current Issues**:
-- Race conditions between cache and DB
-- Cache staleness after battle state changes
-- Violates architectural principles
-- Makes debugging harder
-
-**Benefits of Fix**:
-- Single source of truth
-- Proper transactional semantics
-- Better testability
-- Follows existing lock ordering patterns
-
-### Effort Estimate
-
-- **Medium-High**: Requires refactoring battle system
-- Need to extend TypedCacheManager with battle cache support
-- Update all battle operations to use cache APIs
-- Add tests for battle cache operations
-
-### Related Files
-
-- `src/lib/server/battleScheduler.ts` - Direct DB writes in updateUserBattleState
-- `src/lib/server/battleService.ts` - Direct DB writes throughout
-- `src/lib/server/typedCacheManager.ts` - Needs battle cache support
-- `src/__tests__/lib/typedCacheManager.test.ts` - Lock ordering tests
-
-### Workarounds Implemented
-
-1. **Defense Values Display**: Modified `HomePageClient.tsx` to show battle stats when in battle instead of regenerating user values
-2. **Cache Refresh**: Manual cache refresh after DB updates to prevent stale data
+**Status**: ✅ Refactored - single source of truth, proper cache architecture
 
 ---
 
@@ -226,5 +153,5 @@ This ensures the cache is notified of changes and can persist them.
 ### Related Files
 
 - `src/lib/server/world/world.ts` - World class with save() method
-- `src/lib/server/world/userWorldCache.ts` - Cache manager with worldDirty flag
+- `src/lib/server/world/worldCache.ts` - Cache manager with worldDirty flag
 
