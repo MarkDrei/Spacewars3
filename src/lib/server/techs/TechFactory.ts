@@ -2,6 +2,8 @@
 // TechFactory - Manages ship technology and equipment
 // ---
 
+import { getWeaponReloadTimeModifierFromTree, TechTree } from './techtree';
+
 export type WeaponSubtype = 'Projectile' | 'Energy';
 export type WeaponStrength = 'Weak' | 'Medium' | 'Strong';
 
@@ -388,32 +390,14 @@ export class TechFactory {
    * @param techTree The tech tree containing research levels
    * @returns The reload time in seconds, modified by research
    */
-  static calculateWeaponReloadTime(weaponKey: string, techTree: { 
-    projectileReloadRate: number; 
-    energyRechargeRate: number;
-    [key: string]: unknown;
-  }): number {
+  static calculateWeaponReloadTime(weaponKey: string, techTree: TechTree): number {
     const weaponSpec = this.getWeaponSpec(weaponKey);
     if (!weaponSpec) {
       throw new Error(`Unknown weapon: ${weaponKey}`);
     }
 
-    // Import getWeaponReloadTimeModifierFromTree dynamically to avoid circular dependency
-    // For now, calculate the modifier inline
-    let reloadRateEffect: number;
-    if (weaponSpec.subtype === 'Projectile') {
-      // ProjectileReloadRate: level 1 = 10%, increases by 10% per level (constant)
-      const level = techTree.projectileReloadRate;
-      reloadRateEffect = level > 0 ? 10 + (10 * (level - 1)) : 0;
-    } else {
-      // EnergyRechargeRate: level 1 = 15%, increases by 15% per level (constant)
-      const level = techTree.energyRechargeRate;
-      reloadRateEffect = level > 0 ? 15 + (15 * (level - 1)) : 0;
-    }
-
-    // Calculate reload time multiplier (1 - effect/100)
-    // Cap at 0.1 (90% reduction max)
-    const multiplier = Math.max(0.1, 1 - (reloadRateEffect / 100));
+    // Get reload time multiplier from research
+    const multiplier = getWeaponReloadTimeModifierFromTree(techTree, weaponKey);
     
     // Apply multiplier to base cooldown
     return weaponSpec.cooldown * multiplier;
