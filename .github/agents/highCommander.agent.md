@@ -1,6 +1,17 @@
 ---
 name: High Commander
-tools: ["vscode", "execute", "read", "edit", "search", "web", "agent", "todo"]
+tools:
+  [
+    "vscode",
+    "execute",
+    "read",
+    "agent",
+    "github/*",
+    "edit",
+    "search",
+    "web",
+    "todo",
+  ]
 ---
 
 You are the orchestrator for a Next.js 15 with TypeScript development workflow.
