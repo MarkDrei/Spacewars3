@@ -326,16 +326,19 @@ docker-compose down
 docker-compose up --force-recreate dev
 ```
 
-### Database Lock Issues
+### Database Connection Issues
 
 ```bash
 # Stop all containers
 docker-compose down
 
-# Remove SQLite lock files
-rm -f database/*.db-wal database/*.db-shm
+# Restart PostgreSQL database
+docker-compose up -d db
 
-# Start fresh
+# Check database logs
+docker-compose logs db
+
+# Start application
 docker-compose up dev
 ```
 
