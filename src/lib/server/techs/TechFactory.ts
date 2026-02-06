@@ -381,6 +381,45 @@ export class TechFactory {
   }
 
   /**
+   * Calculate research-modified reload time for a weapon in seconds
+   * Applies research effects from the tech tree to the base cooldown value
+   * 
+   * @param weaponKey The weapon key (e.g., 'pulse_laser', 'rocket_launcher')
+   * @param techTree The tech tree containing research levels
+   * @returns The reload time in seconds, modified by research
+   */
+  static calculateWeaponReloadTime(weaponKey: string, techTree: { 
+    projectileReloadRate: number; 
+    energyRechargeRate: number;
+    [key: string]: unknown;
+  }): number {
+    const weaponSpec = this.getWeaponSpec(weaponKey);
+    if (!weaponSpec) {
+      throw new Error(`Unknown weapon: ${weaponKey}`);
+    }
+
+    // Import getWeaponReloadTimeModifierFromTree dynamically to avoid circular dependency
+    // For now, calculate the modifier inline
+    let reloadRateEffect: number;
+    if (weaponSpec.subtype === 'Projectile') {
+      // ProjectileReloadRate: level 1 = 10%, increases by 10% per level (constant)
+      const level = techTree.projectileReloadRate;
+      reloadRateEffect = level > 0 ? 10 + (10 * (level - 1)) : 0;
+    } else {
+      // EnergyRechargeRate: level 1 = 15%, increases by 15% per level (constant)
+      const level = techTree.energyRechargeRate;
+      reloadRateEffect = level > 0 ? 15 + (15 * (level - 1)) : 0;
+    }
+
+    // Calculate reload time multiplier (1 - effect/100)
+    // Cap at 0.1 (90% reduction max)
+    const multiplier = Math.max(0.1, 1 - (reloadRateEffect / 100));
+    
+    // Apply multiplier to base cooldown
+    return weaponSpec.cooldown * multiplier;
+  }
+
+  /**
    * Calculate weapon damage effects against a target
    */
   static calculateWeaponDamage(
