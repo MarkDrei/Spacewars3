@@ -82,22 +82,18 @@ Spacewars Ironcore is a 2D space exploration game built with Next.js 15, TypeScr
 
 ### 3.1 Business Context
 
-```
-┌─────────────┐
-│   Browser   │
-│   (Player)  │
-└──────┬──────┘
-       │ HTTP
-       ▼
-┌─────────────────────────────┐
-│  Spacewars Ironcore Server  │
-│  (Next.js Application)      │
-└──────────┬──────────────────┘
-           │
-           ▼
-    ┌──────────────┐
-    │ PostgreSQL DB│
-    └──────────────┘
+```mermaid
+graph TB
+    Browser["Browser<br/>(Player)"]
+    Server["Spacewars Ironcore Server<br/>(Next.js Application)"]
+    DB["PostgreSQL Database"]
+    
+    Browser -->|HTTP Requests| Server
+    Server -->|SQL Queries| DB
+    
+    style Browser fill:#e1f5ff
+    style Server fill:#fff4e1
+    style DB fill:#e8f5e9
 ```
 
 ### 3.2 Technical Context
@@ -138,23 +134,27 @@ See [Building Blocks - Cache Systems](./building-blocks-cache-systems.md) for de
 
 ### 5.1 Level 1: System Overview
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    Spacewars Application                     │
-├─────────────────────────────────────────────────────────────┤
-│                                                               │
-│  ┌──────────────┐  ┌──────────────┐  ┌─────────────────┐   │
-│  │   Next.js    │  │  Game Engine │  │  Cache Layer    │   │
-│  │  App Router  │  │  (Canvas)    │  │  (IronGuard)    │   │
-│  └──────┬───────┘  └──────┬───────┘  └────────┬────────┘   │
-│         │                 │                    │             │
-│         └─────────────────┴────────────────────┘             │
-│                           │                                   │
-│                    ┌──────▼──────┐                           │
-│                    │ PostgreSQL  │                           │
-│                    │   Database  │                           │
-│                    └─────────────┘                           │
-└─────────────────────────────────────────────────────────────┘
+```mermaid
+graph TB
+    subgraph Spacewars["Spacewars Application"]
+        Router["Next.js App Router<br/>Pages & API Routes"]
+        Engine["Game Engine<br/>(HTML5 Canvas)"]
+        Cache["Cache Layer<br/>(IronGuard Locks)"]
+        
+        Router -.-> Engine
+        Router -.-> Cache
+        Engine -.-> Cache
+    end
+    
+    DB[(PostgreSQL<br/>Database)]
+    
+    Cache -->|Persist| DB
+    
+    style Spacewars fill:#f9f9f9,stroke:#333,stroke-width:2px
+    style Router fill:#61dafb
+    style Engine fill:#ffd700
+    style Cache fill:#90ee90
+    style DB fill:#4169e1,color:#fff
 ```
 
 ### 5.2 Level 2: Cache and Repository Architecture
@@ -194,17 +194,35 @@ Four singleton cache managers handle different data domains with explicit depend
 - **Key Features:** Starts battle scheduler; uses battleRepo for persistence
 
 **Dependency Graph:**
-```
-MessageCache (standalone)
-  ↑
-WorldCache ──┐
-     │       │
-UserCache ───┤
-     │       │
-BattleCache ◀┘
+```mermaid
+graph TD
+    MC[MessageCache<br/>Standalone]
+    WC[WorldCache]
+    UC[UserCache]
+    BC[BattleCache]
+    
+    WC -->|depends on| MC
+    UC -->|depends on| WC
+    UC -->|depends on| MC
+    BC -->|depends on| UC
+    BC -->|depends on| WC
+    BC -->|depends on| MC
+    
+    style MC fill:#ffeb3b
+    style WC fill:#4caf50,color:#fff
+    style UC fill:#2196f3,color:#fff
+    style BC fill:#f44336,color:#fff
 ```
 
-All caches are wired together explicitly during server startup (`main.ts`) via `configureDependencies()` helpers. This enables:
+**Initialization Order (in main.ts):**
+1. PostgreSQL connection established
+2. World loaded from database
+3. MessageCache initialized (standalone)
+4. WorldCache initialized with world instance
+5. UserCache initialized with WorldCache and MessageCache dependencies
+6. BattleCache initialized with all cache dependencies
+
+All caches are wired together explicitly during server startup (`main.ts`) via dependency injection. This enables:
 - Clean separation of concerns (caching vs business logic)
 - Testability (mock dependencies easily)
 - Proper initialization order
@@ -231,9 +249,25 @@ Repositories provide a clean separation between caching/business logic and datab
 - Stateless (no instance state, mostly static methods or simple classes)
 
 **Example Flow:**
-```
-API Route → UserCache → userRepo → PostgreSQL
-         (business)  (cache)  (data access)
+```mermaid
+sequenceDiagram
+    participant API as API Route
+    participant Cache as UserCache<br/>(Cache Layer)
+    participant Repo as userRepo<br/>(Data Access)
+    participant DB as PostgreSQL
+    
+    API->>Cache: Request user data
+    Cache->>Cache: Check in-memory cache
+    alt Cache hit
+        Cache-->>API: Return cached data
+    else Cache miss
+        Cache->>Repo: Load from DB
+        Repo->>DB: Execute SQL query
+        DB-->>Repo: Return rows
+        Repo-->>Cache: Transform to User object
+        Cache->>Cache: Store in cache
+        Cache-->>API: Return user data
+    end
 ```
 
 #### 5.2.3 Shared Patterns
@@ -257,58 +291,121 @@ All caches follow consistent patterns:
 
 ### 6.1 User Login Flow
 
-```
-Player → POST /api/login
-         ↓
-    Authenticate User
-         ↓
-    Load from UserCache
-         ↓
-    Create Session Cookie
-         ↓
-    Return User Data
+```mermaid
+sequenceDiagram
+    participant Player
+    participant API as POST /api/login
+    participant Session as iron-session
+    participant Cache as UserCache
+    participant Repo as userRepo
+    participant DB as PostgreSQL
+    
+    Player->>API: POST credentials
+    API->>API: Validate input
+    API->>API: Acquire USER_LOCK
+    API->>Cache: getUserByUsername()
+    Cache->>Repo: Query user by username
+    Repo->>DB: SELECT * FROM users
+    DB-->>Repo: User row
+    Repo-->>Cache: User object
+    Cache-->>API: User with hashed password
+    API->>API: bcrypt.compare(password)
+    alt Valid credentials
+        API->>API: user.updateStats(now)
+        API->>Cache: user.save()
+        Cache->>Cache: Mark user as dirty
+        API->>Session: Set userId in session
+        Session->>Session: Encrypt session cookie
+        API-->>Player: 200 OK + session cookie
+    else Invalid credentials
+        API-->>Player: 400 Invalid credentials
+    end
+    
+    Note over Cache,DB: Background persistence<br/>flushes dirty users<br/>every 30 seconds
 ```
 
 ### 6.2 Resource Collection Flow
 
-```
-Player → POST /api/harvest
-         ↓
-    Validate Session
-         ↓
-    UserCache.loadUserIfNeeded()
-         ↓
-    Calculate Iron Gain
-         ↓
-    MessageCache.sendMessageToUser()
-    (async, doesn't block)
-         ↓
-    Return Success
+```mermaid
+sequenceDiagram
+    participant Player
+    participant API as POST /api/harvest
+    participant UC as UserCache
+    participant WC as WorldCache
+    participant MC as MessageCache
+    participant DB as PostgreSQL
+    
+    Player->>API: POST {objectId}
+    API->>API: Validate session
+    API->>API: Acquire USER_LOCK
+    API->>API: Acquire WORLD_LOCK
+    API->>UC: getUserByIdWithLock()
+    UC-->>API: User object
+    API->>WC: getWorldFromCache()
+    WC-->>API: World with space objects
+    
+    API->>API: Calculate distance to object
+    alt Object in range
+        API->>API: Calculate iron gain
+        API->>API: user.iron += ironGain
+        API->>UC: Mark user as dirty
+        API->>WC: world.collected(objectId)
+        WC->>WC: Remove object, spawn new
+        WC->>WC: Mark world as dirty
+        
+        par Async message creation
+            API->>MC: sendMessageToUser()
+            MC->>MC: Assign temp ID (-1, -2, ...)
+            MC->>MC: Add to cache immediately
+            MC-->>API: Return temp ID (~0.5ms)
+            Note over MC: Async: Persist to DB<br/>with real ID
+        end
+        
+        API-->>Player: Success + iron gained
+    else Object out of range
+        API-->>Player: 400 Object out of range
+    end
+    
+    Note over UC,DB: Background persistence<br/>flushes dirty data<br/>every 30 seconds
 ```
 
 ---
 
 ## 7. Deployment View
 
+```mermaid
+graph TB
+    subgraph Platform["Deployment Platform<br/>(Docker / Vercel / Render)"]
+        subgraph App["Next.js Server (Node.js v22.17.0)"]
+            Routes["API Routes<br/>(20+ endpoints)"]
+            Pages["SSR/SSG Pages<br/>(Game, Login, Profile, etc.)"]
+            Logic["Game Logic<br/>(Physics, Combat)"]
+            Caches["Cache Layer<br/>(4 singleton caches)"]
+            
+            Routes --> Caches
+            Pages --> Caches
+            Logic --> Caches
+        end
+        
+        DB[(PostgreSQL Database<br/>Persistent Storage)]
+        
+        Caches -->|Background<br/>Persistence| DB
+    end
+    
+    style Platform fill:#f0f0f0,stroke:#333,stroke-width:2px
+    style App fill:#fff,stroke:#666,stroke-width:1px
+    style Routes fill:#61dafb
+    style Pages fill:#90ee90
+    style Logic fill:#ffd700
+    style Caches fill:#ff9800
+    style DB fill:#4169e1,color:#fff
 ```
-┌────────────────────────────────────┐
-│         Deployment Platform         │
-│  (Docker/Vercel/Render/etc.)       │
-├────────────────────────────────────┤
-│  ┌──────────────────────────────┐  │
-│  │   Next.js Server (Node.js)   │  │
-│  │  - API Routes                │  │
-│  │  - SSR/SSG Pages             │  │
-│  │  - Game Logic                │  │
-│  │  - Cache Layer (4 caches)    │  │
-│  └──────────┬───────────────────┘  │
-│             │                       │
-│  ┌──────────▼───────────────────┐  │
-│  │   PostgreSQL Database        │  │
-│  │   (Persistent Storage)       │  │
-│  └──────────────────────────────┘  │
-└────────────────────────────────────┘
-```
+
+**Deployment Options:**
+- **Docker**: Full containerization with docker-compose.yml (includes PostgreSQL)
+- **Vercel**: Serverless deployment with external PostgreSQL (requires connection pooling)
+- **Render**: Container-based deployment with managed PostgreSQL
+- **Self-hosted**: Any Node.js host with PostgreSQL access
 
 ---
 
@@ -318,19 +415,46 @@ Player → POST /api/harvest
 
 **Global Lock Hierarchy:**
 
-```
-Level 2:  BATTLE_LOCK          (Battle state operations)
-Level 4:  USER_LOCK            (User data access)
-Level 6:  WORLD_LOCK           (World state operations)
-Level 8:  MESSAGE_LOCK         (Message operations)
-Level 9:  CACHES_LOCK          (Cache management)
-Level 10: DATABASE_LOCK_USERS  (User DB persistence)
-Level 11: DATABASE_LOCK_SPACE_OBJECTS (World DB persistence)
-Level 12: DATABASE_LOCK_MESSAGES (Message DB persistence)
-Level 13: DATABASE_LOCK_BATTLES (Battle DB persistence)
+```mermaid
+graph TD
+    L2[Level 2: BATTLE_LOCK<br/>Battle state operations]
+    L4[Level 4: USER_LOCK<br/>User data access]
+    L6[Level 6: WORLD_LOCK<br/>World state operations]
+    L8[Level 8: MESSAGE_LOCK<br/>Message operations]
+    L9[Level 9: CACHES_LOCK<br/>Cache management]
+    L10[Level 10: DATABASE_LOCK_USERS<br/>User DB persistence]
+    L11[Level 11: DATABASE_LOCK_SPACE_OBJECTS<br/>World DB persistence]
+    L12[Level 12: DATABASE_LOCK_MESSAGES<br/>Message DB persistence]
+    L13[Level 13: DATABASE_LOCK_BATTLES<br/>Battle DB persistence]
+    
+    L2 --> L4
+    L4 --> L6
+    L6 --> L8
+    L8 --> L9
+    L9 --> L10
+    L10 --> L11
+    L11 --> L12
+    L12 --> L13
+    
+    style L2 fill:#f44336,color:#fff
+    style L4 fill:#2196f3,color:#fff
+    style L6 fill:#4caf50,color:#fff
+    style L8 fill:#ffeb3b
+    style L9 fill:#9c27b0,color:#fff
+    style L10 fill:#00bcd4,color:#fff
+    style L11 fill:#8bc34a
+    style L12 fill:#ff9800
+    style L13 fill:#e91e63,color:#fff
 ```
 
-**Rule:** Locks must be acquired in ascending order. IronGuard enforces this at compile time through TypeScript type system.
+**Lock Acquisition Rule:** Locks must be acquired in ascending order (2 → 4 → 6 → 8 → ...). IronGuard enforces this at compile time through TypeScript's type system. Attempting to acquire locks out of order results in a compilation error.
+
+**Common Lock Patterns:**
+- **User operations**: USER_LOCK → DATABASE_LOCK_USERS
+- **World updates**: WORLD_LOCK → DATABASE_LOCK_SPACE_OBJECTS
+- **Message creation**: MESSAGE_LOCK → DATABASE_LOCK_MESSAGES
+- **Battle actions**: BATTLE_LOCK → USER_LOCK → DATABASE_LOCK_BATTLES
+- **Harvest flow**: USER_LOCK → WORLD_LOCK → MESSAGE_LOCK (async)
 
 ### 8.2 Caching Strategy
 

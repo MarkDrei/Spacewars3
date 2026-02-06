@@ -31,14 +31,24 @@ The Spacewars application now uses four cache manager implementations to optimiz
 
 The caches now receive each other as explicit dependencies to simplify testing and avoid hidden singleton lookups:
 
-```
-MessageCache (standalone)
-  ↑
-WorldCache ──┐
-     │
-UserCache ──┐
-     │
-BattleCache ◀─────┘
+```mermaid
+graph TD
+    MC[MessageCache<br/>Standalone]
+    WC[WorldCache]
+    UC[UserCache]
+    BC[BattleCache]
+    
+    WC -->|depends on| MC
+    UC -->|depends on| WC
+    UC -->|depends on| MC
+    BC -->|depends on| UC
+    BC -->|depends on| WC
+    BC -->|depends on| MC
+    
+    style MC fill:#ffeb3b
+    style WC fill:#4caf50,color:#fff
+    style UC fill:#2196f3,color:#fff
+    style BC fill:#f44336,color:#fff
 ```
 
 - `main.ts` is responsible for creating the real cache instances and wiring them together via the new `configureDependencies(...)` helpers before regular initialization runs.
@@ -53,41 +63,26 @@ BattleCache ◀─────┘
 
 ### Architecture
 
-```
-UserCache (Singleton)
-├── Configuration
-│   ├── persistenceIntervalMs: 30000
-│   ├── enableAutoPersistence: true
-│   └── logStats: false
-├── Storage
-│   ├── users: Map<number, User>
-│   ├── usernameToUserId: Map<string, number>
-│   └── dirtyUsers: Set<number>
-├── Dependencies
-│   ├── worldCache: WorldCache (required in production, lazily created for tests)
-│   └── messageCache: MessageCache (optional, lazily resolved fallback)
-├── Locks (Pure IronGuard)
-│   ├── CACHE_LOCK (level 1)
-│   ├── WORLD_LOCK (level 2)
-│   ├── USER_LOCK (level 3)
-│   └── DATABASE_LOCK (level 5)
-└── Operations
-    ├── World operations (delegated to WorldCache)
-    ├── User operations (CRUD)
-    ├── Database operations (load/persist)
-    └── Background persistence + battle scheduler
-```
-
-### Lock Hierarchy
-
-```
-CACHE_LOCK (1)
-    ↓
-WORLD_LOCK (2)
-    ↓
-USER_LOCK (3)
-    ↓
-DATABASE_LOCK (5)
+```mermaid
+graph TB
+    subgraph UC["UserCache (Singleton)"]
+        Config["Configuration<br/>• persistenceIntervalMs: 30000<br/>• enableAutoPersistence: true<br/>• logStats: false"]
+        
+        Storage["Storage<br/>• users: Map&lt;userId, User&gt;<br/>• usernameToUserId: Map&lt;string, userId&gt;<br/>• dirtyUsers: Set&lt;userId&gt;"]
+        
+        Deps["Dependencies<br/>• worldCache: WorldCache<br/>• messageCache: MessageCache"]
+        
+        Locks["Locks (IronGuard)<br/>• USER_LOCK (level 4)<br/>• DATABASE_LOCK_USERS (level 10)"]
+        
+        Ops["Operations<br/>• User CRUD (get, set, mark dirty)<br/>• Username lookup<br/>• Database load/persist<br/>• Background persistence (30s)"]
+    end
+    
+    style UC fill:#f9f9f9,stroke:#2196f3,stroke-width:3px
+    style Config fill:#e3f2fd
+    style Storage fill:#bbdefb
+    style Deps fill:#90caf9
+    style Locks fill:#64b5f6
+    style Ops fill:#42a5f5
 ```
 
 ### Key Features
@@ -148,37 +143,26 @@ try {
 
 ### Architecture
 
-```
-MessageCache (Singleton)
-├── Configuration
-│   ├── persistenceIntervalMs: 30000
-│   └── enableAutoPersistence: true
-├── Storage
-│   ├── userMessages: Map<number, Message[]>
-│   ├── dirtyUsers: Set<number>
-│   ├── pendingWrites: Map<tempId, Promise<void>>
-│   ├── pendingMessageIds: Set<number>
-│   └── nextTempId: -1 (decrementing)
-├── Database Layer
-│   └── MessagesRepo (abstracts all DB operations)
-├── Locks (Pure IronGuard)
-│   ├── MESSAGE_CACHE_LOCK
-│   └── MESSAGE_DATA_LOCK
-└── Operations
-    ├── getMessagesForUser(), getUnreadMessages(), getUnreadMessageCount()
-    ├── createMessage() with temp IDs (async)
-    ├── markAllMessagesAsRead(), summarizeMessages()
-    └── Background persistence
-```
-
-### Lock Hierarchy
-
-```
-MESSAGE_CACHE_LOCK
-    ↓
-MESSAGE_DATA_LOCK
-    ↓
-MESSAGE_DB_LOCK (internal)
+```mermaid
+graph TB
+    subgraph MC["MessageCache (Singleton)"]
+        Config["Configuration<br/>• persistenceIntervalMs: 30000<br/>• enableAutoPersistence: true"]
+        
+        Storage["Storage<br/>• userMessages: Map&lt;userId, Message[]&gt;<br/>• dirtyUsers: Set&lt;userId&gt;<br/>• pendingWrites: Map&lt;tempId, Promise&gt;<br/>• nextTempId: -1 (decrementing)"]
+        
+        DB["Database Layer<br/>• MessagesRepo<br/>(abstracts all DB operations)"]
+        
+        Locks["Locks (IronGuard)<br/>• MESSAGE_LOCK (level 8)<br/>• DATABASE_LOCK_MESSAGES (level 12)"]
+        
+        Ops["Operations<br/>• createMessage() with temp IDs (async)<br/>• getMessagesForUser(), getUnreadMessages()<br/>• markAllMessagesAsRead()<br/>• Background persistence (30s)"]
+    end
+    
+    style MC fill:#f9f9f9,stroke:#ffeb3b,stroke-width:3px
+    style Config fill:#fffde7
+    style Storage fill:#fff9c4
+    style DB fill:#fff59d
+    style Locks fill:#fff176
+    style Ops fill:#ffee58
 ```
 
 ### Key Features
@@ -250,39 +234,26 @@ await messageCache.shutdown();
 
 ### Architecture
 
-```
-BattleCache (Singleton)
-├── Configuration
-│   ├── persistenceIntervalMs: 30000
-│   └── enableAutoPersistence: true
-├── Storage
-│   ├── battles: Map<number, Battle>
-│   ├── activeBattlesByUser: Map<number, number>  // userId → battleId
-│   ├── dirtyBattles: Set<number>
-│   └── initializationPromise: Promise<BattleCache> | null
-├── Locks (via delegation)
-│   ├── Delegates to UserCache for User/World locks
-│   ├── BATTLE_LOCK (level 12) for battle-specific operations
-│   └── Uses DATABASE_LOCK via UserCache
-└── Operations
-    ├── Mixed API: Sync getInstance() + Async getInitializedInstance()
-    ├── High-level: Auto-initializing async methods
-    ├── Low-level: "Unsafe" methods requiring manual initialization
-    └── Background persistence with lock delegation
-```
-
-### Lock Hierarchy
-
-```
-CACHE_LOCK (1)
-    ↓
-WORLD_LOCK (2)
-    ↓
-USER_LOCK (3)
-    ↓
-BATTLE_LOCK (12)
-    ↓
-DATABASE_LOCK (5)
+```mermaid
+graph TB
+    subgraph BC["BattleCache (Singleton)"]
+        Config["Configuration<br/>• persistenceIntervalMs: 30000<br/>• enableAutoPersistence: true"]
+        
+        Storage["Storage<br/>• battles: Map&lt;battleId, Battle&gt;<br/>• activeBattlesByUser: Map&lt;userId, battleId&gt;<br/>• dirtyBattles: Set&lt;battleId&gt;"]
+        
+        Deps["Dependencies<br/>• userCache: UserCache<br/>• worldCache: WorldCache<br/>• messageCache: MessageCache"]
+        
+        Locks["Locks (via delegation)<br/>• BATTLE_LOCK (level 2)<br/>• Delegates to UserCache/WorldCache<br/>• DATABASE_LOCK_BATTLES (level 13)"]
+        
+        Ops["Operations<br/>• Battle CRUD (create, get, update)<br/>• getBattleForUser()<br/>• Battle scheduler integration<br/>• Background persistence (30s)"]
+    end
+    
+    style BC fill:#f9f9f9,stroke:#f44336,stroke-width:3px
+    style Config fill:#ffebee
+    style Storage fill:#ffcdd2
+    style Deps fill:#ef9a9a
+    style Locks fill:#e57373
+    style Ops fill:#ef5350
 ```
 
 ### Key Features
