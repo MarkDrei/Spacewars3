@@ -30,6 +30,7 @@ function createTestUser(
     username,
     'password_hash',
     iron,
+    0, // xp
     Date.now(),
     createInitialTechTree(),
     mockSaveCallback,
