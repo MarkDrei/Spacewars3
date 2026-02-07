@@ -6,6 +6,7 @@ import { Player } from './Player';
 import { Shipwreck } from './Shipwreck';
 import { EscapePod } from './EscapePod';
 import { WorldData, Asteroid as SharedAsteroid, Shipwreck as SharedShipwreck, EscapePod as SharedEscapePod } from '@shared/types/gameTypes';
+import { DEFAULT_WORLD_WIDTH, DEFAULT_WORLD_HEIGHT } from '@shared';
 
 export class World {
 
@@ -13,9 +14,9 @@ export class World {
     private spaceObjects: SpaceObjectOld[];
     private hoveredObjectId?: number;
     
-    // World boundaries
-    public static WIDTH = 500;
-    public static HEIGHT = 500;
+    // World boundaries (initialized from shared constants, updated from server)
+    public static WIDTH = DEFAULT_WORLD_WIDTH;
+    public static HEIGHT = DEFAULT_WORLD_HEIGHT;
 
     private static instance: World;
 

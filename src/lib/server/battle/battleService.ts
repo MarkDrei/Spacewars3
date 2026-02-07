@@ -27,6 +27,7 @@ import { HasLock2Context, IronLocks, LockContext, LocksAtMost4, LocksAtMostAndHa
 import { WORLD_LOCK, USER_LOCK, DATABASE_LOCK_USERS } from '../typedLocks';
 import { getUserByIdFromDb } from '../user/userRepo';
 import { WorldCache } from '../world/worldCache';
+import { DEFAULT_WORLD_WIDTH, DEFAULT_WORLD_HEIGHT } from '@shared';
 
 /**
  * Maximum distance to initiate battle (same as collection distance)
@@ -39,10 +40,10 @@ const BATTLE_RANGE = 100;
 const MIN_TELEPORT_DISTANCE = 1000;
 
 /**
- * World dimensions
+ * World dimensions (using shared constants)
  */
-const WORLD_WIDTH = 3000;
-const WORLD_HEIGHT = 3000;
+const WORLD_WIDTH = DEFAULT_WORLD_WIDTH;
+const WORLD_HEIGHT = DEFAULT_WORLD_HEIGHT;
 
 /**
  * Get current defense values for a user

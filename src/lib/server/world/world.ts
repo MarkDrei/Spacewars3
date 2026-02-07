@@ -3,7 +3,7 @@
 // ---
 
 import { HasLock6Context, IronLocks } from '@markdrei/ironguard-typescript-locks';
-import { updateAllObjectPositions } from '@shared/physics';
+import { updateAllObjectPositions, DEFAULT_WORLD_BOUNDS } from '@shared';
 import { DatabaseConnection } from '../database';
 import { deleteSpaceObject, insertSpaceObject } from './worldRepo';
 
@@ -191,7 +191,7 @@ class World {
    */
   static createDefault(saveCallback: SaveWorldCallback, db: DatabaseConnection): World {
     return new World(
-      { width: 500, height: 500 }, // Default world size
+      DEFAULT_WORLD_BOUNDS,
       [], // Empty space objects initially
       saveCallback,
       db
