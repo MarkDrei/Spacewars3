@@ -4,7 +4,7 @@
 
 import { DatabaseConnection } from '../database';
 import { World, SpaceObject, SaveWorldCallback } from './world';
-import { DEFAULT_WORLD_BOUNDS } from '@shared';
+import { DEFAULT_WORLD_BOUNDS, normalizePosition } from '@shared';
 
 /**
  * Load world data from database (used internally by cache manager)
@@ -30,22 +30,27 @@ export async function loadWorldFromDb(db: DatabaseConnection, saveCallback: Save
   
   const result = await db.query(query);
   
-  const spaceObjects = result.rows.map(row => ({
-    id: row.id,
-    type: row.type as SpaceObject['type'],
-    x: row.x,
-    y: row.y,
-    // Force speed to 0 if player is in battle
-    speed: (row.type === 'player_ship' && row.in_battle) ? 0 : row.speed,
-    angle: row.angle,
-    last_position_update_ms: row.last_position_update_ms,
-    picture_id: row.picture_id || 1, // Default to 1 if not set
-    // Only include username and userId for player ships
-    ...(row.type === 'player_ship' && row.username ? { 
-      username: row.username,
-      userId: row.user_id 
-    } : {})
-  }));
+  const spaceObjects = result.rows.map(row => {
+    // Normalize position to ensure it's within valid world bounds
+    const normalizedPos = normalizePosition(row.x, row.y, DEFAULT_WORLD_BOUNDS);
+    
+    return {
+      id: row.id,
+      type: row.type as SpaceObject['type'],
+      x: normalizedPos.x,
+      y: normalizedPos.y,
+      // Force speed to 0 if player is in battle
+      speed: (row.type === 'player_ship' && row.in_battle) ? 0 : row.speed,
+      angle: row.angle,
+      last_position_update_ms: row.last_position_update_ms,
+      picture_id: row.picture_id || 1, // Default to 1 if not set
+      // Only include username and userId for player ships
+      ...(row.type === 'player_ship' && row.username ? { 
+        username: row.username,
+        userId: row.user_id 
+      } : {})
+    };
+  });
 
   const world = new World(
     DEFAULT_WORLD_BOUNDS,

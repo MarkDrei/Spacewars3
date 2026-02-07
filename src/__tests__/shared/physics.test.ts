@@ -9,6 +9,7 @@ import {
   updateAllObjectPositionsWithTimeCorrection,
   calculateToroidalDistance,
   isColliding,
+  normalizePosition,
   PhysicsObject,
   WorldBounds
 } from '@shared/physics';
@@ -405,6 +406,105 @@ describe('Physics Calculations', () => {
       const expectedTimestamp = responseReceivedAt + timeSinceResponse + networkDelayEstimate;
       expect(updatedObjects[0].last_position_update_ms).toBeCloseTo(expectedTimestamp, 0);
       expect(updatedObjects[1].last_position_update_ms).toBeCloseTo(expectedTimestamp, 0);
+    });
+  });
+
+  describe('normalizePosition', () => {
+    it('normalizePosition_withinBounds_returnsUnchanged', () => {
+      const result = normalizePosition(100, 200, WORLD_BOUNDS);
+      
+      expect(result.x).toBe(100);
+      expect(result.y).toBe(200);
+    });
+
+    it('normalizePosition_atZero_returnsZero', () => {
+      const result = normalizePosition(0, 0, WORLD_BOUNDS);
+      
+      expect(result.x).toBe(0);
+      expect(result.y).toBe(0);
+    });
+
+    it('normalizePosition_atBoundary_wrapsToZero', () => {
+      const result = normalizePosition(500, 500, WORLD_BOUNDS);
+      
+      expect(result.x).toBe(0);
+      expect(result.y).toBe(0);
+    });
+
+    it('normalizePosition_slightlyOverBoundary_wrapsCorrectly', () => {
+      const result = normalizePosition(510, 520, WORLD_BOUNDS);
+      
+      expect(result.x).toBe(10);
+      expect(result.y).toBe(20);
+    });
+
+    it('normalizePosition_veryLargeValues_normalizeCorrectly', () => {
+      const result = normalizePosition(30000, 45000, WORLD_BOUNDS);
+      
+      // 30000 % 500 = 0, 45000 % 500 = 0
+      expect(result.x).toBe(0);
+      expect(result.y).toBe(0);
+    });
+
+    it('normalizePosition_veryLargeNonMultiple_normalizeCorrectly', () => {
+      const result = normalizePosition(30123, 45456, WORLD_BOUNDS);
+      
+      // 30123 % 500 = 123, 45456 % 500 = 456
+      expect(result.x).toBe(123);
+      expect(result.y).toBe(456);
+    });
+
+    it('normalizePosition_negativeValues_wrapsCorrectly', () => {
+      const result = normalizePosition(-100, -200, WORLD_BOUNDS);
+      
+      // -100 should wrap to 400, -200 should wrap to 300
+      expect(result.x).toBe(400);
+      expect(result.y).toBe(300);
+    });
+
+    it('normalizePosition_slightlyNegative_wrapsCorrectly', () => {
+      const result = normalizePosition(-1, -1, WORLD_BOUNDS);
+      
+      expect(result.x).toBe(499);
+      expect(result.y).toBe(499);
+    });
+
+    it('normalizePosition_veryNegativeValues_normalizeCorrectly', () => {
+      const result = normalizePosition(-3000, -7500, WORLD_BOUNDS);
+      
+      // -3000: (-3000 % 500) = 0 (in JS), then (0 + 500) % 500 = 0
+      // Actually -3000 % 500 in JS = 0 (since -3000 is multiple of 500)
+      // -7500 % 500 = 0 (multiple of 500)
+      expect(result.x).toBe(0);
+      expect(result.y).toBe(0);
+    });
+
+    it('normalizePosition_veryNegativeNonMultiple_normalizeCorrectly', () => {
+      const result = normalizePosition(-3123, -7756, WORLD_BOUNDS);
+      
+      // -3123 % 500 = -123 in JS, then (-123 + 500) % 500 = 377
+      // -7756 % 500 = -256 in JS, then (-256 + 500) % 500 = 244
+      expect(result.x).toBe(377);
+      expect(result.y).toBe(244);
+    });
+
+    it('normalizePosition_largeWorldBounds_handlesCorrectly', () => {
+      const largeWorld: WorldBounds = { width: 5000, height: 5000 };
+      const result = normalizePosition(5123, -234, largeWorld);
+      
+      // 5123 % 5000 = 123
+      // -234: (-234 % 5000) = -234, then (-234 + 5000) % 5000 = 4766
+      expect(result.x).toBe(123);
+      expect(result.y).toBe(4766);
+    });
+
+    it('normalizePosition_mixedPositiveNegative_handlesCorrectly', () => {
+      const result = normalizePosition(600, -100, WORLD_BOUNDS);
+      
+      // 600 % 500 = 100
+      // -100 wraps to 400
+      expect(result.x).toBe(100);
+      expect(result.y).toBe(400);
     });
   });
 });
