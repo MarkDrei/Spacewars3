@@ -185,8 +185,8 @@ describe('MessageCache - Collection Summarization', () => {
         const ctx = createLockContext();
 
         // Create messages with delays to ensure different timestamps
-        const timestamp1 = Date.now() - 10000; // 10 seconds ago
-        const timestamp2 = Date.now() - 5000;  // 5 seconds ago
+        // const timestamp1 = Date.now() - 10000; // 10 seconds ago
+        // const timestamp2 = Date.now() - 5000;  // 5 seconds ago
         
         // Manually create messages with specific timestamps by using internal method
         // We need to create a known message first, then modify it for testing
@@ -204,7 +204,7 @@ describe('MessageCache - Collection Summarization', () => {
         const originalTimestamps = messagesBefore.map(m => m.created_at);
 
         // Summarize - this should preserve unknown message timestamps
-        const summary = await messageCache.summarizeMessages(ctx, userId);
+        /* const summary = */ await messageCache.summarizeMessages(ctx, userId);
 
         await messageCache.waitForPendingWrites();
 
