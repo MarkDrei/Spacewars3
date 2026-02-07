@@ -158,8 +158,8 @@ async function createUserWithShip(db: DatabaseConnection, username: string, pass
 
     // Then create the user with the ship_id (with default defense values)
     const userResult = await db.query(
-      'INSERT INTO users (username, password_hash, iron, last_updated, tech_tree, ship_id, hull_current, armor_current, shield_current, defense_last_regen, build_queue, build_start_sec) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id',
-      [username, password_hash, 0.0, now, JSON.stringify(techTree), shipId, 250.0, 250.0, 250.0, now, JSON.stringify([]), null]
+      'INSERT INTO users (username, password_hash, iron, xp, last_updated, tech_tree, ship_id, hull_current, armor_current, shield_current, defense_last_regen, build_queue, build_start_sec) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING id',
+      [username, password_hash, 0.0, 0, now, JSON.stringify(techTree), shipId, 250.0, 250.0, 250.0, now, JSON.stringify([]), null]
     );
 
     const userId = userResult.rows[0].id;
@@ -192,8 +192,8 @@ async function createUserWithShip(db: DatabaseConnection, username: string, pass
   } else {
     // Create user without ship (for testing, with default defense values)
     const userResult = await db.query(
-      'INSERT INTO users (username, password_hash, iron, last_updated, tech_tree, hull_current, armor_current, shield_current, defense_last_regen, build_queue, build_start_sec) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id',
-      [username, password_hash, 0.0, now, JSON.stringify(techTree), 250.0, 250.0, 250.0, now, JSON.stringify([]), null]
+      'INSERT INTO users (username, password_hash, iron, xp, last_updated, tech_tree, hull_current, armor_current, shield_current, defense_last_regen, build_queue, build_start_sec) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id',
+      [username, password_hash, 0.0, 0, now, JSON.stringify(techTree), 250.0, 250.0, 250.0, now, JSON.stringify([]), null]
     );
 
     const id = userResult.rows[0].id;

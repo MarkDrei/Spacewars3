@@ -97,7 +97,7 @@ describe('User Stats API - XP and Level', () => {
         
         expect(data.xp).toBe(1500);
         expect(data.level).toBe(2);
-        expect(data.xpForNextLevel).toBe(4000); // Level 3 threshold (1000 + 3000)
+        expect(data.xpForNextLevel).toBe(3000); // Level 3 threshold
       });
     });
 
@@ -128,11 +128,11 @@ describe('User Stats API - XP and Level', () => {
         
         expect(data.xp).toBe(2500);
         expect(data.level).toBe(2);
-        expect(data.xpForNextLevel).toBe(4000);
+        expect(data.xpForNextLevel).toBe(3000);
         
-        // Progress: 2500 / 4000 = 62.5%
+        // Progress: 2500 / 3000 = 83.3%
         const progress = Math.floor((data.xp / data.xpForNextLevel) * 100);
-        expect(progress).toBe(62);
+        expect(progress).toBe(83);
       });
     });
   });

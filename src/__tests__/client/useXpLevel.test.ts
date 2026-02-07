@@ -28,7 +28,7 @@ describe('useXpLevel Hook', () => {
         maxIronCapacity: 5000,
         xp: 1500,
         level: 2,
-        xpForNextLevel: 4000
+        xpForNextLevel: 3000
       };
 
       vi.mocked(userStatsService.getUserStats).mockResolvedValue(mockData);
@@ -47,7 +47,7 @@ describe('useXpLevel Hook', () => {
       expect(result.current.xpData).toEqual({
         xp: 1500,
         level: 2,
-        xpForNextLevel: 4000
+        xpForNextLevel: 3000
       });
       expect(result.current.error).toBeNull();
     });
@@ -90,7 +90,7 @@ describe('useXpLevel Hook', () => {
         maxIronCapacity: 5000,
         xp: 1000,
         level: 2,
-        xpForNextLevel: 4000
+        xpForNextLevel: 3000
       };
 
       const updatedData = {
@@ -100,7 +100,7 @@ describe('useXpLevel Hook', () => {
         maxIronCapacity: 5000,
         xp: 2500,
         level: 2,
-        xpForNextLevel: 4000
+        xpForNextLevel: 3000
       };
 
       vi.mocked(userStatsService.getUserStats)
@@ -133,7 +133,7 @@ describe('useXpLevel Hook', () => {
         maxIronCapacity: 5000,
         xp: 1000,
         level: 2,
-        xpForNextLevel: 4000
+        xpForNextLevel: 3000
       };
 
       vi.mocked(userStatsService.getUserStats).mockResolvedValue(mockData);
@@ -184,7 +184,7 @@ describe('useXpLevel Hook', () => {
         maxIronCapacity: 5000,
         xp: 1100,
         level: 2,
-        xpForNextLevel: 4000
+        xpForNextLevel: 3000
       };
 
       vi.mocked(userStatsService.getUserStats)
@@ -203,7 +203,7 @@ describe('useXpLevel Hook', () => {
       await waitFor(() => {
         expect(result.current.xpData?.level).toBe(2);
         expect(result.current.xpData?.xp).toBe(1100);
-        expect(result.current.xpData?.xpForNextLevel).toBe(4000);
+        expect(result.current.xpData?.xpForNextLevel).toBe(3000);
       });
     });
   });
@@ -219,7 +219,7 @@ describe('useXpLevel Hook', () => {
         maxIronCapacity: 5000,
         xp: 1000,
         level: 2,
-        xpForNextLevel: 4000
+        xpForNextLevel: 3000
       };
 
       vi.mocked(userStatsService.getUserStats).mockResolvedValue(mockData);
