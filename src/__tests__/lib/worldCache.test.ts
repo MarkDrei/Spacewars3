@@ -4,7 +4,7 @@ import type { DatabaseConnection } from '@/lib/server/database';
 import { WORLD_LOCK } from '@/lib/server/typedLocks';
 import { World, type SpaceObject } from '@/lib/server/world/world';
 import { WorldCache } from '@/lib/server/world/worldCache';
-import { DEFAULT_WORLD_BOUNDS } from '@shared';
+import { DEFAULT_WORLD_BOUNDS } from '@shared/worldConstants';
 
 const createMockDb = () => {
   return {

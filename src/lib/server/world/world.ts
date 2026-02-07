@@ -3,7 +3,8 @@
 // ---
 
 import { HasLock6Context, IronLocks } from '@markdrei/ironguard-typescript-locks';
-import { updateAllObjectPositions, DEFAULT_WORLD_BOUNDS } from '@shared';
+import { updateAllObjectPositions } from '@shared/physics';
+import { DEFAULT_WORLD_BOUNDS } from '@shared/worldConstants';
 import { DatabaseConnection } from '../database';
 import { deleteSpaceObject, insertSpaceObject } from './worldRepo';
 

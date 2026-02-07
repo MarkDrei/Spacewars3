@@ -188,7 +188,7 @@ export function normalizePosition(
   // Use modulo and handle negatives to wrap positions into valid range
   // The double modulo ensures negative values wrap correctly:
   // e.g., -100 % 500 = -100, then (-100 + 500) % 500 = 400
-  let normalizedX = ((x % worldBounds.width) + worldBounds.width) % worldBounds.width;
-  let normalizedY = ((y % worldBounds.height) + worldBounds.height) % worldBounds.height;
+  const normalizedX = ((x % worldBounds.width) + worldBounds.width) % worldBounds.width;
+  const normalizedY = ((y % worldBounds.height) + worldBounds.height) % worldBounds.height;
   return { x: normalizedX, y: normalizedY };
 }

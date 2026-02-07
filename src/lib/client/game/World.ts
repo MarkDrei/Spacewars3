@@ -6,7 +6,8 @@ import { Player } from './Player';
 import { Shipwreck } from './Shipwreck';
 import { EscapePod } from './EscapePod';
 import { WorldData, Asteroid as SharedAsteroid, Shipwreck as SharedShipwreck, EscapePod as SharedEscapePod } from '@shared/types/gameTypes';
-import { DEFAULT_WORLD_WIDTH, DEFAULT_WORLD_HEIGHT, normalizePosition } from '@shared';
+import { DEFAULT_WORLD_WIDTH, DEFAULT_WORLD_HEIGHT } from '@shared/worldConstants';
+import { normalizePosition } from '@shared/physics';
 
 export class World {
 

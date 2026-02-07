@@ -2,7 +2,7 @@
  * Shared constants used across the server
  */
 
-import { DEFAULT_WORLD_WIDTH, DEFAULT_WORLD_HEIGHT } from '@shared';
+import { DEFAULT_WORLD_WIDTH, DEFAULT_WORLD_HEIGHT } from '@shared/worldConstants';
 
 // Default starting position for newly created ships (world center)
 export const DEFAULT_SHIP_START_X = DEFAULT_WORLD_WIDTH / 2;

@@ -4,7 +4,8 @@
 
 import { DatabaseConnection } from '../database';
 import { World, SpaceObject, SaveWorldCallback } from './world';
-import { DEFAULT_WORLD_BOUNDS, normalizePosition } from '@shared';
+import { DEFAULT_WORLD_BOUNDS } from '@shared/worldConstants';
+import { normalizePosition } from '@shared/physics';
 
 /**
  * Load world data from database (used internally by cache manager)
