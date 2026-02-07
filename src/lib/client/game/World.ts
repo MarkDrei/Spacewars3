@@ -6,6 +6,8 @@ import { Player } from './Player';
 import { Shipwreck } from './Shipwreck';
 import { EscapePod } from './EscapePod';
 import { WorldData, Asteroid as SharedAsteroid, Shipwreck as SharedShipwreck, EscapePod as SharedEscapePod } from '@shared/types/gameTypes';
+import { DEFAULT_WORLD_WIDTH, DEFAULT_WORLD_HEIGHT } from '@shared/worldConstants';
+import { normalizePosition } from '@shared/physics';
 
 export class World {
 
@@ -13,9 +15,9 @@ export class World {
     private spaceObjects: SpaceObjectOld[];
     private hoveredObjectId?: number;
     
-    // World boundaries
-    public static WIDTH = 500;
-    public static HEIGHT = 500;
+    // World boundaries (initialized from shared constants, updated from server)
+    public static WIDTH = DEFAULT_WORLD_WIDTH;
+    public static HEIGHT = DEFAULT_WORLD_HEIGHT;
 
     private static instance: World;
 
@@ -118,34 +120,48 @@ export class World {
         
         // Convert server objects to client objects
         worldData.spaceObjects.forEach(serverObject => {
+            // Normalize position to ensure it's within valid world bounds
+            const normalizedPos = normalizePosition(
+                serverObject.x, 
+                serverObject.y, 
+                worldData.worldSize
+            );
+            
+            // Create object with normalized position
+            const normalizedObject = {
+                ...serverObject,
+                x: normalizedPos.x,
+                y: normalizedPos.y
+            };
+            
             let clientObject: SpaceObjectOld;
             
-            switch (serverObject.type) {
+            switch (normalizedObject.type) {
                 case 'player_ship':
                     // Create or update player ships (including other players)
-                    clientObject = new Ship(serverObject);
+                    clientObject = new Ship(normalizedObject);
                     break;
                     
                 case 'asteroid': {
-                    const asteroidData = serverObject as SharedAsteroid;
+                    const asteroidData = normalizedObject as SharedAsteroid;
                     clientObject = new Asteroid(asteroidData);
                     break;
                 }
                     
                 case 'shipwreck': {
-                    const shipwreckData = serverObject as SharedShipwreck;
+                    const shipwreckData = normalizedObject as SharedShipwreck;
                     clientObject = new Shipwreck(shipwreckData);
                     break;
                 }
                     
                 case 'escape_pod': {
-                    const podData = serverObject as SharedEscapePod;
+                    const podData = normalizedObject as SharedEscapePod;
                     clientObject = new EscapePod(podData);
                     break;
                 }
                     
                 default:
-                    console.warn('Unknown object type:', serverObject.type);
+                    console.warn('Unknown object type:', normalizedObject.type);
                     return;
             }
             
