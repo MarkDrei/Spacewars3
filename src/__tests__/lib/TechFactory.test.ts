@@ -4,6 +4,7 @@
 
 import { describe, test, expect } from 'vitest';
 import { TechFactory, TechCounts } from '@/lib/server/techs/TechFactory';
+import { createInitialTechTree } from '@/lib/server/techs/techtree';
 
 describe('TechFactory.calculateWeaponDamage', () => {
   const defaultTechCounts: TechCounts = {
@@ -288,88 +289,72 @@ describe('TechFactory utility methods', () => {
 
 describe('TechFactory.calculateWeaponReloadTime', () => {
   test('calculateWeaponReloadTime_projectileWeapon_baseLevel_returnsBaseCooldown', () => {
-    const techTree = {
-      projectileReloadRate: 1,
-      energyRechargeRate: 1
-    };
+    const techTree = createInitialTechTree();
     
-    // Auto turret base cooldown is 3 seconds
+    // Auto turret: reloadTimeMinutes = 12, base cooldown = 720 seconds
     // Level 1 research = 10% faster = 0.9x multiplier
-    // Expected: 3 * 0.9 = 2.7 seconds
+    // Expected: 720 * 0.9 = 648 seconds
     const reloadTime = TechFactory.calculateWeaponReloadTime('auto_turret', techTree);
-    expect(reloadTime).toBeCloseTo(2.7, 2);
+    expect(reloadTime).toBeCloseTo(648, 1);
   });
 
   test('calculateWeaponReloadTime_energyWeapon_baseLevel_returnsBaseCooldown', () => {
-    const techTree = {
-      projectileReloadRate: 1,
-      energyRechargeRate: 1
-    };
+    const techTree = createInitialTechTree();
     
-    // Pulse laser base cooldown is 2 seconds
+    // Pulse laser: reloadTimeMinutes = 12, base cooldown = 720 seconds
     // Level 1 research = 15% faster = 0.85x multiplier
-    // Expected: 2 * 0.85 = 1.7 seconds
+    // Expected: 720 * 0.85 = 612 seconds
     const reloadTime = TechFactory.calculateWeaponReloadTime('pulse_laser', techTree);
-    expect(reloadTime).toBeCloseTo(1.7, 2);
+    expect(reloadTime).toBeCloseTo(612, 1);
   });
 
   test('calculateWeaponReloadTime_projectileWeapon_level3Research_appliesReduction', () => {
-    const techTree = {
-      projectileReloadRate: 3,
-      energyRechargeRate: 1
-    };
+    const techTree = createInitialTechTree();
+    techTree.projectileReloadRate = 3;
     
-    // Gauss rifle base cooldown is 5 seconds
+    // Gauss rifle: reloadTimeMinutes = 15, base cooldown = 900 seconds
     // Level 3 research = 10 + 10 + 10 = 30% faster = 0.7x multiplier
-    // Expected: 5 * 0.7 = 3.5 seconds
+    // Expected: 900 * 0.7 = 630 seconds
     const reloadTime = TechFactory.calculateWeaponReloadTime('gauss_rifle', techTree);
-    expect(reloadTime).toBeCloseTo(3.5, 2);
+    expect(reloadTime).toBeCloseTo(630, 1);
   });
 
   test('calculateWeaponReloadTime_energyWeapon_level4Research_appliesReduction', () => {
-    const techTree = {
-      projectileReloadRate: 1,
-      energyRechargeRate: 4
-    };
+    const techTree = createInitialTechTree();
+    techTree.energyRechargeRate = 4;
     
-    // Plasma lance base cooldown is 4 seconds
+    // Plasma lance: reloadTimeMinutes = 15, base cooldown = 900 seconds
     // Level 4 research = 15 + 15 + 15 + 15 = 60% faster = 0.4x multiplier
-    // Expected: 4 * 0.4 = 1.6 seconds
+    // Expected: 900 * 0.4 = 360 seconds
     const reloadTime = TechFactory.calculateWeaponReloadTime('plasma_lance', techTree);
-    expect(reloadTime).toBeCloseTo(1.6, 2);
+    expect(reloadTime).toBeCloseTo(360, 1);
   });
 
   test('calculateWeaponReloadTime_highResearchLevel_respectsMinimumMultiplier', () => {
-    const techTree = {
-      projectileReloadRate: 1,
-      energyRechargeRate: 10
-    };
+    const techTree = createInitialTechTree();
+    techTree.energyRechargeRate = 10;
     
-    // Photon torpedo base cooldown is 8 seconds
+    // Photon torpedo: reloadTimeMinutes = 20, base cooldown = 1200 seconds
     // Level 10 research = 15 + (15*9) = 150% faster, but capped at 90% (0.1x multiplier)
-    // Expected: 8 * 0.1 = 0.8 seconds
+    // Expected: 1200 * 0.1 = 120 seconds
     const reloadTime = TechFactory.calculateWeaponReloadTime('photon_torpedo', techTree);
-    expect(reloadTime).toBeCloseTo(0.8, 2);
+    expect(reloadTime).toBeCloseTo(120, 1);
   });
 
   test('calculateWeaponReloadTime_level0Research_noEffect', () => {
-    const techTree = {
-      projectileReloadRate: 0,
-      energyRechargeRate: 0
-    };
+    const techTree = createInitialTechTree();
+    techTree.projectileReloadRate = 0;
+    techTree.energyRechargeRate = 0;
     
-    // Rocket launcher base cooldown is 10 seconds
+    // Rocket launcher: reloadTimeMinutes = 20, base cooldown = 1200 seconds
     // Level 0 research = 0% = 1.0x multiplier
-    // Expected: 10 * 1.0 = 10 seconds
+    // Expected: 1200 * 1.0 = 1200 seconds
     const reloadTime = TechFactory.calculateWeaponReloadTime('rocket_launcher', techTree);
-    expect(reloadTime).toBe(10);
+    expect(reloadTime).toBe(1200);
   });
 
   test('calculateWeaponReloadTime_invalidWeapon_throwsError', () => {
-    const techTree = {
-      projectileReloadRate: 1,
-      energyRechargeRate: 1
-    };
+    const techTree = createInitialTechTree();
     
     expect(() => TechFactory.calculateWeaponReloadTime('invalid_weapon', techTree)).toThrow('Unknown weapon: invalid_weapon');
   });

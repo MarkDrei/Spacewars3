@@ -249,40 +249,15 @@ export class TechFactory {
 
   /**
    * Calculate base battle cooldown (in seconds) from reloadTimeMinutes
-   * Uses weapon subtype and strength to determine the conversion scale
+   * Converts reloadTimeMinutes directly to seconds without scale factors
    * 
    * @param weaponSpec The weapon specification
    * @returns Base battle cooldown in seconds (before research modifiers)
    */
   static getBaseBattleCooldown(weaponSpec: WeaponSpec): number {
-    // Convert reloadTimeMinutes to seconds and apply scale factor based on weapon type and strength
-    // Scale factors are chosen to maintain original battle dynamics:
-    // - Projectile Weak: 240 (12min → 3s)
-    // - Energy Weak: 360 (12min → 2s)
-    // - Projectile Medium: 180 (15min → 5s)
-    // - Energy Medium: 225 (15min → 4s)
-    // - Projectile Strong: 120 (20min → 10s)
-    // - Energy Strong: 150 (20min → 8s)
-    
-    const reloadTimeSeconds = weaponSpec.reloadTimeMinutes * 60;
-    
-    if (weaponSpec.subtype === 'Projectile') {
-      switch (weaponSpec.strength) {
-        case 'Weak': return reloadTimeSeconds / 240;
-        case 'Medium': return reloadTimeSeconds / 180;
-        case 'Strong': return reloadTimeSeconds / 120;
-        default:
-          throw new Error(`Invalid weapon strength: ${weaponSpec.strength} for Projectile weapon`);
-      }
-    } else { // Energy
-      switch (weaponSpec.strength) {
-        case 'Weak': return reloadTimeSeconds / 360;
-        case 'Medium': return reloadTimeSeconds / 225;
-        case 'Strong': return reloadTimeSeconds / 150;
-        default:
-          throw new Error(`Invalid weapon strength: ${weaponSpec.strength} for Energy weapon`);
-      }
-    }
+    // Convert reloadTimeMinutes directly to seconds
+    // This creates a slower-paced battle system where weapon reload times match their design values
+    return weaponSpec.reloadTimeMinutes * 60;
   }
 
   /**

@@ -47,9 +47,9 @@ describe('Battle Research Effects Integration', () => {
             
             // Calculate initial reload time with level 1 research (default)
             // Level 1 projectileReloadRate = 10% faster = 0.9x multiplier
-            // auto_turret: 12min * 60 / 240 = 3s base, * 0.9 = 2.7s
+            // auto_turret: 12min * 60 = 720s base, * 0.9 = 648s
             const initialReloadTime = TechFactory.calculateWeaponReloadTime('auto_turret', attacker.techTree);
-            expect(initialReloadTime).toBeCloseTo(2.7, 1);
+            expect(initialReloadTime).toBeCloseTo(648, 1);
           });
 
           // === Phase 2: Upgrade research and recalculate ===
@@ -62,9 +62,9 @@ describe('Battle Research Effects Integration', () => {
             userCache.updateUserInCache(userCtx, attacker);
 
             // Recalculate reload time with upgraded research
-            // auto_turret: 3s base * 0.7 = 2.1s
+            // auto_turret: 720s base * 0.7 = 504s
             const upgradedReloadTime = TechFactory.calculateWeaponReloadTime('auto_turret', attacker.techTree);
-            expect(upgradedReloadTime).toBeCloseTo(2.1, 1);
+            expect(upgradedReloadTime).toBeCloseTo(504, 1);
           });
 
           // === Phase 3: Create battle with upgraded research ===
@@ -112,9 +112,9 @@ describe('Battle Research Effects Integration', () => {
           expect(battle).toBeDefined();
           expect(battle.attackerStartStats.weapons.auto_turret).toBeDefined();
           
-          // The cooldown in battle stats should be ~2.1 seconds (with level 3 research)
+          // The cooldown in battle stats should be ~504 seconds (with level 3 research)
           const battleCooldown = battle.attackerStartStats.weapons.auto_turret.cooldown;
-          expect(battleCooldown).toBeCloseTo(2.1, 1);
+          expect(battleCooldown).toBeCloseTo(504, 1);
           
           // Verify it's different from base cooldown without research
           const baseCooldown = TechFactory.getBaseBattleCooldown(TechFactory.getWeaponSpec('auto_turret')!);
@@ -143,9 +143,9 @@ describe('Battle Research Effects Integration', () => {
             userCache.updateUserInCache(userCtx, attacker);
 
             // Calculate reload time with upgraded research
-            // pulse_laser: 12min * 60 / 360 = 2s base, * 0.4 = 0.8s
+            // pulse_laser: 12min * 60 = 720s base, * 0.4 = 288s
             const upgradedReloadTime = TechFactory.calculateWeaponReloadTime('pulse_laser', attacker.techTree);
-            expect(upgradedReloadTime).toBeCloseTo(0.8, 1);
+            expect(upgradedReloadTime).toBeCloseTo(288, 1);
           });
 
           // === Phase 2: Create battle and verify cooldowns ===
@@ -192,9 +192,9 @@ describe('Battle Research Effects Integration', () => {
           expect(battle).toBeDefined();
           expect(battle.attackerStartStats.weapons.pulse_laser).toBeDefined();
           
-          // The cooldown in battle stats should be ~0.8 seconds (with level 4 research)
+          // The cooldown in battle stats should be ~288 seconds (with level 4 research)
           const battleCooldown = battle.attackerStartStats.weapons.pulse_laser.cooldown;
-          expect(battleCooldown).toBeCloseTo(0.8, 1);
+          expect(battleCooldown).toBeCloseTo(288, 1);
           
           // Verify it's much faster than base cooldown
           const baseCooldown = TechFactory.getBaseBattleCooldown(TechFactory.getWeaponSpec('pulse_laser')!);
@@ -228,14 +228,14 @@ describe('Battle Research Effects Integration', () => {
             const attacker = (await userCache.getUserByUsername(userCtx, 'a'))!;
             
             // Projectile: level 2 = 20% faster = 0.8x
-            // auto_turret: 3s * 0.8 = 2.4s
+            // auto_turret: 720s * 0.8 = 576s
             const projectileReload = TechFactory.calculateWeaponReloadTime('auto_turret', attacker.techTree);
-            expect(projectileReload).toBeCloseTo(2.4, 1);
+            expect(projectileReload).toBeCloseTo(576, 1);
             
             // Energy: level 1 = 15% faster = 0.85x
-            // pulse_laser: 2s * 0.85 = 1.7s
+            // pulse_laser: 720s * 0.85 = 612s
             const energyReload = TechFactory.calculateWeaponReloadTime('pulse_laser', attacker.techTree);
-            expect(energyReload).toBeCloseTo(1.7, 1);
+            expect(energyReload).toBeCloseTo(612, 1);
             
             // Verify they're different (research only affected projectile)
             expect(Math.abs(projectileReload - energyReload)).toBeGreaterThan(0.5);
