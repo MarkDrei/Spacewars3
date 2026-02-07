@@ -482,7 +482,7 @@ export async function seedDatabase(db: DatabaseConnection, force = false): Promi
           const shipResult = await db.query(
             `INSERT INTO space_objects (type, x, y, speed, angle, last_position_update_ms, picture_id)
              VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
-            ['player_ship', 2500 + i * 100, 2500 + i * 100, 0, 0, now, 1] // picture_id = 1 for test users, positioned near world center
+            ['player_ship', 2500 + i * 200, 2500 + i * 200, 0, 0, now, 1] // picture_id = 1 for test users, positioned near world center with adequate spacing
           );
           
           const shipId = shipResult.rows[0].id;
