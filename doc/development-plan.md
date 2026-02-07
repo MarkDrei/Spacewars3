@@ -708,4 +708,4 @@ Direct database writes via `saveUserToDb()` are only called internally by cache 
 
 ## Open Questions
 
-_No open questions - all requirements are clear and implementation path is well-defined._
+_No open questions: all requirements are clear and implementation path is well-defined._
