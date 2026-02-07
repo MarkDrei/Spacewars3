@@ -20,19 +20,19 @@ const ShipPageClient: React.FC<ShipPageClientProps> = () => {
   useEffect(() => {
     // Dynamically detect available ship images
     const detectShips = async () => {
-      // Check for ship1.png through ship10.png (reasonable upper limit)
-      const promises = Array.from({ length: 10 }, (_, i) => i + 1).map(async (i) => {
-        try {
-          const response = await fetch(`/assets/images/ship${i}.png`, { method: 'HEAD' });
-          return response.ok ? i : null;
-        } catch {
-          return null;
+      try {
+        const response = await fetch('/api/ships');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.ships && Array.isArray(data.ships)) {
+            setAvailableShips(data.ships);
+          }
+        } else {
+             console.error('Failed to list ships');
         }
-      });
-
-      const results = await Promise.all(promises);
-      const ships = results.filter((ship): ship is number => ship !== null);
-      setAvailableShips(ships);
+      } catch (error) {
+         console.error('Error fetching ship list:', error);
+      }
     };
 
     detectShips();
