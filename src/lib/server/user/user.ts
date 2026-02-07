@@ -94,6 +94,41 @@ class User {
   }
 
   /**
+   * Calculate player level from total XP.
+   * Level 1 = 0 XP
+   * Level 2 = 1,000 XP
+   * Level 3 = 4,000 XP (1000 + 3000)
+   * Level 4 = 10,000 XP (1000 + 3000 + 6000)
+   * Pattern: Each level requires 1000 more XP than the previous increment
+   */
+  getLevel(): number {
+    let level = 1;
+    let totalXpNeeded = 0;
+    let xpForNextLevel = 1000;
+
+    while (this.xp >= totalXpNeeded + xpForNextLevel) {
+      totalXpNeeded += xpForNextLevel;
+      xpForNextLevel += 1000;
+      level++;
+    }
+
+    return level;
+  }
+
+  /**
+   * Get the total XP required to reach the next level.
+   * Returns the XP threshold, not the remaining XP needed.
+   */
+  getXpForNextLevel(): number {
+    const currentLevel = this.getLevel();
+    const nextLevel = currentLevel + 1;
+
+    // Calculate total XP needed for next level
+    // Formula: sum from i=1 to n-1 of (i × 1000)
+    return (nextLevel * (nextLevel - 1) * 1000) / 2;
+  }
+
+  /**
    * Add iron to the user's inventory with capacity enforcement
    * @param amount Amount of iron to add
    * @returns The actual amount added (may be less if cap is hit)
@@ -119,6 +154,25 @@ class User {
     }
     this.iron -= amount;
     return true;
+  }
+
+  /**
+   * Add XP to the user.
+   * @param amount Amount of XP to add (must be positive)
+   * @returns Object with newLevel if level increased, undefined otherwise
+   */
+  addXp(amount: number): { leveledUp: boolean; oldLevel: number; newLevel: number } | undefined {
+    if (amount <= 0) return undefined;
+
+    const oldLevel = this.getLevel();
+    this.xp += amount;
+    const newLevel = this.getLevel();
+
+    if (newLevel > oldLevel) {
+      return { leveledUp: true, oldLevel, newLevel };
+    }
+
+    return undefined;
   }
 
   updateStats(now: number): void {
