@@ -8,12 +8,12 @@ import { WorldBounds } from './physics';
 /**
  * Default world width in game units
  */
-export const DEFAULT_WORLD_WIDTH = 500;
+export const DEFAULT_WORLD_WIDTH = 5000;
 
 /**
  * Default world height in game units
  */
-export const DEFAULT_WORLD_HEIGHT = 500;
+export const DEFAULT_WORLD_HEIGHT = 5000;
 
 /**
  * Default world bounds object
