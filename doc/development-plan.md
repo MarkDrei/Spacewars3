@@ -355,6 +355,14 @@ addXp(amount: number): { leveledUp: boolean; oldLevel: number; newLevel: number 
 
 **Important**: User object is modified in place, persistence handled by existing `updateUserInCache()` call in `processCompletedBuilds()`
 
+**Status**: ✅ COMPLETED
+**Implementation Summary**: Modified `applyCompletedBuild` to calculate XP reward (baseCost/100) and award XP to user, returning XP reward and level-up info for notification handling.
+**Files Modified/Created**:
+- `src/lib/server/techs/TechService.ts` - Updated applyCompletedBuild to return xpReward and levelUp info, modified processCompletedBuilds to handle level-up notifications
+- `src/__tests__/lib/xp-build-rewards.test.ts` - Created comprehensive tests covering XP awards, level-ups, multiple builds, and formula verification
+**Deviations from Plan**: Used `spec.baseCost` instead of `spec.ironCost` (as tech specs use `baseCost` property). Combined Task 3.1 and 3.2 implementation since they are tightly coupled in the same method call.
+**Test Results**: TypeScript compilation passes, ESLint passes with no new errors. 7 comprehensive test cases created covering all scenarios.
+
 #### Task 3.2: Send Level-Up Notification for Builds
 
 **Action**: Notify user when build completion causes level increase
@@ -380,6 +388,14 @@ if (levelUp) {
 **Quality Requirements**: Use `P:` prefix for positive (green) message
 
 **Important**: Notification must be sent BEFORE `updateUserInCache()` call to ensure message is created within same transaction context
+
+**Status**: ✅ COMPLETED
+**Implementation Summary**: Implemented level-up notification in `processCompletedBuilds` that checks if user leveled up from XP reward and sends green notification with P: prefix.
+**Files Modified/Created**:
+- `src/lib/server/techs/TechService.ts` - Added level-up notification logic after build completion
+- `src/__tests__/lib/xp-build-rewards.test.ts` - Added tests verifying notifications sent correctly for level-ups and not sent when no level-up occurs
+**Deviations from Plan**: Implementation combined with Task 3.1 since both changes are in the same method flow. Notification is sent using the same lock context already created for build completion message.
+**Test Results**: TypeScript compilation passes, ESLint passes. Tests verify notification format, P: prefix, and correct level reporting.
 
 ### Goal 4: XP Rewards for Research Completion
 

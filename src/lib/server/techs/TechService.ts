@@ -200,17 +200,26 @@ export class TechService {
 
             if (now >= completionTime) {
                 // Build complete!
-                this.applyCompletedBuild(user, currentBuild);
+                const { xpReward, levelUp } = this.applyCompletedBuild(user, currentBuild);
                 completedItems.push(currentBuild);
 
                 // Remove from queue
                 user.buildQueue.shift();
                 queueChanged = true;
 
-                // Send notification
+                // Send notifications
                 try {
                     const ctx = createLockContext();
                     await this.messageCacheInstance.createMessage(ctx, userId, `Build complete: ${spec.name}`);
+                    
+                    // Send level-up notification if player leveled up
+                    if (levelUp) {
+                        await this.messageCacheInstance.createMessage(
+                            ctx,
+                            userId,
+                            `P: 🎉 Level Up! You reached level ${levelUp.newLevel}! (+${xpReward} XP from build)`
+                        );
+                    }
                 } catch (error) {
                     console.error(`Failed to send build completion notification to user ${userId}:`, error);
                 }
@@ -234,7 +243,7 @@ export class TechService {
         return { completed: completedItems };
     }
 
-    private applyCompletedBuild(user: User, build: BuildQueueItem): void {
+    private applyCompletedBuild(user: User, build: BuildQueueItem): { xpReward: number; levelUp?: { leveledUp: boolean; oldLevel: number; newLevel: number } } {
         const itemKey = build.itemKey;
 
         // Update tech counts
@@ -252,6 +261,13 @@ export class TechService {
 
             // Note: Real max values would be calculated from tech counts * base stats
         }
+
+        // Award XP based on build cost
+        const spec = TechFactory.getTechSpec(build.itemKey, build.itemType);
+        const xpReward = spec ? Math.floor(spec.baseCost / 100) : 0;
+        const levelUp = xpReward > 0 ? user.addXp(xpReward) : undefined;
+
+        return { xpReward, levelUp };
     }
 
     /**
