@@ -15,6 +15,8 @@ import {
 } from '@shared/physics';
 
 describe('Physics Calculations', () => {
+  // Test world bounds - kept at 500×500 for test reproducibility
+  // Production world size may be different (see worldConstants.ts)
   const WORLD_BOUNDS: WorldBounds = { width: 500, height: 500 };
   
   describe('updateObjectPosition', () => {
