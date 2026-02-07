@@ -187,6 +187,34 @@ getLevel(): number {
 
 **Quality Requirements**: Handle XP = 0 returns level 1, efficient O(√n) complexity
 
+**Status**: ⚠️ NEEDS REVISION
+**Implementation Summary**: Implemented getLevel() method in User class that calculates player level from cumulative XP using iterative algorithm with linear increments (1000, 2000, 3000...).
+**Files Modified/Created**:
+- `src/lib/server/user/user.ts` - Added getLevel() method after getMaxIronCapacity()
+- `src/__tests__/lib/xp-level-calculation.test.ts` - Created comprehensive tests covering edge cases and level thresholds
+**Deviations from Plan**: None - implemented exactly as specified in plan code block
+**Test Results**: TypeScript compilation passes, no linting errors (tests cannot run due to database unavailability in CI environment)
+
+**Review Status**: ⚠️ NEEDS REVISION
+**Reviewer**: Medicus
+**Issues Found**:
+1. **CRITICAL**: Test expectations are incorrect - copied from misleading plan documentation instead of verifying against code
+2. Test `getLevel_9999Xp_returnsLevel3` expects level 3, but 9999 XP is actually level 4
+3. Test `getXpForNextLevel_level2_returns4000` expects 4000, but should be 3000
+4. Test `getXpForNextLevel_level3_returns10000` has wrong expectation (should be 6000)
+5. Minor typo: `addXp_multipleLevel ups` should be `addXp_multipleLevelUps`
+6. Excessive debug comments (lines 128-262) should be cleaned up
+
+**Required Changes**:
+- Fix test line 78: Change `expect(mockUser.getLevel()).toBe(3)` to `.toBe(4)`
+- Fix test line 119: Change `expect(mockUser.getXpForNextLevel()).toBe(4000)` to `.toBe(3000)` and update test name
+- Fix test line 124-125: Change `mockUser.xp = 4000` to `= 3000` and `expect(...).toBe(10000)` to `.toBe(6000)` and update test name
+- Fix test line 315: Remove space in test name `multipleLevel ups` → `multipleLevelUps`
+- Remove or minimize debug comments (lines 128-262) to improve code quality
+
+**Plan Documentation Issue**:
+The plan examples are misleading - they show triangular increments but the code correctly uses linear increments. This should be clarified.
+
 #### Task 2.3: Implement getXpForNextLevel() Method
 
 **Action**: Calculate total XP required to reach the next level
@@ -211,6 +239,16 @@ getXpForNextLevel(): number {
   return (nextLevel * (nextLevel - 1) * 1000) / 2;
 }
 ```
+
+**Status**: ⚠️ NEEDS REVISION (see Task 2.2 review)
+**Implementation Summary**: Implemented getXpForNextLevel() method using closed-form arithmetic formula for triangular number progression.
+**Files Modified/Created**:
+- `src/lib/server/user/user.ts` - Added getXpForNextLevel() method after getLevel()
+- `src/__tests__/lib/xp-level-calculation.test.ts` - Added comprehensive tests including consistency checks with getLevel()
+**Deviations from Plan**: None
+**Test Results**: TypeScript compilation passes, no linting errors
+
+**Review Status**: ⚠️ NEEDS REVISION (see Task 2.2 review for test issues)
 
 #### Task 2.4: Implement addXp() Method
 
@@ -244,6 +282,16 @@ addXp(amount: number): { leveledUp: boolean; oldLevel: number; newLevel: number 
 ```
 
 **Quality Requirements**: Return level-up info for notification system, handle negative amounts gracefully
+
+**Status**: ⚠️ NEEDS REVISION (see Task 2.2 review)
+**Implementation Summary**: Implemented addXp() method with level-up detection, returning structured notification data when player levels up.
+**Files Modified/Created**:
+- `src/lib/server/user/user.ts` - Added addXp() method after subtractIron()
+- `src/__tests__/lib/xp-level-calculation.test.ts` - Added comprehensive tests for positive/negative/zero amounts, level-ups, multiple level-ups, and edge cases
+**Deviations from Plan**: Placed after subtractIron() instead of addIron() for better logical grouping (both methods modify user state)
+**Test Results**: TypeScript compilation passes, no linting errors, 8 test cases covering all scenarios
+
+**Review Status**: ⚠️ NEEDS REVISION (see Task 2.2 review for test issues)
 
 #### Task 2.5: Update userFromRow Function (Cache Internal)
 
