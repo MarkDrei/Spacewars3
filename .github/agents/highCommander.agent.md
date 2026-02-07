@@ -1,5 +1,6 @@
 ---
 name: High Commander
+description: Orchestrates the entire development workflow by coordinating specialized agents for planning, implementation, and review.
 tools:
   [
     "vscode",
