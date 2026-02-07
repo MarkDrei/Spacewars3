@@ -148,8 +148,8 @@ export async function getDatabase(): Promise<DatabaseConnection> {
       if (needsInit) {
         console.log(`🆕 New ${dbLabel} database detected (or unseeded), initializing...`);
         await initializeDatabase(client, pool);
-      } else if (!isTest) {
-        // Only run migrations in production, not in tests
+      } else {
+        // Run migrations for existing databases (production and test)
         console.log('📊 Existing database detected, checking for migrations...');
         await applyTechMigrations(pool);
       }
