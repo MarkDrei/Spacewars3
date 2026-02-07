@@ -2,6 +2,8 @@
 // TechFactory - Manages ship technology and equipment
 // ---
 
+import { getWeaponReloadTimeModifierFromTree, TechTree } from './techtree';
+
 export type WeaponSubtype = 'Projectile' | 'Energy';
 export type WeaponStrength = 'Weak' | 'Medium' | 'Strong';
 
@@ -26,7 +28,7 @@ export interface WeaponSpec {
   disadvantage: string;
   // Battle system properties
   damage: number; // actual damage per shot in battle
-  cooldown: number; // cooldown time in seconds between shots
+  // Note: Battle cooldown is calculated from reloadTimeMinutes using getBaseBattleCooldown()
 }
 
 export interface DefenseSpec {
@@ -68,8 +70,7 @@ export class TechFactory {
       buildDurationMinutes: 1,
       advantage: 'Cheap and good damage per second',
       disadvantage: 'Low accuracy vs agile targets',
-      damage: 10, // 10 damage per shot
-      cooldown: 3 // fires every 3 seconds (fast)
+      damage: 10 // 10 damage per shot
     },
     pulse_laser: {
       name: 'Pulse Laser',
@@ -84,8 +85,7 @@ export class TechFactory {
       buildDurationMinutes: 2,
       advantage: 'High accuracy',
       disadvantage: 'Low damage output',
-      damage: 8, // 8 damage per shot
-      cooldown: 2 // fires every 2 seconds (very fast)
+      damage: 8 // 8 damage per shot
     },
     gauss_rifle: {
       name: 'Gauss Rifle',
@@ -100,8 +100,7 @@ export class TechFactory {
       buildDurationMinutes: 5,
       advantage: 'High impact; penetrates shields',
       disadvantage: 'Low accuracy vs agile targets',
-      damage: 35, // 35 damage per shot
-      cooldown: 5 // fires every 5 seconds (medium)
+      damage: 35 // 35 damage per shot
     },
     plasma_lance: {
       name: 'Plasma Lance',
@@ -116,8 +115,7 @@ export class TechFactory {
       buildDurationMinutes: 5,
       advantage: 'Locally overheats shields and causes hull damage',
       disadvantage: '',
-      damage: 30, // 30 damage per shot
-      cooldown: 4 // fires every 4 seconds (medium-fast)
+      damage: 30 // 30 damage per shot
     },
     rocket_launcher: {
       name: 'Rocket Launcher',
@@ -132,8 +130,7 @@ export class TechFactory {
       buildDurationMinutes: 20,
       advantage: 'Guided; always hits unless ECM Jammer is active',
       disadvantage: 'Susceptible to ECM jammers',
-      damage: 150, // 150 damage per shot (huge!)
-      cooldown: 10 // fires every 10 seconds (slow but powerful)
+      damage: 150 // 150 damage per shot (huge!)
     },
     photon_torpedo: {
       name: 'Photon Torpedo',
@@ -148,8 +145,7 @@ export class TechFactory {
       buildDurationMinutes: 10,
       advantage: 'Heavy shield damage',
       disadvantage: 'Slightly susceptible to ECM jammers',
-      damage: 120, // 120 damage per shot (heavy)
-      cooldown: 8 // fires every 8 seconds (medium-slow)
+      damage: 120 // 120 damage per shot (heavy)
     }
   };
 
@@ -249,6 +245,19 @@ export class TechFactory {
     } else {
       return this.getDefenseSpec(itemKey);
     }
+  }
+
+  /**
+   * Calculate base battle cooldown (in seconds) from reloadTimeMinutes
+   * Converts reloadTimeMinutes directly to seconds without scale factors
+   * 
+   * @param weaponSpec The weapon specification
+   * @returns Base battle cooldown in seconds (before research modifiers)
+   */
+  static getBaseBattleCooldown(weaponSpec: WeaponSpec): number {
+    // Convert reloadTimeMinutes directly to seconds
+    // This creates a slower-paced battle system where weapon reload times match their design values
+    return weaponSpec.reloadTimeMinutes * 60;
   }
 
   /**
@@ -378,6 +387,30 @@ export class TechFactory {
       defense: defenseEffects,
       grandTotalCost: weaponEffects.totalCost + defenseEffects.totalDefenseCost
     };
+  }
+
+  /**
+   * Calculate research-modified reload time for a weapon in seconds
+   * Applies research effects from the tech tree to the base cooldown value
+   * 
+   * @param weaponKey The weapon key (e.g., 'pulse_laser', 'rocket_launcher')
+   * @param techTree The tech tree containing research levels
+   * @returns The reload time in seconds, modified by research
+   */
+  static calculateWeaponReloadTime(weaponKey: string, techTree: TechTree): number {
+    const weaponSpec = this.getWeaponSpec(weaponKey);
+    if (!weaponSpec) {
+      throw new Error(`Unknown weapon: ${weaponKey}`);
+    }
+
+    // Get base battle cooldown from reloadTimeMinutes
+    const baseCooldown = this.getBaseBattleCooldown(weaponSpec);
+
+    // Get reload time multiplier from research
+    const multiplier = getWeaponReloadTimeModifierFromTree(techTree, weaponKey);
+    
+    // Apply multiplier to base cooldown
+    return baseCooldown * multiplier;
   }
 
   /**

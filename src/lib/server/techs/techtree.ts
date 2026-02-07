@@ -409,8 +409,8 @@ export const AllResearches: Record<ResearchType, Research> = {
 /**
  * Weapon type categorization for damage modifier calculations
  */
-const PROJECTILE_WEAPONS = ['machine_gun', 'flak_cannon', 'rocket_launcher'] as const;
-const ENERGY_WEAPONS = ['pulse_laser', 'plasma_cannon', 'photon_torpedo'] as const;
+const PROJECTILE_WEAPONS = ['auto_turret', 'gauss_rifle', 'rocket_launcher'] as const;
+const ENERGY_WEAPONS = ['pulse_laser', 'plasma_lance', 'photon_torpedo'] as const;
 
 /**
  * Represents the tech tree, which hosts all researches for a user.
@@ -656,6 +656,36 @@ export function getWeaponDamageModifierFromTree(tree: TechTree, weaponType: stri
   const effect = getResearchEffectFromTree(tree, researchType);
   // Modifier = current effect / base value
   return effect / research.baseValue;
+}
+
+/**
+ * Returns the reload rate modifier for a weapon type based on the research in the tech tree.
+ * The modifier represents the percentage reduction in reload time (faster firing).
+ * For example, 10% research = 0.9x reload time (10% faster), 20% = 0.8x reload time (20% faster).
+ * 
+ * @param tree The tech tree to read research levels from
+ * @param weaponType The weapon key (e.g., 'pulse_laser', 'rocket_launcher', 'auto_turret')
+ * @returns The reload time multiplier as a decimal (e.g., 1.0 = no change, 0.8 = 20% faster)
+ */
+export function getWeaponReloadTimeModifierFromTree(tree: TechTree, weaponType: string): number {
+  // Determine research type based on weapon type
+  let researchType: ResearchType;
+  if (PROJECTILE_WEAPONS.includes(weaponType as typeof PROJECTILE_WEAPONS[number])) {
+    researchType = ResearchType.ProjectileReloadRate;
+  } else if (ENERGY_WEAPONS.includes(weaponType as typeof ENERGY_WEAPONS[number])) {
+    researchType = ResearchType.EnergyRechargeRate;
+  } else {
+    // Default to 1.0 (no change) for unknown weapon types
+    return 1.0;
+  }
+  
+  const effect = getResearchEffectFromTree(tree, researchType);
+  // Effect is a percentage (e.g., 10, 20, 30)
+  // Reload time multiplier = 1 - (effect / 100)
+  // Example: 10% faster = 1 - 0.10 = 0.9x reload time
+  // Cap at 0.1 (90% reduction max) to prevent near-zero reload times
+  const multiplier = 1 - (effect / 100);
+  return Math.max(0.1, multiplier);
 }
 
 /**

@@ -336,7 +336,7 @@ async function fireWeapon(
       await createMessage(defenderId, `A: Enemy ${weaponType.replace(/_/g, ' ')} fired ${shotsPerSalvo} shot(s) but all missed!`);
       
       // Update cooldown - set to when weapon will be ready next
-      const nextReadyTime = currentTime + (weaponSpec.cooldown || 5);
+      const nextReadyTime = currentTime + (weaponData.cooldown || 5);
       await BattleRepo.setWeaponCooldown(context, battle.id, attackerId, weaponType, nextReadyTime);
       
       return;
@@ -392,7 +392,7 @@ async function fireWeapon(
     await createMessage(defenderId, defenderMessage);
     
     // Update cooldown - set to when weapon will be ready next
-    const nextReadyTime = currentTime + (weaponSpec.cooldown || 5);
+    const nextReadyTime = currentTime + (weaponData.cooldown || 5);
     await BattleRepo.setWeaponCooldown(context, battle.id, attackerId, weaponType, nextReadyTime);
     
     console.log(`⚔️ Battle ${battle.id}: User ${attackerId} ${weaponType} - ${damageCalc.weaponsHit}/${shotsPerSalvo} hits, ${totalDamage} damage`);
