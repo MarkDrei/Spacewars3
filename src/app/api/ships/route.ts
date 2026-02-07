@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 import { promises as fs } from 'fs';
 import path from 'path';
 
-export const dynamic = 'force-dynamic';
+// Cache for 1 hour to avoid scanning filesystem on every request
+export const revalidate = 3600;
 
 export async function GET() {
   try {
