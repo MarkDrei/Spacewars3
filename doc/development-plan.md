@@ -423,6 +423,13 @@ if (levelUp) {
 
 **Quality Requirements**: Return level BEFORE increment for correct cost calculation
 
+**Status**: ✅ COMPLETED
+**Implementation Summary**: Modified updateTechTree to return completion info including research type and completed level for XP calculation.
+**Files Modified/Created**:
+- `src/lib/server/techs/techtree.ts` - Updated updateTechTree return type and logic to track research completion
+**Deviations from Plan**: None
+**Test Results**: TypeScript compilation passes, no linting errors
+
 #### Task 4.2: Award XP in User.updateStats
 
 **Action**: Check for research completion, calculate XP reward, award XP, return level-up info for notification
@@ -464,6 +471,13 @@ return levelUpInfo;
 **Quality Requirements**: Use completedLevel + 1 for correct cost (cost of the level just completed)
 
 **Important**: User object is modified in place. Caller (UserCache.getUserByIdWithLock) automatically calls `updateUserInCache()` after updateStats() returns, ensuring XP changes are persisted
+
+**Status**: ✅ COMPLETED
+**Implementation Summary**: Modified updateStats to track research completion, calculate XP reward (cost/25), award XP, and return level-up info with source='research'.
+**Files Modified/Created**:
+- `src/lib/server/user/user.ts` - Updated updateStats return type and added XP reward logic for research completion
+**Deviations from Plan**: None
+**Test Results**: TypeScript compilation passes, no linting errors
 
 #### Task 4.3: Send Level-Up Notification for Research
 
@@ -519,6 +533,13 @@ if (levelIncreased) {
 
 **Note**: This is a simpler approach than modifying updateStats() to return notification info. Research level-ups will be detected on next user-stats poll (max 5 second delay).
 
+**Status**: ✅ COMPLETED
+**Implementation Summary**: Implemented level-up notification in user-stats API route that detects research completion and sends green notification message with P: prefix.
+**Files Modified/Created**:
+- `src/app/api/user-stats/route.ts` - Added MessageCache import and level-up notification logic after updateStats
+**Deviations from Plan**: Implementation directly checks levelUp result from updateStats rather than polling-based approach. This provides immediate notification on research completion.
+**Test Results**: TypeScript compilation passes, ESLint passes
+
 ### Goal 5: Display XP and Level on Home Screen
 
 **Description**: Show player's current XP, level, and progress to next level on the home page
@@ -546,6 +567,14 @@ xpForNextLevel: user.getXpForNextLevel()
 ```
 
 **Quality Requirements**: Include both raw XP and calculated values
+
+**Status**: ✅ COMPLETED
+**Implementation Summary**: Updated user-stats API endpoint to include xp, level, and xpForNextLevel in response data, and updated UserStatsResponse interface.
+**Files Modified/Created**:
+- `src/app/api/user-stats/route.ts` - Added xp, level, xpForNextLevel to responseData
+- `src/lib/client/services/userStatsService.ts` - Updated UserStatsResponse interface to include XP fields
+**Deviations from Plan**: None
+**Test Results**: TypeScript compilation passes, ESLint passes
 
 #### Task 5.2: Create or Update Hook for XP/Level Data
 
@@ -583,6 +612,13 @@ export function useXpLevel(pollingInterval: number = 5000): {
 ```
 
 **Quality Requirements**: Follow existing hook patterns, handle loading and error states, TypeScript strict mode
+
+**Status**: ✅ COMPLETED
+**Implementation Summary**: Created new useXpLevel hook that fetches XP/level data from /api/user-stats with polling support, error handling, and refetch capability.
+**Files Modified/Created**:
+- `src/lib/client/hooks/useXpLevel.ts` - Created new hook following useIron pattern with polling, error handling, and cleanup
+**Deviations from Plan**: Created as single file (useXpLevel.ts) rather than directory structure, for simplicity and consistency with other hooks
+**Test Results**: TypeScript compilation passes, ESLint passes
 
 #### Task 5.3: Add XP/Level Display to Home Page
 
@@ -635,6 +671,13 @@ export function useXpLevel(pollingInterval: number = 5000): {
 
 **Inputs**: XP data from useXpLevel hook
 **Quality Requirements**: Handle loading and null states, use existing CSS classes for consistency
+
+**Status**: ✅ COMPLETED
+**Implementation Summary**: Added XP/Level display section to Home Page showing level, current XP / next level XP, and progress percentage with proper loading/error handling.
+**Files Modified/Created**:
+- `src/app/home/HomePageClient.tsx` - Added useXpLevel hook import, hook usage, and new "Your Progress" table section before Defense Values
+**Deviations from Plan**: Placed before Defense Values table instead of before notifications, for better visual flow
+**Test Results**: TypeScript compilation passes, ESLint passes
 
 #### Task 5.4: Optional - Add Level to StatusHeader or Navigation
 

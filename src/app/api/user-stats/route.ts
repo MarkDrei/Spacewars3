@@ -6,6 +6,7 @@ import { handleApiError, requireAuth, ApiError } from '@/lib/server/errors';
 import { USER_LOCK } from '@/lib/server/typedLocks';
 import { User } from '@/lib/server/user/user';
 import { createLockContext, LockContext, LocksAtMostAndHas4 } from '@markdrei/ironguard-typescript-locks';
+import { MessageCache } from '@/lib/server/messages/MessageCache';
 
 export async function GET(request: NextRequest) {
   try {
@@ -35,16 +36,32 @@ export async function GET(request: NextRequest) {
 
 function processUserStats(user: User, userWorldCache: UserCache, userCtx: LockContext<LocksAtMostAndHas4>): NextResponse {
   const now = Math.floor(Date.now() / 1000);
-  user.updateStats(now);
+  const result = user.updateStats(now);
   
   // Update cache with new data (using unsafe methods because we have proper locks)
   userWorldCache.updateUserInCache(userCtx, user);
+  
+  // Send level-up notification if user leveled up from research
+  if (result.levelUp) {
+    const messageCache = MessageCache.getInstance();
+    // Send notification asynchronously (fire and forget)
+    messageCache.createMessage(
+      userCtx,
+      user.id,
+      `P: 🎉 Level Up! You reached level ${result.levelUp.newLevel}! (+${result.levelUp.xpReward} XP from research completion)`
+    ).catch(error => {
+      console.error('Failed to send level-up notification:', error);
+    });
+  }
   
   const responseData = { 
     iron: user.iron, 
     ironPerSecond: user.getIronPerSecond(),
     last_updated: user.last_updated,
-    maxIronCapacity: user.getMaxIronCapacity()
+    maxIronCapacity: user.getMaxIronCapacity(),
+    xp: user.xp,
+    level: user.getLevel(),
+    xpForNextLevel: user.getXpForNextLevel()
   };
   
   return NextResponse.json(responseData);

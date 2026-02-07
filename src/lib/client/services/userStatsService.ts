@@ -8,6 +8,9 @@ export interface UserStatsResponse {
   last_updated: number;
   ironPerSecond: number;
   maxIronCapacity: number;
+  xp: number;
+  level: number;
+  xpForNextLevel: number;
 }
 
 export interface UserStatsError {

@@ -24,7 +24,10 @@ describe('useIron', () => {
       iron: 1500,
       last_updated: 1674567890,
       ironPerSecond: 2,
-      maxIronCapacity: 5000
+      maxIronCapacity: 5000,
+      xp: 0,
+      level: 1,
+      xpForNextLevel: 1000
     };
     mockUserStatsService.getUserStats.mockResolvedValueOnce(mockStats);
 
@@ -68,7 +71,10 @@ describe('useIron', () => {
       iron: 1000,
       last_updated: 1674567890,
       ironPerSecond: 2,
-      maxIronCapacity: 5000
+      maxIronCapacity: 5000,
+      xp: 0,
+      level: 1,
+      xpForNextLevel: 1000
     };
     mockUserStatsService.getUserStats.mockResolvedValueOnce(mockStats);
 
@@ -112,7 +118,10 @@ describe('useIron', () => {
       iron: 1000,
       last_updated: 1674567890,
       ironPerSecond: 1,
-      maxIronCapacity: 5000
+      maxIronCapacity: 5000,
+      xp: 0,
+      level: 1,
+      xpForNextLevel: 1000
     });
 
     renderHook(() => useIron());
@@ -131,7 +140,10 @@ describe('useIron', () => {
       iron: 1000,
       last_updated: 1674567890,
       ironPerSecond: 0, // No production
-      maxIronCapacity: 5000
+      maxIronCapacity: 5000,
+      xp: 0,
+      level: 1,
+      xpForNextLevel: 1000
     };
     mockUserStatsService.getUserStats.mockResolvedValueOnce(mockStats);
 
@@ -152,7 +164,10 @@ describe('useIron', () => {
       iron: 1000,
       last_updated: 1674567890,
       ironPerSecond: 1,
-      maxIronCapacity: 5000
+      maxIronCapacity: 5000,
+      xp: 0,
+      level: 1,
+      xpForNextLevel: 1000
     };
     mockUserStatsService.getUserStats.mockResolvedValue(mockStats);
 
@@ -186,7 +201,10 @@ describe('useIron', () => {
       iron: 1000,
       last_updated: 1674567890,
       ironPerSecond: 2,
-      maxIronCapacity: 5000
+      maxIronCapacity: 5000,
+      xp: 0,
+      level: 1,
+      xpForNextLevel: 1000
     };
     mockUserStatsService.getUserStats.mockResolvedValueOnce(mockStats);
 
@@ -224,7 +242,10 @@ describe('useIron', () => {
       iron: 1000,
       last_updated: 1674567890,
       ironPerSecond: 1,
-      maxIronCapacity: 5000
+      maxIronCapacity: 5000,
+      xp: 0,
+      level: 1,
+      xpForNextLevel: 1000
     });
 
     const customInterval = 3000;

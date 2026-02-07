@@ -6,6 +6,7 @@ import { messagesService, UnreadMessage } from '@/lib/client/services/messagesSe
 import { useTechCounts } from '@/lib/client/hooks/useTechCounts';
 import { useDefenseValues } from '@/lib/client/hooks/useDefenseValues';
 import { useBattleStatus } from '@/lib/client/hooks/useBattleStatus';
+import { useXpLevel } from '@/lib/client/hooks/useXpLevel';
 import { ServerAuthState } from '@/lib/server/serverSession';
 import './HomePage.css';
 
@@ -65,6 +66,7 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
   const { techCounts, weapons, defenses, isLoading: techLoading, error: techError } = useTechCounts();
   const { defenseValues, isLoading: defenseLoading, error: defenseError } = useDefenseValues();
   const { battleStatus, isLoading: battleLoading } = useBattleStatus();
+  const { xpData, isLoading: xpLoading, error: xpError } = useXpLevel(5000);
 
   // Handler for refreshing messages
   const handleRefreshMessages = async () => {
@@ -337,6 +339,63 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
                       </tr>
                     );
                   })
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* XP and Level Display */}
+          <div className="data-table-container">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th colSpan={2}>Your Progress</th>
+                </tr>
+              </thead>
+              <tbody>
+                {xpLoading ? (
+                  <tr>
+                    <td colSpan={2} className="loading-cell">
+                      Loading progress...
+                    </td>
+                  </tr>
+                ) : xpError ? (
+                  <tr>
+                    <td colSpan={2} className="error-cell">
+                      Error: {xpError}
+                    </td>
+                  </tr>
+                ) : xpData ? (
+                  <>
+                    <tr className="data-row">
+                      <td className="data-cell">Level</td>
+                      <td className="data-cell">
+                        <span className="stat-value">{xpData.level}</span>
+                      </td>
+                    </tr>
+                    <tr className="data-row">
+                      <td className="data-cell">Experience</td>
+                      <td className="data-cell">
+                        <span className="stat-value">
+                          {xpData.xp.toLocaleString()} / {xpData.xpForNextLevel.toLocaleString()}
+                        </span>
+                      </td>
+                    </tr>
+                    <tr className="data-row">
+                      <td className="data-cell">Progress to Next Level</td>
+                      <td className="data-cell">
+                        <span className="stat-value">
+                          {Math.floor((xpData.xp / xpData.xpForNextLevel) * 100)}%
+                        </span>
+                      </td>
+                    </tr>
+                  </>
+                ) : (
+                  <tr>
+                    <td colSpan={2} className="empty-cell">
+                      No progress data available
+                    </td>
+                  </tr>
                 )}
               </tbody>
             </table>

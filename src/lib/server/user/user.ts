@@ -2,7 +2,7 @@
 // Domain logic for the User and its stats, including persistence callback.
 // ---
 
-import { TechTree, ResearchType, getResearchEffectFromTree, updateTechTree } from '../techs/techtree';
+import { TechTree, ResearchType, getResearchEffectFromTree, updateTechTree, AllResearches, getResearchUpgradeCost } from '../techs/techtree';
 import { TechCounts, BuildQueueItem } from '../techs/TechFactory';
 import { TechService } from '../techs/TechService';
 
@@ -175,32 +175,34 @@ class User {
     return undefined;
   }
 
-  updateStats(now: number): void {
+  updateStats(now: number): { levelUp?: { leveledUp: boolean; oldLevel: number; newLevel: number; xpReward: number; source: 'research' } } {
     const elapsed = now - this.last_updated;
-    if (elapsed <= 0) return;
+    if (elapsed <= 0) return {};
 
     let ironToAdd = 0;
+    let researchResult: { completed: boolean; type: ResearchType; completedLevel: number } | undefined;
     const techTree = this.techTree;
     const active = techTree.activeResearch;
     if (!active || active.type !== ResearchType.IronHarvesting) {
       // No relevant research in progress, just award all time
       ironToAdd += getResearchEffectFromTree(techTree, ResearchType.IronHarvesting) * elapsed;
-      updateTechTree(techTree, elapsed);
+      researchResult = updateTechTree(techTree, elapsed);
     } else {
       const timeToComplete = active.remainingDuration;
       if (elapsed < timeToComplete) {
         // Research does not complete in this interval
         ironToAdd += getResearchEffectFromTree(techTree, ResearchType.IronHarvesting) * elapsed;
-        updateTechTree(techTree, elapsed);
+        researchResult = updateTechTree(techTree, elapsed);
       } else {
         // Research completes during this interval
         // 1. Award up to research completion at old rate
         ironToAdd += getResearchEffectFromTree(techTree, ResearchType.IronHarvesting) * timeToComplete;
-        updateTechTree(techTree, timeToComplete);
+        researchResult = updateTechTree(techTree, timeToComplete);
         // 2. After research completes, award remaining time at new rate (if any)
         const remaining = elapsed - timeToComplete;
         if (remaining > 0) {
           ironToAdd += getResearchEffectFromTree(techTree, ResearchType.IronHarvesting) * remaining;
+          // Second updateTechTree call shouldn't complete another research in same tick
           updateTechTree(techTree, remaining);
         }
       }
@@ -211,6 +213,21 @@ class User {
 
     // Also update defense values (regeneration)
     this.updateDefenseValues(now);
+
+    // Check if research completed and award XP
+    let levelUpInfo: { leveledUp: boolean; oldLevel: number; newLevel: number; xpReward: number; source: 'research' } | undefined;
+    if (researchResult?.completed && researchResult.type && researchResult.completedLevel !== undefined) {
+      const research = AllResearches[researchResult.type];
+      const cost = getResearchUpgradeCost(research, researchResult.completedLevel + 1);
+      const xpReward = Math.floor(cost / 25);
+      const levelUp = this.addXp(xpReward);
+
+      if (levelUp) {
+        levelUpInfo = { ...levelUp, xpReward, source: 'research' as const };
+      }
+    }
+
+    return levelUpInfo ? { levelUp: levelUpInfo } : {};
   }
 
   /**

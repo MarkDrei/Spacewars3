@@ -681,11 +681,16 @@ export function triggerResearch(tree: TechTree, type: ResearchType): void {
  * If the research completes (remainingDuration <= 0), increases the level and unsets activeResearch.
  * @param tree The tech tree to update
  * @param timeSeconds The time in seconds to advance
+ * @returns Information about completed research (type and completed level) or undefined if no completion
  */
-export function updateTechTree(tree: TechTree, timeSeconds: number): void {
-  if (!tree.activeResearch) return;
+export function updateTechTree(tree: TechTree, timeSeconds: number): { completed: boolean; type: ResearchType; completedLevel: number } | undefined {
+  if (!tree.activeResearch) return undefined;
   tree.activeResearch.remainingDuration -= timeSeconds;
   if (tree.activeResearch.remainingDuration <= 0) {
+    // Store completion info before incrementing level
+    const completedType = tree.activeResearch.type;
+    const completedLevel = getResearchLevelFromTree(tree, completedType);
+    
     // Research complete: increase level
     switch (tree.activeResearch.type) {
       case ResearchType.IronHarvesting:
@@ -775,7 +780,11 @@ export function updateTechTree(tree: TechTree, timeSeconds: number): void {
         throw new Error('Unknown research type');
     }
     tree.activeResearch = undefined;
+    
+    return { completed: true, type: completedType, completedLevel };
   }
+  
+  return undefined;
 }
 
 /**
