@@ -81,7 +81,8 @@ const ShipPageClient: React.FC<ShipPageClientProps> = () => {
       });
 
       if (response.ok) {
-        const data = await response.json();
+        // body consumed above or ignored
+        await response.json(); 
         setCurrentShip(shipNumber);
         setMessage(`✅ Ship ${shipNumber} selected successfully! 🚀`);
       } else {

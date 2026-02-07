@@ -3,7 +3,7 @@
 // ---
 
 import { describe, expect, it, afterEach, beforeEach } from 'vitest';
-import { DatabaseConnection, getDatabase, resetTestDatabase } from '@/lib/server/database';
+import { DatabaseConnection, getDatabase } from '@/lib/server/database'; // Removed resetTestDatabase
 import { createUser, saveUserToDb } from '@/lib/server/user/userRepo';
 import { MessageCache } from '@/lib/server/messages/MessageCache';
 import { withTransaction } from '../helpers/transactionHelper';
