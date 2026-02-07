@@ -23,7 +23,8 @@ describe('Iron Capacity Management', () => {
       1,
       'testuser',
       'hash',
-      0,
+      0, // iron
+      0, // xp
       1000,
       createInitialTechTree(),
       dummySave,

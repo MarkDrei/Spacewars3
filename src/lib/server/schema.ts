@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS users (
   username TEXT UNIQUE NOT NULL,
   password_hash TEXT NOT NULL,
   iron DOUBLE PRECISION NOT NULL DEFAULT 0.0,
+  xp INTEGER NOT NULL DEFAULT 0,
   last_updated INTEGER NOT NULL,
   tech_tree TEXT NOT NULL,
   ship_id INTEGER,

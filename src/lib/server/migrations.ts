@@ -124,6 +124,16 @@ export const migrations: Migration[] = [
       'ALTER TABLE battles DROP COLUMN IF EXISTS attacker_end_stats',
       'ALTER TABLE battles DROP COLUMN IF EXISTS attackee_end_stats'
     ]
+  },
+  {
+    version: 8,
+    name: 'add_xp_system',
+    up: [
+      'ALTER TABLE users ADD COLUMN IF NOT EXISTS xp INTEGER NOT NULL DEFAULT 0'
+    ],
+    down: [
+      'ALTER TABLE users DROP COLUMN IF EXISTS xp'
+    ]
   }
   // Future migrations go here
 ];

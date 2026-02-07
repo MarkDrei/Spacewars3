@@ -23,7 +23,8 @@ describe('User.updateStats with IronHarvesting research progression', () => {
       1,
       'testuser',
       'hash',
-      0,
+      0, // iron
+      0, // xp
       1000,
       createInitialTechTree(),
       dummySave,
@@ -241,7 +242,8 @@ describe('User getter methods', () => {
       1,
       'testuser',
       'hash',
-      0,
+      0, // iron
+      0, // xp
       1000,
       createInitialTechTree(),
       dummySave,
@@ -329,7 +331,8 @@ describe('User.updateDefenseValues with regeneration', () => {
       1,
       'testuser',
       'hash',
-      0,
+      0, // iron
+      0, // xp
       1000,
       createInitialTechTree(),
       dummySave,
