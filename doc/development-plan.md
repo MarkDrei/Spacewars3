@@ -97,6 +97,22 @@ Centralize the currently hardcoded world size (500×500) into a single global co
 
 - `src/lib/server/constants.ts` - Replace hardcoded 500 values with imports and calculate center positions
 
+**Status**: ✅ COMPLETED
+
+**Implementation Summary**: Replaced hardcoded world size constants with imports from shared module and updated ship starting positions to dynamically calculate world center.
+
+**Files Modified/Created**:
+- `src/lib/server/constants.ts` - Removed duplicate `DEFAULT_WORLD_WIDTH` and `DEFAULT_WORLD_HEIGHT` (lines 12-13), imported from `@shared/worldConstants`, updated `DEFAULT_SHIP_START_X/Y` to calculate as `DEFAULT_WORLD_WIDTH / 2` and `DEFAULT_WORLD_HEIGHT / 2`
+- `src/__tests__/lib/server-constants.test.ts` - Added 7 tests verifying ship start positions are world center and match shared constants
+
+**Deviations from Plan**: None
+
+**Test Results**: All tests passing (7 new tests added)
+
+**Review Status**: ✅ APPROVED
+**Reviewer**: Medicus
+**Review Notes**: Clean implementation following shared constants pattern. Ship starting positions correctly calculated as world center. Comprehensive test coverage with meaningful assertions. No code duplication detected.
+
 #### Task 2.2: Update worldRepo.ts
 
 **Action**: Replace hardcoded `{ width: 500, height: 500 }` with imported shared constants.
@@ -104,6 +120,22 @@ Centralize the currently hardcoded world size (500×500) into a single global co
 **Files**:
 
 - `src/lib/server/world/worldRepo.ts` - Import and use shared world size constants (line ~50)
+
+**Status**: ✅ COMPLETED
+
+**Implementation Summary**: Replaced hardcoded world size object literal with `DEFAULT_WORLD_BOUNDS` import from shared constants.
+
+**Files Modified/Created**:
+- `src/lib/server/world/worldRepo.ts` - Added import for `DEFAULT_WORLD_BOUNDS` from `@shared/worldConstants`, replaced `{ width: 500, height: 500 }` at line 50 with `DEFAULT_WORLD_BOUNDS`
+- `src/__tests__/lib/world-initialization.test.ts` - Added 5 tests verifying `loadWorldFromDb()` uses shared constants
+
+**Deviations from Plan**: None
+
+**Test Results**: All tests passing (5 new tests added)
+
+**Review Status**: ✅ APPROVED
+**Reviewer**: Medicus
+**Review Notes**: Correct use of DEFAULT_WORLD_BOUNDS import. Replaced hardcoded object literal with shared constant. Tests properly verify both World.createDefault() and loadWorldFromDb() use shared constants.
 
 #### Task 2.3: Update world.ts createDefault Method
 
@@ -113,6 +145,22 @@ Centralize the currently hardcoded world size (500×500) into a single global co
 
 - `src/lib/server/world/world.ts` - Import and use shared world size constants (line ~194)
 
+**Status**: ✅ COMPLETED
+
+**Implementation Summary**: Replaced hardcoded world size object literal in `World.createDefault()` with `DEFAULT_WORLD_BOUNDS` import from shared constants.
+
+**Files Modified/Created**:
+- `src/lib/server/world/world.ts` - Added import for `DEFAULT_WORLD_BOUNDS` from `@shared/worldConstants`, replaced `{ width: 500, height: 500 }` at line 194 with `DEFAULT_WORLD_BOUNDS`
+- Tests included in world-initialization.test.ts (covers both `World.createDefault()` and `loadWorldFromDb()`)
+
+**Deviations from Plan**: None
+
+**Test Results**: All tests passing (tests shared with Task 2.2)
+
+**Review Status**: ✅ APPROVED
+**Reviewer**: Medicus
+**Review Notes**: Clean refactoring of World.createDefault() to use DEFAULT_WORLD_BOUNDS. Test coverage shared with Task 2.2 effectively validates both creation methods. No issues found.
+
 #### Task 2.4: Update battleService.ts
 
 **Action**: Replace hardcoded `WORLD_WIDTH = 3000` and `WORLD_HEIGHT = 3000` with imports from shared constants.
@@ -120,6 +168,29 @@ Centralize the currently hardcoded world size (500×500) into a single global co
 **Files**:
 
 - `src/lib/server/battle/battleService.ts` - Import shared constants (lines 44-45)
+
+**Status**: ✅ COMPLETED
+
+**Implementation Summary**: Removed local world dimension constants and replaced all references with imports from shared constants module.
+
+**Files Modified/Created**:
+- `src/lib/server/battle/battleService.ts` - Added import for `DEFAULT_WORLD_WIDTH` and `DEFAULT_WORLD_HEIGHT` from `@shared/worldConstants`, removed local `WORLD_WIDTH` and `WORLD_HEIGHT` constants (lines 44-45), updated 4 references in `generateTeleportPosition()` function (lines 159, 160, 170, 171)
+- `src/__tests__/lib/battle-world-constants.test.ts` - Added 4 tests verifying shared constants are defined and accessible
+
+**Deviations from Plan**: Corrected a discrepancy - the original `WORLD_WIDTH` and `WORLD_HEIGHT` in battleService.ts were set to 3000 (not 500), now properly use the centralized 500 value from shared constants, which will be updated to 5000 in Goal 8.
+
+**Test Results**: All tests passing (4 new tests added)
+
+**Review Status**: ✅ APPROVED
+**Reviewer**: Medicus
+**Review Notes**: Excellent correction of battle arena size discrepancy (was 3000x3000, now properly uses 500x500 from shared constants). All 4 references in generateTeleportPosition() correctly updated. Proper IronGuard lock usage verified. No code duplication detected.
+
+**Goal 2 Summary**: All 4 tasks completed successfully. Total of 16 new tests added (507 tests passing). All server-side hardcoded world size values now reference the centralized shared constants module.
+
+**Goal 2 Review Status**: ✅ APPROVED
+**Goal 2 Reviewer**: Medicus
+**Goal 2 Review Date**: 2026-02-10
+**Goal 2 Review Notes**: All tasks completed to high quality standards. Implementation correctly eliminates server-side world size constant duplications. Tests are comprehensive and meaningful. TypeScript compilation clean. All 507 tests passing. No code duplication issues. Proper lock usage verified. Ready to proceed to Goal 3.
 
 ---
 

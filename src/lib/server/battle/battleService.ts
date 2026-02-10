@@ -27,6 +27,7 @@ import { HasLock2Context, IronLocks, LockContext, LocksAtMost4, LocksAtMostAndHa
 import { WORLD_LOCK, USER_LOCK, DATABASE_LOCK_USERS } from '../typedLocks';
 import { getUserByIdFromDb } from '../user/userRepo';
 import { WorldCache } from '../world/worldCache';
+import { DEFAULT_WORLD_WIDTH, DEFAULT_WORLD_HEIGHT } from '@shared/worldConstants';
 
 /**
  * Maximum distance to initiate battle (same as collection distance)
@@ -37,12 +38,6 @@ const BATTLE_RANGE = 100;
  * Minimum distance for teleportation after losing battle
  */
 const MIN_TELEPORT_DISTANCE = 1000;
-
-/**
- * World dimensions
- */
-const WORLD_WIDTH = 3000;
-const WORLD_HEIGHT = 3000;
 
 /**
  * Get current defense values for a user
@@ -161,8 +156,8 @@ function generateTeleportPosition(
 
   // Try up to 100 times to find a valid position
   for (let i = 0; i < 100; i++) {
-    x = Math.random() * WORLD_WIDTH;
-    y = Math.random() * WORLD_HEIGHT;
+    x = Math.random() * DEFAULT_WORLD_WIDTH;
+    y = Math.random() * DEFAULT_WORLD_HEIGHT;
     distance = calculateDistance(fromX, fromY, x, y);
 
     if (distance >= minDistance) {
@@ -172,8 +167,8 @@ function generateTeleportPosition(
 
   // Fallback: place at opposite corner
   return {
-    x: fromX > WORLD_WIDTH / 2 ? 0 : WORLD_WIDTH,
-    y: fromY > WORLD_HEIGHT / 2 ? 0 : WORLD_HEIGHT
+    x: fromX > DEFAULT_WORLD_WIDTH / 2 ? 0 : DEFAULT_WORLD_WIDTH,
+    y: fromY > DEFAULT_WORLD_HEIGHT / 2 ? 0 : DEFAULT_WORLD_HEIGHT
   };
 }
 

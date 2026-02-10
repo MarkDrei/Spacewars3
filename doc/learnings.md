@@ -80,10 +80,67 @@ When adding new constants to the shared module:
 ### Known Code Duplications (To Be Addressed in Later Tasks)
 The following world size constant duplications exist in the codebase and are intentional at this stage:
 1. `src/shared/src/worldConstants.ts` - NEW centralized constants (500x500)
-2. `src/lib/server/constants.ts` - Lines 12-13 (500x500) - Will be updated in Task 2.1
-3. `src/lib/server/battle/battleService.ts` - Lines 44-45 (3000x3000) - Will be updated in Task 2.4
+2. ~~`src/lib/server/constants.ts` - Lines 12-13 (500x500)~~ - ✅ RESOLVED in Task 2.1
+3. ~~`src/lib/server/battle/battleService.ts` - Lines 44-45 (3000x3000)~~ - ✅ RESOLVED in Task 2.4
 4. `src/lib/client/game/World.ts` - Lines 17-18 (500x500) - Will be updated in Task 3.1
-5. `src/lib/server/world/worldRepo.ts` - Line 50 hardcoded value - Will be updated in Task 2.2
-6. `src/lib/server/world/world.ts` - Line 194 hardcoded value - Will be updated in Task 2.3
+5. ~~`src/lib/server/world/worldRepo.ts` - Line 50 hardcoded value~~ - ✅ RESOLVED in Task 2.2
+6. ~~`src/lib/server/world/world.ts` - Line 194 hardcoded value~~ - ✅ RESOLVED in Task 2.3
 
-These duplications are expected and addressed in the subsequent tasks (Goals 2 and 3 of the development plan).
+Tasks 2.1-2.4 completed: All server-side duplications eliminated. Only client-side duplication remains (Goal 3).
+
+## Server-Side Constants Refactoring (2026-02-10)
+
+### Goal 2 Implementation Complete
+All server-side world size constants now reference the centralized shared module:
+
+1. **Import Pattern**: Server files use `@shared/worldConstants` for importing `DEFAULT_WORLD_WIDTH`, `DEFAULT_WORLD_HEIGHT`, and `DEFAULT_WORLD_BOUNDS`
+2. **World Object Structure**: The `World` class uses `worldSize` property (not `bounds`) with shape `{ width: number; height: number }`
+3. **Ship Starting Position**: Calculated dynamically as `DEFAULT_WORLD_WIDTH / 2` and `DEFAULT_WORLD_HEIGHT / 2` in `src/lib/server/constants.ts`
+4. **Battle Arena**: Changed from hardcoded 3000x3000 to using shared 500x500 constants (will scale to 5000x5000 in Goal 8)
+
+### Testing Patterns for Constant Refactoring
+- Create focused test files for each logical group (server-constants, world-initialization, battle-world-constants)
+- Verify imports work correctly by checking equality with shared constants
+- Document current values in tests (e.g., "500x500 before increase to 5000x5000")
+- Use real database for integration tests but avoid cleanup complexity
+- Test both static creation (`World.createDefault()`) and database loading (`loadWorldFromDb()`)
+
+### Battle Service World Size Discovery
+The `battleService.ts` originally used `WORLD_WIDTH = 3000` and `WORLD_HEIGHT = 3000`, which was inconsistent with the main world size of 500x500. This has been corrected to use the shared constants (currently 500x500, will be 5000x5000 after Goal 8).
+
+## Code Review Best Practices (2026-02-10)
+
+### Medicus Review - Goal 2 Complete
+Conducted comprehensive review of Tasks 2.1-2.4:
+
+**Review Process Checklist**:
+1. ✅ Read development plan and understand task requirements
+2. ✅ Review code changes via git diff
+3. ✅ Check for code duplications (grep searches for patterns)
+4. ✅ Verify lock usage (IronGuard TypeScript Locks)
+5. ✅ Review test files for quality and coverage
+6. ✅ Run tests to verify passing (507 tests passing)
+7. ✅ Run linting (passed with warnings only)
+8. ✅ Run typecheck (passed, build failed due to network issues with Google Fonts)
+9. ✅ Update development plan with review status
+10. ✅ Update learnings with insights
+
+**Key Findings**:
+- All 16 new tests are meaningful and comprehensive
+- No code duplication detected in server-side code
+- Proper use of IronGuard TypeScript Locks in battleService.ts
+- TypeScript strict mode compliance verified
+- ES Modules usage correct throughout
+- Test naming follows convention: `whatIsTested_scenario_expectedOutcome`
+
+**Test Quality Indicators**:
+- Tests verify both happy path and edge cases
+- Tests document current values with comments about future changes
+- Tests use real database connections with proper setup/teardown
+- Test assertions are specific and meaningful
+- Tests cover both static creation and database loading paths
+
+**Network Build Issue**:
+- `npm run build` fails due to inability to fetch Google Fonts (network isolation)
+- `npm run typecheck` succeeds, confirming TypeScript compilation is clean
+- This is expected in CI/test environments without internet access

@@ -4,6 +4,7 @@
 
 import { DatabaseConnection } from '../database';
 import { World, SpaceObject, SaveWorldCallback } from './world';
+import { DEFAULT_WORLD_BOUNDS } from '@shared/worldConstants';
 
 /**
  * Load world data from database (used internally by cache manager)
@@ -47,7 +48,7 @@ export async function loadWorldFromDb(db: DatabaseConnection, saveCallback: Save
   }));
 
   const world = new World(
-    { width: 500, height: 500 }, // Hardcoded for now
+    DEFAULT_WORLD_BOUNDS,
     spaceObjects,
     saveCallback,
     db
