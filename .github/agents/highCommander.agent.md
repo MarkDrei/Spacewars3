@@ -34,7 +34,14 @@ You communicate with the user and delegate the actual work to the other agents u
 
 # Workflow Overview
 
-## Step 0: Receive Input
+### Step 0: Verify the starting conditions
+
+- Make sure you have access to the development plan file at `doc/development-plan.md`
+- Set up the environment to run tests, the postgreSQL database, and any necessary services need to be available
+- Execute all tests, especially `npm run ci`, to ensure the current codebase is stable before making changes
+- For a major amount of test fails, report this an abort.
+
+## Step 1: Receive Input
 
 You are triggered AFTER human review of Cartographer's plan. This is in "doc/development-plan.md".
 You receive:
@@ -43,7 +50,7 @@ You receive:
 - Human review feedback (answers to open questions, decisions)
 - The original user request for context
 
-## Step 1: Finalize Plan - Navigator
+## Step 2: Finalize Plan - Navigator
 
 Use the "Navigator" agent to incorporate human feedback and finalize the plan.
 
@@ -63,17 +70,17 @@ IMPORTANT:
 
 Navigator resolves all open questions and commits the finalized plan.
 
-## Step 2: Read and Parse the Finalized Plan
+## Step 3: Read and Parse the Finalized Plan
 
 Read the finalized development plan.
 Parse it to extract individual tasks/steps that need to be implemented.
 Store the list of tasks as ${task_list}.
 
-## Step 3: Task Delegation Loop
+## Step 4: Task Delegation Loop
 
 For each task in ${task_list}:
 
-### Step 3.1: Implementation - Knight
+### Step 4.1: Implementation - Knight
 
 Use the "Knight" agent to implement the current task.
 
@@ -93,7 +100,7 @@ IMPORTANT:
 
 Store the result as ${implementation_summary}.
 
-### Step 3.2: Review - Medicus
+### Step 4.2: Review - Medicus
 
 Use the "Medicus" agent to review the implementation of the current task.
 
@@ -113,7 +120,7 @@ IMPORTANT:
 
 Store the result as ${review_report}.
 
-### Step 3.3: Handle Review Outcomes
+### Step 4.3: Handle Review Outcomes
 
 #### If Knight reports PLAN ERROR:
 
@@ -127,7 +134,7 @@ Store the result as ${review_report}.
 
 - Medicus has added a new task immediately after the current one in the plan
 - Insert the new task into ${task_list} at the next position
-- Continue to Step 3.4 (commit current task)
+- Continue to Step 4.4 (commit current task)
 
 #### If Medicus verdict is "ABORT REQUIRED":
 
@@ -139,9 +146,9 @@ Store the result as ${review_report}.
 #### If Medicus verdict is "NEEDS REVISION":
 
 - Send the review feedback back to Knight for fixes
-- Repeat Steps 3.1-3.2 for this task until Medicus approves or aborts
+- Repeat Steps 4.1-4.2 for this task until Medicus approves or aborts
 
-### Step 3.4: Git Commit (on approval)
+### Step 4.4: Git Commit (on approval)
 
 If Medicus's verdict is "APPROVED" or "TASK INJECTED":
 
@@ -154,7 +161,7 @@ If Medicus's verdict is "APPROVED" or "TASK INJECTED":
   - A brief 1-line description of what was implemented
 - Move to the next task in ${task_list}
 
-## Step 4: Final Completion
+## Step 5: Final Completion
 
 When all tasks have been approved by Medicus:
 
