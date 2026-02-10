@@ -49,6 +49,8 @@ Test the agent workflow by converting an existing database-dependent test to a p
 - Chose user-stats-api.test.ts as a representative DB-dependent test
 - Conversion to unit test demonstrates agent workflow with minimal complexity
 
-## Open Questions
+## Test Environment Status
 
-None
+- All tests currently fail with database connectivity issues (ENOTFOUND db)
+- This is a pre-existing, known issue not in scope for this plan
+- The test conversion can proceed independent of database availability
