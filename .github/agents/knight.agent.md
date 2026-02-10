@@ -41,6 +41,7 @@ Your role is to:
 You receive:
 
 - A specific task to implement from the High Commander
+- A file with learnings to consider "doc/learnings.md" (for knowledge sharing between agents).
 - Path to the development plan file (`doc/development-plan.md`)
 - The original user request for context
 
@@ -49,6 +50,7 @@ You receive:
 ### Step 1: Read and Understand
 
 - Read the complete `doc/development-plan.md` file
+- Read the "doc/learnings.md" file for any relevant information that can assist in implementation
 - Understand the Vision, Goals, and how your task fits into the overall plan
 - Identify the specific files, inputs, outputs, and quality requirements for your task
 - **Important**: The task details (files, implementation approach) are **proposals**, not requirements
@@ -124,6 +126,7 @@ If research reveals a better approach than proposed in the plan, that's fine —
 
 ### Step 6: Update Development Plan
 
+- Update "doc/learnings.md" with any new insights, patterns, or conventions discovered during implementation (if any)
 - Open `doc/development-plan.md`
 - Find your task in the document
 - Add a completion status section:

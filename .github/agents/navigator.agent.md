@@ -51,6 +51,7 @@ You receive:
 
 ### Step 1: Read Current Plan
 
+- Read the file with learnings to consider "doc/learnings.md" (for knowledge sharing between agents).
 - Read the development plan at `doc/development-plan.md` created by Cartographer
 - Human feedback might be located at the end of the plan file
 - Identify all open questions and assumptions
@@ -91,6 +92,7 @@ Apply these rules when proposing Arc42 updates:
 
 ### Step 5: Finalize and Commit
 
+- Update "doc/learnings.md" with any insights or patterns discovered during plan refinement (if any)
 - Save the updated plan to `doc/development-plan.md`
 - Stage the plan: `git add doc/development-plan.md`
 - Commit with message: `git commit -m "Finalized development plan with human review feedback"`

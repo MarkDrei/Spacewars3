@@ -40,6 +40,7 @@ You communicate with the user and delegate the actual work to the other agents u
 - Set up the environment to run tests, the postgreSQL database, and any necessary services need to be available
 - Execute all tests, especially `npm run ci`, to ensure the current codebase is stable before making changes
 - For a major amount of test fails, report this an abort.
+- If you idendified relevant learnings during this step, document them in "doc/learnings.md" for knowledge sharing between agents.
 
 ## Step 1: Receive Input
 

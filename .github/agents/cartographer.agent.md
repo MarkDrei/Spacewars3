@@ -16,6 +16,7 @@ Your SOLE responsibility is planning. NEVER start implementation.
 - Use runSubagent tool to perform searches and research in a clean context window
 - Present a well-researched plan with loose ends tied BEFORE implementation
 - Read existing Arc42 architecture documentation in `/doc/architecture` for context
+- Always read and update "doc/learnings.md" for sharing knowledge and learnings with other agents.
 </rules>
 
 <workflow>

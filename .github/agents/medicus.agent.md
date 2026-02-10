@@ -43,6 +43,7 @@ Your role is to:
 You receive:
 
 - A specific task to review from the High Commander
+- A file with learnings to consider "doc/learnings.md" (for knowledge sharing between agents).
 - Path to the development plan file (`doc/development-plan.md`)
 - The Knight's implementation summary
 - The original user request for context
@@ -88,6 +89,7 @@ You receive:
 - Run linting: `npm run lint`
 - Check for any warnings or issues in build output: `npm run build`
 - Confirm compilation is clean
+- Update "doc/learnings.md" with any insights about running tests or build that might be useful for future reference
 
 ### Step 5: Document Issues and Take Action
 
@@ -107,6 +109,7 @@ Update `doc/development-plan.md`:
 
 - Update current task as APPROVED
 - **Inject a new task** immediately after the current one:
+
   ```markdown
   ##### Task X.Y.Z: [Follow-up Fix Task]
 
@@ -114,6 +117,7 @@ Update `doc/development-plan.md`:
   **Reason**: Medicus review found issues that warrant separate task
   **Files**: [files to modify]
   ```
+
 - This allows Knight to work on the fix as the next task
 
 #### If critical issues cannot be fixed:
