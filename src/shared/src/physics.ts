@@ -170,3 +170,23 @@ export function isColliding(
   const combinedRadius = (obj1.radius || 10) + (obj2.radius || 10);
   return distance <= combinedRadius;
 }
+
+/**
+ * Normalize a position to ensure it falls within valid world bounds
+ * Uses modulo arithmetic to handle negative values and out-of-range positions
+ * 
+ * @param x The x coordinate to normalize
+ * @param y The y coordinate to normalize
+ * @param worldBounds The world boundaries to normalize within
+ * @returns Normalized position within [0, worldBounds.width) and [0, worldBounds.height)
+ */
+export function normalizePosition(
+  x: number,
+  y: number,
+  worldBounds: WorldBounds,
+): { x: number; y: number } {
+  // Use modulo and handle negatives to wrap positions into valid range
+  const normalizedX = ((x % worldBounds.width) + worldBounds.width) % worldBounds.width;
+  const normalizedY = ((y % worldBounds.height) + worldBounds.height) % worldBounds.height;
+  return { x: normalizedX, y: normalizedY };
+}

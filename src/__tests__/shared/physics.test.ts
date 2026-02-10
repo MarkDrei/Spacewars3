@@ -9,6 +9,7 @@ import {
   updateAllObjectPositionsWithTimeCorrection,
   calculateToroidalDistance,
   isColliding,
+  normalizePosition,
   PhysicsObject,
   WorldBounds
 } from '@shared/physics';
@@ -405,6 +406,113 @@ describe('Physics Calculations', () => {
       const expectedTimestamp = responseReceivedAt + timeSinceResponse + networkDelayEstimate;
       expect(updatedObjects[0].last_position_update_ms).toBeCloseTo(expectedTimestamp, 0);
       expect(updatedObjects[1].last_position_update_ms).toBeCloseTo(expectedTimestamp, 0);
+    });
+  });
+
+  describe('normalizePosition', () => {
+    it('normalizePosition_positionWithinBounds_returnsUnchanged', () => {
+      const result = normalizePosition(250, 300, WORLD_BOUNDS);
+      
+      expect(result.x).toBe(250);
+      expect(result.y).toBe(300);
+    });
+    
+    it('normalizePosition_positionAtOrigin_returnsZero', () => {
+      const result = normalizePosition(0, 0, WORLD_BOUNDS);
+      
+      expect(result.x).toBe(0);
+      expect(result.y).toBe(0);
+    });
+    
+    it('normalizePosition_positionAtBoundary_wrapsToZero', () => {
+      const result = normalizePosition(500, 500, WORLD_BOUNDS);
+      
+      // Position exactly at boundary (500) should wrap to 0
+      expect(result.x).toBe(0);
+      expect(result.y).toBe(0);
+    });
+    
+    it('normalizePosition_positionSlightlyOverBoundary_wrapsCorrectly', () => {
+      const result = normalizePosition(506.667, 510, WORLD_BOUNDS);
+      
+      // 506.667 wraps to 6.667, 510 wraps to 10
+      expect(result.x).toBeCloseTo(6.667, 3);
+      expect(result.y).toBe(10);
+    });
+    
+    it('normalizePosition_negativePositions_wrapsToPositive', () => {
+      const result = normalizePosition(-10, -20, WORLD_BOUNDS);
+      
+      // -10 in a 500-wide world wraps to 490
+      // -20 in a 500-high world wraps to 480
+      expect(result.x).toBe(490);
+      expect(result.y).toBe(480);
+    });
+    
+    it('normalizePosition_veryNegativePositions_wrapsCorrectly', () => {
+      const result = normalizePosition(-3000, -1500, WORLD_BOUNDS);
+      
+      // -3000 % 500 = 0 (wraps exactly 6 times)
+      // -1500 % 500 = 0 (wraps exactly 3 times)
+      expect(result.x).toBe(0);
+      expect(result.y).toBe(0);
+    });
+    
+    it('normalizePosition_veryNegativeNonMultiple_wrapsCorrectly', () => {
+      const result = normalizePosition(-3010, -1520, WORLD_BOUNDS);
+      
+      // -3010 in 500-wide world: -3010 % 500 = -10, then (-10 + 500) % 500 = 490
+      // -1520 in 500-high world: -1520 % 500 = -20, then (-20 + 500) % 500 = 480
+      expect(result.x).toBe(490);
+      expect(result.y).toBe(480);
+    });
+    
+    it('normalizePosition_veryLargePositions_wrapsCorrectly', () => {
+      const result = normalizePosition(30000, 25000, WORLD_BOUNDS);
+      
+      // 30000 % 500 = 0 (exactly 60 times around)
+      // 25000 % 500 = 0 (exactly 50 times around)
+      expect(result.x).toBe(0);
+      expect(result.y).toBe(0);
+    });
+    
+    it('normalizePosition_veryLargeNonMultiple_wrapsCorrectly', () => {
+      const result = normalizePosition(30123, 25456, WORLD_BOUNDS);
+      
+      // 30123 % 500 = 123
+      // 25456 % 500 = 456
+      expect(result.x).toBe(123);
+      expect(result.y).toBe(456);
+    });
+    
+    it('normalizePosition_floatingPointValues_handlesCorrectly', () => {
+      const result = normalizePosition(123.456, 789.123, WORLD_BOUNDS);
+      
+      // 789.123 in 500-high world wraps to 289.123
+      expect(result.x).toBeCloseTo(123.456, 3);
+      expect(result.y).toBeCloseTo(289.123, 3);
+    });
+    
+    it('normalizePosition_mixedBoundary_normalizesIndependently', () => {
+      // Test with different world bounds
+      const customBounds: WorldBounds = { width: 1000, height: 2000 };
+      const result = normalizePosition(1500, -500, customBounds);
+      
+      // 1500 in 1000-wide world wraps to 500
+      // -500 in 2000-high world wraps to 1500
+      expect(result.x).toBe(500);
+      expect(result.y).toBe(1500);
+    });
+    
+    it('normalizePosition_withWorldSize5000_handlesLargerBounds', () => {
+      // Test with the future 5000x5000 world size
+      const largeBounds: WorldBounds = { width: 5000, height: 5000 };
+      const result = normalizePosition(6789, -1234, largeBounds);
+      
+      // 6789 % 5000 = 1789
+      // -1234 in 5000-high world wraps to 3766
+      expect(result.x).toBe(1789);
+      expect(result.y).toBe(3766);
     });
   });
 });
