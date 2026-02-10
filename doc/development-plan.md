@@ -356,6 +356,18 @@ export function normalizePosition(
 
 - `src/lib/server/world/worldRepo.ts` - Import and apply `normalizePosition` when mapping database rows
 
+**Status**: ✅ COMPLETED
+
+**Implementation Summary**: Added position normalization in `loadWorldFromDb` function to ensure all positions loaded from database are within valid world bounds using `normalizePosition` from shared physics module.
+
+**Files Modified/Created**:
+- `src/lib/server/world/worldRepo.ts` - Added import for `normalizePosition` from `@shared/physics`, applied normalization in the `map()` function when converting database rows to space objects (lines 34-36)
+- `src/__tests__/lib/position-normalization-worldRepo.test.ts` - Added 10 comprehensive tests covering out-of-bounds positive/negative positions, very large/negative values, floating point precision, boundary wrapping, and multiple objects
+
+**Deviations from Plan**: None
+
+**Test Results**: All 10 new tests passing, total 559 tests passing
+
 #### Task 5.2: Normalize Positions in Client World Update
 
 **Action**: Apply position normalization when updating world data from server in the client `World` class.
@@ -363,6 +375,29 @@ export function normalizePosition(
 **Files**:
 
 - `src/lib/client/game/World.ts` - Apply normalization in `updateFromServerData` method
+
+**Status**: ✅ COMPLETED
+
+**Implementation Summary**: Added position normalization in `updateFromServerData` method to ensure all positions received from server are normalized before client object creation, protecting against out-of-bounds server data.
+
+**Files Modified/Created**:
+- `src/lib/client/game/World.ts` - Added imports for `normalizePosition` and `WorldBounds` from `@shared/physics`, created `worldBounds` object from `worldData.worldSize`, applied normalization before object construction (lines 9-11, 119-126, 131-135)
+- `src/__tests__/lib/position-normalization-client.test.ts` - Added 13 comprehensive tests covering out-of-bounds positions, negative values, very large/negative values, floating point precision, boundary wrapping, player ships, multiple object types, custom world sizes, and verification that normalization occurs before object construction
+
+**Deviations from Plan**: None
+
+**Test Results**: All 13 new tests passing, total 559 tests passing
+
+**Review Status**: ✅ APPROVED
+**Reviewer**: Medicus
+**Review Notes**: Excellent implementation of position normalization at both data load boundaries. Server-side (worldRepo.ts) normalizes positions when loading from database using DEFAULT_WORLD_BOUNDS. Client-side (World.ts) normalizes positions before object construction in updateFromServerData using dynamic worldBounds from server data. Normalization is correctly applied BEFORE object construction, ensuring constructors receive valid coordinates. Both implementations use the normalizePosition function from shared physics module. 23 comprehensive tests covering all edge cases (out-of-bounds, negative, very large/negative, floating point, boundaries, multiple objects). All 559 tests passing, lint clean (warnings only), typecheck clean. No code duplication - existing wrapPosition in client World uses equivalent but different approach (pre-existing, not in scope). Defense-in-depth strategy: positions normalized at both boundaries for maximum robustness.
+
+**Goal 5 Summary**: Both tasks completed successfully. Total of 23 new tests added. Position normalization is now applied at both data load boundaries (database loading on server and server data updates on client), ensuring all positions are always within valid world bounds.
+
+**Goal 5 Review Status**: ✅ APPROVED
+**Goal 5 Reviewer**: Medicus
+**Goal 5 Review Date**: 2026-02-10
+**Goal 5 Review Notes**: Outstanding implementation quality with comprehensive test coverage. Position normalization correctly applied at both critical boundaries: database loading (server-side) and server data updates (client-side). Implementation follows defense-in-depth principle - positions are normalized at both entry points. Normalization occurs before object construction, ensuring constructors receive valid coordinates. All 23 tests are meaningful, cover edge cases, and follow naming convention. All 559 tests passing. No code duplication issues. TypeScript compilation clean. Ready to proceed to Goal 6.
 
 ---
 

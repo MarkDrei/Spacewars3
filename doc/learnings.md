@@ -323,3 +323,103 @@ Verified the modulo wrapping pattern is used consistently across codebase:
 - Both approaches are correct and produce identical results
 - Client-side pattern is pre-existing and not in scope for this task
 - No need to unify patterns - both work correctly
+
+## Position Normalization Implementation (2026-02-10)
+
+### Goal 5 Implementation Complete (Tasks 5.1 & 5.2)
+Applied position normalization at data load boundaries to ensure all positions are within valid world bounds.
+
+**Implementation Patterns**:
+1. **Server-side (worldRepo.ts)**: Normalize positions immediately when loading from database
+   - Import: `normalizePosition` from `@shared/physics`
+   - Apply in `map()` function: `const normalized = normalizePosition(row.x, row.y, DEFAULT_WORLD_BOUNDS);`
+   - Use normalized values in object construction: `x: normalized.x, y: normalized.y`
+
+2. **Client-side (World.ts)**: Normalize positions before creating client objects from server data
+   - Import: `normalizePosition` and `WorldBounds` from `@shared/physics`
+   - Create worldBounds from server data: `const worldBounds: WorldBounds = { width: worldData.worldSize.width, height: worldData.worldSize.height };`
+   - Normalize before object construction: `const normalized = normalizePosition(serverObject.x, serverObject.y, worldBounds);`
+   - Spread normalized values: `const normalizedObject = { ...serverObject, x: normalized.x, y: normalized.y };`
+   - Pass normalized object to constructors: `new Ship(normalizedObject)`, `new Asteroid(normalizedObject)`, etc.
+
+**Key Insights**:
+- Normalization **must occur before object construction** to ensure constructors receive valid coordinates
+- Server-side uses `DEFAULT_WORLD_BOUNDS` (static world size from shared constants)
+- Client-side uses dynamic `worldBounds` from server data (supports variable world sizes)
+- Both approaches handle all edge cases: negative, out-of-bounds, very large, floating point
+- No error handling needed - `normalizePosition` works for all numeric inputs
+
+**Test Coverage Strategy**:
+- Test all edge cases: within bounds, at boundary, negative, very negative, very large, floating point
+- Test multiple object types to ensure normalization works across all space object types
+- Test with custom world sizes to verify dynamic bounds handling
+- Verify normalization occurs before object construction (not after)
+- Database tests use real PostgreSQL connection with cleanup in finally blocks
+
+**Test Results**: 23 new tests added (10 server-side, 13 client-side), all 559 tests passing
+
+**Integration Points Verified**:
+- Server loads from database → normalizes → stores in World → serves to client
+- Client receives from server → normalizes again → creates objects → renders
+- Defense-in-depth: positions normalized at both boundaries for maximum robustness
+
+## Code Review Best Practices - Goal 5 (2026-02-10)
+
+### Medicus Review - Goal 5 Complete
+Conducted comprehensive review of Tasks 5.1-5.2:
+
+**Review Process Checklist**:
+1. ✅ Read development plan and understand task requirements
+2. ✅ Review code changes via git diff
+3. ✅ Check for code duplications (grep searches for similar patterns)
+4. ✅ Verify lock usage (not applicable - no locks in these modules)
+5. ✅ Review test files for quality and coverage (23 tests, excellent coverage)
+6. ✅ Run tests to verify passing (559 tests passing)
+7. ✅ Run linting (passed with warnings only)
+8. ✅ Run typecheck (passed - TypeScript compilation clean)
+9. ✅ Update development plan with review status
+10. ✅ Update learnings with insights
+
+**Key Findings**:
+- All 23 new tests are meaningful and comprehensive (10 server-side, 13 client-side)
+- No code duplication - normalizePosition uses same pattern as existing physics functions
+- Client-side World.wrapPosition uses equivalent but different approach (pre-existing, acceptable)
+- Lock usage not applicable (no async operations with shared state in these modules)
+- TypeScript strict mode compliance verified
+- ES Modules usage correct throughout
+- Test naming follows convention: `functionName_scenario_expectedOutcome`
+- Defense-in-depth: normalization at both data boundaries
+
+**Test Quality Indicators**:
+- Tests exceed plan requirements (comprehensive edge case coverage)
+- Tests cover: out-of-bounds (positive/negative), very large/negative, floating point, boundaries, multiple objects
+- Tests verify normalization occurs BEFORE object construction
+- Database tests use real PostgreSQL connection with proper cleanup
+- Client tests properly reset static properties in beforeEach
+- Tests document wrapping calculations in comments
+
+**Code Quality Observations**:
+- Server-side (worldRepo.ts): Clean import of normalizePosition, applied in map() function before object construction
+- Client-side (World.ts): Creates worldBounds from server data (dynamic), normalizes before spreading into normalizedObject
+- Both implementations ensure normalized coordinates are used in object constructors
+- Proper use of spread operator to create normalized objects
+- Clear comments explaining the normalization step
+
+**Pattern Consistency Check**:
+- normalizePosition: `((value % bound) + bound) % bound` - Double modulo pattern (server-side physics)
+- wrapPosition: `value % bound; if (value < 0) value += bound` - Conditional pattern (client-side World)
+- Both approaches are mathematically equivalent and correct
+- No need to unify - both serve their purposes correctly
+
+**Defense-in-Depth Architecture**:
+- **First line**: Server normalizes positions when loading from database (worldRepo.ts)
+- **Second line**: Client normalizes positions when receiving from server (World.ts)
+- **Result**: Positions are guaranteed valid even if one boundary fails or is bypassed
+- **Benefit**: Robust against data corruption, migration issues, or edge cases
+
+**Implementation Patterns Confirmed**:
+1. Normalization MUST occur BEFORE object construction
+2. Server-side uses static DEFAULT_WORLD_BOUNDS
+3. Client-side uses dynamic worldBounds from server data
+4. Both handle all edge cases without error handling (modulo works for all numeric inputs)
+5. Both use const for normalized values (ES6 best practices)
