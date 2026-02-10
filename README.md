@@ -43,7 +43,7 @@ The game uses Next.js fullstack architecture with clear separation between clien
 ### Core Components
 
 - **World**: Manages game objects, collision detection, and world boundaries
-- **Player**: Handles player state, inventory, and scoring  
+- **Player**: Handles player state, inventory, and scoring
 - **SpaceObject**: Base class for all game objects (Ship, Collectibles, etc.)
 - **InterceptCalculator**: Handles trajectory calculations for interception
 - **TypedCacheManager**: Manages in-memory cache with deadlock-free locks
@@ -84,6 +84,7 @@ src/
 - PostgreSQL (v14+) - for local development without Docker
 
 **Or use Docker** (recommended for consistent environment):
+
 - Docker (v20+)
 - Docker Compose (v2+)
 
@@ -105,14 +106,14 @@ The application will be available at `http://localhost:3000`.
 
 #### Docker Commands
 
-| Command | Description |
-|---------|-------------|
-| `docker-compose up dev` | Start development server with hot reload + PostgreSQL |
-| `docker-compose up prod` | Start production server + PostgreSQL |
-| `docker-compose up db` | Start only the PostgreSQL database |
-| `docker-compose down` | Stop and remove containers |
-| `docker-compose down -v` | Stop and remove containers + data volumes |
-| `docker-compose build` | Rebuild containers after dependency changes |
+| Command                  | Description                                           |
+| ------------------------ | ----------------------------------------------------- |
+| `docker-compose up dev`  | Start development server with hot reload + PostgreSQL |
+| `docker-compose up prod` | Start production server + PostgreSQL                  |
+| `docker-compose up db`   | Start only the PostgreSQL database                    |
+| `docker-compose down`    | Stop and remove containers                            |
+| `docker-compose down -v` | Stop and remove containers + data volumes             |
+| `docker-compose build`   | Rebuild containers after dependency changes           |
 
 #### Docker Features
 
@@ -132,6 +133,7 @@ This project is fully configured for GitHub Codespaces development:
 5. Access the application through the forwarded port (3000)
 
 The Codespace includes:
+
 - Node.js 20 LTS
 - Git and Bash
 - Pre-configured VSCode extensions (ESLint, Prettier, Tailwind CSS)
@@ -162,14 +164,16 @@ npm run test
 
 ### Development Commands
 
-| Command | Description |
-|---------|-------------|
-| `npm run dev` | Start Next.js development server (port 3000) |
-| `npm run build` | Build optimized production bundle |
-| `npm start` | Start production server |
-| `npm run test` | Run all tests with Vitest |
-| `npm run test:ui` | Run tests with UI interface |
-| `npm run lint` | Run ESLint |
+| Command              | Description                                         |
+| -------------------- | --------------------------------------------------- |
+| `npm run dev`        | Start Next.js development server (port 3000)        |
+| `npm run build`      | Build optimized production bundle                   |
+| `npm start`          | Start production server                             |
+| `npm run test`       | Run all tests (devcontainer environment)            |
+| `npm run test:ci`    | Run tests in CI/CD environment                      |
+| `npm run test:local` | Run tests locally (starts docker-compose databases) |
+| `npm run test:ui`    | Run tests with UI interface                         |
+| `npm run lint`       | Run ESLint                                          |
 
 ### Database
 
@@ -180,14 +184,19 @@ npm run test
 
 #### Environment Variables
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `POSTGRES_HOST` | PostgreSQL host | `localhost` |
-| `POSTGRES_PORT` | PostgreSQL port | `5432` |
-| `POSTGRES_DB` | Database name | `spacewars` |
-| `POSTGRES_USER` | Database user | `spacewars` |
-| `POSTGRES_PASSWORD` | Database password | `spacewars` |
-| `SESSION_SECRET` | Session encryption key | - |
+| Variable             | Description            | Default                                    |
+| -------------------- | ---------------------- | ------------------------------------------ |
+| `POSTGRES_HOST`      | PostgreSQL host        | `localhost` or `db` (devcontainer)         |
+| `POSTGRES_PORT`      | PostgreSQL port        | `5432`                                     |
+| `POSTGRES_DB`        | Database name          | `spacewars`                                |
+| `POSTGRES_USER`      | Database user          | `spacewars`                                |
+| `POSTGRES_PASSWORD`  | Database password      | `spacewars`                                |
+| `POSTGRES_TEST_HOST` | Test DB host           | Auto-detected                              |
+| `POSTGRES_TEST_PORT` | Test DB port           | `5433` (local) or `5432` (CI/devcontainer) |
+| `POSTGRES_TEST_DB`   | Test database name     | `spacewars_test`                           |
+| `SESSION_SECRET`     | Session encryption key | -                                          |
+
+**Note**: Copy `.env.example` to `.env` for local development outside devcontainer.
 
 ### Testing
 
@@ -196,6 +205,21 @@ npm run test
 - **Coverage**: **196/196 tests passing (100%)**
 - **Environment**: jsdom for React components, node for API routes
 - **Concurrency Testing**: Comprehensive tests for lock ordering and deadlock prevention
+- **Auto-Detection**: Tests automatically detect devcontainer, CI, or local environments
+
+#### Test Environments
+
+| Environment                | Command              | Database Config                          |
+| -------------------------- | -------------------- | ---------------------------------------- |
+| **Devcontainer**           | `npm test`           | Uses `db-test` service on port 5432      |
+| **CI/CD (GitHub Actions)** | `npm run test:ci`    | Uses service container on localhost:5432 |
+| **Local (docker-compose)** | `npm run test:local` | Starts databases, uses localhost:5433    |
+
+The test configuration in [vitest.config.ts](vitest.config.ts) automatically detects the environment using:
+
+- `CI` environment variable for GitHub Actions
+- `REMOTE_CONTAINERS` environment variable for devcontainer
+- Falls back to localhost with port 5433 for local development
 
 📚 **[Complete Testing Strategy Documentation](doc/testing.md)** - Comprehensive guide to database isolation, test categories, and execution patterns.
 
@@ -266,6 +290,7 @@ The application uses PostgreSQL database and features a mathematically deadlock-
 ### Docker Issues
 
 **Port already in use:**
+
 ```bash
 # Stop any running containers
 docker-compose down
@@ -275,6 +300,7 @@ docker-compose run -p 3001:3000 dev
 ```
 
 **Container not updating after code changes:**
+
 ```bash
 # Rebuild the container
 docker-compose build dev
@@ -282,6 +308,7 @@ docker-compose up dev
 ```
 
 **Database connection issues:**
+
 ```bash
 # Check if PostgreSQL is running
 docker-compose ps
@@ -296,12 +323,14 @@ docker-compose restart db
 ### GitHub Codespaces Issues
 
 **Dependencies not installed:**
+
 ```bash
 # Manually install dependencies
 npm install
 ```
 
 **Port not forwarding:**
+
 - Check the "Ports" tab in VSCode
 - Ensure port 3000 is listed and public
 - Click the globe icon to make it accessible
@@ -312,15 +341,16 @@ This is expected in restricted network environments. The application still works
 ### General Issues
 
 **Database connection failed:**
+
 - Ensure PostgreSQL is running (`docker-compose up db`)
 - Check environment variables match your PostgreSQL configuration
 - Verify network connectivity to the database host
 
 **Tests failing:**
+
 ```bash
 # Clean install dependencies
 rm -rf node_modules package-lock.json
 npm install
 npm test
 ```
-

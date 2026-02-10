@@ -39,12 +39,17 @@ export default defineConfig({
     exclude: [],
     env: {
       NODE_ENV: 'test',
-      // Use 'db' as default for dev container, 'localhost' for local development
-      POSTGRES_HOST: process.env.POSTGRES_HOST || 'db',
-      POSTGRES_PORT: process.env.POSTGRES_PORT || '5432',
+      // Auto-detect environment and use appropriate defaults
+      // Priority: explicit env var > CI detection > devcontainer detection > localhost fallback
+      POSTGRES_HOST: process.env.POSTGRES_TEST_HOST || process.env.POSTGRES_HOST || 
+                     (process.env.CI ? 'localhost' : 
+                      (process.env.REMOTE_CONTAINERS ? 'db-test' : 'localhost')),
+      POSTGRES_PORT: process.env.POSTGRES_TEST_PORT || process.env.POSTGRES_PORT || 
+                     (process.env.CI ? '5432' : 
+                      (process.env.REMOTE_CONTAINERS ? '5432' : '5433')),
       POSTGRES_DB: process.env.POSTGRES_TEST_DB || 'spacewars_test',
-      POSTGRES_USER: process.env.POSTGRES_USER || 'spacewars',
-      POSTGRES_PASSWORD: process.env.POSTGRES_PASSWORD || 'spacewars',
+      POSTGRES_USER: process.env.POSTGRES_TEST_USER || process.env.POSTGRES_USER || 'spacewars',
+      POSTGRES_PASSWORD: process.env.POSTGRES_TEST_PASSWORD || process.env.POSTGRES_PASSWORD || 'spacewars',
     },
 
     // parellelism settings

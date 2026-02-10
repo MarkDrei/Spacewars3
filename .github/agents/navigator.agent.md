@@ -45,7 +45,7 @@ You receive:
 ### Step 0: Verify the starting conditions
 
 - Make sure you have access to the development plan file at `doc/development-plan.md`
-- Execute all tests, especially `npm run ci`, to ensure the current codebase is stable before making changes
+- Execute all tests, especially `npm run ci` / `npm run ci:local`, to ensure the current codebase is stable before making changes
 - If tests fail, re-run the tests and see if the fails are stable or sporadic.
 - For a minor amount of test fails (sporadic or stable), document this and proceed with the plan refinement. For a major amount of test fails, report this an abort.
 
