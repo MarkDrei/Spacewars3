@@ -415,6 +415,18 @@ export function normalizePosition(
 
 **Details**: Multiply existing coordinates by 10 to scale appropriately, or choose new representative positions.
 
+**Status**: ✅ COMPLETED
+
+**Implementation Summary**: Updated all space object coordinates by multiplying by 10 to scale from 500x500 to 5000x5000 world. Asteroids, shipwrecks, and escape pods now spread across the larger world.
+
+**Files Modified/Created**:
+- `src/lib/server/seedData.ts` - Updated DEFAULT_SPACE_OBJECTS positions (lines 351-365): multiplied all coordinates by 10 (e.g., 100→1000, 400→4000)
+- `src/__tests__/lib/picture-id.test.ts` - Updated hardcoded position assertions to match new coordinates (lines 116-119)
+
+**Deviations from Plan**: None
+
+**Test Results**: All picture-id tests passing (8 tests), positions verified correctly
+
 #### Task 6.2: Update Seed Data Comments
 
 **Action**: Update comments referencing "500x500 world" to "5000x5000 world".
@@ -423,6 +435,21 @@ export function normalizePosition(
 
 - `src/lib/server/seedData.ts` - Update comments (lines ~498-500, ~85)
 
+**Status**: ✅ COMPLETED
+
+**Implementation Summary**: Updated all comments referencing "500x500 world" to "5000x5000 world" in seed data file.
+
+**Files Modified/Created**:
+- `src/lib/server/seedData.ts` - Updated 4 comment references:
+  - Line 85: User 'a' ship position comment
+  - Line 352: DEFAULT_SPACE_OBJECTS comment
+  - Line 498: Test environment logging comment
+  - Line 500: Production environment logging comment
+
+**Deviations from Plan**: None
+
+**Test Results**: Comments updated, no test changes needed
+
 #### Task 6.3: Update User Ship Starting Positions
 
 **Action**: Update user ship positions in `DEFAULT_USERS` to use the world center (2500, 2500) instead of (250, 250).
@@ -430,6 +457,29 @@ export function normalizePosition(
 **Files**:
 
 - `src/lib/server/seedData.ts` - Update ship positions in DEFAULT_USERS
+
+**Status**: ✅ COMPLETED
+
+**Implementation Summary**: Updated all user ship starting positions to use world center (2500, 2500) and maintained relative positioning for dummy users (within 100-unit battle range).
+
+**Files Modified/Created**:
+- `src/lib/server/seedData.ts` - Updated ship positions:
+  - User 'a': (250, 250) → (2500, 2500)
+  - User 'dummy': (280, 280) → (2530, 2530)
+  - User 'dummy2': (220, 280) → (2470, 2530)
+  - User 'dummy3': (310, 280) → (2560, 2530)
+  - User 'dummy4': (250, 310) → (2500, 2560)
+  - Test users: 250+i*10 → 2500+i*10 (line 485)
+- `src/__tests__/lib/picture-id.test.ts` - Updated position assertions to match new coordinates
+- `scripts/reseed-test.ts` - Created helper script for reseeding test database
+
+**Deviations from Plan**: 
+- Created helper script for reseeding test/production databases
+- Maintained battle-range proximity (30-60 units from center) for dummy users to preserve test functionality
+
+**Test Results**: All 8 picture-id tests passing, ship positions verified correctly
+
+**Goal 6 Summary**: All 3 tasks completed successfully. Seed data now uses 5000x5000 coordinates while world size constants remain at 500x500 (will be updated in Goal 8). User ships clustered at (2500, 2500), space objects spread across larger world. Test database reseeded with new positions.
 
 ---
 

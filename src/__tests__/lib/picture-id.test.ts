@@ -113,10 +113,10 @@ describe('Picture ID', () => {
         return acc;
       }, {} as Record<string, { x: number; y: number }>);
       
-      expect(locationMap['dummy']).toEqual({ x: 280, y: 280 });
-      expect(locationMap['dummy2']).toEqual({ x: 220, y: 280 });
-      expect(locationMap['dummy3']).toEqual({ x: 310, y: 280 });
-      expect(locationMap['dummy4']).toEqual({ x: 250, y: 310 });
+      expect(locationMap['dummy']).toEqual({ x: 2530, y: 2530 });
+      expect(locationMap['dummy2']).toEqual({ x: 2470, y: 2530 });
+      expect(locationMap['dummy3']).toEqual({ x: 2560, y: 2530 });
+      expect(locationMap['dummy4']).toEqual({ x: 2500, y: 2560 });
     });
   });
 
