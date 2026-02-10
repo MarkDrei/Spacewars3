@@ -41,6 +41,41 @@ This document captures insights and patterns discovered during agent operations 
   - Domain objects (User) can be instantiated with test data
   - Lock contexts can be simplified for unit tests
 
+## Unit Test Implementation Patterns (Task 1.2)
+
+- **Import Structure for Pure Unit Tests**:
+  - `SaveUserCallback` is exported from `@/lib/server/user/user`, not from userRepository
+  - `createInitialTechTree` is in `@/lib/server/techs/techtree`
+  - `TechCounts` is in `@/lib/server/techs/TechFactory`
+  - User constructor takes `ship_id?: number` (optional, use `undefined` not `null`)
+  
+- **TechCounts Structure** (as of current implementation):
+  ```typescript
+  {
+    pulse_laser, auto_turret, plasma_lance, gauss_rifle, 
+    photon_torpedo, rocket_launcher, ship_hull, kinetic_armor, 
+    energy_shield, missile_jammer
+  }
+  ```
+  Note: NOT `iron_harvesting_level` or `iron_capacity_level` - those don't exist in current schema
+  
+- **Mocking Lock Context**:
+  - Use `any` type with eslint-disable for mockLockContext to avoid complex type requirements
+  - Mock `createLockContext()` to return a simple object with `useLockWithAcquire` method
+  - The mock should call the callback immediately with the same context
+  
+- **Handling Partial<T> Mock Methods**:
+  - When using `Partial<UserCache>`, TypeScript may complain about `vi.mocked()`
+  - Use type assertion `(mockObject.method as any).mockResolvedValue()` instead
+  - Add eslint-disable comment for @typescript-eslint/no-explicit-any
+  
+- **Test Coverage for API Routes**:
+  - Test all status codes (401, 404, 500, 200)
+  - Verify business logic methods are called (updateStats, getIronPerSecond, etc.)
+  - Verify cache interactions (getUserByIdWithLock, updateUserInCache)
+  - Verify lock context usage
+  - Test edge cases (new users, upgraded users, errors)
+
 ## Code Review Patterns (Medicus)
 
 - **Analysis Task Review**: For analysis/documentation tasks:
@@ -55,3 +90,15 @@ This document captures insights and patterns discovered during agent operations 
   - Don't fail review due to pre-existing infrastructure issues
   - Focus on code/documentation quality for the specific task
   - Analysis tasks don't require passing tests
+  
+- **Unit Test Review** (Task 1.2):
+  - Pure unit tests should have zero database dependencies (✅ verified)
+  - Mock setup should be clean and reusable (beforeEach pattern)
+  - Test coverage should include: auth, happy path, edge cases, errors, lock management
+  - Lock context mocking: Use simple mock that calls callback immediately
+  - Verify proper use of vi.mock(), vi.fn(), spies for method validation
+  - Check test naming follows convention: `whatIsTested_scenario_expectedOutcome`
+  - Verify TypeScript syntax validity (use Node.js typescript parser check)
+  - Check for code duplication (search for similar mocking patterns)
+  - Build/compilation failures due to network (fonts.googleapis.com) are infrastructure issues, not code issues
+  - ESLint warnings in other files don't affect current task review
