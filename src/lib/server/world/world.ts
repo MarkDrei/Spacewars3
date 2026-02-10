@@ -1,11 +1,8 @@
-// ---
-// Domain logic for the World and space objects physics, including persistence callback.
-// ---
-
 import { HasLock6Context, IronLocks } from '@markdrei/ironguard-typescript-locks';
 import { updateAllObjectPositions } from '@shared/physics';
 import { DatabaseConnection } from '../database';
 import { deleteSpaceObject, insertSpaceObject } from './worldRepo';
+import { DEFAULT_WORLD_WIDTH, DEFAULT_WORLD_HEIGHT } from '../constants';
 
 export interface SpaceObject {
   id: number;
@@ -191,7 +188,7 @@ class World {
    */
   static createDefault(saveCallback: SaveWorldCallback, db: DatabaseConnection): World {
     return new World(
-      { width: 500, height: 500 }, // Default world size
+      { width: DEFAULT_WORLD_WIDTH, height: DEFAULT_WORLD_HEIGHT },
       [], // Empty space objects initially
       saveCallback,
       db

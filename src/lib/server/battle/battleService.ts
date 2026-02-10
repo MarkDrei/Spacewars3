@@ -41,8 +41,8 @@ const MIN_TELEPORT_DISTANCE = 1000;
 /**
  * World dimensions
  */
-const WORLD_WIDTH = 3000;
-const WORLD_HEIGHT = 3000;
+const WORLD_WIDTH = 5000;
+const WORLD_HEIGHT = 5000;
 
 /**
  * Get current defense values for a user

@@ -4,6 +4,7 @@ import type { DatabaseConnection } from '@/lib/server/database';
 import { WORLD_LOCK } from '@/lib/server/typedLocks';
 import { World, type SpaceObject } from '@/lib/server/world/world';
 import { WorldCache } from '@/lib/server/world/worldCache';
+import { DEFAULT_WORLD_WIDTH, DEFAULT_WORLD_HEIGHT } from '@/lib/server/constants';
 
 const createMockDb = () => {
   return {
@@ -18,7 +19,7 @@ const createMockDb = () => {
 
 const createWorld = (db: DatabaseConnection, spaceObjects: SpaceObject[] = []): World => {
   return new World(
-    { width: 500, height: 500 },
+    { width: DEFAULT_WORLD_WIDTH, height: DEFAULT_WORLD_HEIGHT },
     spaceObjects,
     async () => {},
     db

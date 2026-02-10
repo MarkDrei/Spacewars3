@@ -1,9 +1,6 @@
-// ---
-// Repository functions for World persistence via in-memory cache with database persistence
-// ---
-
 import { DatabaseConnection } from '../database';
 import { World, SpaceObject, SaveWorldCallback } from './world';
+import { DEFAULT_WORLD_WIDTH, DEFAULT_WORLD_HEIGHT } from '../constants';
 
 /**
  * Load world data from database (used internally by cache manager)
@@ -47,7 +44,7 @@ export async function loadWorldFromDb(db: DatabaseConnection, saveCallback: Save
   }));
 
   const world = new World(
-    { width: 500, height: 500 }, // Hardcoded for now
+    { width: DEFAULT_WORLD_WIDTH, height: DEFAULT_WORLD_HEIGHT },
     spaceObjects,
     saveCallback,
     db

@@ -12,9 +12,10 @@ import {
   PhysicsObject,
   WorldBounds
 } from '@shared/physics';
+import { DEFAULT_WORLD_WIDTH, DEFAULT_WORLD_HEIGHT } from '@/lib/server/constants';
 
 describe('Physics Calculations', () => {
-  const WORLD_BOUNDS: WorldBounds = { width: 500, height: 500 };
+  const WORLD_BOUNDS: WorldBounds = { width: DEFAULT_WORLD_WIDTH, height: DEFAULT_WORLD_HEIGHT };
   
   describe('updateObjectPosition', () => {
     it('updateObjectPosition_noMovement_positionUnchanged', () => {

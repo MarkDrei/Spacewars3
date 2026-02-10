@@ -14,8 +14,8 @@ export class World {
     private hoveredObjectId?: number;
     
     // World boundaries
-    public static WIDTH = 500;
-    public static HEIGHT = 500;
+    public static WIDTH = 5000;
+    public static HEIGHT = 5000;
 
     private static instance: World;
 
