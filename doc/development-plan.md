@@ -206,6 +206,22 @@ Centralize the currently hardcoded world size (500×500) into a single global co
 
 - `src/lib/client/game/World.ts` - Import shared constants and set defaults (lines 16-18)
 
+**Status**: ✅ COMPLETED
+
+**Implementation Summary**: Imported shared constants and updated World class static properties to use DEFAULT_WORLD_WIDTH and DEFAULT_WORLD_HEIGHT as default values.
+
+**Files Modified/Created**:
+- `src/lib/client/game/World.ts` - Added import for `DEFAULT_WORLD_WIDTH` and `DEFAULT_WORLD_HEIGHT` from `@shared/worldConstants`, updated lines 17-18 to use these constants as defaults for static properties
+- `src/__tests__/lib/client-world-constants.test.ts` - Added 11 comprehensive tests covering static property initialization, server updates, instance methods, wrapping behavior, and consistency with shared constants
+
+**Deviations from Plan**: None
+
+**Test Results**: All tests passing (11 new tests for World class, 6 new tests for InterceptCalculator integration, total 524 tests passing)
+
+**Review Status**: ✅ APPROVED
+**Reviewer**: Medicus
+**Review Notes**: Clean implementation with proper import of shared constants. World.WIDTH and World.HEIGHT static properties correctly initialized from DEFAULT_WORLD_WIDTH and DEFAULT_WORLD_HEIGHT. Server override mechanism works correctly via updateFromServerData() method. Comprehensive test coverage with 11 tests covering initialization, server updates, instance methods, wrapping behavior, and consistency. All tests passing. No code duplication detected.
+
 #### Task 3.2: Verify InterceptCalculator Uses World Instance
 
 **Action**: Verify `InterceptCalculator` gets world size from `World.WIDTH`/`World.HEIGHT` static properties (which are updated from server data). Currently uses `World.WIDTH` at line 40.
@@ -213,6 +229,29 @@ Centralize the currently hardcoded world size (500×500) into a single global co
 **Files**:
 
 - `src/lib/client/game/InterceptCalculator.ts` - Verify (no change expected, uses `World.WIDTH`)
+
+**Status**: ✅ COMPLETED
+
+**Implementation Summary**: Verified InterceptCalculator correctly uses World.WIDTH static property at line 40; no changes needed.
+
+**Files Modified/Created**:
+- `src/lib/client/game/InterceptCalculator.ts` - No changes (already correctly using World.WIDTH for wrapping calculations)
+- `src/__tests__/lib/intercept-calculator-world-integration.test.ts` - Added 6 comprehensive integration tests verifying InterceptCalculator works correctly with shared constants, world wrapping, dynamic resizing, and edge cases
+
+**Deviations from Plan**: None
+
+**Test Results**: All tests passing (6 new integration tests)
+
+**Review Status**: ✅ APPROVED
+**Reviewer**: Medicus
+**Review Notes**: Verification complete - InterceptCalculator correctly uses World.WIDTH at line 40 for toroidal wrapping calculations. No changes needed as implementation already correct. Comprehensive integration tests (6 tests) cover world wrapping, dynamic resizing, edge cases (same position, zero speed), and consistency with shared constants. Tests properly structured and meaningful.
+
+**Goal 3 Summary**: Both tasks completed successfully. Total of 17 new tests added (524 tests passing). Client-side World class now uses shared constants for default dimensions, maintaining consistency with server-side code. InterceptCalculator verified to work correctly with dynamic world dimensions.
+
+**Goal 3 Review Status**: ✅ APPROVED
+**Goal 3 Reviewer**: Medicus
+**Goal 3 Review Date**: 2026-02-10
+**Goal 3 Review Notes**: Excellent implementation quality for both tasks. Client-side World class properly refactored to use shared constants while maintaining mutable static property pattern for server override. InterceptCalculator already correctly implemented and verified with comprehensive integration tests. All 524 tests passing, lint clean (warnings only), TypeScript compilation successful. No code duplication detected. Proper ES Modules usage. Test naming follows convention. Ready to proceed to Goal 4.
 
 ---
 

@@ -82,11 +82,12 @@ The following world size constant duplications exist in the codebase and are int
 1. `src/shared/src/worldConstants.ts` - NEW centralized constants (500x500)
 2. ~~`src/lib/server/constants.ts` - Lines 12-13 (500x500)~~ - ✅ RESOLVED in Task 2.1
 3. ~~`src/lib/server/battle/battleService.ts` - Lines 44-45 (3000x3000)~~ - ✅ RESOLVED in Task 2.4
-4. `src/lib/client/game/World.ts` - Lines 17-18 (500x500) - Will be updated in Task 3.1
+4. ~~`src/lib/client/game/World.ts` - Lines 17-18 (500x500)~~ - ✅ RESOLVED in Task 3.1
 5. ~~`src/lib/server/world/worldRepo.ts` - Line 50 hardcoded value~~ - ✅ RESOLVED in Task 2.2
 6. ~~`src/lib/server/world/world.ts` - Line 194 hardcoded value~~ - ✅ RESOLVED in Task 2.3
 
-Tasks 2.1-2.4 completed: All server-side duplications eliminated. Only client-side duplication remains (Goal 3).
+Tasks 2.1-2.4 completed: All server-side duplications eliminated.
+Tasks 3.1-3.2 completed: All client-side duplications eliminated. All world size references now use shared constants.
 
 ## Server-Side Constants Refactoring (2026-02-10)
 
@@ -144,3 +145,75 @@ Conducted comprehensive review of Tasks 2.1-2.4:
 - `npm run build` fails due to inability to fetch Google Fonts (network isolation)
 - `npm run typecheck` succeeds, confirming TypeScript compilation is clean
 - This is expected in CI/test environments without internet access
+
+## Client-Side Constants Refactoring (2026-02-10)
+
+### Goal 3 Implementation Complete
+All client-side world size constants now reference the centralized shared module:
+
+1. **Import Pattern**: Client files use `@shared/worldConstants` for importing `DEFAULT_WORLD_WIDTH` and `DEFAULT_WORLD_HEIGHT`
+2. **Static Property Pattern**: World class static properties (`World.WIDTH`, `World.HEIGHT`) are initialized from shared constants but remain mutable
+3. **Server Override**: The `updateFromServerData()` method updates static properties with actual world dimensions from the server
+4. **Singleton Pattern**: World class uses static properties that are shared across all instances and updated once from server
+
+### Client-Side Testing Patterns for Shared Constants
+- Test both static initialization (from shared constants) and dynamic updates (from server data)
+- Verify instance methods (`getWidth()`, `getHeight()`) return values from static properties
+- Test wrapping behavior with both default and custom world dimensions
+- Test edge cases: positions at boundaries, negative positions, very large positions
+- Document that tests verify current 500x500 values that will become 5000x5000 in Goal 8
+- Use proper TypeScript types for test data (include all required properties like `currentTime`, `value`)
+
+### InterceptCalculator Integration
+- InterceptCalculator reads `World.WIDTH` directly for toroidal wrapping calculations
+- No changes needed - already correctly uses static properties
+- Integration tests verify correct behavior with world wrapping, dynamic resizing, and edge cases
+- Important: InterceptCalculator adapts automatically when World.WIDTH/HEIGHT change (e.g., after server update)
+
+### Key Architectural Insight
+The client-side World class uses a **mutable static properties** pattern:
+- Properties are initialized with sensible defaults (from shared constants)
+- Server provides actual world dimensions on first update
+- All client code reads from these static properties
+- This ensures consistency across all renderers, calculators, and game logic
+
+## Code Review Best Practices - Goal 3 (2026-02-10)
+
+### Medicus Review - Goal 3 Complete
+Conducted comprehensive review of Tasks 3.1-3.2:
+
+**Review Process Checklist**:
+1. ✅ Read development plan and understand task requirements
+2. ✅ Review code changes via git diff (only World.ts modified, tests added)
+3. ✅ Check for code duplications (no hardcoded 500 values found in src/)
+4. ✅ Verify lock usage (not applicable for client-side code)
+5. ✅ Review test files for quality and coverage (17 new tests, well-structured)
+6. ✅ Run tests to verify passing (524 tests passing)
+7. ✅ Run linting (passed with warnings only)
+8. ✅ Run typecheck (passed - TypeScript compilation clean)
+9. ✅ Update development plan with review status
+10. ✅ Update learnings with insights
+
+**Key Findings**:
+- All 17 new tests are meaningful and comprehensive
+- No code duplication detected in client-side code
+- Lock usage not applicable (client-side code doesn't need locks)
+- TypeScript strict mode compliance verified
+- ES Modules usage correct throughout
+- Test naming follows convention: `whatIsTested_scenario_expectedOutcome`
+- InterceptCalculator already correctly implemented (verification only)
+
+**Test Quality Indicators**:
+- Tests verify both static initialization and dynamic server updates
+- Tests cover instance methods (getWidth, getHeight)
+- Tests cover wrapping behavior with edge cases (boundaries, negatives, large values)
+- Tests document current 500x500 values with comments about future 5000x5000
+- Integration tests verify InterceptCalculator adapts to World dimension changes
+- Tests properly reset static properties in beforeEach hooks
+
+**Code Quality Observations**:
+- Clean import of shared constants at top of file
+- Good comments explaining static properties are "initialized from shared constants, updated by server data"
+- Proper TypeScript typing throughout
+- updateFromServerData() method correctly updates static properties (lines 114-115)
+- InterceptCalculator uses World.WIDTH at line 40 for wrapping (no changes needed)
