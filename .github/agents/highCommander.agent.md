@@ -160,7 +160,7 @@ When all tasks have been approved by Medicus:
 
 - Present a summary of all completed tasks to the user
 - Confirm the entire development request is complete
-- move "doc/development-plan.md" to "doc/completed-plans/[timestamp]-[short-description].md" for record-keeping, commit and push the changes.
+- move "doc/development-plan.md" to "doc/completed-plans/[yyyy-mm-dd]-[short-description].md" for record-keeping, commit and push the changes.
 
 # Communication Guidelines
 
