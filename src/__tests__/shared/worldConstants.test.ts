@@ -17,9 +17,9 @@ describe('worldConstants', () => {
       expect(DEFAULT_WORLD_WIDTH).toBeGreaterThan(0);
     });
 
-    it('DEFAULT_WORLD_WIDTH_value_is500', () => {
-      // Starting value is 500, will be updated to 5000 in Goal 8
-      expect(DEFAULT_WORLD_WIDTH).toBe(500);
+    it('DEFAULT_WORLD_WIDTH_value_is5000', () => {
+      // Updated to 5000 as part of world size expansion (Goal 8)
+      expect(DEFAULT_WORLD_WIDTH).toBe(5000);
     });
   });
 
@@ -33,9 +33,9 @@ describe('worldConstants', () => {
       expect(DEFAULT_WORLD_HEIGHT).toBeGreaterThan(0);
     });
 
-    it('DEFAULT_WORLD_HEIGHT_value_is500', () => {
-      // Starting value is 500, will be updated to 5000 in Goal 8
-      expect(DEFAULT_WORLD_HEIGHT).toBe(500);
+    it('DEFAULT_WORLD_HEIGHT_value_is5000', () => {
+      // Updated to 5000 as part of world size expansion (Goal 8)
+      expect(DEFAULT_WORLD_HEIGHT).toBe(5000);
     });
   });
 
@@ -70,15 +70,15 @@ describe('worldConstants', () => {
     it('DEFAULT_WORLD_BOUNDS_values_matchExpected', () => {
       // Verify the complete structure
       expect(DEFAULT_WORLD_BOUNDS).toEqual({
-        width: 500,
-        height: 500,
+        width: 5000,
+        height: 5000,
       });
     });
   });
 
   describe('consistency', () => {
     it('worldConstants_widthAndHeight_areEqual', () => {
-      // Currently, world is square (500×500)
+      // World is square (5000×5000)
       expect(DEFAULT_WORLD_WIDTH).toBe(DEFAULT_WORLD_HEIGHT);
     });
 

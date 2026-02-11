@@ -51,9 +51,9 @@ describe('worldInitialization_usesSharedConstants', () => {
     expect(world.worldSize).toEqual(DEFAULT_WORLD_BOUNDS);
   });
 
-  it('worldSize_currentValue_is500x500', () => {
-    // Document current world size before increase to 5000x5000
-    expect(DEFAULT_WORLD_WIDTH).toBe(500);
-    expect(DEFAULT_WORLD_HEIGHT).toBe(500);
+  it('worldSize_currentValue_is5000x5000', () => {
+    // World size updated to 5000x5000 (Goal 8 complete)
+    expect(DEFAULT_WORLD_WIDTH).toBe(5000);
+    expect(DEFAULT_WORLD_HEIGHT).toBe(5000);
   });
 });

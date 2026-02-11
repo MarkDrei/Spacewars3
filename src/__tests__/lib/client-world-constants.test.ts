@@ -14,16 +14,16 @@ describe('World class shared constants integration', () => {
   describe('worldStaticProperties_initialization_matchSharedConstants', () => {
     it('should initialize World.WIDTH from DEFAULT_WORLD_WIDTH', () => {
       // The World.WIDTH should be initialized from shared constants
-      // Currently 500, will be 5000 after Goal 8
+      // Updated to 5000 after Goal 8 completion
       expect(World.WIDTH).toBe(DEFAULT_WORLD_WIDTH);
-      expect(World.WIDTH).toBe(500);
+      expect(World.WIDTH).toBe(5000);
     });
     
     it('should initialize World.HEIGHT from DEFAULT_WORLD_HEIGHT', () => {
       // The World.HEIGHT should be initialized from shared constants
-      // Currently 500, will be 5000 after Goal 8
+      // Updated to 5000 after Goal 8 completion
       expect(World.HEIGHT).toBe(DEFAULT_WORLD_HEIGHT);
-      expect(World.HEIGHT).toBe(500);
+      expect(World.HEIGHT).toBe(5000);
     });
   });
   
@@ -107,19 +107,19 @@ describe('World class shared constants integration', () => {
     
     it('should wrap positions using World.WIDTH and World.HEIGHT', () => {
       // Test position wrapping at boundaries
-      const wrapped1 = world.wrapPosition(600, 300);
-      expect(wrapped1.x).toBe(100); // 600 % 500 = 100
-      expect(wrapped1.y).toBe(300);
+      const wrapped1 = world.wrapPosition(6000, 3000);
+      expect(wrapped1.x).toBe(1000); // 6000 % 5000 = 1000
+      expect(wrapped1.y).toBe(3000);
       
-      const wrapped2 = world.wrapPosition(250, 700);
-      expect(wrapped2.x).toBe(250);
-      expect(wrapped2.y).toBe(200); // 700 % 500 = 200
+      const wrapped2 = world.wrapPosition(2500, 7000);
+      expect(wrapped2.x).toBe(2500);
+      expect(wrapped2.y).toBe(2000); // 7000 % 5000 = 2000
     });
     
     it('should wrap negative positions correctly', () => {
-      const wrapped = world.wrapPosition(-100, -50);
-      expect(wrapped.x).toBe(400); // -100 wraps to 400 in 500-wide world
-      expect(wrapped.y).toBe(450); // -50 wraps to 450 in 500-high world
+      const wrapped = world.wrapPosition(-1000, -500);
+      expect(wrapped.x).toBe(4000); // -1000 wraps to 4000 in 5000-wide world
+      expect(wrapped.y).toBe(4500); // -500 wraps to 4500 in 5000-high world
     });
     
     it('should handle positions exactly at boundaries', () => {
@@ -137,13 +137,10 @@ describe('World class shared constants integration', () => {
       expect(World.HEIGHT).toBe(DEFAULT_WORLD_HEIGHT);
     });
     
-    it('should reference constants that will scale to 5000x5000 in Goal 8', () => {
-      // Document that these values will change in Goal 8
-      // Currently 500x500, future 5000x5000
-      expect(DEFAULT_WORLD_WIDTH).toBe(500);
-      expect(DEFAULT_WORLD_HEIGHT).toBe(500);
-      
-      // When Goal 8 is complete, these values will both be 5000
+    it('should reference constants that were scaled to 5000x5000 in Goal 8', () => {
+      // Document that Goal 8 is complete - values updated from 500x500 to 5000x5000
+      expect(DEFAULT_WORLD_WIDTH).toBe(5000);
+      expect(DEFAULT_WORLD_HEIGHT).toBe(5000);
     });
   });
 });

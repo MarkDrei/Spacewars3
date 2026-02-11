@@ -2,7 +2,7 @@
  * World Size Constants
  * 
  * Centralized world dimensions used across client and server.
- * Starting with 500×500, will be increased to 5000×5000 after all refactoring is complete.
+ * Updated to 5000×5000 as part of world size expansion.
  */
 
 import type { WorldBounds } from './physics';
@@ -10,12 +10,12 @@ import type { WorldBounds } from './physics';
 /**
  * Default world width (horizontal dimension)
  */
-export const DEFAULT_WORLD_WIDTH = 500;
+export const DEFAULT_WORLD_WIDTH = 5000;
 
 /**
  * Default world height (vertical dimension)
  */
-export const DEFAULT_WORLD_HEIGHT = 500;
+export const DEFAULT_WORLD_HEIGHT = 5000;
 
 /**
  * Default world bounds object

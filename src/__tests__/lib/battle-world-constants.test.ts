@@ -14,10 +14,10 @@ describe('battleService_worldSize_usesSharedConstants', () => {
     expect(typeof DEFAULT_WORLD_HEIGHT).toBe('number');
   });
 
-  it('sharedConstants_currentWorldSize_is500x500', () => {
-    // Document current world size (will be updated to 5000x5000 in Goal 8)
-    expect(DEFAULT_WORLD_WIDTH).toBe(500);
-    expect(DEFAULT_WORLD_HEIGHT).toBe(500);
+  it('sharedConstants_currentWorldSize_is5000x5000', () => {
+    // World size updated to 5000x5000 (Goal 8 complete)
+    expect(DEFAULT_WORLD_WIDTH).toBe(5000);
+    expect(DEFAULT_WORLD_HEIGHT).toBe(5000);
   });
 
   it('sharedConstants_worldDimensions_arePositive', () => {

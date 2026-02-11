@@ -44,12 +44,12 @@ describe('serverConstants_imports_fromSharedModule', () => {
     expect(DEFAULT_SHIP_START_Y).toBeLessThanOrEqual(DEFAULT_WORLD_HEIGHT);
   });
 
-  it('serverConstants_currentWorldSize_yields250AsCenter', () => {
-    // With current 500x500 world, center should be (250, 250)
-    // This test documents the current state before world size increase
-    expect(DEFAULT_WORLD_WIDTH).toBe(500);
-    expect(DEFAULT_WORLD_HEIGHT).toBe(500);
-    expect(DEFAULT_SHIP_START_X).toBe(250);
-    expect(DEFAULT_SHIP_START_Y).toBe(250);
+  it('serverConstants_currentWorldSize_yields2500AsCenter', () => {
+    // With current 5000x5000 world, center should be (2500, 2500)
+    // This test documents the state after world size increase (Goal 8)
+    expect(DEFAULT_WORLD_WIDTH).toBe(5000);
+    expect(DEFAULT_WORLD_HEIGHT).toBe(5000);
+    expect(DEFAULT_SHIP_START_X).toBe(2500);
+    expect(DEFAULT_SHIP_START_Y).toBe(2500);
   });
 });
