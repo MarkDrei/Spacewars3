@@ -32,9 +32,9 @@ describe('loadWorldFromDb position normalization', () => {
       // Find the test object
       const testObject = world.spaceObjects.find(obj => obj.id === objectId);
       
-      // Verify position was normalized (506.667 % 500 = 6.667)
+      // Verify position was normalized (506.667 % 5000 = 506.667)
       expect(testObject).toBeDefined();
-      expect(testObject!.x).toBeCloseTo(6.667, 2);
+      expect(testObject!.x).toBeCloseTo(506.667, 2);
       expect(testObject!.y).toBe(250);
     } finally {
       // Clean up
@@ -55,10 +55,10 @@ describe('loadWorldFromDb position normalization', () => {
       const world = await loadWorldFromDb(db, saveWorldToDb(db));
       const testObject = world.spaceObjects.find(obj => obj.id === objectId);
       
-      // Verify position was normalized (510 % 500 = 10)
+      // Verify position was normalized (510 % 5000 = 510)
       expect(testObject).toBeDefined();
       expect(testObject!.x).toBe(250);
-      expect(testObject!.y).toBe(10);
+      expect(testObject!.y).toBe(510);
     } finally {
       await db.query('DELETE FROM space_objects WHERE id = $1', [objectId]);
     }
@@ -77,9 +77,9 @@ describe('loadWorldFromDb position normalization', () => {
       const world = await loadWorldFromDb(db, saveWorldToDb(db));
       const testObject = world.spaceObjects.find(obj => obj.id === objectId);
       
-      // Verify position was normalized (-100 wraps to 400 in 500-width world)
+      // Verify position was normalized (-100 wraps to 4900 in 5000-width world)
       expect(testObject).toBeDefined();
-      expect(testObject!.x).toBe(400);
+      expect(testObject!.x).toBe(4900);
       expect(testObject!.y).toBe(250);
     } finally {
       await db.query('DELETE FROM space_objects WHERE id = $1', [objectId]);
@@ -99,10 +99,10 @@ describe('loadWorldFromDb position normalization', () => {
       const world = await loadWorldFromDb(db, saveWorldToDb(db));
       const testObject = world.spaceObjects.find(obj => obj.id === objectId);
       
-      // Verify position was normalized (-50 wraps to 450 in 500-height world)
+      // Verify position was normalized (-50 wraps to 4950 in 5000-height world)
       expect(testObject).toBeDefined();
       expect(testObject!.x).toBe(250);
-      expect(testObject!.y).toBe(450);
+      expect(testObject!.y).toBe(4950);
     } finally {
       await db.query('DELETE FROM space_objects WHERE id = $1', [objectId]);
     }
@@ -122,7 +122,7 @@ describe('loadWorldFromDb position normalization', () => {
       const testObject = world.spaceObjects.find(obj => obj.id === objectId);
       
       // Verify position was normalized
-      // 30000 % 500 = 0, 25000 % 500 = 0
+      // 30000 % 5000 = 0, 25000 % 5000 = 0
       expect(testObject).toBeDefined();
       expect(testObject!.x).toBe(0);
       expect(testObject!.y).toBe(0);
@@ -145,11 +145,11 @@ describe('loadWorldFromDb position normalization', () => {
       const testObject = world.spaceObjects.find(obj => obj.id === objectId);
       
       // Verify position was normalized
-      // ((-3010 % 500) + 500) % 500 = ((-10) + 500) % 500 = 490
-      // ((-2505 % 500) + 500) % 500 = ((-5) + 500) % 500 = 495
+      // ((-3010 % 5000) + 5000) % 5000 = ((-3010) + 5000) % 5000 = 1990
+      // ((-2505 % 5000) + 5000) % 5000 = ((-2505) + 5000) % 5000 = 2495
       expect(testObject).toBeDefined();
-      expect(testObject!.x).toBe(490);
-      expect(testObject!.y).toBe(495);
+      expect(testObject!.x).toBe(1990);
+      expect(testObject!.y).toBe(2495);
     } finally {
       await db.query('DELETE FROM space_objects WHERE id = $1', [objectId]);
     }
@@ -224,9 +224,9 @@ describe('loadWorldFromDb position normalization', () => {
   it('loadWorldFromDb_multipleObjectsWithVariousPositions_allNormalizedCorrectly', async () => {
     // Insert multiple test objects with different position scenarios
     const objects = [
-      { x: 600, y: 250, expectedX: 100, expectedY: 250 },
-      { x: -100, y: 350, expectedX: 400, expectedY: 350 },
-      { x: 250, y: 510, expectedX: 250, expectedY: 10 }
+      { x: 5100, y: 250, expectedX: 100, expectedY: 250 },
+      { x: -100, y: 350, expectedX: 4900, expectedY: 350 },
+      { x: 250, y: 5010, expectedX: 250, expectedY: 10 }
     ];
 
     const insertedIds: number[] = [];

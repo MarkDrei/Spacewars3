@@ -72,8 +72,8 @@ describe('User Ship Creation', () => {
       expect(ship).not.toBeNull();
       if (ship) {
         expect(ship.type).toBe('player_ship');
-        expect(ship.x).toBe(250); // Center of world
-        expect(ship.y).toBe(250); // Center of world
+        expect(ship.x).toBe(2500); // Center of world
+        expect(ship.y).toBe(2500); // Center of world
         expect(ship.speed).toBe(0);
         expect(ship.angle).toBe(0);
         expect(ship.last_position_update_ms).toBeGreaterThan(0);
