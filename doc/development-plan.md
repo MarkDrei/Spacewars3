@@ -599,6 +599,18 @@ Successfully refactored InterceptCalculator.calculateInterceptAngle to accept wo
 
 **Notes**: Tests can keep their own fixed values for reproducibility, but the values should be documented.
 
+**Status**: ✅ COMPLETED
+**Implementation Summary**: Added documentation comment explaining that tests use fixed 500x500 values for reproducibility and stability, noting these match DEFAULT_WORLD_BOUNDS from shared constants.
+**Files Modified/Created**:
+- `src/__tests__/shared/physics.test.ts` - Added comment explaining fixed values for test reproducibility
+**Deviations from Plan**: None - chose to document fixed values rather than import shared constants, which is appropriate for test stability.
+**Test Results**: All 562 tests passing
+
+**Review Status**: ✅ APPROVED
+**Reviewer**: Medicus
+**Review Date**: 2026-02-11
+**Review Notes**: Documentation approach is appropriate for physics tests that rely on specific expected values. Comment clearly explains the relationship between fixed test values and shared constants, and notes the future change to 5000×5000.
+
 #### Task 7.5: Update worldCache.test.ts
 
 **Action**: Import shared constants for world size in test setup.
@@ -606,6 +618,18 @@ Successfully refactored InterceptCalculator.calculateInterceptAngle to accept wo
 **Files**:
 
 - `src/__tests__/lib/worldCache.test.ts` - Import and use shared constants in `createWorld` function
+
+**Status**: ✅ COMPLETED
+**Implementation Summary**: Imported DEFAULT_WORLD_WIDTH and DEFAULT_WORLD_HEIGHT from @shared/worldConstants and updated the createWorld helper function to use these constants instead of hardcoded 500x500 values.
+**Files Modified/Created**:
+- `src/__tests__/lib/worldCache.test.ts` - Imported shared constants and updated createWorld function
+**Deviations from Plan**: None - implementation exactly as specified.
+**Test Results**: All 562 tests passing
+
+**Review Status**: ✅ APPROVED
+**Reviewer**: Medicus
+**Review Date**: 2026-02-11
+**Review Notes**: Import approach is appropriate for test helper that creates mock World instances. Ensures test mocks stay synchronized with production default values. Import path verified correct (@shared/worldConstants). Only server-side World instantiation in test suite (verified).
 
 ---
 

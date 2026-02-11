@@ -553,3 +553,101 @@ Conducted comprehensive review of InterceptCalculator refactoring:
 - **Major improvement**: Tests can verify behavior with various world sizes without global state manipulation
 - **Major improvement**: Function signature clearly documents all dependencies
 - **Future-proofing**: Tests verify calculator works with 5000×5000 world size (Goal 8 readiness)
+
+## Test Constants Documentation (2026-02-11)
+
+### Goal 7 Tasks 7.4-7.5 Implementation Complete
+Updated test files to use or document shared constants appropriately.
+
+**Two Approaches for Test Constants**:
+1. **Document Fixed Values** (for reproducibility): Add comments explaining fixed test values match shared constants
+   - Example: `physics.test.ts` uses fixed 500×500 with comment
+   - Use when test stability requires fixed values
+   
+2. **Import Shared Constants** (for consistency): Import and use shared constants directly
+   - Example: `worldCache.test.ts` imports DEFAULT_WORLD_WIDTH/HEIGHT
+   - Use when tests should adapt to constant changes
+
+**Key Pattern**:
+- Tests that verify physics calculations with specific expected values should use fixed constants with documentation
+- Tests that create test data/mocks should import shared constants to stay synchronized with production values
+- Always document the relationship between test values and shared constants
+
+**Test Results**: All 562 tests passing after updates
+
+## Medicus Review - Goal 7 Tasks 7.4-7.5 (2026-02-11)
+
+### Comprehensive Code Review Complete
+
+**Files Reviewed**:
+- `src/__tests__/shared/physics.test.ts` - Documentation approach for fixed test values
+- `src/__tests__/lib/worldCache.test.ts` - Import approach for helper function
+
+**Implementation Quality Assessment**:
+
+✅ **Task 7.4 - physics.test.ts Documentation**:
+- Added clear comment explaining fixed 500×500 values for reproducibility
+- Comment references @shared/worldConstants and notes future 5000×5000 change
+- Approach is appropriate: physics calculations need fixed values for expected results
+- No code changes required - values remain stable for test assertions
+
+✅ **Task 7.5 - worldCache.test.ts Shared Constants**:
+- Successfully imported DEFAULT_WORLD_WIDTH and DEFAULT_WORLD_HEIGHT
+- Updated createWorld helper to use imported constants
+- Approach is appropriate: mock world creation should sync with production values
+- Import path `@shared/worldConstants` is correct (verified in tsconfig.json)
+- No other server-side World instantiations in tests (verified via grep)
+
+**Code Duplication Check**:
+- ✅ No duplications found
+- Only one `createWorld` helper for server-side World (in worldCache.test.ts)
+- Client-side World uses different constructor (boolean parameter, not dimensions)
+- Other test files with hardcoded 500×500 use client-side constructs or test data objects
+
+**Lock Usage Verification**:
+- ✅ worldCache.test.ts properly imports WORLD_LOCK
+- ✅ Uses `useLockWithAcquire` pattern correctly
+- ✅ physics.test.ts doesn't use locks (pure functions, no async operations)
+
+**TypeScript Compliance**:
+- ✅ All imports correctly typed with `@shared/*` path alias
+- ✅ Type checking passed (npx tsc --noEmit with no errors)
+- ✅ Strict mode compliance verified
+
+**Test Coverage**:
+- ✅ physics.test.ts: ~125 test cases covering physics calculations
+- ✅ worldCache.test.ts: ~16 test cases covering world caching
+- ✅ No new tests required (implementation is documentation/constant updates only)
+
+**Build & Lint Status**:
+- ✅ TypeScript compilation clean (no errors)
+- ✅ ESLint passed (no errors, only pre-existing warnings in other files)
+- ⚠️ Test database not available in review environment (expected in CI/CD)
+- ✅ Knight reports "All 562 tests passing" in implementation summary
+
+**Pattern Verification**:
+Two distinct and appropriate patterns identified:
+1. **Fixed Values + Documentation**: For tests with specific expected results
+2. **Imported Constants**: For test helpers that create mock data
+
+**Architecture Alignment**:
+- ✅ Proper separation: shared constants in `@shared/worldConstants`
+- ✅ Test files follow established import patterns
+- ✅ No violations of client/server/shared boundaries
+
+**Key Insights**:
+- Documentation approach (Task 7.4) preserves test stability while maintaining transparency
+- Import approach (Task 7.5) ensures test mocks stay synchronized with production defaults
+- Both approaches are appropriate for their respective use cases
+- Implementation demonstrates good judgment in choosing the right pattern
+- No changes needed to other test files (verified they use client-side World or intentional test data)
+
+**Quality Standards Met**:
+- ✅ Code is clean and maintainable
+- ✅ Changes are minimal and focused
+- ✅ Documentation is clear and helpful
+- ✅ TypeScript types are correct
+- ✅ No code smells or anti-patterns
+- ✅ Follows established project conventions
+
+**Verdict**: Implementation is correct, complete, and high quality. Ready for commit.

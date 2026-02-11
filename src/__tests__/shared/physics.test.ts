@@ -15,6 +15,8 @@ import {
 } from '@shared/physics';
 
 describe('Physics Calculations', () => {
+  // Note: Tests use fixed values (500x500) for reproducibility and stability.
+  // These values match DEFAULT_WORLD_BOUNDS from @shared/worldConstants (currently 500x500, will be 5000x5000 in Goal 8)
   const WORLD_BOUNDS: WorldBounds = { width: 500, height: 500 };
   
   describe('updateObjectPosition', () => {
