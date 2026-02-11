@@ -51,8 +51,8 @@ describe('InterceptCalculator world dimension integration', () => {
       };
       const asteroid = new Asteroid(asteroidData);
       
-      // Calculate intercept
-      const result = InterceptCalculator.calculateInterceptAngle(ship, asteroid, 30);
+      // Calculate intercept (worldSize: 500, maxSpeed: 30)
+      const result = InterceptCalculator.calculateInterceptAngle(ship, asteroid, World.WIDTH, 30);
       
       // Should find a valid intercept angle (not NaN)
       expect(result.angle).not.toBeNaN();
@@ -96,8 +96,8 @@ describe('InterceptCalculator world dimension integration', () => {
       };
       const asteroid = new Asteroid(asteroidData);
       
-      // Calculate intercept
-      const result = InterceptCalculator.calculateInterceptAngle(ship, asteroid, 25);
+      // Calculate intercept (worldSize: 500, maxSpeed: 25)
+      const result = InterceptCalculator.calculateInterceptAngle(ship, asteroid, World.WIDTH, 25);
       
       // Should find valid intercept considering wrapping
       expect(result.angle).not.toBeNaN();
@@ -144,7 +144,7 @@ describe('InterceptCalculator world dimension integration', () => {
       };
       const asteroid = new Asteroid(asteroidData);
       
-      const result = InterceptCalculator.calculateInterceptAngle(ship, asteroid, 20);
+      const result = InterceptCalculator.calculateInterceptAngle(ship, asteroid, World.WIDTH, 20);
       
       // Should calculate correctly with new world size
       expect(result.angle).not.toBeNaN();
@@ -185,7 +185,7 @@ describe('InterceptCalculator world dimension integration', () => {
       };
       const asteroid = new Asteroid(asteroidData);
       
-      const result = InterceptCalculator.calculateInterceptAngle(ship, asteroid);
+      const result = InterceptCalculator.calculateInterceptAngle(ship, asteroid, World.WIDTH);
       
       // Time to intercept should be 0 (already at target)
       expect(result.timeToIntercept).toBe(0);
@@ -221,7 +221,7 @@ describe('InterceptCalculator world dimension integration', () => {
       };
       const asteroid = new Asteroid(asteroidData);
       
-      const result = InterceptCalculator.calculateInterceptAngle(ship, asteroid);
+      const result = InterceptCalculator.calculateInterceptAngle(ship, asteroid, World.WIDTH);
       
       // Interception impossible with zero speed
       expect(result.angle).toBeNaN();
@@ -262,7 +262,7 @@ describe('InterceptCalculator world dimension integration', () => {
       };
       const asteroid = new Asteroid(asteroidData);
       
-      const result = InterceptCalculator.calculateInterceptAngle(ship, asteroid, 25);
+      const result = InterceptCalculator.calculateInterceptAngle(ship, asteroid, World.WIDTH, 25);
       
       // Should successfully calculate intercept
       expect(result.angle).not.toBeNaN();

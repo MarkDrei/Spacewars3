@@ -49,7 +49,7 @@ describe('InterceptCalculator', () => {
         const target = new MockSpaceObject(100, 0, 0, 0); // Target at (100,0) not moving
         
         // Act
-        const result = InterceptCalculator.calculateInterceptAngle(ship, target);
+        const result = InterceptCalculator.calculateInterceptAngle(ship, target, 500);
         
         // Assert
         expect(result.angle).toBeCloseTo(0); // Should aim directly right (0 degrees)
@@ -83,7 +83,7 @@ describe('InterceptCalculator', () => {
         const target = new MockSpaceObject(0, 100, 0, 0); // Target at (0,100) not moving
         
         // Act
-        const result = InterceptCalculator.calculateInterceptAngle(ship, target);
+        const result = InterceptCalculator.calculateInterceptAngle(ship, target, 500);
         
         // Assert
         expect(result.angle).toBeCloseTo(90); // Should aim directly up (90 degrees)
@@ -120,7 +120,7 @@ describe('InterceptCalculator', () => {
         const target = new MockSpaceObject(100, 100, 0, 0); // Stationary target at (100,100)
         
         // Act
-        const result = InterceptCalculator.calculateInterceptAngle(ship, target);
+        const result = InterceptCalculator.calculateInterceptAngle(ship, target, 500);
         
         // Assert
         // For a stationary target, we can verify the ship will hit it by traveling in a straight line
@@ -147,7 +147,7 @@ describe('InterceptCalculator', () => {
         const target = new MockSpaceObject(100, 0, 90, 5); // Target at (100,0) moving up at half speed
         
         // Act
-        const result = InterceptCalculator.calculateInterceptAngle(ship, target);
+        const result = InterceptCalculator.calculateInterceptAngle(ship, target, 500);
         
         // Assert
         expect(result.angle).toBeCloseTo(30); 
@@ -171,7 +171,7 @@ describe('InterceptCalculator', () => {
         const target = new MockSpaceObject(100, 0, 0, 10); // Target at (100,0) moving right at half speed
         
         // Act
-        const result = InterceptCalculator.calculateInterceptAngle(ship, target);
+        const result = InterceptCalculator.calculateInterceptAngle(ship, target, 500);
         
         // Assert
         // Since the ship is faster (20 > 10), it should be able to catch up by aiming directly
@@ -196,7 +196,7 @@ describe('InterceptCalculator', () => {
         const target = new MockSpaceObject(100, 0, 180, 5); // Target at (100,0) moving left toward ship
         
         // Act
-        const result = InterceptCalculator.calculateInterceptAngle(ship, target);
+        const result = InterceptCalculator.calculateInterceptAngle(ship, target, 500);
         
         // Assert
         expect(result.angle).toBeCloseTo(0); 
@@ -219,7 +219,7 @@ describe('InterceptCalculator', () => {
         const target = new MockSpaceObject(100, 0, 0, 10); // Target at (100,0) moving right faster than ship
         
         // Act
-        const result = InterceptCalculator.calculateInterceptAngle(ship, target);
+        const result = InterceptCalculator.calculateInterceptAngle(ship, target, 500);
         
         // Assert
         expect(result.angle).toBeCloseTo(180); 
@@ -242,7 +242,7 @@ describe('InterceptCalculator', () => {
         const target = new MockSpaceObject(0, 0, 0, 5); // Target at same position as ship
         
         // Act
-        const result = InterceptCalculator.calculateInterceptAngle(ship, target);
+        const result = InterceptCalculator.calculateInterceptAngle(ship, target, 500);
         
         // Assert
         // Any angle is fine since they're at the same position, but the function should return a valid number
@@ -272,7 +272,7 @@ describe('InterceptCalculator', () => {
         const target = new MockSpaceObject(100, 100, 315, 10); // Target moving at 315 degrees (down-left)
         
         // Act
-        const result = InterceptCalculator.calculateInterceptAngle(ship, target);
+        const result = InterceptCalculator.calculateInterceptAngle(ship, target, 500);
         
         // Assert
         expect(result.angle).toBeCloseTo(3.19);
@@ -301,7 +301,7 @@ describe('InterceptCalculator', () => {
         const target = new MockSpaceObject(100, 100, 45, 7); // Target moving at 45 degrees
         
         // Act
-        const result = InterceptCalculator.calculateInterceptAngle(ship, target);
+        const result = InterceptCalculator.calculateInterceptAngle(ship, target, 500);
         
         // Assert
         expect(result.angle).toBeCloseTo(45);
@@ -327,7 +327,7 @@ describe('InterceptCalculator', () => {
         const target = new MockSpaceObject(100, 100, 305, 10); // Target moving down-left
 
         // Act
-        const result = InterceptCalculator.calculateInterceptAngle(ship, target);
+        const result = InterceptCalculator.calculateInterceptAngle(ship, target, 500);
         
         // Assert
         expect(result.angle).toBeCloseTo(15.5);
@@ -356,7 +356,7 @@ describe('InterceptCalculator', () => {
         const target = new MockSpaceObject(50, 250, 0, 1); // Moving right
         
         // Act
-        const result = InterceptCalculator.calculateInterceptAngle(ship, target);
+        const result = InterceptCalculator.calculateInterceptAngle(ship, target, 500);
         
         // Assert
         // Ship should move left (negative X) to intercept target faster by crossing the boundary
@@ -401,7 +401,7 @@ describe('InterceptCalculator', () => {
         const target = new MockSpaceObject(250, 50, 90, 3); // Moving down slowly
         
         // Act
-        const result = InterceptCalculator.calculateInterceptAngle(ship, target);
+        const result = InterceptCalculator.calculateInterceptAngle(ship, target, 500);
         
         // Assert
         // Ship should move up (negative Y) to intercept target faster by crossing the boundary
@@ -439,7 +439,7 @@ describe('InterceptCalculator', () => {
         const target = new MockSpaceObject(World.WIDTH - 50, 250, 180, 4); // Moving left slowly
         
         // Act
-        const result = InterceptCalculator.calculateInterceptAngle(ship, target);
+        const result = InterceptCalculator.calculateInterceptAngle(ship, target, 500);
         
         // Assert
         // Ship should move left to intercept target faster by crossing the boundary
@@ -474,7 +474,7 @@ describe('InterceptCalculator', () => {
         const target = new MockSpaceObject(250, World.HEIGHT - 50, 270, 3); // Moving up slowly
         
         // Act
-        const result = InterceptCalculator.calculateInterceptAngle(ship, target);
+        const result = InterceptCalculator.calculateInterceptAngle(ship, target, 500);
         
         // Assert
         // Ship should move up (negative Y) to intercept target faster by crossing the boundary
@@ -502,7 +502,7 @@ describe('InterceptCalculator', () => {
         const target = new MockSpaceObject(50, 250, 0, 4); // Moving right slowly
         
         // Act
-        const result = InterceptCalculator.calculateInterceptAngle(ship, target);
+        const result = InterceptCalculator.calculateInterceptAngle(ship, target, 500);
         
         // Assert
         // Ship should move right to intercept target faster by crossing the boundary
@@ -536,7 +536,7 @@ describe('InterceptCalculator', () => {
         const target = new MockSpaceObject(World.WIDTH - 50, World.HEIGHT - 50, 225, 3); // Moving up-left slowly
         
         // Act
-        const result = InterceptCalculator.calculateInterceptAngle(ship, target);
+        const result = InterceptCalculator.calculateInterceptAngle(ship, target, 500);
         
         // Assert
         // Ship should move diagonally to intercept target faster by crossing both boundaries
@@ -580,7 +580,7 @@ describe('InterceptCalculator', () => {
         const target = new MockSpaceObject(50, World.HEIGHT - 50, 45, 3); // Moving up-right slowly
         
         // Act
-        const result = InterceptCalculator.calculateInterceptAngle(ship, target);
+        const result = InterceptCalculator.calculateInterceptAngle(ship, target, 500);
         
         // Assert
         // Ship should move diagonally to intercept target faster by crossing both boundaries
@@ -614,7 +614,7 @@ describe('InterceptCalculator', () => {
         const target = new MockSpaceObject(World.WIDTH - 50, 50, 225, 3); // Moving down-left slowly
         
         // Act
-        const result = InterceptCalculator.calculateInterceptAngle(ship, target);
+        const result = InterceptCalculator.calculateInterceptAngle(ship, target, 500);
         
         // Assert
         // Ship should move diagonally to intercept target faster by crossing both boundaries
@@ -648,7 +648,7 @@ describe('InterceptCalculator', () => {
         const target = new MockSpaceObject(50, 50, 315, 1); // Moving down-right slowly
         
         // Act
-        const result = InterceptCalculator.calculateInterceptAngle(ship, target);
+        const result = InterceptCalculator.calculateInterceptAngle(ship, target, 500);
         
         // Assert
         // Ship should move diagonally to intercept target faster by crossing both boundaries
@@ -681,7 +681,7 @@ describe('InterceptCalculator', () => {
         const target = new MockSpaceObject(50, 270, 0, 10); // Moving right faster
         
         // Act
-        const result = InterceptCalculator.calculateInterceptAngle(ship, target);
+        const result = InterceptCalculator.calculateInterceptAngle(ship, target, 500);
         
         // Assert
         // This should be a complex case that might wrap around the world
@@ -689,6 +689,76 @@ describe('InterceptCalculator', () => {
         expect(result.interceptPoint.x).toBeCloseTo(8.717);
         expect(result.interceptPoint.y).toBeCloseTo(270);
         expect(result.timeToIntercept).toBeCloseTo(45.871);
+    });
+
+    test('calculateInterceptAngle_differentWorldSize1000x1000_calculatesCorrectly', () => {
+        // Test with a larger world (1000×1000) to verify world size flexibility
+        // Ship at (100, 500), target at (900, 500) moving right
+        // World size: 1000×1000
+        
+        const ship = new MockSpaceObject(100, 500, 0, 20);
+        const target = new MockSpaceObject(900, 500, 0, 10); // Moving right
+        
+        // Act - Using 1000 as worldSize
+        const result = InterceptCalculator.calculateInterceptAngle(ship, target, 1000);
+        
+        // Assert
+        // Should find valid intercept considering larger world size
+        expect(result.angle).not.toBeNaN();
+        expect(result.timeToIntercept).toBeGreaterThan(0);
+        expect(result.timeToIntercept).toBeLessThan(Number.POSITIVE_INFINITY);
+        
+        // Intercept point should be valid
+        expect(result.interceptPoint.x).toBeGreaterThanOrEqual(0);
+        expect(result.interceptPoint.x).toBeLessThan(1000);
+        expect(result.interceptPoint.y).toBeGreaterThanOrEqual(0);
+        expect(result.interceptPoint.y).toBeLessThan(1000);
+    });
+
+    test('calculateInterceptAngle_differentWorldSize5000x5000_calculatesCorrectly', () => {
+        // Test with future world size (5000×5000) to verify Goal 8 readiness
+        // Ship at (500, 2500), target at (4500, 2500) moving right
+        // World size: 5000×5000
+        
+        const ship = new MockSpaceObject(500, 2500, 0, 30);
+        const target = new MockSpaceObject(4500, 2500, 0, 15); // Moving right
+        
+        // Act - Using 5000 as worldSize
+        const result = InterceptCalculator.calculateInterceptAngle(ship, target, 5000);
+        
+        // Assert
+        // Should find valid intercept considering 5000×5000 world size
+        expect(result.angle).not.toBeNaN();
+        expect(result.timeToIntercept).toBeGreaterThan(0);
+        expect(result.timeToIntercept).toBeLessThan(Number.POSITIVE_INFINITY);
+        
+        // Intercept point should be valid
+        expect(result.interceptPoint.x).toBeGreaterThanOrEqual(0);
+        expect(result.interceptPoint.x).toBeLessThan(5000);
+        expect(result.interceptPoint.y).toBeGreaterThanOrEqual(0);
+        expect(result.interceptPoint.y).toBeLessThan(5000);
+    });
+
+    test('calculateInterceptAngle_toroidalWrappingWith1000x1000_wrapsCorrectly', () => {
+        // Test toroidal wrapping with 1000×1000 world size
+        // Ship near right edge (950, 500), target near left edge (50, 500)
+        // Ship should intercept by wrapping around the world
+        
+        const ship = new MockSpaceObject(950, 500, 0, 25);
+        const target = new MockSpaceObject(50, 500, 0, 5); // Moving right slowly
+        
+        // Act - Using 1000 as worldSize
+        const result = InterceptCalculator.calculateInterceptAngle(ship, target, 1000);
+        
+        // Assert
+        // Should find intercept considering toroidal wrapping in 1000×1000 world
+        expect(result.angle).not.toBeNaN();
+        expect(result.timeToIntercept).toBeGreaterThan(0);
+        expect(result.timeToIntercept).toBeLessThan(Number.POSITIVE_INFINITY);
+        
+        // Verify wrapping works correctly
+        expect(result.interceptPoint.x).toBeGreaterThanOrEqual(0);
+        expect(result.interceptPoint.x).toBeLessThan(1000);
     });
 
 });

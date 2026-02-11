@@ -557,6 +557,38 @@ static calculateInterceptAngle(ship: SpaceObjectOld, target: SpaceObjectOld, wor
 - Test reusability: tests should be easy to run with different world sizes
 - Documentation: test comments should indicate what world size is being tested
 
+**Status**: ✅ COMPLETED
+
+**Implementation Summary**: 
+Successfully refactored InterceptCalculator.calculateInterceptAngle to accept worldSize as an explicit parameter, updated all call sites to pass World.WIDTH, and updated all test files with explicit worldSize parameter. Added 3 new test cases verifying behavior with different world sizes (1000×1000, 5000×5000) and toroidal wrapping.
+
+**Files Modified/Created**:
+- `src/lib/client/game/InterceptCalculator.ts` - Updated method signature to accept worldSize parameter, removed unused World import, updated implementation to use parameter instead of World.WIDTH
+- `src/lib/client/game/Game.ts` - Updated call site to pass World.WIDTH as third parameter
+- `src/__tests__/lib/InterceptCalculator.test.ts` - Updated all 21 existing test calls to pass 500 as worldSize, added 3 new test cases for different world sizes (1000×1000, 5000×5000, toroidal wrapping with 1000×1000)
+- `src/__tests__/lib/intercept-calculator-world-integration.test.ts` - Updated all 6 test calls to pass World.WIDTH as third parameter, maintaining maxSpeed as fourth parameter where applicable
+
+**Deviations from Plan**: 
+- InterceptionLineRenderer.ts did not require changes (no call sites found in that file)
+- Removed unused World import from InterceptCalculator.ts (improved code quality, eliminated lint warning)
+
+**Test Results**: All 562 tests passing (24 total tests for InterceptCalculator: 21 existing + 3 new varied world size tests)
+
+**Review Status**: ✅ APPROVED
+**Reviewer**: Medicus
+**Review Date**: 2026-02-11
+**Review Notes**: 
+- Implementation meets all requirements for Tasks 7.1-7.3
+- Method signature refactored correctly with worldSize parameter
+- All 2 call sites updated (Game.ts; InterceptionLineRenderer.ts had no call sites)
+- All 27 test calls updated (21 existing + 6 integration)
+- Added 3 new tests for varied world sizes (1000×1000, 5000×5000, toroidal wrapping)
+- Removed unused World import (code quality improvement)
+- All 562 tests passing, lint and typecheck clean
+- No code duplications found
+- Proper TypeScript strict mode compliance
+- ES Modules usage correct throughout
+
 #### Task 7.4: Update physics.test.ts
 
 **Action**: Consider importing shared constants or keeping test-specific values with a note that tests use fixed values for reproducibility.

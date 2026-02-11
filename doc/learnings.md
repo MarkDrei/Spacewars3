@@ -462,3 +462,94 @@ Per human review feedback, the development plan was refined to include Intercept
 - Add 2-3 new test cases with different world sizes (e.g., 1000×1000, 5000×5000)
 - Verify toroidal wrapping works correctly with various world dimensions
 - Document world size explicitly in test comments
+
+## InterceptCalculator Refactoring (2026-02-11)
+
+### Goal 7 Implementation Complete (Tasks 7.1-7.3)
+Refactored InterceptCalculator to accept world size as an explicit parameter, improving testability and removing implicit dependencies.
+
+**Implementation Patterns**:
+1. **Method Signature Refactoring**: Added `worldSize: number` parameter between required object parameters (`ship`, `target`) and optional parameters (`maxSpeed?`)
+2. **Call Site Updates**: Updated production code to pass `World.WIDTH` explicitly (makes dependency clear)
+3. **Test Updates**: Updated all existing tests to pass 500 as worldSize (maintains test validity)
+4. **Flexibility Tests**: Added 3 new test cases with different world sizes (1000×1000, 5000×5000) to verify calculator works with various dimensions
+5. **Unused Import Cleanup**: Removed unused `World` import after refactoring (eliminated lint warning)
+
+**Key Insights**:
+- **Explicit Dependencies**: Making world size a parameter removes implicit dependency on World class static property
+- **Improved Testability**: Tests can now verify behavior with various world sizes without manipulating global static properties
+- **Maintainability**: Function signature clearly documents all dependencies
+- **No Call Sites in InterceptionLineRenderer**: Despite plan proposal, InterceptionLineRenderer.ts did not have any calls to calculateInterceptAngle
+- **Parameter Position Convention**: New parameters should be placed between required parameters and optional parameters
+
+**Test Coverage Strategy**:
+- Existing tests use 500×500 (maintains validity with current world size)
+- New tests use 1000×1000 and 5000×5000 (verifies flexibility for future world size changes)
+- Toroidal wrapping tests verify correct behavior across world edge boundaries
+- Integration tests use `World.WIDTH` to test dynamic world size adaptation
+
+**Pattern for Function Refactoring**:
+1. Identify implicit dependencies (static properties, global state)
+2. Convert to explicit parameters in function signature
+3. Update call sites to pass values explicitly
+4. Update existing tests with appropriate values
+5. Add new tests to verify flexibility with different values
+6. Remove any unused imports or code
+
+**Test Results**: All 562 tests passing (24 tests for InterceptCalculator including 3 new varied world size tests)
+
+## Code Review Best Practices - Goal 7 (2026-02-11)
+
+### Medicus Review - Goal 7 Tasks 7.1-7.3 Complete
+Conducted comprehensive review of InterceptCalculator refactoring:
+
+**Review Process Checklist**:
+1. ✅ Read development plan and understand task requirements
+2. ✅ Review code changes via git diff
+3. ✅ Check for code duplications (no duplicates found)
+4. ✅ Verify lock usage (not applicable - pure calculation function)
+5. ✅ Review test files for quality and coverage (21 updated + 3 new = 24 tests)
+6. ✅ Run tests to verify passing (562 tests passing)
+7. ✅ Run linting (passed with warnings only)
+8. ✅ Run typecheck (passed - TypeScript compilation clean)
+9. ✅ Update development plan with review status
+10. ✅ Update learnings with insights
+
+**Key Findings**:
+- All 27 existing test calls updated (21 in main test file + 6 in integration test file)
+- 3 new test cases added for different world sizes (1000×1000, 5000×5000, toroidal wrapping)
+- No code duplication - InterceptCalculator is the only place that calculates intercept angles
+- Lock usage not applicable (pure function, no async operations, no shared state)
+- TypeScript strict mode compliance verified
+- ES Modules usage correct throughout
+- Test naming follows convention: `calculateInterceptAngle_scenario_expectedOutcome`
+- Removed unused World import (bonus code quality improvement)
+
+**Test Quality Indicators**:
+- All tests meaningful and comprehensive
+- Tests cover happy path, edge cases, impossible interceptions, toroidal wrapping
+- New tests verify flexibility with different world sizes (future-proofing for Goal 8)
+- Integration tests use real World class static properties
+- Tests document world size explicitly in comments
+
+**Code Quality Observations**:
+- Clean refactoring: implicit dependency (World.WIDTH) → explicit parameter (worldSize)
+- Method signature follows convention: required params → new required param → optional params
+- JSDoc documentation updated with @param worldSize
+- Comment improved: "Get world wrap size from parameter (enables testing with various world sizes)"
+- All functionality preserved, no breaking changes
+
+**Deviations from Plan (All Positive)**:
+- InterceptionLineRenderer.ts not modified (no call sites found, plan listed it as potential)
+- Removed unused World import (code quality improvement, eliminated lint warning)
+
+**Pattern Verified**:
+- InterceptCalculator is the only module that calculates intercept angles
+- World.wrapPosition uses different approach (client-side wrapping) - acceptable and pre-existing
+- No need to unify patterns - both serve their purposes correctly
+
+**Maintainability Improvements**:
+- **Major improvement**: Explicit dependencies make code more testable
+- **Major improvement**: Tests can verify behavior with various world sizes without global state manipulation
+- **Major improvement**: Function signature clearly documents all dependencies
+- **Future-proofing**: Tests verify calculator works with 5000×5000 world size (Goal 8 readiness)
