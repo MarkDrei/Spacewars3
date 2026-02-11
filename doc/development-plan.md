@@ -483,11 +483,81 @@ export function normalizePosition(
 
 ---
 
-### Goal 7: Update Test Files
+### Goal 7: Update Test Files and Refactor InterceptCalculator
 
-**Description**: Update test files that use hardcoded world size values to use shared constants or appropriate test values.
+**Description**: Update test files that use hardcoded world size values to use shared constants or appropriate test values. Refactor InterceptCalculator to accept world size as a parameter instead of reading from World.WIDTH static property, enabling tests to work with various world sizes.
 
-#### Task 7.1: Update physics.test.ts
+#### Task 7.1: Refactor InterceptCalculator to Accept World Size Parameter
+
+**Action**: Modify the `calculateInterceptAngle` method signature to accept `worldSize` as a parameter instead of reading from `World.WIDTH` static property.
+
+**Files**:
+
+- `src/lib/client/game/InterceptCalculator.ts` - Update method signature and implementation (line 40)
+
+**Current Implementation**:
+```typescript
+static calculateInterceptAngle(ship: SpaceObjectOld, target: SpaceObjectOld, maxSpeed?: number): InterceptResult
+```
+
+**New Implementation**:
+```typescript
+static calculateInterceptAngle(ship: SpaceObjectOld, target: SpaceObjectOld, worldSize: number, maxSpeed?: number): InterceptResult
+```
+
+**Details**:
+- Add `worldSize: number` parameter after `target` and before `maxSpeed`
+- Replace line 40: `const wrapSize = World.WIDTH;` with `const wrapSize = worldSize;`
+- Update JSDoc comment to document the new parameter
+
+**Quality Requirements**:
+- Method signature should clearly indicate worldSize is required
+- No breaking changes to return type or other parameters
+- Implementation should continue to work with toroidal wrapping logic
+
+#### Task 7.2: Update InterceptCalculator Call Sites
+
+**Action**: Update all code that calls `calculateInterceptAngle` to pass the world size parameter.
+
+**Files**:
+- `src/lib/client/game/Game.ts` - Update call sites to pass `World.WIDTH`
+- `src/lib/client/renderers/InterceptionLineRenderer.ts` - Update call sites to pass `World.WIDTH`
+
+**Details**:
+- Search for all calls to `InterceptCalculator.calculateInterceptAngle`
+- Add `World.WIDTH` as the third parameter in each call
+- Maintain existing functionality while making world size explicit
+
+**Quality Requirements**:
+- All existing functionality should continue to work
+- No runtime errors after refactoring
+- TypeScript compiler should verify all call sites are updated
+
+#### Task 7.3: Update InterceptCalculator Tests
+
+**Action**: Update InterceptCalculator test files to pass world size explicitly, using 500×500 for existing test scenarios to maintain test validity.
+
+**Files**:
+- `src/__tests__/lib/InterceptCalculator.test.ts` - Update all test calls to pass worldSize parameter
+- `src/__tests__/lib/intercept-calculator-world-integration.test.ts` - Update integration test calls
+
+**Details**:
+- Add `500` (or appropriate test value) as the third parameter to all `calculateInterceptAngle` calls
+- Consider adding test cases with different world sizes (e.g., 1000×1000, 5000×5000) to verify the calculator works with various dimensions
+- Update test descriptions if needed to document the world size being tested
+- Existing test assertions should remain valid when using 500×500
+
+**Test Coverage Requirements**:
+- All existing tests should pass with 500×500 world size
+- Add at least 2-3 test cases with different world sizes to verify flexibility
+- Test toroidal wrapping behavior with various world dimensions
+
+**Quality Requirements**:
+- Test clarity: world size should be explicit in test setup
+- Test reusability: tests should be easy to run with different world sizes
+- Documentation: test comments should indicate what world size is being tested
+
+#### Task 7.4: Update physics.test.ts
 
 **Action**: Consider importing shared constants or keeping test-specific values with a note that tests use fixed values for reproducibility.
 
@@ -497,7 +567,7 @@ export function normalizePosition(
 
 **Notes**: Tests can keep their own fixed values for reproducibility, but the values should be documented.
 
-#### Task 7.2: Update worldCache.test.ts
+#### Task 7.5: Update worldCache.test.ts
 
 **Action**: Import shared constants for world size in test setup.
 
@@ -552,7 +622,7 @@ export function normalizePosition(
 - The world size is used in multiple contexts:
   1. **Server-side physics**: Position updates, toroidal wrapping in `src/shared/src/physics.ts`
   2. **Client-side rendering**: World dimensions in `src/lib/client/game/World.ts`
-  3. **Interception calculations**: Toroidal distance calculations in `InterceptCalculator`
+  3. **Interception calculations**: Toroidal distance calculations in `InterceptCalculator` - now accepts world size as parameter for flexibility
   4. **Battle system**: Teleportation positions in `battleService.ts`
   5. **Database loading**: World initialization in `worldRepo.ts`
   6. **Seed data**: Default object positions in `seedData.ts`
@@ -560,6 +630,8 @@ export function normalizePosition(
 - The existing `wrapPosition` method in client World class and the toroidal wrapping in `updateObjectPosition` already handle the position normalization correctly using modulo arithmetic. The new `normalizePosition` function provides a standalone utility for use when loading data.
 
 - The client World class receives world size from the server via `updateFromServerData`, which updates `World.WIDTH` and `World.HEIGHT` static properties. This ensures consistency between client and server.
+
+- **InterceptCalculator Refactoring**: The `calculateInterceptAngle` method has been refactored to accept world size as an explicit parameter instead of reading from `World.WIDTH`. This makes the function more testable, allows tests to verify behavior with various world sizes, and removes the implicit dependency on the World class static property. Call sites pass `World.WIDTH` to maintain existing behavior while making the dependency explicit.
 
 ## Agent Decisions
 
@@ -573,21 +645,28 @@ export function normalizePosition(
 
 5. **Position normalization location**: Applied normalization at data load boundaries (database loading, server data updates) rather than at every calculation point, as the existing physics calculations already handle wrapping correctly.
 
+6. **InterceptCalculator parameter design** (per human review feedback): The InterceptCalculator should accept world size as an explicit parameter rather than reading from `World.WIDTH` static property. This improves testability by allowing tests to verify behavior with various world sizes (e.g., 500×500, 1000×1000, 5000×5000) and removes implicit dependencies. Call sites will pass `World.WIDTH` to maintain existing behavior. Tests will use 500×500 for existing scenarios to maintain test validity, with additional test cases for other world sizes.
+
 ## Summary of Files to Modify
 
-| File                                     | Change Type | Description                                         |
-| ---------------------------------------- | ----------- | --------------------------------------------------- |
-| `src/shared/src/worldConstants.ts`       | Create      | New shared world constants                          |
-| `src/shared/src/index.ts`                | Modify      | Export world constants                              |
-| `src/shared/src/physics.ts`              | Modify      | Add `normalizePosition` function                    |
-| `src/lib/server/constants.ts`            | Modify      | Import shared constants, calculate center           |
-| `src/lib/server/world/worldRepo.ts`      | Modify      | Use shared constants, apply normalization           |
-| `src/lib/server/world/world.ts`          | Modify      | Use shared constants in `createDefault`             |
-| `src/lib/server/battle/battleService.ts` | Modify      | Use shared constants                                |
-| `src/lib/server/seedData.ts`             | Modify      | Update positions for larger world                   |
-| `src/lib/client/game/World.ts`           | Modify      | Use shared constants as defaults, add normalization |
-| `src/__tests__/shared/physics.test.ts`   | Modify      | Add normalizePosition tests                         |
-| `src/__tests__/lib/worldCache.test.ts`   | Modify      | Use shared constants                                |
+| File                                                          | Change Type | Description                                         |
+| ------------------------------------------------------------- | ----------- | --------------------------------------------------- |
+| `src/shared/src/worldConstants.ts`                            | Create      | New shared world constants                          |
+| `src/shared/src/index.ts`                                     | Modify      | Export world constants                              |
+| `src/shared/src/physics.ts`                                   | Modify      | Add `normalizePosition` function                    |
+| `src/lib/server/constants.ts`                                 | Modify      | Import shared constants, calculate center           |
+| `src/lib/server/world/worldRepo.ts`                           | Modify      | Use shared constants, apply normalization           |
+| `src/lib/server/world/world.ts`                               | Modify      | Use shared constants in `createDefault`             |
+| `src/lib/server/battle/battleService.ts`                      | Modify      | Use shared constants                                |
+| `src/lib/server/seedData.ts`                                  | Modify      | Update positions for larger world                   |
+| `src/lib/client/game/World.ts`                                | Modify      | Use shared constants as defaults, add normalization |
+| `src/lib/client/game/InterceptCalculator.ts`                  | Modify      | Accept worldSize parameter instead of reading World.WIDTH |
+| `src/lib/client/game/Game.ts`                                 | Modify      | Pass World.WIDTH to InterceptCalculator calls       |
+| `src/lib/client/renderers/InterceptionLineRenderer.ts`        | Modify      | Pass World.WIDTH to InterceptCalculator calls       |
+| `src/__tests__/shared/physics.test.ts`                        | Modify      | Add normalizePosition tests                         |
+| `src/__tests__/lib/InterceptCalculator.test.ts`               | Modify      | Pass worldSize parameter (500 for existing, add varied sizes) |
+| `src/__tests__/lib/intercept-calculator-world-integration.test.ts` | Modify | Pass worldSize parameter to test calls              |
+| `src/__tests__/lib/worldCache.test.ts`                        | Modify      | Use shared constants                                |
 
 ## Open Questions
 

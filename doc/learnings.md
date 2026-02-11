@@ -423,3 +423,42 @@ Conducted comprehensive review of Tasks 5.1-5.2:
 3. Client-side uses dynamic worldBounds from server data
 4. Both handle all edge cases without error handling (modulo works for all numeric inputs)
 5. Both use const for normalized values (ES6 best practices)
+
+## Navigator Phase - InterceptCalculator Refactoring (2026-02-11)
+
+### Human Review Feedback Integration
+Per human review feedback, the development plan was refined to include InterceptCalculator refactoring:
+
+**Key Decision**: InterceptCalculator should accept world size as an explicit parameter rather than reading from `World.WIDTH` static property.
+
+**Rationale**:
+1. **Improved Testability**: Tests can verify behavior with various world sizes (500×500, 1000×1000, 5000×5000)
+2. **Explicit Dependencies**: Removes implicit dependency on World class static property
+3. **Flexibility**: Enables testing and validation with different world configurations
+4. **Maintainability**: Makes data dependencies clear in the function signature
+
+**Implementation Approach**:
+- Add `worldSize: number` parameter to `calculateInterceptAngle` method (between `target` and `maxSpeed`)
+- Update call sites to pass `World.WIDTH` explicitly
+- Update tests to pass 500 for existing scenarios (maintains test validity)
+- Add test cases with varied world sizes to verify flexibility
+
+**Impact on Plan Structure**:
+- Goal 7 expanded from 2 tasks to 5 tasks
+- Added Tasks 7.1-7.3 for InterceptCalculator refactoring
+- Renamed Goal 7 to "Update Test Files and Refactor InterceptCalculator"
+- Updated Architecture Notes and Agent Decisions sections
+- Updated Summary of Files to Modify table
+
+**Files Affected by Refactoring**:
+- `src/lib/client/game/InterceptCalculator.ts` - Method signature change
+- `src/lib/client/game/Game.ts` - Update call sites
+- `src/lib/client/renderers/InterceptionLineRenderer.ts` - Update call sites
+- `src/__tests__/lib/InterceptCalculator.test.ts` - Update tests, add varied world size test cases
+- `src/__tests__/lib/intercept-calculator-world-integration.test.ts` - Update integration tests
+
+**Test Strategy**:
+- Existing test scenarios use 500×500 to maintain validity
+- Add 2-3 new test cases with different world sizes (e.g., 1000×1000, 5000×5000)
+- Verify toroidal wrapping works correctly with various world dimensions
+- Document world size explicitly in test comments
