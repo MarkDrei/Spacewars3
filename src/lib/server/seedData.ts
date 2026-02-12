@@ -82,8 +82,8 @@ export const DEFAULT_USERS: SeedUser[] = [
       stealIron: 0
     },
     ship: {
-      x: 250, // Center of 500x500 world
-      y: 250,
+      x: 2500, // Center of 5000x5000 world
+      y: 2500,
       speed: 0,
       angle: 0,
       picture_id: 1
@@ -128,8 +128,8 @@ export const DEFAULT_USERS: SeedUser[] = [
       stealIron: 0
     },
     ship: {
-      x: 280, // 30 units from first user (distance = sqrt(30^2 + 30^2) ≈ 42.4, well within 100 unit range)
-      y: 280,
+      x: 2530, // 30 units from first user (distance = sqrt(30^2 + 30^2) ≈ 42.4, well within 100 unit range)
+      y: 2530,
       speed: 0,
       angle: 0,
       picture_id: 2
@@ -192,8 +192,8 @@ export const DEFAULT_USERS: SeedUser[] = [
       stealIron: 0
     },
     ship: {
-      x: 220,
-      y: 280,
+      x: 2470,
+      y: 2530,
       speed: 0,
       angle: 0,
       picture_id: 3
@@ -256,8 +256,8 @@ export const DEFAULT_USERS: SeedUser[] = [
       stealIron: 0
     },
     ship: {
-      x: 310,
-      y: 280,
+      x: 2560,
+      y: 2530,
       speed: 0,
       angle: 0,
       picture_id: 4
@@ -320,8 +320,8 @@ export const DEFAULT_USERS: SeedUser[] = [
       stealIron: 0
     },
     ship: {
-      x: 250,
-      y: 310,
+      x: 2500,
+      y: 2560,
       speed: 0,
       angle: 0,
       picture_id: 5
@@ -349,20 +349,20 @@ export const DEFAULT_USERS: SeedUser[] = [
 ];
 
 export const DEFAULT_SPACE_OBJECTS: SeedSpaceObject[] = [
-  // Asteroids - scattered around the 500x500 world
-  { type: 'asteroid', x: 100, y: 150, speed: 10, angle: 0 },
-  { type: 'asteroid', x: 400, y: 300, speed: 15, angle: 45 },
-  { type: 'asteroid', x: 350, y: 100, speed: 20, angle: 77 },
-  { type: 'asteroid', x: 150, y: 400, speed: 10, angle: 173 },
-  { type: 'asteroid', x: 450, y: 450, speed: 13, angle: 283 },
+  // Asteroids - scattered around the 5000x5000 world
+  { type: 'asteroid', x: 1000, y: 1500, speed: 10, angle: 0 },
+  { type: 'asteroid', x: 4000, y: 3000, speed: 15, angle: 45 },
+  { type: 'asteroid', x: 3500, y: 1000, speed: 20, angle: 77 },
+  { type: 'asteroid', x: 1500, y: 4000, speed: 10, angle: 173 },
+  { type: 'asteroid', x: 4500, y: 4500, speed: 13, angle: 283 },
   
   // Shipwrecks - fewer, more valuable
-  { type: 'shipwreck', x: 200, y: 350, speed: 8, angle: 123 },
-  { type: 'shipwreck', x: 350, y: 200, speed: 23, angle: 211 },
+  { type: 'shipwreck', x: 2000, y: 3500, speed: 8, angle: 123 },
+  { type: 'shipwreck', x: 3500, y: 2000, speed: 23, angle: 211 },
   
   // Escape pods - rare, high value
-  { type: 'escape_pod', x: 100, y: 300, speed: 30, angle: 115 },
-  { type: 'escape_pod', x: 400, y: 150, speed: 45, angle: 95 }
+  { type: 'escape_pod', x: 1000, y: 3000, speed: 30, angle: 115 },
+  { type: 'escape_pod', x: 4000, y: 1500, speed: 45, angle: 95 }
 ];
 
 export async function seedDatabase(db: DatabaseConnection, force = false): Promise<void> {
@@ -482,7 +482,7 @@ export async function seedDatabase(db: DatabaseConnection, force = false): Promi
           const shipResult = await db.query(
             `INSERT INTO space_objects (type, x, y, speed, angle, last_position_update_ms, picture_id)
              VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
-            ['player_ship', 250 + i * 10, 250 + i * 10, 0, 0, now, 1] // picture_id = 1 for test users
+            ['player_ship', 2500 + i * 10, 2500 + i * 10, 0, 0, now, 1] // picture_id = 1 for test users
           );
           
           const shipId = shipResult.rows[0].id;
@@ -495,9 +495,9 @@ export async function seedDatabase(db: DatabaseConnection, force = false): Promi
           );
         }
         
-        console.log(`✅ Seeded ${DEFAULT_USERS.length + 8} users (including 8 test users) and ${DEFAULT_SPACE_OBJECTS.length + DEFAULT_USERS.length + 8} space objects for 500x500 world`);
+        console.log(`✅ Seeded ${DEFAULT_USERS.length + 8} users (including 8 test users) and ${DEFAULT_SPACE_OBJECTS.length + DEFAULT_USERS.length + 8} space objects for 5000x5000 world`);
       } else {
-        console.log(`✅ Seeded ${DEFAULT_USERS.length} users and ${DEFAULT_SPACE_OBJECTS.length + DEFAULT_USERS.length} space objects for 500x500 world`);
+        console.log(`✅ Seeded ${DEFAULT_USERS.length} users and ${DEFAULT_SPACE_OBJECTS.length + DEFAULT_USERS.length} space objects for 5000x5000 world`);
       }
   } catch (error) {
     console.error('❌ Error seeding database:', error);

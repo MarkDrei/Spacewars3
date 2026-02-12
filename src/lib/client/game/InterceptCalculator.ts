@@ -1,5 +1,4 @@
 import { SpaceObjectOld } from './SpaceObject';
-import { World } from './World';
 import { degreesToRadians, radiansToDegrees } from '@shared/utils/angleUtils';
 
 export interface InterceptResult {
@@ -21,10 +20,11 @@ export class InterceptCalculator {
      * Calculates the angle needed for the ship to intercept a target object
      * @param ship The ship that will intercept
      * @param target The target object to intercept
+     * @param worldSize The world size for toroidal wrapping calculations
      * @param maxSpeed Optional maximum speed for the ship (if not provided, uses ship's current speed)
      * @returns The angle in radians for the ship to set, interception point, and time to intercept
      */
-    static calculateInterceptAngle(ship: SpaceObjectOld, target: SpaceObjectOld, maxSpeed?: number): InterceptResult {
+    static calculateInterceptAngle(ship: SpaceObjectOld, target: SpaceObjectOld, worldSize: number, maxSpeed?: number): InterceptResult {
         // Get positions
         const x1 = ship.getX();
         const y1 = ship.getY();
@@ -36,8 +36,8 @@ export class InterceptCalculator {
         const phiDegrees = target.getAngle(); // Angle in degrees from SpaceObject
         const phi = degreesToRadians(phiDegrees); // Convert to radians for calculations
         
-        // Get world wrap size
-        const wrapSize = World.WIDTH; // Assuming square world
+        // Get world wrap size from parameter (enables testing with various world sizes)
+        const wrapSize = worldSize;
         
         console.log('===== INTERCEPTION CALCULATION =====');
         console.log(`Ship position: (${x1.toFixed(2)}, ${y1.toFixed(2)}), Speed: ${s1}${maxSpeed !== undefined ? ' (max speed)' : ' (current speed)'}`);

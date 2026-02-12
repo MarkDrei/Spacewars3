@@ -187,7 +187,7 @@ export class Game {
 
       // Calculate interception angle using max speed for optimal interception
       const ship = this.world.getShip();
-      const interceptResult = InterceptCalculator.calculateInterceptAngle(ship, targetObject, shipStats.maxSpeed);
+      const interceptResult = InterceptCalculator.calculateInterceptAngle(ship, targetObject, World.WIDTH, shipStats.maxSpeed);
       
       if (!isNaN(interceptResult.angle)) {
         // Create interception lines for visualization using global coordinates

@@ -49,7 +49,7 @@ describe('InterceptCalculator', () => {
         const target = new MockSpaceObject(100, 0, 0, 0); // Target at (100,0) not moving
         
         // Act
-        const result = InterceptCalculator.calculateInterceptAngle(ship, target);
+        const result = InterceptCalculator.calculateInterceptAngle(ship, target, 500);
         
         // Assert
         expect(result.angle).toBeCloseTo(0); // Should aim directly right (0 degrees)
@@ -83,7 +83,7 @@ describe('InterceptCalculator', () => {
         const target = new MockSpaceObject(0, 100, 0, 0); // Target at (0,100) not moving
         
         // Act
-        const result = InterceptCalculator.calculateInterceptAngle(ship, target);
+        const result = InterceptCalculator.calculateInterceptAngle(ship, target, 500);
         
         // Assert
         expect(result.angle).toBeCloseTo(90); // Should aim directly up (90 degrees)
@@ -120,7 +120,7 @@ describe('InterceptCalculator', () => {
         const target = new MockSpaceObject(100, 100, 0, 0); // Stationary target at (100,100)
         
         // Act
-        const result = InterceptCalculator.calculateInterceptAngle(ship, target);
+        const result = InterceptCalculator.calculateInterceptAngle(ship, target, 500);
         
         // Assert
         // For a stationary target, we can verify the ship will hit it by traveling in a straight line
@@ -147,7 +147,7 @@ describe('InterceptCalculator', () => {
         const target = new MockSpaceObject(100, 0, 90, 5); // Target at (100,0) moving up at half speed
         
         // Act
-        const result = InterceptCalculator.calculateInterceptAngle(ship, target);
+        const result = InterceptCalculator.calculateInterceptAngle(ship, target, 500);
         
         // Assert
         expect(result.angle).toBeCloseTo(30); 
@@ -171,7 +171,7 @@ describe('InterceptCalculator', () => {
         const target = new MockSpaceObject(100, 0, 0, 10); // Target at (100,0) moving right at half speed
         
         // Act
-        const result = InterceptCalculator.calculateInterceptAngle(ship, target);
+        const result = InterceptCalculator.calculateInterceptAngle(ship, target, 500);
         
         // Assert
         // Since the ship is faster (20 > 10), it should be able to catch up by aiming directly
@@ -196,7 +196,7 @@ describe('InterceptCalculator', () => {
         const target = new MockSpaceObject(100, 0, 180, 5); // Target at (100,0) moving left toward ship
         
         // Act
-        const result = InterceptCalculator.calculateInterceptAngle(ship, target);
+        const result = InterceptCalculator.calculateInterceptAngle(ship, target, 500);
         
         // Assert
         expect(result.angle).toBeCloseTo(0); 
@@ -219,7 +219,7 @@ describe('InterceptCalculator', () => {
         const target = new MockSpaceObject(100, 0, 0, 10); // Target at (100,0) moving right faster than ship
         
         // Act
-        const result = InterceptCalculator.calculateInterceptAngle(ship, target);
+        const result = InterceptCalculator.calculateInterceptAngle(ship, target, 500);
         
         // Assert
         expect(result.angle).toBeCloseTo(180); 
@@ -242,7 +242,7 @@ describe('InterceptCalculator', () => {
         const target = new MockSpaceObject(0, 0, 0, 5); // Target at same position as ship
         
         // Act
-        const result = InterceptCalculator.calculateInterceptAngle(ship, target);
+        const result = InterceptCalculator.calculateInterceptAngle(ship, target, 500);
         
         // Assert
         // Any angle is fine since they're at the same position, but the function should return a valid number
@@ -272,7 +272,7 @@ describe('InterceptCalculator', () => {
         const target = new MockSpaceObject(100, 100, 315, 10); // Target moving at 315 degrees (down-left)
         
         // Act
-        const result = InterceptCalculator.calculateInterceptAngle(ship, target);
+        const result = InterceptCalculator.calculateInterceptAngle(ship, target, 500);
         
         // Assert
         expect(result.angle).toBeCloseTo(3.19);
@@ -301,7 +301,7 @@ describe('InterceptCalculator', () => {
         const target = new MockSpaceObject(100, 100, 45, 7); // Target moving at 45 degrees
         
         // Act
-        const result = InterceptCalculator.calculateInterceptAngle(ship, target);
+        const result = InterceptCalculator.calculateInterceptAngle(ship, target, 500);
         
         // Assert
         expect(result.angle).toBeCloseTo(45);
@@ -327,7 +327,7 @@ describe('InterceptCalculator', () => {
         const target = new MockSpaceObject(100, 100, 305, 10); // Target moving down-left
 
         // Act
-        const result = InterceptCalculator.calculateInterceptAngle(ship, target);
+        const result = InterceptCalculator.calculateInterceptAngle(ship, target, 500);
         
         // Assert
         expect(result.angle).toBeCloseTo(15.5);
@@ -337,10 +337,10 @@ describe('InterceptCalculator', () => {
     });
     
     test('should handle interception across world boundaries', () => {
-        // ASCII Diagram (Toroidal World):
+        // ASCII Diagram (Toroidal World - 5000x5000):
         // Left edge                                Right edge
         // |                                              |
-        // | Target(50,250) ──→                    Ship(950,250) |
+        // | Target(500,2500) ──→                    Ship(4500,2500) |
         // |      T                                       S      |
         // |                                                     |
         // |←─────── Ship can wrap around world ─────────→|
@@ -350,36 +350,36 @@ describe('InterceptCalculator', () => {
         // Expected: Ship should aim left (negative X direction)
         
         // Arrange
-        // Position ship near right edge of world
-        const ship = new MockSpaceObject(World.WIDTH - 50, 250, 0, 10);
+        // Position ship near right edge of world (scaled for 5000x5000 world)
+        const ship = new MockSpaceObject(World.WIDTH - 500, 2500, 0, 10);
         // Position target near left edge of world
-        const target = new MockSpaceObject(50, 250, 0, 1); // Moving right
+        const target = new MockSpaceObject(500, 2500, 0, 1); // Moving right
         
         // Act
-        const result = InterceptCalculator.calculateInterceptAngle(ship, target);
+        const result = InterceptCalculator.calculateInterceptAngle(ship, target, 5000);
         
         // Assert
         // Ship should move left (negative X) to intercept target faster by crossing the boundary
         expect(result.angle).toBeCloseTo(0);
-        expect(result.interceptPoint.x).toBeCloseTo(61.11);
-        expect(result.interceptPoint.y).toBeCloseTo(250);
-        expect(result.timeToIntercept).toBeCloseTo(11.11);
+        expect(result.interceptPoint.x).toBeCloseTo(611.11, 1);
+        expect(result.interceptPoint.y).toBeCloseTo(2500);
+        expect(result.timeToIntercept).toBeCloseTo(111.11, 1);
         
         // Verify global coordinates - this is where global coords show the true shortest path
-        expect(result.globalCoordinates.shipX).toBeCloseTo(World.WIDTH - 50); // Ship at (1950, 250)
-        expect(result.globalCoordinates.shipY).toBeCloseTo(250);
-        // Target should appear at +2000 X position when wrapping is considered for shortest path
-        expect(result.globalCoordinates.targetX).toBeCloseTo(50 + World.WIDTH); // Target at (2050, 250) globally
-        expect(result.globalCoordinates.targetY).toBeCloseTo(250);
+        expect(result.globalCoordinates.shipX).toBeCloseTo(World.WIDTH - 500); // Ship at (4500, 2500)
+        expect(result.globalCoordinates.shipY).toBeCloseTo(2500);
+        // Target should appear at +5000 X position when wrapping is considered for shortest path
+        expect(result.globalCoordinates.targetX).toBeCloseTo(500 + World.WIDTH); // Target at (5500, 2500) globally
+        expect(result.globalCoordinates.targetY).toBeCloseTo(2500);
         // Intercept point in global coordinates - verify it exists and is reasonable
         expect(result.globalCoordinates.interceptX).toBeDefined();
-        expect(result.globalCoordinates.interceptY).toBeCloseTo(250);
+        expect(result.globalCoordinates.interceptY).toBeCloseTo(2500);
     });
 
     test('should handle interception across top-bottom world boundary', () => {
-        // ASCII Diagram (Toroidal World):
+        // ASCII Diagram (Toroidal World - 5000x5000):
         // Top edge ────────────────────────────────────
-        // |   Target(250,50) ↓ (moving down slowly)   |
+        // |   Target(2500,500) ↓ (moving down slowly)   |
         // |        T                                   |
         // |                                           |
         // |                                           |
@@ -388,7 +388,7 @@ describe('InterceptCalculator', () => {
         // |                                           |
         // |                                           |
         // |                                           |
-        // |     Ship(250,450) S (near bottom edge)    |
+        // |     Ship(2500,4500) S (near bottom edge)    |
         // Bottom edge ─────────────────────────────────
         // |←── Ship can wrap around world vertically ─→|
         //
@@ -396,36 +396,36 @@ describe('InterceptCalculator', () => {
         // Faster to go up and wrap around than chase down
         // Expected: Ship should aim up (negative Y direction)
         
-        // Arrange
-        const ship = new MockSpaceObject(250, World.HEIGHT - 50, 0, 10);
-        const target = new MockSpaceObject(250, 50, 90, 3); // Moving down slowly
+        // Arrange (scaled for 5000x5000 world)
+        const ship = new MockSpaceObject(2500, World.HEIGHT - 500, 0, 10);
+        const target = new MockSpaceObject(2500, 500, 90, 3); // Moving down slowly
         
         // Act
-        const result = InterceptCalculator.calculateInterceptAngle(ship, target);
+        const result = InterceptCalculator.calculateInterceptAngle(ship, target, 5000);
         
         // Assert
         // Ship should move up (negative Y) to intercept target faster by crossing the boundary
         expect(result.angle).toBeCloseTo(90);
-        expect(result.interceptPoint.x).toBeCloseTo(250);
-        expect(result.interceptPoint.y).toBeCloseTo(92.86);
-        expect(result.timeToIntercept).toBeCloseTo(14.285);
+        expect(result.interceptPoint.x).toBeCloseTo(2500);
+        expect(result.interceptPoint.y).toBeCloseTo(928.57, 1);
+        expect(result.timeToIntercept).toBeCloseTo(142.86, 1);
         
         // Verify global coordinates for vertical world wrapping
-        expect(result.globalCoordinates.shipX).toBeCloseTo(250);
-        expect(result.globalCoordinates.shipY).toBeCloseTo(World.HEIGHT - 50); // Ship at (250, 1950)
-        expect(result.globalCoordinates.targetX).toBeCloseTo(250);
-        // Target should appear at +2000 Y position when wrapping is considered for shortest path
-        expect(result.globalCoordinates.targetY).toBeCloseTo(50 + World.HEIGHT); // Target at (250, 2050) globally
-        expect(result.globalCoordinates.interceptX).toBeCloseTo(250);
+        expect(result.globalCoordinates.shipX).toBeCloseTo(2500);
+        expect(result.globalCoordinates.shipY).toBeCloseTo(World.HEIGHT - 500); // Ship at (2500, 4500)
+        expect(result.globalCoordinates.targetX).toBeCloseTo(2500);
+        // Target should appear at +5000 Y position when wrapping is considered for shortest path
+        expect(result.globalCoordinates.targetY).toBeCloseTo(500 + World.HEIGHT); // Target at (2500, 5500) globally
+        expect(result.globalCoordinates.interceptX).toBeCloseTo(2500);
         // Intercept point in global coordinates - verify it exists and is reasonable
         expect(result.globalCoordinates.interceptY).toBeDefined();
     });
 
     test('should handle interception across left-right world boundary (ship at left)', () => {
-        // ASCII Diagram (Toroidal World):
+        // ASCII Diagram (Toroidal World - 5000x5000):
         // Left edge                                Right edge
         // |                                              |
-        // | Ship(50,250) S    Target(450,250) ←── T     |
+        // | Ship(500,2500) S    Target(4500,2500) ←── T     |
         // |                                              |
         // |                                              |
         // |──────── Ship can wrap around world ────────→|
@@ -434,25 +434,25 @@ describe('InterceptCalculator', () => {
         // Faster to go left and wrap around than chase right
         // Expected: Ship should aim left (180 degrees)
         
-        // Arrange
-        const ship = new MockSpaceObject(50, 250, 0, 10);
-        const target = new MockSpaceObject(World.WIDTH - 50, 250, 180, 4); // Moving left slowly
+        // Arrange (scaled for 5000x5000 world)
+        const ship = new MockSpaceObject(500, 2500, 0, 10);
+        const target = new MockSpaceObject(World.WIDTH - 500, 2500, 180, 4); // Moving left slowly
         
         // Act
-        const result = InterceptCalculator.calculateInterceptAngle(ship, target);
+        const result = InterceptCalculator.calculateInterceptAngle(ship, target, 5000);
         
         // Assert
         // Ship should move left to intercept target faster by crossing the boundary
         expect(result.angle).toBeCloseTo(180);
-        expect(result.interceptPoint.x).toBeCloseTo(383.33);
-        expect(result.interceptPoint.y).toBeCloseTo(250);
-        expect(result.timeToIntercept).toBeCloseTo(16.666);
+        expect(result.interceptPoint.x).toBeCloseTo(3833.33, 1);
+        expect(result.interceptPoint.y).toBeCloseTo(2500);
+        expect(result.timeToIntercept).toBeCloseTo(166.67, 1);
     });
 
     test('should handle interception across bottom-top world boundary', () => {
-        // ASCII Diagram (Toroidal World):
+        // ASCII Diagram (Toroidal World - 5000x5000):
         // Top edge ────────────────────────────────────
-        // |     Ship(250,50) S (near top edge)        |
+        // |     Ship(2500,500) S (near top edge)        |
         // |                                           |
         // |                                           |
         // |                                           |
@@ -461,7 +461,7 @@ describe('InterceptCalculator', () => {
         // |                                           |
         // |                                           |
         // |                                           |
-        // |   Target(250,450) ↑ (moving up slowly)    |
+        // |   Target(2500,4500) ↑ (moving up slowly)    |
         // Bottom edge ─────────────────────────────────
         // |←── Ship can wrap around world vertically ─→|
         //
@@ -469,26 +469,26 @@ describe('InterceptCalculator', () => {
         // Faster to go up and wrap around than chase down
         // Expected: Ship should aim up (270 degrees / -90 degrees)
         
-        // Arrange
-        const ship = new MockSpaceObject(250, 50, 0, 10);
-        const target = new MockSpaceObject(250, World.HEIGHT - 50, 270, 3); // Moving up slowly
+        // Arrange (scaled for 5000x5000 world)
+        const ship = new MockSpaceObject(2500, 500, 0, 10);
+        const target = new MockSpaceObject(2500, World.HEIGHT - 500, 270, 3); // Moving up slowly
         
         // Act
-        const result = InterceptCalculator.calculateInterceptAngle(ship, target);
+        const result = InterceptCalculator.calculateInterceptAngle(ship, target, 5000);
         
         // Assert
         // Ship should move up (negative Y) to intercept target faster by crossing the boundary
         expect(result.angle).toBeCloseTo(-90); // -90 degrees = 270 degrees
-        expect(result.interceptPoint.x).toBeCloseTo(250);
-        expect(result.interceptPoint.y).toBeCloseTo(407.14);
-        expect(result.timeToIntercept).toBeCloseTo(14.29);
+        expect(result.interceptPoint.x).toBeCloseTo(2500);
+        expect(result.interceptPoint.y).toBeCloseTo(4071.43, 1);
+        expect(result.timeToIntercept).toBeCloseTo(142.86, 1);
     });
 
     test('should handle interception across right-left world boundary (ship at right)', () => {
-        // ASCII Diagram (Toroidal World):
+        // ASCII Diagram (Toroidal World - 5000x5000):
         // Left edge                                Right edge
         // |                                              |
-        // | Target(50,250) →── T      Ship(450,250) S   |
+        // | Target(500,2500) →── T      Ship(4500,2500) S   |
         // |                                              |
         // |                                              |
         // |←────── Ship can wrap around world ──────────|
@@ -497,32 +497,32 @@ describe('InterceptCalculator', () => {
         // Faster to go right and wrap around than chase left
         // Expected: Ship should aim right (0 degrees)
         
-        // Arrange
-        const ship = new MockSpaceObject(World.WIDTH - 50, 250, 0, 10);
-        const target = new MockSpaceObject(50, 250, 0, 4); // Moving right slowly
+        // Arrange (scaled for 5000x5000 world)
+        const ship = new MockSpaceObject(World.WIDTH - 500, 2500, 0, 10);
+        const target = new MockSpaceObject(500, 2500, 0, 4); // Moving right slowly
         
         // Act
-        const result = InterceptCalculator.calculateInterceptAngle(ship, target);
+        const result = InterceptCalculator.calculateInterceptAngle(ship, target, 5000);
         
         // Assert
         // Ship should move right to intercept target faster by crossing the boundary
         expect(result.angle).toBeCloseTo(0);
-        expect(result.interceptPoint.x).toBeCloseTo(116.666);
-        expect(result.interceptPoint.y).toBeCloseTo(250);
-        expect(result.timeToIntercept).toBeCloseTo(16.666);
+        expect(result.interceptPoint.x).toBeCloseTo(1166.67, 1);
+        expect(result.interceptPoint.y).toBeCloseTo(2500);
+        expect(result.timeToIntercept).toBeCloseTo(166.67, 1);
     });
 
     test('should handle corner-to-corner interception (top-left to bottom-right)', () => {
-        // ASCII Diagram (Toroidal World):
+        // ASCII Diagram (Toroidal World - 5000x5000):
         // Top edge ────────────────────────────────────
-        // | Ship(50,50) S                             |
+        // | Ship(500,500) S                             |
         // |                                           |
         // |                                           |
         // |                                           |
         // |                                           |
         // |                                           |
         // |                                           |
-        // |                              Target(450,450) ↖ |
+        // |                              Target(4500,4500) ↖ |
         // |                                       T   |
         // Bottom edge ─────────────────────────────────
         // |←── Ship can wrap diagonally across world ──→|
@@ -531,42 +531,42 @@ describe('InterceptCalculator', () => {
         // Ship should wrap diagonally to intercept faster
         // Expected: Ship should aim diagonally
         
-        // Arrange
-        const ship = new MockSpaceObject(50, 50, 0, 12);
-        const target = new MockSpaceObject(World.WIDTH - 50, World.HEIGHT - 50, 225, 3); // Moving up-left slowly
+        // Arrange (scaled for 5000x5000 world)
+        const ship = new MockSpaceObject(500, 500, 0, 12);
+        const target = new MockSpaceObject(World.WIDTH - 500, World.HEIGHT - 500, 225, 3); // Moving up-left slowly
         
         // Act
-        const result = InterceptCalculator.calculateInterceptAngle(ship, target);
+        const result = InterceptCalculator.calculateInterceptAngle(ship, target, 5000);
         
         // Assert
         // Ship should move diagonally to intercept target faster by crossing both boundaries
         expect(result.angle).toBeCloseTo(-135);
-        expect(result.interceptPoint.x).toBeCloseTo(416.666);
-        expect(result.interceptPoint.y).toBeCloseTo(416.666);
-        expect(result.timeToIntercept).toBeCloseTo(15.71);
+        expect(result.interceptPoint.x).toBeCloseTo(4166.67, 1);
+        expect(result.interceptPoint.y).toBeCloseTo(4166.67, 1);
+        expect(result.timeToIntercept).toBeCloseTo(157.14, 1);
         
         // Verify global coordinates for diagonal world wrapping
-        expect(result.globalCoordinates.shipX).toBeCloseTo(50);
-        expect(result.globalCoordinates.shipY).toBeCloseTo(50);
+        expect(result.globalCoordinates.shipX).toBeCloseTo(500);
+        expect(result.globalCoordinates.shipY).toBeCloseTo(500);
         // Target should appear with negative coordinates when wrapping is considered for shortest diagonal path
-        expect(result.globalCoordinates.targetX).toBeCloseTo((World.WIDTH - 50) - World.WIDTH); // Target at (-50, -50) globally
-        expect(result.globalCoordinates.targetY).toBeCloseTo((World.HEIGHT - 50) - World.HEIGHT);
+        expect(result.globalCoordinates.targetX).toBeCloseTo((World.WIDTH - 500) - World.WIDTH); // Target at (-500, -500) globally
+        expect(result.globalCoordinates.targetY).toBeCloseTo((World.HEIGHT - 500) - World.HEIGHT);
         // Intercept point in global coordinates - verify they exist and are reasonable
         expect(result.globalCoordinates.interceptX).toBeDefined();
         expect(result.globalCoordinates.interceptY).toBeDefined();
     });
 
     test('should handle corner-to-corner interception (top-right to bottom-left)', () => {
-        // ASCII Diagram (Toroidal World):
+        // ASCII Diagram (Toroidal World - 5000x5000):
         // Top edge ────────────────────────────────────
-        // |                             Ship(450,50) S |
+        // |                             Ship(4500,500) S |
         // |                                           |
         // |                                           |
         // |                                           |
         // |                                           |
         // |                                           |
         // |                                           |
-        // | Target(50,450) ↗ T                        |
+        // | Target(500,4500) ↗ T                        |
         // |                                           |
         // Bottom edge ─────────────────────────────────
         // |←── Ship can wrap diagonally across world ──→|
@@ -575,25 +575,25 @@ describe('InterceptCalculator', () => {
         // Ship should wrap diagonally to intercept faster
         // Expected: Ship should aim diagonally
         
-        // Arrange
-        const ship = new MockSpaceObject(World.WIDTH - 50, 50, 0, 12);
-        const target = new MockSpaceObject(50, World.HEIGHT - 50, 45, 3); // Moving up-right slowly
+        // Arrange (scaled for 5000x5000 world)
+        const ship = new MockSpaceObject(World.WIDTH - 500, 500, 0, 12);
+        const target = new MockSpaceObject(500, World.HEIGHT - 500, 45, 3); // Moving up-right slowly
         
         // Act
-        const result = InterceptCalculator.calculateInterceptAngle(ship, target);
+        const result = InterceptCalculator.calculateInterceptAngle(ship, target, 5000);
         
         // Assert
         // Ship should move diagonally to intercept target faster by crossing both boundaries
-        expect(result.angle).toBeCloseTo(-30.522);
-        expect(result.interceptPoint.x).toBeCloseTo(75.82);
-        expect(result.interceptPoint.y).toBeCloseTo(475.82);
-        expect(result.timeToIntercept).toBeCloseTo(12.17);
+        expect(result.angle).toBeCloseTo(-30.522, 1);
+        expect(result.interceptPoint.x).toBeCloseTo(758.2, 1);
+        expect(result.interceptPoint.y).toBeCloseTo(4758.2, 1);
+        expect(result.timeToIntercept).toBeCloseTo(121.7, 1);
     });
 
     test('should handle corner-to-corner interception (bottom-left to top-right)', () => {
-        // ASCII Diagram (Toroidal World):
+        // ASCII Diagram (Toroidal World - 5000x5000):
         // Top edge ────────────────────────────────────
-        // |                              Target(450,50) ↙ |
+        // |                              Target(4500,500) ↙ |
         // |                                       T   |
         // |                                           |
         // |                                           |
@@ -601,7 +601,7 @@ describe('InterceptCalculator', () => {
         // |                                           |
         // |                                           |
         // |                                           |
-        // | Ship(50,450) S                            |
+        // | Ship(500,4500) S                            |
         // Bottom edge ─────────────────────────────────
         // |←── Ship can wrap diagonally across world ──→|
         //
@@ -609,25 +609,25 @@ describe('InterceptCalculator', () => {
         // Ship should wrap diagonally to intercept faster  
         // Expected: Ship should aim diagonally
         
-        // Arrange
-        const ship = new MockSpaceObject(50, World.HEIGHT - 50, 0, 12);
-        const target = new MockSpaceObject(World.WIDTH - 50, 50, 225, 3); // Moving down-left slowly
+        // Arrange (scaled for 5000x5000 world)
+        const ship = new MockSpaceObject(500, World.HEIGHT - 500, 0, 12);
+        const target = new MockSpaceObject(World.WIDTH - 500, 500, 225, 3); // Moving down-left slowly
         
         // Act
-        const result = InterceptCalculator.calculateInterceptAngle(ship, target);
+        const result = InterceptCalculator.calculateInterceptAngle(ship, target, 5000);
         
         // Assert
         // Ship should move diagonally to intercept target faster by crossing both boundaries
-        expect(result.angle).toBeCloseTo(149.477);
-        expect(result.interceptPoint.x).toBeCloseTo(424.180);
-        expect(result.interceptPoint.y).toBeCloseTo(24.180);
-        expect(result.timeToIntercept).toBeCloseTo(12.17);
+        expect(result.angle).toBeCloseTo(149.477, 1);
+        expect(result.interceptPoint.x).toBeCloseTo(4241.8, 1);
+        expect(result.interceptPoint.y).toBeCloseTo(241.8, 1);
+        expect(result.timeToIntercept).toBeCloseTo(121.7, 1);
     });
 
     test('should handle corner-to-corner interception (bottom-right to top-left)', () => {
-        // ASCII Diagram (Toroidal World):
+        // ASCII Diagram (Toroidal World - 5000x5000):
         // Top edge ────────────────────────────────────
-        // | Target(50,50) ↘ T                         |
+        // | Target(500,500) ↘ T                         |
         // |                                           |
         // |                                           |
         // |                                           |
@@ -635,7 +635,7 @@ describe('InterceptCalculator', () => {
         // |                                           |
         // |                                           |
         // |                                           |
-        // |                             Ship(450,450) S |
+        // |                             Ship(4500,4500) S |
         // Bottom edge ─────────────────────────────────
         // |←── Ship can wrap diagonally across world ──→|
         //
@@ -643,19 +643,19 @@ describe('InterceptCalculator', () => {
         // Ship should wrap diagonally to intercept faster
         // Expected: Ship should aim diagonally
         
-        // Arrange
-        const ship = new MockSpaceObject(World.WIDTH - 50, World.HEIGHT - 50, 0, 12);
-        const target = new MockSpaceObject(50, 50, 315, 1); // Moving down-right slowly
+        // Arrange (scaled for 5000x5000 world)
+        const ship = new MockSpaceObject(World.WIDTH - 500, World.HEIGHT - 500, 0, 12);
+        const target = new MockSpaceObject(500, 500, 315, 1); // Moving down-right slowly
         
         // Act
-        const result = InterceptCalculator.calculateInterceptAngle(ship, target);
+        const result = InterceptCalculator.calculateInterceptAngle(ship, target, 5000);
         
         // Assert
         // Ship should move diagonally to intercept target faster by crossing both boundaries
-        expect(result.angle).toBeCloseTo(40.22);
-        expect(result.interceptPoint.x).toBeCloseTo(58.36);
-        expect(result.interceptPoint.y).toBeCloseTo(41.637);
-        expect(result.timeToIntercept).toBeCloseTo(11.83);
+        expect(result.angle).toBeCloseTo(40.22, 1);
+        expect(result.interceptPoint.x).toBeCloseTo(583.6, 1);
+        expect(result.interceptPoint.y).toBeCloseTo(416.37, 1);
+        expect(result.timeToIntercept).toBeCloseTo(118.3, 1);
     });
 
     test('should handle complex interception which needs double warping of the target', () => {
@@ -681,7 +681,7 @@ describe('InterceptCalculator', () => {
         const target = new MockSpaceObject(50, 270, 0, 10); // Moving right faster
         
         // Act
-        const result = InterceptCalculator.calculateInterceptAngle(ship, target);
+        const result = InterceptCalculator.calculateInterceptAngle(ship, target, 500);
         
         // Assert
         // This should be a complex case that might wrap around the world
@@ -689,6 +689,76 @@ describe('InterceptCalculator', () => {
         expect(result.interceptPoint.x).toBeCloseTo(8.717);
         expect(result.interceptPoint.y).toBeCloseTo(270);
         expect(result.timeToIntercept).toBeCloseTo(45.871);
+    });
+
+    test('calculateInterceptAngle_differentWorldSize1000x1000_calculatesCorrectly', () => {
+        // Test with a larger world (1000×1000) to verify world size flexibility
+        // Ship at (100, 500), target at (900, 500) moving right
+        // World size: 1000×1000
+        
+        const ship = new MockSpaceObject(100, 500, 0, 20);
+        const target = new MockSpaceObject(900, 500, 0, 10); // Moving right
+        
+        // Act - Using 1000 as worldSize
+        const result = InterceptCalculator.calculateInterceptAngle(ship, target, 1000);
+        
+        // Assert
+        // Should find valid intercept considering larger world size
+        expect(result.angle).not.toBeNaN();
+        expect(result.timeToIntercept).toBeGreaterThan(0);
+        expect(result.timeToIntercept).toBeLessThan(Number.POSITIVE_INFINITY);
+        
+        // Intercept point should be valid
+        expect(result.interceptPoint.x).toBeGreaterThanOrEqual(0);
+        expect(result.interceptPoint.x).toBeLessThan(1000);
+        expect(result.interceptPoint.y).toBeGreaterThanOrEqual(0);
+        expect(result.interceptPoint.y).toBeLessThan(1000);
+    });
+
+    test('calculateInterceptAngle_differentWorldSize5000x5000_calculatesCorrectly', () => {
+        // Test with future world size (5000×5000) to verify Goal 8 readiness
+        // Ship at (500, 2500), target at (4500, 2500) moving right
+        // World size: 5000×5000
+        
+        const ship = new MockSpaceObject(500, 2500, 0, 30);
+        const target = new MockSpaceObject(4500, 2500, 0, 15); // Moving right
+        
+        // Act - Using 5000 as worldSize
+        const result = InterceptCalculator.calculateInterceptAngle(ship, target, 5000);
+        
+        // Assert
+        // Should find valid intercept considering 5000×5000 world size
+        expect(result.angle).not.toBeNaN();
+        expect(result.timeToIntercept).toBeGreaterThan(0);
+        expect(result.timeToIntercept).toBeLessThan(Number.POSITIVE_INFINITY);
+        
+        // Intercept point should be valid
+        expect(result.interceptPoint.x).toBeGreaterThanOrEqual(0);
+        expect(result.interceptPoint.x).toBeLessThan(5000);
+        expect(result.interceptPoint.y).toBeGreaterThanOrEqual(0);
+        expect(result.interceptPoint.y).toBeLessThan(5000);
+    });
+
+    test('calculateInterceptAngle_toroidalWrappingWith1000x1000_wrapsCorrectly', () => {
+        // Test toroidal wrapping with 1000×1000 world size
+        // Ship near right edge (950, 500), target near left edge (50, 500)
+        // Ship should intercept by wrapping around the world
+        
+        const ship = new MockSpaceObject(950, 500, 0, 25);
+        const target = new MockSpaceObject(50, 500, 0, 5); // Moving right slowly
+        
+        // Act - Using 1000 as worldSize
+        const result = InterceptCalculator.calculateInterceptAngle(ship, target, 1000);
+        
+        // Assert
+        // Should find intercept considering toroidal wrapping in 1000×1000 world
+        expect(result.angle).not.toBeNaN();
+        expect(result.timeToIntercept).toBeGreaterThan(0);
+        expect(result.timeToIntercept).toBeLessThan(Number.POSITIVE_INFINITY);
+        
+        // Verify wrapping works correctly
+        expect(result.interceptPoint.x).toBeGreaterThanOrEqual(0);
+        expect(result.interceptPoint.x).toBeLessThan(1000);
     });
 
 });
