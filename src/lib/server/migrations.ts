@@ -124,6 +124,16 @@ export const migrations: Migration[] = [
       'ALTER TABLE battles DROP COLUMN IF EXISTS attacker_end_stats',
       'ALTER TABLE battles DROP COLUMN IF EXISTS attackee_end_stats'
     ]
+  },
+  {
+    version: 8,
+    name: 'add_xp_system',
+    up: [
+      'ALTER TABLE users ADD COLUMN IF NOT EXISTS xp INTEGER NOT NULL DEFAULT 0'
+    ],
+    down: [
+      'ALTER TABLE users DROP COLUMN IF EXISTS xp'
+    ]
   }
   // Future migrations go here
 ];
@@ -240,6 +250,8 @@ export async function applyTechMigrations(db: DatabaseConnection): Promise<void>
   await applyBattleEndStatsMigration(db);  
   // Apply picture_id migration
   await applyPictureIdMigration(db);
+  // Apply XP system migration
+  await applyXpSystemMigration(db);
 }
 
 /**
@@ -441,5 +453,38 @@ export async function applyBattleEndStatsMigration(db: DatabaseConnection): Prom
     console.log('✅ Battle end stats migration completed');
   } catch (error) {
     console.error('❌ Error applying battle end stats migration:', error);
+  }
+}
+
+/**
+ * Apply XP system migration to the database
+ */
+export async function applyXpSystemMigration(db: DatabaseConnection): Promise<void> {
+  console.log('🔄 Checking for XP system migration...');
+  
+  try {
+    const exists = await columnExists(db, 'users', 'xp');
+    if (exists) {
+      console.log('✅ XP column already exists');
+      return;
+    }
+    
+    console.log('🚀 Adding XP column...');
+    
+    // Get XP system migration
+    const xpSystemMigration = migrations.find(m => m.name === 'add_xp_system');
+    if (!xpSystemMigration) {
+      console.error('❌ XP system migration not found');
+      return;
+    }
+    
+    // Apply each migration statement
+    for (const statement of xpSystemMigration.up) {
+      await runMigrationStatement(db, statement);
+    }
+    
+    console.log('✅ XP system migration completed');
+  } catch (error) {
+    console.error('❌ Error applying XP system migration:', error);
   }
 }

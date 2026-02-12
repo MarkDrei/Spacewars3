@@ -54,6 +54,26 @@ Als Spieler möchte ich ein XP- und Level-System haben, das meinen Fortschritt d
 - Use IF NOT EXISTS/IF EXISTS for idempotency
 - Test migration on clean database and existing database
 
+**Status**: ✅ COMPLETED
+
+**Implementation Summary**: Added migration version 8 to migrations.ts with XP column definition and created applyXpSystemMigration function to apply the migration idempotently.
+
+**Files Modified/Created**:
+
+- `src/lib/server/migrations.ts` - Added migration version 8 with XP column definition (lines 128-137), added applyXpSystemMigration function (lines 459-488), and integrated migration call in applyTechMigrations (line 244)
+- `src/__tests__/lib/xp-migration.test.ts` - Created comprehensive test suite with 10 tests covering migration definition, idempotency, column properties, and data integrity
+
+**Deviations from Plan**: None - implementation follows plan exactly
+
+**Arc42 Updates**: None required - this is a database schema extension, not an architectural change
+
+**Test Results**: ✅ All tests passing (10/10 migration tests, 573 total tests passing), no TypeScript errors, no ESLint errors
+
+**Review Status**: ✅ APPROVED
+**Reviewer**: Medicus
+**Review Notes**: Excellent implementation. Migration follows established patterns perfectly, tests are comprehensive and validate actual behavior (not just coverage), and code quality is high. The idempotent design with IF NOT EXISTS/IF EXISTS ensures safe production deployment. Test suite validates migration definition, idempotency, column properties (type, default, nullability), and data integrity for both existing and new users.
+
+
 #### Task 1.2: Update Schema Definition
 
 **Action**: Add XP column to CREATE_USERS_TABLE constant for new database initialization
