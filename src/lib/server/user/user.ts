@@ -94,6 +94,55 @@ class User {
   }
 
   /**
+   * Calculate player level from total XP.
+   * Level 1 = 0 XP
+   * Level 2 = 1,000 XP
+   * Level 3 = 4,000 XP (1000 + 3000)
+   * Level 4 = 10,000 XP (1000 + 3000 + 6000)
+   * Pattern: Each level requires 1000 more XP than the previous increment
+   * Increment for level N is triangular number N-1: (N-1)*N/2 * 1000
+   */
+  getLevel(): number {
+    let level = 1;
+    let totalXpNeeded = 0;
+
+    // Keep adding levels while we have enough XP
+    while (true) {
+      // Calculate XP increment needed to reach next level
+      // Increment for level (level+1) is triangular number (level): level*(level+1)/2 * 1000
+      const xpForNextLevel = (level * (level + 1) / 2) * 1000;
+      
+      if (this.xp >= totalXpNeeded + xpForNextLevel) {
+        totalXpNeeded += xpForNextLevel;
+        level++;
+      } else {
+        break;
+      }
+    }
+
+    return level;
+  }
+
+  /**
+   * Get the total XP required to reach the next level.
+   * Returns the XP threshold, not the remaining XP needed.
+   */
+  getXpForNextLevel(): number {
+    const currentLevel = this.getLevel();
+    const nextLevel = currentLevel + 1;
+
+    // Calculate total XP needed for next level
+    // Progression: Level N needs sum from k=1 to N-1 of (triangular number k)
+    // Triangular number k = k*(k+1)/2
+    // So total = sum from k=1 to N-1 of (k*(k+1)/2 * 1000)
+    let totalXpNeeded = 0;
+    for (let k = 1; k < nextLevel; k++) {
+      totalXpNeeded += (k * (k + 1) / 2) * 1000;
+    }
+    return totalXpNeeded;
+  }
+
+  /**
    * Add iron to the user's inventory with capacity enforcement
    * @param amount Amount of iron to add
    * @returns The actual amount added (may be less if cap is hit)
@@ -119,6 +168,25 @@ class User {
     }
     this.iron -= amount;
     return true;
+  }
+
+  /**
+   * Add XP to the user.
+   * @param amount Amount of XP to add (must be positive)
+   * @returns Object with leveledUp flag and old/new levels if level increased, undefined otherwise
+   */
+  addXp(amount: number): { leveledUp: boolean; oldLevel: number; newLevel: number } | undefined {
+    if (amount <= 0) return undefined;
+
+    const oldLevel = this.getLevel();
+    this.xp += amount;
+    const newLevel = this.getLevel();
+
+    if (newLevel > oldLevel) {
+      return { leveledUp: true, oldLevel, newLevel };
+    }
+
+    return undefined;
   }
 
   updateStats(now: number): void {
