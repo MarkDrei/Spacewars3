@@ -156,6 +156,26 @@ Als Spieler möchte ich ein XP- und Level-System haben, das meinen Fortschritt d
 - Add constructor parameter: `xp: number`
 - Initialize in constructor: `this.xp = xp;`
 
+**Status**: ✅ COMPLETED
+
+**Implementation Summary**: Added XP property to User class at line 14, added xp parameter to constructor at line 42, and initialized xp in constructor body at line 61. Updated userFromRow to extract xp from database rows (line 102 in userRepo.ts) and saveUserToDb to persist xp changes (line 226 in userRepo.ts).
+
+**Files Modified/Created**:
+
+- `src/lib/server/user/user.ts` - Added xp property (line 14), constructor parameter (line 42), and initialization (line 61)
+- `src/lib/server/user/userRepo.ts` - Updated userFromRow to extract xp (line 102), updated saveUserToDb to persist xp (lines 225-226), updated createUser calls (lines 182, 215)
+- `src/__tests__/lib/user-domain.test.ts` - Updated User constructor calls to include xp parameter (3 locations)
+- `src/__tests__/lib/iron-capacity.test.ts` - Updated User constructor call to include xp parameter
+- `src/__tests__/lib/user-collection-rewards.test.ts` - Updated User constructor call to include xp parameter
+- `src/__tests__/lib/user-xp-property.test.ts` - Created comprehensive unit tests for XP property (6 tests)
+- `src/__tests__/lib/user-xp-persistence.test.ts` - Created database integration tests for XP persistence (7 tests)
+
+**Deviations from Plan**: None - implementation follows plan exactly. XP property positioned after iron for logical grouping of user resources.
+
+**Arc42 Updates**: None required - this is a domain model extension, not an architectural change
+
+**Test Results**: ✅ All tests passing (602 tests total, including 13 new XP tests), no TypeScript errors, no ESLint errors (only pre-existing warnings in unrelated files)
+
 #### Task 2.2: Implement getLevel() Method
 
 **Action**: Calculate player level from total XP using cumulative progression formula

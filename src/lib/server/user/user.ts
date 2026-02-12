@@ -11,6 +11,7 @@ class User {
   username: string;
   password_hash: string;
   iron: number;
+  xp: number;
   last_updated: number;
   techTree: TechTree;
   ship_id?: number; // Optional ship ID for linking to player's ship
@@ -38,6 +39,7 @@ class User {
     username: string,
     password_hash: string,
     iron: number,
+    xp: number,
     last_updated: number,
     techTree: TechTree,
     saveCallback: SaveUserCallback,
@@ -56,6 +58,7 @@ class User {
     this.username = username;
     this.password_hash = password_hash;
     this.iron = iron;
+    this.xp = xp;
     this.last_updated = last_updated;
     this.techTree = techTree;
     this.techCounts = techCounts;
