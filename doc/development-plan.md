@@ -114,6 +114,26 @@ Als Spieler möchte ich ein XP- und Level-System haben, das meinen Fortschritt d
 
 - Add property: `xp: number;`
 
+**Status**: ✅ COMPLETED
+
+**Implementation Summary**: Added `xp: number` property to UserRow interface at line 19, positioned after iron for logical grouping of user resource properties.
+
+**Files Modified/Created**:
+
+- `src/lib/server/user/userRepo.ts` - Added xp property to UserRow interface (line 19)
+- `src/__tests__/lib/userrow-interface.test.ts` - Created comprehensive integration tests with 5 tests covering database operations, default values, updates, and column verification
+- `src/__tests__/lib/userrow-type.test.ts` - Created type-level tests with 5 tests ensuring TypeScript type safety and interface compatibility
+
+**Deviations from Plan**: None - implementation follows plan exactly
+
+**Arc42 Updates**: None required - this is a type definition update to match the existing database schema
+
+**Test Results**: ✅ All tests passing (10 new tests, 589 total tests passing), no TypeScript errors, no ESLint errors
+
+**Review Status**: ✅ APPROVED
+**Reviewer**: Medicus
+**Review Notes**: Excellent implementation. The UserRow interface update is minimal, focused, and follows the Single Responsibility Principle perfectly. Tests are comprehensive and validate actual behavior (database operations, type safety, default values) rather than just chasing coverage. The interface change properly positions xp after iron for logical grouping. Implementation is consistent with existing patterns and requires no additional changes. The separation of interface update (Task 1.3) from User class update (Task 2.1) demonstrates good architectural planning.
+
 ### Goal 2: Domain Logic for XP and Levels
 
 **Description**: Implement business logic in the User class to manage XP, calculate levels, and provide level progression information.

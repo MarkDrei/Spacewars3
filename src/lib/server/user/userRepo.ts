@@ -16,6 +16,7 @@ interface UserRow {
   username: string;
   password_hash: string;
   iron: number;
+  xp: number;
   last_updated: number;
   tech_tree: string;
   ship_id?: number;
