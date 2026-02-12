@@ -45,6 +45,11 @@ You receive:
 - Path to the development plan file (`doc/development-plan.md`)
 - The original user request for context
 
+**Required Reading**:
+
+- `doc/learnings.md` - Shared knowledge base (see guidelines in `shared-conventions.md`)
+- `.github/agents/shared-conventions.md` - TypeScript standards, quality requirements, and conventions
+
 ## Implementation Process
 
 ### Step 1: Read and Understand
@@ -88,48 +93,47 @@ If research reveals a better approach than proposed in the plan, that's fine —
 ### Step 3: Implement Code
 
 - Create or modify the files specified in the task
-- Follow TypeScript best practices and modern patterns
-- Use appropriate TypeScript features (strict types, interfaces, type guards, generics, etc.)
-- Ensure proper file structure following Next.js App Router conventions
-- Add minimal inline comments for complex logic
-- Follow the quality requirements specified in the task
+- Follow TypeScript standards defined in `shared-conventions.md`
+- Follow the quality requirements specified in the task (or baseline in shared-conventions.md)
 - Use ES Modules exclusively (import/export, no require/module.exports)
 - **If task requires Arc42 updates**:
-  - Update relevant files in `/doc/architecture`
-  - Keep updates abstract - major building blocks only
-  - Don't document implementation details
+  - Follow Arc42 guidelines in `shared-conventions.md`
 
 ### Step 4: Write Tests
 
 - Create comprehensive unit tests for the implementation
-- Use Vitest testing framework
+- Follow testing standards defined in `shared-conventions.md`
 - Follow testing patterns discovered during research
-- Follow test naming convention: `whatIsTested_scenario_expectedOutcome`
-- Place tests in `src/__tests__/` directory
-- Ensure tests cover:
-  - Happy path scenarios
-  - Edge cases
-  - Error conditions (if applicable)
-- Follow the quality requirements (e.g., test coverage targets)
-- Use database transactions for test isolation when testing database code
+- Ensure tests cover: happy path, edge cases, error conditions
+- Meet quality requirements from task or baseline in shared-conventions.md
 
-### Step 5: Run All QA Measures
+### Step 5: Run All QA Measures (Quality Gate)
 
-- Compile and build: `npm run build`
-- Run all tests: `npm test`
-- Run linting: `npm run lint`
-- **Critical**: Only proceed if ALL QA measures pass
-- If any QA measure fails:
-  - Attempt to fix the issues
-  - If unable to fix, document the failure and return error status
-  - If failure indicates a plan issue, undo changes and return PLAN ERROR
+**Your Responsibility**: Ensure all automated checks pass before handing off to Medicus.
+
+**Required Checks**:
+
+1. **Compile and build**: `npm run build`
+   - No compilation errors
+2. **Run all tests including linking and type checks**: `npm run ci`
+   - All tests must pass
+
+**Exit Criteria**: ALL automated QA measures must pass with no errors.
+
+**If any QA measure fails:**
+
+- Attempt to fix the issues
+- If unable to fix, document the failure and return error status
+- If failure indicates a plan issue, undo changes and return PLAN ERROR
+
+**Contract**: You guarantee to Medicus that all automated checks have passed. Medicus will focus on design/architecture review, not re-running your tests.
 
 ### Step 6: Update Development Plan
 
 - Update "doc/learnings.md" with any new insights, patterns, or conventions discovered during implementation (if any)
 - Open `doc/development-plan.md`
 - Find your task in the document
-- Add a completion status section:
+- Add a completion status section (format defined in shared-conventions.md):
 
   ```markdown
   **Status**: ✅ COMPLETED
@@ -139,7 +143,8 @@ If research reveals a better approach than proposed in the plan, that's fine —
   - `src/lib/server/file.ts` - Implemented [what]
   - `src/__tests__/file.test.ts` - Added tests for [what]
     **Deviations from Plan**: [If you deviated from proposed files/approach, explain why and how]
-    **Test Results**: All tests passing
+    **Arc42 Updates**: [If required: "Updated /doc/architecture/[section].md" OR "None required"]
+    **Test Results**: ✅ All tests passing, coverage [X]%, no linting errors
   ```
 
 - **If you deviated from the task proposal**: Update the task's **Files** section to reflect actual files modified/created
@@ -154,8 +159,9 @@ Return a brief confirmation in this format:
 ```
 ✅ Task completed: [Task Name]
 - Implementation: [1 sentence summary]
-- Tests: [X tests passing]
+- Tests: [X tests passing, Y% coverage]
 - Files: [list of files created/modified]
+- Arc42: [Updated sections OR "None required"]
 ```
 
 **FAILURE Case** (compilation/test failures):
@@ -199,12 +205,5 @@ If you encounter any of these issues:
 - Task file specifications are proposals — use better approaches if discovered during research
 - Use runSubagent to understand codebase context before implementing
 - Follow patterns and conventions discovered in the existing codebase
-- Do not modify files outside the task scope
-- Follow Next.js App Router conventions for project structure
-- Maintain separation between client (`src/lib/client/`), server (`src/lib/server/`), and shared (`src/shared/`) code
-- Prefer composition over inheritance
-- Keep functions small and focused
-- Follow SOLID principles
-- Use ES Modules exclusively (no CommonJS)
-- Use TypeScript best practices: strict types, interfaces, type guards, generics
+- Follow all standards in `shared-conventions.md` (TypeScript, quality, testing, etc.)
 - Document any deviations from the plan with clear rationale

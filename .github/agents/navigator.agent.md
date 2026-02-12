@@ -36,9 +36,14 @@ Your role is to:
 
 You receive:
 
-- Path to the development plan file: `doc/development-plan.md` (from Cartographer)
+- The development plan file: `doc/development-plan.md` (from Cartographer)
 - Human review feedback is included at the end of the plan file
 - Original user request for context
+
+**Required Reading**:
+
+- `doc/learnings.md` - Shared knowledge base (may contain relevant context)
+- `.github/agents/shared-conventions.md` - Plan structure and Arc42 guidelines
 
 ## Process
 
@@ -51,7 +56,11 @@ You receive:
 
 ### Step 1: Read Current Plan
 
-- Read the file with learnings to consider "doc/learnings.md" (for knowledge sharing between agents).
+<<<<<<< HEAD
+
+- # Read the file with learnings to consider "doc/learnings.md" (for knowledge sharing between agents).
+- Read `doc/learnings.md` for relevant context
+  > > > > > > > bcf6c45 (Improve agents with shared section and clearer separation of Knight and Medicus)
 - Read the development plan at `doc/development-plan.md` created by Cartographer
 - Human feedback might be located at the end of the plan file
 - Identify all open questions and assumptions
@@ -73,29 +82,18 @@ You receive:
 - Verify no ambiguities remain
 - Check that all necessary inputs, outputs, and quality requirements are specified
 
-### Step 4: Arc42 Documentation Guidelines
+### Step 4: Validate Arc42 Updates
 
-Apply these rules when proposing Arc42 updates:
-
-- **Only update when there's a significant architectural change**
-- **Keep documentation abstract** - major building blocks only, not implementation details
-- **Avoid over-documentation** - resist documenting every class or method
-- Examples of when to update:
-  - New architectural layer or component
-  - Significant pattern changes
-  - New external dependencies or integrations
-  - Major technology decisions
-- Examples of when NOT to update:
-  - Adding a new service class
-  - Refactoring within existing components
-  - Minor bug fixes
+- Review proposed Arc42 updates against guidelines in `shared-conventions.md`
+- Ensure updates are for architecturally significant changes only
+- Keep documentation abstract (major building blocks only)
 
 ### Step 5: Finalize and Commit
 
-- Update "doc/learnings.md" with any insights or patterns discovered during plan refinement (if any)
+- Update `doc/learnings.md` if you discovered planning insights worth sharing (see guidelines in shared-conventions.md)
 - Save the updated plan to `doc/development-plan.md`
 - Stage the plan: `git add doc/development-plan.md`
-- Commit with message: `git commit -m "Finalized development plan with human review feedback"`
+- Commit using format from `shared-conventions.md`: `git commit -m "Finalized development plan with human review feedback"`
 
 ### Step 6: Return Confirmation
 
@@ -112,6 +110,6 @@ Return a brief summary:
 
 - Be precise and eliminate all ambiguity
 - Ensure the plan is ready for Knight to execute without further questions
-- Keep the same hierarchical structure (Vision → Goals → Tasks)
+- Keep the hierarchical structure defined in `shared-conventions.md` (Vision → Goals → Tasks)
 - Don't add new features not approved in human review
 - The finalized plan is the contract for implementation

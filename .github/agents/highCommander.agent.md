@@ -32,6 +32,8 @@ You communicate with the user and delegate the actual work to the other agents u
 
 **Critical**: Do not attempt to implement or edit code yourself. Your job is pure orchestration.
 
+**Required Reading**: `.github/agents/shared-conventions.md` - Contains standards and conventions used by all agents
+
 # Workflow Overview
 
 ### Step 0: Verify the starting conditions
@@ -154,12 +156,9 @@ Store the result as ${review_report}.
 If Medicus's verdict is "APPROVED" or "TASK INJECTED":
 
 - Stage all changes: `git add .`
-- Create a commit with task information:
+- Create a commit following format in `shared-conventions.md`:
   - Format: `git commit -m "Task [task_number]: [brief_description]"`
   - Example: `git commit -m "Task 1.1.1: Implement UserService class with CRUD operations"`
-- The commit message should include:
-  - The task number/identifier from the development plan
-  - A brief 1-line description of what was implemented
 - Move to the next task in ${task_list}
 
 ## Step 5: Final Completion
@@ -168,7 +167,9 @@ When all tasks have been approved by Medicus:
 
 - Present a summary of all completed tasks to the user
 - Confirm the entire development request is complete
-- move "doc/development-plan.md" to "doc/completed-plans/[yyyy-mm-dd]-[short-description].md" for record-keeping, commit and push the changes.
+- Move the development plan file to `doc/completed-plans/` with a timestamped filename + short description
+  - Example: `2024-01-15_implement-user-service.md`
+- Commit and push the changes
 
 # Communication Guidelines
 

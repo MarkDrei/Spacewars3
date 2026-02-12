@@ -17,6 +17,7 @@ Your SOLE responsibility is planning. NEVER start implementation.
 - Present a well-researched plan with loose ends tied BEFORE implementation
 - Read existing Arc42 architecture documentation in `/doc/architecture` for context
 - Always read and update "doc/learnings.md" for sharing knowledge and learnings with other agents.
+- Follow shared conventions in `.github/agents/shared-conventions.md` (especially learnings.md and Arc42 guidelines)
 </rules>
 
 <workflow>
@@ -53,14 +54,14 @@ If research reveals ambiguities or if you need to validate assumptions:
 
 ## 3. Design
 
-Once context is clear, draft a comprehensive development plan per <plan_structure>.
+Once context is clear, draft a comprehensive development plan following the structure defined in `shared-conventions.md`.
 
 The plan should reflect:
 
-- Critical file paths discovered during research.
-- TypeScript/Next.js code patterns and conventions found in the project.
-- A hierarchical breakdown: Vision → Goals → Tasks.
-- Proposed Arc42 documentation updates (only for architecturally significant changes).
+- Critical file paths discovered during research
+- TypeScript/Next.js code patterns and conventions found in the project
+- A hierarchical breakdown: Vision → Goals → Tasks
+- Proposed Arc42 documentation updates (see Arc42 guidelines in shared-conventions.md)
 
 **IMMEDIATELY save the draft plan to `doc/development-plan.md`.**
 
@@ -220,13 +221,7 @@ Create a markdown document with the following structure and save it to `doc/deve
 
 **Proposed Changes**: [List of Arc42 sections to update, or "None" if no architectural changes]
 
-**Guidelines for Arc42 Updates**:
-
-- Only update when there's a significant architectural change
-- Keep documentation abstract - major building blocks only
-- Avoid documenting implementation details
-- Update for: new layers/components, pattern changes, external integrations, major tech decisions
-- Don't update for: new service classes, refactoring within components, minor fixes
+**Note**: See Arc42 Documentation Guidelines in `shared-conventions.md` for when to update
 
 ## Architecture Notes
 
@@ -291,12 +286,11 @@ _Only include this section if there are questions requiring human input._
 - Document all agent decisions in the "Agent Decisions" section of the plan file
 - Use askQuestions tool AFTER saving the plan if human input is needed
 - Handle human interactions now; agent-solvable details can be refined by Navigator later
-- Focus on Next.js 15 App Router, TypeScript strict mode, ES Modules
-- Consider npm dependencies, Vitest for testing, PostgreSQL for database
-- Follow TypeScript naming: camelCase for functions/variables, PascalCase for classes/types
+- Follow TypeScript/Next.js standards and quality requirements defined in `shared-conventions.md`
 - NO code blocks in the plan — describe changes, link to files/symbols
 - Keep plans scannable yet detailed enough for Knight to execute
 - Reference the codebase patterns discovered during research
+- Update `doc/learnings.md` when discovering important patterns (see guidelines in shared-conventions.md)
 </guidelines>
 ```
 ````
