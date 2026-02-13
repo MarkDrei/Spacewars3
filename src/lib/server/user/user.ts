@@ -5,6 +5,7 @@
 import { TechTree, ResearchType, getResearchEffectFromTree, updateTechTree, AllResearches, getResearchUpgradeCost } from '../techs/techtree';
 import { TechCounts, BuildQueueItem } from '../techs/TechFactory';
 import { TechService } from '../techs/TechService';
+import { TimeMultiplierService } from '../timeMultiplier';
 
 class User {
   id: number;
@@ -193,27 +194,30 @@ class User {
     const elapsed = now - this.last_updated;
     if (elapsed <= 0) return {};
 
+    // Apply time multiplier to accelerate game progression
+    const gameElapsed = elapsed * TimeMultiplierService.getInstance().getMultiplier();
+
     let ironToAdd = 0;
     let researchResult: { completed: boolean; type: ResearchType; completedLevel: number } | undefined;
     const techTree = this.techTree;
     const active = techTree.activeResearch;
     if (!active || active.type !== ResearchType.IronHarvesting) {
       // No relevant research in progress, just award all time
-      ironToAdd += getResearchEffectFromTree(techTree, ResearchType.IronHarvesting) * elapsed;
-      researchResult = updateTechTree(techTree, elapsed);
+      ironToAdd += getResearchEffectFromTree(techTree, ResearchType.IronHarvesting) * gameElapsed;
+      researchResult = updateTechTree(techTree, gameElapsed);
     } else {
       const timeToComplete = active.remainingDuration;
-      if (elapsed < timeToComplete) {
+      if (gameElapsed < timeToComplete) {
         // Research does not complete in this interval
-        ironToAdd += getResearchEffectFromTree(techTree, ResearchType.IronHarvesting) * elapsed;
-        researchResult = updateTechTree(techTree, elapsed);
+        ironToAdd += getResearchEffectFromTree(techTree, ResearchType.IronHarvesting) * gameElapsed;
+        researchResult = updateTechTree(techTree, gameElapsed);
       } else {
         // Research completes during this interval
         // 1. Award up to research completion at old rate
         ironToAdd += getResearchEffectFromTree(techTree, ResearchType.IronHarvesting) * timeToComplete;
         researchResult = updateTechTree(techTree, timeToComplete);
         // 2. After research completes, award remaining time at new rate (if any)
-        const remaining = elapsed - timeToComplete;
+        const remaining = gameElapsed - timeToComplete;
         if (remaining > 0) {
           ironToAdd += getResearchEffectFromTree(techTree, ResearchType.IronHarvesting) * remaining;
           // Second updateTechTree call should not complete another research (no overwrites)
@@ -254,6 +258,9 @@ class User {
     const elapsed = now - this.defenseLastRegen;
     if (elapsed <= 0) return;
 
+    // Apply time multiplier to accelerate regeneration
+    const gameElapsed = elapsed * TimeMultiplierService.getInstance().getMultiplier();
+
     // Calculate maximum values based on tech counts and research
     const maxStats = TechService.calculateMaxDefense(this.techCounts, this.techTree);
     const maxHull = maxStats.hull;
@@ -261,11 +268,11 @@ class User {
     const maxShield = maxStats.shield;
 
     // Apply regeneration (1 point/second), clamped at max
-    this.hullCurrent = Math.min(this.hullCurrent + elapsed, maxHull);
-    this.armorCurrent = Math.min(this.armorCurrent + elapsed, maxArmor);
-    this.shieldCurrent = Math.min(this.shieldCurrent + elapsed, maxShield);
+    this.hullCurrent = Math.min(this.hullCurrent + gameElapsed, maxHull);
+    this.armorCurrent = Math.min(this.armorCurrent + gameElapsed, maxArmor);
+    this.shieldCurrent = Math.min(this.shieldCurrent + gameElapsed, maxShield);
 
-    // Update last regeneration timestamp
+    // Update last regeneration timestamp (remains in real time)
     this.defenseLastRegen = now;
   }
 

@@ -120,7 +120,22 @@ As a game admin, I want to activate a time multiplier (e.g. 10x for 5 minutes) t
 - Replace all uses of `elapsed` with `gameElapsed` for iron calculation and `updateTechTree()` calls
 - `this.last_updated = now` stays as real time (anchor for next delta)
 
+**Status**: ✅ COMPLETED  
+**Implementation Summary**: Successfully integrated TimeMultiplierService into User.updateStats() and updateDefenseValues() to accelerate iron production, research progression, and defense regeneration by the current time multiplier.  
+**Files Modified/Created**:
+- `src/lib/server/user/user.ts` — Imported TimeMultiplierService.getInstance() and applied multiplier to elapsed time in both updateStats() (line 198) and updateDefenseValues() (line 262) methods
+- `src/__tests__/lib/timeMultiplier-user.test.ts` — Created comprehensive test suite with 18 tests covering iron production, research progression, defense regeneration, integration scenarios, and edge cases  
+**Deviations from Plan**: Used TimeMultiplierService.getInstance() instead of the exported singleton instance to ensure proper test isolation and resetInstance() functionality. This pattern allows tests to properly reset state between test cases.  
+**Arc42 Updates**: None required  
+**Test Results**: ✅ All 740 tests passing (including 18 new tests for time multiplier integration), no linting errors, TypeScript strict mode compliant
+
+**Review Status**: ✅ APPROVED  
+**Reviewer**: Medicus  
+**Review Notes**: Excellent implementation with strong design quality, comprehensive test coverage beyond requirements, proper integration patterns, and zero code duplication. Tests validate actual behavior meaningfully with extensive edge case coverage. The getInstance() pattern correctly implements test isolation per learnings.md. Business logic correctly applies multiplier to game time while preserving real timestamps. Architecture alignment perfect - follows established patterns across the codebase.
+
 ##### Task 2.1.2: Multiply elapsed time in User.updateDefenseValues()
+
+**Action**: Apply multiplier to defense regeneration elapsed time.
 
 **Action**: Apply multiplier to defense regeneration elapsed time.
 
@@ -131,6 +146,18 @@ As a game admin, I want to activate a time multiplier (e.g. 10x for 5 minutes) t
 - After `const elapsed = now - this.defenseLastRegen`, add: `const gameElapsed = elapsed * TimeMultiplierService.getMultiplier()`
 - Use `gameElapsed` instead of `elapsed` for regen: `this.hullCurrent + gameElapsed`
 - `this.defenseLastRegen = now` stays as real time
+
+**Status**: ✅ COMPLETED (implemented together with Task 2.1.1)  
+**Implementation Summary**: Applied time multiplier to defense regeneration in updateDefenseValues() method alongside the updateStats() implementation.  
+**Files Modified/Created**:
+- `src/lib/server/user/user.ts` — Modified updateDefenseValues() method to apply multiplier (line 262)  
+**Deviations from Plan**: None  
+**Arc42 Updates**: None required  
+**Test Results**: ✅ Covered by timeMultiplier-user.test.ts tests
+
+**Review Status**: ✅ APPROVED  
+**Reviewer**: Medicus  
+**Review Notes**: Implementation correctly integrated with Task 2.1.1. Clean pattern application with proper real-time timestamp preservation.
 
 ##### Task 2.1.3: Tests for accelerated user stats
 
@@ -144,6 +171,24 @@ As a game admin, I want to activate a time multiplier (e.g. 10x for 5 minutes) t
 - `updateStats_withMultiplier10_progressesResearchAt10xRate`
 - `updateDefenseValues_withMultiplier10_regeneratesAt10xRate`
 - `updateStats_multiplierExpired_usesNormalRate`
+
+**Status**: ✅ COMPLETED (implemented together with Task 2.1.1)  
+**Implementation Summary**: Created comprehensive test suite with 18 tests covering all aspects of time multiplier integration with user stats.  
+**Files Modified/Created**:
+- `src/__tests__/lib/timeMultiplier-user.test.ts` — Created comprehensive test suite with 18 tests organized into 6 describe blocks  
+**Test Coverage**:
+- Iron production acceleration (4 tests)
+- Research progression acceleration (5 tests)
+- Defense regeneration acceleration (4 tests)
+- Integration scenarios (1 test)
+- Edge cases (4 tests)  
+**Deviations from Plan**: Extended test coverage beyond the 4 required test cases to include edge cases, integration tests, and various multiplier values (1x, 5x, 10x, 50x, 100x).  
+**Arc42 Updates**: None required  
+**Test Results**: ✅ All 18 tests passing
+
+**Review Status**: ✅ APPROVED  
+**Reviewer**: Medicus  
+**Review Notes**: Outstanding test quality - tests validate actual behavior rather than chasing coverage. Comprehensive scenarios including research completion mid-interval split calculations, multiplier expiration during operations, capacity enforcement, fractional multipliers, and negative/zero elapsed time edge cases. Tests are well-organized, highly maintainable, and will catch real bugs. Significantly exceeds minimum requirements.
 
 #### Sub-Goal 2.2: Accelerate Build Queue
 
