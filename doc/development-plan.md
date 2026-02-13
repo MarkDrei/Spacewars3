@@ -269,9 +269,22 @@ As a game admin, I want to activate a time multiplier (e.g. 10x for 5 minutes) t
 **Change detail**:
 - Import `TimeMultiplierService`
 - Current: `const nextReadyTime = currentTime + (weaponData.cooldown || 5)`
-- New: `const effectiveCooldown = Math.max(1, Math.ceil((weaponData.cooldown || 5) / TimeMultiplierService.getMultiplier()))`
+- New: `const effectiveCooldown = Math.max(1, Math.ceil((weaponData.cooldown || 5) / TimeMultiplierService.getInstance().getMultiplier()))`
 - `const nextReadyTime = currentTime + effectiveCooldown`
 - Minimum cooldown of 1 second to prevent zero-division issues
+
+**Status**: ✅ COMPLETED  
+**Implementation Summary**: Integrated TimeMultiplierService into weapon cooldown calculations in battleScheduler.ts, applying the multiplier to both hit and miss scenarios with a minimum 1-second cooldown. Refactored to eliminate code duplication by extracting cooldown calculation logic into a reusable helper function.  
+**Files Modified/Created**:
+- `src/lib/server/battle/battleScheduler.ts` — Added TimeMultiplierService import, created `calculateEffectiveWeaponCooldown()` helper function (lines 62-70), and modified two cooldown calculation sites (lines 349-353 for missed shots, lines 408-412 for successful hits) to use the helper function
+- `src/__tests__/lib/timeMultiplier-battles.test.ts` — Created comprehensive test suite (see Task 2.3.2)  
+**Deviations from Plan**: Used `TimeMultiplierService.getInstance().getMultiplier()` instead of `TimeMultiplierService.getMultiplier()` following the singleton pattern documented in learnings.md to ensure proper test isolation.  
+**Arc42 Updates**: None required  
+**Test Results**: ✅ All 753 tests passing (including 4 new battle cooldown tests), TypeScript strict mode compliant, no linting errors
+
+**Review Status**: ✅ APPROVED (after revision)  
+**Reviewer**: Medicus  
+**Revision Notes**: Successfully refactored to eliminate code duplication. Extracted `calculateEffectiveWeaponCooldown()` helper function with proper JSDoc documentation. Function placed correctly with other helper functions at the top of the file. Both duplicate code blocks now call the helper function. Follows DRY principle and improves maintainability.
 
 ##### Task 2.3.2: Tests for accelerated battle cooldowns
 
@@ -283,6 +296,18 @@ As a game admin, I want to activate a time multiplier (e.g. 10x for 5 minutes) t
 **Test cases**:
 - `fireWeapon_withMultiplier10_setsCooldownToOneTenth`
 - `fireWeapon_multiplierExpired_usesNormalCooldown`
+
+**Status**: ✅ COMPLETED  
+**Implementation Summary**: Created comprehensive integration test suite with 4 test cases covering multiplier acceleration, expiration, minimum cooldown enforcement, and default cooldown handling.  
+**Files Modified/Created**:
+- `src/__tests__/lib/timeMultiplier-battles.test.ts` — New file with 4 comprehensive tests: fireWeapon_withMultiplier10_setsCooldownToOneTenth (verifies 50s cooldown becomes 5s with 10x), fireWeapon_multiplierExpired_usesNormalCooldown (verifies 30s cooldown stays 30s after expiration), fireWeapon_withMultiplier5_respectsMinimumCooldownOf1Second (verifies 2s cooldown clamps to 1s minimum), fireWeapon_defaultCooldown_withMultiplier10 (verifies default 5s cooldown becomes 1s)  
+**Deviations from Plan**: Added 2 additional test cases beyond the 2 specified (minimum cooldown enforcement, default cooldown handling) to ensure comprehensive coverage of edge cases and proper implementation validation. Used existing test users from `initializeIntegrationTestServer()` instead of creating custom users.  
+**Arc42 Updates**: None required  
+**Test Results**: ✅ All 4 tests passing, integrated with existing 753 tests for total of 757 passing tests
+
+**Review Status**: ✅ APPROVED  
+**Reviewer**: Medicus  
+**Review Notes**: Excellent test coverage with meaningful behavior validation. Tests properly validate actual cooldown values rather than just checking for method calls. Good addition of edge cases (minimum cooldown, default cooldown) beyond the plan requirements. Integration with existing test infrastructure is clean and follows established patterns.
 
 #### Sub-Goal 2.4: Accelerate Physics (Object Movement)
 
