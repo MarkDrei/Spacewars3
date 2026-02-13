@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getIronSession } from 'iron-session';
 import { UserCache } from '@/lib/server/user/userCache';
-import { AllResearches, getResearchUpgradeCost, getResearchUpgradeDuration, getResearchEffect, ResearchType } from '@/lib/server/techs/techtree';
+import { AllResearches, getResearchUpgradeCost, getResearchUpgradeDuration, getResearchEffect, ResearchType, IMPLEMENTED_RESEARCHES } from '@/lib/server/techs/techtree';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth, ApiError } from '@/lib/server/errors';
 import { USER_LOCK } from '@/lib/server/typedLocks';
@@ -45,7 +45,7 @@ function processTechTree(user: User): NextResponse {
     nextEffect: number;
   }> = {};
   
-  (Object.values(ResearchType) as ResearchType[]).forEach(type => {
+  (Object.values(ResearchType) as ResearchType[]).filter(type => IMPLEMENTED_RESEARCHES.has(type)).forEach(type => {
     const research = AllResearches[type];
     const key = research.treeKey as keyof typeof user.techTree;
     const currentLevel = user.techTree[key];
