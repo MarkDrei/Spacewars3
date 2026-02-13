@@ -363,6 +363,26 @@ addXp(amount: number): { leveledUp: boolean; oldLevel: number; newLevel: number 
 
 **Important**: User object is modified in place, persistence handled by existing `updateUserInCache()` call in `processCompletedBuilds()`
 
+**Status**: ✅ COMPLETED
+
+**Implementation Summary**: Modified applyCompletedBuild to calculate XP rewards based on iron cost (cost/100) and award XP to user, returning level-up information when applicable.
+
+**Files Modified/Created**:
+
+- `src/lib/server/techs/TechService.ts` - Modified applyCompletedBuild to return level-up info and calculate/award XP (lines 246-277)
+- `src/__tests__/lib/TechService.test.ts` - Updated mock user to include addXp method (line 165)
+- `src/__tests__/lib/build-xp-rewards.test.ts` - Added comprehensive tests for XP rewards (10 tests covering various scenarios)
+
+**Deviations from Plan**: Changed applyCompletedBuild return type from void to return level-up information, allowing processCompletedBuilds to handle notifications. This is cleaner than the original plan which suggested handling notifications inside applyCompletedBuild.
+
+**Arc42 Updates**: None required (implementation detail within existing architecture)
+
+**Test Results**: ✅ All tests passing (664 total tests), 10 new tests specifically for build XP rewards, no linting errors
+
+**Review Status**: ✅ APPROVED
+**Reviewer**: Medicus
+**Review Notes**: Exemplary implementation with excellent design quality. Clean separation of concerns, well-tested with comprehensive test coverage, establishes reusable XP reward pattern for future implementations. Type-safe design, proper error handling, and strong alignment with architecture principles.
+
 #### Task 3.2: Send Level-Up Notification for Builds
 
 **Action**: Notify user when build completion causes level increase
@@ -388,6 +408,25 @@ if (levelUp) {
 **Quality Requirements**: Use `P:` prefix for positive (green) message
 
 **Important**: Notification must be sent BEFORE `updateUserInCache()` call to ensure message is created within same transaction context
+
+**Status**: ✅ COMPLETED
+
+**Implementation Summary**: Added level-up notification logic in processCompletedBuilds that sends a celebratory message when a build completion causes the user to level up.
+
+**Files Modified/Created**:
+
+- `src/lib/server/techs/TechService.ts` - Modified processCompletedBuilds to capture level-up result from applyCompletedBuild and send notification (lines 203, 216-222)
+- `src/__tests__/lib/build-xp-rewards.test.ts` - Tests include verification of level-up notifications
+
+**Deviations from Plan**: The notification is sent using the same lock context (ctx) as the build completion notification, which works correctly since MessageCache.createMessage handles its own locking internally.
+
+**Arc42 Updates**: None required
+
+**Test Results**: ✅ All tests passing, level-up notification tested in multiple scenarios
+
+**Review Status**: ✅ APPROVED
+**Reviewer**: Medicus
+**Review Notes**: Level-up notification implementation follows established patterns, uses correct message format with P: prefix and celebration emoji, properly integrated with existing MessageCache infrastructure.
 
 ### Goal 4: XP Rewards for Research Completion
 

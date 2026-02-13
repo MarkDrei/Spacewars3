@@ -33,3 +33,31 @@ Example progression:
 This creates an exponential curve that makes higher levels significantly harder to achieve while keeping early progression accessible.
 
 **Implementation tip**: Use iterative calculation in getLevel() for O(√n) complexity, and direct formula in getXpForNextLevel() for O(n) calculation of the sum.
+
+## XP Reward Integration Pattern
+
+**Discovered by**: Knight  
+**Context**: When implementing build XP rewards (Tasks 3.1-3.2), discovered the clean pattern for integrating XP rewards with existing systems  
+**Details**:
+
+When adding XP rewards to existing completion flows:
+1. **Modify completion method** to return level-up info instead of void
+2. **Calculate XP reward** based on the resource cost (e.g., iron_cost / 100 for builds)
+3. **Call user.addXp(amount)** which returns `{ leveledUp: boolean, oldLevel: number, newLevel: number } | undefined`
+4. **Return level-up info** to the caller so they can send notifications
+5. **Send level-up notification** in the caller's context with format: `P: 🎉 Level Up! You reached level {newLevel}! (+{xp} XP from {source})`
+
+Example from TechService.applyCompletedBuild:
+```typescript
+const xpReward = Math.floor(spec.baseCost / 100);
+const levelUp = user.addXp(xpReward);
+if (levelUp) {
+  return { ...levelUp, xpReward };
+}
+```
+
+**Benefits of this pattern**:
+- Separation of concerns: completion logic calculates rewards, caller handles notifications
+- User XP is modified in-place, persisted by existing cache update calls
+- Level-up info includes both old/new levels for rich notification messages
+- Notifications use existing MessageCache infrastructure with `P:` prefix for positive messages
