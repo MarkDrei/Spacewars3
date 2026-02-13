@@ -5,6 +5,7 @@ import { TechFactory, TechCounts, BuildQueueItem } from './TechFactory';
 import { DefenseValues } from '@/shared/defenseValues';
 import { MessageCache } from '../messages/MessageCache';
 import { TechTree, ResearchType, getResearchEffectFromTree } from './techtree';
+import { TimeMultiplierService } from '../timeMultiplier';
 
 export class TechService {
     private static instance: TechService;
@@ -74,6 +75,8 @@ export class TechService {
         }
 
         let cumulativeTime = user.buildStartSec;
+        const multiplier = TimeMultiplierService.getInstance().getMultiplier();
+        
         const queueWithTimes = queue.map(item => {
             const spec = TechFactory.getTechSpec(item.itemKey, item.itemType);
             if (!spec) {
@@ -81,7 +84,8 @@ export class TechService {
             }
 
             const buildTime = spec.buildDurationMinutes * 60;
-            const completionTime = cumulativeTime + buildTime;
+            const effectiveBuildTime = buildTime / multiplier;
+            const completionTime = cumulativeTime + effectiveBuildTime;
             cumulativeTime = completionTime; // Next item starts after this one
 
             return {
@@ -196,9 +200,12 @@ export class TechService {
             }
 
             const buildTime = spec.buildDurationMinutes * 60;
-            const completionTime = currentBuildStart! + buildTime;
+            const multiplier = TimeMultiplierService.getInstance().getMultiplier();
+            const effectiveBuildTime = buildTime / multiplier;
+            const calculatedCompletionTime = currentBuildStart! + effectiveBuildTime;
 
-            if (now >= completionTime) {
+            // Check completion with multiplier
+            if (now >= calculatedCompletionTime) {
                 // Build complete!
                 const levelUp = this.applyCompletedBuild(user, currentBuild);
                 completedItems.push(currentBuild);
@@ -226,7 +233,8 @@ export class TechService {
 
                 // Setup next build if any
                 if (user.buildQueue.length > 0) {
-                    user.buildStartSec = completionTime; // Start next build immediately after previous finished
+                    // Next build starts at the calculated completion time of this build
+                    user.buildStartSec = calculatedCompletionTime;
                 } else {
                     user.buildStartSec = null;
                 }

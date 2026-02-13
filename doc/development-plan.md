@@ -205,6 +205,14 @@ As a game admin, I want to activate a time multiplier (e.g. 10x for 5 minutes) t
 - New logic: `if ((now - currentBuildStart!) * TimeMultiplierService.getMultiplier() >= buildTime)`
 - When build completes and next item starts, set `user.buildStartSec = now` (real time) — this correctly anchors the next build
 
+**Status**: ✅ COMPLETED
+**Implementation Summary**: Modified processCompletedBuilds() to calculate effective build time with multiplier and check completion using `now >= calculatedCompletionTime` where `calculatedCompletionTime = startTime + (buildTime / multiplier)`.
+**Files Modified/Created**:
+- `src/lib/server/techs/TechService.ts` — Added TimeMultiplierService import, modified processCompletedBuilds() to calculate effectiveBuildTime using multiplier and set next build start time to calculatedCompletionTime for sequential queue processing
+**Deviations from Plan**: Implemented using mathematically equivalent approach `now >= startTime + (buildTime / multiplier)` instead of `(now - startTime) * multiplier >= buildTime` for clearer sequential processing logic. Both approaches are equivalent: `(now - start) * m >= duration` ⟺ `now >= start + (duration / m)`. The calculated completion time is used for next build start to enable proper sequential queue processing within a single call.
+**Arc42 Updates**: None required
+**Test Results**: ✅ All 749 tests passing, TypeScript strict mode compliant, no linting errors
+
 ##### Task 2.2.2: Adjust getBuildQueue() completion time estimates
 
 **Action**: Modify `getBuildQueue()` so the returned `completionTime` values account for the multiplier, ensuring client countdowns are accurate.
@@ -221,6 +229,14 @@ As a game admin, I want to activate a time multiplier (e.g. 10x for 5 minutes) t
 
 **Note on mid-build multiplier changes**: If multiplier changes during an active build, completion estimates will jump. This is acceptable for an admin/debug feature. Activating 10x may cause in-progress builds to complete instantly if enough real time has already passed. Deactivating resets to normal speed with full remaining real duration. This is documented behavior, not a bug.
 
+**Status**: ✅ COMPLETED
+**Implementation Summary**: Modified getBuildQueue() to calculate effective build time by dividing by the multiplier, ensuring completion times reflect accelerated build speeds.
+**Files Modified/Created**:
+- `src/lib/server/techs/TechService.ts` — Modified getBuildQueue() to get multiplier from TimeMultiplierService and calculate effectiveBuildTime = buildTime / multiplier for accurate completion time estimates
+**Deviations from Plan**: None
+**Arc42 Updates**: None required
+**Test Results**: ✅ All 749 tests passing, TypeScript strict mode compliant, no linting errors
+
 ##### Task 2.2.3: Tests for accelerated build queue
 
 **Action**: Test that builds complete faster with multiplier and that queue estimates are correct.
@@ -232,6 +248,14 @@ As a game admin, I want to activate a time multiplier (e.g. 10x for 5 minutes) t
 - `processCompletedBuilds_withMultiplier10_completesIn1TenthTime`
 - `getBuildQueue_withMultiplier10_returnsAdjustedCompletionTimes`
 - `processCompletedBuilds_multiplierExpired_usesNormalDuration`
+
+**Status**: ✅ COMPLETED
+**Implementation Summary**: Created comprehensive test suite with 9 test cases covering build completion with multipliers, queue time estimates, expiration, edge cases, and sequential processing.
+**Files Modified/Created**:
+- `src/__tests__/lib/timeMultiplier-builds.test.ts` — New file with 9 comprehensive tests: withMultiplier10_completesIn1TenthTime, doesNotCompleteIfInsufficientTime, returnsAdjustedCompletionTimes, withMultiplier1_returnsNormalCompletionTimes, multiplierExpired_usesNormalDuration, multipleBuildsBothComplete, nextBuildStartsFromCalculatedCompletionTime, emptyQueue_returnsEmptyArray, exactCompletionTime_withMultiplier
+**Deviations from Plan**: Added 6 additional test cases beyond the 3 specified to ensure comprehensive coverage of edge cases, empty queues, exact boundary conditions, sequential processing, and normal mode (multiplier=1).
+**Arc42 Updates**: None required
+**Test Results**: ✅ All 749 tests passing (including 9 new tests for time multiplier build integration), TypeScript strict mode compliant, no linting errors
 
 #### Sub-Goal 2.3: Accelerate Battle Cooldowns
 
