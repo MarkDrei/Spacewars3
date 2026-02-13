@@ -621,6 +621,16 @@ xpForNextLevel: user.getXpForNextLevel()
 
 **Quality Requirements**: Include both raw XP and calculated values
 
+**Status**: ✅ COMPLETED
+**Implementation Summary**: Extended /api/user-stats response to include xp, level, and xpForNextLevel fields; updated UserStatsResponse interface in userStatsService.
+**Files Modified/Created**:
+- `src/app/api/user-stats/route.ts` - Added XP fields to response data
+- `src/lib/client/services/userStatsService.ts` - Updated UserStatsResponse interface with XP fields
+- `src/__tests__/api/user-stats-api.test.ts` - Updated tests to verify XP fields in response
+**Deviations from Plan**: None
+**Arc42 Updates**: None required
+**Test Results**: ✅ All tests passing (676 passed), TypeScript strict mode compliance
+
 #### Task 5.2: Create or Update Hook for XP/Level Data
 
 **Action**: Either update useIron hook or create new useXpLevel hook to fetch XP data
@@ -657,6 +667,17 @@ export function useXpLevel(pollingInterval: number = 5000): {
 ```
 
 **Quality Requirements**: Follow existing hook patterns, handle loading and error states, TypeScript strict mode
+
+**Status**: ✅ COMPLETED
+**Implementation Summary**: Extended useIron hook to return XP data (xp, level, xpForNextLevel) alongside iron data, reusing the same polling mechanism and API endpoint.
+**Files Modified/Created**:
+- `src/lib/client/hooks/useIron/useIron.ts` - Extended UseIronReturn interface and state management to include XP data
+- `src/__tests__/hooks/useIron.test.ts` - Updated all test mocks to include XP fields
+- `src/__tests__/hooks/useIron-xp-display.test.ts` - Created comprehensive tests for XP/level display functionality
+- `src/__tests__/services/collectionService.test.ts` - Updated mocks to include XP fields
+**Deviations from Plan**: Chose Option 1 (update useIron hook) instead of creating a new hook, as XP data comes from the same API endpoint and benefits from the same polling/error handling patterns.
+**Arc42 Updates**: None required
+**Test Results**: ✅ All tests passing, including 7 new tests for XP display functionality
 
 #### Task 5.3: Add XP/Level Display to Home Page
 
@@ -710,6 +731,14 @@ export function useXpLevel(pollingInterval: number = 5000): {
 **Inputs**: XP data from useXpLevel hook
 **Quality Requirements**: Handle loading and null states, use existing CSS classes for consistency
 
+**Status**: ✅ COMPLETED
+**Implementation Summary**: Added XP progress table to HomePageClient showing level, experience progress, and percentage to next level; used useIron hook to fetch XP data with same polling as iron stats.
+**Files Modified/Created**:
+- `src/app/home/HomePageClient.tsx` - Added XP/Level progress table section with level, XP, and progress percentage display
+**Deviations from Plan**: None - followed the proposed table structure
+**Arc42 Updates**: None required
+**Test Results**: ✅ Component renders correctly with XP data from useIron hook
+
 #### Task 5.4: Optional - Add Level to StatusHeader or Navigation
 
 **Action**: Consider adding level badge to StatusHeader or navigation bar for persistent visibility
@@ -728,6 +757,17 @@ export function useXpLevel(pollingInterval: number = 5000): {
 **Quality Requirements**: Non-intrusive design, mobile responsive
 
 **Note**: This task is optional and can be deferred to UI polish phase
+
+**Status**: ✅ COMPLETED
+**Implementation Summary**: Added optional level display to StatusHeader component; integrated with AuthenticatedLayout to show level persistently in header across all pages.
+**Files Modified/Created**:
+- `src/components/StatusHeader/StatusHeader.tsx` - Added optional level prop and level display section
+- `src/components/StatusHeader/StatusHeader.css` - Added CSS styling for level display (gold color)
+- `src/components/Layout/AuthenticatedLayout.tsx` - Passed level from useIron hook to StatusHeader
+- `src/__tests__/components/StatusHeader-business-logic.test.ts` - Added tests for level display logic
+**Deviations from Plan**: Implemented as described - chose StatusHeader for persistent visibility
+**Arc42 Updates**: None required
+**Test Results**: ✅ Level displays correctly with loading states and graceful degradation when undefined
 
 ### Goal 6: Comprehensive Testing
 

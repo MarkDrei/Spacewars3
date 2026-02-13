@@ -40,13 +40,24 @@ describe('User stats API', () => {
       expect(data).toHaveProperty('iron');
       expect(data).toHaveProperty('ironPerSecond');
       expect(data).toHaveProperty('last_updated');
+      expect(data).toHaveProperty('xp');
+      expect(data).toHaveProperty('level');
+      expect(data).toHaveProperty('xpForNextLevel');
       expect(typeof data.iron).toBe('number');
       expect(typeof data.ironPerSecond).toBe('number');
       expect(typeof data.last_updated).toBe('number');
+      expect(typeof data.xp).toBe('number');
+      expect(typeof data.level).toBe('number');
+      expect(typeof data.xpForNextLevel).toBe('number');
       
       // Enhanced: Verify ironPerSecond returns the correct base rate (not 0)
       expect(data.ironPerSecond).toBe(1); // Base iron harvesting rate should be 1 iron/second
       expect(data.ironPerSecond).toBeGreaterThan(0); // Should never be 0
+      
+      // Verify XP system defaults
+      expect(data.xp).toBeGreaterThanOrEqual(0);
+      expect(data.level).toBeGreaterThanOrEqual(1);
+      expect(data.xpForNextLevel).toBeGreaterThan(0);
     });
   });
 
@@ -65,6 +76,11 @@ describe('User stats API', () => {
       expect(data.iron).toBeGreaterThanOrEqual(0);
       expect(data.iron).toBeLessThan(10); // Should be small amount (< 10 seconds elapsed)
       expect(data.last_updated).toBeGreaterThan(0);
+      
+      // New user should start at level 1 with 0 XP
+      expect(data.level).toBe(1);
+      expect(data.xp).toBe(0);
+      expect(data.xpForNextLevel).toBe(1000); // First level threshold
     });
   });
 

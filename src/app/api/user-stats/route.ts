@@ -56,7 +56,10 @@ async function processUserStats(user: User, userWorldCache: UserCache, userCtx: 
     iron: user.iron, 
     ironPerSecond: user.getIronPerSecond(),
     last_updated: user.last_updated,
-    maxIronCapacity: user.getMaxIronCapacity()
+    maxIronCapacity: user.getMaxIronCapacity(),
+    xp: user.xp,
+    level: user.getLevel(),
+    xpForNextLevel: user.getXpForNextLevel()
   };
   
   return NextResponse.json(responseData);

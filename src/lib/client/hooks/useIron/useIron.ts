@@ -10,6 +10,9 @@ interface UseIronReturn {
   isLoading: boolean;
   error: string | null;
   refetch: () => void;
+  xp: number;
+  level: number;
+  xpForNextLevel: number;
 }
 
 export const useIron = (pollInterval: number = 5000): UseIronReturn => {
@@ -20,6 +23,7 @@ export const useIron = (pollInterval: number = 5000): UseIronReturn => {
     maxCapacity: 5000 // Default to base capacity
   });
   const [displayIronAmount, setDisplayIronAmount] = useState<number>(0);
+  const [xpData, setXpData] = useState({ xp: 0, level: 1, xpForNextLevel: 1000 });
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   
@@ -61,6 +65,11 @@ export const useIron = (pollInterval: number = 5000): UseIronReturn => {
       
       setIronData(newData);
       setDisplayIronAmount(Math.floor(result.iron));
+      setXpData({
+        xp: result.xp,
+        level: result.level,
+        xpForNextLevel: result.xpForNextLevel
+      });
       setIsLoading(false);
     } catch (err) {
       if (isMountedRef.current) {
@@ -144,6 +153,9 @@ export const useIron = (pollInterval: number = 5000): UseIronReturn => {
     ironAmount: displayIronAmount,
     isLoading,
     error,
-    refetch: fetchIron
+    refetch: fetchIron,
+    xp: xpData.xp,
+    level: xpData.level,
+    xpForNextLevel: xpData.xpForNextLevel
   };
 };

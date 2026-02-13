@@ -32,6 +32,24 @@
   color: var(--primary-green);
 }
 
+.level-display {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: #ffffff;
+}
+
+.level-label {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.level-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: #ffd700;
+}
+
 .status-indicator {
   width: 12px;
   height: 12px;
@@ -93,7 +111,9 @@
   }
   
   .iron-label,
-  .iron-amount {
+  .iron-amount,
+  .level-label,
+  .level-value {
     font-size: 13px;
   }
   

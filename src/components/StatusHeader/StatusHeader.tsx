@@ -12,6 +12,7 @@ interface StatusHeaderProps {
   onStatusClick?: () => void;
   statusTooltip?: string;
   isClickable?: boolean;
+  level?: number;
 }
 
 const StatusHeader: React.FC<StatusHeaderProps> = ({
@@ -20,7 +21,8 @@ const StatusHeader: React.FC<StatusHeaderProps> = ({
   isLoading = false,
   onStatusClick,
   statusTooltip,
-  isClickable = false
+  isClickable = false,
+  level
 }) => {
   const formatIronAmount = (amount: number): string => {
     return amount.toLocaleString();
@@ -35,6 +37,14 @@ const StatusHeader: React.FC<StatusHeaderProps> = ({
             {isLoading ? '...' : formatIronAmount(ironAmount)}
           </span>
         </div>
+        {level !== undefined && (
+          <div className="level-display">
+            <span className="level-label">Level:</span>
+            <span className="level-value">
+              {isLoading ? '...' : level}
+            </span>
+          </div>
+        )}
         <div 
           className={`status-indicator ${statusIndicator} ${isClickable ? 'clickable' : ''}`}
           onClick={isClickable ? onStatusClick : undefined}

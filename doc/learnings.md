@@ -67,3 +67,33 @@ if (levelUp) {
 - User XP is modified in-place, persisted by existing cache update calls
 - Level-up info includes both old/new levels for rich notification messages
 - Notifications use existing MessageCache infrastructure with `P:` prefix for positive messages
+
+## Hook Extension Pattern for Related Data
+
+**Discovered by**: Knight  
+**Context**: When implementing UI display for XP/Level (Goal 5), had to decide between extending useIron hook vs creating separate useXpLevel hook  
+**Details**:
+
+When adding new data fields that come from the same API endpoint as existing hook data:
+- **Prefer extending the existing hook** rather than creating a new one
+- **Benefits**:
+  - Reduces API calls (one poll serves multiple data types)
+  - Shares polling mechanism, retry logic, error handling
+  - Maintains data consistency (iron and XP are always in sync)
+  - Reduces component complexity (one hook call instead of multiple)
+- **When to create a separate hook instead**:
+  - Data comes from different API endpoint
+  - Different polling frequencies needed
+  - Independent error handling required
+  - Data updates are triggered by different events
+
+**Implementation approach** (Goal 5):
+```typescript
+// Extended useIron to return XP data alongside iron data
+const { ironAmount, xp, level, xpForNextLevel, isLoading, error } = useIron(5000);
+// vs creating separate hooks requiring multiple API calls:
+// const { ironAmount } = useIron(5000);
+// const { xp, level } = useXpLevel(5000); // would duplicate polling and API calls
+```
+
+**Result**: Single unified hook provides all user stats with consistent state updates and minimal API overhead.
