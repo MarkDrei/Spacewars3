@@ -80,6 +80,37 @@ export async function createAuthenticatedSession(usernamePrefix?: string): Promi
 }
 
 /**
+ * Helper to create an authenticated session with username info
+ * Returns both the session cookie and username
+ */
+export async function createAuthenticatedSessionWithUser(usernamePrefix?: string): Promise<{ sessionCookie: string; username: string }> {
+  const username = randomUsername(usernamePrefix);
+  const password = 'testpass123';
+  
+  // Register user
+  const registerRequest = createRequest('http://localhost:3000/api/register', 'POST', {
+    username,
+    password
+  });
+  const registerResponse = await registerPOST(registerRequest);
+  expect(registerResponse.status).toBe(200);
+  
+  // Login user
+  const loginRequest = createRequest('http://localhost:3000/api/login', 'POST', {
+    username,
+    password
+  });
+  const loginResponse = await loginPOST(loginRequest);
+  expect(loginResponse.status).toBe(200);
+  
+  // Extract session cookie
+  const sessionCookie = extractSessionCookie(loginResponse);
+  expect(sessionCookie).toBeTruthy();
+  
+  return { sessionCookie: sessionCookie!, username };
+}
+
+/**
  * Helper to create a user without logging in
  * Returns the username and password for manual login if needed
  */
