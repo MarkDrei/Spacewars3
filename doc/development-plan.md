@@ -1,15 +1,15 @@
-# Development Plan: XP and Level System
+# Development Plan: Time Multiplier (Turbo Mode)
 
 ## Vision
 
-Als Spieler möchte ich ein XP- und Level-System haben, das meinen Fortschritt durch das Bauen von Ausrüstung und das Erforschen von Technologien belohnt, damit ich eine sichtbare Progression und Erfolgserlebnisse im Spiel habe.
+As a game admin, I want to activate a time multiplier (e.g. 10x for 5 minutes) that accelerates all game-time-based calculations — including iron production, research, builds, defense regeneration, battle cooldowns, and physics — so that I can test end-game progression quickly without waiting real-time durations. The multiplier is stored in-memory on the server (no DB), synchronized to clients via the existing `/api/user-stats` polling, and controlled through the admin page UI.
 
 ## Technology Stack
 
 - **Framework**: Next.js 15 (App Router)
 - **Language**: TypeScript (strict mode)
 - **Runtime**: Node.js
-- **Database**: PostgreSQL
+- **Database**: PostgreSQL (not used for multiplier storage)
 - **Testing**: Vitest with jsdom
 - **Session**: iron-session with HTTP-only cookies
 - **Module System**: ES Modules exclusively (`import`/`export` only, no CommonJS)
@@ -17,992 +17,527 @@ Als Spieler möchte ich ein XP- und Level-System haben, das meinen Fortschritt d
 
 ## Project Structure
 
-- `src/app/` - Next.js App Router pages and API routes
-- `src/lib/client/` - Client-side code (hooks, services, game engine)
-- `src/lib/server/` - Server-side code (database, typed locks, cache)
-- `src/shared/` - Shared types and utilities
-- `src/__tests__/` - Test files
-- `doc/architecture/` - Arc42 architecture documentation
+- `src/app/` — Next.js App Router pages and API routes
+- `src/lib/client/` — Client-side code (hooks, services, game engine)
+- `src/lib/server/` — Server-side code (database, typed locks, cache)
+- `src/shared/` — Shared types and utilities
+- `src/__tests__/` — Test files
+- `doc/architecture/` — Arc42 architecture documentation
+
+---
 
 ## Goals
 
-### Goal 1: Database Schema for XP Storage
+### Goal 1: Server-Side TimeMultiplierService
 
-**Description**: Extend the users table to store XP values and create a migration to add this column to existing databases.
+**Description**: Create a lightweight in-memory singleton service that stores the current time multiplier, its expiration time, and provides a clean API for reading and setting the multiplier. This is the single source of truth for the multiplier value.
 
-**Inputs**: Current database schema, existing migration system
-**Outputs**: Migration file, updated schema definition
-**Quality Requirements**: Migration must be idempotent, reversible, and safe for production data
+**Quality Requirements**: Must auto-expire after the configured duration. Must be safe for concurrent access (single-threaded Node.js, so no locking needed). Must not persist to DB. Must be testable (resettable for tests).
 
-#### Task 1.1: Create Database Migration
+#### Task 1.1: Create TimeMultiplierService singleton
 
-**Action**: Add migration version 8 to migrations.ts to add XP column
+**Action**: Create a new module with a `TimeMultiplierService` class/object that holds multiplier state in memory.
 
 **Files**:
+- `src/lib/server/timeMultiplier.ts` — New file
 
-- `src/lib/server/migrations.ts` - Add new migration after version 7 (line ~122)
+**Design**:
+- Export a singleton instance (similar pattern to other singletons in the project)
+- State: `multiplier: number` (default 1), `expiresAt: number | null` (Unix ms), `activatedAt: number | null` (Unix ms)
+- `getMultiplier(): number` — returns current multiplier, auto-resets to 1 if expired
+- `setMultiplier(value: number, durationMinutes: number): void` — sets multiplier with expiration
+- `getStatus(): { multiplier: number, expiresAt: number | null, activatedAt: number | null, remainingSeconds: number }` — for admin UI
+- `reset(): void` — for testing, resets to default state
+- Validation: multiplier must be >= 1, durationMinutes must be > 0
 
-**Details**:
+#### Task 1.2: Unit tests for TimeMultiplierService
 
-- Migration version: 8
-- Migration name: 'add_xp_system'
-- Up statement: `ALTER TABLE users ADD COLUMN IF NOT EXISTS xp INTEGER NOT NULL DEFAULT 0`
-- Down statement: `ALTER TABLE users DROP COLUMN IF EXISTS xp`
-
-**Quality Requirements**:
-
-- Use IF NOT EXISTS/IF EXISTS for idempotency
-- Test migration on clean database and existing database
-
-**Status**: ✅ COMPLETED
-
-**Implementation Summary**: Added migration version 8 to migrations.ts with XP column definition and created applyXpSystemMigration function to apply the migration idempotently.
-
-**Files Modified/Created**:
-
-- `src/lib/server/migrations.ts` - Added migration version 8 with XP column definition (lines 128-137), added applyXpSystemMigration function (lines 459-488), and integrated migration call in applyTechMigrations (line 244)
-- `src/__tests__/lib/xp-migration.test.ts` - Created comprehensive test suite with 10 tests covering migration definition, idempotency, column properties, and data integrity
-
-**Deviations from Plan**: None - implementation follows plan exactly
-
-**Arc42 Updates**: None required - this is a database schema extension, not an architectural change
-
-**Test Results**: ✅ All tests passing (10/10 migration tests, 573 total tests passing), no TypeScript errors, no ESLint errors
-
-**Review Status**: ✅ APPROVED
-**Reviewer**: Medicus
-**Review Notes**: Excellent implementation. Migration follows established patterns perfectly, tests are comprehensive and validate actual behavior (not just coverage), and code quality is high. The idempotent design with IF NOT EXISTS/IF EXISTS ensures safe production deployment. Test suite validates migration definition, idempotency, column properties (type, default, nullability), and data integrity for both existing and new users.
-
-
-#### Task 1.2: Update Schema Definition
-
-**Action**: Add XP column to CREATE_USERS_TABLE constant for new database initialization
+**Action**: Write comprehensive tests for the service.
 
 **Files**:
+- `src/__tests__/lib/timeMultiplier.test.ts` — New file
 
-- `src/lib/server/schema.ts` - Update CREATE_USERS_TABLE (line ~5-46)
+**Test cases**:
+- `getMultiplier_noMultiplierSet_returns1`
+- `setMultiplier_validValues_storesMultiplierAndExpiration`
+- `getMultiplier_afterExpiry_returns1`
+- `getMultiplier_beforeExpiry_returnsSetValue`
+- `getStatus_activeMultiplier_returnsCorrectRemainingSeconds`
+- `setMultiplier_invalidValues_throwsOrRejectsGracefully`
+- `reset_afterSet_returns1`
 
-**Details**:
+---
 
-- Add line: `xp INTEGER NOT NULL DEFAULT 0,`
-- Position: After `iron INTEGER NOT NULL DEFAULT 100,`
+### Goal 2: Apply Multiplier to Server-Side Game Logic
 
-**Status**: ✅ COMPLETED
+**Description**: Integrate the time multiplier into all server-side time-based calculations so that game progression is accelerated. Real timestamps (messages, DB sync, auditing) remain unaffected.
 
-**Implementation Summary**: Added `xp INTEGER NOT NULL DEFAULT 0` column to CREATE_USERS_TABLE constant in schema.ts, positioned after the iron column for logical grouping of user resources.
+**Inputs**: `TimeMultiplierService.getMultiplier()` value
+**Quality Requirements**: No changes to real-time timestamps. All delta-based calculations must be multiplied. Build queue must adjust completion estimates. Battle cooldowns must be shortened.
 
-**Files Modified/Created**:
+#### Sub-Goal 2.1: Accelerate User Stats (Iron + Research + Defense Regen)
 
-- `src/lib/server/schema.ts` - Added xp column definition to CREATE_USERS_TABLE at line 11
-- `src/__tests__/lib/xp-schema-definition.test.ts` - Created comprehensive test suite with 7 tests covering SQL syntax, column positioning, database initialization, default values, and consistency with migration definition
+##### Task 2.1.1: Multiply elapsed time in User.updateStats()
 
-**Deviations from Plan**: None - implementation follows plan exactly
-
-**Arc42 Updates**: None required - this is a schema definition update, not an architectural change
-
-**Test Results**: ✅ All tests passing (579/580 tests passing including 7 new XP schema tests), no TypeScript errors, no ESLint errors
-
-#### Task 1.3: Update UserRow Interface
-
-**Action**: Add XP property to database row type definition
-
-**Files**:
-
-- `src/lib/server/user/userRepo.ts` - Update UserRow interface (line ~14-46)
-
-**Details**:
-
-- Add property: `xp: number;`
-
-**Status**: ✅ COMPLETED
-
-**Implementation Summary**: Added `xp: number` property to UserRow interface at line 19, positioned after iron for logical grouping of user resource properties.
-
-**Files Modified/Created**:
-
-- `src/lib/server/user/userRepo.ts` - Added xp property to UserRow interface (line 19)
-- `src/__tests__/lib/userrow-interface.test.ts` - Created comprehensive integration tests with 5 tests covering database operations, default values, updates, and column verification
-- `src/__tests__/lib/userrow-type.test.ts` - Created type-level tests with 5 tests ensuring TypeScript type safety and interface compatibility
-
-**Deviations from Plan**: None - implementation follows plan exactly
-
-**Arc42 Updates**: None required - this is a type definition update to match the existing database schema
-
-**Test Results**: ✅ All tests passing (10 new tests, 589 total tests passing), no TypeScript errors, no ESLint errors
-
-**Review Status**: ✅ APPROVED
-**Reviewer**: Medicus
-**Review Notes**: Excellent implementation. The UserRow interface update is minimal, focused, and follows the Single Responsibility Principle perfectly. Tests are comprehensive and validate actual behavior (database operations, type safety, default values) rather than just chasing coverage. The interface change properly positions xp after iron for logical grouping. Implementation is consistent with existing patterns and requires no additional changes. The separation of interface update (Task 1.3) from User class update (Task 2.1) demonstrates good architectural planning.
-
-### Goal 2: Domain Logic for XP and Levels
-
-**Description**: Implement business logic in the User class to manage XP, calculate levels, and provide level progression information.
-
-**Inputs**: XP progression formula (Level n needs n×1000 XP more than Level n-1)
-**Outputs**: User class methods for XP management and level calculation
-**Quality Requirements**: Level calculation must be efficient, consistent, and handle edge cases (0 XP, very high XP)
-
-#### Task 2.1: Add XP Property to User Class
-
-**Action**: Extend User class with XP property and update constructor
+**Action**: Import `TimeMultiplierService` and multiply the `elapsed` delta by the current multiplier before using it for iron calculation and research progress.
 
 **Files**:
+- `src/lib/server/user/user.ts` — Modify `updateStats()` method (line ~193)
 
-- `src/lib/server/user/user.ts` - Add property at line ~33, update constructor at line ~36
+**Change detail**:
+- After `const elapsed = now - this.last_updated`, add: `const gameElapsed = elapsed * TimeMultiplierService.getMultiplier()`
+- Replace all uses of `elapsed` with `gameElapsed` for iron calculation and `updateTechTree()` calls
+- `this.last_updated = now` stays as real time (anchor for next delta)
 
-**Details**:
+##### Task 2.1.2: Multiply elapsed time in User.updateDefenseValues()
 
-- Add property: `xp: number;`
-- Add constructor parameter: `xp: number`
-- Initialize in constructor: `this.xp = xp;`
-
-**Status**: ✅ COMPLETED
-
-**Implementation Summary**: Added XP property to User class at line 14, added xp parameter to constructor at line 42, and initialized xp in constructor body at line 61. Updated userFromRow to extract xp from database rows (line 102 in userRepo.ts) and saveUserToDb to persist xp changes (line 226 in userRepo.ts).
-
-**Files Modified/Created**:
-
-- `src/lib/server/user/user.ts` - Added xp property (line 14), constructor parameter (line 42), and initialization (line 61)
-- `src/lib/server/user/userRepo.ts` - Updated userFromRow to extract xp (line 102), updated saveUserToDb to persist xp (lines 225-226), updated createUser calls (lines 182, 215)
-- `src/__tests__/lib/user-domain.test.ts` - Updated User constructor calls to include xp parameter (3 locations)
-- `src/__tests__/lib/iron-capacity.test.ts` - Updated User constructor call to include xp parameter
-- `src/__tests__/lib/user-collection-rewards.test.ts` - Updated User constructor call to include xp parameter
-- `src/__tests__/lib/user-xp-property.test.ts` - Created comprehensive unit tests for XP property (6 tests)
-- `src/__tests__/lib/user-xp-persistence.test.ts` - Created database integration tests for XP persistence (7 tests)
-
-**Deviations from Plan**: None - implementation follows plan exactly. XP property positioned after iron for logical grouping of user resources.
-
-**Arc42 Updates**: None required - this is a domain model extension, not an architectural change
-
-**Test Results**: ✅ All tests passing (602 tests total, including 13 new XP tests), no TypeScript errors, no ESLint errors (only pre-existing warnings in unrelated files)
-
-**Review Status**: ✅ APPROVED
-**Reviewer**: Medicus
-**Review Notes**: Excellent implementation following SOLID principles. XP property integration is clean, consistent with iron property pattern, and properly positioned. All User constructor calls updated correctly (including test files). userFromRow/saveUserToDb persistence logic follows established patterns with proper default handling (row.xp || 0). Tests are comprehensive and validate actual behavior: property initialization, in-place modification, isolation from other properties, database persistence, default values, large values, and incremental updates. No code duplication detected. Implementation is architecturally aligned and maintainable. Parameter ordering in saveUserToDb maintained correctly (iron, xp, last_updated...). No Arc42 updates required as documented. Ready for next task.
-
-#### Task 2.2: Implement getLevel() Method
-
-**Action**: Calculate player level from total XP using cumulative progression formula
+**Action**: Apply multiplier to defense regeneration elapsed time.
 
 **Files**:
+- `src/lib/server/user/user.ts` — Modify `updateDefenseValues()` method (line ~249)
 
-- `src/lib/server/user/user.ts` - Add method after existing calculation methods (line ~73-95)
+**Change detail**:
+- After `const elapsed = now - this.defenseLastRegen`, add: `const gameElapsed = elapsed * TimeMultiplierService.getMultiplier()`
+- Use `gameElapsed` instead of `elapsed` for regen: `this.hullCurrent + gameElapsed`
+- `this.defenseLastRegen = now` stays as real time
 
-**Details**:
+##### Task 2.1.3: Tests for accelerated user stats
 
-```typescript
-/**
- * Calculate player level from total XP.
- * Level 1 = 0 XP
- * Level 2 = 1,000 XP
- * Level 3 = 4,000 XP (1000 + 3000)
- * Level 4 = 10,000 XP (1000 + 3000 + 6000)
- * Pattern: Each level requires 1000 more XP than the previous increment
- */
-getLevel(): number {
-  let level = 1;
-  let totalXpNeeded = 0;
-  let xpForNextLevel = 1000;
+**Action**: Add tests verifying multiplier affects iron production and defense regen rates.
 
-  while (this.xp >= totalXpNeeded + xpForNextLevel) {
-    totalXpNeeded += xpForNextLevel;
-    xpForNextLevel += 1000;
-    level++;
-  }
+**Files**:
+- `src/__tests__/lib/timeMultiplier-user.test.ts` — New file
 
-  return level;
-}
+**Test cases**:
+- `updateStats_withMultiplier10_awardsIronAt10xRate`
+- `updateStats_withMultiplier10_progressesResearchAt10xRate`
+- `updateDefenseValues_withMultiplier10_regeneratesAt10xRate`
+- `updateStats_multiplierExpired_usesNormalRate`
+
+#### Sub-Goal 2.2: Accelerate Build Queue
+
+##### Task 2.2.1: Adjust processCompletedBuilds() completion check
+
+**Action**: Modify the completion check to account for the time multiplier by checking `(now - buildStartSec) * multiplier >= buildDuration` instead of `now >= buildStartSec + buildDuration`.
+
+**Files**:
+- `src/lib/server/techs/TechService.ts` — Modify `processCompletedBuilds()` (line ~172)
+
+**Change detail**:
+- Import `TimeMultiplierService`
+- Current logic: `const completionTime = currentBuildStart! + buildTime; if (now >= completionTime)`
+- New logic: `if ((now - currentBuildStart!) * TimeMultiplierService.getMultiplier() >= buildTime)`
+- When build completes and next item starts, set `user.buildStartSec = now` (real time) — this correctly anchors the next build
+
+##### Task 2.2.2: Adjust getBuildQueue() completion time estimates
+
+**Action**: Modify `getBuildQueue()` so the returned `completionTime` values account for the multiplier, ensuring client countdowns are accurate.
+
+**Files**:
+- `src/lib/server/techs/TechService.ts` — Modify `getBuildQueue()` (line ~83)
+
+**Change detail**:
+- Import `TimeMultiplierService`
+- Current: `completionTime = cumulativeTime + buildTime`
+- New: `const effectiveBuildTime = buildTime / TimeMultiplierService.getMultiplier()`
+- `completionTime = cumulativeTime + effectiveBuildTime`
+- This makes client see shorter remaining times that match actual accelerated completion
+
+**Note on mid-build multiplier changes**: If multiplier changes during an active build, completion estimates will jump. This is acceptable for an admin/debug feature. Activating 10x may cause in-progress builds to complete instantly if enough real time has already passed. Deactivating resets to normal speed with full remaining real duration. This is documented behavior, not a bug.
+
+##### Task 2.2.3: Tests for accelerated build queue
+
+**Action**: Test that builds complete faster with multiplier and that queue estimates are correct.
+
+**Files**:
+- `src/__tests__/lib/timeMultiplier-builds.test.ts` — New file
+
+**Test cases**:
+- `processCompletedBuilds_withMultiplier10_completesIn1TenthTime`
+- `getBuildQueue_withMultiplier10_returnsAdjustedCompletionTimes`
+- `processCompletedBuilds_multiplierExpired_usesNormalDuration`
+
+#### Sub-Goal 2.3: Accelerate Battle Cooldowns
+
+##### Task 2.3.1: Shorten weapon cooldowns by multiplier
+
+**Action**: When setting `nextReadyTime` after a weapon fires, divide the cooldown by the multiplier.
+
+**Files**:
+- `src/lib/server/battle/battleScheduler.ts` — Modify `fireWeapon()` section where cooldown is set
+
+**Change detail**:
+- Import `TimeMultiplierService`
+- Current: `const nextReadyTime = currentTime + (weaponData.cooldown || 5)`
+- New: `const effectiveCooldown = Math.max(1, Math.ceil((weaponData.cooldown || 5) / TimeMultiplierService.getMultiplier()))`
+- `const nextReadyTime = currentTime + effectiveCooldown`
+- Minimum cooldown of 1 second to prevent zero-division issues
+
+##### Task 2.3.2: Tests for accelerated battle cooldowns
+
+**Action**: Test that weapon cooldowns are shortened with multiplier.
+
+**Files**:
+- `src/__tests__/lib/timeMultiplier-battles.test.ts` — New file
+
+**Test cases**:
+- `fireWeapon_withMultiplier10_setsCooldownToOneTenth`
+- `fireWeapon_multiplierExpired_usesNormalCooldown`
+
+#### Sub-Goal 2.4: Accelerate Physics (Object Movement)
+
+##### Task 2.4.1: Add multiplier parameter to shared physics functions
+
+**Action**: Add an optional `timeMultiplier` parameter to `updateObjectPosition()`, `updateAllObjectPositions()`, `updateObjectPositionWithTimeCorrection()`, and `updateAllObjectPositionsWithTimeCorrection()`. Default to 1 for backward compatibility.
+
+**Files**:
+- `src/shared/src/physics.ts` — Modify all 4 functions
+
+**Change detail**:
+- `updateObjectPosition(obj, currentTime, worldBounds, factor=50, timeMultiplier=1)`: multiply `elapsedMs` by `timeMultiplier`
+- `updateAllObjectPositions(objects, currentTime, worldBounds, factor=50, timeMultiplier=1)`: pass multiplier through
+- Same for `WithTimeCorrection` variants: multiply `correctedElapsedMs` by `timeMultiplier`
+- All existing callers pass no multiplier argument → default 1 → no behavior change
+
+##### Task 2.4.2: Pass multiplier on server-side physics calls
+
+**Action**: When the server updates physics, pass the current multiplier from `TimeMultiplierService`.
+
+**Files**:
+- `src/lib/server/world/worldCache.ts` — Modify `getWorldFromCache()` (line ~137) to pass multiplier
+- `src/lib/server/world/world.ts` — Modify `updatePhysics()` to accept and forward multiplier
+- `src/app/api/world/route.ts` — Modify to pass multiplier when calling `updatePhysics()`
+
+**Change detail**:
+- `world.updatePhysics(context, currentTime)` → `world.updatePhysics(context, currentTime, TimeMultiplierService.getMultiplier())`
+- `updatePhysics` passes multiplier to `updateAllObjectPositions()`
+
+##### Task 2.4.3: Tests for accelerated physics
+
+**Action**: Test that physics functions correctly apply the time multiplier.
+
+**Files**:
+- `src/__tests__/shared/physics-multiplier.test.ts` — New file (or add to existing physics tests)
+
+**Test cases**:
+- `updateObjectPosition_withMultiplier10_movesObjectTenTimesAsFar`
+- `updateObjectPosition_withMultiplier1_behavesUnchanged`
+
+---
+
+### Goal 3: Admin API Endpoint
+
+**Description**: Create a REST API endpoint for reading and setting the time multiplier, restricted to admin users.
+
+**Quality Requirements**: Admin-only access (users 'a' and 'q'). Proper error handling. JSON request/response.
+
+#### Task 3.1: Create GET/POST /api/admin/time-multiplier endpoint
+
+**Action**: Create a new API route that handles reading (GET) and setting (POST) the time multiplier.
+
+**Files**:
+- `src/app/api/admin/time-multiplier/route.ts` — New file
+
+**GET response**:
+```
+{ multiplier: number, expiresAt: number | null, activatedAt: number | null, remainingSeconds: number }
 ```
 
-**Quality Requirements**: Handle XP = 0 returns level 1, efficient O(√n) complexity
-
-**Status**: ✅ COMPLETED
-**Implementation Summary**: Implemented getLevel() method that calculates player level from total XP using triangular number progression (each level requires the next triangular number * 1000 XP).
-**Files Modified/Created**:
-- `src/lib/server/user/user.ts` - Added getLevel() method at lines 96-124
-- `src/__tests__/lib/user-level-system.test.ts` - Created comprehensive test suite with 42 tests covering all three methods (getLevel, getXpForNextLevel, addXp) and integration tests
-**Deviations from Plan**: Corrected the progression formula to use triangular numbers (k*(k+1)/2) instead of simple linear progression. This matches the intended pattern where "each level requires 1000 more XP than the previous increment" (increment for level N = triangular number N-1).
-**Arc42 Updates**: None required
-**Test Results**: ✅ All tests passing (644 tests), no TypeScript errors, no linting errors
-
-#### Task 2.3: Implement getXpForNextLevel() Method
-
-**Action**: Calculate total XP required to reach the next level
-
-**Files**:
-
-- `src/lib/server/user/user.ts` - Add method after getLevel()
-
-**Details**:
-
-```typescript
-/**
- * Get the total XP required to reach the next level.
- * Returns the XP threshold, not the remaining XP needed.
- */
-getXpForNextLevel(): number {
-  const currentLevel = this.getLevel();
-  const nextLevel = currentLevel + 1;
-
-  // Calculate total XP needed for next level
-  // Formula: sum from i=1 to n-1 of (i × 1000)
-  return (nextLevel * (nextLevel - 1) * 1000) / 2;
-}
+**POST request body**:
+```
+{ multiplier: number, durationMinutes: number }
 ```
 
-**Status**: ✅ COMPLETED
-**Implementation Summary**: Implemented getXpForNextLevel() method that calculates the total XP threshold for reaching the next level by summing triangular numbers.
-**Files Modified/Created**:
-- `src/lib/server/user/user.ts` - Added getXpForNextLevel() method at lines 126-139
-- Tests included in user-level-system.test.ts (see Task 2.2)
-**Deviations from Plan**: Updated formula to correctly calculate sum of triangular numbers instead of simple arithmetic progression.
-**Arc42 Updates**: None required
-**Test Results**: ✅ All tests passing (see Task 2.2 for full results)
-
-#### Task 2.4: Implement addXp() Method
-
-**Action**: Add XP to user with level-up notification support
-
-**Files**:
-
-- `src/lib/server/user/user.ts` - Add method after addIron() (line ~107)
-
-**Details**:
-
-```typescript
-/**
- * Add XP to the user.
- * @param amount Amount of XP to add (must be positive)
- * @returns Object with newLevel if level increased, undefined otherwise
- */
-addXp(amount: number): { leveledUp: boolean; oldLevel: number; newLevel: number } | undefined {
-  if (amount <= 0) return undefined;
-
-  const oldLevel = this.getLevel();
-  this.xp += amount;
-  const newLevel = this.getLevel();
-
-  if (newLevel > oldLevel) {
-    return { leveledUp: true, oldLevel, newLevel };
-  }
-
-  return undefined;
-}
+**POST response**:
+```
+{ success: true, multiplier: number, expiresAt: number, durationMinutes: number }
 ```
 
-**Quality Requirements**: Return level-up info for notification system, handle negative amounts gracefully
+**Implementation**:
+- Import session/auth pattern from existing admin route (`src/app/api/admin/database/route.ts`)
+- Check `session.username === 'a' || session.username === 'q'`
+- GET: return `TimeMultiplierService.getStatus()`
+- POST: validate body, call `TimeMultiplierService.setMultiplier(value, duration)`, return confirmation
 
-**Status**: ✅ COMPLETED
-**Implementation Summary**: Implemented addXp() method that adds XP to user and returns level-up information if the player levels up.
-**Files Modified/Created**:
-- `src/lib/server/user/user.ts` - Added addXp() method at lines 159-176
-- Tests included in user-level-system.test.ts (see Task 2.2)
-**Deviations from Plan**: None - implementation matches plan exactly
-**Arc42 Updates**: None required
-**Test Results**: ✅ All tests passing (see Task 2.2 for full results)
+#### Task 3.2: Tests for admin time-multiplier API
 
-#### Task 2.5: Update userFromRow Function (Cache Internal)
-
-**Action**: Extract XP from database row when creating User objects (used internally by UserCache)
+**Action**: Test the API endpoint for auth, GET, POST, validation.
 
 **Files**:
+- `src/__tests__/api/time-multiplier-api.test.ts` — New file
 
-- `src/lib/server/user/userRepo.ts` - Update userFromRow function (line ~48-109)
+**Test cases**:
+- `GET_authenticated_returnsCurrentStatus`
+- `POST_validInput_setsMultiplier`
+- `POST_invalidMultiplier_returns400`
+- `POST_unauthenticated_returns401`
+- `POST_nonAdmin_returns403`
+- `GET_afterExpiry_returnsMultiplier1`
 
-**Details**:
+---
 
-- Extract XP: `const xp = row.xp;`
-- Add to User constructor call (line ~97): Pass `xp` parameter
+### Goal 4: Client-Side Multiplier Synchronization
 
-**Note**: This function is called internally by UserCache.loadUserFromDb() - never call directly
+**Description**: Synchronize the time multiplier from server to client via the existing `/api/user-stats` polling mechanism. Store the multiplier in a shared client-side module so all hooks can access it without additional API calls.
 
-#### Task 2.6: Update saveUserToDb Function (Cache Internal)
+#### Sub-Goal 4.1: Server-Side — Add Multiplier to user-stats Response
 
-**Action**: Persist XP value when saving User to database (used internally by UserCache)
+##### Task 4.1.1: Return timeMultiplier in /api/user-stats
 
-**Files**:
-
-- `src/lib/server/user/userRepo.ts` - Update UPDATE statement (line ~235)
-
-**Details**:
-
-- Add to SET clause: `xp = $N,` (where N is next parameter number)
-- Add to VALUES array: `user.xp`
-
-**Quality Requirements**: Maintain parameter order consistency
-
-**Note**: This function is called internally by UserCache.persistDirtyUsers() - never call directly. All user updates must go through `userCache.updateUserInCache(context, user)`
-
-### Goal 3: XP Rewards for Build Completion
-
-**Description**: Award XP when builds complete in the factory system, with formula: XP = iron_cost / 100
-
-**Inputs**: Completed build item, iron cost from TechFactory
-**Outputs**: XP added to user, level-up notification if applicable
-**Quality Requirements**: XP awarded exactly once per build, notifications sent reliably
-
-#### Task 3.1: Add XP Reward in applyCompletedBuild
-
-**Action**: Calculate and award XP based on iron cost of completed build
+**Action**: Add `timeMultiplier` field to the user-stats API response.
 
 **Files**:
+- `src/app/api/user-stats/route.ts` — Modify `processUserStats()` response
 
-- `src/lib/server/techs/TechService.ts` - Update applyCompletedBuild method (line ~233-255)
+**Change detail**:
+- Import `TimeMultiplierService`
+- Add to `responseData`: `timeMultiplier: TimeMultiplierService.getMultiplier()`
+- Response becomes: `{ iron, ironPerSecond, last_updated, maxIronCapacity, xp, level, xpForNextLevel, timeMultiplier }`
 
-**Details**:
+#### Sub-Goal 4.2: Client-Side — Store and Distribute Multiplier
 
-- Location: After incrementing tech count (line ~250)
-- Get spec: `const spec = TechFactory.getTechSpec(build.itemKey, build.itemType);`
-- Check spec exists
-- Calculate XP: `const xpReward = Math.floor(spec.ironCost / 100);`
-- Award XP: `const levelUp = user.addXp(xpReward);`
-- If leveled up, send notification
-- **CRITICAL**: User is already modified in memory, no explicit cache update needed here (processCompletedBuilds already calls updateUserInCache at line ~231)
+##### Task 4.2.1: Create client-side timeMultiplier module
 
-**Quality Requirements**: Use Math.floor for consistent integer XP values
-
-**Important**: User object is modified in place, persistence handled by existing `updateUserInCache()` call in `processCompletedBuilds()`
-
-**Status**: ✅ COMPLETED
-
-**Implementation Summary**: Modified applyCompletedBuild to calculate XP rewards based on iron cost (cost/100) and award XP to user, returning level-up information when applicable.
-
-**Files Modified/Created**:
-
-- `src/lib/server/techs/TechService.ts` - Modified applyCompletedBuild to return level-up info and calculate/award XP (lines 246-277)
-- `src/__tests__/lib/TechService.test.ts` - Updated mock user to include addXp method (line 165)
-- `src/__tests__/lib/build-xp-rewards.test.ts` - Added comprehensive tests for XP rewards (10 tests covering various scenarios)
-
-**Deviations from Plan**: Changed applyCompletedBuild return type from void to return level-up information, allowing processCompletedBuilds to handle notifications. This is cleaner than the original plan which suggested handling notifications inside applyCompletedBuild.
-
-**Arc42 Updates**: None required (implementation detail within existing architecture)
-
-**Test Results**: ✅ All tests passing (664 total tests), 10 new tests specifically for build XP rewards, no linting errors
-
-**Review Status**: ✅ APPROVED
-**Reviewer**: Medicus
-**Review Notes**: Exemplary implementation with excellent design quality. Clean separation of concerns, well-tested with comprehensive test coverage, establishes reusable XP reward pattern for future implementations. Type-safe design, proper error handling, and strong alignment with architecture principles.
-
-#### Task 3.2: Send Level-Up Notification for Builds
-
-**Action**: Notify user when build completion causes level increase
+**Action**: Create a simple module-level store for the latest known multiplier. Other hooks import and read from it.
 
 **Files**:
+- `src/lib/client/timeMultiplier.ts` — New file
 
-- `src/lib/server/techs/TechService.ts` - Add notification in processCompletedBuilds (line ~210-220)
+**Design**:
+- `let currentMultiplier = 1`
+- `export function getTimeMultiplier(): number` — returns current value
+- `export function setTimeMultiplier(value: number): void` — called by useIron on each poll
+- Simple module state — no React context needed (updates propagate at next interpolation tick)
 
-**Details**:
+##### Task 4.2.2: Update useIron hook to store multiplier
 
-```typescript
-// After applyCompletedBuild call
-if (levelUp) {
-  await this.messageCacheInstance.createMessage(
-    ctx,
-    userId,
-    `P: 🎉 Level Up! You reached level ${levelUp.newLevel}! (+${xpReward} XP from build)`,
-  );
-}
-```
-
-**Inputs**: levelUp object from addXp, xpReward amount
-**Quality Requirements**: Use `P:` prefix for positive (green) message
-
-**Important**: Notification must be sent BEFORE `updateUserInCache()` call to ensure message is created within same transaction context
-
-**Status**: ✅ COMPLETED
-
-**Implementation Summary**: Added level-up notification logic in processCompletedBuilds that sends a celebratory message when a build completion causes the user to level up.
-
-**Files Modified/Created**:
-
-- `src/lib/server/techs/TechService.ts` - Modified processCompletedBuilds to capture level-up result from applyCompletedBuild and send notification (lines 203, 216-222)
-- `src/__tests__/lib/build-xp-rewards.test.ts` - Tests include verification of level-up notifications
-
-**Deviations from Plan**: The notification is sent using the same lock context (ctx) as the build completion notification, which works correctly since MessageCache.createMessage handles its own locking internally.
-
-**Arc42 Updates**: None required
-
-**Test Results**: ✅ All tests passing, level-up notification tested in multiple scenarios
-
-**Review Status**: ✅ APPROVED
-**Reviewer**: Medicus
-**Review Notes**: Level-up notification implementation follows established patterns, uses correct message format with P: prefix and celebration emoji, properly integrated with existing MessageCache infrastructure.
-
-### Goal 4: XP Rewards for Research Completion
-
-**Description**: Award XP when research completes in the tech tree system, with formula: XP = iron_cost / 25
-
-**Inputs**: Completed research type, iron cost for that research level
-**Outputs**: XP added to user, level-up notification if applicable
-**Quality Requirements**: XP awarded exactly once per research, correct cost calculation for completed level
-
-#### Task 4.1: Modify updateTechTree to Return Completion Info
-
-**Action**: Track and return information about research completion for XP calculation
+**Action**: When `useIron` receives the user-stats response, extract `timeMultiplier` and store it in the client module.
 
 **Files**:
+- `src/lib/client/hooks/useIron/useIron.ts` — Modify `fetchIron()` callback
+- `src/lib/client/services/userStatsService.ts` — Ensure response type includes `timeMultiplier`
 
-- `src/lib/server/techs/techtree.ts` - Update updateTechTree function (line ~680-794)
+**Change detail**:
+- After parsing `result`, call `setTimeMultiplier(result.timeMultiplier ?? 1)`
+- Also expose `timeMultiplier` from the hook return value for components that need it (e.g., admin page)
 
-**Details**:
+##### Task 4.2.3: Apply multiplier to iron prediction (client)
 
-- Change return type from `void` to `{ completed: boolean; type?: ResearchType; completedLevel?: number } | undefined`
-- Before incrementing level (line ~689): Store `const completedLevel = getResearchLevelFromTree(tree, tree.activeResearch.type);`
-- After incrementing level, before clearing activeResearch: `const completedType = tree.activeResearch.type;`
-- Return: `return { completed: true, type: completedType, completedLevel };`
-- At end of function if no completion: `return undefined;`
-
-**Quality Requirements**: Return level BEFORE increment for correct cost calculation
-
-**Status**: ✅ COMPLETED
-
-**Implementation Summary**: Modified updateTechTree to return research completion information including the type and level before increment, enabling accurate XP reward calculation.
-
-**Files Modified/Created**:
-- `src/lib/server/techs/techtree.ts` - Changed return type to return completion info, stored completedLevel before increment (line 693), returned completion info after level increment (line 782)
-- `src/__tests__/lib/research-xp-rewards.test.ts` - Added comprehensive tests for updateTechTree return values (6 tests covering various scenarios)
-
-**Deviations from Plan**: None - implementation follows plan exactly
-
-**Arc42 Updates**: None required - this is an internal function signature change
-
-**Test Results**: ✅ All tests passing (668 tests), no linting errors
-
-#### Task 4.2: Award XP in User.updateStats
-
-**Action**: Check for research completion, calculate XP reward, award XP, return level-up info for notification
+**Action**: Multiply `ironPerSecond` by the time multiplier in the client-side iron prediction formula.
 
 **Files**:
+- `src/lib/client/hooks/useIron/ironCalculations.ts` — Modify `calculatePredictedIron()`
 
-- `src/lib/server/user/user.ts` - Update updateStats method (line ~125-156)
+**Change detail**:
+- Add `timeMultiplier` parameter (default 1): `calculatePredictedIron(data, currentTime, timeMultiplier = 1)`
+- Formula: `predictedIron = serverAmount + (secondsElapsed * ironPerSecond * timeMultiplier)`
+- Caller in `useIron.ts` passes `getTimeMultiplier()` when calling
 
-**Details**:
+##### Task 4.2.4: Apply multiplier to defense interpolation (client)
 
-- Change return type to include level-up info: `{ levelUp?: { leveledUp: boolean; oldLevel: number; newLevel: number; xpReward: number; source: 'research' } }`
-- After updateTechTree call (line ~139): Store result `const researchResult = updateTechTree(techTree, elapsed);`
-- Check if research completed:
-
-```typescript
-let levelUpInfo = undefined;
-if (
-  researchResult?.completed &&
-  researchResult.type &&
-  researchResult.completedLevel !== undefined
-) {
-  const research = AllResearches[researchResult.type];
-  const cost = getResearchUpgradeCost(
-    research,
-    researchResult.completedLevel + 1,
-  );
-  const xpReward = Math.floor(cost / 25);
-  const levelUp = this.addXp(xpReward);
-
-  if (levelUp) {
-    levelUpInfo = { ...levelUp, xpReward, source: "research" as const };
-  }
-}
-
-return levelUpInfo;
-```
-
-**Inputs**: Research completion info, AllResearches catalog, getResearchUpgradeCost function
-**Quality Requirements**: Use completedLevel + 1 for correct cost (cost of the level just completed)
-
-**Important**: User object is modified in place. Caller (UserCache.getUserByIdWithLock) automatically calls `updateUserInCache()` after updateStats() returns, ensuring XP changes are persisted
-
-**Status**: ✅ COMPLETED
-
-**Implementation Summary**: Modified User.updateStats to capture research completion info, calculate XP reward based on research cost (cost/25), award XP via addXp(), and return level-up information for notifications.
-
-**Files Modified/Created**:
-- `src/lib/server/user/user.ts` - Added imports for AllResearches and getResearchUpgradeCost (line 5), changed updateStats return type to include levelUp info, captured researchResult from updateTechTree calls, calculated and awarded XP when research completes (lines 192-244)
-- `src/__tests__/lib/research-xp-rewards.test.ts` - Added 7 tests for updateStats XP awarding, including edge cases and integration tests
-
-**Deviations from Plan**: None - implementation follows plan exactly
-
-**Arc42 Updates**: None required - this is internal business logic enhancement
-
-**Test Results**: ✅ All tests passing (668 tests), no linting errors
-
-#### Task 4.3: Send Level-Up Notification for Research
-
-**Action**: Send notification when research completion causes level increase (handled at API route level)
+**Action**: Multiply `regenRate` by the time multiplier in the defense value interpolation.
 
 **Files**:
+- `src/lib/client/hooks/useDefenseValues.ts` — Modify `updateDisplayValues()` callback
 
-- API routes that call user.updateStats() (e.g., `/api/user-stats`, `/api/trigger-research`)
+**Change detail**:
+- Import `getTimeMultiplier` from client module
+- Change: `defense.current + (secondsElapsed * defense.regenRate)` → `defense.current + (secondsElapsed * defense.regenRate * getTimeMultiplier())`
 
-**Details**:
+##### Task 4.2.5: Apply multiplier to physics extrapolation (client)
 
-- After getting user from UserCache and before returning response:
-
-```typescript
-const user = await userCache.getUserByIdWithLock(context, userId);
-// updateStats is called internally by getUserByIdWithLock
-
-// Check if user leveled up (would need to track this)
-// For now, implement in Task 4.4 as alternative approach
-```
-
-**Quality Requirements**: Handle async notification, ensure context is available
-
-**Note**: Since updateStats() is called automatically by UserCache.getUserByIdWithLock(), we need an alternative approach. See Task 4.4 for polling-based notifications.
-
-#### Task 4.4: Add Research Level-Up Notification via Polling
-
-**Action**: Check for level changes during /api/user-stats polling and send notification
+**Action**: Pass the time multiplier to client-side physics functions for optimistic position updates.
 
 **Files**:
+- `src/lib/client/hooks/useWorldData.ts` — Modify `updateOptimisticPositions()` and `fetchWorldData()`
 
-- `src/app/api/user-stats/route.ts` - Add level-up detection
+**Change detail**:
+- Import `getTimeMultiplier` from client module
+- In `updateOptimisticPositions`: `updateAllObjectPositions(data.spaceObjects, now, data.worldSize, 50, getTimeMultiplier())`
+- In `fetchWorldData`: `updateAllObjectPositionsWithTimeCorrection(...args, 50, getTimeMultiplier())`
 
-**Details**:
+##### Task 4.2.6: Tests for client-side multiplier integration
 
-- Store previous level in user session or compare with client's last known level
-- Alternative: Add notification in UserCache.getUserByIdWithLock after updateStats
-- Send message via MessageCache when level increases
-
-```typescript
-const currentLevel = user.getLevel();
-// If level increased since last check, send notification
-if (levelIncreased) {
-  await messageCache.createMessage(
-    ctx,
-    userId,
-    `P: 🎉 Level Up! You reached level ${currentLevel}! (from research completion)`,
-  );
-}
-```
-
-**Quality Requirements**: Avoid duplicate notifications, track level changes reliably
-
-**Status**: ✅ COMPLETED
-
-**Implementation Summary**: Modified /api/user-stats route to capture level-up info from updateStats and send notification via MessageCache when research causes level increase.
-
-**Files Modified/Created**:
-- `src/app/api/user-stats/route.ts` - Added MessageCache import, captured updateResult from user.updateStats(), sent level-up notification if research triggered level increase using MessageCache.createMessage() with "P:" prefix for positive messages (lines 1-64)
-
-**Deviations from Plan**: Implemented notification sending in processUserStats function rather than tracking level changes manually. This approach is cleaner and leverages the level-up info already returned by updateStats().
-
-**Arc42 Updates**: None required - this is a feature enhancement to existing API route
-
-**Test Results**: ✅ All tests passing (668 tests), no linting errors
-
-**Note**: Task 4.3 was effectively merged into Task 4.4 as they represent the same functionality - sending notifications when research completion causes level-up. The implementation in the user-stats route handles both the detection and notification sending.
-
-**Note**: This is a simpler approach than modifying updateStats() to return notification info. Research level-ups will be detected on next user-stats poll (max 5 second delay).
-
-### Goal 5: Display XP and Level on Home Screen
-
-**Description**: Show player's current XP, level, and progress to next level on the home page
-
-**Inputs**: User XP and level from User class
-**Outputs**: UI component displaying XP/level information
-**Quality Requirements**: Updates reflect XP changes in real-time (via polling), responsive design
-
-#### Task 5.1: Update User Stats API Endpoint
-
-**Action**: Include XP and level in /api/user-stats response
+**Action**: Test client-side iron prediction and defense interpolation with multiplier.
 
 **Files**:
+- `src/__tests__/hooks/useIron-timeMultiplier.test.ts` — New file (or extend existing)
+- `src/__tests__/lib/timeMultiplier-client.test.ts` — New file for client module
 
-- `src/app/api/user-stats/route.ts` - Update responseData (line ~42-47)
+**Test cases**:
+- `calculatePredictedIron_withMultiplier10_predictsAt10xRate`
+- `calculatePredictedIron_withMultiplier1_behavesUnchanged`
+- `getTimeMultiplier_afterSet_returnsSetValue`
+- `getTimeMultiplier_default_returns1`
 
-**Details**:
+---
 
-- Add to responseData object:
+### Goal 5: Admin Page UI for Time Multiplier Control
 
-```typescript
-xp: user.xp,
-level: user.getLevel(),
-xpForNextLevel: user.getXpForNextLevel()
-```
+**Description**: Add a "Time Multiplier" control section to the admin page that shows the current multiplier status and allows activating/deactivating turbo mode.
 
-**Quality Requirements**: Include both raw XP and calculated values
+**Quality Requirements**: Clear display of active state, countdown, and controls. Consistent styling with existing admin page. Auto-refresh status.
 
-**Status**: ✅ COMPLETED
-**Implementation Summary**: Extended /api/user-stats response to include xp, level, and xpForNextLevel fields; updated UserStatsResponse interface in userStatsService.
-**Files Modified/Created**:
-- `src/app/api/user-stats/route.ts` - Added XP fields to response data
-- `src/lib/client/services/userStatsService.ts` - Updated UserStatsResponse interface with XP fields
-- `src/__tests__/api/user-stats-api.test.ts` - Updated tests to verify XP fields in response
-**Deviations from Plan**: None
-**Arc42 Updates**: None required
-**Test Results**: ✅ All tests passing (676 passed), TypeScript strict mode compliance
+#### Task 5.1: Add Time Multiplier UI section to admin page
 
-#### Task 5.2: Create or Update Hook for XP/Level Data
-
-**Action**: Either update useIron hook or create new useXpLevel hook to fetch XP data
-
-**Files (Option 1 - Update useIron)**:
-
-- `src/lib/client/hooks/useIron/useIron.ts` - Update to include XP data
-
-**Files (Option 2 - New hook)**:
-
-- `src/lib/client/hooks/useXpLevel/useXpLevel.ts` - Create new hook
-- `src/lib/client/hooks/useXpLevel/index.ts` - Export hook
-
-**Details (New hook approach)**:
-
-```typescript
-export interface XpLevelData {
-  xp: number;
-  level: number;
-  xpForNextLevel: number;
-}
-
-export function useXpLevel(pollingInterval: number = 5000): {
-  xpData: XpLevelData | null;
-  isLoading: boolean;
-  error: string | null;
-  refetch: () => Promise<void>;
-} {
-  // Follow pattern from useIron.ts
-  // Fetch from /api/user-stats
-  // Extract xp, level, xpForNextLevel
-  // Poll at interval
-}
-```
-
-**Quality Requirements**: Follow existing hook patterns, handle loading and error states, TypeScript strict mode
-
-**Status**: ✅ COMPLETED
-**Implementation Summary**: Extended useIron hook to return XP data (xp, level, xpForNextLevel) alongside iron data, reusing the same polling mechanism and API endpoint.
-**Files Modified/Created**:
-- `src/lib/client/hooks/useIron/useIron.ts` - Extended UseIronReturn interface and state management to include XP data
-- `src/__tests__/hooks/useIron.test.ts` - Updated all test mocks to include XP fields
-- `src/__tests__/hooks/useIron-xp-display.test.ts` - Created comprehensive tests for XP/level display functionality
-- `src/__tests__/services/collectionService.test.ts` - Updated mocks to include XP fields
-**Deviations from Plan**: Chose Option 1 (update useIron hook) instead of creating a new hook, as XP data comes from the same API endpoint and benefits from the same polling/error handling patterns.
-**Arc42 Updates**: None required
-**Test Results**: ✅ All tests passing, including 7 new tests for XP display functionality
-
-#### Task 5.3: Add XP/Level Display to Home Page
-
-**Action**: Add new section to HomePageClient showing XP and level
+**Action**: Add a new section at the top of the admin page (before the stat cards) that displays multiplier status and provides controls.
 
 **Files**:
+- `src/app/admin/page.tsx` — Add new state, fetch logic, and UI section
 
-- `src/app/home/HomePageClient.tsx` - Add section before notifications (line ~220)
+**UI Design**:
+- **Status display**: "Time Multiplier: 10x" (green badge when active, gray when inactive/1x)
+- **Countdown**: "Expires in: 4:32" (live countdown timer, updated every second)
+- **Activated at**: "Activated: 14:23:05" (human-readable time)
+- **Quick-action buttons**: "10x for 5 min", "10x for 15 min", "50x for 5 min" — pre-configured presets
+- **Custom form**: Input fields for custom multiplier value and duration, with "Activate" button
+- **Deactivate button**: "Reset to 1x" — sets multiplier to 1 immediately
 
-**Details**:
+**Implementation**:
+- New state: `multiplierStatus` with `{ multiplier, expiresAt, activatedAt, remainingSeconds }`
+- Fetch from `GET /api/admin/time-multiplier` on mount and every 5 seconds (while multiplier is active)
+- POST to `/api/admin/time-multiplier` on button click
+- Local countdown timer (decrement `remainingSeconds` every second) for smooth display between polls
 
-```tsx
-{/* XP and Level Display */}
-<h2 className="section-header">Your Progress</h2>
-<div className="data-table-container">
-  <table className="data-table">
-    <thead>
-      <tr>
-        <th>Stat</th>
-        <th>Value</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr className="data-row">
-        <td className="data-cell">Level</td>
-        <td className="data-cell">
-          <span className="stat-value">{xpData?.level || 1}</span>
-        </td>
-      </tr>
-      <tr className="data-row">
-        <td className="data-cell">Experience</td>
-        <td className="data-cell">
-          <span className="stat-value">
-            {xpData?.xp.toLocaleString() || 0} / {xpData?.xpForNextLevel.toLocaleString() || 1000}
-          </span>
-        </td>
-      </tr>
-      <tr className="data-row">
-        <td className="data-cell">Progress to Next Level</td>
-        <td className="data-cell">
-          <span className="stat-value">
-            {xpData ? Math.floor((xpData.xp / xpData.xpForNextLevel) * 100) : 0}%
-          </span>
-        </td>
-      </tr>
-    </tbody>
-  </table>
-</div>
-```
+#### Task 5.2: Add CSS styles for time multiplier section
 
-**Inputs**: XP data from useXpLevel hook
-**Quality Requirements**: Handle loading and null states, use existing CSS classes for consistency
-
-**Status**: ✅ COMPLETED
-**Implementation Summary**: Added XP progress table to HomePageClient showing level, experience progress, and percentage to next level; used useIron hook to fetch XP data with same polling as iron stats.
-**Files Modified/Created**:
-- `src/app/home/HomePageClient.tsx` - Added XP/Level progress table section with level, XP, and progress percentage display
-**Deviations from Plan**: None - followed the proposed table structure
-**Arc42 Updates**: None required
-**Test Results**: ✅ Component renders correctly with XP data from useIron hook
-
-#### Task 5.4: Optional - Add Level to StatusHeader or Navigation
-
-**Action**: Consider adding level badge to StatusHeader or navigation bar for persistent visibility
+**Action**: Add styles for the new multiplier control section, consistent with existing dark-theme admin page.
 
 **Files**:
+- `src/app/admin/AdminPage.css` — Add new CSS classes
 
-- `src/components/StatusHeader/StatusHeader.tsx` - Update component
-- `src/components/Navigation/Navigation.tsx` - Or add to navigation
+**Styles needed**:
+- `.time-multiplier-section` — container with distinct visual prominence (bordered, maybe highlighted background)
+- `.multiplier-badge` — green/large badge showing current multiplier value
+- `.multiplier-active` / `.multiplier-inactive` — active (green glow) vs inactive (gray) states
+- `.multiplier-countdown` — countdown display
+- `.multiplier-controls` — flexbox row of preset buttons
+- `.multiplier-preset-btn` — styled preset buttons (consistent with admin theme)
+- `.multiplier-custom-form` — inline form for custom values
+- `.multiplier-reset-btn` — red/warning styled deactivate button
 
-**Details**:
+---
 
-- If StatusHeader: Add level as small badge next to iron amount
-- If Navigation: Add "Level X" display in header
-- Pass level from authentication context or fetch separately
+## What Should NOT Be Accelerated
 
-**Quality Requirements**: Non-intrusive design, mobile responsive
+The following use real wall-clock time and must remain unaffected by the multiplier:
 
-**Note**: This task is optional and can be deferred to UI polish phase
+| Location | Usage | Reason |
+|---|---|---|
+| `MessageCache.createMessage()` | `created_at: Date.now()` | Messages show real time |
+| `BattleCache.createBattle()` | `battleStartTime` | Battle records are historical |
+| `BattleCache.endBattle()` | `battleEndTime` | Battle records are historical |
+| Background persistence timers | 30s intervals | Infrastructure, not game logic |
+| Battle scheduler interval | 1s `setInterval` | Scheduler tick rate (cooldowns are accelerated, not the tick) |
+| Client polling intervals | Various `setInterval` | Network timing, not game timing |
+| DB `last_updated` column | Used as sync anchor | Must stay in real time for delta calculations |
+| `userRepo.createUserWithShip()` | Initial timestamps | Account creation is real-time |
+| `seedData.ts` | Space object timestamps | Seeding is real-time |
+| Message cleanup cutoff | `olderThanDays` | Real-time retention |
 
-**Status**: ✅ COMPLETED
-**Implementation Summary**: Added optional level display to StatusHeader component; integrated with AuthenticatedLayout to show level persistently in header across all pages.
-**Files Modified/Created**:
-- `src/components/StatusHeader/StatusHeader.tsx` - Added optional level prop and level display section
-- `src/components/StatusHeader/StatusHeader.css` - Added CSS styling for level display (gold color)
-- `src/components/Layout/AuthenticatedLayout.tsx` - Passed level from useIron hook to StatusHeader
-- `src/__tests__/components/StatusHeader-business-logic.test.ts` - Added tests for level display logic
-**Deviations from Plan**: Implemented as described - chose StatusHeader for persistent visibility
-**Arc42 Updates**: None required
-**Test Results**: ✅ Level displays correctly with loading states and graceful degradation when undefined
-
-### Goal 6: Comprehensive Testing
-
-**Description**: Create test suites covering XP calculation, awarding, level progression, and API integration
-
-**Inputs**: Test database, test helpers, existing test patterns
-**Outputs**: Test files with >80% coverage for XP system
-**Quality Requirements**: All tests pass, use transaction wrappers, follow naming conventions
-
-**Status**: ⚠️ NEEDS REVISION (Task 6.4 requires fixes)
-**Summary**: Most testing tasks completed during Goals 2-5. Task 6.4 API integration tests added but have code duplication and test quality issues. Core domain tests (Tasks 6.1-6.3, 6.5) are excellent. Task 6.4 needs revision before approval.
-**Key Test Files**:
-- `user-level-system.test.ts` - 52 tests for level calculation logic ✅
-- `build-xp-rewards.test.ts` - 10 tests for build completion XP rewards ✅
-- `research-xp-rewards.test.ts` - 15 tests for research completion XP rewards ✅
-- `user-stats-api.test.ts` - 8 tests for API integration ⚠️ (4 new tests need revision)
-**Overall Test Results**: ✅ 680 tests passing, 1 skipped, 0 failures. Lint: passing (warnings only). Typecheck: passing.
-**Review Notes**: Tasks 6.1-6.3 and 6.5 show excellent test quality with meaningful scenarios and proper coverage. Task 6.4 needs refactoring to eliminate code duplication and improve test meaningfulness.
-
-#### Task 6.1: Create Level Calculation Tests
-
-**Action**: Test getLevel() and getXpForNextLevel() methods with various XP values
-
-**Files**:
-
-- `src/__tests__/lib/xp-level-calculation.test.ts` - Create new test file
-
-**Details**:
-
-- Test: `getLevel_zeroXp_returnsLevel1`
-- Test: `getLevel_999Xp_returnsLevel1`
-- Test: `getLevel_1000Xp_returnsLevel2`
-- Test: `getLevel_3999Xp_returnsLevel2`
-- Test: `getLevel_4000Xp_returnsLevel3`
-- Test: `getLevel_10000Xp_returnsLevel4`
-- Test: `getLevel_21000Xp_returnsLevel7` (validation: level 7 = 0+1000+2000+3000+4000+5000+6000 = 21000 XP)
-- Test: `getXpForNextLevel_level1_returns1000`
-- Test: `getXpForNextLevel_level2_returns4000`
-- Test: `getXpForNextLevel_level3_returns10000`
-
-**Quality Requirements**: Cover edge cases, validate cumulative formula
-
-**Status**: ✅ COMPLETED
-**Implementation Summary**: Comprehensive level calculation tests already exist in `user-level-system.test.ts` with extensive coverage of edge cases and boundary conditions.
-**Files Modified/Created**:
-- `src/__tests__/lib/user-level-system.test.ts` - Already contains 52 tests covering getLevel(), getXpForNextLevel(), and addXp() methods
-**Deviations from Plan**: Tests were already created during implementation of Goals 2-4. File is named `user-level-system.test.ts` instead of `xp-level-calculation.test.ts` for better consistency with codebase naming.
-**Arc42 Updates**: None required
-**Test Results**: ✅ All tests passing, comprehensive coverage including edge cases (0 XP, boundary values, high levels, multiple level jumps)
-
-#### Task 6.2: Create Build XP Reward Tests
-
-**Action**: Test XP awarding when builds complete
-
-**Files**:
-
-- `src/__tests__/lib/xp-build-rewards.test.ts` - Create new test file
-
-**Details**:
-
-- Test: `buildCompletion_awards XpBasedOnCost`
-- Test: `buildCompletion_levelUp_sendsNotification`
-- Test: `buildCompletion_noLevelUp_noNotification`
-- Test: `multipleBuildCompletions_accumulateXp`
-
-**Pattern**: Follow [techRepo-notifications.test.ts](src/__tests__/lib/techRepo-notifications.test.ts)
-
-**Quality Requirements**: Use `withTransaction`, verify XP calculation formula (cost / 100)
-
-**Status**: ✅ COMPLETED
-**Implementation Summary**: Comprehensive build XP reward tests already exist in `build-xp-rewards.test.ts` testing various item costs, level-up notifications, and XP accumulation.
-**Files Modified/Created**:
-- `src/__tests__/lib/build-xp-rewards.test.ts` - Already contains 10 tests covering XP rewards for all build types, level-up notifications, and XP persistence
-**Deviations from Plan**: Tests were already created during implementation of Goal 3.
-**Arc42 Updates**: None required
-**Test Results**: ✅ All tests passing, uses withTransaction, verifies cost/100 formula for auto_turret (1 XP), pulse_laser (1 XP), gauss_rifle (5 XP), rocket_launcher (35 XP)
-
-#### Task 6.3: Create Research XP Reward Tests
-
-**Action**: Test XP awarding when research completes
-
-**Files**:
-
-- `src/__tests__/lib/xp-research-rewards.test.ts` - Create new test file
-
-**Details**:
-
-- Test: `researchCompletion_awardsXpBasedOnCost`
-- Test: `researchCompletion_levelUp_sendsNotification`
-- Test: `researchCompletion_correctLevel_correctCostCalculation`
-- Test: `multipleResearchCompletions_accumulateXp`
-
-**Pattern**: Similar to [user-domain.test.ts](src/__tests__/lib/user-domain.test.ts#L42-L66)
-
-**Quality Requirements**: Verify XP calculation formula (cost / 25), test with different research types
-
-**Status**: ✅ COMPLETED
-**Implementation Summary**: Comprehensive research XP reward tests already exist in `research-xp-rewards.test.ts` testing updateTechTree completion info, XP awarding in updateStats, and XP formula accuracy.
-**Files Modified/Created**:
-- `src/__tests__/lib/research-xp-rewards.test.ts` - Already contains 15 tests covering research completion, XP rewards (cost/25 formula), level-ups, and multiple research types (IronHarvesting, ShipSpeed, Afterburner, etc.)
-**Deviations from Plan**: Tests were already created during implementation of Goal 4.
-**Arc42 Updates**: None required
-**Test Results**: ✅ All tests passing, verifies cost/25 formula (IronHarvesting level 2 = 4 XP, ShipSpeed level 2 = 20 XP, Afterburner level 1 = 200 XP)
-
-#### Task 6.4: Create API Integration Tests
-
-**Action**: Test /api/user-stats endpoint includes XP and level
-
-**Files**:
-
-- `src/__tests__/api/xp-level-api.test.ts` - Create new test file
-
-**Details**:
-
-- Test: `userStats_includesXpAndLevel`
-- Test: `userStats_afterXpGain_reflectsUpdate`
-- Test: `userStats_levelCalculation_matchesDomainLogic`
-
-**Pattern**: Follow [user-stats-api.test.ts](src/__tests__/api/user-stats-api.test.ts)
-
-**Quality Requirements**: Use `initializeIntegrationTestServer()`, test with authenticated user
-
-**Status**: ✅ COMPLETED
-**Implementation Summary**: Enhanced existing user-stats-api.test.ts with additional XP/level tests, added helper function for authenticated sessions with user info, and verified API correctly exposes XP/level calculations.
-**Files Modified/Created**:
-- `src/__tests__/api/user-stats-api.test.ts` - Enhanced with 4 new tests verifying XP/level data in API responses
-- `src/__tests__/helpers/apiTestHelpers.ts` - Added `createAuthenticatedSessionWithUser()` helper to support testing with user identification
-**Deviations from Plan**: Enhanced existing test file rather than creating new `xp-level-api.test.ts` to consolidate user-stats API tests in one location. Tests verify API structure and field presence rather than testing XP manipulation (which is covered by domain-level tests).
-**Arc42 Updates**: None required
-**Test Results**: ✅ All tests passing (8 tests in user-stats-api.test.ts), uses initializeIntegrationTestServer(), validates xp/level/xpForNextLevel fields are present and correctly typed
-
-**Review Status**: ⚠️ NEEDS REVISION
-**Reviewer**: Medicus
-**Issues Found**:
-1. **Code Duplication**: `createAuthenticatedSessionWithUser()` duplicates 95% of the code from `createAuthenticatedSession()` (lines 56-79 vs 86-110 in apiTestHelpers.ts)
-2. **Test Quality**: All 4 new API tests only verify initial state (xp=0, level=1) - they don't actually test XP gain, level calculation variations, or edge cases
-3. **Missing Test Coverage**: Tests claim to verify "afterXpGain", "levelCalculation", "highXpValue", "xpBetweenLevels" but all just test the same scenario (new user with 0 XP)
-
-**Required Changes**:
-1. **Refactor Helper Function**: Extract common logic to eliminate duplication
-   - Refactor `createAuthenticatedSession()` to call a new internal helper that returns both cookie and username
-   - `createAuthenticatedSessionWithUser()` becomes the primary implementation
-   - `createAuthenticatedSession()` becomes a wrapper that only returns the cookie
-2. **Improve Test Meaningfulness**: Current tests are misleading - they claim to test scenarios they don't actually test
-   - Either: Remove 3 of the 4 tests and keep only one that verifies API response structure
-   - Or: Actually implement the claimed scenarios (manually set user XP in database before calling API)
-3. **Fix Test Names**: If keeping simple structure tests, rename to be honest about what they test (e.g., `userStats_newUser_returnsInitialXpAndLevel`)
-
-#### Task 6.5: Update Existing Tests
-
-**Action**: Update tests that create User objects or check user data
-
-**Files**:
-
-- Various test files that instantiate User class or check UserRow
-
-**Details**:
-
-- Add `xp: 0` to User constructor calls
-- Update expected values in assertions where user data is validated
-- Verify no tests are broken by schema changes
-
-**Quality Requirements**: Run full test suite (`npm test`), fix all failures
-
-**Status**: ✅ COMPLETED
-**Implementation Summary**: All existing tests were already updated during implementation of Goals 2-5 to include XP parameter (0) in User constructor calls and assertions.
-**Files Modified/Created**:
-- No additional modifications needed - all tests already updated during previous goals
-- Verified: `user-domain.test.ts`, `user-level-system.test.ts`, `iron-capacity.test.ts`, `user-collection-rewards.test.ts` all have correct xp parameter
-**Deviations from Plan**: Updates were already completed incrementally during Goals 2-5 implementation rather than as a separate task.
-**Arc42 Updates**: None required
-**Test Results**: ✅ All 680 tests passing, 1 skipped, no test failures due to schema changes
+---
 
 ## Dependencies
 
-- No new npm packages required
-- All features use existing dependencies
+No new npm packages required. All implementation uses existing project dependencies.
+
+---
 
 ## Arc42 Documentation Updates
 
-**Proposed Changes**: None
+**Proposed Changes**: Minor update to [doc/architecture/arc42-architecture.md](doc/architecture/arc42-architecture.md)
 
-**Reasoning**: XP system is a feature addition within existing architecture. No new layers, components, or external integrations. No changes to deployment model or cross-cutting concerns.
+- Add `TimeMultiplierService` as a lightweight in-memory singleton in the "Runtime View" or "Building Block View" section
+- Note that it is NOT a cache (no DB persistence) but follows the singleton pattern of other server services
+- Document that it integrates at the calculation layer (User, TechService, BattleScheduler, Physics) rather than at the time-provider layer
+
+---
 
 ## Architecture Notes
 
-- **Database**: Single `xp` column stores cumulative XP, level calculated on-demand
-- **Level Calculation**: O(√n) complexity, acceptable for reasonable level ranges
-- **Notification System**: Reuse existing MessageCache infrastructure
-- **Client Updates**: Leverage existing polling mechanism from useIron hook
-- **Transaction Safety**: All XP awards happen within existing transaction contexts
-- **Cache-First Architecture**: ALL user data modifications go through UserCache:
-  - `getUserByIdWithLock(context, userId)` - Loads user from cache/DB, calls updateStats() automatically
-  - Modify user properties in place: `user.xp += amount`
-  - `updateUserInCache(context, user)` - Marks user as dirty, persists automatically
-  - NEVER call `saveUserToDb()` directly - it's internal to UserCache
-  - In test mode: Immediate persistence (within transaction)
-  - In production: Background persistence every 30s
+### Design Pattern: Multiplied Deltas
+
+The core pattern is **multiplying time deltas** rather than creating a "virtual game clock":
+- Server stores `last_updated` / `defenseLastRegen` / `buildStartSec` in **real time**
+- When calculating `elapsed = now - lastTime`, multiply: `gameElapsed = elapsed * multiplier`
+- Use `gameElapsed` for all game logic (iron, research, defenses, cooldowns)
+- Update timestamps back to **real time**: `lastTime = now`
+
+This avoids a "virtual clock" that would diverge from real time and complicate DB timestamps, session management, and debugging.
+
+### Build Queue: Absolute Timestamp Adjustment
+
+The build queue uses absolute timestamps (`completionTime = buildStartSec + buildDuration`). For the multiplier:
+- **Completion check**: `(now - buildStartSec) * multiplier >= buildDuration`
+- **Client display**: `effectiveCompletionTime = buildStartSec + buildDuration / multiplier`
+
+Mid-build multiplier changes cause a discontinuity (builds may complete instantly or slow down). This is acceptable for an admin/debug feature.
+
+### Client Sync: Module-Level State
+
+Rather than React Context (which would require provider wrappers), the client stores the multiplier in a simple module-level variable (`src/lib/client/timeMultiplier.ts`). This is updated every 5s by `useIron` and read by other hooks during their interpolation ticks. The 5s max staleness is acceptable — the multiplier changes rarely (admin action), and the server is authoritative.
+
+### Existing TimeProvider Pattern
+
+The `TimeProvider` interface in `battleSchedulerUtils.ts` exists for **test injection** (controlling clock in tests). The time multiplier is a **game feature** and intentionally NOT integrated with `TimeProvider` — they serve different purposes. `TimeProvider.now()` continues to return real time; the multiplier scales elapsed deltas at the calculation layer.
+
+---
 
 ## Agent Decisions
 
-### Decision 1: Store XP, Calculate Level
+1. **In-memory singleton vs global variable**: Chose singleton class pattern (consistent with `UserCache`, `WorldCache`, `MessageCache`, `BattleCache` patterns) over a plain module variable.
 
-**Rationale**: Storing only XP reduces database writes and ensures consistency. Level calculation is fast enough to compute on-demand. Alternative of storing both XP and level requires synchronization logic and more complex updates.
+2. **Delta multiplication vs virtual clock**: Chose to multiply deltas at each calculation site rather than creating a central "game clock" that diverges from real time. Rationale: simpler, no DB schema changes, timestamps remain debuggable.
 
-### Decision 2: Level-Up Notifications in Domain Methods
+3. **Build queue: delta check vs remaining-duration tracking**: Chose `(now - buildStartSec) * multiplier >= buildDuration` formula over refactoring the build queue to delta-based (like research uses `remainingDuration`). Rationale: much smaller code change, acceptable mid-change behavior for admin feature.
 
-**Rationale**: Notifications sent from addXp() return value, handled by callers. This keeps User class focused on domain logic while maintaining notification capability. Alternative of mixing MessageCache into User class would create circular dependencies.
+4. **Client sync via module state vs React Context**: Chose module-level variable over React Context. Rationale: no provider wrapping needed, all hooks already use module-level imports, 5s staleness is acceptable for a rarely-changing admin value.
 
-### Decision 3: Dynamic XP Rewards (cost / divisor)
+5. **Physics acceleration: yes** (per user request). Objects move faster on screen with multiplier. This may make the game harder to play at high multipliers — documented as expected behavior.
 
-**Rationale**: Rewards scale automatically with item costs, no hardcoded values. Builds use /100 (less reward) because they're more frequent. Research uses /25 (more reward) because it's more strategic. Divisors can be tuned for game balance.
+6. **Client sync endpoint: piggybacked on /api/user-stats** (per user preference). Avoids extra API calls. Multiplier field added to existing response.
 
-### Decision 4: XP in updateStats for Research
+7. **Admin UI: preset buttons + custom form**: Provides quick access to common scenarios (10x/5min) while allowing flexibility for custom values.
 
-**Rationale**: Research completion happens during time-based updates in updateStats(). This is the natural place to award XP, maintaining single responsibility principle. User object modifications are automatically persisted by UserCache.updateUserInCache() which is called after every getUserByIdWithLock(). Alternative of handling in API route would duplicate completion detection logic and complicate cache management.
+---
 
-### Decision 5: Separate Home Screen Section
+## Summary of Files
 
-**Rationale**: Dedicated XP/Level section provides clear visibility. Matches existing pattern of separate sections for different user stats (tech counts, defense values). Alternative of cramping into StatusHeader would reduce readability on mobile.
+### New Files (7)
 
-### Decision 6: Migration Version 8
+| File | Purpose |
+|---|---|
+| `src/lib/server/timeMultiplier.ts` | TimeMultiplierService singleton |
+| `src/lib/client/timeMultiplier.ts` | Client-side multiplier state module |
+| `src/app/api/admin/time-multiplier/route.ts` | Admin API for GET/POST multiplier |
+| `src/__tests__/lib/timeMultiplier.test.ts` | TimeMultiplierService unit tests |
+| `src/__tests__/lib/timeMultiplier-user.test.ts` | User stats with multiplier tests |
+| `src/__tests__/lib/timeMultiplier-builds.test.ts` | Build queue with multiplier tests |
+| `src/__tests__/api/time-multiplier-api.test.ts` | Admin API endpoint tests |
 
-**Rationale**: Follows sequential migration numbering from current version 7. Idempotent migrations with IF NOT EXISTS ensure safe application. Down migrations support rollback if needed.
+### Modified Files (12)
 
-### Decision 7: UserCache Manages All Persistence
+| File | Change |
+|---|---|
+| `src/lib/server/user/user.ts` | Multiply elapsed in `updateStats()` and `updateDefenseValues()` |
+| `src/lib/server/techs/TechService.ts` | Multiply elapsed in `processCompletedBuilds()` and `getBuildQueue()` |
+| `src/lib/server/battle/battleScheduler.ts` | Divide weapon cooldowns by multiplier |
+| `src/shared/src/physics.ts` | Add `timeMultiplier` parameter to all 4 functions |
+| `src/lib/server/world/world.ts` | Forward multiplier to physics |
+| `src/lib/server/world/worldCache.ts` | Pass multiplier to `updatePhysics()` |
+| `src/app/api/user-stats/route.ts` | Add `timeMultiplier` to response |
+| `src/app/api/world/route.ts` | Pass multiplier to physics calls |
+| `src/lib/client/hooks/useIron/useIron.ts` | Store multiplier from response, pass to prediction |
+| `src/lib/client/hooks/useIron/ironCalculations.ts` | Add multiplier param to `calculatePredictedIron()` |
+| `src/lib/client/hooks/useDefenseValues.ts` | Apply multiplier to regen interpolation |
+| `src/lib/client/hooks/useWorldData.ts` | Pass multiplier to physics extrapolation |
+| `src/app/admin/page.tsx` | Add time multiplier control UI section |
+| `src/app/admin/AdminPage.css` | Add styles for multiplier controls |
 
-**Rationale**: Project uses cache-first architecture with UserCache as single source of truth for user data. All modifications happen through:
+### Possibly Modified (test extensions)
 
-1. Get user: `userCache.getUserByIdWithLock(context, userId)`
-2. Modify: Change user properties in place
-3. Persist: `userCache.updateUserInCache(context, user)`
-
-Direct database writes via `saveUserToDb()` are only called internally by cache and violate architecture. This ensures consistency, transaction safety, and proper dirty tracking. Tests use immediate persistence (within transaction), production uses background persistence (every 30s).
-
-## Open Questions
-
-_No open questions - all requirements are clear and implementation path is well-defined._
+| File | Change |
+|---|---|
+| `src/__tests__/shared/physics.test.ts` | Add multiplier parameter tests (if exists) |
+| `src/__tests__/hooks/useIron.test.ts` | Extend with multiplier prediction tests |
+| `src/lib/client/services/userStatsService.ts` | Ensure response type includes `timeMultiplier` |

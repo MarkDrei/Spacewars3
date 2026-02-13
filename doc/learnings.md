@@ -97,3 +97,35 @@ const { ironAmount, xp, level, xpForNextLevel, isLoading, error } = useIron(5000
 ```
 
 **Result**: Single unified hook provides all user stats with consistent state updates and minimal API overhead.
+## Time-Based Calculation Patterns in the Codebase
+
+**Discovered by**: Cartographer  
+**Context**: When planning the Time Multiplier feature, discovered the two distinct patterns for time calculations
+
+**Two time-calculation patterns in the server:**
+
+1. **Delta-based** (User stats, defense regen, research): `elapsed = now - lastTimestamp`, then uses `elapsed` in calculations. Timestamp updated to `now` after. Easy to apply a multiplier — just multiply the delta.
+
+2. **Absolute-timestamp-based** (Build queue): `completionTime = startTime + duration`, then checks `now >= completionTime`. Harder to apply a multiplier because the duration is baked into an absolute time. Workaround: check `(now - startTime) * multiplier >= duration`.
+
+**Key locations of time-based game logic (`Date.now()` calls):**
+- `userCache.getUserByIdWithLock()` → calls `user.updateStats(Math.floor(Date.now() / 1000))`
+- `TechService.processCompletedBuilds()` → `now = Math.floor(Date.now() / 1000)` for build completion
+- `TechService.addTechItemToBuildQueue()` → `user.buildStartSec = Math.floor(Date.now() / 1000)`
+- `battleScheduler.processBattleRoundInternal()` → `currentTime` for weapon cooldowns
+- `worldCache.getWorldFromCache()` → `world.updatePhysics(context, Date.now())`
+- Physics uses milliseconds (`Date.now()`), user stats use seconds (`Math.floor(Date.now() / 1000)`)
+
+**TimeProvider interface** exists in `battleSchedulerUtils.ts` for test injection — not for game features. A time multiplier should be separate from this (multiplied deltas vs mocked time).
+
+## Client-Side Module-Level State Pattern
+
+**Discovered by**: Cartographer  
+**Context**: When deciding how to share the time multiplier across multiple client hooks without React Context
+
+**Pattern**: For rarely-changing server values needed by multiple hooks (e.g., time multiplier), use a module-level variable instead of React Context:
+- Export `get`/`set` functions from a module
+- One hook (the data source) calls `set` on each poll
+- Other hooks call `get` during their interpolation ticks
+- Avoids React Context provider wrapping and re-render cascading
+- Acceptable staleness: value changes rarely (admin action), max lag = poll interval (5s)
