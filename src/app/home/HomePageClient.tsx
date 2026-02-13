@@ -62,6 +62,7 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
   const [isMarkingAsRead, setIsMarkingAsRead] = React.useState(false);
   const [isRefreshing, setIsRefreshing] = React.useState(false);
   const [isSummarizing, setIsSummarizing] = React.useState(false);
+  const [isMessagesExpanded, setIsMessagesExpanded] = React.useState(false);
   
   const { techCounts, weapons, defenses, isLoading: techLoading, error: techError } = useTechCounts();
   const { defenseValues, isLoading: defenseLoading, error: defenseError } = useDefenseValues();
@@ -78,6 +79,7 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
       if (result.success) {
         // Sort messages by created_at descending (newest first)
         setMessages([...result.messages].sort((a, b) => b.created_at - a.created_at));
+        setIsMessagesExpanded(false); // Reset to collapsed view
         console.log(`✅ Refreshed ${result.messages.length} message(s)`);
       }
     } catch (error) {
@@ -97,6 +99,7 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
       if (result.success) {
         // Clear messages from display
         setMessages([]);
+        setIsMessagesExpanded(false); // Reset to collapsed view
         console.log(`✅ Marked ${result.markedCount} message(s) as read`);
       }
     } catch (error) {
@@ -222,41 +225,7 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
             </div>
           )}
 
-          {/* XP and Level Progress */}
-          <div className="data-table-container">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th colSpan={2}>Your Progress</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr className="data-row">
-                  <td className="data-cell">Level</td>
-                  <td className="data-cell">
-                    <span className="stat-value">{xpLoading ? '...' : level}</span>
-                  </td>
-                </tr>
-                <tr className="data-row">
-                  <td className="data-cell">Experience</td>
-                  <td className="data-cell">
-                    <span className="stat-value">
-                      {xpLoading ? '...' : `${xp.toLocaleString()} / ${xpForNextLevel.toLocaleString()}`}
-                    </span>
-                  </td>
-                </tr>
-                <tr className="data-row">
-                  <td className="data-cell">Progress to Next Level</td>
-                  <td className="data-cell">
-                    <span className="stat-value">
-                      {xpLoading ? '...' : `${Math.floor((xp / xpForNextLevel) * 100)}%`}
-                    </span>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
+          {/* Notifications */}
           <div className="data-table-container">
             <table className="data-table">
               <thead>
@@ -360,21 +329,95 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
                     </td>
                   </tr>
                 ) : (
-                  messages.map(message => {
-                    const parsed = parseMessage(message.message);
-                    return (
-                      <tr key={message.id} className={`data-row message-row-${parsed.type}`}>
-                        <td className="time-cell">
-                          <div className="time-line">{messagesService.formatTime(message.created_at)}</div>
-                          <div className="date-line">{messagesService.formatDate(message.created_at)}</div>
-                        </td>
-                        <td className={`data-cell message-cell message-${parsed.type}`}>
-                          {formatBoldText(parsed.content)}
+                  <>
+                    {(isMessagesExpanded ? messages : messages.slice(0, 10)).map(message => {
+                      const parsed = parseMessage(message.message);
+                      return (
+                        <tr key={message.id} className={`data-row message-row-${parsed.type}`}>
+                          <td className="time-cell">
+                            <div className="time-line">{messagesService.formatTime(message.created_at)}</div>
+                            <div className="date-line">{messagesService.formatDate(message.created_at)}</div>
+                          </td>
+                          <td className={`data-cell message-cell message-${parsed.type}`}>
+                            {formatBoldText(parsed.content)}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {messages.length > 10 && (
+                      <tr>
+                        <td colSpan={2} style={{ textAlign: 'center', padding: '8px', cursor: 'pointer', userSelect: 'none' }}>
+                          <button
+                            onClick={() => setIsMessagesExpanded(!isMessagesExpanded)}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              color: '#2196F3',
+                              cursor: 'pointer',
+                              fontSize: '0.9rem',
+                              padding: '4px 8px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              margin: '0 auto',
+                              transition: 'color 0.2s'
+                            }}
+                            onMouseEnter={(e) => {
+                              (e.target as HTMLButtonElement).style.color = '#1976D2';
+                            }}
+                            onMouseLeave={(e) => {
+                              (e.target as HTMLButtonElement).style.color = '#2196F3';
+                            }}
+                          >
+                            <span style={{ 
+                              transform: isMessagesExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                              transition: 'transform 0.2s',
+                              display: 'inline-block'
+                            }}>
+                              ▼
+                            </span>
+                            {isMessagesExpanded ? `Show fewer (${messages.length - 10} hidden)` : `Show ${messages.length - 10} more`}
+                          </button>
                         </td>
                       </tr>
-                    );
-                  })
+                    )}
+                  </>
                 )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* XP and Level Progress */}
+          <div className="data-table-container">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th colSpan={2}>Your Progress</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="data-row">
+                  <td className="data-cell">Level</td>
+                  <td className="data-cell">
+                    <span className="stat-value">{xpLoading ? '...' : level}</span>
+                  </td>
+                </tr>
+                <tr className="data-row">
+                  <td className="data-cell">Experience</td>
+                  <td className="data-cell">
+                    <span className="stat-value">
+                      {xpLoading ? '...' : `${xp.toLocaleString()} / ${xpForNextLevel.toLocaleString()}`}
+                    </span>
+                  </td>
+                </tr>
+                <tr className="data-row">
+                  <td className="data-cell">Progress to Next Level</td>
+                  <td className="data-cell">
+                    <span className="stat-value">
+                      {xpLoading ? '...' : `${Math.floor((xp / xpForNextLevel) * 100)}%`}
+                    </span>
+                  </td>
+                </tr>
               </tbody>
             </table>
           </div>
