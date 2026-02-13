@@ -54,6 +54,19 @@ As a game admin, I want to activate a time multiplier (e.g. 10x for 5 minutes) t
 - `reset(): void` — for testing, resets to default state
 - Validation: multiplier must be >= 1, durationMinutes must be > 0
 
+**Status**: ✅ COMPLETED  
+**Implementation Summary**: Implemented TimeMultiplierService as a lightweight singleton with in-memory state management, auto-expiration, and comprehensive validation.  
+**Files Modified/Created**:
+- `src/lib/server/timeMultiplier.ts` — Created TimeMultiplierService singleton with getInstance(), getMultiplier() (auto-reset on expiration), setMultiplier() (with validation), getStatus() (with remaining seconds calculation), reset(), and resetInstance() methods
+- `src/__tests__/lib/timeMultiplier.test.ts` — Added 25 comprehensive tests covering all functionality including expiration, validation, edge cases, and integration scenarios  
+**Deviations from Plan**: None - implementation follows the design spec exactly. Used globalThis-based singleton pattern consistent with other services in the codebase (UserCache, WorldCache, MessageCache, BattleCache).  
+**Arc42 Updates**: None required - this is an implementation-level service, not architecturally significant  
+**Test Results**: ✅ All 722 tests passing (including 25 new tests for TimeMultiplierService), no linting errors, TypeScript strict mode compliant
+
+**Review Status**: ✅ APPROVED  
+**Reviewer**: Medicus  
+**Review Notes**: Excellent implementation demonstrating strong SOLID principles, clean singleton pattern consistent with existing codebase patterns, comprehensive test coverage (25 tests including all required cases plus edge cases), correct business logic with proper auto-expiration and validation, zero code duplication, and perfect architecture alignment. Arc42 decision reasonable per shared conventions. Ready for integration in Goal 2 tasks.
+
 #### Task 1.2: Unit tests for TimeMultiplierService
 
 **Action**: Write comprehensive tests for the service.
@@ -69,6 +82,20 @@ As a game admin, I want to activate a time multiplier (e.g. 10x for 5 minutes) t
 - `getStatus_activeMultiplier_returnsCorrectRemainingSeconds`
 - `setMultiplier_invalidValues_throwsOrRejectsGracefully`
 - `reset_afterSet_returns1`
+
+**Status**: ✅ COMPLETED (implemented together with Task 1.1)  
+**Implementation Summary**: Created comprehensive test suite with 25 tests covering all required test cases plus additional edge cases, integration scenarios, and error conditions.  
+**Files Modified/Created**:
+- `src/__tests__/lib/timeMultiplier.test.ts` — Created 25 tests organized into 7 describe blocks: getInstance, getMultiplier, setMultiplier, getStatus, reset, resetInstance, and integration scenarios  
+**Test Coverage**: All required test cases implemented plus additional coverage for:
+- Edge cases: exact expiration time, partial seconds rounding, fractional durations, large multipliers
+- Validation: zero/negative multipliers and durations, minimum valid values
+- State management: multiple activations, unchanged state on error, singleton persistence
+**Test Results**: ✅ All 25 tests passing in 497ms
+
+**Review Status**: ✅ APPROVED  
+**Reviewer**: Medicus  
+**Review Notes**: Outstanding test quality - tests validate actual behavior rather than chasing coverage, comprehensive edge case coverage beyond requirements, excellent test isolation and organization, meaningful test names following conventions. Tests are maintainable and will catch real bugs.
 
 ---
 
