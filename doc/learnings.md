@@ -56,6 +56,12 @@ if (levelUp) {
 }
 ```
 
+**Research-specific considerations** (Goal 4):
+- Research XP formula: `iron_cost / 25` (more generous than builds due to time investment)
+- Use `completedLevel + 1` when calculating cost to get the cost of the level just completed
+- updateTechTree captures level BEFORE increment to ensure correct cost calculation
+- User.updateStats handles XP awarding inline since research completion happens during stat updates
+
 **Benefits of this pattern**:
 - Separation of concerns: completion logic calculates rewards, caller handles notifications
 - User XP is modified in-place, persisted by existing cache update calls

@@ -454,6 +454,20 @@ if (levelUp) {
 
 **Quality Requirements**: Return level BEFORE increment for correct cost calculation
 
+**Status**: ✅ COMPLETED
+
+**Implementation Summary**: Modified updateTechTree to return research completion information including the type and level before increment, enabling accurate XP reward calculation.
+
+**Files Modified/Created**:
+- `src/lib/server/techs/techtree.ts` - Changed return type to return completion info, stored completedLevel before increment (line 693), returned completion info after level increment (line 782)
+- `src/__tests__/lib/research-xp-rewards.test.ts` - Added comprehensive tests for updateTechTree return values (6 tests covering various scenarios)
+
+**Deviations from Plan**: None - implementation follows plan exactly
+
+**Arc42 Updates**: None required - this is an internal function signature change
+
+**Test Results**: ✅ All tests passing (668 tests), no linting errors
+
 #### Task 4.2: Award XP in User.updateStats
 
 **Action**: Check for research completion, calculate XP reward, award XP, return level-up info for notification
@@ -495,6 +509,20 @@ return levelUpInfo;
 **Quality Requirements**: Use completedLevel + 1 for correct cost (cost of the level just completed)
 
 **Important**: User object is modified in place. Caller (UserCache.getUserByIdWithLock) automatically calls `updateUserInCache()` after updateStats() returns, ensuring XP changes are persisted
+
+**Status**: ✅ COMPLETED
+
+**Implementation Summary**: Modified User.updateStats to capture research completion info, calculate XP reward based on research cost (cost/25), award XP via addXp(), and return level-up information for notifications.
+
+**Files Modified/Created**:
+- `src/lib/server/user/user.ts` - Added imports for AllResearches and getResearchUpgradeCost (line 5), changed updateStats return type to include levelUp info, captured researchResult from updateTechTree calls, calculated and awarded XP when research completes (lines 192-244)
+- `src/__tests__/lib/research-xp-rewards.test.ts` - Added 7 tests for updateStats XP awarding, including edge cases and integration tests
+
+**Deviations from Plan**: None - implementation follows plan exactly
+
+**Arc42 Updates**: None required - this is internal business logic enhancement
+
+**Test Results**: ✅ All tests passing (668 tests), no linting errors
 
 #### Task 4.3: Send Level-Up Notification for Research
 
@@ -547,6 +575,21 @@ if (levelIncreased) {
 ```
 
 **Quality Requirements**: Avoid duplicate notifications, track level changes reliably
+
+**Status**: ✅ COMPLETED
+
+**Implementation Summary**: Modified /api/user-stats route to capture level-up info from updateStats and send notification via MessageCache when research causes level increase.
+
+**Files Modified/Created**:
+- `src/app/api/user-stats/route.ts` - Added MessageCache import, captured updateResult from user.updateStats(), sent level-up notification if research triggered level increase using MessageCache.createMessage() with "P:" prefix for positive messages (lines 1-64)
+
+**Deviations from Plan**: Implemented notification sending in processUserStats function rather than tracking level changes manually. This approach is cleaner and leverages the level-up info already returned by updateStats().
+
+**Arc42 Updates**: None required - this is a feature enhancement to existing API route
+
+**Test Results**: ✅ All tests passing (668 tests), no linting errors
+
+**Note**: Task 4.3 was effectively merged into Task 4.4 as they represent the same functionality - sending notifications when research completion causes level-up. The implementation in the user-stats route handles both the detection and notification sending.
 
 **Note**: This is a simpler approach than modifying updateStats() to return notification info. Research level-ups will be detected on next user-stats poll (max 5 second delay).
 
