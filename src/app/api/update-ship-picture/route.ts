@@ -58,8 +58,8 @@ export async function POST(request: NextRequest) {
     const { pictureId } = body;
 
     // Validate picture_id
-    if (typeof pictureId !== 'number' || pictureId < 1 || pictureId > 10) {
-      throw new ApiError(400, 'Invalid picture_id. Must be a number between 1 and 10.');
+    if (typeof pictureId !== 'number' || pictureId < 1 || pictureId > 1000) {
+      throw new ApiError(400, 'Invalid picture_id. Must be a number between 1 and 1000.');
     }
 
     const emptyCtx = createLockContext();

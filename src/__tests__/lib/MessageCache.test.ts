@@ -5,7 +5,7 @@
 import { describe, expect, test, beforeEach, afterEach } from 'vitest';
 import { 
   MessageCache, 
-  getMessageCache,
+  // getMessageCache,
   sendMessageToUser,
   getUserMessages,
   getUserMessageCount,

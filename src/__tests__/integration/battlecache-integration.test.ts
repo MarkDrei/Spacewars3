@@ -471,13 +471,13 @@ describe('Phase 5: BattleCache Integration Testing', () => {
   describe('Cache Statistics', () => {
     
     let battleCache: BattleCache | null;
-    let userWorldCache: UserCache;
+    // let userWorldCache: UserCache;
     let emptyCtx: ReturnType<typeof createLockContext>;
 
     beforeEach(async () => {
       emptyCtx = createLockContext();
-      await emptyCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
-        userWorldCache = UserCache.getInstance2();
+      await emptyCtx.useLockWithAcquire(USER_LOCK, async (/* userCtx */) => {
+        // userWorldCache = UserCache.getInstance2();
         
         // Get BattleCache instance (already initialized by test server)
         battleCache = getBattleCache();
@@ -488,12 +488,12 @@ describe('Phase 5: BattleCache Integration Testing', () => {
       await withTransaction(async () => {
         await emptyCtx.useLockWithAcquire(BATTLE_LOCK, async (battleCtx) => {
           const userCache = UserCache.getInstance2();
-          let user1Id = 0, user2Id = 0, user3Id = 0, user4Id = 0;
+          let user1Id = 0, user2Id = 0; // , user3Id = 0, user4Id = 0;
           await battleCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
              user1Id = (await userCache.getUserByUsername(userCtx, 'a'))!.id;
              user2Id = (await userCache.getUserByUsername(userCtx, 'dummy'))!.id;
-             user3Id = (await userCache.getUserByUsername(userCtx, 'testuser3'))!.id;
-             user4Id = (await userCache.getUserByUsername(userCtx, 'testuser4'))!.id;
+             // user3Id = (await userCache.getUserByUsername(userCtx, 'testuser3'))!.id;
+             // user4Id = (await userCache.getUserByUsername(userCtx, 'testuser4'))!.id;
           });
 
           // Initial stats

@@ -43,7 +43,7 @@ describe('Build Persistence Integration', () => {
       });
 
       // Verify initial tech counts
-      const initialCounts = await ctx.useLockWithAcquire(USER_LOCK, async (userContext) => {
+      /* const initialCounts = */ await ctx.useLockWithAcquire(USER_LOCK, async (userContext) => {
         const user = await userCache.getUserByIdWithLock(userContext, testUser.id);
         expect(user).not.toBeNull();
         expect(user!.techCounts.auto_turret).toBe(5); // Default from seed

@@ -7,6 +7,11 @@ import { World } from '../game/World';
  */
 export abstract class SpaceObjectRendererBase {
     /**
+     * Standard ship length in pixels (Y-axis height)
+     * Used for consistent scaling of all ship types
+     */
+    public static readonly SHIP_LENGTH = 70;
+    /**
      * Draw a space object on the canvas
      */
     drawSpaceObject(

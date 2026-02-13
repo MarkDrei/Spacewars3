@@ -1,5 +1,6 @@
 import { Ship } from '../game/Ship';
 import { SpaceObjectOld } from '../game/SpaceObject';
+import { SpaceObjectRendererBase } from './SpaceObjectRendererBase';
 
 /**
  * Renderer specifically for the player's own ship (always rendered in the center)
@@ -7,11 +8,9 @@ import { SpaceObjectOld } from '../game/SpaceObject';
 export class PlayerShipRenderer {
     private shipImages: Map<number, HTMLImageElement> = new Map();
     private imageLoadedStatus: Map<number, boolean> = new Map();
-    // Store the reference size of ship1.png for scaling other ships
-    private ship1Size: { width: number; height: number } | null = null;
 
     constructor() {
-        // Pre-load ship1.png to get reference dimensions
+        // Pre-load ship1.png
         this.loadShipImage(1);
     }
 
@@ -23,10 +22,6 @@ export class PlayerShipRenderer {
             const img = new Image();
             img.onload = () => {
                 this.imageLoadedStatus.set(pictureId, true);
-                // Store ship1 dimensions as reference
-                if (pictureId === 1) {
-                    this.ship1Size = { width: img.naturalWidth, height: img.naturalHeight };
-                }
             };
             img.onerror = () => {
                 // On error, fall back to ship1
@@ -102,28 +97,10 @@ export class PlayerShipRenderer {
         ctx.translate(centerX, centerY);
         ctx.rotate(ship.getAngleRadians() + Math.PI / 2); // Convert degrees to radians, adjust for ship orientation
 
-        // Scale all ships to match ship1's rendered size (not natural size)
-        const scale = 0.15;
-        let width: number, height: number;
-        
-        if (this.ship1Size && pictureId !== 1) {
-            // Scale other ships to match ship1's rendered dimensions
-            const ship1RenderedWidth = this.ship1Size.width * scale;
-            const ship1RenderedHeight = this.ship1Size.height * scale;
-            
-            // Calculate scale factor to match ship1's rendered size
-            const scaleX = ship1RenderedWidth / shipImage.naturalWidth;
-            const scaleY = ship1RenderedHeight / shipImage.naturalHeight;
-            
-            // Use the smaller scale to ensure the ship fits within ship1's dimensions
-            const adjustedScale = Math.min(scaleX, scaleY);
-            width = shipImage.naturalWidth * adjustedScale;
-            height = shipImage.naturalHeight * adjustedScale;
-        } else {
-            // For ship1 or if ship1 size not yet loaded, use original scaling
-            width = shipImage.naturalWidth * scale;
-            height = shipImage.naturalHeight * scale;
-        }
+        // Scale ship to constant height (Y-axis)
+        const aspectRatio = shipImage.naturalWidth / shipImage.naturalHeight;
+        const height = SpaceObjectRendererBase.SHIP_LENGTH;
+        const width = height * aspectRatio;
         
         ctx.drawImage(shipImage, -width / 2, -height / 2, width, height);
 

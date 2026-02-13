@@ -8,12 +8,10 @@ import { SpaceObjectRendererBase } from './SpaceObjectRendererBase';
 export class OtherShipRenderer extends SpaceObjectRendererBase {
     private shipImages: Map<number, HTMLImageElement> = new Map();
     private imageLoadedStatus: Map<number, boolean> = new Map();
-    // Store the reference size of ship1.png for scaling other ships
-    private ship1Size: { width: number; height: number } | null = null;
 
     constructor() {
         super();
-        // Pre-load ship1.png to get reference dimensions
+        // Pre-load ship1.png
         this.loadShipImage(1);
     }
 
@@ -25,10 +23,6 @@ export class OtherShipRenderer extends SpaceObjectRendererBase {
             const img = new Image();
             img.onload = () => {
                 this.imageLoadedStatus.set(pictureId, true);
-                // Store ship1 dimensions as reference
-                if (pictureId === 1) {
-                    this.ship1Size = { width: img.naturalWidth, height: img.naturalHeight };
-                }
             };
             img.onerror = () => {
                 // On error, fall back to ship1
@@ -104,13 +98,8 @@ export class OtherShipRenderer extends SpaceObjectRendererBase {
      * Get the size to render the ship at
      */
     protected getObjectSize(): number {
-        // Scale all ships to match ship1's rendered size
-        if (this.ship1Size && this.currentShip && this.currentShip.picture_id !== 1) {
-            const scale = 0.15; // Same scale used for ship1
-            const ship1RenderedSize = Math.max(this.ship1Size.width, this.ship1Size.height) * scale;
-            return ship1RenderedSize;
-        }
-        return 60; // Default size that matches ship1 at 0.15 scale
+        // Return the constant ship length - aspect ratio is handled by base class
+        return SpaceObjectRendererBase.SHIP_LENGTH;
     }
     
     /**
