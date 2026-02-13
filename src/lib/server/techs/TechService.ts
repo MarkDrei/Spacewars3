@@ -200,7 +200,7 @@ export class TechService {
 
             if (now >= completionTime) {
                 // Build complete!
-                this.applyCompletedBuild(user, currentBuild);
+                const levelUp = this.applyCompletedBuild(user, currentBuild);
                 completedItems.push(currentBuild);
 
                 // Remove from queue
@@ -211,6 +211,15 @@ export class TechService {
                 try {
                     const ctx = createLockContext();
                     await this.messageCacheInstance.createMessage(ctx, userId, `Build complete: ${spec.name}`);
+                    
+                    // Send level-up notification if applicable
+                    if (levelUp) {
+                        await this.messageCacheInstance.createMessage(
+                            ctx,
+                            userId,
+                            `P: 🎉 Level Up! You reached level ${levelUp.newLevel}! (+${levelUp.xpReward} XP from build)`
+                        );
+                    }
                 } catch (error) {
                     console.error(`Failed to send build completion notification to user ${userId}:`, error);
                 }
@@ -234,7 +243,7 @@ export class TechService {
         return { completed: completedItems };
     }
 
-    private applyCompletedBuild(user: User, build: BuildQueueItem): void {
+    private applyCompletedBuild(user: User, build: BuildQueueItem): { leveledUp: boolean; oldLevel: number; newLevel: number; xpReward: number } | undefined {
         const itemKey = build.itemKey;
 
         // Update tech counts
@@ -252,6 +261,19 @@ export class TechService {
 
             // Note: Real max values would be calculated from tech counts * base stats
         }
+
+        // Award XP based on iron cost
+        const spec = TechFactory.getTechSpec(build.itemKey, build.itemType);
+        if (!spec) return undefined;
+
+        const xpReward = Math.floor(spec.baseCost / 100);
+        const levelUp = user.addXp(xpReward);
+
+        if (levelUp) {
+            return { ...levelUp, xpReward };
+        }
+
+        return undefined;
     }
 
     /**

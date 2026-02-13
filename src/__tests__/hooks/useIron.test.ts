@@ -24,7 +24,10 @@ describe('useIron', () => {
       iron: 1500,
       last_updated: 1674567890,
       ironPerSecond: 2,
-      maxIronCapacity: 5000
+      maxIronCapacity: 5000,
+      xp: 5000,
+      level: 3,
+      xpForNextLevel: 10000
     };
     mockUserStatsService.getUserStats.mockResolvedValueOnce(mockStats);
 
@@ -41,6 +44,9 @@ describe('useIron', () => {
     });
 
     expect(result.current.ironAmount).toBe(1500);
+    expect(result.current.xp).toBe(5000);
+    expect(result.current.level).toBe(3);
+    expect(result.current.xpForNextLevel).toBe(10000);
     expect(result.current.error).toBe(null);
   });
 
@@ -68,7 +74,10 @@ describe('useIron', () => {
       iron: 1000,
       last_updated: 1674567890,
       ironPerSecond: 2,
-      maxIronCapacity: 5000
+      maxIronCapacity: 5000,
+      xp: 0,
+      level: 1,
+      xpForNextLevel: 1000
     };
     mockUserStatsService.getUserStats.mockResolvedValueOnce(mockStats);
 
@@ -112,7 +121,10 @@ describe('useIron', () => {
       iron: 1000,
       last_updated: 1674567890,
       ironPerSecond: 1,
-      maxIronCapacity: 5000
+      maxIronCapacity: 5000,
+      xp: 0,
+      level: 1,
+      xpForNextLevel: 1000
     });
 
     renderHook(() => useIron());
@@ -131,7 +143,10 @@ describe('useIron', () => {
       iron: 1000,
       last_updated: 1674567890,
       ironPerSecond: 0, // No production
-      maxIronCapacity: 5000
+      maxIronCapacity: 5000,
+      xp: 0,
+      level: 1,
+      xpForNextLevel: 1000
     };
     mockUserStatsService.getUserStats.mockResolvedValueOnce(mockStats);
 
@@ -152,7 +167,10 @@ describe('useIron', () => {
       iron: 1000,
       last_updated: 1674567890,
       ironPerSecond: 1,
-      maxIronCapacity: 5000
+      maxIronCapacity: 5000,
+      xp: 0,
+      level: 1,
+      xpForNextLevel: 1000
     };
     mockUserStatsService.getUserStats.mockResolvedValue(mockStats);
 
@@ -186,7 +204,10 @@ describe('useIron', () => {
       iron: 1000,
       last_updated: 1674567890,
       ironPerSecond: 2,
-      maxIronCapacity: 5000
+      maxIronCapacity: 5000,
+      xp: 0,
+      level: 1,
+      xpForNextLevel: 1000
     };
     mockUserStatsService.getUserStats.mockResolvedValueOnce(mockStats);
 
@@ -224,7 +245,10 @@ describe('useIron', () => {
       iron: 1000,
       last_updated: 1674567890,
       ironPerSecond: 1,
-      maxIronCapacity: 5000
+      maxIronCapacity: 5000,
+      xp: 0,
+      level: 1,
+      xpForNextLevel: 1000
     });
 
     const customInterval = 3000;

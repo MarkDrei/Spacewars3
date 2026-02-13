@@ -2,7 +2,7 @@
 // Domain logic for the User and its stats, including persistence callback.
 // ---
 
-import { TechTree, ResearchType, getResearchEffectFromTree, updateTechTree } from '../techs/techtree';
+import { TechTree, ResearchType, getResearchEffectFromTree, updateTechTree, AllResearches, getResearchUpgradeCost } from '../techs/techtree';
 import { TechCounts, BuildQueueItem } from '../techs/TechFactory';
 import { TechService } from '../techs/TechService';
 
@@ -11,6 +11,7 @@ class User {
   username: string;
   password_hash: string;
   iron: number;
+  xp: number;
   last_updated: number;
   techTree: TechTree;
   ship_id?: number; // Optional ship ID for linking to player's ship
@@ -38,6 +39,7 @@ class User {
     username: string,
     password_hash: string,
     iron: number,
+    xp: number,
     last_updated: number,
     techTree: TechTree,
     saveCallback: SaveUserCallback,
@@ -56,6 +58,7 @@ class User {
     this.username = username;
     this.password_hash = password_hash;
     this.iron = iron;
+    this.xp = xp;
     this.last_updated = last_updated;
     this.techTree = techTree;
     this.techCounts = techCounts;
@@ -91,6 +94,55 @@ class User {
   }
 
   /**
+   * Calculate player level from total XP.
+   * Level 1 = 0 XP
+   * Level 2 = 1,000 XP
+   * Level 3 = 4,000 XP (1000 + 3000)
+   * Level 4 = 10,000 XP (1000 + 3000 + 6000)
+   * Pattern: Each level requires 1000 more XP than the previous increment
+   * Increment for level N is triangular number N-1: (N-1)*N/2 * 1000
+   */
+  getLevel(): number {
+    let level = 1;
+    let totalXpNeeded = 0;
+
+    // Keep adding levels while we have enough XP
+    while (true) {
+      // Calculate XP increment needed to reach next level
+      // Increment for level (level+1) is triangular number (level): level*(level+1)/2 * 1000
+      const xpForNextLevel = (level * (level + 1) / 2) * 1000;
+      
+      if (this.xp >= totalXpNeeded + xpForNextLevel) {
+        totalXpNeeded += xpForNextLevel;
+        level++;
+      } else {
+        break;
+      }
+    }
+
+    return level;
+  }
+
+  /**
+   * Get the total XP required to reach the next level.
+   * Returns the XP threshold, not the remaining XP needed.
+   */
+  getXpForNextLevel(): number {
+    const currentLevel = this.getLevel();
+    const nextLevel = currentLevel + 1;
+
+    // Calculate total XP needed for next level
+    // Progression: Level N needs sum from k=1 to N-1 of (triangular number k)
+    // Triangular number k = k*(k+1)/2
+    // So total = sum from k=1 to N-1 of (k*(k+1)/2 * 1000)
+    let totalXpNeeded = 0;
+    for (let k = 1; k < nextLevel; k++) {
+      totalXpNeeded += (k * (k + 1) / 2) * 1000;
+    }
+    return totalXpNeeded;
+  }
+
+  /**
    * Add iron to the user's inventory with capacity enforcement
    * @param amount Amount of iron to add
    * @returns The actual amount added (may be less if cap is hit)
@@ -118,32 +170,53 @@ class User {
     return true;
   }
 
-  updateStats(now: number): void {
+  /**
+   * Add XP to the user.
+   * @param amount Amount of XP to add (must be positive)
+   * @returns Object with leveledUp flag and old/new levels if level increased, undefined otherwise
+   */
+  addXp(amount: number): { leveledUp: boolean; oldLevel: number; newLevel: number } | undefined {
+    if (amount <= 0) return undefined;
+
+    const oldLevel = this.getLevel();
+    this.xp += amount;
+    const newLevel = this.getLevel();
+
+    if (newLevel > oldLevel) {
+      return { leveledUp: true, oldLevel, newLevel };
+    }
+
+    return undefined;
+  }
+
+  updateStats(now: number): { levelUp?: { leveledUp: boolean; oldLevel: number; newLevel: number; xpReward: number; source: 'research' } } {
     const elapsed = now - this.last_updated;
-    if (elapsed <= 0) return;
+    if (elapsed <= 0) return {};
 
     let ironToAdd = 0;
+    let researchResult: { completed: boolean; type: ResearchType; completedLevel: number } | undefined;
     const techTree = this.techTree;
     const active = techTree.activeResearch;
     if (!active || active.type !== ResearchType.IronHarvesting) {
       // No relevant research in progress, just award all time
       ironToAdd += getResearchEffectFromTree(techTree, ResearchType.IronHarvesting) * elapsed;
-      updateTechTree(techTree, elapsed);
+      researchResult = updateTechTree(techTree, elapsed);
     } else {
       const timeToComplete = active.remainingDuration;
       if (elapsed < timeToComplete) {
         // Research does not complete in this interval
         ironToAdd += getResearchEffectFromTree(techTree, ResearchType.IronHarvesting) * elapsed;
-        updateTechTree(techTree, elapsed);
+        researchResult = updateTechTree(techTree, elapsed);
       } else {
         // Research completes during this interval
         // 1. Award up to research completion at old rate
         ironToAdd += getResearchEffectFromTree(techTree, ResearchType.IronHarvesting) * timeToComplete;
-        updateTechTree(techTree, timeToComplete);
+        researchResult = updateTechTree(techTree, timeToComplete);
         // 2. After research completes, award remaining time at new rate (if any)
         const remaining = elapsed - timeToComplete;
         if (remaining > 0) {
           ironToAdd += getResearchEffectFromTree(techTree, ResearchType.IronHarvesting) * remaining;
+          // Second updateTechTree call should not complete another research (no overwrites)
           updateTechTree(techTree, remaining);
         }
       }
@@ -154,6 +227,22 @@ class User {
 
     // Also update defense values (regeneration)
     this.updateDefenseValues(now);
+
+    // Check if research completed and award XP
+    let levelUpInfo: { leveledUp: boolean; oldLevel: number; newLevel: number; xpReward: number; source: 'research' } | undefined;
+    if (researchResult?.completed) {
+      const research = AllResearches[researchResult.type];
+      // Get the cost of the level that was just completed (completedLevel + 1)
+      const cost = getResearchUpgradeCost(research, researchResult.completedLevel + 1);
+      const xpReward = Math.floor(cost / 25);
+      const levelUp = this.addXp(xpReward);
+
+      if (levelUp) {
+        levelUpInfo = { ...levelUp, xpReward, source: 'research' as const };
+      }
+    }
+
+    return levelUpInfo ? { levelUp: levelUpInfo } : {};
   }
 
   /**

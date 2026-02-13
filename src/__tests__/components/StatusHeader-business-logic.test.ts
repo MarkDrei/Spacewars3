@@ -102,4 +102,29 @@ describe('StatusHeader Business Logic', () => {
     expect(generateTooltip('Custom tooltip')).toBe('Custom tooltip');
     expect(generateTooltip('')).toBe('Status indicator');
   });
+
+  it('should display level when provided', () => {
+    const getLevelDisplay = (level: number | undefined, isLoading: boolean): string => {
+      if (level === undefined) return '';
+      return isLoading ? '...' : level.toString();
+    };
+
+    expect(getLevelDisplay(1, false)).toBe('1');
+    expect(getLevelDisplay(5, false)).toBe('5');
+    expect(getLevelDisplay(100, false)).toBe('100');
+    expect(getLevelDisplay(1, true)).toBe('...');
+    expect(getLevelDisplay(undefined, false)).toBe('');
+    expect(getLevelDisplay(undefined, true)).toBe('');
+  });
+
+  it('should hide level display when level is undefined', () => {
+    const shouldShowLevel = (level: number | undefined): boolean => {
+      return level !== undefined;
+    };
+
+    expect(shouldShowLevel(1)).toBe(true);
+    expect(shouldShowLevel(0)).toBe(true);
+    expect(shouldShowLevel(100)).toBe(true);
+    expect(shouldShowLevel(undefined)).toBe(false);
+  });
 });

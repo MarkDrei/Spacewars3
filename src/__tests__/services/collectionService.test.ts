@@ -37,7 +37,10 @@ describe('collectionService', () => {
         iron: 1150,
         last_updated: 1234567890,
         ironPerSecond: 2.5,
-        maxIronCapacity: 5000
+        maxIronCapacity: 5000,
+        xp: 0,
+        level: 1,
+        xpForNextLevel: 1000
       };
       
       mockFetch.mockResolvedValueOnce({
@@ -80,7 +83,10 @@ describe('collectionService', () => {
         iron: 1000,
         last_updated: 1234567890,
         ironPerSecond: 2.5,
-        maxIronCapacity: 5000
+        maxIronCapacity: 5000,
+        xp: 0,
+        level: 1,
+        xpForNextLevel: 1000
       };
       
       mockFetch.mockResolvedValueOnce({
@@ -111,7 +117,10 @@ describe('collectionService', () => {
         iron: 500,
         last_updated: 1234567890,
         ironPerSecond: 2.5,
-        maxIronCapacity: 5000
+        maxIronCapacity: 5000,
+        xp: 0,
+        level: 1,
+        xpForNextLevel: 1000
       };
       
       mockFetch.mockResolvedValueOnce({
@@ -177,7 +186,10 @@ describe('collectionService', () => {
         iron: 800,
         last_updated: 1234567890,
         ironPerSecond: 2.5,
-        maxIronCapacity: 5000
+        maxIronCapacity: 5000,
+        xp: 0,
+        level: 1,
+        xpForNextLevel: 1000
       };
       
       mockFetch.mockRejectedValueOnce(new Error('Network error'));
@@ -232,7 +244,10 @@ describe('collectionService', () => {
         iron: 600,
         last_updated: 1234567890,
         ironPerSecond: 2.5,
-        maxIronCapacity: 5000
+        maxIronCapacity: 5000,
+        xp: 0,
+        level: 1,
+        xpForNextLevel: 1000
       };
       
       mockFetch.mockResolvedValueOnce({
@@ -264,7 +279,10 @@ describe('collectionService', () => {
         iron: 700,
         last_updated: 1234567890,
         ironPerSecond: 2.5,
-        maxIronCapacity: 5000
+        maxIronCapacity: 5000,
+        xp: 0,
+        level: 1,
+        xpForNextLevel: 1000
       };
       
       mockFetch.mockResolvedValueOnce({
@@ -300,7 +318,10 @@ describe('collectionService', () => {
         iron: 2175,
         last_updated: 1234567890,
         ironPerSecond: 2.5,
-        maxIronCapacity: 5000
+        maxIronCapacity: 5000,
+        xp: 0,
+        level: 1,
+        xpForNextLevel: 1000
       };
       
       mockFetch.mockResolvedValueOnce({
@@ -342,7 +363,10 @@ describe('collectionService', () => {
         iron: 3750,
         last_updated: 1234567890,
         ironPerSecond: 2.5,
-        maxIronCapacity: 5000
+        maxIronCapacity: 5000,
+        xp: 0,
+        level: 1,
+        xpForNextLevel: 1000
       };
       
       vi.mocked(userStatsService.getUserStats).mockResolvedValueOnce(mockUpdatedStats);
@@ -374,7 +398,10 @@ describe('collectionService', () => {
         iron: 1000,
         last_updated: 1234567890,
         ironPerSecond: 2.5,
-        maxIronCapacity: 5000
+        maxIronCapacity: 5000,
+        xp: 0,
+        level: 1,
+        xpForNextLevel: 1000
       };
       
       mockFetch.mockResolvedValueOnce({
