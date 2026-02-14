@@ -6,6 +6,7 @@ import { HasLock6Context, IronLocks } from '@markdrei/ironguard-typescript-locks
 import { updateAllObjectPositions } from '@shared/physics';
 import { DEFAULT_WORLD_BOUNDS } from '@shared/worldConstants';
 import { DatabaseConnection } from '../database';
+import { TimeMultiplierService } from '../timeMultiplier';
 import { deleteSpaceObject, insertSpaceObject } from './worldRepo';
 
 export interface SpaceObject {
@@ -52,10 +53,13 @@ class World {
    * Needs write lock level 6 because it modifies object positions
    */
   updatePhysics<THeld extends IronLocks>(_context: HasLock6Context<THeld>, currentTime: number): void {
+    const timeMultiplier = TimeMultiplierService.getInstance().getMultiplier();
     this.spaceObjects = updateAllObjectPositions(
       this.spaceObjects,
       currentTime,
-      this.worldSize
+      this.worldSize,
+      undefined, // factor - use default (50)
+      timeMultiplier
     );
   }
 

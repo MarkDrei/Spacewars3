@@ -324,6 +324,14 @@ As a game admin, I want to activate a time multiplier (e.g. 10x for 5 minutes) t
 - Same for `WithTimeCorrection` variants: multiply `correctedElapsedMs` by `timeMultiplier`
 - All existing callers pass no multiplier argument → default 1 → no behavior change
 
+**Status**: ✅ COMPLETED  
+**Implementation Summary**: Added optional `timeMultiplier` parameter (default 1) to all 4 physics functions, multiplying elapsed time calculations by the multiplier for time acceleration while maintaining full backward compatibility.  
+**Files Modified/Created**:
+- `src/shared/src/physics.ts` — Modified `updateObjectPosition()`, `updateObjectPositionWithTimeCorrection()`, `updateAllObjectPositions()`, and `updateAllObjectPositionsWithTimeCorrection()` to accept optional `timeMultiplier` parameter and apply it to elapsed time calculations  
+**Deviations from Plan**: None  
+**Arc42 Updates**: None required  
+**Test Results**: ✅ All tests passing (covered by Task 2.4.3 tests)
+
 ##### Task 2.4.2: Pass multiplier on server-side physics calls
 
 **Action**: When the server updates physics, pass the current multiplier from `TimeMultiplierService`.
@@ -337,6 +345,14 @@ As a game admin, I want to activate a time multiplier (e.g. 10x for 5 minutes) t
 - `world.updatePhysics(context, currentTime)` → `world.updatePhysics(context, currentTime, TimeMultiplierService.getMultiplier())`
 - `updatePhysics` passes multiplier to `updateAllObjectPositions()`
 
+**Status**: ✅ COMPLETED  
+**Implementation Summary**: Integrated TimeMultiplierService into server-side physics by fetching the multiplier within `World.updatePhysics()` and passing it to `updateAllObjectPositions()`.  
+**Files Modified/Created**:
+- `src/lib/server/world/world.ts` — Added TimeMultiplierService import and modified `updatePhysics()` method to get current multiplier and pass it to `updateAllObjectPositions()`  
+**Deviations from Plan**: Simplified implementation by having `updatePhysics()` fetch the multiplier internally rather than requiring callers to pass it. This reduces duplication (2 call sites don't need to change) and keeps the multiplier logic encapsulated. Both approaches achieve the same result, but this is cleaner.  
+**Arc42 Updates**: None required  
+**Test Results**: ✅ All tests passing (integration tested via Task 2.4.3 tests)
+
 ##### Task 2.4.3: Tests for accelerated physics
 
 **Action**: Test that physics functions correctly apply the time multiplier.
@@ -347,6 +363,21 @@ As a game admin, I want to activate a time multiplier (e.g. 10x for 5 minutes) t
 **Test cases**:
 - `updateObjectPosition_withMultiplier10_movesObjectTenTimesAsFar`
 - `updateObjectPosition_withMultiplier1_behavesUnchanged`
+
+**Status**: ✅ COMPLETED  
+**Implementation Summary**: Created comprehensive test suite with 16 test cases covering all 4 physics functions with various multipliers, edge cases, and backward compatibility verification.  
+**Files Modified/Created**:
+- `src/__tests__/shared/physics-multiplier.test.ts` — New file with 16 comprehensive tests organized into 6 describe blocks: updateObjectPosition (5 tests), updateAllObjectPositions (3 tests), updateObjectPositionWithTimeCorrection (3 tests), updateAllObjectPositionsWithTimeCorrection (2 tests), and Edge Cases (3 tests)  
+**Test Coverage**: All required test cases implemented plus additional coverage for:
+- Multiple multiplier values (1x, 5x, 10x, 100x, fractional 0.5x)
+- All 4 physics functions (not just updateObjectPosition)
+- Edge cases: zero elapsed time, zero speed, very small elapsed time, extreme multipliers
+- Backward compatibility: default parameter behavior matches explicit multiplier=1
+- Multiple objects and batch updates
+- Time correction with multipliers  
+**Deviations from Plan**: Extended test coverage from 2 required test cases to 16 comprehensive tests to ensure robust validation of all physics multiplier scenarios and edge cases.  
+**Arc42 Updates**: None required  
+**Test Results**: ✅ All 16 tests passing (769 total tests passing)
 
 ---
 
