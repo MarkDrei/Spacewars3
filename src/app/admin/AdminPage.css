@@ -248,6 +248,170 @@
   color: var(--primary-green);
 }
 
+/* Time Multiplier Section Styles */
+.time-multiplier-section {
+  background-color: #1e1e1e;
+  border: 2px solid var(--primary-green);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 0 15px rgba(76, 175, 80, 0.3);
+}
+
+.time-multiplier-section h2 {
+  color: var(--primary-green);
+  margin: 0 0 1rem 0;
+  font-size: 1.5rem;
+  border-bottom: 1px solid var(--primary-green);
+  padding-bottom: 0.5rem;
+}
+
+.multiplier-status {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.multiplier-badge {
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-size: 1.25rem;
+  font-weight: bold;
+  transition: all 0.3s ease;
+}
+
+.multiplier-active {
+  background-color: var(--primary-green);
+  color: white;
+  box-shadow: 0 0 20px rgba(76, 175, 80, 0.6);
+  animation: pulse 2s infinite;
+}
+
+.multiplier-inactive {
+  background-color: #444;
+  color: #888;
+  border: 1px solid #666;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(76, 175, 80, 0.6);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(76, 175, 80, 0.9);
+  }
+}
+
+.multiplier-countdown {
+  color: var(--primary-green);
+  font-weight: 600;
+  font-size: 1.1rem;
+  font-family: 'Courier New', monospace;
+}
+
+.multiplier-activated {
+  color: #888;
+  font-size: 0.9rem;
+}
+
+.multiplier-controls {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.multiplier-preset-btn {
+  background-color: var(--primary-green);
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.2s ease;
+  font-size: 0.95rem;
+}
+
+.multiplier-preset-btn:hover:not(:disabled) {
+  background-color: var(--primary-green-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.multiplier-preset-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.multiplier-custom-form {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-end;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+  padding: 1rem;
+  background-color: #2a2a2a;
+  border-radius: 8px;
+  border: 1px solid #444;
+}
+
+.multiplier-custom-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  color: #e0e0e0;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.multiplier-custom-form input {
+  padding: 0.5rem;
+  border: 1px solid var(--primary-green);
+  border-radius: 6px;
+  background-color: #1e1e1e;
+  color: white;
+  font-size: 1rem;
+  width: 150px;
+  transition: all 0.2s ease;
+}
+
+.multiplier-custom-form input:focus {
+  outline: none;
+  border-color: var(--primary-green-hover);
+  box-shadow: 0 0 5px rgba(76, 175, 80, 0.5);
+}
+
+.multiplier-custom-form input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.multiplier-reset-btn {
+  background-color: #f44336;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.2s ease;
+  font-size: 0.95rem;
+}
+
+.multiplier-reset-btn:hover:not(:disabled) {
+  background-color: #da190b;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(244, 67, 54, 0.4);
+}
+
+.multiplier-reset-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .admin-page {
@@ -284,5 +448,43 @@
   
   .tech-counts span {
     padding: 0.1rem 0.3rem;
+  }
+
+  /* Time Multiplier Responsive Styles */
+  .time-multiplier-section {
+    padding: 1rem;
+  }
+
+  .multiplier-status {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .multiplier-badge {
+    font-size: 1rem;
+    padding: 0.5rem 1rem;
+  }
+
+  .multiplier-controls {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .multiplier-preset-btn {
+    width: 100%;
+  }
+
+  .multiplier-custom-form {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .multiplier-custom-form input {
+    width: 100%;
+  }
+
+  .multiplier-reset-btn {
+    width: 100%;
   }
 }
