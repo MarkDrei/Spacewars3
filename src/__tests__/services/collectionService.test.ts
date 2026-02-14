@@ -40,7 +40,8 @@ describe('collectionService', () => {
         maxIronCapacity: 5000,
         xp: 0,
         level: 1,
-        xpForNextLevel: 1000
+        xpForNextLevel: 1000,
+      timeMultiplier: 1
       };
       
       mockFetch.mockResolvedValueOnce({
@@ -86,7 +87,8 @@ describe('collectionService', () => {
         maxIronCapacity: 5000,
         xp: 0,
         level: 1,
-        xpForNextLevel: 1000
+        xpForNextLevel: 1000,
+      timeMultiplier: 1
       };
       
       mockFetch.mockResolvedValueOnce({
@@ -120,7 +122,8 @@ describe('collectionService', () => {
         maxIronCapacity: 5000,
         xp: 0,
         level: 1,
-        xpForNextLevel: 1000
+        xpForNextLevel: 1000,
+      timeMultiplier: 1
       };
       
       mockFetch.mockResolvedValueOnce({
@@ -189,7 +192,8 @@ describe('collectionService', () => {
         maxIronCapacity: 5000,
         xp: 0,
         level: 1,
-        xpForNextLevel: 1000
+        xpForNextLevel: 1000,
+      timeMultiplier: 1
       };
       
       mockFetch.mockRejectedValueOnce(new Error('Network error'));
@@ -247,7 +251,8 @@ describe('collectionService', () => {
         maxIronCapacity: 5000,
         xp: 0,
         level: 1,
-        xpForNextLevel: 1000
+        xpForNextLevel: 1000,
+      timeMultiplier: 1
       };
       
       mockFetch.mockResolvedValueOnce({
@@ -282,7 +287,8 @@ describe('collectionService', () => {
         maxIronCapacity: 5000,
         xp: 0,
         level: 1,
-        xpForNextLevel: 1000
+        xpForNextLevel: 1000,
+      timeMultiplier: 1
       };
       
       mockFetch.mockResolvedValueOnce({
@@ -321,7 +327,8 @@ describe('collectionService', () => {
         maxIronCapacity: 5000,
         xp: 0,
         level: 1,
-        xpForNextLevel: 1000
+        xpForNextLevel: 1000,
+      timeMultiplier: 1
       };
       
       mockFetch.mockResolvedValueOnce({
@@ -366,7 +373,8 @@ describe('collectionService', () => {
         maxIronCapacity: 5000,
         xp: 0,
         level: 1,
-        xpForNextLevel: 1000
+        xpForNextLevel: 1000,
+      timeMultiplier: 1
       };
       
       vi.mocked(userStatsService.getUserStats).mockResolvedValueOnce(mockUpdatedStats);
@@ -401,7 +409,8 @@ describe('collectionService', () => {
         maxIronCapacity: 5000,
         xp: 0,
         level: 1,
-        xpForNextLevel: 1000
+        xpForNextLevel: 1000,
+      timeMultiplier: 1
       };
       
       mockFetch.mockResolvedValueOnce({
