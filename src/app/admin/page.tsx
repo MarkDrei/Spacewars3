@@ -10,6 +10,7 @@ interface UserData {
   id: number;
   username: string;
   iron: number;
+  xp: number;
   pulse_laser: number;
   auto_turret: number;
   plasma_lance: number;
@@ -183,6 +184,7 @@ const AdminPage: React.FC = () => {
                   <th>ID</th>
                   <th>Username</th>
                   <th>Iron</th>
+                  <th>XP</th>
                   <th>Weapons</th>
                   <th>Defenses</th>
                   <th>Research</th>
@@ -201,6 +203,9 @@ const AdminPage: React.FC = () => {
                       </span>
                     </td>
                     <td className="data-cell">{userData.iron.toLocaleString()}</td>
+                    <td className="data-cell">
+                      <strong>{userData.xp.toLocaleString()}</strong>
+                    </td>
                     <td className="data-cell">
                       <div className="tech-counts">
                         <span>Pulse: {userData.pulse_laser}</span>

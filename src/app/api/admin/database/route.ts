@@ -24,6 +24,7 @@ interface UserData {
   id: number;
   username: string;
   iron: number;
+  xp: number;
   pulse_laser: number;
   auto_turret: number;
   plasma_lance: number;
@@ -107,7 +108,7 @@ export async function GET(request: NextRequest) {
       // Get all users data
       const usersResult = await db.query(`
         SELECT 
-          id, username, iron, last_updated,
+          id, username, iron, xp, last_updated,
           build_queue, build_start_sec,
           pulse_laser, auto_turret, plasma_lance, gauss_rifle,
           photon_torpedo, rocket_launcher,
@@ -139,6 +140,7 @@ export async function GET(request: NextRequest) {
           id: row.id,
           username: row.username,
           iron: row.iron,
+          xp: row.xp || 0,
           pulse_laser: row.pulse_laser || 0,
           auto_turret: row.auto_turret || 0,
           plasma_lance: row.plasma_lance || 0,
