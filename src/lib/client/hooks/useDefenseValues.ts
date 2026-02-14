@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { getShipStats } from '../services/shipStatsService';
 import { DefenseValues } from '@/shared/defenseValues';
 import { globalEvents, EVENTS } from '../services/eventService';
+import { getTimeMultiplier } from '../timeMultiplier';
 
 interface UseDefenseValuesReturn {
   defenseValues: DefenseValues | null;
@@ -67,10 +68,11 @@ export const useDefenseValues = (pollInterval: number = 2000): UseDefenseValuesR
 
     const now = Date.now();
     const secondsElapsed = (now - lastServerUpdate) / 1000;
+    const multiplier = getTimeMultiplier();
 
     // Calculate interpolated values based on time elapsed since last server update
     const interpolateValue = (defense: { current: number; max: number; regenRate: number }) => {
-      const interpolated = defense.current + (secondsElapsed * defense.regenRate);
+      const interpolated = defense.current + (secondsElapsed * defense.regenRate * multiplier);
       return Math.min(Math.floor(interpolated), defense.max);
     };
 

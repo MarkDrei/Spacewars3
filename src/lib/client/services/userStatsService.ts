@@ -11,6 +11,7 @@ export interface UserStatsResponse {
   xp: number;
   level: number;
   xpForNextLevel: number;
+  timeMultiplier: number;
 }
 
 export interface UserStatsError {

@@ -22,7 +22,8 @@ describe('useIron - XP and Level Display', () => {
       maxIronCapacity: 5000,
       xp: 5000,
       level: 3,
-      xpForNextLevel: 10000
+      xpForNextLevel: 10000,
+      timeMultiplier: 1
     };
     mockUserStatsService.getUserStats.mockResolvedValueOnce(mockStats);
 
@@ -49,7 +50,8 @@ describe('useIron - XP and Level Display', () => {
       maxIronCapacity: 5000,
       xp: 0,
       level: 1,
-      xpForNextLevel: 1000
+      xpForNextLevel: 1000,
+      timeMultiplier: 1
     };
     mockUserStatsService.getUserStats.mockResolvedValueOnce(mockStats);
 
@@ -76,7 +78,8 @@ describe('useIron - XP and Level Display', () => {
       maxIronCapacity: 50000,
       xp: 165000,
       level: 10,
-      xpForNextLevel: 220000
+      xpForNextLevel: 220000,
+      timeMultiplier: 1
     };
     mockUserStatsService.getUserStats.mockResolvedValueOnce(mockStats);
 
@@ -103,7 +106,8 @@ describe('useIron - XP and Level Display', () => {
       maxIronCapacity: 5000,
       xp: 900,
       level: 1,
-      xpForNextLevel: 1000
+      xpForNextLevel: 1000,
+      timeMultiplier: 1
     };
     
     // Updated state after level up
@@ -114,7 +118,8 @@ describe('useIron - XP and Level Display', () => {
       maxIronCapacity: 5000,
       xp: 1100,
       level: 2,
-      xpForNextLevel: 4000
+      xpForNextLevel: 4000,
+      timeMultiplier: 1
     };
     
     mockUserStatsService.getUserStats

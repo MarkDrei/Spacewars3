@@ -24,6 +24,7 @@ import { getBattleCache } from './BattleCache';
 import { BATTLE_LOCK, USER_LOCK } from '../typedLocks';
 import { createLockContext, LockContext, LocksAtMostAndHas2, LocksAtMost3, LocksAtMostAndHas4 } from '@markdrei/ironguard-typescript-locks';
 import { UserCache } from '../user/userCache';
+import { TimeMultiplierService } from '../timeMultiplier';
 
 // ========================================
 // Battle Helper Functions
@@ -56,6 +57,16 @@ function getReadyWeapons(battle: Battle, userId: number, currentTime: number): s
   }
 
   return readyWeapons;
+}
+
+/**
+ * Calculate effective weapon cooldown with time multiplier applied
+ * @param baseCooldown - Base cooldown in seconds
+ * @returns Effective cooldown (minimum 1 second)
+ */
+function calculateEffectiveWeaponCooldown(baseCooldown: number): number {
+  const multiplier = TimeMultiplierService.getInstance().getMultiplier();
+  return Math.max(1, Math.ceil(baseCooldown / multiplier));
 }
 
 /**
@@ -336,7 +347,10 @@ async function fireWeapon(
       await createMessage(defenderId, `A: Enemy ${weaponType.replace(/_/g, ' ')} fired ${shotsPerSalvo} shot(s) but all missed!`);
       
       // Update cooldown - set to when weapon will be ready next
-      const nextReadyTime = currentTime + (weaponData.cooldown || 5);
+      // Apply time multiplier to accelerate cooldowns
+      const baseCooldown = weaponData.cooldown || 5;
+      const effectiveCooldown = calculateEffectiveWeaponCooldown(baseCooldown);
+      const nextReadyTime = currentTime + effectiveCooldown;
       await BattleRepo.setWeaponCooldown(context, battle.id, attackerId, weaponType, nextReadyTime);
       
       return;
@@ -392,7 +406,10 @@ async function fireWeapon(
     await createMessage(defenderId, defenderMessage);
     
     // Update cooldown - set to when weapon will be ready next
-    const nextReadyTime = currentTime + (weaponData.cooldown || 5);
+    // Apply time multiplier to accelerate cooldowns
+    const baseCooldown = weaponData.cooldown || 5;
+    const effectiveCooldown = calculateEffectiveWeaponCooldown(baseCooldown);
+    const nextReadyTime = currentTime + effectiveCooldown;
     await BattleRepo.setWeaponCooldown(context, battle.id, attackerId, weaponType, nextReadyTime);
     
     console.log(`⚔️ Battle ${battle.id}: User ${attackerId} ${weaponType} - ${damageCalc.weaponsHit}/${shotsPerSalvo} hits, ${totalDamage} damage`);

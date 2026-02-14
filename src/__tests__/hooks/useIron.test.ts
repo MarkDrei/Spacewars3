@@ -27,7 +27,8 @@ describe('useIron', () => {
       maxIronCapacity: 5000,
       xp: 5000,
       level: 3,
-      xpForNextLevel: 10000
+      xpForNextLevel: 10000,
+      timeMultiplier: 1
     };
     mockUserStatsService.getUserStats.mockResolvedValueOnce(mockStats);
 
@@ -77,7 +78,8 @@ describe('useIron', () => {
       maxIronCapacity: 5000,
       xp: 0,
       level: 1,
-      xpForNextLevel: 1000
+      xpForNextLevel: 1000,
+      timeMultiplier: 1
     };
     mockUserStatsService.getUserStats.mockResolvedValueOnce(mockStats);
 
@@ -124,7 +126,8 @@ describe('useIron', () => {
       maxIronCapacity: 5000,
       xp: 0,
       level: 1,
-      xpForNextLevel: 1000
+      xpForNextLevel: 1000,
+      timeMultiplier: 1
     });
 
     renderHook(() => useIron());
@@ -146,7 +149,8 @@ describe('useIron', () => {
       maxIronCapacity: 5000,
       xp: 0,
       level: 1,
-      xpForNextLevel: 1000
+      xpForNextLevel: 1000,
+      timeMultiplier: 1
     };
     mockUserStatsService.getUserStats.mockResolvedValueOnce(mockStats);
 
@@ -170,7 +174,8 @@ describe('useIron', () => {
       maxIronCapacity: 5000,
       xp: 0,
       level: 1,
-      xpForNextLevel: 1000
+      xpForNextLevel: 1000,
+      timeMultiplier: 1
     };
     mockUserStatsService.getUserStats.mockResolvedValue(mockStats);
 
@@ -207,7 +212,8 @@ describe('useIron', () => {
       maxIronCapacity: 5000,
       xp: 0,
       level: 1,
-      xpForNextLevel: 1000
+      xpForNextLevel: 1000,
+      timeMultiplier: 1
     };
     mockUserStatsService.getUserStats.mockResolvedValueOnce(mockStats);
 
@@ -248,7 +254,8 @@ describe('useIron', () => {
       maxIronCapacity: 5000,
       xp: 0,
       level: 1,
-      xpForNextLevel: 1000
+      xpForNextLevel: 1000,
+      timeMultiplier: 1
     });
 
     const customInterval = 3000;

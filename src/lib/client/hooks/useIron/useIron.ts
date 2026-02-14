@@ -4,6 +4,7 @@ import { globalEvents, EVENTS } from '../../services/eventService';
 import { calculatePredictedIron, shouldUpdateDisplay, type IronData } from './ironCalculations';
 import { shouldRetryFetch, scheduleRetry, DEFAULT_RETRY_CONFIG } from './retryLogic';
 import { setupPolling, cancelPolling } from './pollingUtils';
+import { setTimeMultiplier, getTimeMultiplier } from '../../timeMultiplier';
 
 interface UseIronReturn {
   ironAmount: number;
@@ -13,6 +14,7 @@ interface UseIronReturn {
   xp: number;
   level: number;
   xpForNextLevel: number;
+  timeMultiplier: number;
 }
 
 export const useIron = (pollInterval: number = 5000): UseIronReturn => {
@@ -24,6 +26,7 @@ export const useIron = (pollInterval: number = 5000): UseIronReturn => {
   });
   const [displayIronAmount, setDisplayIronAmount] = useState<number>(0);
   const [xpData, setXpData] = useState({ xp: 0, level: 1, xpForNextLevel: 1000 });
+  const [currentTimeMultiplier, setCurrentTimeMultiplier] = useState<number>(1);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   
@@ -63,6 +66,11 @@ export const useIron = (pollInterval: number = 5000): UseIronReturn => {
         maxCapacity: result.maxIronCapacity
       };
       
+      // Store time multiplier in module-level state for other hooks to use
+      const multiplier = result.timeMultiplier ?? 1;
+      setTimeMultiplier(multiplier);
+      setCurrentTimeMultiplier(multiplier);
+      
       setIronData(newData);
       setDisplayIronAmount(Math.floor(result.iron));
       setXpData({
@@ -92,7 +100,7 @@ export const useIron = (pollInterval: number = 5000): UseIronReturn => {
   const updateDisplayIron = useCallback(() => {
     // Only update if we have valid data and production rate
     if (ironData.serverAmount >= 0 && ironData.ironPerSecond > 0 && !error) {
-      const predicted = calculatePredictedIron(ironData);
+      const predicted = calculatePredictedIron(ironData, Date.now(), getTimeMultiplier());
       
       if (shouldUpdateDisplay(displayIronAmount, predicted)) {
         setDisplayIronAmount(predicted);
@@ -156,6 +164,7 @@ export const useIron = (pollInterval: number = 5000): UseIronReturn => {
     refetch: fetchIron,
     xp: xpData.xp,
     level: xpData.level,
-    xpForNextLevel: xpData.xpForNextLevel
+    xpForNextLevel: xpData.xpForNextLevel,
+    timeMultiplier: currentTimeMultiplier
   };
 };

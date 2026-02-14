@@ -7,6 +7,7 @@ import { handleApiError, requireAuth, ApiError } from '@/lib/server/errors';
 import { USER_LOCK } from '@/lib/server/typedLocks';
 import { User } from '@/lib/server/user/user';
 import { createLockContext, LockContext, LocksAtMostAndHas4 } from '@markdrei/ironguard-typescript-locks';
+import { TimeMultiplierService } from '@/lib/server/timeMultiplier';
 
 export async function GET(request: NextRequest) {
   try {
@@ -59,7 +60,8 @@ async function processUserStats(user: User, userWorldCache: UserCache, userCtx: 
     maxIronCapacity: user.getMaxIronCapacity(),
     xp: user.xp,
     level: user.getLevel(),
-    xpForNextLevel: user.getXpForNextLevel()
+    xpForNextLevel: user.getXpForNextLevel(),
+    timeMultiplier: TimeMultiplierService.getInstance().getMultiplier()
   };
   
   return NextResponse.json(responseData);
