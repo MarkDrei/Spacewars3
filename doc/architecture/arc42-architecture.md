@@ -469,6 +469,89 @@ graph TD
 - Lock acquisition: Guaranteed by IronGuard (no deadlocks)
 - Async failures: Message creation errors logged, message removed from cache
 
+### 8.4 Time Multiplier (Turbo Mode)
+
+**Purpose:** Admin/debug feature to accelerate all game-time-based calculations for rapid end-game testing without affecting real-time timestamps.
+
+**Architecture:**
+
+```mermaid
+graph TB
+    Admin["Admin Page UI<br/>(Preset & Custom Controls)"]
+    API["Admin API Endpoint<br/>/api/admin/time-multiplier"]
+    Service["TimeMultiplierService<br/>(In-Memory Singleton)"]
+    Server["Server-Side Game Logic<br/>(Iron, Research, Builds,<br/>Defense, Battles, Physics)"]
+    UserStats["/api/user-stats<br/>(Polling 5s)"]
+    Client["Client-Side Hooks<br/>(Iron, Defense, Physics)"]
+    
+    Admin -->|POST multiplier + duration| API
+    API -->|setMultiplier()| Service
+    Service -->|getMultiplier()| Server
+    Service -->|getStatus()| UserStats
+    UserStats -->|timeMultiplier field| Client
+    Client -->|Apply to predictions| Client
+    
+    style Admin fill:#e1f5ff
+    style API fill:#fff4e1
+    style Service fill:#ffcccc
+    style Server fill:#ccffcc
+    style UserStats fill:#ffffcc
+    style Client fill:#e1f5ff
+```
+
+**Key Design Decisions:**
+
+1. **Delta Multiplication Pattern:** Multiplies elapsed time deltas rather than creating a "virtual clock"
+   ```typescript
+   // Server: Multiply elapsed time before calculations
+   const elapsed = now - this.last_updated;
+   const gameElapsed = elapsed * TimeMultiplierService.getInstance().getMultiplier();
+   // Use gameElapsed for calculations, update this.last_updated = now (real time)
+   ```
+
+2. **Two Time-Calculation Patterns:**
+   - **Delta-based (iron, research, defense):** `gameElapsed = elapsed × multiplier`
+   - **Absolute-timestamp (build queue):** `effectiveTime = duration / multiplier`
+
+3. **Real Timestamps Preserved:** Database timestamps (`last_updated`, `defenseLastRegen`, `buildStartSec`) remain in real time for synchronization anchoring
+
+4. **In-Memory Only:** No database persistence - multiplier state is ephemeral, resets on server restart
+
+5. **Auto-Expiration:** Multiplier automatically resets to 1 after configured duration
+
+6. **Client Synchronization:** Piggybacked on existing `/api/user-stats` polling (5s interval) to avoid additional API calls
+
+7. **Module-Level State (Client):** Simple module-level variable instead of React Context to avoid complexity and re-render cascades
+
+**Integration Points:**
+
+- **User Stats:** `User.updateStats()`, `User.updateDefenseValues()` - Iron production, research progression, defense regeneration
+- **Build Queue:** `TechService.processCompletedBuilds()`, `TechService.getBuildQueue()` - Build completion and time estimates
+- **Battle System:** `battleScheduler.fireWeapon()` - Weapon cooldown calculations
+- **Physics:** `updateObjectPosition()` and variants in `shared/physics.ts` - Object movement speed
+- **Admin API:** `/api/admin/time-multiplier` (GET/POST) - Status retrieval and activation (admin-only: users 'a' and 'q')
+- **Client Hooks:** `useIron`, `useDefenseValues`, `useWorldData` - Client-side prediction and interpolation
+
+**Behavioral Characteristics:**
+
+- **Mid-Change Discontinuities:** Activating/deactivating multiplier during active operations (e.g., mid-build) causes instant completion or slowdown - documented as acceptable for admin/debug feature
+- **Consistency:** All game systems accelerate uniformly - no selective acceleration
+- **Backward Compatible:** Default parameter values ensure zero breaking changes for existing code
+
+**Admin Access Control:**
+
+- Restricted to developer accounts (username 'a' or 'q')
+- Uses IronGuard LOCK_4 (USER_LOCK) for user lookup and authorization
+- Authentication via iron-session
+- Input validation: multiplier ≥ 1, duration > 0
+
+**Implementation:**
+- Service: `src/lib/server/timeMultiplier.ts` (138 lines)
+- Admin API: `src/app/api/admin/time-multiplier/route.ts` (195 lines)
+- Client Module: `src/lib/client/timeMultiplier.ts` (38 lines)
+- Admin UI: `src/app/admin/page.tsx` (Time Multiplier section)
+- Test Coverage: 113 new tests across all integration points
+
 ---
 
 ## 9. Architecture Decisions
