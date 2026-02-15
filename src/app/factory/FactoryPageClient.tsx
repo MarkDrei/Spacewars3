@@ -139,11 +139,13 @@ const FactoryPageClient: React.FC<FactoryPageClientProps> = ({ auth }) => {
           )}
 
           {/* Build Queue Section */}
-          {buildQueue.length > 0 && (
+          <h2 id="build-queue" className="section-header">Build Queue</h2>
+          {buildQueue.length === 0 ? (
+            <div className="no-build-queue-message">No items in build queue</div>
+          ) : (
             <>
-              <h2 id="build-queue" className="section-header">Build Queue</h2>
               {viewMode === 'table' ? (
-                <div className="data-table-container">
+                <div className="data-table-container" style={{ maxHeight: '300px', overflowY: 'auto' }}>
                   <table className="data-table">
                     <thead>
                       <tr>
@@ -174,7 +176,7 @@ const FactoryPageClient: React.FC<FactoryPageClientProps> = ({ auth }) => {
                   </table>
                 </div>
               ) : (
-                <div className="build-queue-cards">
+                <div className="build-queue-cards" style={{ maxHeight: '300px', overflowY: 'auto' }}>
                   {buildQueue.map((item, index) => (
                     <div key={`${item.itemKey}-${index}`} className="queue-card">
                       <div className="queue-card-item">
