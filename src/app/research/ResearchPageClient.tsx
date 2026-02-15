@@ -248,7 +248,7 @@ const ResearchPageClient: React.FC<ResearchPageClientProps> = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isTriggering, setIsTriggering] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<'cards' | 'table'>('table');
+  const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
   
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
