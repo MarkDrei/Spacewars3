@@ -179,3 +179,170 @@
     font-size: 1.3rem;
   }
 }
+
+/* Card-based layout styles */
+.item-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.item-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 1rem;
+  transition: all 0.3s ease;
+}
+
+.item-card:hover {
+  border-color: var(--primary-green);
+  box-shadow: 0 4px 12px rgba(0, 255, 0, 0.1);
+}
+
+.weapon-image-container {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 0.5rem;
+}
+
+.weapon-image {
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.weapon-icon {
+  width: 40px;
+  height: 40px;
+  margin-right: 0.5rem;
+  border-radius: 4px;
+}
+
+.card-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--primary-green);
+  flex-grow: 1;
+}
+
+.card-type {
+  font-size: 0.8rem;
+  color: #ccc;
+  text-transform: uppercase;
+}
+
+.card-details {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.card-detail {
+  display: flex;
+  flex-direction: column;
+}
+
+.card-detail-label {
+  font-size: 0.75rem;
+  color: #aaa;
+  text-transform: uppercase;
+  margin-bottom: 0.25rem;
+}
+
+.card-detail-value {
+  font-weight: 500;
+}
+
+.card-description {
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+  color: #ddd;
+}
+
+.card-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* Build Queue Cards */
+.build-queue-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 2rem;
+}
+
+.queue-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 0.75rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.queue-card-item {
+  font-weight: 600;
+}
+
+.queue-card-type {
+  color: #ccc;
+  font-size: 0.9rem;
+}
+
+.queue-card-time {
+  color: var(--primary-green);
+  font-weight: 600;
+  font-family: 'Courier New', monospace;
+}
+
+/* View Toggle */
+.view-toggle {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  justify-content: center;
+}
+
+.toggle-button {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
+}
+
+.toggle-button:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.toggle-button.active {
+  background: var(--primary-green);
+  border-color: var(--primary-green);
+  color: #000;
+}
+
+@media (max-width: 768px) {
+  .item-cards-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .queue-card {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+}

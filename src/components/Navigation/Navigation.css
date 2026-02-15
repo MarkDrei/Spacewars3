@@ -188,3 +188,43 @@
   text-align: center;
   white-space: nowrap;
 }
+
+/* Mobile Shortcut Bar */
+.navbar-shortcut-bar {
+  display: none;
+  position: fixed;
+  bottom: 70px;
+  left: 0;
+  right: 0;
+  height: 50px;
+  background-color: #1e1e1e;
+  border-top: 1px solid var(--primary-green);
+  justify-content: space-around;
+  align-items: center;
+  z-index: 999;
+  padding: 0 0.5rem;
+}
+
+@media (max-width: 1280px) {
+  .navbar-shortcut-bar {
+    display: flex !important;
+  }
+}
+
+.shortcut-button {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  color: #aaa;
+  background: none;
+  border: none;
+  font-size: 12px;
+  cursor: pointer;
+  transition: color 0.2s;
+  white-space: nowrap;
+}
+
+.shortcut-button:hover {
+  color: var(--primary-green);
+}
