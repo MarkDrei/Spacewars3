@@ -190,7 +190,7 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
         <div className="home-container">
           {/* Battle Status Banner */}
           {!battleLoading && battleStatus?.inBattle && battleStatus.battle && (
-            <div className="battle-banner">
+            <div id="battle-status" className="battle-banner">
               <div className="battle-banner-header">
                 ⚔️ BATTLE IN PROGRESS
               </div>
@@ -226,7 +226,7 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
           )}
 
           {/* Notifications */}
-          <div className="data-table-container">
+          <div id="notifications" className="data-table-container">
             <table className="data-table">
               <thead>
                 <tr>
@@ -388,7 +388,7 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
           </div>
 
           {/* XP and Level Progress */}
-          <div className="data-table-container">
+          <div id="progress" className="data-table-container">
             <table className="data-table">
               <thead>
                 <tr>
@@ -423,7 +423,7 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
           </div>
 
           {/* Defense Values Table */}
-          <div className="data-table-container defense-values-table-container">
+          <div id="defense" className="data-table-container defense-values-table-container">
             <table className="data-table">
               <thead>
                 <tr>
@@ -492,7 +492,7 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
           </div>
 
           {/* Tech Counts Table */}
-          <div className="data-table-container tech-counts-table-container">
+          <div id="tech-inventory" className="data-table-container tech-counts-table-container">
             <table className="data-table">
               <thead>
                 <tr>
@@ -605,7 +605,7 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
 
           {/* Weapon Cooldowns Table - Only shown if in battle */}
           {battleStatus?.inBattle && battleStatus.battle && (
-            <div className="data-table-container weapon-cooldowns-table-container">
+            <div id="weapon-cooldowns" className="data-table-container weapon-cooldowns-table-container">
               <table className="data-table">
                 <thead>
                   <tr>

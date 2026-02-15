@@ -32,6 +32,14 @@ const Navigation: React.FC<NavigationProps> = ({ onLogout }) => {
     return pathname === path;
   };
 
+  // Function to scroll to a section
+  const scrollToSection = (sectionId: string) => {
+    const element = document.getElementById(sectionId);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
   // Check if user has admin access
   const hasAdminAccess = username === 'a' || username === 'q';
 
@@ -123,6 +131,30 @@ const Navigation: React.FC<NavigationProps> = ({ onLogout }) => {
             <NavigationIcon route="/admin" label="Admin" isActive={isActive('/admin')} />
           )}
         </div>
+
+        {/* Mobile Shortcut Bar - Only on Home Page */}
+        {(pathname === '/' || pathname === '/home') && (
+          <div className="navbar-shortcut-bar">
+            <button className="shortcut-button" onClick={() => scrollToSection('battle-status')}>
+              Battle
+            </button>
+            <button className="shortcut-button" onClick={() => scrollToSection('notifications')}>
+              Messages
+            </button>
+            <button className="shortcut-button" onClick={() => scrollToSection('progress')}>
+              Progress
+            </button>
+            <button className="shortcut-button" onClick={() => scrollToSection('defense')}>
+              Defense
+            </button>
+            <button className="shortcut-button" onClick={() => scrollToSection('tech-inventory')}>
+              Tech
+            </button>
+            <button className="shortcut-button" onClick={() => scrollToSection('weapon-cooldowns')}>
+              Cooldowns
+            </button>
+          </div>
+        )}
       </div>
     </nav>
   );
