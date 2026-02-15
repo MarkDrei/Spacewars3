@@ -46,15 +46,21 @@ const FactoryPageClient: React.FC<FactoryPageClientProps> = ({ auth }) => {
   const isLoading = isBuildQueueLoading || isTechCountsLoading;
   const error = buildQueueError || techCountsError;
 
-  // Helper function to get weapon image name
-  const getWeaponImageName = (key: string): string => {
+  // Helper function to get tech image name
+  const getTechImageName = (key: string): string => {
     const imageMap: Record<string, string> = {
+      // Weapons
       pulse_laser: 'PulseLaser',
       auto_turret: 'AutoTurret',
       plasma_lance: 'PlasmaLance',
       gauss_rifle: 'GaussRifle',
       photon_torpedo: 'PhotonTorpedo',
       rocket_launcher: 'RocketLauncher',
+      // Defenses
+      ship_hull: 'ShipHull',
+      kinetic_armor: 'Gemini_Generated_Image_cpd1s1cpd1s1cpd1', // Assuming this is kinetic armor
+      energy_shield: 'EnergyShield',
+      missile_jammer: 'MissileJammer',
     };
     return imageMap[key] || key;
   };
@@ -252,8 +258,15 @@ const FactoryPageClient: React.FC<FactoryPageClientProps> = ({ auth }) => {
           ) : (
             <div className="item-cards-grid">
               {Object.entries(defenses).map(([key, defense]) => (
-                <div key={key} className="item-card">
-                  <div className="card-header">
+                <div key={key} className="item-card">                <div className="weapon-image-container">
+                  <Image 
+                    src={`/assets/images/factory/${getTechImageName(key)}.png`} 
+                    alt={`${defense.name} icon`} 
+                    width={288}
+                    height={288}
+                    className="weapon-image" 
+                  />
+                </div>                  <div className="card-header">
                     <div className="card-title">{defense.name}</div>
                   </div>
                   <div className="card-details">
@@ -371,7 +384,7 @@ const FactoryPageClient: React.FC<FactoryPageClientProps> = ({ auth }) => {
                 <div key={key} className="item-card">
                   <div className="weapon-image-container">
                     <Image 
-                      src={`/assets/images/factory/${getWeaponImageName(key)}.png`} 
+                      src={`/assets/images/factory/${getTechImageName(key)}.png`} 
                       alt={`${weapon.name} icon`} 
                       width={288}
                       height={288}
@@ -521,7 +534,7 @@ const FactoryPageClient: React.FC<FactoryPageClientProps> = ({ auth }) => {
                 <div key={key} className="item-card">
                   <div className="weapon-image-container">
                     <Image 
-                      src={`/assets/images/factory/${getWeaponImageName(key)}.png`} 
+                      src={`/assets/images/factory/${getTechImageName(key)}.png`} 
                       alt={`${weapon.name} icon`} 
                       width={288}
                       height={288}
