@@ -370,3 +370,141 @@
     min-width: 250px;
   }
 }
+
+/* Card-based layout styles */
+.item-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.item-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 1rem;
+  transition: all 0.3s ease;
+}
+
+.item-card:hover {
+  border-color: var(--primary-green);
+  box-shadow: 0 4px 12px rgba(0, 255, 0, 0.1);
+}
+
+.research-image-container {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 0.5rem;
+}
+
+.research-image {
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.card-header {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 0.5rem;
+}
+
+.card-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--primary-green);
+  text-align: center;
+}
+
+.card-details {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.card-detail {
+  display: flex;
+  flex-direction: column;
+  text-align: center;
+}
+
+.card-detail-label {
+  font-size: 0.75rem;
+  color: #aaa;
+  text-transform: uppercase;
+  margin-bottom: 0.25rem;
+}
+
+.card-detail-value {
+  font-weight: 500;
+}
+
+.card-description {
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+  color: #ddd;
+  text-align: center;
+}
+
+.card-actions {
+  display: flex;
+  justify-content: center;
+}
+
+.build-button {
+  background-color: var(--primary-green);
+  color: white;
+  border: none;
+  padding: 0.6rem 1.2rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  min-width: var(--min-width-button);
+}
+
+.build-button:hover:not(:disabled) {
+  background-color: var(--primary-green-hover);
+}
+
+.build-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* View Toggle */
+.view-toggle {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  justify-content: center;
+}
+
+.toggle-button {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
+}
+
+.toggle-button:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.toggle-button.active {
+  background: var(--primary-green);
+  border-color: var(--primary-green);
+  color: #000;
+}
+
+@media (max-width: 768px) {
+  .item-cards-grid {
+    grid-template-columns: 1fr;
+  }
+}

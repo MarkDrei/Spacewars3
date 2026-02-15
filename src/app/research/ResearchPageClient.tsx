@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import Image from 'next/image';
 import AuthenticatedLayout from '@/components/Layout/AuthenticatedLayout';
 import { researchService, TechTree, ResearchDef, ResearchType } from '@/lib/client/services/researchService';
 import { userStatsService } from '@/lib/client/services/userStatsService';
@@ -247,8 +248,45 @@ const ResearchPageClient: React.FC<ResearchPageClientProps> = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isTriggering, setIsTriggering] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'cards' | 'table'>('table');
   
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Helper function to get research image name
+  const getResearchImageName = (type: ResearchType): string => {
+    const imageMap: Record<string, string> = {
+      IronHarvesting: 'IronHarvesting',
+      ShipSpeed: 'ShipSpeed',
+      projectileDamage: 'ProjectileDamage',
+      projectileReloadRate: 'ReloadRate',
+      projectileAccuracy: 'ProjectileAccuracy',
+      energyDamage: 'EnergyDamage',
+      energyRechargeRate: 'RechargeRate',
+      energyAccuracy: 'ProjectileAccuracy', // reuse
+      hullStrength: 'HullStrength',
+      inventoryCapacity: 'InventoryCapacity',
+      armorEffectiveness: 'ArmorEffectiveness',
+      shieldEffectiveness: 'ShieldEffectiveness',
+      shieldRechargeRate: 'ShieldRechargeRate',
+      afterburnerSpeedIncrease: 'AfterburnerSpeed',
+      afterburnerDuration: 'AfterburnerDuration',
+      teleport: 'Teleport',
+      constructionSpeed: 'ConstructionSpeed',
+      // Add more as available, fallback to IronHarvesting for now
+    };
+    return imageMap[type] || 'IronHarvesting';
+  };
+
+  // Helper function to get all research types from hierarchy
+  const getAllResearchTypes = (node: ResearchNode): ResearchType[] => {
+    const types: ResearchType[] = [node.type];
+    if (node.children) {
+      node.children.forEach(child => {
+        types.push(...getAllResearchTypes(child));
+      });
+    }
+    return types;
+  };
 
   // Fetch initial data
   const fetchData = async () => {
@@ -506,35 +544,135 @@ const ResearchPageClient: React.FC<ResearchPageClientProps> = () => {
         <div className="research-container">
           <h1 className="page-heading">Research</h1>
         
+          {/* View Toggle */}
+          <div className="view-toggle">
+            <button
+              className={`toggle-button ${viewMode === 'cards' ? 'active' : ''}`}
+              onClick={() => setViewMode('cards')}
+            >
+              Cards
+            </button>
+            <button
+              className={`toggle-button ${viewMode === 'table' ? 'active' : ''}`}
+              onClick={() => setViewMode('table')}
+            >
+              Table
+            </button>
+          </div>
+
           {error && (
             <div className="error-message">
               {error}
             </div>
           )}
 
-          <div className="data-table-container">
-            {researchHierarchy.map(category => (
-              <div key={category.name} className="research-category">
-                <h2 className="category-heading">{category.name}</h2>
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>Name</th>
-                      <th>Level</th>
-                      <th>Current Value</th>
-                      <th>Next Level Value</th>
-                      <th>Upgrade Duration</th>
-                      <th>Description</th>
-                      <th>Upgrade</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {category.nodes.flatMap(node => renderResearchNode(node, 0))}
-                  </tbody>
-                </table>
-              </div>
-            ))}
-          </div>
+          {viewMode === 'table' ? (
+            <div className="data-table-container">
+              {researchHierarchy.map(category => (
+                <div key={category.name} className="research-category">
+                  <h2 className="category-heading">{category.name}</h2>
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>Name</th>
+                        <th>Level</th>
+                        <th>Current Value</th>
+                        <th>Next Level Value</th>
+                        <th>Upgrade Duration</th>
+                        <th>Description</th>
+                        <th>Upgrade</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {category.nodes.flatMap(node => renderResearchNode(node, 0))}
+                    </tbody>
+                  </table>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div>
+              {researchHierarchy.map(category => (
+                <div key={category.name} className="research-category">
+                  <h2 className="category-heading">{category.name}</h2>
+                  <div className="item-cards-grid">
+                    {category.nodes.flatMap(node => getAllResearchTypes(node)).map(type => {
+                      const research = researches[type];
+                      if (!research) return null;
+                      
+                      const key = researchTypeToKey[type];
+                      const levelValue = techTree[key];
+                      const level = typeof levelValue === 'number' ? levelValue : 0;
+                      const isActive = techTree.activeResearch?.type === research.type;
+                      const canUpgrade = !isAnyResearchActive && researchService.canAffordResearch(research, currentIron);
+                      
+                      return (
+                        <div key={type} className="item-card">
+                          <div className="research-image-container">
+                            <Image 
+                              src={`/assets/images/research/${getResearchImageName(type)}.png`} 
+                              alt={`${research.name} icon`} 
+                              width={288}
+                              height={288}
+                              className="research-image" 
+                            />
+                          </div>
+                          <div className="card-header">
+                            <div className="card-title">{research.name}</div>
+                          </div>
+                          <div className="card-details">
+                            <div className="card-detail">
+                              <div className="card-detail-label">Level</div>
+                              <div className="card-detail-value">{level}</div>
+                            </div>
+                            <div className="card-detail">
+                              <div className="card-detail-label">Current Effect</div>
+                              <div className="card-detail-value">
+                                {researchService.formatEffect(research.currentEffect, research.unit)}
+                              </div>
+                            </div>
+                            <div className="card-detail">
+                              <div className="card-detail-label">Next Effect</div>
+                              <div className="card-detail-value">
+                                {researchService.formatEffect(research.nextEffect, research.unit)}
+                              </div>
+                            </div>
+                            <div className="card-detail">
+                              <div className="card-detail-label">Duration</div>
+                              <div className="card-detail-value">
+                                {researchService.formatDuration(research.nextUpgradeDuration)}
+                              </div>
+                            </div>
+                            <div className="card-detail">
+                              <div className="card-detail-label">Cost</div>
+                              <div className={`card-detail-value ${researchService.canAffordResearch(research, currentIron) ? 'cost-affordable' : 'cost-expensive'}`}>
+                                {research.nextUpgradeCost.toLocaleString()} Iron
+                              </div>
+                            </div>
+                          </div>
+                          <div className="card-description">
+                            {research.description}
+                          </div>
+                          <div className="card-actions">
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <button
+                                className="build-button"
+                                disabled={!canUpgrade}
+                                onClick={() => handleTriggerResearch(type)}
+                              >
+                                {isActive ? 'Researching...' : isTriggering ? 'Triggering...' : 'Research'}
+                              </button>
+                              <CostTooltip research={research} currentLevel={level} />
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </AuthenticatedLayout>
