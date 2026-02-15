@@ -135,7 +135,7 @@ const FactoryPageClient: React.FC<FactoryPageClientProps> = ({ auth }) => {
           {/* Build Queue Section */}
           {buildQueue.length > 0 && (
             <>
-              <h2 className="section-header">Build Queue</h2>
+              <h2 id="build-queue" className="section-header">Build Queue</h2>
               {viewMode === 'table' ? (
                 <div className="data-table-container">
                   <table className="data-table">
@@ -199,7 +199,7 @@ const FactoryPageClient: React.FC<FactoryPageClientProps> = ({ auth }) => {
           )}
 
           {/* Defense Items Section */}
-          <h2 className="section-header">Defense Systems</h2>
+          <h2 id="defense-systems" className="section-header">Defense Systems</h2>
           {viewMode === 'table' ? (
             <div className="data-table-container">
               <table className="data-table">
@@ -294,7 +294,7 @@ const FactoryPageClient: React.FC<FactoryPageClientProps> = ({ auth }) => {
           )}
 
           {/* Weapons Section */}
-          <h2 className="section-header">Projectile Weapons</h2>
+          <h2 id="projectile-weapons" className="section-header">Projectile Weapons</h2>
           {viewMode === 'table' ? (
             <div className="data-table-container">
               <table className="data-table">
@@ -444,7 +444,7 @@ const FactoryPageClient: React.FC<FactoryPageClientProps> = ({ auth }) => {
             </div>
           )}
 
-          <h2 className="section-header">Energy Weapons</h2>
+          <h2 id="energy-weapons" className="section-header">Energy Weapons</h2>
           {viewMode === 'table' ? (
             <div className="data-table-container">
               <table className="data-table">
