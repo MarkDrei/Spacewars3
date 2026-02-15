@@ -1,5 +1,19 @@
 @import "tailwindcss";
 
+@font-face {
+  font-family: 'Geist';
+  src: url('/fonts/Geist-VariableFont_wght.ttf') format('truetype');
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'GeistMono';
+  src: url('/fonts/GeistMono-VariableFont_wght.ttf') format('truetype');
+  font-weight: 100 900;
+  font-display: swap;
+}
+
 :root {
   /* Dark theme colors - always dark for space game */
   --background: #0a0a0a;
@@ -9,6 +23,10 @@
   --primary-green: #4caf50;
   --primary-green-hover: #45a049;
   --primary-green-active: #3e8e41;
+  
+  /* Font variables */
+  --font-geist-sans: 'Geist';
+  --font-geist-mono: 'GeistMono';
   
   /* Responsive breakpoint for mobile navigation */
   --mobile-nav-breakpoint: 1280px;
@@ -34,7 +52,7 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+  font-family: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
     sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -43,7 +61,7 @@ body {
 }
 
 code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+  font-family: var(--font-geist-mono), source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
 
