@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { WorldData } from '@shared/types/gameTypes';
 import { updateAllObjectPositions, updateAllObjectPositionsWithTimeCorrection } from '@shared/physics';
 import { worldDataService } from '../services/worldDataService';
+import { getTimeMultiplier } from '../timeMultiplier';
 
 interface UseWorldDataReturn {
   worldData: WorldData | null;
@@ -37,7 +38,9 @@ export const useWorldData = (pollInterval: number = 3000): UseWorldDataReturn =>
     const updatedObjects = updateAllObjectPositions(
       data.spaceObjects,
       now,
-      data.worldSize
+      data.worldSize,
+      50,
+      getTimeMultiplier()
     );
     
     return {
@@ -71,7 +74,9 @@ export const useWorldData = (pollInterval: number = 3000): UseWorldDataReturn =>
         Date.now(),
         result.data.responseReceivedAt,
         result.data.roundTripTime,
-        result.data.data.worldSize
+        result.data.data.worldSize,
+        50,
+        getTimeMultiplier()
       );
       
       // Extract timing information and merge with corrected world data

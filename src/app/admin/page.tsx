@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import AuthenticatedLayout from '@/components/Layout/AuthenticatedLayout';
 import { useAuth } from '@/lib/client/hooks/useAuth';
 import type { Battle } from '@/lib/server/battle/battleTypes';
@@ -48,6 +48,13 @@ interface AdminData {
   timestamp: string;
 }
 
+interface MultiplierStatus {
+  multiplier: number;
+  expiresAt: number | null;
+  activatedAt: number | null;
+  remainingSeconds: number;
+}
+
 const AdminPage: React.FC = () => {
   const { username, isLoggedIn, isLoading } = useAuth();
   const [adminData, setAdminData] = useState<AdminData | null>(null);
@@ -55,20 +62,20 @@ const AdminPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isAuthorized, setIsAuthorized] = useState(false);
 
-  useEffect(() => {
-    if (isLoading) return;
-    
-    // Check if user is authorized (same as cheat mode)
-    if (!isLoggedIn || !username || (username !== 'a' && username !== 'q')) {
-      setError('Access denied. Admin access required.');
-      setIsLoadingData(false);
-      return;
-    }
+  // Time multiplier state
+  const [multiplierStatus, setMultiplierStatus] = useState<MultiplierStatus>({
+    multiplier: 1,
+    expiresAt: null,
+    activatedAt: null,
+    remainingSeconds: 0,
+  });
+  const [customMultiplier, setCustomMultiplier] = useState<number>(10);
+  const [customDuration, setCustomDuration] = useState<number>(5);
+  const [isLoadingMultiplier, setIsLoadingMultiplier] = useState(false);
+  const multiplierIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-    setIsAuthorized(true);
-    fetchAdminData();
-  }, [username, isLoggedIn, isLoading]);
-
+  // Fetch admin data
   const fetchAdminData = async () => {
     try {
       setIsLoadingData(true);
@@ -89,6 +96,136 @@ const AdminPage: React.FC = () => {
       setIsLoadingData(false);
     }
   };
+
+  // Fetch time multiplier status
+  const fetchMultiplierStatus = useCallback(async () => {
+    try {
+      const response = await fetch('/api/admin/time-multiplier');
+      
+      if (!response.ok) {
+        console.error('Failed to fetch multiplier status:', response.statusText);
+        return;
+      }
+
+      const data = await response.json();
+      setMultiplierStatus(data);
+    } catch (err) {
+      console.error('Failed to fetch multiplier status:', err);
+    }
+  }, []);
+
+  // Set time multiplier
+  const setTimeMultiplier = async (multiplier: number, durationMinutes: number) => {
+    try {
+      setIsLoadingMultiplier(true);
+      const response = await fetch('/api/admin/time-multiplier', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ multiplier, durationMinutes }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to set multiplier');
+      }
+
+      // Fetch updated status immediately
+      await fetchMultiplierStatus();
+    } catch (err) {
+      console.error('Failed to set multiplier:', err);
+      alert(err instanceof Error ? err.message : 'Failed to set multiplier');
+    } finally {
+      setIsLoadingMultiplier(false);
+    }
+  };
+
+  // Handle preset button clicks
+  const handlePresetClick = (multiplier: number, durationMinutes: number) => {
+    setTimeMultiplier(multiplier, durationMinutes);
+  };
+
+  // Handle custom form submission
+  const handleCustomSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (customMultiplier >= 1 && customDuration > 0) {
+      setTimeMultiplier(customMultiplier, customDuration);
+    } else {
+      alert('Multiplier must be >= 1 and duration must be > 0');
+    }
+  };
+
+  // Handle reset to 1x
+  const handleReset = () => {
+    setTimeMultiplier(1, 0.01); // Set to 1x with minimal duration (auto-expires immediately)
+  };
+
+  // Format time remaining as MM:SS
+  const formatTimeRemaining = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  // Format activation time
+  const formatActivationTime = (timestamp: number | null): string => {
+    if (!timestamp) return 'N/A';
+    return new Date(timestamp).toLocaleTimeString();
+  };
+
+  useEffect(() => {
+    if (isLoading) return;
+    
+    // Check if user is authorized (same as cheat mode)
+    if (!isLoggedIn || !username || (username !== 'a' && username !== 'q')) {
+      setError('Access denied. Admin access required.');
+      setIsLoadingData(false);
+      return;
+    }
+
+    setIsAuthorized(true);
+    fetchAdminData();
+    fetchMultiplierStatus();
+  }, [username, isLoggedIn, isLoading, fetchMultiplierStatus]);
+
+  // Poll multiplier status every 5 seconds when active
+  useEffect(() => {
+    if (!isAuthorized) return;
+
+    // Initial fetch is done in the main useEffect
+    // Start polling
+    multiplierIntervalRef.current = setInterval(() => {
+      fetchMultiplierStatus();
+    }, 5000);
+
+    return () => {
+      if (multiplierIntervalRef.current) {
+        clearInterval(multiplierIntervalRef.current);
+      }
+    };
+  }, [isAuthorized, fetchMultiplierStatus]);
+
+  // Local countdown timer (updates every second)
+  useEffect(() => {
+    if (multiplierStatus.remainingSeconds <= 0) {
+      if (countdownIntervalRef.current) {
+        clearInterval(countdownIntervalRef.current);
+      }
+      return;
+    }
+
+    countdownIntervalRef.current = setInterval(() => {
+      setMultiplierStatus((prev) => ({
+        ...prev,
+        remainingSeconds: Math.max(0, prev.remainingSeconds - 1),
+      }));
+    }, 1000);
+
+    return () => {
+      if (countdownIntervalRef.current) {
+        clearInterval(countdownIntervalRef.current);
+      }
+    };
+  }, [multiplierStatus.remainingSeconds]);
 
   if (isLoading || isLoadingData) {
     return (
@@ -153,6 +290,94 @@ const AdminPage: React.FC = () => {
               🔄 Refresh Data
             </button>
           </div>
+        </div>
+
+        {/* Time Multiplier Section */}
+        <div className="time-multiplier-section">
+          <h2>⚡ Time Multiplier Control</h2>
+          
+          {/* Status Display */}
+          <div className="multiplier-status">
+            <div className={`multiplier-badge ${multiplierStatus.multiplier > 1 ? 'multiplier-active' : 'multiplier-inactive'}`}>
+              Time Multiplier: {multiplierStatus.multiplier}x
+            </div>
+            
+            {multiplierStatus.multiplier > 1 && multiplierStatus.remainingSeconds > 0 && (
+              <>
+                <div className="multiplier-countdown">
+                  Expires in: {formatTimeRemaining(multiplierStatus.remainingSeconds)}
+                </div>
+                <div className="multiplier-activated">
+                  Activated: {formatActivationTime(multiplierStatus.activatedAt)}
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Quick Action Presets */}
+          <div className="multiplier-controls">
+            <button
+              onClick={() => handlePresetClick(10, 5)}
+              className="multiplier-preset-btn"
+              disabled={isLoadingMultiplier}
+            >
+              10x for 5 min
+            </button>
+            <button
+              onClick={() => handlePresetClick(10, 15)}
+              className="multiplier-preset-btn"
+              disabled={isLoadingMultiplier}
+            >
+              10x for 15 min
+            </button>
+            <button
+              onClick={() => handlePresetClick(50, 5)}
+              className="multiplier-preset-btn"
+              disabled={isLoadingMultiplier}
+            >
+              50x for 5 min
+            </button>
+          </div>
+
+          {/* Custom Form */}
+          <form onSubmit={handleCustomSubmit} className="multiplier-custom-form">
+            <label>
+              Custom Multiplier:
+              <input
+                type="number"
+                min="1"
+                step="1"
+                value={customMultiplier}
+                onChange={(e) => setCustomMultiplier(Number(e.target.value))}
+                disabled={isLoadingMultiplier}
+              />
+            </label>
+            <label>
+              Duration (minutes):
+              <input
+                type="number"
+                min="0.1"
+                step="0.1"
+                value={customDuration}
+                onChange={(e) => setCustomDuration(Number(e.target.value))}
+                disabled={isLoadingMultiplier}
+              />
+            </label>
+            <button type="submit" className="multiplier-preset-btn" disabled={isLoadingMultiplier}>
+              Activate Custom
+            </button>
+          </form>
+
+          {/* Reset Button */}
+          {multiplierStatus.multiplier > 1 && (
+            <button
+              onClick={handleReset}
+              className="multiplier-reset-btn"
+              disabled={isLoadingMultiplier}
+            >
+              🔄 Reset to 1x
+            </button>
+          )}
         </div>
 
         <div className="admin-stats">

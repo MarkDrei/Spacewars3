@@ -18,14 +18,17 @@ export interface WorldBounds {
 /**
  * Calculate new position for an object based on elapsed time
  * Used for both optimistic updates (client) and authoritative updates (server)
+ * 
+ * @param timeMultiplier - Multiplier for time acceleration (default 1 for normal speed)
  */
 export function updateObjectPosition(
   obj: PhysicsObject,
   currentTime: number,
   worldBounds: WorldBounds,
-  factor: number = 50
+  factor: number = 50,
+  timeMultiplier: number = 1
 ): { x: number; y: number } {
-  const elapsedMs = currentTime - obj.last_position_update_ms;
+  const elapsedMs = (currentTime - obj.last_position_update_ms) * timeMultiplier;
   
   // Calculate new position based on speed and angle
   // Speed is in units per minute, angle is in degrees
@@ -48,6 +51,8 @@ export function updateObjectPosition(
 /**
  * Calculate new position for an object using client-side time correction
  * Accounts for clock drift and network latency
+ * 
+ * @param timeMultiplier - Multiplier for time acceleration (default 1 for normal speed)
  */
 export function updateObjectPositionWithTimeCorrection(
   obj: PhysicsObject,
@@ -55,14 +60,15 @@ export function updateObjectPositionWithTimeCorrection(
   responseReceivedAt: number,
   roundTripTime: number,
   worldBounds: WorldBounds,
-  factor: number = 50
+  factor: number = 50,
+  timeMultiplier: number = 1
 ): { x: number; y: number } {
   // Calculate time elapsed using your specification:
   // "client time" - "time when response was received" + "estimation of roundtrip time"
   // where estimation of roundtrip time is half the total roundtrip time
   const networkDelayEstimate = roundTripTime / 2;
   const timeSinceResponse = clientCurrentTime - responseReceivedAt;
-  const correctedElapsedMs = timeSinceResponse + networkDelayEstimate;
+  const correctedElapsedMs = (timeSinceResponse + networkDelayEstimate) * timeMultiplier;
   
   // Calculate new position based on speed and angle
   // Speed is in units per minute, angle is in degrees
@@ -85,16 +91,17 @@ export function updateObjectPositionWithTimeCorrection(
 /**
  * Update multiple objects' positions
  * 
- * 
+ * @param timeMultiplier - Multiplier for time acceleration (default 1 for normal speed)
  */
 export function updateAllObjectPositions<T extends PhysicsObject>(
   objects: T[],
   currentTime: number,
   worldBounds: WorldBounds,
-  factor?: number
+  factor?: number,
+  timeMultiplier?: number
 ): T[] {
   return objects.map(obj => {
-    const newPosition = updateObjectPosition(obj, currentTime, worldBounds, factor);
+    const newPosition = updateObjectPosition(obj, currentTime, worldBounds, factor, timeMultiplier);
     return {
       ...obj,
       x: newPosition.x,
@@ -106,6 +113,8 @@ export function updateAllObjectPositions<T extends PhysicsObject>(
 
 /**
  * Update multiple objects' positions with client-side time correction
+ * 
+ * @param timeMultiplier - Multiplier for time acceleration (default 1 for normal speed)
  */
 export function updateAllObjectPositionsWithTimeCorrection<T extends PhysicsObject>(
   objects: T[],
@@ -113,7 +122,8 @@ export function updateAllObjectPositionsWithTimeCorrection<T extends PhysicsObje
   responseReceivedAt: number,
   roundTripTime: number,
   worldBounds: WorldBounds,
-  factor?: number
+  factor?: number,
+  timeMultiplier?: number
 ): T[] {
   // Calculate corrected time for timestamp updates
   const networkDelayEstimate = roundTripTime / 2;
@@ -127,7 +137,8 @@ export function updateAllObjectPositionsWithTimeCorrection<T extends PhysicsObje
       responseReceivedAt, 
       roundTripTime, 
       worldBounds, 
-      factor
+      factor,
+      timeMultiplier
     );
     return {
       ...obj,

@@ -118,6 +118,40 @@ const { ironAmount, xp, level, xpForNextLevel, isLoading, error } = useIron(5000
 
 **TimeProvider interface** exists in `battleSchedulerUtils.ts` for test injection — not for game features. A time multiplier should be separate from this (multiplied deltas vs mocked time).
 
+## Singleton Pattern for Test Isolation
+
+**Discovered by**: Knight  
+**Context**: When implementing Task 2.1.1 (Time Multiplier integration), discovered the correct pattern for singleton usage in testable code
+
+**Pattern**: For singleton services that need to be reset between tests, use `getInstance()` pattern instead of exported singleton instance:
+
+**❌ Don't do this** (breaks test isolation):
+```typescript
+// In service file
+export const timeMultiplierService = TimeMultiplierService.getInstance();
+
+// In consuming code
+import { timeMultiplierService } from '../timeMultiplier';
+const multiplier = timeMultiplierService.getMultiplier();
+```
+
+**✅ Do this** (allows test isolation):
+```typescript
+// In consuming code
+import { TimeMultiplierService } from '../timeMultiplier';
+const multiplier = TimeMultiplierService.getInstance().getMultiplier();
+```
+
+**Why**: The exported singleton instance is captured at module load time. When tests call `TimeMultiplierService.resetInstance()`, they reset the globalThis instance but not the imported reference. Using `getInstance()` at call time ensures you always get the current singleton instance.
+
+**Implementation requirements**:
+- Singleton must store instance in `globalThis` (not module-level)
+- Must provide `resetInstance()` static method for tests
+- Service class must be exported (not just the instance)
+- Tests call `resetInstance()` in `beforeEach()` and `afterEach()`
+
+**Related pattern**: This is consistent with other singletons in the codebase (UserCache, WorldCache, MessageCache, BattleCache) which all use globalThis-based singleton pattern.
+
 ## Client-Side Module-Level State Pattern
 
 **Discovered by**: Cartographer  

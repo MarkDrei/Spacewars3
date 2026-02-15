@@ -7,14 +7,19 @@ import { GET as userStatsGET } from '@/app/api/user-stats/route';
 import { createRequest, createAuthenticatedSession, createAuthenticatedSessionWithUser } from '../helpers/apiTestHelpers';
 import { initializeIntegrationTestServer, shutdownIntegrationTestServer } from '../helpers/testServer';
 import { withTransaction } from '../helpers/transactionHelper';
+import { TimeMultiplierService } from '@/lib/server/timeMultiplier';
 
 describe('User stats API', () => {
   beforeEach(async () => {
     await initializeIntegrationTestServer();
+    // Reset time multiplier to default state before each test
+    TimeMultiplierService.resetInstance();
   });
 
   afterEach(async () => {
     await shutdownIntegrationTestServer();
+    // Clean up time multiplier after each test
+    TimeMultiplierService.resetInstance();
   });
 
   test('userStats_notAuthenticated_returns401', async () => {
@@ -43,12 +48,14 @@ describe('User stats API', () => {
       expect(data).toHaveProperty('xp');
       expect(data).toHaveProperty('level');
       expect(data).toHaveProperty('xpForNextLevel');
+      expect(data).toHaveProperty('timeMultiplier');
       expect(typeof data.iron).toBe('number');
       expect(typeof data.ironPerSecond).toBe('number');
       expect(typeof data.last_updated).toBe('number');
       expect(typeof data.xp).toBe('number');
       expect(typeof data.level).toBe('number');
       expect(typeof data.xpForNextLevel).toBe('number');
+      expect(typeof data.timeMultiplier).toBe('number');
       
       // Enhanced: Verify ironPerSecond returns the correct base rate (not 0)
       expect(data.ironPerSecond).toBe(1); // Base iron harvesting rate should be 1 iron/second
@@ -192,6 +199,99 @@ describe('User stats API', () => {
       expect(data.xp).toBeGreaterThanOrEqual(0);
       expect(data.level).toBeGreaterThanOrEqual(1);
       expect(data.xpForNextLevel).toBeGreaterThan(data.xp);
+    });
+  });
+
+  // Time Multiplier Tests
+  test('userStats_defaultTimeMultiplier_returns1', async () => {
+    await withTransaction(async () => {
+      const sessionCookie = await createAuthenticatedSession('defaultmultiplieruser');
+      
+      const request = createRequest('http://localhost:3000/api/user-stats', 'GET', undefined, sessionCookie);
+      const response = await userStatsGET(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(data).toHaveProperty('timeMultiplier');
+      expect(data.timeMultiplier).toBe(1);
+      expect(typeof data.timeMultiplier).toBe('number');
+    });
+  });
+
+  test('userStats_activeTimeMultiplier_returnsSetValue', async () => {
+    await withTransaction(async () => {
+      // Set active time multiplier
+      TimeMultiplierService.getInstance().setMultiplier(5, 10);
+      
+      const sessionCookie = await createAuthenticatedSession('activemultiplieruser');
+      
+      const request = createRequest('http://localhost:3000/api/user-stats', 'GET', undefined, sessionCookie);
+      const response = await userStatsGET(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(data.timeMultiplier).toBe(5);
+    });
+  });
+
+  test('userStats_expiredTimeMultiplier_returns1', async () => {
+    await withTransaction(async () => {
+      // Set time multiplier that expires immediately
+      const service = TimeMultiplierService.getInstance();
+      service.setMultiplier(10, 0.001); // 0.001 minutes = 60ms
+      
+      // Wait for expiration
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      const sessionCookie = await createAuthenticatedSession('expiredmultiplieruser');
+      
+      const request = createRequest('http://localhost:3000/api/user-stats', 'GET', undefined, sessionCookie);
+      const response = await userStatsGET(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(data.timeMultiplier).toBe(1); // Should auto-reset to 1
+    });
+  });
+
+  test('userStats_multipleRequests_returnConsistentMultiplier', async () => {
+    await withTransaction(async () => {
+      // Set time multiplier
+      TimeMultiplierService.getInstance().setMultiplier(3, 5);
+      
+      const sessionCookie = await createAuthenticatedSession('consistentmultiplieruser');
+      
+      // Make multiple requests
+      const request1 = createRequest('http://localhost:3000/api/user-stats', 'GET', undefined, sessionCookie);
+      const response1 = await userStatsGET(request1);
+      const data1 = await response1.json();
+
+      const request2 = createRequest('http://localhost:3000/api/user-stats', 'GET', undefined, sessionCookie);
+      const response2 = await userStatsGET(request2);
+      const data2 = await response2.json();
+
+      expect(data1.timeMultiplier).toBe(3);
+      expect(data2.timeMultiplier).toBe(3);
+      expect(data1.timeMultiplier).toBe(data2.timeMultiplier);
+    });
+  });
+
+  test('userStats_timeMultiplierGreaterThanOne_isValid', async () => {
+    await withTransaction(async () => {
+      // Test various valid multiplier values
+      const testValues = [1, 2, 5, 10, 50, 100];
+      
+      for (const value of testValues) {
+        TimeMultiplierService.getInstance().setMultiplier(value, 1);
+        
+        const sessionCookie = await createAuthenticatedSession(`multiplier${value}user`);
+        const request = createRequest('http://localhost:3000/api/user-stats', 'GET', undefined, sessionCookie);
+        const response = await userStatsGET(request);
+        const data = await response.json();
+
+        expect(data.timeMultiplier).toBe(value);
+        expect(data.timeMultiplier).toBeGreaterThanOrEqual(1);
+      }
     });
   });
 });
