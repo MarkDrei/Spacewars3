@@ -12,7 +12,7 @@ import './ResearchPage.css';
 
 const researchTypeToKey: Record<ResearchType, keyof TechTree> = {
   IronHarvesting: 'ironHarvesting',
-  ShipSpeed: 'shipSpeed',
+  shipSpeed: 'shipSpeed',
   Afterburner: 'afterburner',
   // Projectile Weapons
   projectileDamage: 'projectileDamage',
@@ -256,7 +256,7 @@ const ResearchPageClient: React.FC<ResearchPageClientProps> = () => {
   const getResearchImageName = (type: ResearchType): string => {
     const imageMap: Record<string, string> = {
       IronHarvesting: 'IronHarvesting',
-      ShipSpeed: 'ShipSpeed',
+      shipSpeed: 'ShipSpeed',
       projectileDamage: 'ProjectileDamage',
       projectileReloadRate: 'ReloadRate',
       projectileAccuracy: 'ProjectileAccuracy',

@@ -74,3 +74,41 @@ export interface InterceptionLines {
 }
 
 export type GameObjectType = SpaceObject['type'];
+
+/**
+ * Enum of all available research types in the tech tree.
+ * Shared between client and server to ensure consistency.
+ */
+export enum ResearchType {
+  IronHarvesting = 'IronHarvesting',
+  ShipSpeed = 'shipSpeed',
+  Afterburner = 'Afterburner',
+  // Projectile Weapons
+  ProjectileDamage = 'projectileDamage',
+  ProjectileReloadRate = 'projectileReloadRate',
+  ProjectileAccuracy = 'projectileAccuracy',
+  ProjectileWeaponTier = 'projectileWeaponTier',
+  // Energy Weapons
+  EnergyDamage = 'energyDamage',
+  EnergyRechargeRate = 'energyRechargeRate',
+  EnergyAccuracy = 'energyAccuracy',
+  EnergyWeaponTier = 'energyWeaponTier',
+  // Defense
+  HullStrength = 'hullStrength',
+  RepairSpeed = 'repairSpeed',
+  ArmorEffectiveness = 'armorEffectiveness',
+  ShieldEffectiveness = 'shieldEffectiveness',
+  ShieldRechargeRate = 'shieldRechargeRate',
+  // Ship
+  AfterburnerSpeedIncrease = 'afterburnerSpeedIncrease',
+  AfterburnerDuration = 'afterburnerDuration',
+  Teleport = 'teleport',
+  InventoryCapacity = 'inventoryCapacity',
+  ConstructionSpeed = 'constructionSpeed',
+  // Spies
+  SpyChance = 'spyChance',
+  SpySpeed = 'spySpeed',
+  SpySabotageDamage = 'spySabotageDamage',
+  Counterintelligence = 'counterintelligence',
+  StealIron = 'stealIron',
+}
