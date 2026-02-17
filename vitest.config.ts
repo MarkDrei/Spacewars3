@@ -8,6 +8,8 @@ const jsdomInclude = [
   'src/__tests__/components/**/*.test.tsx',
   'src/__tests__/hooks/**/*.test.ts',
   'src/__tests__/hooks/**/*.test.tsx',
+  'src/__tests__/ui/**/*.test.ts',
+  'src/__tests__/ui/**/*.test.tsx',
 ]
 
 export default defineConfig({
@@ -21,7 +23,7 @@ export default defineConfig({
           name: 'node',
           environment: 'node',
           include: baseInclude,
-          exclude: [...baseExclude, 'src/__tests__/components/**', 'src/__tests__/hooks/**'],
+          exclude: [...baseExclude, 'src/__tests__/components/**', 'src/__tests__/hooks/**', 'src/__tests__/ui/**'],
         },
       },
       {
@@ -62,7 +64,14 @@ export default defineConfig({
       reporter: ['text', 'html', 'lcov'],
       exclude: ['node_modules/**', 'src/__tests__/**', '**/*.d.ts'],
       reportsDirectory: './coverage'
-    }
+    },
+
+    // Mock CSS and other static assets
+    css: {
+      modules: {
+        classNameStrategy: 'non-scoped',
+      },
+    },
   },
   resolve: {
     alias: {
