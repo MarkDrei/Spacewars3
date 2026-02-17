@@ -132,8 +132,8 @@ const Navigation: React.FC<NavigationProps> = ({ onLogout }) => {
           )}
         </div>
 
-        {/* Mobile Shortcut Bar - Only on Home and Factory Pages */}
-        {((pathname === '/' || pathname === '/home') || pathname === '/factory') && (
+        {/* Mobile Shortcut Bar - Only on Home, Factory, and Research Pages */}
+        {((pathname === '/' || pathname === '/home') || pathname === '/factory' || pathname === '/research') && (
           <div className="navbar-shortcut-bar">
             {(pathname === '/' || pathname === '/home') ? (
               <>
@@ -169,6 +169,24 @@ const Navigation: React.FC<NavigationProps> = ({ onLogout }) => {
                 </button>
                 <button className="shortcut-button" onClick={() => scrollToSection('energy-weapons')}>
                   Energy
+                </button>
+              </>
+            ) : pathname === '/research' ? (
+              <>
+                <button className="shortcut-button" onClick={() => scrollToSection('projectile-weapons')}>
+                  Projectile
+                </button>
+                <button className="shortcut-button" onClick={() => scrollToSection('energy-weapons')}>
+                  Energy
+                </button>
+                <button className="shortcut-button" onClick={() => scrollToSection('defense')}>
+                  Defense
+                </button>
+                <button className="shortcut-button" onClick={() => scrollToSection('ship')}>
+                  Ship
+                </button>
+                <button className="shortcut-button" onClick={() => scrollToSection('spies')}>
+                  Spies
                 </button>
               </>
             ) : null}

@@ -570,7 +570,7 @@ const ResearchPageClient: React.FC<ResearchPageClientProps> = () => {
             <div className="data-table-container">
               {researchHierarchy.map(category => (
                 <div key={category.name} className="research-category">
-                  <h2 className="category-heading">{category.name}</h2>
+                  <h2 id={category.name.toLowerCase().replace(' ', '-')} className="category-heading">{category.name}</h2>
                   <table className="data-table">
                     <thead>
                       <tr>
@@ -594,7 +594,7 @@ const ResearchPageClient: React.FC<ResearchPageClientProps> = () => {
             <div>
               {researchHierarchy.map(category => (
                 <div key={category.name} className="research-category">
-                  <h2 className="category-heading">{category.name}</h2>
+                  <h2 id={category.name.toLowerCase().replace(' ', '-')} className="category-heading">{category.name}</h2>
                   <div className="item-cards-grid">
                     {category.nodes.flatMap(node => getAllResearchTypes(node)).map(type => {
                       const research = researches[type];
