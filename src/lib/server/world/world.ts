@@ -192,6 +192,64 @@ class World {
   }
 
   /**
+   * Spawn a specific type of space object with randomized position and speed
+   * Used by admin API to spawn objects on demand
+   * 
+   * @param type - The type of object to spawn ('asteroid', 'shipwreck', or 'escape_pod')
+   * @returns The ID of the newly spawned object
+   */
+  // needs _context for compile time lock checking
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  public async spawnSpecificObject<THeld extends IronLocks>(
+    _context: HasLock6Context<THeld>,
+    type: 'asteroid' | 'shipwreck' | 'escape_pod'
+  ): Promise<number> {
+    // Determine base speed based on object type
+    let baseSpeed: number;
+    if (type === 'asteroid') {
+      baseSpeed = 5; // Slow moving
+    } else if (type === 'shipwreck') {
+      baseSpeed = 10;
+    } else {
+      baseSpeed = 25; // Fast moving (escape_pod)
+    }
+
+    // Generate random position within world bounds
+    const x = Math.random() * this.worldSize.width;
+    const y = Math.random() * this.worldSize.height;
+
+    // Generate random speed (±25% variation from base)
+    const speedVariation = 0.25;
+    const speed = baseSpeed * (1 + (Math.random() - 0.5) * 2 * speedVariation);
+
+    // Generate random angle (0-360 degrees)
+    const angle = Math.random() * 360;
+
+    const newObject: Omit<SpaceObject, 'id'> = {
+      type,
+      x,
+      y,
+      speed: Math.max(0, speed), // Ensure speed is not negative
+      angle,
+      last_position_update_ms: Date.now(),
+      picture_id: 1 // Default picture ID for collectibles
+    };
+
+    // Insert into database and get the new ID
+    const newId = await insertSpaceObject(this.db, newObject);
+    
+    // Add to world with the database-assigned ID
+    this.spaceObjects.push({
+      id: newId,
+      ...newObject
+    });
+    
+    console.log(`Admin spawned ${type} with ID ${newId} at (${x.toFixed(1)}, ${y.toFixed(1)})`);
+    
+    return newId;
+  }
+
+  /**
    * Create a new world instance with default values
    */
   static createDefault(saveCallback: SaveWorldCallback, db: DatabaseConnection): World {
