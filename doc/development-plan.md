@@ -270,6 +270,19 @@ As a developer with admin access (users 'a' or 'q'), I want to spawn different t
 - Clear, readable display
 - Auto-refresh with existing polling mechanism
 
+**Status**: ✅ COMPLETED
+**Implementation Summary**: Added a second stats row displaying counts for each space object type (Asteroids, Shipwrecks, Escape Pods, Player Ships) by filtering the adminData.spaceObjects array.
+**Files Modified/Created**:
+- `src/app/admin/page.tsx` - Added new admin-stats section with 4 stat cards displaying filtered counts for each space object type using inline filter expressions
+- `src/__tests__/admin/space-object-count-summary.test.ts` - Added 22 comprehensive tests covering filtering logic, edge cases, large datasets, and type safety
+**Deviations from Plan**: Added Player Ships count to the display (not just the 3 spawnable types) for complete visibility. Tests focus on filtering logic rather than React rendering since the implementation is simple inline JSX with no complex components.
+**Arc42 Updates**: None required
+**Test Results**: ✅ All tests passing (885 tests total, 22 new tests), no compilation errors, no linting errors
+
+**Review Status**: ✅ APPROVED
+**Reviewer**: Medicus
+**Review Notes**: Implementation is clean and straightforward. The inline filter expressions are simple and appropriate for this use case. Tests are comprehensive and validate actual filtering behavior with good edge case coverage including large datasets. Minor optimization opportunity exists to use React.useMemo() for computed counts to prevent redundant filtering on every render, but this is acceptable for an admin-only page with typically small datasets. The addition of Player Ships count provides complete visibility as intended.
+
 ### Goal 3: Type Safety and Validation
 
 **Description**: Ensure type safety across the entire feature with proper TypeScript types, interfaces, and runtime validation.

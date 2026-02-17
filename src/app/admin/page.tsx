@@ -605,6 +605,34 @@ const AdminPage: React.FC = () => {
           </div>
         </div>
 
+        {/* Space Object Breakdown */}
+        <div className="admin-stats">
+          <div className="stat-card">
+            <h3>🪨 Asteroids</h3>
+            <div className="stat-value">
+              {adminData.spaceObjects.filter((obj) => obj.type === 'asteroid').length}
+            </div>
+          </div>
+          <div className="stat-card">
+            <h3>🚢 Shipwrecks</h3>
+            <div className="stat-value">
+              {adminData.spaceObjects.filter((obj) => obj.type === 'shipwreck').length}
+            </div>
+          </div>
+          <div className="stat-card">
+            <h3>🛟 Escape Pods</h3>
+            <div className="stat-value">
+              {adminData.spaceObjects.filter((obj) => obj.type === 'escape_pod').length}
+            </div>
+          </div>
+          <div className="stat-card">
+            <h3>🚀 Player Ships</h3>
+            <div className="stat-value">
+              {adminData.spaceObjects.filter((obj) => obj.type === 'player_ship').length}
+            </div>
+          </div>
+        </div>
+
         {/* Users Table */}
         <div className="data-section">
           <h2>👥 Users Table</h2>
