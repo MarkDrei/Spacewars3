@@ -91,3 +91,29 @@ const multiplier = TimeMultiplierService.getInstance().getMultiplier();
 **Context**: Planning escape pod commander collection revealed that `User.collected()` returns `void`
 
 **Details**: `User.collected(objectType)` currently returns `void`. The harvest API route computes `ironReward` by taking `user.iron - ironBefore` (comparing iron before/after). This pattern means the caller can't know what items were generated during collection. When extending collection to produce items (not just iron), the return type needs to change to a result object. The harvest route (`src/app/api/harvest/route.ts`) is the only caller of `collected()`.
+
+## UserCache Write-Behind Persistence Pattern
+
+**Discovered by**: Navigator  
+**Context**: Planning inventory feature required understanding how UserCache handles persistence of new user properties
+
+**Details**: UserCache implements a write-behind cache pattern for all user data:
+
+1. **Reading**: API routes acquire USER_LOCK and call `userCache.getUserByIdWithLock()` which loads from cache or DB
+2. **Mutation**: User domain methods modify properties in-place on the User object
+3. **Marking Dirty**: API routes call `userCache.updateUserInCache(context, user)` after mutations to mark the user dirty
+4. **Automatic Persistence**: UserCache's `persistUserToDb()` writes dirty users to DB:
+   - Immediately in test mode (within transaction scope via `isTestMode` flag)
+   - Periodically in production (30-second intervals via background timer)
+5. **No Direct DB Access**: User properties added to the UPDATE query in `persistUserToDb()` are automatically persisted
+
+**When adding new user properties**:
+- Add field to User class and constructor
+- Add to `UserRow` interface in userRepo.ts
+- Add to CREATE TABLE in schema.ts  
+- Add to `userFromRow()` deserialization (handle NULL/defaults)
+- Add to `persistUserToDb()` UPDATE query in userCache.ts (with correct parameter index)
+- Properties stored as JSON should use `JSON.stringify()` when persisting
+- No separate cache or direct DB writes needed — the UserCache handles everything
+
+**Migration Note**: New columns need a migration entry added to migrations.ts (e.g., `ALTER TABLE users ADD COLUMN IF NOT EXISTS column_name TYPE DEFAULT value`).

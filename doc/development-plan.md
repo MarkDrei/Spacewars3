@@ -80,11 +80,13 @@ Commanders are the first item type. Each escape pod collected has a 90% chance o
 
 ##### Task 2.1.3: Update UserRow and Deserialization
 
-**Action**: Add `inventory` field to `UserRow` interface and update `userFromRow()` to parse the JSON inventory into the typed `Inventory` structure (defaulting to a 10×10 null grid when column is NULL).
+**Action**: Add `inventory` field to `UserRow` interface and update `userFromRow()` to parse the JSON inventory into the typed `Inventory` structure (defaulting to a 10×10 null grid when column is NULL). Note: Direct DB writes are only for new users during creation; all updates go through UserCache.
 
 **Files**:
 
-- `src/lib/server/user/userRepo.ts` — add `inventory?: string` to `UserRow`, update `userFromRow()` to parse it, update `saveUserToDb()` to persist it as `JSON.stringify()`
+- `src/lib/server/user/userRepo.ts` — add `inventory?: string` to `UserRow`, update `userFromRow()` to parse it (handles NULL as empty 10×10 grid)
+
+**Note**: The `saveUserToDb()` function in userRepo.ts is only used for initial user creation. Updates are handled by UserCache's `persistUserToDb()` method.
 
 #### Sub-Goal 2.2: User Domain — Inventory on the User Class
 
@@ -92,7 +94,7 @@ Commanders are the first item type. Each escape pod collected has a 90% chance o
 
 ##### Task 2.2.1: Add Inventory Property to User
 
-**Action**: Add an `inventory` property (type `(InventoryItem | null)[][]`) to the User class. Initialize from constructor parameter. Add helper methods.
+**Action**: Add an `inventory` property (type `(InventoryItem | null)[][]`) to the User class. Initialize from constructor parameter. Add helper methods. All inventory mutations must go through the User class to ensure proper cache integration.
 
 **Files**:
 
@@ -103,7 +105,7 @@ Commanders are the first item type. Each escape pod collected has a 90% chance o
   - `moveItem(fromRow: number, fromCol: number, toRow: number, toCol: number): boolean` — swaps items (handles empty target as move, occupied target as swap)
   - `removeItem(row: number, col: number): InventoryItem | null` — removes and returns item
 
-**Quality Requirements**: All mutation methods must validate bounds (0-9 for both row/col).
+**Quality Requirements**: All mutation methods must validate bounds (0-9 for both row/col). Methods mutate the inventory in-place on the User object, relying on UserCache's dirty tracking and persistence mechanism.
 
 ##### Task 2.2.2: Commander Generation Logic
 
@@ -135,40 +137,56 @@ Commanders are the first item type. Each escape pod collected has a 90% chance o
   - For asteroids/shipwrecks: just `{ ironReward }`
   - For escape_pods: `{ ironReward: 0, collectedItem: { type: 'commander', name, added } }` or `{ ironReward: 0 }` if no commander
 
-**Note**: This changes the return type of `collected()`. The harvest API route must be updated to propagate this info to the client.
+**Note**: This changes the return type of `collected()`. The harvest API route must be updated to propagate this info to the client. After modifying the user's inventory, the method relies on the caller (harvest API) to mark the user as dirty via `userCache.updateUserInCache()`.
 
 ##### Task 2.2.4: Update Harvest API Response
 
-**Action**: Update the harvest route to include item collection results in its response.
+**Action**: Update the harvest route to include item collection results in its response. The user is already being accessed through UserCache, and `updateUserInCache()` is already called, so inventory changes are automatically persisted.
 
 **Files**:
 
 - `src/app/api/harvest/route.ts` — capture the return value of `user.collected()`, include `collectedItem` in the JSON response if present
+  - The existing pattern already uses `userCache.getUserByIdWithLock()` and `userCache.updateUserInCache()`, so inventory persistence is handled automatically
 
-#### Sub-Goal 2.3: Inventory API Endpoint
+#### Sub-Goal 2.3: Inventory API Endpoint and UserCache Integration
 
-**Description**: Create a dedicated `/api/inventory` endpoint for reading inventory and moving items.
+**Description**: Create a dedicated `/api/inventory` endpoint for reading inventory and moving items. All operations must go through UserCache to ensure proper persistence.
 
-##### Task 2.3.1: Create GET /api/inventory
+##### Task 2.3.1: Update UserCache Persistence for Inventory
 
-**Action**: Return the authenticated user's inventory grid.
+**Action**: Update the `persistUserToDb()` method in UserCache to include the inventory column in the UPDATE query. The inventory is JSON-serialized as part of the user's persistent state.
+
+**Files**:
+
+- `src/lib/server/user/userCache.ts` — update `persistUserToDb()` method:
+  - Add `inventory = $25` to the UPDATE SET clause
+  - Add `JSON.stringify(user.inventory)` to the parameters array (after `user.buildStartSec`)
+  - Update the parameter index for `user.id` to `$26`
+
+**Quality Requirements**: The inventory is automatically persisted when the user is marked dirty, following the existing write-behind cache pattern. No direct DB access for inventory updates.
+
+##### Task 2.3.2: Create GET /api/inventory
+
+**Action**: Return the authenticated user's inventory grid. Access inventory through UserCache's `getUserByIdWithLock()` which ensures the user is loaded from cache or DB and stats are updated.
 
 **Files**:
 
 - `src/app/api/inventory/route.ts` — new API route:
-  - GET: Validate session → acquire USER_LOCK → read user from cache → return `{ inventory: (InventoryItem | null)[][] }`
+  - GET: Validate session → get UserCache instance → call `getUserByIdWithLock()` within USER_LOCK → return `{ inventory: user.getInventory() }`
   - Follow existing API patterns: `getIronSession`, `requireAuth`, `emptyCtx.useLockWithAcquire(USER_LOCK, ...)`, `handleApiError`
+  - UserCache automatically handles dirty tracking and persistence
 
-##### Task 2.3.2: Create POST /api/inventory/move
+##### Task 2.3.3: Create POST /api/inventory/move
 
-**Action**: Move/swap an inventory item between slots.
+**Action**: Move/swap an inventory item between slots. After mutation, the user is marked dirty by `updateUserInCache()` and will be persisted by the cache.
 
 **Files**:
 
 - `src/app/api/inventory/move/route.ts` — new API route:
   - POST body: `{ fromRow, fromCol, toRow, toCol }`
-  - Validate session → acquire USER_LOCK → call `user.moveItem()` → return success/failure
+  - Validate session → get UserCache instance → acquire USER_LOCK → get user via `getUserByIdWithLock()` → call `user.moveItem()` → call `userCache.updateUserInCache()` to mark dirty → return success/failure
   - Validate all coordinates are integers 0-9
+  - UserCache handles persistence automatically (immediate in test mode, periodic in production)
 
 ---
 
@@ -363,10 +381,24 @@ Commanders are the first item type. Each escape pod collected has a 90% chance o
 ## Architecture Notes
 
 - **Storage pattern**: Inventory is stored as a JSON TEXT column on the users table, consistent with `build_queue` and `tech_tree`. The 10×10 grid is serialized as a 2D array of nullable `InventoryItem` objects. This keeps everything within the existing `UserCache` write-behind persistence — no new cache needed.
+
+- **Cache integration**: All inventory access follows the existing UserCache pattern:
+  1. API routes acquire USER_LOCK and call `userCache.getUserByIdWithLock()`
+  2. User domain methods mutate the inventory in-place
+  3. API routes call `userCache.updateUserInCache()` to mark the user dirty
+  4. UserCache automatically persists dirty users via `persistUserToDb()`:
+     - Immediately in test mode (within transaction scope)
+     - Periodically in production (30-second intervals)
+  5. No direct database access for inventory — all goes through the cache
+
 - **Lock ordering**: All inventory operations happen under `USER_LOCK` (level 4), consistent with other user mutations. No new lock levels needed.
+
 - **Extensibility**: The `InventoryItem` type uses a discriminated union (`type` field). Future item types (weapons, modules, resources) add new variants without changing the grid or persistence logic.
+
 - **Commander IDs**: Each commander gets a `crypto.randomUUID()` for unique identification, enabling future features (equipping, trading).
+
 - **Return type change**: `User.collected()` changes from `void` to a result object. This is a breaking change for callers — the harvest API route is the only caller and will be updated simultaneously.
+
 - **Drag-and-drop**: Uses HTML5 native API. The `dataTransfer` object carries `row,col` as text. Drop handler calls the move API and optimistically updates local state.
 
 ## Agent Decisions
@@ -383,10 +415,4 @@ Commanders are the first item type. Each escape pod collected has a 90% chance o
 
 6. **Optimistic UI updates for drag-and-drop**: The `moveItem` function updates local state immediately and calls the API in the background. If the API call fails, it reverts. This provides instant visual feedback for drag operations.
 
-## User Feedback to be incorporated by the Navigator
 
-Make sure the plan covers the reading/writing of the
-inventory via the UserCache. No direct DB accesses are
-allowed, all access needs to go via the cache.
-The cache needs to ensure that the new column is also
-persistent when periodically writing the data to the DB.
