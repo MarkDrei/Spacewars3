@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'vitest';
+import { INVENTORY_ROWS, INVENTORY_COLS, InventoryItem } from '@/shared/src/types/inventory';
 import { User, SaveUserCallback } from '@/lib/server/user/user';
 import { createInitialTechTree } from '@/lib/server/techs/techtree';
 import { TechCounts } from '@/lib/server/techs/TechFactory';
@@ -38,7 +39,8 @@ describe('User XP Property', () => {
       false, // inBattle
       null, // currentBattleId
       [], // buildQueue
-      null // buildStartSec
+      null, // buildStartSec
+      Array.from({ length: INVENTORY_ROWS }, () => Array.from({ length: INVENTORY_COLS }, () => null))
     );
 
     // Assert
@@ -64,7 +66,8 @@ describe('User XP Property', () => {
       false, // inBattle
       null, // currentBattleId
       [], // buildQueue
-      null // buildStartSec
+      null, // buildStartSec
+      Array.from({ length: INVENTORY_ROWS }, () => Array.from({ length: INVENTORY_COLS }, () => null))
     );
 
     // Assert
@@ -90,7 +93,8 @@ describe('User XP Property', () => {
       false, // inBattle
       null, // currentBattleId
       [], // buildQueue
-      null // buildStartSec
+      null, // buildStartSec
+      Array.from({ length: INVENTORY_ROWS }, () => Array.from({ length: INVENTORY_COLS }, () => null))
     );
 
     // Assert
@@ -116,7 +120,8 @@ describe('User XP Property', () => {
       false, // inBattle
       null, // currentBattleId
       [], // buildQueue
-      null // buildStartSec
+      null, // buildStartSec
+      Array.from({ length: INVENTORY_ROWS }, () => Array.from({ length: INVENTORY_COLS }, () => null))
     );
 
     // Assert
@@ -142,7 +147,8 @@ describe('User XP Property', () => {
       false, // inBattle
       null, // currentBattleId
       [], // buildQueue
-      null // buildStartSec
+      null, // buildStartSec
+      Array.from({ length: INVENTORY_ROWS }, () => Array.from({ length: INVENTORY_COLS }, () => null))
     );
 
     // Act
@@ -171,7 +177,8 @@ describe('User XP Property', () => {
       false, // inBattle
       null, // currentBattleId
       [], // buildQueue
-      null // buildStartSec
+      null, // buildStartSec
+      Array.from({ length: INVENTORY_ROWS }, () => Array.from({ length: INVENTORY_COLS }, () => null))
     );
 
     const originalIron = user.iron;

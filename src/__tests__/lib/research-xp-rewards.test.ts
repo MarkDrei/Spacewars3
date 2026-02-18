@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { INVENTORY_ROWS, INVENTORY_COLS, InventoryItem } from '@/shared/src/types/inventory';
 import { User, SaveUserCallback } from '@/lib/server/user/user';
 import { updateTechTree, ResearchType, AllResearches, getResearchUpgradeCost, TechTree, createInitialTechTree } from '@/lib/server/techs/techtree';
 import { TechCounts } from '@/lib/server/techs/TechFactory';
@@ -124,8 +125,9 @@ describe('Research XP Rewards System', () => {
         false,
         null,
         [],
-        null
-      );
+        null,
+      Array.from({ length: INVENTORY_ROWS }, () => Array.from({ length: INVENTORY_COLS }, () => null))
+    );
       
       user.techTree.ironHarvesting = 1;
       user.techTree.activeResearch = {
@@ -160,8 +162,9 @@ describe('Research XP Rewards System', () => {
         false,
         null,
         [],
-        null
-      );
+        null,
+      Array.from({ length: INVENTORY_ROWS }, () => Array.from({ length: INVENTORY_COLS }, () => null))
+    );
       
       user.techTree.ironHarvesting = 1;
       user.techTree.activeResearch = {
@@ -200,8 +203,9 @@ describe('Research XP Rewards System', () => {
         false,
         null,
         [],
-        null
-      );
+        null,
+      Array.from({ length: INVENTORY_ROWS }, () => Array.from({ length: INVENTORY_COLS }, () => null))
+    );
       
       user.techTree.activeResearch = undefined;
       
@@ -230,8 +234,9 @@ describe('Research XP Rewards System', () => {
         false,
         null,
         [],
-        null
-      );
+        null,
+      Array.from({ length: INVENTORY_ROWS }, () => Array.from({ length: INVENTORY_COLS }, () => null))
+    );
       
       user.techTree.shipSpeed = 1;
       user.techTree.activeResearch = {
@@ -265,8 +270,9 @@ describe('Research XP Rewards System', () => {
         false,
         null,
         [],
-        null
-      );
+        null,
+      Array.from({ length: INVENTORY_ROWS }, () => Array.from({ length: INVENTORY_COLS }, () => null))
+    );
       
       user.techTree.ironHarvesting = 5; // Higher level
       user.techTree.activeResearch = {
@@ -305,8 +311,9 @@ describe('Research XP Rewards System', () => {
         false,
         null,
         [],
-        null
-      );
+        null,
+      Array.from({ length: INVENTORY_ROWS }, () => Array.from({ length: INVENTORY_COLS }, () => null))
+    );
       
       user.techTree.ironHarvesting = 1;
       user.techTree.activeResearch = {
@@ -363,8 +370,9 @@ describe('Research XP Rewards System', () => {
         false,
         null,
         [],
-        null
-      );
+        null,
+      Array.from({ length: INVENTORY_ROWS }, () => Array.from({ length: INVENTORY_COLS }, () => null))
+    );
       
       user.techTree.ironHarvesting = 1;
       user.techTree.activeResearch = {
@@ -408,8 +416,9 @@ describe('Research XP Rewards System', () => {
         false,
         null,
         [],
-        null
-      );
+        null,
+      Array.from({ length: INVENTORY_ROWS }, () => Array.from({ length: INVENTORY_COLS }, () => null))
+    );
       
       // First research
       user.techTree.shipSpeed = 1;

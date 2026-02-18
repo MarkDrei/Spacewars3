@@ -37,6 +37,9 @@ CREATE TABLE IF NOT EXISTS users (
   build_queue TEXT DEFAULT NULL,
   build_start_sec INTEGER DEFAULT NULL,
 
+  -- Inventory
+  inventory TEXT DEFAULT NULL,
+
   -- Battle state
   in_battle INTEGER NOT NULL DEFAULT 0,
   current_battle_id INTEGER DEFAULT NULL,

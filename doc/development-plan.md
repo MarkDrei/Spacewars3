@@ -127,6 +127,19 @@ Commanders are the first item type. Each escape pod collected has a 90% chance o
 
 - `src/lib/server/schema.ts` — add `inventory TEXT DEFAULT NULL` to the users table CREATE statement
 
+**Status**: ✅ COMPLETED
+**Implementation Summary**: Added inventory TEXT DEFAULT NULL column to the users table CREATE statement in schema.ts, following the established pattern for JSON columns (tech_tree, build_queue).
+**Files Modified/Created**:
+- `src/lib/server/schema.ts` - Added inventory column to CREATE TABLE users statement (between build_queue and battle state sections)
+
+**Deviations from Plan**: None.
+**Arc42 Updates**: None required (schema change only, architectural patterns unchanged)
+**Test Results**: Covered by Task 2.1.3 tests (schema is tested during database operations)
+
+**Review Status**: ✅ APPROVED
+**Reviewer**: Medicus
+**Review Notes**: Schema update correctly follows established JSON column pattern. Positioned appropriately in the CREATE TABLE statement.
+
 ##### Task 2.1.3: Update UserRow and Deserialization
 
 **Action**: Add `inventory` field to `UserRow` interface and update `userFromRow()` to parse the JSON inventory into the typed `Inventory` structure (defaulting to a 10×10 null grid when column is NULL). Note: Direct DB writes are only for new users during creation; all updates go through UserCache.
@@ -136,6 +149,26 @@ Commanders are the first item type. Each escape pod collected has a 90% chance o
 - `src/lib/server/user/userRepo.ts` — add `inventory?: string` to `UserRow`, update `userFromRow()` to parse it (handles NULL as empty 10×10 grid)
 
 **Note**: The `saveUserToDb()` function in userRepo.ts is only used for initial user creation. Updates are handled by UserCache's `persistUserToDb()` method.
+
+**Status**: ✅ COMPLETED
+**Implementation Summary**: Added inventory field to UserRow interface, User class, and implemented comprehensive JSON deserialization with fallback to empty 10×10 grid on NULL/invalid data. Updated all User constructor calls throughout the codebase.
+**Files Modified/Created**:
+- `src/lib/server/user/userRepo.ts` - Added inventory field to UserRow, implemented userFromRow() deserialization with validation and fallback, updated createUserWithShip() to initialize empty inventory, updated saveUserToDb() for consistency
+- `src/lib/server/user/user.ts` - Added inventory property to User class, updated constructor to accept inventory parameter
+- `src/__tests__/lib/inventory-schema-deserialization.test.ts` - Created 13 comprehensive tests covering: schema validation, empty inventory deserialization, commander item deserialization, error handling (invalid JSON, wrong dimensions, not an array), serialization, and round-trip consistency
+- Fixed 7 existing test files to pass inventory parameter to User constructor: `iron-capacity.test.ts`, `research-xp-rewards.test.ts`, `timeMultiplier-user.test.ts`, `user-collection-rewards.test.ts`, `user-domain.test.ts`, `user-level-system.test.ts`, `user-xp-property.test.ts`
+
+**Deviations from Plan**: 
+- Also updated `saveUserToDb()` function (in addition to `persistUserToDb()` in UserCache) for consistency, even though it's primarily used for initial user creation only
+- Added comprehensive validation logic in `userFromRow()` to check array dimensions (10×10) and structure, with fallback to empty grid on any validation failure
+- Updated INSERT statements in `createUserWithShip()` to include inventory column with serialized empty grid
+
+**Arc42 Updates**: None required (data structure changes only, architectural patterns unchanged)
+**Test Results**: ✅ All 944 tests passing (13 new inventory schema/deserialization tests), no linting errors, build successful
+
+**Review Status**: ✅ APPROVED
+**Reviewer**: Medicus
+**Review Notes**: Exceptional implementation with excellent error handling, comprehensive validation, and thorough testing. The deserialization pattern with structure validation and fallback is properly documented in learnings.md for reuse. All 13 tests validate meaningful behavior (schema validation, NULL handling, valid data, error cases, serialization, round-trip consistency). Code follows established JSON column patterns (tech_tree, build_queue) perfectly. Correctly deferred UserCache persistence updates to Task 2.3.1. Zero code duplication, strong type safety, production-ready implementation.
 
 #### Sub-Goal 2.2: User Domain — Inventory on the User Class
 

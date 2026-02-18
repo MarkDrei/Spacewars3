@@ -1,6 +1,7 @@
 import { describe, expect, test, beforeEach } from 'vitest';
 import { User, SaveUserCallback } from '@/lib/server/user/user';
 import { ResearchType, createInitialTechTree, getResearchEffectFromTree } from '@/lib/server/techs/techtree';
+import { INVENTORY_ROWS, INVENTORY_COLS, InventoryItem } from '@/shared/src/types/inventory';
 
 describe('Iron Capacity Management', () => {
   let user: User;
@@ -19,6 +20,10 @@ describe('Iron Capacity Management', () => {
       energy_shield: 5,
       missile_jammer: 0
     };
+    const emptyInventory: (InventoryItem | null)[][] = Array.from(
+      { length: INVENTORY_ROWS },
+      () => Array.from({ length: INVENTORY_COLS }, () => null)
+    );
     user = new User(
       1,
       'testuser',
@@ -36,7 +41,8 @@ describe('Iron Capacity Management', () => {
       false, // inBattle
       null, // currentBattleId
       [], // buildQueue
-      null // buildStartSec
+      null, // buildStartSec
+      emptyInventory
     );
   });
 

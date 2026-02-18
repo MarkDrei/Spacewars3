@@ -1,4 +1,5 @@
 import { describe, expect, test, beforeEach, afterEach } from 'vitest';
+import { INVENTORY_ROWS, INVENTORY_COLS, InventoryItem } from '@/shared/src/types/inventory';
 import { User, SaveUserCallback } from '@/lib/server/user/user';
 import { ResearchType, triggerResearch, createInitialTechTree } from '@/lib/server/techs/techtree';
 import { TimeMultiplierService } from '@/lib/server/timeMultiplier';
@@ -42,7 +43,8 @@ describe('User.updateStats with time multiplier', () => {
       false, // inBattle
       null, // currentBattleId
       [], // buildQueue
-      null // buildStartSec
+      null, // buildStartSec
+      Array.from({ length: INVENTORY_ROWS }, () => Array.from({ length: INVENTORY_COLS }, () => null))
     );
   });
 

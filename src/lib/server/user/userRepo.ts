@@ -10,6 +10,7 @@ import { TechCounts, BuildQueueItem } from '../techs/TechFactory';
 import { TechService } from '../techs/TechService';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 import { DEFAULT_SHIP_START_X, DEFAULT_SHIP_START_Y, DEFAULT_SHIP_START_SPEED, DEFAULT_SHIP_START_ANGLE } from '../constants';
+import { InventoryItem, INVENTORY_ROWS, INVENTORY_COLS } from '../../../shared/src/types/inventory';
 
 interface UserRow {
   id: number;
@@ -43,6 +44,8 @@ interface UserRow {
   // Build queue
   build_queue?: string;
   build_start_sec?: number | null;
+  // Inventory
+  inventory?: string;
 }
 
 function userFromRow(row: UserRow, saveCallback: SaveUserCallback): User {
@@ -94,6 +97,33 @@ function userFromRow(row: UserRow, saveCallback: SaveUserCallback): User {
   }
   const buildStartSec = row.build_start_sec || null;
 
+  // Extract inventory (10×10 grid, default to all-null grid if missing)
+  let inventory: (InventoryItem | null)[][];
+  try {
+    if (row.inventory) {
+      inventory = JSON.parse(row.inventory);
+      // Validate structure: must be 10×10 array
+      if (!Array.isArray(inventory) || inventory.length !== INVENTORY_ROWS) {
+        throw new Error('Invalid inventory structure');
+      }
+      for (const row of inventory) {
+        if (!Array.isArray(row) || row.length !== INVENTORY_COLS) {
+          throw new Error('Invalid inventory row structure');
+        }
+      }
+    } else {
+      // Create empty 10×10 grid
+      inventory = Array.from({ length: INVENTORY_ROWS }, () =>
+        Array.from({ length: INVENTORY_COLS }, () => null)
+      );
+    }
+  } catch {
+    // Fallback to empty 10×10 grid on parse error
+    inventory = Array.from({ length: INVENTORY_ROWS }, () =>
+      Array.from({ length: INVENTORY_COLS }, () => null)
+    );
+  }
+
   return new User(
     row.id,
     row.username,
@@ -112,6 +142,7 @@ function userFromRow(row: UserRow, saveCallback: SaveUserCallback): User {
     currentBattleId,
     buildQueue,
     buildStartSec,
+    inventory,
     row.ship_id
   );
 }
@@ -155,8 +186,8 @@ async function createUserWithShip(db: DatabaseConnection, username: string, pass
 
     // Then create the user with the ship_id (with default defense values)
     const userResult = await db.query(
-      'INSERT INTO users (username, password_hash, iron, last_updated, tech_tree, ship_id, hull_current, armor_current, shield_current, defense_last_regen, build_queue, build_start_sec) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id',
-      [username, password_hash, 0.0, now, JSON.stringify(techTree), shipId, 250.0, 250.0, 250.0, now, JSON.stringify([]), null]
+      'INSERT INTO users (username, password_hash, iron, last_updated, tech_tree, ship_id, hull_current, armor_current, shield_current, defense_last_regen, build_queue, build_start_sec, inventory) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING id',
+      [username, password_hash, 0.0, now, JSON.stringify(techTree), shipId, 250.0, 250.0, 250.0, now, JSON.stringify([]), null, JSON.stringify(Array.from({ length: INVENTORY_ROWS }, () => Array.from({ length: INVENTORY_COLS }, () => null)))]
     );
 
     const userId = userResult.rows[0].id;
@@ -179,7 +210,13 @@ async function createUserWithShip(db: DatabaseConnection, username: string, pass
     // Calculate initial defense values based on default tech counts
     const initialMaxStats = TechService.calculateMaxDefense(defaultTechCounts, techTree);
 
-    const user = new User(userId, username, password_hash, 0.0, 0, now, techTree, saveCallback, defaultTechCounts, initialMaxStats.hull, initialMaxStats.armor, initialMaxStats.shield, now, false, null, [], null, shipId);
+    // Create empty inventory (10×10 grid of nulls)
+    const emptyInventory: (InventoryItem | null)[][] = Array.from(
+      { length: INVENTORY_ROWS },
+      () => Array.from({ length: INVENTORY_COLS }, () => null)
+    );
+
+    const user = new User(userId, username, password_hash, 0.0, 0, now, techTree, saveCallback, defaultTechCounts, initialMaxStats.hull, initialMaxStats.armor, initialMaxStats.shield, now, false, null, [], null, emptyInventory, shipId);
 
     // Send welcome message to new user
     const ctx = createLockContext();
@@ -189,8 +226,8 @@ async function createUserWithShip(db: DatabaseConnection, username: string, pass
   } else {
     // Create user without ship (for testing, with default defense values)
     const userResult = await db.query(
-      'INSERT INTO users (username, password_hash, iron, last_updated, tech_tree, hull_current, armor_current, shield_current, defense_last_regen, build_queue, build_start_sec) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id',
-      [username, password_hash, 0.0, now, JSON.stringify(techTree), 250.0, 250.0, 250.0, now, JSON.stringify([]), null]
+      'INSERT INTO users (username, password_hash, iron, last_updated, tech_tree, hull_current, armor_current, shield_current, defense_last_regen, build_queue, build_start_sec, inventory) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id',
+      [username, password_hash, 0.0, now, JSON.stringify(techTree), 250.0, 250.0, 250.0, now, JSON.stringify([]), null, JSON.stringify(Array.from({ length: INVENTORY_ROWS }, () => Array.from({ length: INVENTORY_COLS }, () => null)))]
     );
 
     const id = userResult.rows[0].id;
@@ -212,7 +249,13 @@ async function createUserWithShip(db: DatabaseConnection, username: string, pass
     // Calculate initial defense values based on default tech counts
     const initialMaxStats = TechService.calculateMaxDefense(defaultTechCounts, techTree);
 
-    const user = new User(id, username, password_hash, 0.0, 0, now, techTree, saveCallback, defaultTechCounts, initialMaxStats.hull, initialMaxStats.armor, initialMaxStats.shield, now, false, null, [], null);
+    // Create empty inventory (10×10 grid of nulls)
+    const emptyInventory: (InventoryItem | null)[][] = Array.from(
+      { length: INVENTORY_ROWS },
+      () => Array.from({ length: INVENTORY_COLS }, () => null)
+    );
+
+    const user = new User(id, username, password_hash, 0.0, 0, now, techTree, saveCallback, defaultTechCounts, initialMaxStats.hull, initialMaxStats.armor, initialMaxStats.shield, now, false, null, [], null, emptyInventory);
 
     return user;
   }
@@ -244,8 +287,9 @@ export function saveUserToDb(db: DatabaseConnection): SaveUserCallback {
         in_battle = $20,
         current_battle_id = $21,
         build_queue = $22,
-        build_start_sec = $23
-      WHERE id = $24`,
+        build_start_sec = $23,
+        inventory = $24
+      WHERE id = $25`,
       [
         user.iron,
         user.xp,
@@ -270,6 +314,7 @@ export function saveUserToDb(db: DatabaseConnection): SaveUserCallback {
         user.currentBattleId,
         JSON.stringify(user.buildQueue),
         user.buildStartSec,
+        JSON.stringify(user.inventory),
         user.id
       ]
     );

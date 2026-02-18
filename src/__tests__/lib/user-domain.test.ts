@@ -1,4 +1,5 @@
 import { describe, expect, test, beforeEach } from 'vitest';
+import { INVENTORY_ROWS, INVENTORY_COLS, InventoryItem } from '@/shared/src/types/inventory';
 import { User, SaveUserCallback } from '@/lib/server/user/user';
 import { ResearchType, triggerResearch, getResearchEffectFromTree, createInitialTechTree } from '@/lib/server/techs/techtree';
 
@@ -36,7 +37,8 @@ describe('User.updateStats with IronHarvesting research progression', () => {
       false, // inBattle
       null, // currentBattleId
       [], // buildQueue
-      null // buildStartSec
+      null, // buildStartSec
+      Array.from({ length: INVENTORY_ROWS }, () => Array.from({ length: INVENTORY_COLS }, () => null))
     );
   });
 
@@ -255,7 +257,8 @@ describe('User getter methods', () => {
       false, // inBattle
       null, // currentBattleId
       [], // buildQueue
-      null // buildStartSec
+      null, // buildStartSec
+      Array.from({ length: INVENTORY_ROWS }, () => Array.from({ length: INVENTORY_COLS }, () => null))
     );
   });
 
@@ -344,7 +347,8 @@ describe('User.updateDefenseValues with regeneration', () => {
       false, // inBattle
       null, // currentBattleId
       [], // buildQueue
-      null // buildStartSec
+      null, // buildStartSec
+      Array.from({ length: INVENTORY_ROWS }, () => Array.from({ length: INVENTORY_COLS }, () => null))
     );
   });
 

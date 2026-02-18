@@ -117,3 +117,47 @@ const multiplier = TimeMultiplierService.getInstance().getMultiplier();
 - No separate cache or direct DB writes needed — the UserCache handles everything
 
 **Migration Note**: New columns need a migration entry added to migrations.ts (e.g., `ALTER TABLE users ADD COLUMN IF NOT EXISTS column_name TYPE DEFAULT value`).
+
+## JSON Column Deserialization with Validation
+
+**Discovered by**: Knight  
+**Context**: Implementing inventory deserialization (Task 2.1.3) revealed the need for robust validation of complex JSON structures
+
+**Details**: When deserializing complex JSON columns (especially 2D arrays or nested structures), validate the structure before using it:
+
+**Pattern for validating 2D array structure**:
+```typescript
+let inventory: (InventoryItem | null)[][];
+try {
+  if (row.inventory) {
+    inventory = JSON.parse(row.inventory);
+    // Validate structure: must be 10×10 array
+    if (!Array.isArray(inventory) || inventory.length !== INVENTORY_ROWS) {
+      throw new Error('Invalid inventory structure');
+    }
+    for (const row of inventory) {
+      if (!Array.isArray(row) || row.length !== INVENTORY_COLS) {
+        throw new Error('Invalid inventory row structure');
+      }
+    }
+  } else {
+    // Create empty grid for NULL values
+    inventory = Array.from({ length: INVENTORY_ROWS }, () =>
+      Array.from({ length: INVENTORY_COLS }, () => null)
+    );
+  }
+} catch {
+  // Fallback to empty grid on any error
+  inventory = Array.from({ length: INVENTORY_ROWS }, () =>
+    Array.from({ length: INVENTORY_COLS }, () => null)
+  );
+}
+```
+
+**Key principles**:
+- Always validate array structure (dimensions, nesting) after JSON.parse
+- Provide sensible default/empty values for NULL columns
+- Wrap in try-catch with fallback to default on any error (parse failure, validation failure, etc.)
+- Validate early in deserialization to prevent downstream errors
+
+**When to use**: Any JSON column with specific structure requirements (2D arrays, objects with required fields, etc.). Simple arrays or objects can use the simpler pattern without validation.

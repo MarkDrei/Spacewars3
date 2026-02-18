@@ -6,6 +6,7 @@ import { TechTree, ResearchType, getResearchEffectFromTree, updateTechTree, AllR
 import { TechCounts, BuildQueueItem } from '../techs/TechFactory';
 import { TechService } from '../techs/TechService';
 import { TimeMultiplierService } from '../timeMultiplier';
+import { InventoryItem } from '../../../shared/src/types/inventory';
 
 class User {
   id: number;
@@ -32,6 +33,9 @@ class User {
   buildQueue: BuildQueueItem[];
   buildStartSec: number | null;
 
+  // Inventory (persisted) - 10×10 grid
+  inventory: (InventoryItem | null)[][];
+
   // TODO: Need to figure out where this is implemented: Should we use locks here?
   private saveCallback: SaveUserCallback;
 
@@ -53,6 +57,7 @@ class User {
     currentBattleId: number | null,
     buildQueue: BuildQueueItem[],
     buildStartSec: number | null,
+    inventory: (InventoryItem | null)[][],
     ship_id?: number
   ) {
     this.id = id;
@@ -71,6 +76,7 @@ class User {
     this.currentBattleId = currentBattleId;
     this.buildQueue = buildQueue;
     this.buildStartSec = buildStartSec;
+    this.inventory = inventory;
     this.ship_id = ship_id;
     this.saveCallback = saveCallback;
   }

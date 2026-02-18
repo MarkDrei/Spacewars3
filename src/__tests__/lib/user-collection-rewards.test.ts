@@ -1,4 +1,5 @@
 import { describe, expect, test, vi } from 'vitest';
+import { INVENTORY_ROWS, INVENTORY_COLS, InventoryItem } from '@/shared/src/types/inventory';
 import { User } from '@/lib/server/user/user';
 import { createInitialTechTree } from '@/lib/server/techs/techtree';
 import { TechCounts } from '@/lib/server/techs/TechFactory';
@@ -42,8 +43,9 @@ function createTestUser(
     false, // inBattle
     null, // currentBattleId
     [], // buildQueue
-    null // buildStartSec
-  );
+    null, // buildStartSec
+      Array.from({ length: INVENTORY_ROWS }, () => Array.from({ length: INVENTORY_COLS }, () => null))
+    );
 }
 
 describe('User Collection Rewards', () => {
