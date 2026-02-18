@@ -87,10 +87,10 @@ graph TB
     Browser["Browser<br/>(Player)"]
     Server["Spacewars Ironcore Server<br/>(Next.js Application)"]
     DB["PostgreSQL Database"]
-    
+
     Browser -->|HTTP Requests| Server
     Server -->|SQL Queries| DB
-    
+
     style Browser fill:#e1f5ff
     style Server fill:#fff4e1
     style DB fill:#e8f5e9
@@ -126,7 +126,46 @@ graph TB
 | Canvas         | HTML5 Canvas API      | Game rendering      |
 | Authentication | iron-session          | Secure sessions     |
 
----
+### 4.3 Responsive Navigation Strategy
+
+**Context:** The application requires efficient navigation across multiple game pages (Home, Game, Factory, Research, Ship, Profile) while maintaining mobile-first design principles and providing contextual shortcuts for content-heavy pages.
+
+**Solution:** A dual-navigation system that adapts to screen size and page context:
+
+#### Desktop Navigation (>1280px)
+
+- **Top Bar Navigation:** Traditional horizontal navbar with full page names and admin access
+- **Implementation:** `Navigation.tsx` with responsive CSS media queries
+- **Benefits:** Familiar desktop UX, full feature access, clear visual hierarchy
+
+#### Mobile Navigation (≤1280px)
+
+- **Bottom Tab Bar:** Fixed bottom navigation with icon-based shortcuts to main pages
+- **Contextual Shortcut Bar:** Page-specific shortcuts above the bottom bar for quick access to scrollable sections
+- **Implementation:** Conditional rendering based on `pathname` with smooth scrolling via `scrollIntoView()`
+
+**Page-Specific Shortcuts:**
+
+| Page     | Shortcuts                                            | Purpose                       |
+| -------- | ---------------------------------------------------- | ----------------------------- |
+| Home     | Battle, Messages, Progress, Defense, Tech, Cooldowns | Dashboard sections navigation |
+| Factory  | Queue, Defense, Projectile, Energy                   | Build categories quick access |
+| Research | Projectile, Energy, Defense, Ship, Spies             | Research tree navigation      |
+
+**Key Design Decisions:**
+
+1. **Progressive Enhancement:** Desktop gets full navigation; mobile gets optimized touch-friendly interface
+2. **Context Awareness:** Shortcuts only appear on pages with scrollable content, reducing UI clutter
+3. **Performance:** Hidden by default, conditionally rendered only on relevant pages
+4. **Accessibility:** Smooth scrolling with `behavior: 'smooth'`, proper ARIA labels, keyboard navigation support
+5. **Consistency:** Shared styling system with green accent colors matching the game's theme
+
+**Benefits:**
+
+- **Mobile UX:** Thumb-friendly bottom navigation with contextual shortcuts reduces scrolling fatigue
+- **Desktop UX:** Traditional navigation maintains familiarity for larger screens
+- **Scalability:** Easy to extend shortcuts to additional pages without affecting existing navigation
+- **Maintainability:** Centralized in `Navigation.tsx` component with clear separation of concerns
 
 ## 5. Building Block View
 
@@ -140,16 +179,16 @@ graph TB
         Router["Next.js App Router<br/>Pages & API Routes"]
         Engine["Game Engine<br/>(HTML5 Canvas)"]
         Cache["Cache Layer<br/>(IronGuard Locks)"]
-        
+
         Router -.-> Engine
         Router -.-> Cache
         Engine -.-> Cache
     end
-    
+
     DB[(PostgreSQL<br/>Database)]
-    
+
     Cache -->|Persist| DB
-    
+
     style Spacewars fill:#f9f9f9,stroke:#333,stroke-width:2px
     style Router fill:#61dafb
     style Engine fill:#ffd700
@@ -166,6 +205,7 @@ The application employs a layered architecture separating caching, business logi
 Four singleton cache managers handle different data domains with explicit dependency injection:
 
 **UserCache** (`src/lib/server/user/userCache.ts`)
+
 - **Responsibility:** User data and username-to-ID mappings
 - **Storage:** Map<userId, User> + Map<username, userId>
 - **Lock Hierarchy:** USER_LOCK (3) → DATABASE_LOCK (4)
@@ -173,6 +213,7 @@ Four singleton cache managers handle different data domains with explicit depend
 - **Key Features:** Coordinates with WorldCache and MessageCache; dirty tracking for background persistence
 
 **WorldCache** (`src/lib/server/world/worldCache.ts`)
+
 - **Responsibility:** Authoritative game world state (space objects, boundaries)
 - **Storage:** Single World instance
 - **Lock Hierarchy:** WORLD_LOCK (2) → DATABASE_LOCK (10)
@@ -180,6 +221,7 @@ Four singleton cache managers handle different data domains with explicit depend
 - **Key Features:** Save callback for dirty marking; delegates to worldRepo for persistence
 
 **MessageCache** (`src/lib/server/messages/MessageCache.ts`)
+
 - **Responsibility:** User messages and notifications
 - **Storage:** Map<userId, Message[]>
 - **Lock Hierarchy:** MESSAGE_LOCK (8) → DATABASE_LOCK_MESSAGES (12)
@@ -187,6 +229,7 @@ Four singleton cache managers handle different data domains with explicit depend
 - **Key Features:** Async message creation with temporary negative IDs (~0.5ms); uses MessagesRepo for all DB operations
 
 **BattleCache** (`src/lib/server/battle/BattleCache.ts`)
+
 - **Responsibility:** Active battle state and combat data
 - **Storage:** Map<battleId, Battle> + Map<userId, battleId>
 - **Lock Hierarchy:** BATTLE_LOCK (2) → DATABASE_LOCK_BATTLES (13)
@@ -194,20 +237,21 @@ Four singleton cache managers handle different data domains with explicit depend
 - **Key Features:** Starts battle scheduler; uses battleRepo for persistence
 
 **Dependency Graph:**
+
 ```mermaid
 graph TD
     MC[MessageCache<br/>Standalone]
     WC[WorldCache]
     UC[UserCache]
     BC[BattleCache]
-    
+
     WC -->|depends on| MC
     UC -->|depends on| WC
     UC -->|depends on| MC
     BC -->|depends on| UC
     BC -->|depends on| WC
     BC -->|depends on| MC
-    
+
     style MC fill:#ffeb3b
     style WC fill:#4caf50,color:#fff
     style UC fill:#2196f3,color:#fff
@@ -215,6 +259,7 @@ graph TD
 ```
 
 **Initialization Order (in main.ts):**
+
 1. PostgreSQL connection established
 2. World loaded from database
 3. MessageCache initialized (standalone)
@@ -223,6 +268,7 @@ graph TD
 6. BattleCache initialized with all cache dependencies
 
 All caches are wired together explicitly during server startup (`main.ts`) via dependency injection. This enables:
+
 - Clean separation of concerns (caching vs business logic)
 - Testability (mock dependencies easily)
 - Proper initialization order
@@ -232,30 +278,34 @@ All caches are wired together explicitly during server startup (`main.ts`) via d
 Repositories provide a clean separation between caching/business logic and database operations:
 
 **Purpose:**
+
 - Single responsibility: Handle all direct database interactions for a specific domain
 - SQL query execution and data transformation
 - Type-safe database operations with lock context verification
 
 **Repository Implementations:**
+
 - **userRepo** (`src/lib/server/user/userRepo.ts`): User CRUD operations
 - **worldRepo** (`src/lib/server/world/worldRepo.ts`): World state persistence
 - **messagesRepo** (`src/lib/server/messages/messagesRepo.ts`): Message database operations
 - **battleRepo** (`src/lib/server/battle/battleRepo.ts`): Battle state persistence
 
 **Design Principles:**
+
 - Repos are called ONLY by their corresponding cache
 - No business logic in repos (pure data access)
 - Lock context passed via type parameters for compile-time safety
 - Stateless (no instance state, mostly static methods or simple classes)
 
 **Example Flow:**
+
 ```mermaid
 sequenceDiagram
     participant API as API Route
     participant Cache as UserCache<br/>(Cache Layer)
     participant Repo as userRepo<br/>(Data Access)
     participant DB as PostgreSQL
-    
+
     API->>Cache: Request user data
     Cache->>Cache: Check in-memory cache
     alt Cache hit
@@ -281,6 +331,7 @@ All caches follow consistent patterns:
 5. **Graceful Shutdown:** Stop timers, flush dirty data, wait for pending operations
 
 **Design Rationale:**
+
 - Separation ensures message/battle operations don't block user/world updates
 - Different initialization strategies: heavy caches (User, World, Battle) initialized explicitly at startup; lightweight cache (Message) auto-initializes
 - Repository pattern keeps database logic separate and testable
@@ -299,7 +350,7 @@ sequenceDiagram
     participant Cache as UserCache
     participant Repo as userRepo
     participant DB as PostgreSQL
-    
+
     Player->>API: POST credentials
     API->>API: Validate input
     API->>API: Acquire USER_LOCK
@@ -320,7 +371,7 @@ sequenceDiagram
     else Invalid credentials
         API-->>Player: 400 Invalid credentials
     end
-    
+
     Note over Cache,DB: Background persistence<br/>flushes dirty users<br/>every 30 seconds
 ```
 
@@ -334,7 +385,7 @@ sequenceDiagram
     participant WC as WorldCache
     participant MC as MessageCache
     participant DB as PostgreSQL
-    
+
     Player->>API: POST {objectId}
     API->>API: Validate session
     API->>API: Acquire USER_LOCK
@@ -343,7 +394,7 @@ sequenceDiagram
     UC-->>API: User object
     API->>WC: getWorldFromCache()
     WC-->>API: World with space objects
-    
+
     API->>API: Calculate distance to object
     alt Object in range
         API->>API: Calculate iron gain
@@ -352,7 +403,7 @@ sequenceDiagram
         API->>WC: world.collected(objectId)
         WC->>WC: Remove object, spawn new
         WC->>WC: Mark world as dirty
-        
+
         par Async message creation
             API->>MC: sendMessageToUser()
             MC->>MC: Assign temp ID (-1, -2, ...)
@@ -360,12 +411,12 @@ sequenceDiagram
             MC-->>API: Return temp ID (~0.5ms)
             Note over MC: Async: Persist to DB<br/>with real ID
         end
-        
+
         API-->>Player: Success + iron gained
     else Object out of range
         API-->>Player: 400 Object out of range
     end
-    
+
     Note over UC,DB: Background persistence<br/>flushes dirty data<br/>every 30 seconds
 ```
 
@@ -381,17 +432,17 @@ graph TB
             Pages["SSR/SSG Pages<br/>(Game, Login, Profile, etc.)"]
             Logic["Game Logic<br/>(Physics, Combat)"]
             Caches["Cache Layer<br/>(4 singleton caches)"]
-            
+
             Routes --> Caches
             Pages --> Caches
             Logic --> Caches
         end
-        
+
         DB[(PostgreSQL Database<br/>Persistent Storage)]
-        
+
         Caches -->|Background<br/>Persistence| DB
     end
-    
+
     style Platform fill:#f0f0f0,stroke:#333,stroke-width:2px
     style App fill:#fff,stroke:#666,stroke-width:1px
     style Routes fill:#61dafb
@@ -402,6 +453,7 @@ graph TB
 ```
 
 **Deployment Options:**
+
 - **Docker**: Full containerization with docker-compose.yml (includes PostgreSQL)
 - **Vercel**: Serverless deployment with external PostgreSQL (requires connection pooling)
 - **Render**: Container-based deployment with managed PostgreSQL
@@ -426,7 +478,7 @@ graph TD
     L11[Level 11: DATABASE_LOCK_SPACE_OBJECTS<br/>World DB persistence]
     L12[Level 12: DATABASE_LOCK_MESSAGES<br/>Message DB persistence]
     L13[Level 13: DATABASE_LOCK_BATTLES<br/>Battle DB persistence]
-    
+
     L2 --> L4
     L4 --> L6
     L6 --> L8
@@ -435,7 +487,7 @@ graph TD
     L10 --> L11
     L11 --> L12
     L12 --> L13
-    
+
     style L2 fill:#f44336,color:#fff
     style L4 fill:#2196f3,color:#fff
     style L6 fill:#4caf50,color:#fff
@@ -450,6 +502,7 @@ graph TD
 **Lock Acquisition Rule:** Locks must be acquired in ascending order (2 → 4 → 6 → 8 → ...). IronGuard enforces this at compile time through TypeScript's type system. Attempting to acquire locks out of order results in a compilation error.
 
 **Common Lock Patterns:**
+
 - **User operations**: USER_LOCK → DATABASE_LOCK_USERS
 - **World updates**: WORLD_LOCK → DATABASE_LOCK_SPACE_OBJECTS
 - **Message creation**: MESSAGE_LOCK → DATABASE_LOCK_MESSAGES
@@ -483,14 +536,14 @@ graph TB
     Server["Server-Side Game Logic<br/>(Iron, Research, Builds,<br/>Defense, Battles, Physics)"]
     UserStats["/api/user-stats<br/>(Polling 5s)"]
     Client["Client-Side Hooks<br/>(Iron, Defense, Physics)"]
-    
+
     Admin -->|POST multiplier + duration| API
     API -->|setMultiplier()| Service
     Service -->|getMultiplier()| Server
     Service -->|getStatus()| UserStats
     UserStats -->|timeMultiplier field| Client
     Client -->|Apply to predictions| Client
-    
+
     style Admin fill:#e1f5ff
     style API fill:#fff4e1
     style Service fill:#ffcccc
@@ -502,10 +555,12 @@ graph TB
 **Key Design Decisions:**
 
 1. **Delta Multiplication Pattern:** Multiplies elapsed time deltas rather than creating a "virtual clock"
+
    ```typescript
    // Server: Multiply elapsed time before calculations
    const elapsed = now - this.last_updated;
-   const gameElapsed = elapsed * TimeMultiplierService.getInstance().getMultiplier();
+   const gameElapsed =
+     elapsed * TimeMultiplierService.getInstance().getMultiplier();
    // Use gameElapsed for calculations, update this.last_updated = now (real time)
    ```
 
@@ -546,6 +601,7 @@ graph TB
 - Input validation: multiplier ≥ 1, duration > 0
 
 **Implementation:**
+
 - Service: `src/lib/server/timeMultiplier.ts` (138 lines)
 - Admin API: `src/app/api/admin/time-multiplier/route.ts` (195 lines)
 - Client Module: `src/lib/client/timeMultiplier.ts` (38 lines)

@@ -1,3 +1,5 @@
+import { ResearchType } from '@/shared/src/types/gameTypes';
+
 interface TechTree {
   ironHarvesting: number;
   shipSpeed: number;
@@ -52,39 +54,6 @@ interface ResearchDef {
   nextEffect: number;
   unit: string;
 }
-
-type ResearchType = 
-  | 'IronHarvesting' 
-  | 'ShipSpeed' 
-  | 'Afterburner'
-  // Projectile Weapons
-  | 'projectileDamage'
-  | 'projectileReloadRate'
-  | 'projectileAccuracy'
-  | 'projectileWeaponTier'
-  // Energy Weapons
-  | 'energyDamage'
-  | 'energyRechargeRate'
-  | 'energyAccuracy'
-  | 'energyWeaponTier'
-  // Defense
-  | 'hullStrength'
-  | 'repairSpeed'
-  | 'armorEffectiveness'
-  | 'shieldEffectiveness'
-  | 'shieldRechargeRate'
-  // Ship
-  | 'afterburnerSpeedIncrease'
-  | 'afterburnerDuration'
-  | 'teleport'
-  | 'inventoryCapacity'
-  | 'constructionSpeed'
-  // Spies
-  | 'spyChance'
-  | 'spySpeed'
-  | 'spySabotageDamage'
-  | 'counterintelligence'
-  | 'stealIron';
 
 interface TechtreeResponse {
   techTree: TechTree;
@@ -207,7 +176,7 @@ class ResearchService {
    * Calculate max ship speed from tech tree data
    */
   calculateMaxSpeed(researches: Record<ResearchType, ResearchDef>): number {
-    const baseSpeed = researches.ShipSpeed.currentEffect;
+    const baseSpeed = researches.shipSpeed.currentEffect;
     const afterburnerBonus = researches.Afterburner.currentEffect;
     return baseSpeed * (1 + afterburnerBonus / 100);
   }

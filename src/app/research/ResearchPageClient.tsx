@@ -12,7 +12,7 @@ import './ResearchPage.css';
 
 const researchTypeToKey: Record<ResearchType, keyof TechTree> = {
   IronHarvesting: 'ironHarvesting',
-  ShipSpeed: 'shipSpeed',
+  shipSpeed: 'shipSpeed',
   Afterburner: 'afterburner',
   // Projectile Weapons
   projectileDamage: 'projectileDamage',
@@ -256,7 +256,7 @@ const ResearchPageClient: React.FC<ResearchPageClientProps> = () => {
   const getResearchImageName = (type: ResearchType): string => {
     const imageMap: Record<string, string> = {
       IronHarvesting: 'IronHarvesting',
-      ShipSpeed: 'ShipSpeed',
+      shipSpeed: 'ShipSpeed',
       projectileDamage: 'ProjectileDamage',
       projectileReloadRate: 'ReloadRate',
       projectileAccuracy: 'ProjectileAccuracy',
@@ -570,7 +570,7 @@ const ResearchPageClient: React.FC<ResearchPageClientProps> = () => {
             <div className="data-table-container">
               {researchHierarchy.map(category => (
                 <div key={category.name} className="research-category">
-                  <h2 className="category-heading">{category.name}</h2>
+                  <h2 id={category.name.toLowerCase().replace(' ', '-')} className="category-heading">{category.name}</h2>
                   <table className="data-table">
                     <thead>
                       <tr>
@@ -594,7 +594,7 @@ const ResearchPageClient: React.FC<ResearchPageClientProps> = () => {
             <div>
               {researchHierarchy.map(category => (
                 <div key={category.name} className="research-category">
-                  <h2 className="category-heading">{category.name}</h2>
+                  <h2 id={category.name.toLowerCase().replace(' ', '-')} className="category-heading">{category.name}</h2>
                   <div className="item-cards-grid">
                     {category.nodes.flatMap(node => getAllResearchTypes(node)).map(type => {
                       const research = researches[type];

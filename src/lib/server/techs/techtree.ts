@@ -3,42 +3,10 @@
 // Defines the types and initial data for the tech tree and research system, which models user research progress and upgrades.
 // ---
 
-/**
- * Enum of all available research types in the tech tree.
- */
-export enum ResearchType {
-  IronHarvesting = 'IronHarvesting',
-  ShipSpeed = 'shipSpeed',
-  Afterburner = 'Afterburner',
-  // Projectile Weapons
-  ProjectileDamage = 'projectileDamage',
-  ProjectileReloadRate = 'projectileReloadRate',
-  ProjectileAccuracy = 'projectileAccuracy',
-  ProjectileWeaponTier = 'projectileWeaponTier',
-  // Energy Weapons
-  EnergyDamage = 'energyDamage',
-  EnergyRechargeRate = 'energyRechargeRate',
-  EnergyAccuracy = 'energyAccuracy',
-  EnergyWeaponTier = 'energyWeaponTier',
-  // Defense
-  HullStrength = 'hullStrength',
-  RepairSpeed = 'repairSpeed',
-  ArmorEffectiveness = 'armorEffectiveness',
-  ShieldEffectiveness = 'shieldEffectiveness',
-  ShieldRechargeRate = 'shieldRechargeRate',
-  // Ship
-  AfterburnerSpeedIncrease = 'afterburnerSpeedIncrease',
-  AfterburnerDuration = 'afterburnerDuration',
-  Teleport = 'teleport',
-  InventoryCapacity = 'inventoryCapacity',
-  ConstructionSpeed = 'constructionSpeed',
-  // Spies
-  SpyChance = 'spyChance',
-  SpySpeed = 'spySpeed',
-  SpySabotageDamage = 'spySabotageDamage',
-  Counterintelligence = 'counterintelligence',
-  StealIron = 'stealIron',
-}
+import { ResearchType } from '@/shared/src/types/gameTypes';
+
+// Re-export ResearchType for convenience
+export { ResearchType };
 
 // Subset of implemented researches for reference
 export const IMPLEMENTED_RESEARCHES: ReadonlySet<ResearchType> = new Set([
