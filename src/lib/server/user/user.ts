@@ -6,7 +6,7 @@ import { TechTree, ResearchType, getResearchEffectFromTree, updateTechTree, AllR
 import { TechCounts, BuildQueueItem } from '../techs/TechFactory';
 import { TechService } from '../techs/TechService';
 import { TimeMultiplierService } from '../timeMultiplier';
-import { InventoryItem } from '../../../shared/src/types/inventory';
+import { InventoryItem, INVENTORY_ROWS, INVENTORY_COLS } from '../../../shared/src/types/inventory';
 
 class User {
   id: number;
@@ -284,6 +284,91 @@ class User {
 
   async save(): Promise<void> {
     await this.saveCallback(this);
+  }
+
+  // ========== INVENTORY METHODS ==========
+
+  /**
+   * Get the user's inventory grid.
+   * @returns 10×10 2D array of inventory items (null for empty slots)
+   */
+  getInventory(): (InventoryItem | null)[][] {
+    return this.inventory;
+  }
+
+  /**
+   * Find the first free slot in the inventory, scanning row-by-row, left-to-right.
+   * @returns Coordinates of the first free slot, or null if inventory is full
+   */
+  findFirstFreeSlot(): { row: number; col: number } | null {
+    for (let row = 0; row < INVENTORY_ROWS; row++) {
+      for (let col = 0; col < INVENTORY_COLS; col++) {
+        if (this.inventory[row][col] === null) {
+          return { row, col };
+        }
+      }
+    }
+    return null; // Inventory is full
+  }
+
+  /**
+   * Add an item to the first available slot in the inventory.
+   * @param item The inventory item to add
+   * @returns true if added successfully, false if inventory is full
+   */
+  addItemToInventory(item: InventoryItem): boolean {
+    const freeSlot = this.findFirstFreeSlot();
+    if (freeSlot === null) {
+      return false; // Inventory full
+    }
+    this.inventory[freeSlot.row][freeSlot.col] = item;
+    return true;
+  }
+
+  /**
+   * Move an item from one slot to another.
+   * If the target slot is empty, the item is moved.
+   * If the target slot is occupied, the items are swapped.
+   * @param fromRow Source row (0-9)
+   * @param fromCol Source column (0-9)
+   * @param toRow Target row (0-9)
+   * @param toCol Target column (0-9)
+   * @returns true if successful, false if coordinates are out of bounds
+   */
+  moveItem(fromRow: number, fromCol: number, toRow: number, toCol: number): boolean {
+    // Validate bounds
+    if (
+      fromRow < 0 || fromRow >= INVENTORY_ROWS ||
+      fromCol < 0 || fromCol >= INVENTORY_COLS ||
+      toRow < 0 || toRow >= INVENTORY_ROWS ||
+      toCol < 0 || toCol >= INVENTORY_COLS
+    ) {
+      return false;
+    }
+
+    // Swap/move items
+    const temp = this.inventory[fromRow][fromCol];
+    this.inventory[fromRow][fromCol] = this.inventory[toRow][toCol];
+    this.inventory[toRow][toCol] = temp;
+
+    return true;
+  }
+
+  /**
+   * Remove an item from a specific slot.
+   * @param row Row index (0-9)
+   * @param col Column index (0-9)
+   * @returns The removed item, or null if slot was empty or coordinates invalid
+   */
+  removeItem(row: number, col: number): InventoryItem | null {
+    // Validate bounds
+    if (row < 0 || row >= INVENTORY_ROWS || col < 0 || col >= INVENTORY_COLS) {
+      return null;
+    }
+
+    const item = this.inventory[row][col];
+    this.inventory[row][col] = null;
+    return item;
   }
 
   /**
