@@ -1,5 +1,6 @@
 // Barrel export for all types
 export * from './gameTypes';
+export * from './inventory';
 
 // Type definitions shared between client and server
 export interface User {

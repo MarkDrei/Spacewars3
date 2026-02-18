@@ -36,13 +36,39 @@ Commanders are the first item type. Each escape pod collected has a 90% chance o
 **Details**:
 
 - `CommanderStatType` — union type: `'shipSpeed' | 'projectileDamage' | 'projectileReloadRate' | 'projectileAccuracy' | 'energyDamage' | 'energyReloadRate' | 'energyAccuracy'`
-- `CommanderStat` — `{ statType: CommanderStatType, bonusPercent: number }` where `bonusPercent` is 0.1..1.0
+- `CommanderStat` — `{ statType: CommanderStatType, bonusPercent: number }` where `bonusPercent` is 10-100 (10 = 10%, 100 = 100%)
 - `Commander` — `{ id: string (UUID), name: string, stats: CommanderStat[] }` with 1-3 stats
 - `InventoryItemType` — discriminated union, currently just `'commander'`
-- `InventoryItem` — `{ type: 'commander', data: Commander }`
+- `InventoryItem` — `type InventoryItem = { type: 'commander', data: Commander }` (union type for extensibility)
 - `InventorySlot` — `{ row: number, col: number, item: InventoryItem | null }`
 - `Inventory` — `{ slots: (InventoryItem | null)[][] }` — 10×10 2D array (row-major), null means empty
 - Export a constant `INVENTORY_ROWS = 10`, `INVENTORY_COLS = 10`
+- Runtime validation: `isValidCommanderStat(stat)` and `isValidCommander(commander)` helper functions
+
+**Status**: ✅ COMPLETED (REVISED)  
+**Implementation Summary**: Created comprehensive TypeScript type definitions for the inventory system with proper discriminated union pattern for extensibility, following project conventions for type definitions and documentation. Revised based on Medicus feedback to fix discriminated union, standardize percentage scale, and add runtime validation.  
+**Files Modified/Created**:
+- `src/shared/src/types/inventory.ts` - Implemented all inventory and commander type definitions with JSDoc documentation, runtime validation helpers
+- `src/shared/src/types/index.ts` - Added barrel export for inventory types
+- `src/__tests__/lib/inventory-types.test.ts` - Created 37 comprehensive unit tests validating type structures, constants, and validation functions
+
+**Deviations from Plan**: 
+- Changed `bonusPercent` scale from 0.1-1.0 to 10-100 to match existing codebase patterns (TechFactory, battleTypes)
+- Converted `InventoryItem` from interface to proper discriminated union type for future extensibility
+- Added runtime validation functions `isValidCommanderStat()` and `isValidCommander()` with comprehensive test coverage
+
+**Arc42 Updates**: None required (type definitions only, not architectural changes)  
+**Test Results**: ✅ All 922 tests passing (including 37 inventory type tests with 12 new validation tests), 100% coverage on types file, no linting errors, build successful
+
+**Revision History**:
+- **Initial Review**: ⚠️ NEEDS REVISION by Medicus
+- **Issues Fixed**:
+  1. ✅ Changed `InventoryItem` from interface to true discriminated union type: `export type InventoryItem = { type: 'commander'; data: Commander }`
+  2. ✅ Standardized `bonusPercent` to 10-100 scale (consistent with battleTypes.ts patterns)
+  3. ✅ Added validation helpers: `isValidCommanderStat()` validates 10-100 range, `isValidCommander()` validates 1-3 stats with no duplicates
+  4. ✅ Updated all 25 original tests to use 10-100 scale, added 12 new tests for validation functions
+  5. ✅ Added test demonstrating union type extensibility with type guards
+- **Final Review**: ✅ APPROVED (pending Medicus confirmation)
 
 #### Task 1.2: Re-export Inventory Types
 
@@ -51,6 +77,19 @@ Commanders are the first item type. Each escape pod collected has a 90% chance o
 **Files**:
 
 - `src/shared/src/types/index.ts` — add re-export of `./inventory`
+
+**Status**: ✅ COMPLETED (REVISED)  
+**Implementation Summary**: Added barrel export for inventory types to the shared types index file, enabling clean imports throughout the codebase. Revised along with Task 1.1 fixes.  
+**Files Modified/Created**:
+- `src/shared/src/types/index.ts` - Added `export * from './inventory'` following existing barrel export pattern
+
+**Deviations from Plan**: None.  
+**Arc42 Updates**: None required  
+**Test Results**: Covered by Task 1.1 test results (all types are importable and testable through the barrel export)
+
+**Revision History**:
+- **Initial Review**: ⚠️ NEEDS REVISION (blocked by Task 1.1)
+- **Final Status**: ✅ COMPLETED with Task 1.1 revision
 
 ---
 
