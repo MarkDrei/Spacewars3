@@ -134,6 +134,16 @@ export const migrations: Migration[] = [
     down: [
       'ALTER TABLE users DROP COLUMN IF EXISTS xp'
     ]
+  },
+  {
+    version: 9,
+    name: 'add_inventory',
+    up: [
+      'ALTER TABLE users ADD COLUMN IF NOT EXISTS inventory TEXT DEFAULT NULL'
+    ],
+    down: [
+      'ALTER TABLE users DROP COLUMN IF EXISTS inventory'
+    ]
   }
   // Future migrations go here
 ];
@@ -252,6 +262,8 @@ export async function applyTechMigrations(db: DatabaseConnection): Promise<void>
   await applyPictureIdMigration(db);
   // Apply XP system migration
   await applyXpSystemMigration(db);
+  // Apply inventory migration
+  await applyInventoryMigration(db);
 }
 
 /**
@@ -486,5 +498,38 @@ export async function applyXpSystemMigration(db: DatabaseConnection): Promise<vo
     console.log('✅ XP system migration completed');
   } catch (error) {
     console.error('❌ Error applying XP system migration:', error);
+  }
+}
+
+/**
+ * Apply inventory system migration to the database
+ */
+export async function applyInventoryMigration(db: DatabaseConnection): Promise<void> {
+  console.log('🔄 Checking for inventory system migration...');
+  
+  try {
+    const exists = await columnExists(db, 'users', 'inventory');
+    if (exists) {
+      console.log('✅ Inventory column already exists');
+      return;
+    }
+    
+    console.log('🚀 Adding inventory column...');
+    
+    // Get inventory migration
+    const inventoryMigration = migrations.find(m => m.name === 'add_inventory');
+    if (!inventoryMigration) {
+      console.error('❌ Inventory migration not found');
+      return;
+    }
+    
+    // Apply each migration statement
+    for (const statement of inventoryMigration.up) {
+      await runMigrationStatement(db, statement);
+    }
+    
+    console.log('✅ Inventory migration completed');
+  } catch (error) {
+    console.error('❌ Error applying inventory migration:', error);
   }
 }

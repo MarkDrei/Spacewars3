@@ -109,6 +109,16 @@ Commanders are the first item type. Each escape pod collected has a 90% chance o
 
 - `src/lib/server/migrations.ts` — add migration version 9 `add_inventory` to the `migrations` array, and add a new `applyInventoryMigration()` function following the existing pattern (check `columnExists`, then apply). Chain it in `applyTechMigrations()`.
 
+**Status**: ✅ COMPLETED  
+**Implementation Summary**: Added migration version 9 for the inventory column to the users table, following the established migration pattern with idempotent column creation, proper logging, and error handling.  
+**Files Modified/Created**:
+- `src/lib/server/migrations.ts` - Added migration version 9 with up/down statements, created `applyInventoryMigration()` function, and chained it in `applyTechMigrations()`
+- `src/__tests__/lib/inventory-migration.test.ts` - Created 10 comprehensive unit tests validating migration structure, SQL statements, idempotency, column properties, and data handling
+
+**Deviations from Plan**: None.  
+**Arc42 Updates**: None required (database migration only, architectural patterns unchanged)  
+**Test Results**: ✅ All 932 tests passing (including 10 new inventory migration tests), no linting errors, build successful
+
 ##### Task 2.1.2: Update Schema Definition
 
 **Action**: Add the `inventory` column to the `CREATE TABLE users` statement in the schema file so fresh databases include it.
