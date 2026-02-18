@@ -75,6 +75,13 @@ const AdminPage: React.FC = () => {
   const multiplierIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Space object spawning state
+  const [isSpawning, setIsSpawning] = useState(false);
+  const [spawnMessage, setSpawnMessage] = useState<string | null>(null);
+  const [customSpawnType, setCustomSpawnType] = useState<'asteroid' | 'shipwreck' | 'escape_pod'>('asteroid');
+  const [customSpawnQuantity, setCustomSpawnQuantity] = useState<number>(1);
+  const spawnMessageTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   // Fetch admin data
   const fetchAdminData = async () => {
     try {
@@ -159,6 +166,65 @@ const AdminPage: React.FC = () => {
     setTimeMultiplier(1, 0.01); // Set to 1x with minimal duration (auto-expires immediately)
   };
 
+  // Handle space object spawning
+  const handleSpawn = async (type: 'asteroid' | 'shipwreck' | 'escape_pod', quantity: number) => {
+    try {
+      setIsSpawning(true);
+      setSpawnMessage(null);
+
+      // Clear any existing message timeout
+      if (spawnMessageTimeoutRef.current) {
+        clearTimeout(spawnMessageTimeoutRef.current);
+      }
+
+      const response = await fetch('/api/admin/spawn-objects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type, quantity }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to spawn objects');
+      }
+
+      const data = await response.json();
+      setSpawnMessage(`✅ Successfully spawned ${data.spawned} ${type}(s)`);
+
+      // Refresh admin data to show newly spawned objects
+      await fetchAdminData();
+
+      // Auto-clear message after 5 seconds
+      spawnMessageTimeoutRef.current = setTimeout(() => {
+        setSpawnMessage(null);
+      }, 5000);
+    } catch (err) {
+      console.error('Failed to spawn objects:', err);
+      const errorMsg = err instanceof Error ? err.message : 'Failed to spawn objects';
+      setSpawnMessage(`❌ Error: ${errorMsg}`);
+
+      // Auto-clear error message after 5 seconds
+      spawnMessageTimeoutRef.current = setTimeout(() => {
+        setSpawnMessage(null);
+      }, 5000);
+    } finally {
+      setIsSpawning(false);
+    }
+  };
+
+  // Handle custom spawn form submission
+  const handleCustomSpawn = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (customSpawnQuantity >= 1 && customSpawnQuantity <= 50) {
+      handleSpawn(customSpawnType, customSpawnQuantity);
+    } else {
+      setSpawnMessage('❌ Quantity must be between 1 and 50');
+      spawnMessageTimeoutRef.current = setTimeout(() => {
+        setSpawnMessage(null);
+      }, 5000);
+    }
+  };
+
   // Format time remaining as MM:SS
   const formatTimeRemaining = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
@@ -185,6 +251,13 @@ const AdminPage: React.FC = () => {
     setIsAuthorized(true);
     fetchAdminData();
     fetchMultiplierStatus();
+
+    // Cleanup spawn message timeout on unmount
+    return () => {
+      if (spawnMessageTimeoutRef.current) {
+        clearTimeout(spawnMessageTimeoutRef.current);
+      }
+    };
   }, [username, isLoggedIn, isLoading, fetchMultiplierStatus]);
 
   // Poll multiplier status every 5 seconds when active
@@ -380,6 +453,139 @@ const AdminPage: React.FC = () => {
           )}
         </div>
 
+        {/* Space Object Spawning Section */}
+        <div className="space-spawning-section">
+          <h2>🌌 Space Object Spawning</h2>
+
+          {/* Spawn Message Display */}
+          {spawnMessage && (
+            <div className={`spawn-message ${spawnMessage.startsWith('✅') ? 'spawn-success' : 'spawn-error'}`}>
+              {spawnMessage}
+            </div>
+          )}
+
+          {/* Asteroid Spawning */}
+          <div className="spawn-group">
+            <h3 className="spawn-type-label">☄️ Asteroids</h3>
+            <div className="spawn-controls">
+              <button
+                onClick={() => handleSpawn('asteroid', 1)}
+                className="spawn-btn spawn-asteroid"
+                disabled={isSpawning}
+              >
+                Spawn 1
+              </button>
+              <button
+                onClick={() => handleSpawn('asteroid', 5)}
+                className="spawn-btn spawn-asteroid"
+                disabled={isSpawning}
+              >
+                Spawn 5
+              </button>
+              <button
+                onClick={() => handleSpawn('asteroid', 10)}
+                className="spawn-btn spawn-asteroid"
+                disabled={isSpawning}
+              >
+                Spawn 10
+              </button>
+            </div>
+          </div>
+
+          {/* Shipwreck Spawning */}
+          <div className="spawn-group">
+            <h3 className="spawn-type-label">🚢 Shipwrecks</h3>
+            <div className="spawn-controls">
+              <button
+                onClick={() => handleSpawn('shipwreck', 1)}
+                className="spawn-btn spawn-shipwreck"
+                disabled={isSpawning}
+              >
+                Spawn 1
+              </button>
+              <button
+                onClick={() => handleSpawn('shipwreck', 5)}
+                className="spawn-btn spawn-shipwreck"
+                disabled={isSpawning}
+              >
+                Spawn 5
+              </button>
+              <button
+                onClick={() => handleSpawn('shipwreck', 10)}
+                className="spawn-btn spawn-shipwreck"
+                disabled={isSpawning}
+              >
+                Spawn 10
+              </button>
+            </div>
+          </div>
+
+          {/* Escape Pod Spawning */}
+          <div className="spawn-group">
+            <h3 className="spawn-type-label">🛸 Escape Pods</h3>
+            <div className="spawn-controls">
+              <button
+                onClick={() => handleSpawn('escape_pod', 1)}
+                className="spawn-btn spawn-escape-pod"
+                disabled={isSpawning}
+              >
+                Spawn 1
+              </button>
+              <button
+                onClick={() => handleSpawn('escape_pod', 5)}
+                className="spawn-btn spawn-escape-pod"
+                disabled={isSpawning}
+              >
+                Spawn 5
+              </button>
+              <button
+                onClick={() => handleSpawn('escape_pod', 10)}
+                className="spawn-btn spawn-escape-pod"
+                disabled={isSpawning}
+              >
+                Spawn 10
+              </button>
+            </div>
+          </div>
+
+          {/* Custom Spawn Form */}
+          <form onSubmit={handleCustomSpawn} className="spawn-custom-form">
+            <label>
+              Object Type:
+              <select
+                value={customSpawnType}
+                onChange={(e) => setCustomSpawnType(e.target.value as 'asteroid' | 'shipwreck' | 'escape_pod')}
+                disabled={isSpawning}
+                className="spawn-type-select"
+              >
+                <option value="asteroid">Asteroid</option>
+                <option value="shipwreck">Shipwreck</option>
+                <option value="escape_pod">Escape Pod</option>
+              </select>
+            </label>
+            <label>
+              Quantity (1-50):
+              <input
+                type="number"
+                min="1"
+                max="50"
+                step="1"
+                value={customSpawnQuantity}
+                onChange={(e) => setCustomSpawnQuantity(Number(e.target.value))}
+                disabled={isSpawning}
+                className="spawn-quantity-input"
+              />
+            </label>
+            <button
+              type="submit"
+              className="spawn-btn spawn-custom"
+              disabled={isSpawning}
+            >
+              {isSpawning ? '⏳ Spawning...' : 'Spawn Custom'}
+            </button>
+          </form>
+        </div>
+
         <div className="admin-stats">
           <div className="stat-card">
             <h3>👥 Total Users</h3>
@@ -396,6 +602,34 @@ const AdminPage: React.FC = () => {
           <div className="stat-card">
             <h3>🆔 Current User</h3>
             <div className="stat-value">{username}</div>
+          </div>
+        </div>
+
+        {/* Space Object Breakdown */}
+        <div className="admin-stats">
+          <div className="stat-card">
+            <h3>🪨 Asteroids</h3>
+            <div className="stat-value">
+              {adminData.spaceObjects.filter((obj) => obj.type === 'asteroid').length}
+            </div>
+          </div>
+          <div className="stat-card">
+            <h3>🚢 Shipwrecks</h3>
+            <div className="stat-value">
+              {adminData.spaceObjects.filter((obj) => obj.type === 'shipwreck').length}
+            </div>
+          </div>
+          <div className="stat-card">
+            <h3>🛟 Escape Pods</h3>
+            <div className="stat-value">
+              {adminData.spaceObjects.filter((obj) => obj.type === 'escape_pod').length}
+            </div>
+          </div>
+          <div className="stat-card">
+            <h3>🚀 Player Ships</h3>
+            <div className="stat-value">
+              {adminData.spaceObjects.filter((obj) => obj.type === 'player_ship').length}
+            </div>
           </div>
         </div>
 

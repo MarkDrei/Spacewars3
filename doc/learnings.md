@@ -163,3 +163,24 @@ const multiplier = TimeMultiplierService.getInstance().getMultiplier();
 - Other hooks call `get` during their interpolation ticks
 - Avoids React Context provider wrapping and re-render cascading
 - Acceptable staleness: value changes rarely (admin action), max lag = poll interval (5s)
+
+## Admin API Authorization Pattern
+
+**Discovered by**: Cartographer  
+**Context**: When planning admin space object spawning feature, discovered the consistent pattern for admin-restricted API endpoints
+
+**Pattern**: Admin-restricted API endpoints (developer-only features) follow this authorization pattern:
+
+1. **Session validation**: Use `getIronSession()` and `requireAuth(session.userId)` to ensure user is logged in
+2. **Admin check**: After fetching user data, check `username === 'a' || username === 'q'`
+3. **Error response**: Throw `ApiError(403, 'Admin access restricted to developers')` for non-admin users
+4. **Lock context**: Use `createLockContext()` and appropriate lock (USER_LOCK, WORLD_LOCK) for safe concurrent access
+
+**Example locations**:
+- `/api/admin/database/route.ts` (lines 88-90) - Database inspection endpoint
+- `/api/admin/time-multiplier/route.ts` - Time multiplier control
+- `/api/complete-build/route.ts` - Build completion cheat
+
+**Key insight**: Admin features check username AFTER acquiring user data, not during session validation. This allows the same session infrastructure to be used for both admin and regular endpoints.
+
+**UI Pattern**: Admin pages check authorization client-side in `useEffect()` and throw error if not authorized (see `src/app/admin/page.tsx` lines 179-183).
