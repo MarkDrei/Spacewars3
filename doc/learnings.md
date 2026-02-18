@@ -70,3 +70,24 @@ const multiplier = TimeMultiplierService.getInstance().getMultiplier();
 - Tests call `resetInstance()` in `beforeEach()` and `afterEach()`
 
 **Related pattern**: This is consistent with other singletons in the codebase (UserCache, WorldCache, MessageCache, BattleCache) which all use globalThis-based singleton pattern.
+
+## JSON Column Pattern for Structured User Data
+
+**Discovered by**: Cartographer  
+**Context**: When planning the Inventory feature, discovered the consistent pattern for storing structured data on users
+
+**Details**: The users table uses TEXT columns with JSON serialization for complex structured data:
+- `tech_tree TEXT` — serialized `TechTree` object
+- `build_queue TEXT` — serialized `BuildQueueItem[]` array
+- `inventory TEXT` — (planned) serialized 2D array for inventory grid
+
+**Pattern**: In `userRepo.ts`, `userFromRow()` deserializes JSON with `JSON.parse()` and fallback defaults. `saveUserToDb()` serializes with `JSON.stringify()`. The data is always loaded/saved with the user, flowing through `UserCache` write-behind persistence. No separate cache needed for JSON-column data.
+
+**When to use**: When adding structured data that is always accessed alongside the user record and doesn't need independent queries. For data that needs querying independently of users, use a separate table.
+
+## User.collected() Return Type Evolution
+
+**Discovered by**: Cartographer  
+**Context**: Planning escape pod commander collection revealed that `User.collected()` returns `void`
+
+**Details**: `User.collected(objectType)` currently returns `void`. The harvest API route computes `ironReward` by taking `user.iron - ironBefore` (comparing iron before/after). This pattern means the caller can't know what items were generated during collection. When extending collection to produce items (not just iron), the return type needs to change to a result object. The harvest route (`src/app/api/harvest/route.ts`) is the only caller of `collected()`.
