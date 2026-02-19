@@ -13,6 +13,7 @@ import {
   LOCK_12,
   LOCK_13,
   LOCK_9,
+  LOCK_5,
 } from '@markdrei/ironguard-typescript-locks';
 
 // Overview of the used lock levels and why we have them like that
@@ -22,6 +23,7 @@ import {
 // Database operation are for background syncing only.
 export const BATTLE_LOCK = LOCK_2;  // Battle state operations
 export const USER_LOCK = LOCK_4;
+export const USER_INVENTORY_LOCK = LOCK_5; // For operations that need to read/write user inventory (e.g., techs, resources)
 export const WORLD_LOCK = LOCK_6;
 export const MESSAGE_LOCK = LOCK_8;
 export const CACHES_LOCK = LOCK_9;

@@ -90,11 +90,19 @@ CREATE TABLE IF NOT EXISTS battles (
   FOREIGN KEY (loser_id) REFERENCES users (id)
 )`;
 
+export const CREATE_INVENTORIES_TABLE = `
+CREATE TABLE IF NOT EXISTS inventories (
+  user_id INTEGER PRIMARY KEY,
+  inventory_data JSONB NOT NULL DEFAULT '[]'::jsonb,
+  FOREIGN KEY (user_id) REFERENCES users (id)
+)`;
+
 export const CREATE_TABLES = [
   CREATE_SPACE_OBJECTS_TABLE,
   CREATE_USERS_TABLE,
   CREATE_MESSAGES_TABLE,
-  CREATE_BATTLES_TABLE
+  CREATE_BATTLES_TABLE,
+  CREATE_INVENTORIES_TABLE
 ];
 
 // Migration to rename column (PostgreSQL syntax)

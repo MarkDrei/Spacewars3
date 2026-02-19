@@ -144,6 +144,48 @@ describe('MessageCache - Collection Summarization', () => {
       });
     });
 
+    it('collectionSummarization_commanderEscapePodMessage_countedAsEscapePod', async () => {
+      await withTransaction(async () => {
+        const userId = await createTestUser('collection3b');
+        const ctx = createLockContext();
+
+        // New-format messages produced when a commander is found in an escape pod
+        await messageCache.createMessage(ctx, userId, 'P: 🚀 Escape pod collected! Commander **Zara** rescued and added to inventory. Bonuses: shipSpeed +0.3%.');
+        await messageCache.createMessage(ctx, userId, 'P: 🚀 Escape pod collected! Commander **Rex** rescued but inventory is full — commander lost! Bonuses would have been: projectileWeaponDamage +0.7%.');
+
+        await messageCache.waitForPendingWrites();
+
+        const summary = await messageCache.summarizeMessages(ctx, userId);
+
+        expect(summary).toContain('Collections:');
+        expect(summary).toContain('2 escape pod(s)');
+        expect(summary).not.toContain('Iron Collected:');
+
+        const messagesAfter = await messageCache.getMessagesForUser(ctx, userId);
+        expect(messagesAfter.length).toBe(1);
+        expect(messagesAfter[0].message).toBe(summary);
+      });
+    });
+
+    it('collectionSummarization_mixedOldAndNewEscapePodFormats_correctCount', async () => {
+      await withTransaction(async () => {
+        const userId = await createTestUser('collection3c');
+        const ctx = createLockContext();
+
+        // One old-format, one new commander format
+        await messageCache.createMessage(ctx, userId, 'P: Successfully collected escape pod.');
+        await messageCache.createMessage(ctx, userId, 'P: 🚀 Escape pod collected! Commander **Nova** rescued and added to inventory. Bonuses: energyWeaponDamage +0.5%.');
+
+        await messageCache.waitForPendingWrites();
+
+        const summary = await messageCache.summarizeMessages(ctx, userId);
+
+        expect(summary).toContain('Collections:');
+        expect(summary).toContain('2 escape pod(s)');
+        expect(summary).not.toContain('Iron Collected:');
+      });
+    });
+
     it('collectionSummarization_mixedWithBattles_bothSummarized', async () => {
       await withTransaction(async () => {
         const userId = await createTestUser('collection4');

@@ -10,6 +10,8 @@ import { User } from '@/lib/server/user/user';
 import { World } from '@/lib/server/world/world';
 import { WorldCache } from '@/lib/server/world/worldCache';
 import { createLockContext, LockContext, LocksAtMostAndHas4, LocksAtMostAndHas6 } from '@markdrei/ironguard-typescript-locks';
+import { Commander } from '@/lib/server/inventory/Commander';
+import { InventoryService, InventoryFullError } from '@/lib/server/inventory/InventoryService';
 
 export async function POST(request: NextRequest) {
   try {
@@ -45,7 +47,11 @@ export async function POST(request: NextRequest) {
     const userWorldCache = UserCache.getInstance2();
 
     const worldCache = WorldCache.getInstance();
-    return await emptyCtx.useLockWithAcquire(USER_LOCK, async (userContext) => {
+
+    // Step 1: Collect the object under USER + WORLD locks.
+    // InventoryService acquires LOCK_5 internally via a fresh context, so it
+    // must NOT be called while USER_LOCK (4) or WORLD_LOCK (6) are held.
+    const collectionResult = await emptyCtx.useLockWithAcquire(USER_LOCK, async (userContext) => {
       return await userContext.useLockWithAcquire(WORLD_LOCK, async (worldContext) => {
         // Get world data safely (we have world write lock)
         const world = worldCache.getWorldFromCache(worldContext);
@@ -60,9 +66,38 @@ export async function POST(request: NextRequest) {
         
         // Continue with collection logic
         return await performCollectionLogic(worldContext, userContext, world, user, objectId, userWorldCache);
-
       });
     });
+
+    // Step 2: If an escape pod was collected, handle commander inventory logic
+    // (outside USER/WORLD locks since InventoryService acquires LOCK_5 internally)
+    if (collectionResult.escapePodCollected) {
+      const inventoryService = new InventoryService();
+      const commander = Commander.random();
+      let notificationMessage: string;
+      try {
+        await inventoryService.addItemToFirstFreeSlot(session.userId!, commander.toJSON());
+        const bonusDesc = commander.statBonuses
+          .map(b => `${b.stat} +${b.value}%`)
+          .join(', ');
+        notificationMessage = `P: 🚀 Escape pod collected! Commander **${commander.name}** rescued and added to inventory. Bonuses: ${bonusDesc}.`;
+      } catch (err) {
+        if (err instanceof InventoryFullError) {
+          const bonusDesc = commander.statBonuses
+            .map(b => `${b.stat} +${b.value}%`)
+            .join(', ');
+          notificationMessage = `P: 🚀 Escape pod collected! Commander **${commander.name}** rescued but inventory is full — commander lost! Bonuses would have been: ${bonusDesc}.`;
+        } else {
+          throw err;
+        }
+      }
+      const msgCtx = createLockContext();
+      sendMessageToUser(msgCtx, session.userId!, notificationMessage).catch((error: Error) => {
+        console.error('❌ Failed to send commander notification:', error);
+      });
+    }
+
+    return collectionResult.response;
 
   } catch (error) {
     console.log(`❌ Collection API error:`, error);
@@ -81,7 +116,7 @@ async function performCollectionLogic(
   user: User, 
   objectId: number,
   userWorldCache: UserCache,
-): Promise<NextResponse> {
+): Promise<{ response: NextResponse; escapePodCollected: boolean }> {
   const worldCache = WorldCache.getInstance();
   // Update physics for all objects first
   const currentTime = Date.now();
@@ -132,27 +167,32 @@ async function performCollectionLogic(
   await userWorldCache.updateUserInCache(userCtx, user);
   await worldCache.updateWorldUnsafe(worldContext, world);
   
-  // Create notification message for the collection
-  let notificationMessage = '';
-  if (ironReward > 0) {
-    notificationMessage = `P: Successfully collected ${targetObject.type.replace('_', ' ')} and received **${ironReward}** iron.`;
-  } else {
-    notificationMessage = `P: Successfully collected ${targetObject.type.replace('_', ' ')}.`;
+  const escapePodCollected = targetObject.type === 'escape_pod';
+
+  // For non-escape-pod objects send the standard collection notification now.
+  // Escape pod commander notification is sent after locks are released (in POST handler).
+  if (!escapePodCollected) {
+    let notificationMessage = '';
+    if (ironReward > 0) {
+      notificationMessage = `P: Successfully collected ${targetObject.type.replace('_', ' ')} and received **${ironReward}** iron.`;
+    } else {
+      notificationMessage = `P: Successfully collected ${targetObject.type.replace('_', ' ')}.`;
+    }
+    console.log(`📝 Creating notification for user ${user.id}: "${notificationMessage}"`);
+    sendMessageToUser(worldContext, user.id, notificationMessage).catch((error: Error) => {
+      console.error('❌ Failed to send collection notification:', error);
+    });
   }
-  
-  console.log(`📝 Creating notification for user ${user.id}: "${notificationMessage}"`);
-  
-  // Send notification to user (async, doesn't block response)
-  sendMessageToUser(worldContext, user.id, notificationMessage).catch((error: Error) => {
-    console.error('❌ Failed to send collection notification:', error);
-  });
-  
-  return NextResponse.json({ 
-    success: true, 
-    distance,
-    ironReward,
-    totalIron: user.iron,
-    objectType: targetObject.type,
-    message: 'Collection completed successfully'
-  });
+
+  return {
+    escapePodCollected,
+    response: NextResponse.json({
+      success: true,
+      distance,
+      ironReward,
+      totalIron: user.iron,
+      objectType: targetObject.type,
+      message: 'Collection completed successfully'
+    }),
+  };
 }

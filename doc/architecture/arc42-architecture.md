@@ -39,6 +39,7 @@ Spacewars Ironcore is a 2D space exploration game built with Next.js 15, TypeScr
 - Ship defense systems (hull, armor, shields) with regeneration
 - Turn-based battle system between players
 - Message notification system for game events
+- Player inventory system (10×10 grid) with typed items (Commander)
 
 ### 1.2 Quality Goals
 
@@ -289,10 +290,12 @@ Repositories provide a clean separation between caching/business logic and datab
 - **worldRepo** (`src/lib/server/world/worldRepo.ts`): World state persistence
 - **messagesRepo** (`src/lib/server/messages/messagesRepo.ts`): Message database operations
 - **battleRepo** (`src/lib/server/battle/battleRepo.ts`): Battle state persistence
+- **InventoryRepo** (`src/lib/server/inventory/InventoryRepo.ts`): Inventory grid persistence (upsert)
 
 **Design Principles:**
 
-- Repos are called ONLY by their corresponding cache
+- Cache-backed repos are called ONLY by their corresponding cache
+- `InventoryRepo` is called ONLY by `InventoryService` (no cache layer – see §5.2.4)
 - No business logic in repos (pure data access)
 - Lock context passed via type parameters for compile-time safety
 - Stateless (no instance state, mostly static methods or simple classes)
@@ -320,9 +323,44 @@ sequenceDiagram
     end
 ```
 
-#### 5.2.3 Shared Patterns
+#### 5.2.4 Direct-Access Services (No Cache Layer)
 
-All caches follow consistent patterns:
+Not all server-side subsystems require caching. Where data volumes are small, access frequency is low, or strong consistency is more important than latency, a **Service → Repo → DB** pattern without a cache is used.
+
+**InventoryService** (`src/lib/server/inventory/InventoryService.ts`)
+
+- **Responsibility:** Player item inventories – add, move, remove items; lazy initialisation
+- **Storage:** `inventories` table (`user_id PK`, `inventory_data JSONB`, FK → `users`)
+- **Lock:** `USER_INVENTORY_LOCK` (LOCK_5) – acquired internally by every public method
+- **Repo:** `InventoryRepo` (upsert via `ON CONFLICT DO UPDATE`)
+- **No cache:** reads and writes go directly to the database on every call
+- **Error types:** `InventorySlotOccupiedError`, `InventorySlotEmptyError`, `InventorySlotInvalidError`, `InventoryFullError`
+- **Access rule:** All callers use `InventoryService` exclusively; direct `InventoryRepo` calls are forbidden outside the service
+
+```mermaid
+sequenceDiagram
+    participant API as API / Game Logic
+    participant Svc as InventoryService
+    participant Repo as InventoryRepo
+    participant DB as PostgreSQL
+
+    API->>Svc: addItem(userId, item, slot)
+    Svc->>Svc: Acquire USER_INVENTORY_LOCK
+    Svc->>Repo: getInventory(lockCtx, userId)
+    Repo->>DB: SELECT inventory_data FROM inventories
+    DB-->>Repo: Row (or empty)
+    Repo-->>Svc: InventoryGrid (or null → create empty)
+    Svc->>Svc: Validate slot, check occupancy
+    Svc->>Repo: saveInventory(lockCtx, userId, grid)
+    Repo->>DB: INSERT … ON CONFLICT DO UPDATE
+    Svc-->>API: void (or throws typed error)
+```
+
+---
+
+#### 5.2.5 Shared Patterns
+
+All cache-backed services follow consistent patterns:
 
 1. **Singleton Pattern:** Global instances stored in `globalThis`
 2. **Write-Behind Persistence:** Updates modify cache immediately, background timer (30s) flushes dirty data
@@ -471,6 +509,7 @@ graph TB
 graph TD
     L2[Level 2: BATTLE_LOCK<br/>Battle state operations]
     L4[Level 4: USER_LOCK<br/>User data access]
+    L5[Level 5: USER_INVENTORY_LOCK<br/>Inventory read/write]
     L6[Level 6: WORLD_LOCK<br/>World state operations]
     L8[Level 8: MESSAGE_LOCK<br/>Message operations]
     L9[Level 9: CACHES_LOCK<br/>Cache management]
@@ -480,7 +519,8 @@ graph TD
     L13[Level 13: DATABASE_LOCK_BATTLES<br/>Battle DB persistence]
 
     L2 --> L4
-    L4 --> L6
+    L4 --> L5
+    L5 --> L6
     L6 --> L8
     L8 --> L9
     L9 --> L10
@@ -490,6 +530,7 @@ graph TD
 
     style L2 fill:#f44336,color:#fff
     style L4 fill:#2196f3,color:#fff
+    style L5 fill:#673ab7,color:#fff
     style L6 fill:#4caf50,color:#fff
     style L8 fill:#ffeb3b
     style L9 fill:#9c27b0,color:#fff
@@ -508,6 +549,7 @@ graph TD
 - **Message creation**: MESSAGE_LOCK → DATABASE_LOCK_MESSAGES
 - **Battle actions**: BATTLE_LOCK → USER_LOCK → DATABASE_LOCK_BATTLES
 - **Harvest flow**: USER_LOCK → WORLD_LOCK → MESSAGE_LOCK (async)
+- **Inventory operations**: USER_INVENTORY_LOCK (standalone – no other lock needed)
 
 ### 8.2 Caching Strategy
 
@@ -515,6 +557,7 @@ graph TD
 - **Write-Behind:** Background persistence flushes dirty data every 30s
 - **Cache Invalidation:** Clear cache on schema changes or manual flush
 - **TTL:** No time-based expiration (session-based lifecycle)
+- **No-Cache (Direct DB):** Inventory data is read and written directly on every operation via `InventoryService → InventoryRepo`. No in-memory cache is maintained because inventory access frequency is low and strong consistency is preferred over latency.
 
 ### 8.3 Error Handling
 
@@ -651,6 +694,21 @@ graph TB
 - ⚠️ Need to handle ID mapping and race conditions
 - ⚠️ Shutdown must wait for pending writes
 
+### 9.5 ADR-005: Inventory Direct DB Access (No Cache)
+
+**Context:** The inventory system stores per-player item grids that are rarely accessed (only when a player explicitly views or interacts with their inventory). Caching this data would add complexity without a meaningful latency benefit.
+
+**Decision:** Use a `Service → Repo → DB` pattern without a cache layer. `InventoryService` acquires `USER_INVENTORY_LOCK` internally, reads and writes the `inventories` table directly via `InventoryRepo` on every call.
+
+**Consequences:**
+
+- ✅ Simple implementation – no dirty tracking, no background timer, no shutdown logic
+- ✅ Always consistent – no risk of stale reads after a server restart
+- ✅ Testable with a mock repo (no DB required for unit tests)
+- ⚠️ Higher per-request DB latency (~5–15ms) compared to a cached path – acceptable given low access frequency
+
+---
+
 ### 9.4 ADR-004: Transaction-Based Test Isolation
 
 **Context:** Tests were interfering with each other due to shared database state. Manual cleanup in `initializeIntegrationTestServer()` was brittle and masked issues with background persistence escaping transaction boundaries.
@@ -715,9 +773,12 @@ See [TechnicalDebt.md](../../TechnicalDebt.md) for current issues.
 
 ## 12. Glossary
 
-| Term               | Definition                                                         |
-| ------------------ | ------------------------------------------------------------------ |
-| **IronGuard**      | TypeScript lock library with compile-time deadlock prevention      |
-| **Dirty Tracking** | Marking cached data as modified for background persistence         |
-| **Temporary ID**   | Negative ID assigned to messages before DB insertion               |
-| **Lock Hierarchy** | Ordered sequence of locks that must be acquired in ascending order |
+| Term                      | Definition                                                                                       |
+| ------------------------- | ------------------------------------------------------------------------------------------------ |
+| **IronGuard**             | TypeScript lock library with compile-time deadlock prevention                                    |
+| **Dirty Tracking**        | Marking cached data as modified for background persistence                                       |
+| **Temporary ID**          | Negative ID assigned to messages before DB insertion                                             |
+| **Lock Hierarchy**        | Ordered sequence of locks that must be acquired in ascending order                               |
+| **Commander**             | An inventory item that grants percentage-based bonuses to one to three ship stats                |
+| **Inventory**             | A player's 10×10 item grid stored as JSONB in the `inventories` table                            |
+| **Direct-Access Service** | A service that reads/writes the DB on every call with no in-memory cache (e.g. InventoryService) |

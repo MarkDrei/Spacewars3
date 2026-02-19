@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import AuthenticatedLayout from '@/components/Layout/AuthenticatedLayout';
 import { ServerAuthState } from '@/lib/server/serverSession';
+import InventorySection from '@/components/Inventory/InventorySection';
 import './ShipPage.css';
 
 interface ShipPageClientProps {
@@ -110,6 +111,8 @@ const ShipPageClient: React.FC<ShipPageClientProps> = () => {
               {message}
             </div>
           )}
+
+          <InventorySection />
 
           <section className="ship-selection-section">
             <p className="ship-selection-intro">

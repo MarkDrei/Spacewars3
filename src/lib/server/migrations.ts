@@ -136,6 +136,21 @@ export const migrations: Migration[] = [
     ]
   }
   // Future migrations go here
+  ,
+  {
+    version: 9,
+    name: 'add_inventories_table',
+    up: [
+      `CREATE TABLE IF NOT EXISTS inventories (
+        user_id INTEGER PRIMARY KEY,
+        inventory_data JSONB NOT NULL DEFAULT '[]'::jsonb,
+        FOREIGN KEY (user_id) REFERENCES users (id)
+      )`
+    ],
+    down: [
+      'DROP TABLE IF EXISTS inventories'
+    ]
+  }
 ];
 
 export function getCurrentVersion(): number {
@@ -252,6 +267,8 @@ export async function applyTechMigrations(db: DatabaseConnection): Promise<void>
   await applyPictureIdMigration(db);
   // Apply XP system migration
   await applyXpSystemMigration(db);
+  // Apply inventories table migration
+  await applyInventoriesMigration(db);
 }
 
 /**
@@ -453,6 +470,37 @@ export async function applyBattleEndStatsMigration(db: DatabaseConnection): Prom
     console.log('✅ Battle end stats migration completed');
   } catch (error) {
     console.error('❌ Error applying battle end stats migration:', error);
+  }
+}
+
+/**
+ * Apply inventories table migration to the database
+ */
+export async function applyInventoriesMigration(db: DatabaseConnection): Promise<void> {
+  console.log('🔄 Checking for inventories table migration...');
+
+  try {
+    const exists = await tableExists(db, 'inventories');
+    if (exists) {
+      console.log('✅ Inventories table already exists');
+      return;
+    }
+
+    console.log('🚀 Creating inventories table...');
+
+    const migration = migrations.find(m => m.name === 'add_inventories_table');
+    if (!migration) {
+      console.error('❌ Inventories migration not found');
+      return;
+    }
+
+    for (const statement of migration.up) {
+      await runMigrationStatement(db, statement);
+    }
+
+    console.log('✅ Inventories table migration completed');
+  } catch (error) {
+    console.error('❌ Error applying inventories migration:', error);
   }
 }
 
