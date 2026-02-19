@@ -13,7 +13,8 @@ import {
 
 interface InventoryRow {
   user_id: number;
-  inventory_data: string; // JSON
+  // pg parses JSONB columns automatically, so this may be a string or an object
+  inventory_data: string | InventoryGrid;
 }
 
 /**
@@ -39,7 +40,13 @@ export class InventoryRepo {
     if (result.rows.length === 0) return null;
 
     try {
-      return JSON.parse(result.rows[0].inventory_data) as InventoryGrid;
+      const raw = result.rows[0].inventory_data;
+      // pg automatically parses JSONB columns into JavaScript objects.
+      // Guard against both cases: raw string (unlikely) and already-parsed object.
+      if (typeof raw === 'string') {
+        return JSON.parse(raw) as InventoryGrid;
+      }
+      return raw as InventoryGrid;
     } catch {
       // Corrupted data – return empty grid
       return createEmptyInventoryGrid();
