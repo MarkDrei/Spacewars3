@@ -527,7 +527,13 @@ export class MessageCache extends Cache {
             stats.enemyShotsMissed += parseInt(shotsMatch[1]);
           }
         }
-        // Parse collection messages
+        // Parse new-format escape pod commander messages:
+        // "P: 🚀 Escape pod collected! Commander **X** rescued ..."
+        else if (text.includes('Escape pod collected!')) {
+          stats.escapePodsCollected++;
+          // Commanders don't yield iron
+        }
+        // Parse collection messages (legacy format: "Successfully collected <type>")
         else if (text.includes('Successfully collected')) {
           const ironMatch = text.match(/received \*\*(\d+)\*\* iron/);
           const ironAmount = ironMatch ? parseInt(ironMatch[1]) : 0;
@@ -542,7 +548,7 @@ export class MessageCache extends Cache {
             stats.shipwrecksCollected++;
             stats.totalIronCollected += ironAmount;
           }
-          // Parse escape pod collection
+          // Parse escape pod collection (legacy: "Successfully collected escape pod.")
           else if (text.includes('escape pod')) {
             stats.escapePodsCollected++;
             // Escape pods don't give iron
