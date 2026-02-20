@@ -88,10 +88,10 @@ class User {
   }
 
   /**
-   * Get the maximum iron capacity based on inventory capacity research
+   * Get the maximum iron capacity based on Iron Capacity research
    */
   getMaxIronCapacity(): number {
-    return getResearchEffectFromTree(this.techTree, ResearchType.InventoryCapacity);
+    return getResearchEffectFromTree(this.techTree, ResearchType.IronCapacity);
   }
 
   /**

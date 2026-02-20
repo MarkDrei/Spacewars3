@@ -12,7 +12,7 @@ export { ResearchType };
 export const IMPLEMENTED_RESEARCHES: ReadonlySet<ResearchType> = new Set([
   ResearchType.IronHarvesting,
   ResearchType.ShipSpeed,
-  ResearchType.InventoryCapacity,
+  ResearchType.IronCapacity,
   ResearchType.HullStrength,
   ResearchType.ArmorEffectiveness,
   ResearchType.ShieldEffectiveness,
@@ -20,6 +20,7 @@ export const IMPLEMENTED_RESEARCHES: ReadonlySet<ResearchType> = new Set([
   ResearchType.ProjectileReloadRate,
   ResearchType.EnergyDamage,
   ResearchType.EnergyRechargeRate,
+  ResearchType.InventorySlots,
 ]);
 
 /**
@@ -294,9 +295,9 @@ export const AllResearches: Record<ResearchType, Research> = {
     treeKey: 'teleport',
     unit: 'units',
   },
-  [ResearchType.InventoryCapacity]: {
-    type: ResearchType.InventoryCapacity,
-    name: 'Inventory Capacity',
+  [ResearchType.IronCapacity]: {
+    type: ResearchType.IronCapacity,
+    name: 'Iron Capacity',
     level: 1,
     baseUpgradeCost: 800,
     baseUpgradeDuration: 45,
@@ -304,8 +305,21 @@ export const AllResearches: Record<ResearchType, Research> = {
     upgradeCostIncrease: 1.7,
     baseValueIncrease: { type: 'factor', value: 2 },
     description: 'Increases iron storage capacity.',
-    treeKey: 'inventoryCapacity',
+    treeKey: 'ironCapacity',
     unit: 'iron',
+  },
+  [ResearchType.InventorySlots]: {
+    type: ResearchType.InventorySlots,
+    name: 'Inventory Slots',
+    level: 1,
+    baseUpgradeCost: 5000,
+    baseUpgradeDuration: 120,
+    baseValue: 16,
+    upgradeCostIncrease: 1.8,
+    baseValueIncrease: { type: 'constant', value: 8 },
+    description: 'Increases the number of available inventory slots (+8 per level).',
+    treeKey: 'inventorySlots',
+    unit: 'slots',
   },
   [ResearchType.ConstructionSpeed]: {
     type: ResearchType.ConstructionSpeed,
@@ -423,7 +437,10 @@ export interface TechTree {
   afterburnerSpeedIncrease: number;
   afterburnerDuration: number;
   teleport: number;
-  inventoryCapacity: number;
+  ironCapacity: number;
+  /** @deprecated TECH DEBT: Old DB key - remove fallback after migration. See TechnicalDebt.md */
+  inventoryCapacity?: number;
+  inventorySlots: number;
   constructionSpeed: number;
   // Spies
   spyChance: number;
@@ -467,7 +484,8 @@ export function createInitialTechTree(): TechTree {
     afterburnerSpeedIncrease: AllResearches[ResearchType.AfterburnerSpeedIncrease].level,
     afterburnerDuration: AllResearches[ResearchType.AfterburnerDuration].level,
     teleport: AllResearches[ResearchType.Teleport].level,
-    inventoryCapacity: AllResearches[ResearchType.InventoryCapacity].level,
+    ironCapacity: AllResearches[ResearchType.IronCapacity].level,
+    inventorySlots: AllResearches[ResearchType.InventorySlots].level,
     constructionSpeed: AllResearches[ResearchType.ConstructionSpeed].level,
     // Spies
     spyChance: AllResearches[ResearchType.SpyChance].level,
@@ -523,8 +541,11 @@ function getResearchLevelFromTree(tree: TechTree, type: ResearchType): number {
       return tree.afterburnerDuration;
     case ResearchType.Teleport:
       return tree.teleport;
-    case ResearchType.InventoryCapacity:
-      return tree.inventoryCapacity;
+    case ResearchType.IronCapacity:
+      // TECH DEBT: fallback for old DB records with 'inventoryCapacity' key - remove after migration
+      return tree.ironCapacity ?? tree.inventoryCapacity ?? AllResearches[ResearchType.IronCapacity].level;
+    case ResearchType.InventorySlots:
+      return tree.inventorySlots;
     case ResearchType.ConstructionSpeed:
       return tree.constructionSpeed;
     // Spies
@@ -765,8 +786,12 @@ export function updateTechTree(tree: TechTree, timeSeconds: number): { completed
       case ResearchType.Teleport:
         tree.teleport += 1;
         break;
-      case ResearchType.InventoryCapacity:
-        tree.inventoryCapacity += 1;
+      case ResearchType.IronCapacity:
+        // TECH DEBT: fallback for old DB records with 'inventoryCapacity' key - remove after migration
+        tree.ironCapacity = (tree.ironCapacity ?? tree.inventoryCapacity ?? AllResearches[ResearchType.IronCapacity].level) + 1;
+        break;
+      case ResearchType.InventorySlots:
+        tree.inventorySlots += 1;
         break;
       case ResearchType.ConstructionSpeed:
         tree.constructionSpeed += 1;

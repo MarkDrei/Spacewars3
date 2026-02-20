@@ -24,7 +24,10 @@ interface TechTree {
   afterburnerSpeedIncrease: number;
   afterburnerDuration: number;
   teleport: number;
-  inventoryCapacity: number;
+  ironCapacity: number;
+  /** @deprecated TECH DEBT: Old DB key - remove fallback after migration. See TechnicalDebt.md */
+  inventoryCapacity?: number;
+  inventorySlots: number;
   constructionSpeed: number;
   // Spies
   spyChance: number;

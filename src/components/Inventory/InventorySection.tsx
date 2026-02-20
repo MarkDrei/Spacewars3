@@ -1,15 +1,18 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { InventoryGrid as InventoryGridType, InventoryItemData, SlotCoordinate } from '@/shared/inventoryShared';
+import { InventoryGrid as InventoryGridType, InventoryItemData, SlotCoordinate, DEFAULT_INVENTORY_SLOTS, getInventoryRows, INVENTORY_COLS } from '@/shared/inventoryShared';
 import InventoryGridComponent from './InventoryGrid';
 import ItemDetailsPanel from './ItemDetailsPanel';
 
-const EMPTY_GRID = (): InventoryGridType =>
-  Array.from({ length: 10 }, () => Array.from({ length: 10 }, () => null));
+const makeEmptyGrid = (maxSlots: number): InventoryGridType =>
+  Array.from({ length: getInventoryRows(maxSlots) }, () =>
+    Array.from({ length: INVENTORY_COLS }, () => null)
+  );
 
 const InventorySection: React.FC = () => {
-  const [grid, setGrid] = useState<InventoryGridType>(EMPTY_GRID());
+  const [maxSlots, setMaxSlots] = useState<number>(DEFAULT_INVENTORY_SLOTS);
+  const [grid, setGrid] = useState<InventoryGridType>(makeEmptyGrid(DEFAULT_INVENTORY_SLOTS));
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<SlotCoordinate | null>(null);
@@ -31,6 +34,7 @@ const InventorySection: React.FC = () => {
         throw new Error(data.error || 'Failed to load inventory');
       }
       const data = await response.json();
+      setMaxSlots(data.maxSlots ?? DEFAULT_INVENTORY_SLOTS);
       setGrid(data.grid);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load inventory');
@@ -138,6 +142,7 @@ const InventorySection: React.FC = () => {
             selectedSlot={selectedSlot}
             onSelectSlot={handleSelectSlot}
             onMoveItem={handleMoveItem}
+            maxSlots={maxSlots}
           />
           {selectedItem !== null && selectedSlot !== null ? (
             <ItemDetailsPanel

@@ -216,11 +216,11 @@
   flex-wrap: wrap;
 }
 
-/* 10×10 grid */
+/* 8-column grid, rows grow dynamically with research */
 .inv-grid {
   display: grid;
-  grid-template-columns: repeat(10, 52px);
-  grid-template-rows: repeat(10, 52px);
+  grid-template-columns: repeat(8, 52px);
+  grid-auto-rows: 52px;
   gap: 3px;
   flex-shrink: 0;
 }
@@ -371,8 +371,8 @@
 
 @media (max-width: 700px) {
   .inv-grid {
-    grid-template-columns: repeat(10, 42px);
-    grid-template-rows: repeat(10, 42px);
+    grid-template-columns: repeat(8, 42px);
+    grid-auto-rows: 42px;
   }
 
   .inv-slot {

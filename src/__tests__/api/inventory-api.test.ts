@@ -68,9 +68,11 @@ describe('Inventory API', () => {
 
         expect(response.status).toBe(200);
         expect(data).toHaveProperty('grid');
+        expect(data).toHaveProperty('maxSlots');
         expect(Array.isArray(data.grid)).toBe(true);
-        expect(data.grid).toHaveLength(10);
-        expect(data.grid[0]).toHaveLength(10);
+        expect(data.grid).toHaveLength(2);   // DEFAULT_INVENTORY_SLOTS=16 → 2 rows
+        expect(data.grid[0]).toHaveLength(8); // INVENTORY_COLS=8
+        expect(data.maxSlots).toBe(16);       // level 1 = 16 slots
         // All slots should be null for a new user
         for (const row of data.grid) {
           for (const slot of row) {
@@ -159,12 +161,12 @@ describe('Inventory API', () => {
         const userId = userRow.rows[0].id;
 
         const commander = Commander.random('Zara');
-        await seedInventory(userId, (grid) => { grid[2][3] = commander.toJSON(); });
+        await seedInventory(userId, (grid) => { grid[0][3] = commander.toJSON(); });
 
         const request = createRequest(
           'http://localhost:3000/api/inventory',
           'DELETE',
-          { row: 2, col: 3 },
+          { row: 0, col: 3 },
           sessionCookie
         );
         const response = await DELETE(request);
@@ -179,7 +181,7 @@ describe('Inventory API', () => {
         const getReq = createRequest('http://localhost:3000/api/inventory', 'GET', undefined, sessionCookie);
         const getResp = await GET(getReq);
         const getGrid = (await getResp.json()).grid;
-        expect(getGrid[2][3]).toBeNull();
+        expect(getGrid[0][3]).toBeNull();
       });
     });
 
@@ -255,7 +257,7 @@ describe('Inventory API', () => {
         const request = createRequest(
           'http://localhost:3000/api/inventory/move',
           'POST',
-          { from: { row: 0, col: 0 }, to: { row: 5, col: 5 } },
+          { from: { row: 0, col: 0 }, to: { row: 1, col: 5 } },
           sessionCookie
         );
         const response = await inventoryMovePOST(request);
@@ -268,8 +270,8 @@ describe('Inventory API', () => {
         const getReq = createRequest('http://localhost:3000/api/inventory', 'GET', undefined, sessionCookie);
         const afterGrid = (await (await GET(getReq)).json()).grid;
         expect(afterGrid[0][0]).toBeNull();
-        expect(afterGrid[5][5]).not.toBeNull();
-        expect((afterGrid[5][5] as { name: string }).name).toBe('Kyra');
+        expect(afterGrid[1][5]).not.toBeNull();
+        expect((afterGrid[1][5] as { name: string }).name).toBe('Kyra');
       });
     });
 

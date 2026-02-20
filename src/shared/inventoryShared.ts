@@ -41,7 +41,15 @@ export interface SlotCoordinate {
   col: number; // 0-indexed
 }
 
+export const INVENTORY_COLS = 8;
+export const DEFAULT_INVENTORY_SLOTS = 16;
+
+/** Number of rows needed for the given max-slot count */
+export function getInventoryRows(maxSlots: number): number {
+  return Math.ceil(maxSlots / INVENTORY_COLS);
+}
+
 export type InventorySlot = InventoryItemData | null;
 
-/** 10×10 grid: slots[row][col] */
+/** rows×8 grid: slots[row][col] */
 export type InventoryGrid = InventorySlot[][];

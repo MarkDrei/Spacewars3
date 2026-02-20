@@ -103,8 +103,10 @@ export enum ResearchType {
   AfterburnerSpeedIncrease = 'afterburnerSpeedIncrease',
   AfterburnerDuration = 'afterburnerDuration',
   Teleport = 'teleport',
-  InventoryCapacity = 'inventoryCapacity',
+  IronCapacity = 'ironCapacity',
   ConstructionSpeed = 'constructionSpeed',
+  // Inventory
+  InventorySlots = 'inventorySlots',
   // Spies
   SpyChance = 'spyChance',
   SpySpeed = 'spySpeed',
