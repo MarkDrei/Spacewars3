@@ -70,7 +70,7 @@ describe('Battle Research Effects Integration', () => {
           // === Phase 3: Create battle with upgraded research ===
           const battle = await battleCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
             const attacker = (await userCache.getUserByUsername(userCtx, 'a'))!;
-            const defender = (await userCache.getUserByUsername(userCtx, 'dummy'))!;
+            //const defender = (await userCache.getUserByUsername(userCtx, 'dummy'))!;
 
             // Create battle stats - these should reflect the upgraded research
             const attackerStats: BattleStats = {
@@ -151,7 +151,7 @@ describe('Battle Research Effects Integration', () => {
           // === Phase 2: Create battle and verify cooldowns ===
           const battle = await battleCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
             const attacker = (await userCache.getUserByUsername(userCtx, 'a'))!;
-            const defender = (await userCache.getUserByUsername(userCtx, 'dummy'))!;
+            //const defender = (await userCache.getUserByUsername(userCtx, 'dummy'))!;
 
             const attackerStats: BattleStats = {
               hull: { current: 100, max: 100 },
@@ -207,10 +207,8 @@ describe('Battle Research Effects Integration', () => {
       await withTransaction(async () => {
         await emptyCtx.useLockWithAcquire(BATTLE_LOCK, async (battleCtx) => {
           // === Phase 1: Setup user with both weapon types ===
-          let attackerId = 0;
           await battleCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
             const attacker = (await userCache.getUserByUsername(userCtx, 'a'))!;
-            attackerId = attacker.id;
 
             // Give attacker both projectile and energy weapons
             attacker.techCounts.auto_turret = 1;
