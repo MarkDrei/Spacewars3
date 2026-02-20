@@ -21,6 +21,7 @@ export const IMPLEMENTED_RESEARCHES: ReadonlySet<ResearchType> = new Set([
   ResearchType.EnergyDamage,
   ResearchType.EnergyRechargeRate,
   ResearchType.InventorySlots,
+  ResearchType.BridgeSlots,
 ]);
 
 /**
@@ -321,6 +322,19 @@ export const AllResearches: Record<ResearchType, Research> = {
     treeKey: 'inventorySlots',
     unit: 'slots',
   },
+  [ResearchType.BridgeSlots]: {
+    type: ResearchType.BridgeSlots,
+    name: 'Bridge Slots',
+    level: 0,
+    baseUpgradeCost: 5000,
+    baseUpgradeDuration: 120,
+    baseValue: 4,
+    upgradeCostIncrease: 1.8,
+    baseValueIncrease: { type: 'constant', value: 4 },
+    description: 'Unlocks and increases bridge crew slots (+4 per level). Commanders can be assigned to the bridge.',
+    treeKey: 'bridgeSlots',
+    unit: 'slots',
+  },
   [ResearchType.ConstructionSpeed]: {
     type: ResearchType.ConstructionSpeed,
     name: 'Construction Speed',
@@ -441,6 +455,7 @@ export interface TechTree {
   /** @deprecated TECH DEBT: Old DB key - remove fallback after migration. See TechnicalDebt.md */
   inventoryCapacity?: number;
   inventorySlots: number;
+  bridgeSlots: number;
   constructionSpeed: number;
   // Spies
   spyChance: number;
@@ -486,6 +501,7 @@ export function createInitialTechTree(): TechTree {
     teleport: AllResearches[ResearchType.Teleport].level,
     ironCapacity: AllResearches[ResearchType.IronCapacity].level,
     inventorySlots: AllResearches[ResearchType.InventorySlots].level,
+    bridgeSlots: AllResearches[ResearchType.BridgeSlots].level,
     constructionSpeed: AllResearches[ResearchType.ConstructionSpeed].level,
     // Spies
     spyChance: AllResearches[ResearchType.SpyChance].level,
@@ -546,6 +562,8 @@ function getResearchLevelFromTree(tree: TechTree, type: ResearchType): number {
       return tree.ironCapacity ?? tree.inventoryCapacity ?? AllResearches[ResearchType.IronCapacity].level;
     case ResearchType.InventorySlots:
       return tree.inventorySlots;
+    case ResearchType.BridgeSlots:
+      return tree.bridgeSlots;
     case ResearchType.ConstructionSpeed:
       return tree.constructionSpeed;
     // Spies
@@ -792,6 +810,9 @@ export function updateTechTree(tree: TechTree, timeSeconds: number): { completed
         break;
       case ResearchType.InventorySlots:
         tree.inventorySlots += 1;
+        break;
+      case ResearchType.BridgeSlots:
+        tree.bridgeSlots += 1;
         break;
       case ResearchType.ConstructionSpeed:
         tree.constructionSpeed += 1;

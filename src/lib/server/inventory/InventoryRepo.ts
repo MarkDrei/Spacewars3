@@ -8,13 +8,16 @@ import { HasLock5Context, LockLevel } from '@markdrei/ironguard-typescript-locks
 import { getDatabase } from '../database';
 import {
   InventoryGrid,
+  BridgeGrid,
   createEmptyInventoryGrid,
+  createEmptyBridgeGrid,
 } from './inventoryTypes';
 
 interface InventoryRow {
   user_id: number;
   // pg parses JSONB columns automatically, so this may be a string or an object
   inventory_data: string | InventoryGrid;
+  bridge_data: string | BridgeGrid | null;
 }
 
 /**
@@ -71,7 +74,54 @@ export class InventoryRepo {
   }
 
   /**
+   * Load the bridge grid for a user, or null if no row / no bridge_data exists yet.
+   */
+  async getBridge<THeld extends readonly LockLevel[]>(
+    _context: HasLock5Context<THeld>,
+    userId: number
+  ): Promise<BridgeGrid | null> {
+    const db = await getDatabase();
+    const result = await db.query<InventoryRow>(
+      `SELECT user_id, bridge_data FROM inventories WHERE user_id = $1`,
+      [userId]
+    );
+    if (result.rows.length === 0) return null;
+
+    const raw = result.rows[0].bridge_data;
+    if (raw === null || raw === undefined) return null;
+
+    try {
+      if (typeof raw === 'string') {
+        return JSON.parse(raw) as BridgeGrid;
+      }
+      return raw as BridgeGrid;
+    } catch {
+      // Corrupted data – return empty bridge
+      return createEmptyBridgeGrid();
+    }
+  }
+
+  /**
+   * Persist (upsert) the bridge grid for a user.
+   * Uses a separate column on the inventories table.
+   */
+  async saveBridge<THeld extends readonly LockLevel[]>(
+    _context: HasLock5Context<THeld>,
+    userId: number,
+    grid: BridgeGrid
+  ): Promise<void> {
+    const db = await getDatabase();
+    await db.query(
+      `INSERT INTO inventories (user_id, inventory_data, bridge_data)
+       VALUES ($1, '[]'::jsonb, $2)
+       ON CONFLICT (user_id) DO UPDATE SET bridge_data = EXCLUDED.bridge_data`,
+      [userId, JSON.stringify(grid)]
+    );
+  }
+
+  /**
    * Delete the inventory row for a user (e.g. on account deletion).
+   * Also deletes bridge data since it is stored in the same row.
    */
   async deleteInventory<THeld extends readonly LockLevel[]>(
     _context: HasLock5Context<THeld>,

@@ -107,6 +107,8 @@ export enum ResearchType {
   ConstructionSpeed = 'constructionSpeed',
   // Inventory
   InventorySlots = 'inventorySlots',
+  // Bridge
+  BridgeSlots = 'bridgeSlots',
   // Spies
   SpyChance = 'spyChance',
   SpySpeed = 'spySpeed',

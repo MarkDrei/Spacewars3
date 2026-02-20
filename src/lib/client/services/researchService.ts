@@ -28,6 +28,7 @@ interface TechTree {
   /** @deprecated TECH DEBT: Old DB key - remove fallback after migration. See TechnicalDebt.md */
   inventoryCapacity?: number;
   inventorySlots: number;
+  bridgeSlots: number;
   constructionSpeed: number;
   // Spies
   spyChance: number;

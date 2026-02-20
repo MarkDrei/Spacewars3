@@ -36,6 +36,7 @@ const researchTypeToKey: Record<ResearchType, keyof TechTree> = {
   teleport: 'teleport',
   ironCapacity: 'ironCapacity',
   inventorySlots: 'inventorySlots',
+  bridgeSlots: 'bridgeSlots',
   constructionSpeed: 'constructionSpeed',
   // Spies
   spyChance: 'spyChance',
