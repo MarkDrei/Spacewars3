@@ -74,6 +74,7 @@ export const DEFAULT_USERS: SeedUser[] = [
       teleport: 0,
       ironCapacity: 1,
       constructionSpeed: 1,
+      inventorySlots: 1,
       // Spies
       spyChance: 0,
       spySpeed: 0,
@@ -120,6 +121,7 @@ export const DEFAULT_USERS: SeedUser[] = [
       teleport: 0,
       ironCapacity: 1,
       constructionSpeed: 1,
+      inventorySlots: 1,
       // Spies
       spyChance: 0,
       spySpeed: 0,
@@ -184,6 +186,7 @@ export const DEFAULT_USERS: SeedUser[] = [
       teleport: 0,
       ironCapacity: 1,
       constructionSpeed: 1,
+      inventorySlots: 1,
       // Spies
       spyChance: 0,
       spySpeed: 0,
@@ -248,6 +251,7 @@ export const DEFAULT_USERS: SeedUser[] = [
       teleport: 0,
       ironCapacity: 1,
       constructionSpeed: 1,
+      inventorySlots: 1,
       // Spies
       spyChance: 0,
       spySpeed: 0,
@@ -312,6 +316,7 @@ export const DEFAULT_USERS: SeedUser[] = [
       teleport: 0,
       ironCapacity: 1,
       constructionSpeed: 1,
+      inventorySlots: 1,
       // Spies
       spyChance: 0,
       spySpeed: 0,

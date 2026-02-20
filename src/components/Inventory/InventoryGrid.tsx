@@ -2,13 +2,15 @@
 
 import React, { useRef, useState } from 'react';
 import Image from 'next/image';
-import { InventoryGrid as InventoryGridType, InventorySlot, SlotCoordinate } from '@/shared/inventoryShared';
+import { InventoryGrid as InventoryGridType, InventorySlot, SlotCoordinate, INVENTORY_COLS, DEFAULT_INVENTORY_SLOTS, getInventoryRows } from '@/shared/inventoryShared';
 
 interface InventoryGridProps {
   grid: InventoryGridType;
   selectedSlot: SlotCoordinate | null;
   onSelectSlot: (slot: SlotCoordinate) => void;
   onMoveItem: (from: SlotCoordinate, to: SlotCoordinate) => void;
+  /** Total number of available inventory slots (from InventorySlots research). Defaults to DEFAULT_INVENTORY_SLOTS. */
+  maxSlots?: number;
 }
 
 const InventoryGridComponent: React.FC<InventoryGridProps> = ({
@@ -16,7 +18,10 @@ const InventoryGridComponent: React.FC<InventoryGridProps> = ({
   selectedSlot,
   onSelectSlot,
   onMoveItem,
+  maxSlots = DEFAULT_INVENTORY_SLOTS,
 }) => {
+  const rows = getInventoryRows(maxSlots);
+  const cols = INVENTORY_COLS;
   const [dragSource, setDragSource] = useState<SlotCoordinate | null>(null);
   const [dragOver, setDragOver] = useState<SlotCoordinate | null>(null);
   const dragImageRef = useRef<HTMLDivElement | null>(null);
@@ -82,8 +87,8 @@ const InventoryGridComponent: React.FC<InventoryGridProps> = ({
 
   return (
     <div className="inv-grid" ref={dragImageRef}>
-      {Array.from({ length: 10 }, (_, row) =>
-        Array.from({ length: 10 }, (_, col) => {
+      {Array.from({ length: rows }, (_, row) =>
+        Array.from({ length: cols }, (_, col) => {
           const item = grid[row]?.[col] ?? null;
           return (
             <div

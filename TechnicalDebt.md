@@ -11,6 +11,7 @@
 `ResearchType.InventoryCapacity` was renamed to `ResearchType.IronCapacity` (enum value changed from `'inventoryCapacity'` to `'ironCapacity'`, display name changed from "Inventory Capacity" to "Iron Capacity"). The TechTree is stored as JSONB in the database. Existing DB records have the old key `inventoryCapacity`; new records use `ironCapacity`.
 
 A backward compatibility fallback was added so old data still works without a migration:
+
 - `TechTree` interface: `inventoryCapacity?: number` is marked `@deprecated` and kept as optional alongside `ironCapacity: number`
 - `getResearchLevelFromTree`: reads `tree.ironCapacity ?? tree.inventoryCapacity ?? default`
 - `updateTechTree`: uses `(tree.ironCapacity ?? tree.inventoryCapacity ?? default) + 1`
@@ -19,6 +20,7 @@ A backward compatibility fallback was added so old data still works without a mi
 ### Proper Solution
 
 Once all existing DB records have been migrated (or reset), remove the fallback:
+
 1. Run SQL migration: `UPDATE users SET tech_tree = jsonb_set(tech_tree - 'inventoryCapacity', '{ironCapacity}', tech_tree->'inventoryCapacity') WHERE tech_tree ? 'inventoryCapacity';`
 2. Remove `inventoryCapacity?: number` from `TechTree` interface in `techtree.ts`
 3. Simplify `getResearchLevelFromTree` case to `return tree.ironCapacity;`
@@ -43,19 +45,23 @@ Once all existing DB records have been migrated (or reset), remove the fallback:
 Currently, marking a user as dirty for cache persistence requires explicit calls to cache manager methods after mutating the user object. This is error-prone and can lead to missed updates if callers forget to mark the user as dirty.
 
 **Proposed Solution:**
+
 - Inject a callback into each User object that marks it as dirty in the cache when its state changes.
 - Mutating methods and setters in the User class would invoke this callback automatically.
 - This ensures that any change to a cached User is tracked for persistence, without requiring manual dirty marking by callers.
 
 **Benefits:**
+
 - Reduces boilerplate and risk of missed updates
 - Centralizes dirty state tracking in the domain model
 - Makes cache management more robust and maintainable
 
 **Effort Estimate:**
+
 - Medium: Requires refactoring User class and cache manager
 
 **Related Files:**
+
 - src/lib/server/user/user.ts
 - src/lib/server/user/userCache.ts
 
@@ -111,12 +117,14 @@ The attack route (`src/app/api/attack/route.ts`) was temporarily modified to cal
 ### Architecture Violation
 
 The world loop is designed to handle all periodic updates including:
+
 - Ship movement
 - Defense value regeneration
 - Resource regeneration
 - Other time-based mechanics
 
 API routes should only:
+
 - Validate requests
 - Initiate actions (like battles)
 - Return responses
@@ -130,6 +138,7 @@ The defense value update was removed from the attack route. The world loop shoul
 ### Proper Solution
 
 Ensure the world loop runs frequently enough to keep defense values up-to-date:
+
 1. Verify world loop interval is appropriate (currently runs every tick)
 2. Consider adding "ensure up-to-date" logic in battle initiation that triggers world loop if needed
 3. Document clearly that defense values are the responsibility of world loop, not API routes
@@ -155,6 +164,7 @@ The `saveCallback` passed to the `World` constructor is never triggered. The `Wo
 ### Architecture Violation
 
 The cache manager relies on dirty flags to know when to persist data:
+
 - World changes (e.g., object positions, additions/removals) should mark `worldDirty = true`
 - Background persistence checks this flag to decide whether to save
 - Without it, world state drifts out of sync with the database
@@ -168,6 +178,7 @@ The cache manager relies on dirty flags to know when to persist data:
 ### Proposed Solution
 
 Modify `World` methods to call `await this.saveCallback(this);` after state changes:
+
 - `collected()`: After removing and spawning objects
 - `updateSpaceObject()`: After updating object properties (make async if needed)
 - `updatePhysics()`: If position changes require immediate persistence (consider batching for performance)
@@ -188,4 +199,3 @@ This ensures the cache is notified of changes and can persist them.
 
 - `src/lib/server/world/world.ts` - World class with save() method
 - `src/lib/server/world/worldCache.ts` - Cache manager with worldDirty flag
-

@@ -13,9 +13,11 @@ import {
   InventoryItemData,
   SlotCoordinate,
   createEmptyInventoryGrid,
+  ensureGridSize,
   isValidSlot,
-  INVENTORY_ROWS,
+  DEFAULT_INVENTORY_SLOTS,
   INVENTORY_COLS,
+  getInventoryRows,
 } from './inventoryTypes';
 
 export class InventorySlotOccupiedError extends Error {
@@ -60,14 +62,21 @@ export class InventoryService {
   /**
    * Get the full inventory grid for a user.
    * Lazily initialises an empty inventory if none exists yet.
+   * Expands the grid if the user's maxSlots has grown since last save.
    */
-  async getInventory(userId: number): Promise<InventoryGrid> {
+  async getInventory(userId: number, maxSlots: number = DEFAULT_INVENTORY_SLOTS): Promise<InventoryGrid> {
     const ctx = createLockContext();
     return ctx.useLockWithAcquire(USER_INVENTORY_LOCK, async (lockCtx) => {
-      const grid = await this.repo.getInventory(lockCtx, userId);
-      if (grid !== null) return grid;
+      const existing = await this.repo.getInventory(lockCtx, userId);
+      if (existing !== null) {
+        const sized = ensureGridSize(existing, maxSlots);
+        if (sized !== existing) {
+          await this.repo.saveInventory(lockCtx, userId, sized);
+        }
+        return sized;
+      }
       // First access – persist and return empty grid
-      const empty = createEmptyInventoryGrid();
+      const empty = createEmptyInventoryGrid(maxSlots);
       await this.repo.saveInventory(lockCtx, userId, empty);
       return empty;
     });
@@ -84,13 +93,14 @@ export class InventoryService {
   async addItem(
     userId: number,
     item: InventoryItemData,
-    slot: SlotCoordinate
+    slot: SlotCoordinate,
+    maxSlots: number = DEFAULT_INVENTORY_SLOTS
   ): Promise<void> {
-    if (!isValidSlot(slot)) throw new InventorySlotInvalidError(slot);
+    if (!isValidSlot(slot, maxSlots)) throw new InventorySlotInvalidError(slot);
 
     const ctx = createLockContext();
     await ctx.useLockWithAcquire(USER_INVENTORY_LOCK, async (lockCtx) => {
-      const grid = await this.loadOrCreate(lockCtx, userId);
+      const grid = await this.loadOrCreate(lockCtx, userId, maxSlots);
       if (grid[slot.row][slot.col] !== null) {
         throw new InventorySlotOccupiedError(slot);
       }
@@ -106,12 +116,13 @@ export class InventoryService {
    */
   async addItemToFirstFreeSlot(
     userId: number,
-    item: InventoryItemData
+    item: InventoryItemData,
+    maxSlots: number = DEFAULT_INVENTORY_SLOTS
   ): Promise<SlotCoordinate> {
     const ctx = createLockContext();
     return ctx.useLockWithAcquire(USER_INVENTORY_LOCK, async (lockCtx) => {
-      const grid = await this.loadOrCreate(lockCtx, userId);
-      const slot = this.findFirstFreeSlot(grid);
+      const grid = await this.loadOrCreate(lockCtx, userId, maxSlots);
+      const slot = this.findFirstFreeSlot(grid, maxSlots);
       if (!slot) throw new InventoryFullError();
       grid[slot.row][slot.col] = item;
       await this.repo.saveInventory(lockCtx, userId, grid);
@@ -126,14 +137,15 @@ export class InventoryService {
   async moveItem(
     userId: number,
     from: SlotCoordinate,
-    to: SlotCoordinate
+    to: SlotCoordinate,
+    maxSlots: number = DEFAULT_INVENTORY_SLOTS
   ): Promise<void> {
-    if (!isValidSlot(from)) throw new InventorySlotInvalidError(from);
-    if (!isValidSlot(to)) throw new InventorySlotInvalidError(to);
+    if (!isValidSlot(from, maxSlots)) throw new InventorySlotInvalidError(from);
+    if (!isValidSlot(to, maxSlots)) throw new InventorySlotInvalidError(to);
 
     const ctx = createLockContext();
     await ctx.useLockWithAcquire(USER_INVENTORY_LOCK, async (lockCtx) => {
-      const grid = await this.loadOrCreate(lockCtx, userId);
+      const grid = await this.loadOrCreate(lockCtx, userId, maxSlots);
 
       const item = grid[from.row][from.col];
       if (item === null) throw new InventorySlotEmptyError(from);
@@ -151,13 +163,14 @@ export class InventoryService {
    */
   async removeItem(
     userId: number,
-    slot: SlotCoordinate
+    slot: SlotCoordinate,
+    maxSlots: number = DEFAULT_INVENTORY_SLOTS
   ): Promise<InventoryItemData> {
-    if (!isValidSlot(slot)) throw new InventorySlotInvalidError(slot);
+    if (!isValidSlot(slot, maxSlots)) throw new InventorySlotInvalidError(slot);
 
     const ctx = createLockContext();
     return ctx.useLockWithAcquire(USER_INVENTORY_LOCK, async (lockCtx) => {
-      const grid = await this.loadOrCreate(lockCtx, userId);
+      const grid = await this.loadOrCreate(lockCtx, userId, maxSlots);
       const item = grid[slot.row][slot.col];
       if (item === null) throw new InventorySlotEmptyError(slot);
       grid[slot.row][slot.col] = null;
@@ -172,17 +185,19 @@ export class InventoryService {
 
   private async loadOrCreate(
     lockCtx: LockContext<readonly [typeof LOCK_5]>,
-    userId: number
+    userId: number,
+    maxSlots: number
   ): Promise<InventoryGrid> {
     const grid = await this.repo.getInventory(lockCtx, userId);
-    if (grid !== null) return grid;
-    return createEmptyInventoryGrid();
+    if (grid !== null) return ensureGridSize(grid, maxSlots);
+    return createEmptyInventoryGrid(maxSlots);
   }
 
-  private findFirstFreeSlot(grid: InventoryGrid): SlotCoordinate | null {
-    for (let row = 0; row < INVENTORY_ROWS; row++) {
+  private findFirstFreeSlot(grid: InventoryGrid, maxSlots: number): SlotCoordinate | null {
+    const rows = getInventoryRows(maxSlots);
+    for (let row = 0; row < rows; row++) {
       for (let col = 0; col < INVENTORY_COLS; col++) {
-        if (grid[row][col] === null) return { row, col };
+        if (grid[row]?.[col] === null || grid[row]?.[col] === undefined) return { row, col };
       }
     }
     return null;
