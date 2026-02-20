@@ -72,7 +72,7 @@ export const DEFAULT_USERS: SeedUser[] = [
       afterburnerSpeedIncrease: 1,
       afterburnerDuration: 1,
       teleport: 0,
-      inventoryCapacity: 1,
+      ironCapacity: 1,
       constructionSpeed: 1,
       // Spies
       spyChance: 0,
@@ -118,7 +118,7 @@ export const DEFAULT_USERS: SeedUser[] = [
       afterburnerSpeedIncrease: 1,
       afterburnerDuration: 1,
       teleport: 0,
-      inventoryCapacity: 1,
+      ironCapacity: 1,
       constructionSpeed: 1,
       // Spies
       spyChance: 0,
@@ -182,7 +182,7 @@ export const DEFAULT_USERS: SeedUser[] = [
       afterburnerSpeedIncrease: 1,
       afterburnerDuration: 1,
       teleport: 0,
-      inventoryCapacity: 1,
+      ironCapacity: 1,
       constructionSpeed: 1,
       // Spies
       spyChance: 0,
@@ -246,7 +246,7 @@ export const DEFAULT_USERS: SeedUser[] = [
       afterburnerSpeedIncrease: 1,
       afterburnerDuration: 1,
       teleport: 0,
-      inventoryCapacity: 1,
+      ironCapacity: 1,
       constructionSpeed: 1,
       // Spies
       spyChance: 0,
@@ -310,7 +310,7 @@ export const DEFAULT_USERS: SeedUser[] = [
       afterburnerSpeedIncrease: 1,
       afterburnerDuration: 1,
       teleport: 0,
-      inventoryCapacity: 1,
+      ironCapacity: 1,
       constructionSpeed: 1,
       // Spies
       spyChance: 0,

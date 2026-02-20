@@ -48,14 +48,14 @@ describe('Iron Capacity Management', () => {
 
   test('getMaxIronCapacity_level2_returns10000', () => {
     // At level 2, inventory capacity should be 5000 * 2^1 = 10000
-    user.techTree.inventoryCapacity = 2;
+    user.techTree.ironCapacity = 2;
     const maxCapacity = user.getMaxIronCapacity();
     expect(maxCapacity).toBe(10000);
   });
 
   test('getMaxIronCapacity_level3_returns20000', () => {
     // At level 3, inventory capacity should be 5000 * 2^2 = 20000
-    user.techTree.inventoryCapacity = 3;
+    user.techTree.ironCapacity = 3;
     const maxCapacity = user.getMaxIronCapacity();
     expect(maxCapacity).toBe(20000);
   });
@@ -123,7 +123,7 @@ describe('Iron Capacity Management', () => {
     user.last_updated = 1000;
     
     // Upgrade inventory capacity to level 2 (10000 capacity)
-    user.techTree.inventoryCapacity = 2;
+    user.techTree.ironCapacity = 2;
     
     // 1000 seconds pass, should generate 1000 iron
     user.updateStats(2000);
@@ -131,22 +131,22 @@ describe('Iron Capacity Management', () => {
     expect(user.iron).toBeLessThanOrEqual(10000); // Under new capacity
   });
 
-  test('inventoryCapacityResearch_doubleEachLevel_correctProgression', () => {
+  test('ironCapacityResearch_doubleEachLevel_correctProgression', () => {
     // Test the research formula: baseValue * (factor ^ (level - 1))
     // Level 1: 5000 * 2^0 = 5000
-    expect(getResearchEffectFromTree(user.techTree, ResearchType.InventoryCapacity)).toBe(5000);
+    expect(getResearchEffectFromTree(user.techTree, ResearchType.IronCapacity)).toBe(5000);
     
     // Level 2: 5000 * 2^1 = 10000
-    user.techTree.inventoryCapacity = 2;
-    expect(getResearchEffectFromTree(user.techTree, ResearchType.InventoryCapacity)).toBe(10000);
+    user.techTree.ironCapacity = 2;
+    expect(getResearchEffectFromTree(user.techTree, ResearchType.IronCapacity)).toBe(10000);
     
     // Level 3: 5000 * 2^2 = 20000
-    user.techTree.inventoryCapacity = 3;
-    expect(getResearchEffectFromTree(user.techTree, ResearchType.InventoryCapacity)).toBe(20000);
+    user.techTree.ironCapacity = 3;
+    expect(getResearchEffectFromTree(user.techTree, ResearchType.IronCapacity)).toBe(20000);
     
     // Level 4: 5000 * 2^3 = 40000
-    user.techTree.inventoryCapacity = 4;
-    expect(getResearchEffectFromTree(user.techTree, ResearchType.InventoryCapacity)).toBe(40000);
+    user.techTree.ironCapacity = 4;
+    expect(getResearchEffectFromTree(user.techTree, ResearchType.IronCapacity)).toBe(40000);
   });
 
   test('collected_shipwreck_respectsCapacity', () => {

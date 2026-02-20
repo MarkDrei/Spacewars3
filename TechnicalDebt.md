@@ -1,5 +1,39 @@
 # Technical Debt
 
+## IronCapacity Rename - Remove DB Backward Compatibility Fallback
+
+**Priority**: Low  
+**Added**: 2026-02-20  
+**Component**: Tech Tree (techtree.ts, ResearchPageClient.tsx)
+
+### Context
+
+`ResearchType.InventoryCapacity` was renamed to `ResearchType.IronCapacity` (enum value changed from `'inventoryCapacity'` to `'ironCapacity'`, display name changed from "Inventory Capacity" to "Iron Capacity"). The TechTree is stored as JSONB in the database. Existing DB records have the old key `inventoryCapacity`; new records use `ironCapacity`.
+
+A backward compatibility fallback was added so old data still works without a migration:
+- `TechTree` interface: `inventoryCapacity?: number` is marked `@deprecated` and kept as optional alongside `ironCapacity: number`
+- `getResearchLevelFromTree`: reads `tree.ironCapacity ?? tree.inventoryCapacity ?? default`
+- `updateTechTree`: uses `(tree.ironCapacity ?? tree.inventoryCapacity ?? default) + 1`
+- `ResearchPageClient.tsx` imageMap: maps both `inventoryCapacity` and `ironCapacity` to `'IronCapacity'`
+
+### Proper Solution
+
+Once all existing DB records have been migrated (or reset), remove the fallback:
+1. Run SQL migration: `UPDATE users SET tech_tree = jsonb_set(tech_tree - 'inventoryCapacity', '{ironCapacity}', tech_tree->'inventoryCapacity') WHERE tech_tree ? 'inventoryCapacity';`
+2. Remove `inventoryCapacity?: number` from `TechTree` interface in `techtree.ts`
+3. Simplify `getResearchLevelFromTree` case to `return tree.ironCapacity;`
+4. Simplify `updateTechTree` case to `tree.ironCapacity += 1;`
+5. Remove `// TECH DEBT` comments from `techtree.ts`
+6. Remove `inventoryCapacity: 'IronCapacity'` fallback line from `ResearchPageClient.tsx` imageMap
+
+### Related Files
+
+- `src/lib/server/techs/techtree.ts` - TechTree interface and accessor functions
+- `src/app/research/ResearchPageClient.tsx` - imageMap fallback
+- `src/shared/src/types/gameTypes.ts` - ResearchType enum
+
+---
+
 ## User Object - Automatic Dirty State Tracking
 
 **Priority**: Medium

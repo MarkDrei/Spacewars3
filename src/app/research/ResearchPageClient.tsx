@@ -34,7 +34,7 @@ const researchTypeToKey: Record<ResearchType, keyof TechTree> = {
   afterburnerSpeedIncrease: 'afterburnerSpeedIncrease',
   afterburnerDuration: 'afterburnerDuration',
   teleport: 'teleport',
-  inventoryCapacity: 'inventoryCapacity',
+  ironCapacity: 'ironCapacity',
   constructionSpeed: 'constructionSpeed',
   // Spies
   spyChance: 'spyChance',
@@ -111,7 +111,7 @@ const researchHierarchy: ResearchCategory[] = [
           { type: 'teleport' as ResearchType }
         ]
       },
-      { type: 'inventoryCapacity' as ResearchType },
+      { type: 'ironCapacity' as ResearchType },
       {
         type: 'IronHarvesting' as ResearchType,
         children: [
@@ -264,7 +264,8 @@ const ResearchPageClient: React.FC<ResearchPageClientProps> = () => {
       energyRechargeRate: 'RechargeRate',
       energyAccuracy: 'ProjectileAccuracy', // reuse
       hullStrength: 'HullStrength',
-      inventoryCapacity: 'InventoryCapacity',
+      inventoryCapacity: 'IronCapacity',
+      ironCapacity: 'IronCapacity',
       armorEffectiveness: 'ArmorEffectiveness',
       shieldEffectiveness: 'ShieldEffectiveness',
       shieldRechargeRate: 'ShieldRechargeRate',
