@@ -61,8 +61,6 @@ const USER_ID = 42;
 const MAX_BRIDGE_SLOTS_1 = 4;
 /** 2 levels = 8 bridge slots = 2 rows */
 const MAX_BRIDGE_SLOTS_2 = 8;
-/** 3 levels = 12 bridge slots = 3 rows */
-const MAX_BRIDGE_SLOTS_3 = 12;
 
 const MAX_INVENTORY_SLOTS = 16;
 
@@ -70,7 +68,6 @@ const BRIDGE_SLOT_0_0 = { row: 0, col: 0 };
 const BRIDGE_SLOT_0_1 = { row: 0, col: 1 };
 const BRIDGE_SLOT_0_3 = { row: 0, col: 3 };
 const INV_SLOT_0_0 = { row: 0, col: 0 };
-const INV_SLOT_0_1 = { row: 0, col: 1 };
 
 // ---------------------------------------------------------------------------
 // Tests

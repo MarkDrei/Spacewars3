@@ -115,6 +115,7 @@ const researchHierarchy: ResearchCategory[] = [
       },
       { type: 'ironCapacity' as ResearchType },
       { type: 'inventorySlots' as ResearchType },
+      { type: 'bridgeSlots' as ResearchType },
       {
         type: 'IronHarvesting' as ResearchType,
         children: [
@@ -270,6 +271,7 @@ const ResearchPageClient: React.FC<ResearchPageClientProps> = () => {
       inventoryCapacity: 'IronCapacity',
       ironCapacity: 'IronCapacity',
       inventorySlots: 'IronHarvesting', // placeholder until dedicated image is available
+      bridgeSlots: 'IronHarvesting', // placeholder until dedicated image is available
       armorEffectiveness: 'ArmorEffectiveness',
       shieldEffectiveness: 'ShieldEffectiveness',
       shieldRechargeRate: 'ShieldRechargeRate',

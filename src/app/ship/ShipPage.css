@@ -168,6 +168,98 @@
   }
 }
 
+
+/* ============================================================
+   Bridge Section
+   ============================================================ */
+
+.bridge-section {
+  margin-bottom: 2rem;
+  padding: 2rem;
+  background-color: #1e1e1e;
+  border-radius: 8px;
+  border-left: 4px solid #ce93d8;
+}
+
+.bridge-section--locked {
+  opacity: 0.75;
+  border-left-color: #555;
+}
+
+.bridge-heading {
+  font-size: 1.4rem;
+  color: #ce93d8;
+  margin-bottom: 0.5rem;
+}
+
+.bridge-intro {
+  font-size: 0.9rem;
+  color: #b0bec5;
+  margin-bottom: 1.25rem;
+}
+
+.bridge-locked-message {
+  color: #8a8a8a;
+  font-size: 0.95rem;
+  margin-top: 0.5rem;
+}
+
+.bridge-locked-message strong {
+  color: #ce93d8;
+}
+
+.bridge-loading,
+.bridge-error {
+  text-align: center;
+  padding: 2rem;
+  opacity: 0.7;
+}
+
+.bridge-error {
+  color: #ef5350;
+}
+
+.bridge-status-message {
+  background-color: #2a1f30;
+  border: 1px solid #ce93d8;
+  color: #e0e0e0;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+  font-size: 0.95rem;
+  animation: fadeIn 0.3s ease-in;
+}
+
+/* Bridge uses a 4-column grid; override .inv-grid inside bridge section */
+.bridge-section .inv-grid {
+  grid-template-columns: repeat(4, 52px);
+}
+
+.bridge-section .inv-slot--selected {
+  border-color: #ce93d8 !important;
+  background-color: #2a1f30 !important;
+  box-shadow: 0 0 8px rgba(206, 147, 216, 0.6);
+}
+
+.bridge-section .inv-slot--occupied:hover {
+  border-color: #ce93d8;
+  background-color: #2a1a30;
+}
+
+.bridge-section .item-details-heading {
+  color: #ce93d8;
+}
+
+.bridge-section .item-details-type {
+  color: #ce93d8;
+}
+
+@media (max-width: 700px) {
+  .bridge-section .inv-grid {
+    grid-template-columns: repeat(4, 42px);
+  }
+}
+
 /* ============================================================
    Inventory Section
    ============================================================ */

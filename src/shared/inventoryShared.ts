@@ -53,3 +53,18 @@ export type InventorySlot = InventoryItemData | null;
 
 /** rows×8 grid: slots[row][col] */
 export type InventoryGrid = InventorySlot[][];
+
+// ---------------------------------------------------------------------------
+// Bridge grid (4 columns wide, 1 row per research level)
+// ---------------------------------------------------------------------------
+
+export const BRIDGE_COLS = 4;
+export const DEFAULT_BRIDGE_SLOTS = 0;
+
+/** Number of rows needed for the given bridge max-slot count */
+export function getBridgeRows(maxSlots: number): number {
+  return Math.ceil(maxSlots / BRIDGE_COLS);
+}
+
+/** rows×4 grid reusing the same InventorySlot type */
+export type BridgeGrid = InventorySlot[][];

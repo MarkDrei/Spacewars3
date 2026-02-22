@@ -2,7 +2,13 @@
 
 import React, { useRef, useState } from 'react';
 import Image from 'next/image';
-import { InventoryGrid as InventoryGridType, InventorySlot, SlotCoordinate, INVENTORY_COLS, DEFAULT_INVENTORY_SLOTS, getInventoryRows } from '@/shared/inventoryShared';
+import { InventoryGrid as InventoryGridType, InventorySlot, SlotCoordinate, INVENTORY_COLS, DEFAULT_INVENTORY_SLOTS } from '@/shared/inventoryShared';
+
+export interface ExternalDropSource {
+  gridKey: string;
+  row: number;
+  col: number;
+}
 
 interface InventoryGridProps {
   grid: InventoryGridType;
@@ -11,6 +17,12 @@ interface InventoryGridProps {
   onMoveItem: (from: SlotCoordinate, to: SlotCoordinate) => void;
   /** Total number of available inventory slots (from InventorySlots research). Defaults to DEFAULT_INVENTORY_SLOTS. */
   maxSlots?: number;
+  /** Identifier for this grid used in drag data. Defaults to 'inventory'. */
+  gridKey?: string;
+  /** Number of columns. Defaults to INVENTORY_COLS (8). */
+  cols?: number;
+  /** Called when an item is dropped from a different grid (gridKey mismatch). */
+  onExternalDrop?: (from: ExternalDropSource, to: SlotCoordinate) => void;
 }
 
 const InventoryGridComponent: React.FC<InventoryGridProps> = ({
@@ -19,9 +31,12 @@ const InventoryGridComponent: React.FC<InventoryGridProps> = ({
   onSelectSlot,
   onMoveItem,
   maxSlots = DEFAULT_INVENTORY_SLOTS,
+  gridKey = 'inventory',
+  cols: colsProp,
+  onExternalDrop,
 }) => {
-  const rows = getInventoryRows(maxSlots);
-  const cols = INVENTORY_COLS;
+  const cols = colsProp ?? INVENTORY_COLS;
+  const rows = Math.ceil(maxSlots / cols);
   const [dragSource, setDragSource] = useState<SlotCoordinate | null>(null);
   const [dragOver, setDragOver] = useState<SlotCoordinate | null>(null);
   const dragImageRef = useRef<HTMLDivElement | null>(null);
@@ -43,7 +58,7 @@ const InventoryGridComponent: React.FC<InventoryGridProps> = ({
     }
     setDragSource({ row, col });
     e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', JSON.stringify({ row, col }));
+    e.dataTransfer.setData('text/plain', JSON.stringify({ gridKey, row, col }));
   };
 
   const handleDragOver = (e: React.DragEvent, row: number, col: number) => {
@@ -59,10 +74,32 @@ const InventoryGridComponent: React.FC<InventoryGridProps> = ({
   const handleDrop = (e: React.DragEvent, row: number, col: number) => {
     e.preventDefault();
     setDragOver(null);
-    if (!dragSource) return;
-    if (dragSource.row === row && dragSource.col === col) return;
-    // Only allow dropping on empty slot or swap is handled by the service
-    onMoveItem(dragSource, { row, col });
+    let sourceGridKey = gridKey;
+    let sourceRow: number | undefined;
+    let sourceCol: number | undefined;
+    try {
+      const data = JSON.parse(e.dataTransfer.getData('text/plain'));
+      sourceGridKey = data.gridKey ?? gridKey;
+      sourceRow = data.row;
+      sourceCol = data.col;
+    } catch {
+      // fallback to dragSource state
+    }
+    if (sourceRow === undefined || sourceCol === undefined) {
+      if (!dragSource) return;
+      sourceRow = dragSource.row;
+      sourceCol = dragSource.col;
+    }
+    const to = { row, col };
+    if (sourceGridKey !== gridKey) {
+      // Cross-grid drop
+      onExternalDrop?.({ gridKey: sourceGridKey, row: sourceRow, col: sourceCol }, to);
+      setDragSource(null);
+      return;
+    }
+    const from = { row: sourceRow, col: sourceCol };
+    if (from.row === row && from.col === col) return;
+    onMoveItem(from, to);
     setDragSource(null);
   };
 
