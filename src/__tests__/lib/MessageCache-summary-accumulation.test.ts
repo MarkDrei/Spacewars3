@@ -416,6 +416,7 @@ describe('MessageCache - Summary Accumulation', () => {
         
         // Summary should only have the header
         expect(summaryMsg!.message).toBe('📊 **Message Summary**');
+        expect(summary).toBe('📊 **Message Summary**');
       });
     });
   });

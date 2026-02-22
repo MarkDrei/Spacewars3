@@ -5,6 +5,7 @@ import Image from 'next/image';
 import AuthenticatedLayout from '@/components/Layout/AuthenticatedLayout';
 import { ServerAuthState } from '@/lib/server/serverSession';
 import InventorySection from '@/components/Inventory/InventorySection';
+import BridgeSection from '@/components/Inventory/BridgeSection';
 import './ShipPage.css';
 
 interface ShipPageClientProps {
@@ -17,6 +18,9 @@ const ShipPageClient: React.FC<ShipPageClientProps> = () => {
   const [currentShip, setCurrentShip] = useState<number | null>(null);
   const [message, setMessage] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
+  // Cross-refresh triggers: bump to force the other section to re-fetch
+  const [invRefreshKey, setInvRefreshKey] = useState(0);
+  const [bridgeRefreshKey, setBridgeRefreshKey] = useState(0);
 
   useEffect(() => {
     // Dynamically detect available ship images
@@ -104,7 +108,7 @@ const ShipPageClient: React.FC<ShipPageClientProps> = () => {
     <AuthenticatedLayout>
       <div className="ship-page">
         <div className="ship-container">
-          <h1 className="page-heading">Choose Your Ship</h1>
+          <h1 className="page-heading">Ship Configuration</h1>
           
           {message && (
             <div className="ship-selection-message">
@@ -112,7 +116,15 @@ const ShipPageClient: React.FC<ShipPageClientProps> = () => {
             </div>
           )}
 
-          <InventorySection />
+          <InventorySection
+            refreshTrigger={invRefreshKey}
+            onCrossTransferDone={() => setBridgeRefreshKey((k) => k + 1)}
+          />
+
+          <BridgeSection
+            refreshTrigger={bridgeRefreshKey}
+            onCrossTransferDone={() => setInvRefreshKey((k) => k + 1)}
+          />
 
           <section className="ship-selection-section">
             <p className="ship-selection-intro">

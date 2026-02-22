@@ -1,25 +1,27 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { InventoryGrid as InventoryGridType, InventoryItemData, SlotCoordinate, DEFAULT_INVENTORY_SLOTS, getInventoryRows, INVENTORY_COLS } from '@/shared/inventoryShared';
+import { BridgeGrid, InventoryItemData, SlotCoordinate, BRIDGE_COLS, getBridgeRows } from '@/shared/inventoryShared';
 import InventoryGridComponent, { ExternalDropSource } from './InventoryGrid';
 import ItemDetailsPanel from './ItemDetailsPanel';
 
-const makeEmptyGrid = (maxSlots: number): InventoryGridType =>
-  Array.from({ length: getInventoryRows(maxSlots) }, () =>
-    Array.from({ length: INVENTORY_COLS }, () => null)
+const makeEmptyBridgeGrid = (maxSlots: number): BridgeGrid => {
+  if (maxSlots === 0) return [];
+  return Array.from({ length: getBridgeRows(maxSlots) }, () =>
+    Array.from({ length: BRIDGE_COLS }, () => null)
   );
+};
 
-interface InventorySectionProps {
-  /** Bump this value to force a re-fetch of inventory data (e.g. after a bridge→inventory transfer). */
+interface BridgeSectionProps {
+  /** Bump this value to force a re-fetch of bridge data (e.g. after an inventory→bridge transfer). */
   refreshTrigger?: number;
-  /** Called after a successful bridge→inventory cross-transfer so the bridge can refresh. */
+  /** Called after a successful inventory→bridge cross-transfer so the inventory can refresh. */
   onCrossTransferDone?: () => void;
 }
 
-const InventorySection: React.FC<InventorySectionProps> = ({ refreshTrigger, onCrossTransferDone }) => {
-  const [maxSlots, setMaxSlots] = useState<number>(DEFAULT_INVENTORY_SLOTS);
-  const [grid, setGrid] = useState<InventoryGridType>(makeEmptyGrid(DEFAULT_INVENTORY_SLOTS));
+const BridgeSection: React.FC<BridgeSectionProps> = ({ refreshTrigger, onCrossTransferDone }) => {
+  const [maxBridgeSlots, setMaxBridgeSlots] = useState<number>(0);
+  const [grid, setGrid] = useState<BridgeGrid>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<SlotCoordinate | null>(null);
@@ -31,35 +33,35 @@ const InventorySection: React.FC<InventorySectionProps> = ({ refreshTrigger, onC
     setTimeout(() => setStatusMessage(null), 3000);
   };
 
-  const fetchInventory = useCallback(async () => {
+  const fetchBridge = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
-      const response = await fetch('/api/inventory');
+      const response = await fetch('/api/bridge');
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || 'Failed to load inventory');
+        throw new Error(data.error || 'Failed to load bridge');
       }
       const data = await response.json();
-      setMaxSlots(data.maxSlots ?? DEFAULT_INVENTORY_SLOTS);
-      setGrid(data.grid);
+      setMaxBridgeSlots(data.maxBridgeSlots ?? 0);
+      setGrid(data.grid ?? []);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load inventory');
+      setError(err instanceof Error ? err.message : 'Failed to load bridge');
     } finally {
       setIsLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    fetchInventory();
-  }, [fetchInventory]);
+    fetchBridge();
+  }, [fetchBridge]);
 
-  // Re-fetch when the parent signals that bridge data changed
+  // Re-fetch when the parent signals that inventory data changed
   useEffect(() => {
     if (refreshTrigger !== undefined && refreshTrigger > 0) {
-      fetchInventory();
+      fetchBridge();
     }
-  }, [refreshTrigger, fetchInventory]);
+  }, [refreshTrigger, fetchBridge]);
 
   const handleSelectSlot = (slot: SlotCoordinate) => {
     const item = grid[slot.row]?.[slot.col];
@@ -72,28 +74,27 @@ const InventorySection: React.FC<InventorySectionProps> = ({ refreshTrigger, onC
     );
   };
 
+  /** Move an item within the bridge. */
   const handleMoveItem = async (from: SlotCoordinate, to: SlotCoordinate) => {
-    // Optimistic update
     const newGrid = grid.map((r) => [...r]);
-    const item = newGrid[from.row][from.col];
+    const item = newGrid[from.row]?.[from.col];
 
-    // Prevent moving to occupied slot (show error, no optimistic update)
-    if (newGrid[to.row][to.col] !== null) {
+    if (newGrid[to.row]?.[to.col] !== null) {
       showStatus('❌ Target slot is occupied');
       return;
     }
 
-    newGrid[to.row][to.col] = item;
+    // Optimistic update
+    newGrid[to.row][to.col] = item ?? null;
     newGrid[from.row][from.col] = null;
     setGrid(newGrid);
 
-    // Update selection to follow the moved item
     if (selectedSlot?.row === from.row && selectedSlot?.col === from.col) {
       setSelectedSlot(to);
     }
 
     try {
-      const response = await fetch('/api/inventory/move', {
+      const response = await fetch('/api/bridge/move', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ from, to }),
@@ -101,31 +102,30 @@ const InventorySection: React.FC<InventorySectionProps> = ({ refreshTrigger, onC
       if (!response.ok) {
         const data = await response.json();
         showStatus(`❌ Move failed: ${data.error || 'Unknown error'}`);
-        // Revert
-        await fetchInventory();
+        await fetchBridge();
       }
     } catch {
       showStatus('❌ Move failed. Please try again.');
-      await fetchInventory();
+      await fetchBridge();
     }
   };
 
-  /** Handles an item dragged from the bridge onto an inventory slot. */
+  /** Handles an item dragged from the inventory onto a bridge slot. */
   const handleExternalDrop = async (from: ExternalDropSource, to: SlotCoordinate) => {
-    if (from.gridKey !== 'bridge') return;
+    if (from.gridKey !== 'inventory') return;
     try {
       const response = await fetch('/api/bridge/transfer', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          direction: 'bridgeToInventory',
+          direction: 'inventoryToBridge',
           from: { row: from.row, col: from.col },
           to,
         }),
       });
       if (response.ok) {
-        showStatus('✅ Moved from bridge to inventory');
-        await fetchInventory();
+        showStatus('✅ Moved from inventory to bridge');
+        await fetchBridge();
         onCrossTransferDone?.();
       } else {
         const data = await response.json();
@@ -139,7 +139,7 @@ const InventorySection: React.FC<InventorySectionProps> = ({ refreshTrigger, onC
   const handleDelete = async (slot: SlotCoordinate) => {
     setIsDeleting(true);
     try {
-      const response = await fetch('/api/inventory', {
+      const response = await fetch('/api/bridge', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ row: slot.row, col: slot.col }),
@@ -149,13 +149,13 @@ const InventorySection: React.FC<InventorySectionProps> = ({ refreshTrigger, onC
         newGrid[slot.row][slot.col] = null;
         setGrid(newGrid);
         setSelectedSlot(null);
-        showStatus('✅ Item deleted');
+        showStatus('✅ Item removed from bridge');
       } else {
         const data = await response.json();
-        showStatus(`❌ Delete failed: ${data.error || 'Unknown error'}`);
+        showStatus(`❌ Remove failed: ${data.error || 'Unknown error'}`);
       }
     } catch {
-      showStatus('❌ Delete failed. Please try again.');
+      showStatus('❌ Remove failed. Please try again.');
     } finally {
       setIsDeleting(false);
     }
@@ -164,26 +164,42 @@ const InventorySection: React.FC<InventorySectionProps> = ({ refreshTrigger, onC
   const selectedItem: InventoryItemData | null =
     selectedSlot !== null ? (grid[selectedSlot.row]?.[selectedSlot.col] ?? null) : null;
 
+  // If the player hasn't researched bridge slots yet, show a locked message
+  if (!isLoading && !error && maxBridgeSlots === 0) {
+    return (
+      <section className="bridge-section bridge-section--locked">
+        <h2 className="bridge-heading">Bridge</h2>
+        <p className="bridge-locked-message">
+          🔒 Research <strong>Bridge Slots</strong> to unlock your bridge crew system.
+        </p>
+      </section>
+    );
+  }
+
   return (
-    <section className="inventory-section">
-      <h2 className="inventory-heading">Inventory</h2>
+    <section className="bridge-section">
+      <h2 className="bridge-heading">Bridge</h2>
+      <p className="bridge-intro">
+        Assign commanders to bridge positions. Drag items from Inventory to assign, or drag them back.
+      </p>
 
       {statusMessage && (
-        <div className="inventory-status-message">{statusMessage}</div>
+        <div className="bridge-status-message">{statusMessage}</div>
       )}
 
-      {isLoading && <p className="inventory-loading">Loading inventory…</p>}
-      {error && <p className="inventory-error">{error}</p>}
+      {isLoading && <p className="bridge-loading">Loading bridge…</p>}
+      {error && <p className="bridge-error">{error}</p>}
 
       {!isLoading && !error && (
         <div className="inventory-layout">
           <InventoryGridComponent
-            grid={grid}
+            grid={grid.length > 0 ? grid : makeEmptyBridgeGrid(maxBridgeSlots)}
             selectedSlot={selectedSlot}
             onSelectSlot={handleSelectSlot}
             onMoveItem={handleMoveItem}
-            maxSlots={maxSlots}
-            gridKey="inventory"
+            maxSlots={maxBridgeSlots}
+            gridKey="bridge"
+            cols={BRIDGE_COLS}
             onExternalDrop={handleExternalDrop}
           />
           {selectedItem !== null && selectedSlot !== null ? (
@@ -195,7 +211,7 @@ const InventorySection: React.FC<InventorySectionProps> = ({ refreshTrigger, onC
             />
           ) : (
             <div className="inventory-no-selection">
-              <p>Click an item to see its details.</p>
+              <p>Drag a commander here from Inventory, or click an assigned commander to see details.</p>
             </div>
           )}
         </div>
@@ -204,4 +220,4 @@ const InventorySection: React.FC<InventorySectionProps> = ({ refreshTrigger, onC
   );
 };
 
-export default InventorySection;
+export default BridgeSection;

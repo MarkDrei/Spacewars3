@@ -94,6 +94,7 @@ export const CREATE_INVENTORIES_TABLE = `
 CREATE TABLE IF NOT EXISTS inventories (
   user_id INTEGER PRIMARY KEY,
   inventory_data JSONB NOT NULL DEFAULT '[]'::jsonb,
+  bridge_data JSONB DEFAULT NULL,
   FOREIGN KEY (user_id) REFERENCES users (id)
 )`;
 

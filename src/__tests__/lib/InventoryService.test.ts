@@ -8,8 +8,8 @@ import { InventoryRepo } from '@/lib/server/inventory/InventoryRepo';
 import {
   createEmptyInventoryGrid,
   InventoryGrid,
-  INVENTORY_ROWS,
   INVENTORY_COLS,
+  getInventoryRows,
 } from '@/lib/server/inventory/inventoryTypes';
 import {
   InventorySlotOccupiedError,
@@ -43,9 +43,13 @@ function makeCommander(name = 'Test Commander') {
 }
 
 const USER_ID = 42;
+/** Use 80 slots (10 rows × 8 cols) to match the old 10×10 footprint in tests */
+const TEST_MAX_SLOTS = 80;
+const TEST_ROWS = getInventoryRows(TEST_MAX_SLOTS); // 10
 const SLOT_0_0 = { row: 0, col: 0 };
 const SLOT_0_1 = { row: 0, col: 1 };
-const SLOT_9_9 = { row: 9, col: 9 };
+/** Last valid slot for TEST_MAX_SLOTS (row 9, last col = 7) */
+const SLOT_9_7 = { row: 9, col: 7 };
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -66,21 +70,21 @@ describe('InventoryService', () => {
 
   describe('getInventory', () => {
     test('getInventory_noExistingRow_returnsEmptyGridAndPersists', async () => {
-      const grid = await service.getInventory(USER_ID);
+      const grid = await service.getInventory(USER_ID, TEST_MAX_SLOTS);
 
-      expect(grid).toHaveLength(INVENTORY_ROWS);
+      expect(grid).toHaveLength(TEST_ROWS);
       expect(grid[0]).toHaveLength(INVENTORY_COLS);
       expect(grid[0][0]).toBeNull();
       expect(repo.saveInventory).toHaveBeenCalledOnce();
     });
 
     test('getInventory_existingRow_returnsStoredGrid', async () => {
-      const existing = createEmptyInventoryGrid();
+      const existing = createEmptyInventoryGrid(TEST_MAX_SLOTS);
       existing[3][4] = makeCommander();
       repo = makeMockRepo(existing);
       service = new InventoryService(repo);
 
-      const grid = await service.getInventory(USER_ID);
+      const grid = await service.getInventory(USER_ID, TEST_MAX_SLOTS);
 
       expect(grid[3][4]).not.toBeNull();
       expect(repo.saveInventory).not.toHaveBeenCalled();
@@ -94,7 +98,7 @@ describe('InventoryService', () => {
   describe('addItem', () => {
     test('addItem_emptySlot_placesItemAndSaves', async () => {
       const item = makeCommander();
-      await service.addItem(USER_ID, item, SLOT_0_0);
+      await service.addItem(USER_ID, item, SLOT_0_0, TEST_MAX_SLOTS);
 
       const stored = repo._getStored();
       expect(stored![0][0]).toEqual(item);
@@ -107,25 +111,25 @@ describe('InventoryService', () => {
       repo = makeMockRepo(existing);
       service = new InventoryService(repo);
 
-      await expect(service.addItem(USER_ID, makeCommander('Second'), SLOT_0_0))
+      await expect(service.addItem(USER_ID, makeCommander('Second'), SLOT_0_0, TEST_MAX_SLOTS))
         .rejects.toThrow(InventorySlotOccupiedError);
     });
 
     test('addItem_invalidSlotNegativeRow_throwsInventorySlotInvalidError', async () => {
-      await expect(service.addItem(USER_ID, makeCommander(), { row: -1, col: 0 }))
+      await expect(service.addItem(USER_ID, makeCommander(), { row: -1, col: 0 }, TEST_MAX_SLOTS))
         .rejects.toThrow(InventorySlotInvalidError);
     });
 
     test('addItem_invalidSlotOutOfBounds_throwsInventorySlotInvalidError', async () => {
-      await expect(service.addItem(USER_ID, makeCommander(), { row: 10, col: 0 }))
+      await expect(service.addItem(USER_ID, makeCommander(), { row: 10, col: 0 }, TEST_MAX_SLOTS))
         .rejects.toThrow(InventorySlotInvalidError);
     });
 
     test('addItem_lastValidSlot_placesItem', async () => {
       const item = makeCommander();
-      await service.addItem(USER_ID, item, SLOT_9_9);
+      await service.addItem(USER_ID, item, SLOT_9_7, TEST_MAX_SLOTS);
 
-      expect(repo._getStored()![9][9]).toEqual(item);
+      expect(repo._getStored()![9][7]).toEqual(item);
     });
   });
 
@@ -136,28 +140,28 @@ describe('InventoryService', () => {
   describe('addItemToFirstFreeSlot', () => {
     test('addItemToFirstFreeSlot_emptyInventory_placesAtSlot00', async () => {
       const item = makeCommander();
-      const slot = await service.addItemToFirstFreeSlot(USER_ID, item);
+      const slot = await service.addItemToFirstFreeSlot(USER_ID, item, TEST_MAX_SLOTS);
 
       expect(slot).toEqual(SLOT_0_0);
       expect(repo._getStored()![0][0]).toEqual(item);
     });
 
     test('addItemToFirstFreeSlot_firstRowFull_placesAtSecondRow', async () => {
-      const existing = createEmptyInventoryGrid();
+      const existing = createEmptyInventoryGrid(TEST_MAX_SLOTS);
       for (let col = 0; col < INVENTORY_COLS; col++) {
         existing[0][col] = makeCommander(`row0-${col}`);
       }
       repo = makeMockRepo(existing);
       service = new InventoryService(repo);
 
-      const slot = await service.addItemToFirstFreeSlot(USER_ID, makeCommander());
+      const slot = await service.addItemToFirstFreeSlot(USER_ID, makeCommander(), TEST_MAX_SLOTS);
 
       expect(slot).toEqual({ row: 1, col: 0 });
     });
 
     test('addItemToFirstFreeSlot_fullInventory_throwsInventoryFullError', async () => {
-      const full = createEmptyInventoryGrid();
-      for (let row = 0; row < INVENTORY_ROWS; row++) {
+      const full = createEmptyInventoryGrid(TEST_MAX_SLOTS);
+      for (let row = 0; row < TEST_ROWS; row++) {
         for (let col = 0; col < INVENTORY_COLS; col++) {
           full[row][col] = makeCommander(`${row}-${col}`);
         }
@@ -165,17 +169,17 @@ describe('InventoryService', () => {
       repo = makeMockRepo(full);
       service = new InventoryService(repo);
 
-      await expect(service.addItemToFirstFreeSlot(USER_ID, makeCommander()))
+      await expect(service.addItemToFirstFreeSlot(USER_ID, makeCommander(), TEST_MAX_SLOTS))
         .rejects.toThrow(InventoryFullError);
     });
 
     test('addItemToFirstFreeSlot_returnsCorrectSlot', async () => {
-      const existing = createEmptyInventoryGrid();
+      const existing = createEmptyInventoryGrid(TEST_MAX_SLOTS);
       existing[0][0] = makeCommander('occupied');
       repo = makeMockRepo(existing);
       service = new InventoryService(repo);
 
-      const slot = await service.addItemToFirstFreeSlot(USER_ID, makeCommander());
+      const slot = await service.addItemToFirstFreeSlot(USER_ID, makeCommander(), TEST_MAX_SLOTS);
       expect(slot).toEqual(SLOT_0_1);
     });
   });
@@ -192,15 +196,15 @@ describe('InventoryService', () => {
       repo = makeMockRepo(existing);
       service = new InventoryService(repo);
 
-      await service.moveItem(USER_ID, SLOT_0_0, SLOT_9_9);
+      await service.moveItem(USER_ID, SLOT_0_0, SLOT_9_7, TEST_MAX_SLOTS);
 
       const stored = repo._getStored()!;
       expect(stored[0][0]).toBeNull();
-      expect(stored[9][9]).toEqual(item);
+      expect(stored[9][7]).toEqual(item);
     });
 
     test('moveItem_sourceEmpty_throwsInventorySlotEmptyError', async () => {
-      await expect(service.moveItem(USER_ID, SLOT_0_0, SLOT_0_1))
+      await expect(service.moveItem(USER_ID, SLOT_0_0, SLOT_0_1, TEST_MAX_SLOTS))
         .rejects.toThrow(InventorySlotEmptyError);
     });
 
@@ -211,12 +215,12 @@ describe('InventoryService', () => {
       repo = makeMockRepo(existing);
       service = new InventoryService(repo);
 
-      await expect(service.moveItem(USER_ID, SLOT_0_0, SLOT_0_1))
+      await expect(service.moveItem(USER_ID, SLOT_0_0, SLOT_0_1, TEST_MAX_SLOTS))
         .rejects.toThrow(InventorySlotOccupiedError);
     });
 
     test('moveItem_invalidSourceSlot_throwsInventorySlotInvalidError', async () => {
-      await expect(service.moveItem(USER_ID, { row: -1, col: 0 }, SLOT_0_1))
+      await expect(service.moveItem(USER_ID, { row: -1, col: 0 }, SLOT_0_1, TEST_MAX_SLOTS))
         .rejects.toThrow(InventorySlotInvalidError);
     });
 
@@ -226,7 +230,7 @@ describe('InventoryService', () => {
       repo = makeMockRepo(existing);
       service = new InventoryService(repo);
 
-      await expect(service.moveItem(USER_ID, SLOT_0_0, { row: 10, col: 0 }))
+      await expect(service.moveItem(USER_ID, SLOT_0_0, { row: 10, col: 0 }, TEST_MAX_SLOTS))
         .rejects.toThrow(InventorySlotInvalidError);
     });
   });
@@ -243,29 +247,29 @@ describe('InventoryService', () => {
       repo = makeMockRepo(existing);
       service = new InventoryService(repo);
 
-      const removed = await service.removeItem(USER_ID, SLOT_0_0);
+      const removed = await service.removeItem(USER_ID, SLOT_0_0, TEST_MAX_SLOTS);
 
       expect(removed).toEqual(item);
       expect(repo._getStored()![0][0]).toBeNull();
     });
 
     test('removeItem_emptySlot_throwsInventorySlotEmptyError', async () => {
-      await expect(service.removeItem(USER_ID, SLOT_0_0))
+      await expect(service.removeItem(USER_ID, SLOT_0_0, TEST_MAX_SLOTS))
         .rejects.toThrow(InventorySlotEmptyError);
     });
 
     test('removeItem_invalidSlot_throwsInventorySlotInvalidError', async () => {
-      await expect(service.removeItem(USER_ID, { row: 0, col: -1 }))
+      await expect(service.removeItem(USER_ID, { row: 0, col: -1 }, TEST_MAX_SLOTS))
         .rejects.toThrow(InventorySlotInvalidError);
     });
 
     test('removeItem_savesAfterRemoval', async () => {
-      const existing = createEmptyInventoryGrid();
+      const existing = createEmptyInventoryGrid(TEST_MAX_SLOTS);
       existing[5][5] = makeCommander();
       repo = makeMockRepo(existing);
       service = new InventoryService(repo);
 
-      await service.removeItem(USER_ID, { row: 5, col: 5 });
+      await service.removeItem(USER_ID, { row: 5, col: 5 }, TEST_MAX_SLOTS);
 
       expect(repo.saveInventory).toHaveBeenCalledOnce();
     });

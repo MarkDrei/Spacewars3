@@ -35,7 +35,7 @@ describe('Build Persistence Integration', () => {
       // Create test user with iron for building
       const testUser = await ctx.useLockWithAcquire(USER_LOCK, async (userContext) => {
         const user = await createUser(db, 'buildpersisttest', 'password', async () => {});
-        user.techTree.inventoryCapacity = 4; // Increase capacity to 40000 to hold 10000 iron
+        user.techTree.ironCapacity = 4; // Increase capacity to 40000 to hold 10000 iron
         user.iron = 10000; // Enough for builds
         userCache.setUserUnsafe(userContext, user);
         await userCache.updateUserInCache(userContext, user);
@@ -106,7 +106,7 @@ describe('Build Persistence Integration', () => {
       // Create test user
       const testUser = await ctx.useLockWithAcquire(USER_LOCK, async (userContext) => {
         const user = await createUser(db, 'multibuiltest', 'password', async () => {});
-        user.techTree.inventoryCapacity = 6; // Increase capacity to 160000 to hold 50000 iron
+        user.techTree.ironCapacity = 6; // Increase capacity to 160000 to hold 50000 iron
         user.iron = 50000;
         userCache.setUserUnsafe(userContext, user);
         await userCache.updateUserInCache(userContext, user);

@@ -199,7 +199,6 @@ class World {
    * @returns The ID of the newly spawned object
    */
   // needs _context for compile time lock checking
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   public async spawnSpecificObject<THeld extends IronLocks>(
     _context: HasLock6Context<THeld>,
     type: 'asteroid' | 'shipwreck' | 'escape_pod'

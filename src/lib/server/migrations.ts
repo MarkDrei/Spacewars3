@@ -144,11 +144,22 @@ export const migrations: Migration[] = [
       `CREATE TABLE IF NOT EXISTS inventories (
         user_id INTEGER PRIMARY KEY,
         inventory_data JSONB NOT NULL DEFAULT '[]'::jsonb,
+        bridge_data JSONB DEFAULT NULL,
         FOREIGN KEY (user_id) REFERENCES users (id)
       )`
     ],
     down: [
       'DROP TABLE IF EXISTS inventories'
+    ]
+  },
+  {
+    version: 10,
+    name: 'add_bridge_data_column',
+    up: [
+      `ALTER TABLE inventories ADD COLUMN IF NOT EXISTS bridge_data JSONB DEFAULT NULL`
+    ],
+    down: [
+      'ALTER TABLE inventories DROP COLUMN IF EXISTS bridge_data'
     ]
   }
 ];
@@ -269,6 +280,8 @@ export async function applyTechMigrations(db: DatabaseConnection): Promise<void>
   await applyXpSystemMigration(db);
   // Apply inventories table migration
   await applyInventoriesMigration(db);
+  // Apply bridge_data column migration
+  await applyBridgeMigration(db);
 }
 
 /**
@@ -501,6 +514,37 @@ export async function applyInventoriesMigration(db: DatabaseConnection): Promise
     console.log('✅ Inventories table migration completed');
   } catch (error) {
     console.error('❌ Error applying inventories migration:', error);
+  }
+}
+
+/**
+ * Apply bridge_data column migration to the inventories table
+ */
+export async function applyBridgeMigration(db: DatabaseConnection): Promise<void> {
+  console.log('🔄 Checking for bridge_data column migration...');
+
+  try {
+    const exists = await columnExists(db, 'inventories', 'bridge_data');
+    if (exists) {
+      console.log('✅ bridge_data column already exists');
+      return;
+    }
+
+    console.log('🚀 Adding bridge_data column to inventories...');
+
+    const migration = migrations.find(m => m.name === 'add_bridge_data_column');
+    if (!migration) {
+      console.error('❌ Bridge data migration not found');
+      return;
+    }
+
+    for (const statement of migration.up) {
+      await runMigrationStatement(db, statement);
+    }
+
+    console.log('✅ bridge_data column migration completed');
+  } catch (error) {
+    console.error('❌ Error applying bridge_data migration:', error);
   }
 }
 
