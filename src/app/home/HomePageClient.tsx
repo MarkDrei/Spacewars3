@@ -603,58 +603,7 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
             </table>
           </div>
 
-          {/* Weapon Cooldowns Table - Only shown if in battle */}
-          {battleStatus?.inBattle && battleStatus.battle && (
-            <div id="weapon-cooldowns" className="data-table-container weapon-cooldowns-table-container">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th colSpan={3}>⚔️ Battle Active - Weapon Cooldowns</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {Object.keys(battleStatus.battle.weaponCooldowns).length === 0 ? (
-                    <tr>
-                      <td colSpan={3} className="empty-cell">
-                        No weapons in this battle
-                      </td>
-                    </tr>
-                  ) : (
-                    Object.entries(battleStatus.battle.weaponCooldowns).map(([weaponType, lastFired]) => {
-                      const weapon = weapons[weaponType as keyof typeof weapons];
-                      const now = Math.floor(Date.now() / 1000);
-                      // Get cooldown from weapon tech data (from useTechCounts)
-                      const cooldownPeriod = (weapon && 'cooldown' in weapon ? (weapon as { cooldown: number }).cooldown : 5);
-                      const timeSinceFired = now - (lastFired || 0);
-                      const isReady = timeSinceFired >= cooldownPeriod;
-                      const timeRemaining = Math.max(0, cooldownPeriod - timeSinceFired);
-                      
-                      return (
-                        <tr key={weaponType} className="data-row">
-                          <td className="data-cell">{weapon?.name || weaponType}</td>
-                          <td className="data-cell cooldown-status-cell">
-                            {isReady ? (
-                              <span style={{ color: '#4caf50' }}>✓ Ready</span>
-                            ) : (
-                              <span style={{ color: '#ff9800' }}>{timeRemaining}s</span>
-                            )}
-                          </td>
-                          <td className="data-cell cooldown-info-cell">
-                            {cooldownPeriod}s cooldown
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )}
-                  <tr>
-                    <td colSpan={3} className="battle-info-cell">
-                      Battle #{battleStatus.battle.id} | {battleStatus.battle.isAttacker ? 'Attacking' : 'Defending'}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          )}
+
         </div>
       </div>
     </AuthenticatedLayout>

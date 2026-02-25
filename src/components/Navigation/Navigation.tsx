@@ -152,9 +152,6 @@ const Navigation: React.FC<NavigationProps> = ({ onLogout }) => {
                 <button className="shortcut-button" onClick={() => scrollToSection('tech-inventory')}>
                   Tech
                 </button>
-                <button className="shortcut-button" onClick={() => scrollToSection('weapon-cooldowns')}>
-                  Cooldowns
-                </button>
               </>
             ) : pathname === '/factory' ? (
               <>
