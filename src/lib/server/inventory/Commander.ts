@@ -163,7 +163,9 @@ export class Commander {
    * extended without changing this function.  A gender flip is chosen at
    * random; male names use the male list and produce an even imageId, while
    * female names use the female list and produce an odd imageId.  The returned
-   * object contains both the generated name and the associated picture id.
+   * object contains both the generated name and the associated picture id.  The
+   * middle element is a single-letter initial and includes a trailing dot (e.g.
+   * "John P. Doe").
    */
   private static generateRandomName(rng: () => number): { name: string; imageId: number } {
     const isMale = rng() < 0.5;
@@ -175,7 +177,8 @@ export class Commander {
     // choose an index 0..4 then apply parity
     const idx = Math.floor(rng() * 5);
     const imageId = isMale ? idx * 2 : idx * 2 + 1;
-    return { name: `${first} ${middle} ${last}`, imageId };
+    // middle names are single letters; include a dot after the initial
+    return { name: `${first} ${middle}. ${last}`, imageId };
   }
 
   // ---------------------------------------------------------------------------

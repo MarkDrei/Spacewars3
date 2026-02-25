@@ -149,13 +149,13 @@ describe('Commander', () => {
     });
 
     test('random_deterministicWithSeededRng_oneStat', () => {
-      // rng always returns 0.0 → gender = male, name = "Astra A Stark", imageId=0 (even)
+      // rng always returns 0.0 → gender = male, name = "Astra A. Stark", imageId=0 (even)
       const rng = () => 0.0;
       const commander = Commander.random(undefined, rng);
       expect(commander.statBonuses).toHaveLength(1);
       expect(commander.statBonuses[0].stat).toBe(COMMANDER_STAT_KEYS[0]);
       expect(commander.statBonuses[0].value).toBe(0.1);
-      expect(commander.name).toMatch(/^Astra A Stark$/);
+      expect(commander.name).toMatch(/^Astra A\. Stark$/);
       expect(commander.imageId % 2).toBe(0);
     });
 
