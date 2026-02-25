@@ -14,6 +14,8 @@ describe('Commander', () => {
       expect(commander.name).toBe('Admiral Tarq');
       expect(commander.statBonuses).toHaveLength(1);
       expect(commander.statBonuses[0]).toEqual({ stat: 'shipSpeed', value: 0.5 });
+      expect(commander.imageId).toBeGreaterThanOrEqual(0);
+      expect(commander.imageId).toBeLessThanOrEqual(9);
     });
 
     test('withStats_threeBonuses_createsCommander', () => {
@@ -55,6 +57,8 @@ describe('Commander', () => {
       const commander = Commander.withStats('Rounded', [{ stat: 'shipSpeed', value: 0.35 }]);
       // 0.35 rounds to 0.4 (nearest 0.1)
       expect(commander.statBonuses[0].value).toBe(0.4);
+      expect(commander.imageId).toBeGreaterThanOrEqual(0);
+      expect(commander.imageId).toBeLessThanOrEqual(9);
     });
 
     test('withStats_extremeValues_accepted', () => {
@@ -64,11 +68,15 @@ describe('Commander', () => {
       ]);
       expect(commander.statBonuses[0].value).toBe(0.1);
       expect(commander.statBonuses[1].value).toBe(1.0);
+      expect(commander.imageId).toBeGreaterThanOrEqual(0);
+      expect(commander.imageId).toBeLessThanOrEqual(9);
     });
 
     test('withStats_itemTypeIsCommander', () => {
       const commander = Commander.withStats('Test', [{ stat: 'shipSpeed', value: 0.5 }]);
       expect(commander.itemType).toBe('commander');
+      expect(commander.imageId).toBeGreaterThanOrEqual(0);
+      expect(commander.imageId).toBeLessThanOrEqual(9);
     });
   });
 
@@ -81,6 +89,8 @@ describe('Commander', () => {
     test('random_customName_usesProvidedName', () => {
       const commander = Commander.random('Captain Nova');
       expect(commander.name).toBe('Captain Nova');
+      expect(commander.imageId).toBeGreaterThanOrEqual(0);
+      expect(commander.imageId).toBeLessThanOrEqual(9);
     });
 
     test('random_bonusCountIsOneToThree', () => {
@@ -142,10 +152,14 @@ describe('Commander', () => {
 
     test('random_statDistribution_approximatelyCorrect', () => {
       const counts = { 1: 0, 2: 0, 3: 0 };
+      // also verify imageId range quickly while looping
       const iterations = 3000;
       for (let i = 0; i < iterations; i++) {
-        const n = Commander.random().statBonuses.length as 1 | 2 | 3;
+        const commander = Commander.random();
+        const n = commander.statBonuses.length as 1 | 2 | 3;
         counts[n]++;
+        expect(commander.imageId).toBeGreaterThanOrEqual(0);
+        expect(commander.imageId).toBeLessThanOrEqual(9);
       }
       // 60% ± 5% for 1 stat
       expect(counts[1] / iterations).toBeGreaterThan(0.55);
@@ -164,18 +178,27 @@ describe('Commander', () => {
       const original = Commander.withStats('Admiral', [
         { stat: 'projectileWeaponDamage', value: 0.7 },
         { stat: 'energyWeaponReloadRate', value: 0.2 },
-      ]);
+      ], 5);
       const json = original.toJSON();
       const restored = Commander.fromJSON(json);
 
       expect(restored.name).toBe(original.name);
       expect(restored.itemType).toBe('commander');
       expect(restored.statBonuses).toEqual(original.statBonuses);
+      expect(restored.imageId).toBe(5);
     });
 
     test('fromJSON_wrongItemType_throwsError', () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      expect(() => Commander.fromJSON({ itemType: 'weapon' as any, name: 'X', statBonuses: [] })).toThrow();
+      expect(() => Commander.fromJSON({ itemType: 'weapon' as any, name: 'X', imageId: 0, statBonuses: [] })).toThrow();
+    });
+
+    test('fromJSON_missingImageId_assignsDefault', () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const data: any = { itemType: 'commander', name: 'NoPic', statBonuses: [{ stat: 'shipSpeed', value: 0.5 }] };
+      const cmd = Commander.fromJSON(data);
+      expect(cmd.imageId).toBeGreaterThanOrEqual(0);
+      expect(cmd.imageId).toBeLessThanOrEqual(9);
     });
   });
 });

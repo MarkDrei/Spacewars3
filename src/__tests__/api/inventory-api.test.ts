@@ -108,6 +108,8 @@ describe('Inventory API', () => {
         expect(data.grid[0][0]).not.toBeNull();
         expect(data.grid[0][0].itemType).toBe('commander');
         expect(data.grid[0][0].name).toBe('Aria');
+        expect(data.grid[0][0].imageId).toBeGreaterThanOrEqual(0);
+        expect(data.grid[0][0].imageId).toBeLessThanOrEqual(9);
       });
     });
   });

@@ -8,6 +8,7 @@ describe('InventoryGridComponent drag callbacks', () => {
   const sampleItem: InventoryItemData = {
     itemType: 'commander',
     name: 'Draggy',
+    imageId: 0,
     statBonuses: [],
   };
 
@@ -31,6 +32,14 @@ describe('InventoryGridComponent drag callbacks', () => {
     );
 
     const slot = getByTitle('Draggy');
+
+    // verify that the <img> src uses the correct imageId
+    const img = slot.querySelector('img');
+    expect(img).not.toBeNull();
+    if (img) {
+      expect(img.getAttribute('src')).toContain('commander0.png');
+    }
+
     const dataTransfer = {
       setData: vi.fn(),
       effectAllowed: '',

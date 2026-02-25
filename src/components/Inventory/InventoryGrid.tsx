@@ -151,7 +151,11 @@ const InventoryGridComponent: React.FC<InventoryGridProps> = ({
             >
               {item !== null ? (
                 <Image
-                  src={`/assets/images/inventory/${item.itemType}.png`}
+                  src={
+                    item.itemType === 'commander'
+                      ? `/assets/images/inventory/commander${item.imageId}.png`
+                      : `/assets/images/inventory/${item.itemType}.png`
+                  }
                   alt={item.itemType === 'commander' ? item.name : item.itemType}
                   width={48}
                   height={48}
