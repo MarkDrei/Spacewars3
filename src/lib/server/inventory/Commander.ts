@@ -204,6 +204,38 @@ export class Commander {
   }
 
   // ---------------------------------------------------------------------------
+  // Static bonus calculation
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Calculate the aggregate crew bonuses from a list of commanders.
+   *
+   * Bonuses stack multiplicatively: each commander's bonus for a stat
+   * contributes a factor of (1 + value/100).  The final bonus percentage
+   * returned for each stat is (∏ factors − 1) × 100.
+   *
+   * Only stats with a total bonus > 0 are included in the result.
+   */
+  static calculateBonuses(commanders: CommanderData[]): Partial<Record<CommanderStatKey, number>> {
+    const multipliers: Partial<Record<CommanderStatKey, number>> = {};
+
+    for (const commander of commanders) {
+      for (const bonus of commander.statBonuses) {
+        multipliers[bonus.stat] = (multipliers[bonus.stat] ?? 1) * (1 + bonus.value / 100);
+      }
+    }
+
+    const result: Partial<Record<CommanderStatKey, number>> = {};
+    for (const key of Object.keys(multipliers) as CommanderStatKey[]) {
+      const totalBonus = (multipliers[key]! - 1) * 100;
+      if (totalBonus > 0) {
+        result[key] = totalBonus;
+      }
+    }
+    return result;
+  }
+
+  // ---------------------------------------------------------------------------
   // Private helpers
   // ---------------------------------------------------------------------------
 

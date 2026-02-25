@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { BridgeGrid, InventoryItemData, SlotCoordinate, BRIDGE_COLS, getBridgeRows } from '@/shared/inventoryShared';
+import { BridgeGrid, InventoryItemData, SlotCoordinate, BRIDGE_COLS, getBridgeRows, CommanderStatKey, COMMANDER_STAT_LABELS } from '@/shared/inventoryShared';
 import InventoryGridComponent, { ExternalDropSource } from './InventoryGrid';
 import ItemDetailsPanel from './ItemDetailsPanel';
 
@@ -25,6 +25,7 @@ interface BridgeSectionProps {
 const BridgeSection: React.FC<BridgeSectionProps> = ({ refreshTrigger, onCrossTransferDone, onDragStart, onDragEnd }) => {
   const [maxBridgeSlots, setMaxBridgeSlots] = useState<number>(0);
   const [grid, setGrid] = useState<BridgeGrid>([]);
+  const [bonuses, setBonuses] = useState<Partial<Record<CommanderStatKey, number>>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<SlotCoordinate | null>(null);
@@ -48,6 +49,7 @@ const BridgeSection: React.FC<BridgeSectionProps> = ({ refreshTrigger, onCrossTr
       const data = await response.json();
       setMaxBridgeSlots(data.maxBridgeSlots ?? 0);
       setGrid(data.grid ?? []);
+      setBonuses(data.bonuses ?? {});
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load bridge');
     } finally {
@@ -219,6 +221,20 @@ const BridgeSection: React.FC<BridgeSectionProps> = ({ refreshTrigger, onCrossTr
               <p>Drag a commander here from Inventory, or click an assigned commander to see details.</p>
             </div>
           )}
+        </div>
+      )}
+
+      {!isLoading && !error && Object.keys(bonuses).length > 0 && (
+        <div className="bridge-bonuses">
+          <h3 className="bridge-bonuses-heading">Crew Bonuses</h3>
+          <ul className="bridge-bonuses-list">
+            {(Object.keys(bonuses) as CommanderStatKey[]).map((stat) => (
+              <li key={stat} className="bridge-bonus-item">
+                <span className="bonus-stat">{COMMANDER_STAT_LABELS[stat]}</span>
+                <span className="bonus-value">+{bonuses[stat]!.toFixed(2)}%</span>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
     </section>
