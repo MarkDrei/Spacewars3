@@ -21,6 +21,32 @@ export const COMMANDER_STAT_KEYS: CommanderStatKey[] = [
   'energyWeaponAccuracy',
 ];
 
+// ---------------------------------------------------------------------------
+// Naming support
+// ---------------------------------------------------------------------------
+// Two separate first-name pools; one for male commanders and one for female.
+// Each array currently contains 20 entries. New names can be appended freely
+// and the random logic will adapt automatically because it uses `.length`.
+const MALE_FIRST_NAMES = [
+  'Astra', 'Orion', 'Cassius', 'Zane', 'Lucian',
+  'Talon', 'Rhett', 'Dax', 'Jace', 'Kael',
+  'Kade', 'Rian', 'Soren', 'Thane', 'Vance',
+  'Wade', 'Xander', 'Yuri', 'Zeke', 'Zen',
+];
+const FEMALE_FIRST_NAMES = [
+  'Nova', 'Lyra', 'Zara', 'Kira', 'June',
+  'Eos', 'Vega', 'Rhea', 'Luna', 'Iris',
+  'Mira', 'Seren', 'Faye', 'Nyx', 'Aura',
+  'Sierra', 'Lola', 'Fox', 'Maya', 'Xena',
+];
+const LAST_NAMES = [
+  'Stark', 'Vale', 'Quinn', 'Drake', 'Black',
+  'Storm', 'Skye', 'Reyes', 'Atlas', 'Grant',
+  'Blaze', 'Knight', 'Mercer', 'Stone', 'Frost',
+  'Hale', 'Bishop', 'Wilde', 'Paige', 'Rhodes',
+];
+const MIDDLE_NAMES = Array.from({ length: 26 }, (_, i) => String.fromCharCode(65 + i));
+
 /**
  * A stat bonus for a single stat, value in percent (0.1 .. 1.0).
  */
@@ -105,14 +131,51 @@ export class Commander {
    * @param rng  Optional random-number generator (returns [0,1)). Defaults to Math.random.
    */
   static random(name = 'Commander', rng: () => number = Math.random): Commander {
+    // build stats as before
     const statCount = Commander.rollStatCount(rng);
     const chosenStats = Commander.sampleStats(statCount, rng);
     const bonuses: CommanderStatBonus[] = chosenStats.map(stat => ({
       stat,
       value: Commander.rollStatValue(rng),
     }));
-    const imageId = Math.floor(rng() * 10);
-    return new Commander(name, imageId, bonuses);
+
+    let finalName = name;
+    let imageId: number;
+
+    if (!name || name === 'Commander') {
+      const result = Commander.generateRandomName(rng);
+      finalName = result.name;
+      imageId = result.imageId;
+    } else {
+      // explicit name, assign any picture id as before
+      imageId = Math.floor(rng() * 10);
+    }
+
+    return new Commander(finalName, imageId, bonuses);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Naming helpers
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Construct a three‑part name using the provided RNG.  The lists above may be
+   * extended without changing this function.  A gender flip is chosen at
+   * random; male names use the male list and produce an even imageId, while
+   * female names use the female list and produce an odd imageId.  The returned
+   * object contains both the generated name and the associated picture id.
+   */
+  private static generateRandomName(rng: () => number): { name: string; imageId: number } {
+    const isMale = rng() < 0.5;
+    const firstList = isMale ? MALE_FIRST_NAMES : FEMALE_FIRST_NAMES;
+    const first = firstList[Math.floor(rng() * firstList.length)];
+    const middle = MIDDLE_NAMES[Math.floor(rng() * MIDDLE_NAMES.length)];
+    const last = LAST_NAMES[Math.floor(rng() * LAST_NAMES.length)];
+
+    // choose an index 0..4 then apply parity
+    const idx = Math.floor(rng() * 5);
+    const imageId = isMale ? idx * 2 : idx * 2 + 1;
+    return { name: `${first} ${middle} ${last}`, imageId };
   }
 
   // ---------------------------------------------------------------------------

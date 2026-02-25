@@ -81,9 +81,35 @@ describe('Commander', () => {
   });
 
   describe('random', () => {
-    test('random_defaultName_usesCommanderFallback', () => {
+    test('random_defaultName_generatesCompositeName_withParity', () => {
       const commander = Commander.random();
-      expect(commander.name).toBe('Commander');
+      const parts = commander.name.split(' ');
+      expect(parts.length).toBe(3);
+      expect(commander.name).not.toBe('Commander');
+
+      // choose expected parity based on whether the first name is in the male
+      // or female list.  Replicate the same name lists here for verification.
+      const maleFirst = [
+        'Astra', 'Orion', 'Cassius', 'Zane', 'Lucian',
+        'Talon', 'Rhett', 'Dax', 'Jace', 'Kael',
+        'Kade', 'Rian', 'Soren', 'Thane', 'Vance',
+        'Wade', 'Xander', 'Yuri', 'Zeke', 'Zen',
+      ];
+      const femaleFirst = [
+        'Nova', 'Lyra', 'Zara', 'Kira', 'Juno',
+        'Eos', 'Vega', 'Rhea', 'Luna', 'Iris',
+        'Mira', 'Seren', 'Faye', 'Nyx', 'Aura',
+        'Sierra', 'Lola', 'Quinn', 'Maya', 'Xena',
+      ];
+      const first = parts[0];
+      if (maleFirst.includes(first)) {
+        expect(commander.imageId % 2).toBe(0);
+      } else if (femaleFirst.includes(first)) {
+        expect(commander.imageId % 2).toBe(1);
+      } else {
+        // some unexpected name? fail so we can update lists
+        throw new Error(`Unknown first name generated: ${first}`);
+      }
     });
 
     test('random_customName_usesProvidedName', () => {
@@ -123,31 +149,37 @@ describe('Commander', () => {
     });
 
     test('random_deterministicWithSeededRng_oneStat', () => {
-      // rng always returns 0.0 → statCount = 1 (0.0 < 0.6), stat index 0, value step 1 → 0.1
+      // rng always returns 0.0 → gender = male, name = "Astra A Stark", imageId=0 (even)
       const rng = () => 0.0;
-      const commander = Commander.random('Seeded', rng);
+      const commander = Commander.random(undefined, rng);
       expect(commander.statBonuses).toHaveLength(1);
       expect(commander.statBonuses[0].stat).toBe(COMMANDER_STAT_KEYS[0]);
       expect(commander.statBonuses[0].value).toBe(0.1);
+      expect(commander.name).toMatch(/^Astra A Stark$/);
+      expect(commander.imageId % 2).toBe(0);
     });
 
     test('random_deterministicWithSeededRng_twoStats', () => {
       // First call (stat count): 0.85 → 2 stats (0.6 <= 0.85 < 0.9)
-      // Subsequent calls alternate between 0.0 (pick idx 0) and 0.5 (value mid-range)
+      // the very first RNG call is for gender; in this sequence the next value
+      // is 0.0 so gender=male and the resulting imageId should be even.
       const values = [0.85, 0.0, 0.49, 0.0, 0.49];
       let idx = 0;
       const rng = () => values[idx++] ?? 0.0;
-      const commander = Commander.random('TwoStat', rng);
+      const commander = Commander.random(undefined, rng);
       expect(commander.statBonuses).toHaveLength(2);
+      expect(commander.name.split(' ').length).toBe(3);
+      expect(commander.imageId % 2).toBe(0);
     });
 
     test('random_deterministicWithSeededRng_threeStats', () => {
-      // First call: 0.95 → 3 stats
+      // First call: 0.95 → 3 stats. Next value 0.0 for gender -> male
       const values = [0.95, 0.0, 0.49, 0.0, 0.49, 0.0, 0.49];
       let idx = 0;
       const rng = () => values[idx++] ?? 0.0;
-      const commander = Commander.random('ThreeStat', rng);
+      const commander = Commander.random(undefined, rng);
       expect(commander.statBonuses).toHaveLength(3);
+      expect(commander.imageId % 2).toBe(0);
     });
 
     test('random_statDistribution_approximatelyCorrect', () => {
