@@ -168,6 +168,30 @@
   }
 }
 
+/* -------------------------------------------------------------
+   Auto‑drop zone shown during mobile drag operations
+   ------------------------------------------------------------- */
+.auto-drop-zone {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: rgba(33, 150, 243, 0.15);
+  color: #ffffff;
+  border: 2px dashed #2196f3;
+  padding: 1rem 2rem;
+  border-radius: 8px;
+  z-index: 1000;
+  font-weight: bold;
+  text-align: center;
+  transition: background-color 0.2s, border-color 0.2s;
+}
+
+.auto-drop-zone.drag-over {
+  background-color: rgba(33, 150, 243, 0.35);
+  border-color: #81d4fa;
+}
+
 
 /* ============================================================
    Bridge Section

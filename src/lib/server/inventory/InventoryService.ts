@@ -390,6 +390,71 @@ export class InventoryService {
   }
 
   /**
+   * Move an item from an inventory slot to the first available bridge slot.
+   * Returns the destination slot that was used.
+   * Throws BridgeFullError if no free bridge slot is available.
+   */
+  async moveInventoryToBridgeFirstFree(
+    userId: number,
+    from: SlotCoordinate,
+    maxInventorySlots: number,
+    maxBridgeSlots: number
+  ): Promise<SlotCoordinate> {
+    if (!isValidSlot(from, maxInventorySlots)) throw new InventorySlotInvalidError(from);
+
+    const ctx = createLockContext();
+    return ctx.useLockWithAcquire(USER_INVENTORY_LOCK, async (lockCtx) => {
+      const inventory = await this.loadOrCreate(lockCtx, userId, maxInventorySlots);
+      const bridge = await this.loadOrCreateBridge(lockCtx, userId, maxBridgeSlots);
+
+      const item = inventory[from.row][from.col];
+      if (item === null) throw new InventorySlotEmptyError(from);
+      if (!isBridgeCompatible(item)) throw new BridgeItemIncompatibleError();
+
+      const slot = this.findFirstFreeBridgeSlot(bridge, maxBridgeSlots);
+      if (!slot) throw new BridgeFullError();
+
+      inventory[from.row][from.col] = null;
+      bridge[slot.row][slot.col] = item;
+      await this.repo.saveInventory(lockCtx, userId, inventory);
+      await this.repo.saveBridge(lockCtx, userId, bridge);
+      return slot;
+    });
+  }
+
+  /**
+   * Move an item from a bridge slot to the first available inventory slot.
+   * Returns the destination slot that was used.
+   * Throws InventoryFullError if no free inventory slot is available.
+   */
+  async moveBridgeToInventoryFirstFree(
+    userId: number,
+    from: SlotCoordinate,
+    maxBridgeSlots: number,
+    maxInventorySlots: number
+  ): Promise<SlotCoordinate> {
+    if (!isValidBridgeSlot(from, maxBridgeSlots)) throw new BridgeSlotInvalidError(from);
+
+    const ctx = createLockContext();
+    return ctx.useLockWithAcquire(USER_INVENTORY_LOCK, async (lockCtx) => {
+      const bridge = await this.loadOrCreateBridge(lockCtx, userId, maxBridgeSlots);
+      const inventory = await this.loadOrCreate(lockCtx, userId, maxInventorySlots);
+
+      const item = bridge[from.row][from.col];
+      if (item === null) throw new BridgeSlotEmptyError(from);
+
+      const slot = this.findFirstFreeSlot(inventory, maxInventorySlots);
+      if (!slot) throw new InventoryFullError();
+
+      bridge[from.row][from.col] = null;
+      inventory[slot.row][slot.col] = item;
+      await this.repo.saveBridge(lockCtx, userId, bridge);
+      await this.repo.saveInventory(lockCtx, userId, inventory);
+      return slot;
+    });
+  }
+
+  /**
    * Move an item from a bridge slot to an inventory slot atomically.
    */
   async moveBridgeToInventory(

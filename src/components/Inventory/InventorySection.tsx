@@ -15,9 +15,12 @@ interface InventorySectionProps {
   refreshTrigger?: number;
   /** Called after a successful bridge→inventory cross-transfer so the bridge can refresh. */
   onCrossTransferDone?: () => void;
+  /** Optional callbacks to inform a parent when a drag begins/ends inside the grid. */
+  onDragStart?: (source: ExternalDropSource) => void;
+  onDragEnd?: () => void;
 }
 
-const InventorySection: React.FC<InventorySectionProps> = ({ refreshTrigger, onCrossTransferDone }) => {
+const InventorySection: React.FC<InventorySectionProps> = ({ refreshTrigger, onCrossTransferDone, onDragStart, onDragEnd }) => {
   const [maxSlots, setMaxSlots] = useState<number>(DEFAULT_INVENTORY_SLOTS);
   const [grid, setGrid] = useState<InventoryGridType>(makeEmptyGrid(DEFAULT_INVENTORY_SLOTS));
   const [isLoading, setIsLoading] = useState(true);
@@ -185,6 +188,8 @@ const InventorySection: React.FC<InventorySectionProps> = ({ refreshTrigger, onC
             maxSlots={maxSlots}
             gridKey="inventory"
             onExternalDrop={handleExternalDrop}
+            onDragStartExternal={onDragStart}
+            onDragEndExternal={onDragEnd}
           />
           {selectedItem !== null && selectedSlot !== null ? (
             <ItemDetailsPanel

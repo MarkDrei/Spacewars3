@@ -21,6 +21,13 @@ const ShipPageClient: React.FC<ShipPageClientProps> = () => {
   // Cross-refresh triggers: bump to force the other section to re-fetch
   const [invRefreshKey, setInvRefreshKey] = useState(0);
   const [bridgeRefreshKey, setBridgeRefreshKey] = useState(0);
+  // drag-tracking used to display a global "auto drop" zone on mobile
+  const [dragSource, setDragSource] = useState<{
+    gridKey: string;
+    row: number;
+    col: number;
+  } | null>(null);
+  const [isDropZoneOver, setIsDropZoneOver] = useState(false);
 
   useEffect(() => {
     // Dynamically detect available ship images
@@ -119,12 +126,60 @@ const ShipPageClient: React.FC<ShipPageClientProps> = () => {
           <InventorySection
             refreshTrigger={invRefreshKey}
             onCrossTransferDone={() => setBridgeRefreshKey((k) => k + 1)}
+            onDragStart={(src) => setDragSource(src)}
+            onDragEnd={() => setDragSource(null)}
           />
 
           <BridgeSection
             refreshTrigger={bridgeRefreshKey}
             onCrossTransferDone={() => setInvRefreshKey((k) => k + 1)}
+            onDragStart={(src) => setDragSource(src)}
+            onDragEnd={() => setDragSource(null)}
           />
+
+          {dragSource && (
+            <div
+              className={`auto-drop-zone ${isDropZoneOver ? 'drag-over' : ''}`}
+              onDragOver={(e) => {
+                e.preventDefault();
+                setIsDropZoneOver(true);
+                e.dataTransfer.dropEffect = 'move';
+              }}
+              onDragLeave={() => setIsDropZoneOver(false)}
+              onDrop={async (e) => {
+                e.preventDefault();
+                setIsDropZoneOver(false);
+                if (!dragSource) return;
+                // figure out which direction we need to transfer
+                const direction =
+                  dragSource.gridKey === 'inventory' ? 'inventoryToBridge' : 'bridgeToInventory';
+                try {
+                  const response = await fetch('/api/bridge/transfer/auto', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ direction, from: { row: dragSource.row, col: dragSource.col } }),
+                  });
+                  const data = await response.json();
+                  if (response.ok && data.success) {
+                    setMessage('✅ Assigned to first free slot');
+                    // trigger refresh of both sections so they reflect change
+                    setInvRefreshKey((k) => k + 1);
+                    setBridgeRefreshKey((k) => k + 1);
+                  } else {
+                    setMessage(`❌ ${data.error || 'Transfer failed'}`);
+                  }
+                } catch (err) {
+                  console.error('Auto transfer error', err);
+                  setMessage('❌ Transfer failed. Please try again.');
+                }
+                setDragSource(null);
+              }}
+            >
+              {dragSource.gridKey === 'inventory'
+                ? 'Drop here to auto‑assign to bridge' 
+                : 'Drop here to auto‑return to inventory'}
+            </div>
+          )}
 
           <section className="ship-selection-section">
             <p className="ship-selection-intro">

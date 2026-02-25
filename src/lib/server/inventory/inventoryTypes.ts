@@ -131,5 +131,7 @@ export function isValidBridgeSlot(slot: SlotCoordinate, maxSlots: number): boole
  * when new item types that cannot be assigned to the bridge are introduced.
  */
 export function isBridgeCompatible(_item: InventoryItemData): boolean {
+  // parameter intentionally unused until new item types are added
+  void _item;
   return true;
 }

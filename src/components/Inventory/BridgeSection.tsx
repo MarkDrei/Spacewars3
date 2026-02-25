@@ -17,9 +17,12 @@ interface BridgeSectionProps {
   refreshTrigger?: number;
   /** Called after a successful inventory→bridge cross-transfer so the inventory can refresh. */
   onCrossTransferDone?: () => void;
+  /** Propagate drag start/end events so a parent can show global drop zones. */
+  onDragStart?: (source: ExternalDropSource) => void;
+  onDragEnd?: () => void;
 }
 
-const BridgeSection: React.FC<BridgeSectionProps> = ({ refreshTrigger, onCrossTransferDone }) => {
+const BridgeSection: React.FC<BridgeSectionProps> = ({ refreshTrigger, onCrossTransferDone, onDragStart, onDragEnd }) => {
   const [maxBridgeSlots, setMaxBridgeSlots] = useState<number>(0);
   const [grid, setGrid] = useState<BridgeGrid>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -201,6 +204,8 @@ const BridgeSection: React.FC<BridgeSectionProps> = ({ refreshTrigger, onCrossTr
             gridKey="bridge"
             cols={BRIDGE_COLS}
             onExternalDrop={handleExternalDrop}
+            onDragStartExternal={onDragStart}
+            onDragEndExternal={onDragEnd}
           />
           {selectedItem !== null && selectedSlot !== null ? (
             <ItemDetailsPanel
