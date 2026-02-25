@@ -15,7 +15,7 @@ const CommanderDetails: React.FC<{ data: CommanderData }> = ({ data }) => (
   <div className="item-details-commander">
     <div className="item-details-image-wrap">
       <Image
-        src="/assets/images/inventory/commander.png"
+        src={`/assets/images/inventory/commander${data.imageId}.png`}
         alt={data.name}
         width={80}
         height={80}

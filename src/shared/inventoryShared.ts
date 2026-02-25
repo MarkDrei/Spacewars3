@@ -31,6 +31,8 @@ export interface CommanderStatBonus {
 export interface CommanderData {
   readonly itemType: 'commander';
   readonly name: string;
+  /** Image identifier 0..9 that determines which commander image to display */
+  readonly imageId: number;
   readonly statBonuses: CommanderStatBonus[];
 }
 

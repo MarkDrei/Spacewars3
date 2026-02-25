@@ -289,13 +289,13 @@ class User {
 
     switch (objectType) {
       case 'asteroid':
-        // Asteroids yield between 50-250 iron
-        ironReward = Math.floor(Math.random() * (250 - 50 + 1)) + 50;
+        // Asteroids yield between 50-700 iron
+        ironReward = Math.floor(Math.random() * (700 - 50 + 1)) + 50;
         break;
 
       case 'shipwreck':
-        // Shipwrecks yield between 50-1000 iron
-        ironReward = Math.floor(Math.random() * (1000 - 50 + 1)) + 50;
+        // Shipwrecks yield between 50-2000 iron
+        ironReward = Math.floor(Math.random() * (2000 - 50 + 1)) + 50;
         break;
 
       case 'escape_pod':

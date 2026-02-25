@@ -48,7 +48,7 @@ function createTestUser(
 
 describe('User Collection Rewards', () => {
 
-  test('collected_asteroid_awardsRandomIronBetween50And250', () => {
+  test('collected_asteroid_awardsRandomIronBetween50And700', () => {
     // Arrange
     const user = createTestUser(1, 'testuser', 1000);
 
@@ -60,11 +60,11 @@ describe('User Collection Rewards', () => {
     // Assert
     const ironGained = user.iron - initialIron;
     expect(ironGained).toBeGreaterThanOrEqual(50);
-    expect(ironGained).toBeLessThanOrEqual(250);
+    expect(ironGained).toBeLessThanOrEqual(700);
     expect(user.iron).toBeGreaterThan(initialIron);
   });
 
-  test('collected_shipwreck_awardsRandomIronBetween50And1000', () => {
+  test('collected_shipwreck_awardsRandomIronBetween50And2000', () => {
     // Arrange
     const user = createTestUser(2, 'testuser2', 500);
 
@@ -76,7 +76,7 @@ describe('User Collection Rewards', () => {
     // Assert
     const ironGained = user.iron - initialIron;
     expect(ironGained).toBeGreaterThanOrEqual(50);
-    expect(ironGained).toBeLessThanOrEqual(1000);
+    expect(ironGained).toBeLessThanOrEqual(2000);
     expect(user.iron).toBeGreaterThan(initialIron);
   });
 
@@ -110,7 +110,7 @@ describe('User Collection Rewards', () => {
     // Assert - all rewards should be in range and vary
     rewards.forEach(reward => {
       expect(reward).toBeGreaterThanOrEqual(50);
-      expect(reward).toBeLessThanOrEqual(250);
+      expect(reward).toBeLessThanOrEqual(700);
     });
 
     // Check that we got some variation (not all the same)
@@ -135,7 +135,7 @@ describe('User Collection Rewards', () => {
     // Assert - all rewards should be in range
     rewards.forEach(reward => {
       expect(reward).toBeGreaterThanOrEqual(50);
-      expect(reward).toBeLessThanOrEqual(1000);
+      expect(reward).toBeLessThanOrEqual(2000);
     });
 
     // Check that total iron is sum of all rewards
@@ -164,7 +164,7 @@ describe('User Collection Rewards', () => {
     expect(ironAfterAsteroid).toBeGreaterThan(initialIron);
     const asteroidReward = ironAfterAsteroid - initialIron;
     expect(asteroidReward).toBeGreaterThanOrEqual(50);
-    expect(asteroidReward).toBeLessThanOrEqual(250);
+    expect(asteroidReward).toBeLessThanOrEqual(700);
 
     // Escape pod should give no iron
     expect(ironAfterEscapePod).toBe(ironAfterAsteroid);
@@ -173,7 +173,7 @@ describe('User Collection Rewards', () => {
     expect(finalIron).toBeGreaterThan(ironAfterEscapePod);
     const shipwreckReward = finalIron - ironAfterEscapePod;
     expect(shipwreckReward).toBeGreaterThanOrEqual(50);
-    expect(shipwreckReward).toBeLessThanOrEqual(1000);
+    expect(shipwreckReward).toBeLessThanOrEqual(2000);
   });
 
   test('collected_unknownObjectType_awardsNoIron', () => {

@@ -87,6 +87,10 @@
 - Use `docker-compose up db -d` to start PostgreSQL locally for development
 - Use `docker-compose up db-test -d` to start PostgreSQL test database (port 5433)
 
+Note for Codespaces / Devcontainers:
+
+- See `.devcontainer/README.md` for concise instructions on starting the database and running tests from inside the devcontainer. The file explains when to run `docker compose` on the host versus running tests inside the container, and links to `./.devcontainer/init-db.sh` which the test runner calls.
+
 ## Testing
 
 - All business logic must be covered by unit tests

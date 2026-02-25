@@ -21,6 +21,7 @@ import {
   InventorySlotEmptyError,
   InventorySlotInvalidError,
   InventorySlotOccupiedError,
+  InventoryFullError,
 } from '@/lib/server/inventory/InventoryService';
 import { Commander } from '@/lib/server/inventory/Commander';
 
@@ -352,6 +353,110 @@ describe('InventoryService – Bridge', () => {
           USER_ID, INV_SLOT_0_0, { row: 5, col: 0 }, MAX_INVENTORY_SLOTS, MAX_BRIDGE_SLOTS_1
         )
       ).rejects.toThrow(BridgeSlotInvalidError);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // moveInventoryToBridgeFirstFree
+  // -------------------------------------------------------------------------
+
+  describe('moveInventoryToBridgeFirstFree', () => {
+    test('validMove_movesItemAndReturnsSlot', async () => {
+      const item = makeCommander('Admiral');
+      const inventory = createEmptyInventoryGrid(MAX_INVENTORY_SLOTS);
+      inventory[0][0] = item;
+      const bridge = createEmptyBridgeGrid(MAX_BRIDGE_SLOTS_1);
+      repo = makeMockRepo(inventory, bridge);
+      service = new InventoryService(repo);
+
+      const dest = await service.moveInventoryToBridgeFirstFree(
+        USER_ID, INV_SLOT_0_0, MAX_INVENTORY_SLOTS, MAX_BRIDGE_SLOTS_1
+      );
+      expect(dest).toEqual(BRIDGE_SLOT_0_0);
+      expect(repo._getStoredInventory()![0][0]).toBeNull();
+      expect(repo._getStoredBridge()![0][0]).toEqual(item);
+    });
+
+    test('emptySource_throwsInventorySlotEmptyError', async () => {
+      repo = makeMockRepo(createEmptyInventoryGrid(MAX_INVENTORY_SLOTS), createEmptyBridgeGrid(MAX_BRIDGE_SLOTS_1));
+      service = new InventoryService(repo);
+
+      await expect(
+        service.moveInventoryToBridgeFirstFree(
+          USER_ID, INV_SLOT_0_0, MAX_INVENTORY_SLOTS, MAX_BRIDGE_SLOTS_1
+        )
+      ).rejects.toThrow(InventorySlotEmptyError);
+    });
+
+    test('fullBridge_throwsBridgeFullError', async () => {
+      const inventory = createEmptyInventoryGrid(MAX_INVENTORY_SLOTS);
+      inventory[0][0] = makeCommander();
+      const bridge = createEmptyBridgeGrid(MAX_BRIDGE_SLOTS_1);
+      for (let r = 0; r < bridge.length; r++) {
+        for (let c = 0; c < bridge[r].length; c++) {
+          bridge[r][c] = makeCommander();
+        }
+      }
+      repo = makeMockRepo(inventory, bridge);
+      service = new InventoryService(repo);
+
+      await expect(
+        service.moveInventoryToBridgeFirstFree(
+          USER_ID, INV_SLOT_0_0, MAX_INVENTORY_SLOTS, MAX_BRIDGE_SLOTS_1
+        )
+      ).rejects.toThrow(BridgeFullError);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // moveBridgeToInventoryFirstFree
+  // -------------------------------------------------------------------------
+
+  describe('moveBridgeToInventoryFirstFree', () => {
+    test('validMove_movesItemAndReturnsSlot', async () => {
+      const item = makeCommander('Captain');
+      const bridge = createEmptyBridgeGrid(MAX_BRIDGE_SLOTS_1);
+      bridge[0][0] = item;
+      const inventory = createEmptyInventoryGrid(MAX_INVENTORY_SLOTS);
+      repo = makeMockRepo(inventory, bridge);
+      service = new InventoryService(repo);
+
+      const dest = await service.moveBridgeToInventoryFirstFree(
+        USER_ID, BRIDGE_SLOT_0_0, MAX_BRIDGE_SLOTS_1, MAX_INVENTORY_SLOTS
+      );
+      expect(dest).toEqual(INV_SLOT_0_0);
+      expect(repo._getStoredBridge()![0][0]).toBeNull();
+      expect(repo._getStoredInventory()![0][0]).toEqual(item);
+    });
+
+    test('emptyBridgeSlot_throwsBridgeSlotEmptyError', async () => {
+      repo = makeMockRepo(createEmptyInventoryGrid(MAX_INVENTORY_SLOTS), createEmptyBridgeGrid(MAX_BRIDGE_SLOTS_1));
+      service = new InventoryService(repo);
+
+      await expect(
+        service.moveBridgeToInventoryFirstFree(
+          USER_ID, BRIDGE_SLOT_0_0, MAX_BRIDGE_SLOTS_1, MAX_INVENTORY_SLOTS
+        )
+      ).rejects.toThrow(BridgeSlotEmptyError);
+    });
+
+    test('fullInventory_throwsInventoryFullError', async () => {
+      const bridge = createEmptyBridgeGrid(MAX_BRIDGE_SLOTS_1);
+      bridge[0][0] = makeCommander();
+      const inventory = createEmptyInventoryGrid(MAX_INVENTORY_SLOTS);
+      for (let r = 0; r < inventory.length; r++) {
+        for (let c = 0; c < inventory[r].length; c++) {
+          inventory[r][c] = makeCommander();
+        }
+      }
+      repo = makeMockRepo(inventory, bridge);
+      service = new InventoryService(repo);
+
+      await expect(
+        service.moveBridgeToInventoryFirstFree(
+          USER_ID, BRIDGE_SLOT_0_0, MAX_BRIDGE_SLOTS_1, MAX_INVENTORY_SLOTS
+        )
+      ).rejects.toThrow(InventoryFullError);
     });
   });
 

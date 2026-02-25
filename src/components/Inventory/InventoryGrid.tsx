@@ -23,6 +23,10 @@ interface InventoryGridProps {
   cols?: number;
   /** Called when an item is dropped from a different grid (gridKey mismatch). */
   onExternalDrop?: (from: ExternalDropSource, to: SlotCoordinate) => void;
+  /** Notifies parent that dragging has started for a slot. */
+  onDragStartExternal?: (source: ExternalDropSource) => void;
+  /** Notifies parent that dragging has ended (either drop or cancel). */
+  onDragEndExternal?: () => void;
 }
 
 const InventoryGridComponent: React.FC<InventoryGridProps> = ({
@@ -34,6 +38,8 @@ const InventoryGridComponent: React.FC<InventoryGridProps> = ({
   gridKey = 'inventory',
   cols: colsProp,
   onExternalDrop,
+  onDragStartExternal,
+  onDragEndExternal,
 }) => {
   const cols = colsProp ?? INVENTORY_COLS;
   const rows = Math.ceil(maxSlots / cols);
@@ -56,9 +62,11 @@ const InventoryGridComponent: React.FC<InventoryGridProps> = ({
       e.preventDefault();
       return;
     }
+    const source = { gridKey, row, col };
     setDragSource({ row, col });
     e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', JSON.stringify({ gridKey, row, col }));
+    e.dataTransfer.setData('text/plain', JSON.stringify(source));
+    onDragStartExternal?.(source);
   };
 
   const handleDragOver = (e: React.DragEvent, row: number, col: number) => {
@@ -106,6 +114,7 @@ const InventoryGridComponent: React.FC<InventoryGridProps> = ({
   const handleDragEnd = () => {
     setDragSource(null);
     setDragOver(null);
+    onDragEndExternal?.();
   };
 
   const handleClick = (row: number, col: number) => {
@@ -142,7 +151,11 @@ const InventoryGridComponent: React.FC<InventoryGridProps> = ({
             >
               {item !== null ? (
                 <Image
-                  src={`/assets/images/inventory/${item.itemType}.png`}
+                  src={
+                    item.itemType === 'commander'
+                      ? `/assets/images/inventory/commander${item.imageId}.png`
+                      : `/assets/images/inventory/${item.itemType}.png`
+                  }
                   alt={item.itemType === 'commander' ? item.name : item.itemType}
                   width={48}
                   height={48}

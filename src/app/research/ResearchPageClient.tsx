@@ -9,6 +9,7 @@ import { globalEvents, EVENTS } from '@/lib/client/services/eventService';
 import { ServerAuthState } from '@/lib/server/serverSession';
 import { AllResearches, getResearchUpgradeCost, getResearchEffect } from '@/lib/server/techs/techtree';
 import './ResearchPage.css';
+import ResearchCardOverlay from '@/components/Research/ResearchCardOverlay';
 
 const researchTypeToKey: Record<ResearchType, keyof TechTree> = {
   IronHarvesting: 'ironHarvesting',
@@ -623,6 +624,15 @@ const ResearchPageClient: React.FC<ResearchPageClientProps> = () => {
                               height={288}
                               className="research-image" 
                             />
+                            {/* overlay message when this card is active or locked by another research */}
+                            {(() => {
+                              const overlayText = isActive
+                                ? '✅ In Progress'
+                                : isAnyResearchActive
+                                ? 'Other Research In Progress'
+                                : null;
+                              return overlayText ? <ResearchCardOverlay text={overlayText} /> : null;
+                            })()}
                           </div>
                           <div className="card-header">
                             <div className="card-title">{research.name}</div>
@@ -662,14 +672,26 @@ const ResearchPageClient: React.FC<ResearchPageClientProps> = () => {
                           </div>
                           <div className="card-actions">
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <button
-                                className="build-button"
-                                disabled={!canUpgrade}
-                                onClick={() => handleTriggerResearch(type)}
-                              >
-                                {isActive ? 'Researching...' : isTriggering ? 'Triggering...' : 'Research'}
-                              </button>
-                              <CostTooltip research={research} currentLevel={level} />
+                              {isActive ? (
+                                // when this specific research is active we no longer show a button;
+                                // instead render the remaining countdown using the same styling we
+                                // already use in the table view.  (formatDuration is stubbed during
+                                // tests and will update as `remaining` state changes.)
+                                <div className="research-countdown">
+                                  {remaining !== null ? researchService.formatDuration(remaining) : 'Active'}
+                                </div>
+                              ) : (
+                                <>
+                                  <button
+                                    className="build-button"
+                                    disabled={!canUpgrade}
+                                    onClick={() => handleTriggerResearch(type)}
+                                  >
+                                    {isTriggering ? 'Triggering...' : 'Research'}
+                                  </button>
+                                  <CostTooltip research={research} currentLevel={level} />
+                                </>
+                              )}
                             </div>
                           </div>
                         </div>

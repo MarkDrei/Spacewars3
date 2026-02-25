@@ -55,7 +55,7 @@ describe('MessageCache - Persistence After Summarization', () => {
       // Create some battle messages
       await messageCache.createMessage(ctx, userId, 'P: ⚔️ Your **pulse laser** fired 5 shot(s), **3 hit** for **24 damage**! Enemy: Hull: 262, Armor: 0, Shield: 0');
       await messageCache.createMessage(ctx, userId, 'N: 🛡️ Enemy **pulse laser** fired 1 shot(s), **1 hit** you for **8 damage**! Your defenses: Hull: 600, Armor: 600, Shield: 288');
-      await messageCache.createMessage(ctx, userId, 'P: 🎉 **Victory!** You won the battle!');
+      await messageCache.createMessage(ctx, userId, 'P: 🎉 **Victory!** You won the battle! You gained 0 iron.');
 
       // Wait for async message creation to complete
       await messageCache.waitForPendingWrites();

@@ -5,7 +5,7 @@ import { UserCache } from '@/lib/server/user/userCache';
 import { sendMessageToUser } from '@/lib/server/messages/MessageCache';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth, ApiError } from '@/lib/server/errors';
-import { USER_LOCK, WORLD_LOCK } from '@/lib/server/typedLocks';
+import { USER_INVENTORY_LOCK, USER_LOCK, WORLD_LOCK } from '@/lib/server/typedLocks';
 import { User } from '@/lib/server/user/user';
 import { World } from '@/lib/server/world/world';
 import { WorldCache } from '@/lib/server/world/worldCache';
@@ -71,31 +71,32 @@ export async function POST(request: NextRequest) {
 
     // Step 2: If an escape pod was collected, handle commander inventory logic
     // (outside USER/WORLD locks since InventoryService acquires LOCK_5 internally)
-    if (collectionResult.escapePodCollected) {
-      const inventoryService = new InventoryService();
-      const commander = Commander.random();
-      let notificationMessage: string;
-      try {
-        await inventoryService.addItemToFirstFreeSlot(session.userId!, commander.toJSON());
-        const bonusDesc = commander.statBonuses
-          .map(b => `${b.stat} +${b.value}%`)
-          .join(', ');
-        notificationMessage = `P: 🚀 Escape pod collected! Commander **${commander.name}** rescued and added to inventory. Bonuses: ${bonusDesc}.`;
-      } catch (err) {
-        if (err instanceof InventoryFullError) {
+    await emptyCtx.useLockWithAcquire(USER_INVENTORY_LOCK, async (inventoryContext) => {
+      if (collectionResult.escapePodCollected) {
+        const inventoryService = new InventoryService();
+        const commander = Commander.random();
+        let notificationMessage: string;
+        try {
+          await inventoryService.addItemToFirstFreeSlotWithLock(inventoryContext, session.userId!, commander.toJSON());
           const bonusDesc = commander.statBonuses
             .map(b => `${b.stat} +${b.value}%`)
             .join(', ');
-          notificationMessage = `P: 🚀 Escape pod collected! Commander **${commander.name}** rescued but inventory is full — commander lost! Bonuses would have been: ${bonusDesc}.`;
-        } else {
-          throw err;
+          notificationMessage = `P: 🚀 Escape pod collected! Commander **${commander.name}** rescued and added to inventory. Bonuses: ${bonusDesc}.`;
+        } catch (err) {
+          if (err instanceof InventoryFullError) {
+            const bonusDesc = commander.statBonuses
+              .map(b => `${b.stat} +${b.value}%`)
+              .join(', ');
+            notificationMessage = `P: 🚀 Escape pod collected! Commander **${commander.name}** rescued but inventory is full — commander lost! Bonuses would have been: ${bonusDesc}.`;
+          } else {
+            throw err;
+          }
         }
+        sendMessageToUser(inventoryContext, session.userId!, notificationMessage).catch((error: Error) => {
+          console.error('❌ Failed to send commander notification:', error);
+        });
       }
-      const msgCtx = createLockContext();
-      sendMessageToUser(msgCtx, session.userId!, notificationMessage).catch((error: Error) => {
-        console.error('❌ Failed to send commander notification:', error);
-      });
-    }
+    });
 
     return collectionResult.response;
 

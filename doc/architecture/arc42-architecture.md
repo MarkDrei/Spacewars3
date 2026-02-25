@@ -147,11 +147,11 @@ graph TB
 
 **Page-Specific Shortcuts:**
 
-| Page     | Shortcuts                                            | Purpose                       |
-| -------- | ---------------------------------------------------- | ----------------------------- |
-| Home     | Battle, Messages, Progress, Defense, Tech, Cooldowns | Dashboard sections navigation |
-| Factory  | Queue, Defense, Projectile, Energy                   | Build categories quick access |
-| Research | Projectile, Energy, Defense, Ship, Spies             | Research tree navigation      |
+| Page     | Shortcuts                                 | Purpose                       |
+| -------- | ----------------------------------------- | ----------------------------- |
+| Home     | Battle, Messages, Progress, Defense, Tech | Dashboard sections navigation |
+| Factory  | Queue, Defense, Projectile, Energy        | Build categories quick access |
+| Research | Projectile, Energy, Defense, Ship, Spies  | Research tree navigation      |
 
 **Key Design Decisions:**
 

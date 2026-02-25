@@ -243,6 +243,17 @@ code {
   background-color: var(--primary-green-hover);
 }
 
+/* Cost Display Styles */
+.cost-affordable {
+  color: var(--primary-green);
+  font-weight: 500;
+}
+
+.cost-expensive {
+  color: #f44336;
+  font-weight: 500;
+}
+
 /* Mobile Bottom Navigation Padding */
 @media (max-width: 1280px) {
   /* Add padding to body to prevent content from being hidden by bottom nav */

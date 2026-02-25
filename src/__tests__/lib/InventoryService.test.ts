@@ -140,7 +140,7 @@ describe('InventoryService', () => {
   describe('addItemToFirstFreeSlot', () => {
     test('addItemToFirstFreeSlot_emptyInventory_placesAtSlot00', async () => {
       const item = makeCommander();
-      const slot = await service.addItemToFirstFreeSlot(USER_ID, item, TEST_MAX_SLOTS);
+      const slot = await service.addItemToFirstFreeSlotWithoutLock(USER_ID, item, TEST_MAX_SLOTS);
 
       expect(slot).toEqual(SLOT_0_0);
       expect(repo._getStored()![0][0]).toEqual(item);
@@ -154,7 +154,7 @@ describe('InventoryService', () => {
       repo = makeMockRepo(existing);
       service = new InventoryService(repo);
 
-      const slot = await service.addItemToFirstFreeSlot(USER_ID, makeCommander(), TEST_MAX_SLOTS);
+      const slot = await service.addItemToFirstFreeSlotWithoutLock(USER_ID, makeCommander(), TEST_MAX_SLOTS);
 
       expect(slot).toEqual({ row: 1, col: 0 });
     });
@@ -169,7 +169,7 @@ describe('InventoryService', () => {
       repo = makeMockRepo(full);
       service = new InventoryService(repo);
 
-      await expect(service.addItemToFirstFreeSlot(USER_ID, makeCommander(), TEST_MAX_SLOTS))
+      await expect(service.addItemToFirstFreeSlotWithoutLock(USER_ID, makeCommander(), TEST_MAX_SLOTS))
         .rejects.toThrow(InventoryFullError);
     });
 
@@ -179,7 +179,7 @@ describe('InventoryService', () => {
       repo = makeMockRepo(existing);
       service = new InventoryService(repo);
 
-      const slot = await service.addItemToFirstFreeSlot(USER_ID, makeCommander(), TEST_MAX_SLOTS);
+      const slot = await service.addItemToFirstFreeSlotWithoutLock(USER_ID, makeCommander(), TEST_MAX_SLOTS);
       expect(slot).toEqual(SLOT_0_1);
     });
   });
