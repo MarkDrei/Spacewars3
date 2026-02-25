@@ -106,17 +106,6 @@
   transform: translateY(1px);
 }
 
-/* Cost display */
-.cost-affordable {
-  color: var(--primary-green);
-  font-weight: 500;
-}
-
-.cost-expensive {
-  color: #f44336;
-  font-weight: 500;
-}
-
 /* Stats display */
 .stat-value {
   font-weight: 600;
