@@ -5,7 +5,7 @@
 // All public methods acquire USER_INVENTORY_LOCK internally.
 // ---
 
-import { createLockContext, LockContext, LOCK_5 } from '@markdrei/ironguard-typescript-locks';
+import { createLockContext, HasLock5Context, IronLocks, LockLevel } from '@markdrei/ironguard-typescript-locks';
 import { USER_INVENTORY_LOCK } from '../typedLocks';
 import { InventoryRepo } from './InventoryRepo';
 import {
@@ -154,22 +154,38 @@ export class InventoryService {
 
   /**
    * Add an item to the first free inventory slot (row-major order).
+   * Uses a provided lock context that already holds LOCK_5.
    * Throws InventoryFullError if no free slot is available.
    * Returns the slot coordinate where the item was placed.
    */
-  async addItemToFirstFreeSlot(
+  async addItemToFirstFreeSlotWithLock<THeld extends IronLocks>(
+    lockCtx: HasLock5Context<THeld>,
+    userId: number,
+    item: InventoryItemData,
+    maxSlots: number = DEFAULT_INVENTORY_SLOTS
+  ): Promise<SlotCoordinate> {
+    const grid = await this.loadOrCreate(lockCtx, userId, maxSlots);
+    const slot = this.findFirstFreeSlot(grid, maxSlots);
+    if (!slot) throw new InventoryFullError();
+    grid[slot.row][slot.col] = item;
+    await this.repo.saveInventory(lockCtx, userId, grid);
+    return slot;
+  }
+
+  /**
+   * Add an item to the first free inventory slot (row-major order).
+   * Creates its own lock context internally.
+   * Throws InventoryFullError if no free slot is available.
+   * Returns the slot coordinate where the item was placed.
+   */
+  async addItemToFirstFreeSlotWithoutLock(
     userId: number,
     item: InventoryItemData,
     maxSlots: number = DEFAULT_INVENTORY_SLOTS
   ): Promise<SlotCoordinate> {
     const ctx = createLockContext();
     return ctx.useLockWithAcquire(USER_INVENTORY_LOCK, async (lockCtx) => {
-      const grid = await this.loadOrCreate(lockCtx, userId, maxSlots);
-      const slot = this.findFirstFreeSlot(grid, maxSlots);
-      if (!slot) throw new InventoryFullError();
-      grid[slot.row][slot.col] = item;
-      await this.repo.saveInventory(lockCtx, userId, grid);
-      return slot;
+      return this.addItemToFirstFreeSlotWithLock(lockCtx, userId, item, maxSlots);
     });
   }
 
@@ -488,8 +504,8 @@ export class InventoryService {
   // Private helpers – Inventory
   // ---------------------------------------------------------------------------
 
-  private async loadOrCreate(
-    lockCtx: LockContext<readonly [typeof LOCK_5]>,
+  private async loadOrCreate<THeld extends readonly LockLevel[]>(
+    lockCtx: HasLock5Context<THeld>,
     userId: number,
     maxSlots: number
   ): Promise<InventoryGrid> {
@@ -512,8 +528,8 @@ export class InventoryService {
   // Private helpers – Bridge
   // ---------------------------------------------------------------------------
 
-  private async loadOrCreateBridge(
-    lockCtx: LockContext<readonly [typeof LOCK_5]>,
+  private async loadOrCreateBridge<THeld extends readonly LockLevel[]>(
+    lockCtx: HasLock5Context<THeld>,
     userId: number,
     maxBridgeSlots: number
   ): Promise<BridgeGrid> {
