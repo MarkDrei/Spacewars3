@@ -19,6 +19,7 @@ import { resolveBattle } from './battleService';
 import type { Battle, BattleEvent } from './battleTypes';
 import { DAMAGE_CALC_DEFAULTS } from './battleTypes';
 import { TechFactory, TechCounts } from '../techs/TechFactory';
+import { getWeaponDamageModifierFromTree, getWeaponAccuracyModifierFromTree } from '../techs/techtree';
 import { sendMessageToUser } from '../messages/MessageCache';
 import { getBattleCache } from './BattleCache';
 import { BATTLE_LOCK, USER_LOCK } from '../typedLocks';
@@ -308,9 +309,9 @@ async function fireWeapon(
       attackerUser.techCounts as TechCounts,
       defenderUser.shieldCurrent,
       defenderUser.armorCurrent,
-      DAMAGE_CALC_DEFAULTS.POSITIVE_ACCURACY_MODIFIER,
+      getWeaponAccuracyModifierFromTree(attackerUser.techTree, weaponType),
       DAMAGE_CALC_DEFAULTS.NEGATIVE_ACCURACY_MODIFIER,
-      DAMAGE_CALC_DEFAULTS.BASE_DAMAGE_MODIFIER,
+      getWeaponDamageModifierFromTree(attackerUser.techTree, weaponType),
       DAMAGE_CALC_DEFAULTS.ECM_EFFECTIVENESS,
       DAMAGE_CALC_DEFAULTS.SPREAD_VALUE
     );

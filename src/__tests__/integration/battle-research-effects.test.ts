@@ -7,6 +7,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { BattleCache, getBattleCache } from '../../lib/server/battle/BattleCache';
 import { UserCache } from '../../lib/server/user/userCache';
 import { TechFactory } from '../../lib/server/techs/TechFactory';
+import { getWeaponDamageModifierFromTree, getWeaponAccuracyModifierFromTree } from '../../lib/server/techs/techtree';
 import type { BattleStats, WeaponCooldowns } from '../../lib/server/battle/battleTypes';
 import { BATTLE_LOCK, USER_LOCK } from '@/lib/server/typedLocks';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
@@ -238,6 +239,197 @@ describe('Battle Research Effects Integration', () => {
             // Verify they're different (research only affected projectile)
             expect(Math.abs(projectileReload - energyReload)).toBeGreaterThan(0.5);
           });
+        });
+      });
+    });
+  });
+
+  describe('Research Effects on Battle Damage', () => {
+    it('damageResearch_projectileWeaponAtLevel2_increases15Percent', async () => {
+      await withTransaction(async () => {
+        await emptyCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
+          const attacker = (await userCache.getUserByUsername(userCtx, 'a'))!;
+
+          // Set projectile damage research to level 1 (default base)
+          attacker.techTree.projectileDamage = 1;
+          userCache.updateUserInCache(userCtx, attacker);
+
+          // At level 1, modifier should be 1.0 (100%, no bonus)
+          const baseDamageModifier = getWeaponDamageModifierFromTree(attacker.techTree, 'auto_turret');
+          expect(baseDamageModifier).toBeCloseTo(1.0);
+
+          // Upgrade to level 2
+          attacker.techTree.projectileDamage = 2;
+          userCache.updateUserInCache(userCtx, attacker);
+
+          // At level 2, modifier should be 1.15 (115%, +15% damage)
+          const upgradedDamageModifier = getWeaponDamageModifierFromTree(attacker.techTree, 'auto_turret');
+          expect(upgradedDamageModifier).toBeCloseTo(1.15);
+
+          // Verify damage calculation reflects the modifier
+          // auto_turret with 1 weapon, no shields/armor, spread=1.0
+          const baseCalc = TechFactory.calculateWeaponDamage(
+            'auto_turret',
+            attacker.techCounts,
+            0, 0, 0, 0, baseDamageModifier, 0, 1.0
+          );
+          const upgradedCalc = TechFactory.calculateWeaponDamage(
+            'auto_turret',
+            attacker.techCounts,
+            0, 0, 0, 0, upgradedDamageModifier, 0, 1.0
+          );
+
+          // Upgraded damage should be greater than base damage
+          const totalBase = baseCalc.shieldDamage + baseCalc.armorDamage + baseCalc.hullDamage;
+          const totalUpgraded = upgradedCalc.shieldDamage + upgradedCalc.armorDamage + upgradedCalc.hullDamage;
+          expect(totalUpgraded).toBeGreaterThan(totalBase);
+          // Allow for rounding from Math.round() in TechFactory
+          expect(totalUpgraded / totalBase).toBeCloseTo(1.15, 0);
+        });
+      });
+    });
+
+    it('damageResearch_energyWeaponAtLevel3_increases3225Percent', async () => {
+      await withTransaction(async () => {
+        await emptyCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
+          const attacker = (await userCache.getUserByUsername(userCtx, 'a'))!;
+
+          // Ensure attacker has a pulse_laser
+          attacker.techCounts.pulse_laser = 1;
+
+          // At level 1, energy damage modifier should be 1.0
+          attacker.techTree.energyDamage = 1;
+          const baseDamageModifier = getWeaponDamageModifierFromTree(attacker.techTree, 'pulse_laser');
+          expect(baseDamageModifier).toBeCloseTo(1.0);
+
+          // At level 3, energy damage: 60 * 1.15^2 = 79.35, modifier = 79.35/60 = 1.3225
+          attacker.techTree.energyDamage = 3;
+          const upgradedDamageModifier = getWeaponDamageModifierFromTree(attacker.techTree, 'pulse_laser');
+          expect(upgradedDamageModifier).toBeCloseTo(1.3225);
+
+          // Verify damage calculation uses the modifier
+          const baseCalc = TechFactory.calculateWeaponDamage(
+            'pulse_laser',
+            attacker.techCounts,
+            0, 0, 0, 0, baseDamageModifier, 0, 1.0
+          );
+          const upgradedCalc = TechFactory.calculateWeaponDamage(
+            'pulse_laser',
+            attacker.techCounts,
+            0, 0, 0, 0, upgradedDamageModifier, 0, 1.0
+          );
+
+          const totalBase = baseCalc.shieldDamage + baseCalc.armorDamage + baseCalc.hullDamage;
+          const totalUpgraded = upgradedCalc.shieldDamage + upgradedCalc.armorDamage + upgradedCalc.hullDamage;
+          expect(totalUpgraded).toBeGreaterThan(totalBase);
+        });
+      });
+    });
+
+    it('damageResearch_affectsOnlyCorrectWeaponType', async () => {
+      await withTransaction(async () => {
+        await emptyCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
+          const attacker = (await userCache.getUserByUsername(userCtx, 'a'))!;
+
+          // Upgrade only projectile damage to level 2
+          attacker.techTree.projectileDamage = 2;
+          attacker.techTree.energyDamage = 1;
+          userCache.updateUserInCache(userCtx, attacker);
+
+          const projectileDmgModifier = getWeaponDamageModifierFromTree(attacker.techTree, 'auto_turret');
+          const energyDmgModifier = getWeaponDamageModifierFromTree(attacker.techTree, 'pulse_laser');
+
+          // Projectile should be boosted, energy should be at base
+          expect(projectileDmgModifier).toBeCloseTo(1.15);
+          expect(energyDmgModifier).toBeCloseTo(1.0);
+        });
+      });
+    });
+  });
+
+  describe('Research Effects on Battle Accuracy', () => {
+    it('accuracyResearch_projectileWeaponAtLevel1_returns0Bonus', async () => {
+      await withTransaction(async () => {
+        await emptyCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
+          const attacker = (await userCache.getUserByUsername(userCtx, 'a'))!;
+
+          // At default level 1, accuracy modifier should be 0 (no bonus)
+          attacker.techTree.projectileAccuracy = 1;
+          const accuracyModifier = getWeaponAccuracyModifierFromTree(attacker.techTree, 'auto_turret');
+          expect(accuracyModifier).toBeCloseTo(0);
+        });
+      });
+    });
+
+    it('accuracyResearch_projectileWeaponAtLevel2_increasesAccuracyBonus', async () => {
+      await withTransaction(async () => {
+        await emptyCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
+          const attacker = (await userCache.getUserByUsername(userCtx, 'a'))!;
+
+          // At level 1, accuracy modifier should be 0
+          attacker.techTree.projectileAccuracy = 1;
+          const baseAccuracyModifier = getWeaponAccuracyModifierFromTree(attacker.techTree, 'auto_turret');
+          expect(baseAccuracyModifier).toBeCloseTo(0);
+
+          // At level 2, accuracy modifier should be ~4.92 (74.92 - 70)
+          attacker.techTree.projectileAccuracy = 2;
+          const upgradedAccuracyModifier = getWeaponAccuracyModifierFromTree(attacker.techTree, 'auto_turret');
+          expect(upgradedAccuracyModifier).toBeCloseTo(4.92, 1);
+
+          // Verify higher accuracy leads to more hits
+          attacker.techCounts.auto_turret = 10;
+          const baseCalc = TechFactory.calculateWeaponDamage(
+            'auto_turret',
+            attacker.techCounts,
+            0, 0, baseAccuracyModifier, 0, 1.0, 0, 1.0
+          );
+          const upgradedCalc = TechFactory.calculateWeaponDamage(
+            'auto_turret',
+            attacker.techCounts,
+            0, 0, upgradedAccuracyModifier, 0, 1.0, 0, 1.0
+          );
+
+          // More weapons should hit with upgraded accuracy
+          expect(upgradedCalc.weaponsHit).toBeGreaterThanOrEqual(baseCalc.weaponsHit);
+        });
+      });
+    });
+
+    it('accuracyResearch_energyWeaponAtLevel2_increasesAccuracyBonus', async () => {
+      await withTransaction(async () => {
+        await emptyCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
+          const attacker = (await userCache.getUserByUsername(userCtx, 'a'))!;
+
+          // At level 1, energy accuracy modifier should be 0
+          attacker.techTree.energyAccuracy = 1;
+          const baseAccuracyModifier = getWeaponAccuracyModifierFromTree(attacker.techTree, 'pulse_laser');
+          expect(baseAccuracyModifier).toBeCloseTo(0);
+
+          // At level 2, energy accuracy effect = 65 * polynomial(0.1, 2) ~ 69.57
+          // Bonus = 69.57 - 65 = ~4.57
+          attacker.techTree.energyAccuracy = 2;
+          const upgradedAccuracyModifier = getWeaponAccuracyModifierFromTree(attacker.techTree, 'pulse_laser');
+          expect(upgradedAccuracyModifier).toBeGreaterThan(0);
+        });
+      });
+    });
+
+    it('accuracyResearch_affectsOnlyCorrectWeaponType', async () => {
+      await withTransaction(async () => {
+        await emptyCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
+          const attacker = (await userCache.getUserByUsername(userCtx, 'a'))!;
+
+          // Upgrade only projectile accuracy to level 2
+          attacker.techTree.projectileAccuracy = 2;
+          attacker.techTree.energyAccuracy = 1;
+          userCache.updateUserInCache(userCtx, attacker);
+
+          const projectileAccuracyModifier = getWeaponAccuracyModifierFromTree(attacker.techTree, 'auto_turret');
+          const energyAccuracyModifier = getWeaponAccuracyModifierFromTree(attacker.techTree, 'pulse_laser');
+
+          // Projectile should have a bonus, energy should have none
+          expect(projectileAccuracyModifier).toBeGreaterThan(0);
+          expect(energyAccuracyModifier).toBeCloseTo(0);
         });
       });
     });

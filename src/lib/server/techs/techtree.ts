@@ -18,8 +18,10 @@ export const IMPLEMENTED_RESEARCHES: ReadonlySet<ResearchType> = new Set([
   ResearchType.ShieldEffectiveness,
   ResearchType.ProjectileDamage,
   ResearchType.ProjectileReloadRate,
+  ResearchType.ProjectileAccuracy,
   ResearchType.EnergyDamage,
   ResearchType.EnergyRechargeRate,
+  ResearchType.EnergyAccuracy,
   ResearchType.InventorySlots,
   ResearchType.BridgeSlots,
 ]);
@@ -677,6 +679,35 @@ export function getWeaponDamageModifierFromTree(tree: TechTree, weaponType: stri
   const effect = getResearchEffectFromTree(tree, researchType);
   // Modifier = current effect / base value
   return effect / research.baseValue;
+}
+
+/**
+ * Returns the accuracy modifier for a weapon type based on the research in the tech tree.
+ * The modifier represents the bonus accuracy percentage added to the weapon's base accuracy
+ * (e.g., 5 = +5% accuracy bonus). At the default research level (level 1), returns 0.
+ * 
+ * @param tree The tech tree to read research levels from
+ * @param weaponType The weapon key (e.g., 'pulse_laser', 'rocket_launcher', 'auto_turret')
+ * @returns The accuracy bonus as a percentage value (e.g., 0 = no bonus, 5 = +5% accuracy)
+ */
+export function getWeaponAccuracyModifierFromTree(tree: TechTree, weaponType: string): number {
+  // Determine research type based on weapon type
+  let researchType: ResearchType;
+  if (PROJECTILE_WEAPONS.includes(weaponType as typeof PROJECTILE_WEAPONS[number])) {
+    researchType = ResearchType.ProjectileAccuracy;
+  } else if (ENERGY_WEAPONS.includes(weaponType as typeof ENERGY_WEAPONS[number])) {
+    researchType = ResearchType.EnergyAccuracy;
+  } else {
+    // Default to 0 (no bonus) for unknown weapon types
+    return 0;
+  }
+
+  const research = AllResearches[researchType];
+  const effect = getResearchEffectFromTree(tree, researchType);
+  // Modifier = effect - baseValue (improvement over base level)
+  // At level 1: effect = baseValue, so modifier = 0 (no bonus)
+  // At higher levels: modifier > 0 (accuracy bonus)
+  return effect - research.baseValue;
 }
 
 /**
