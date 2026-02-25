@@ -385,6 +385,44 @@
   border-radius: 8px;
   padding: 1rem;
   transition: all 0.3s ease;
+  position: relative; /* needed for overlay positioning */
+  overflow: hidden; /* hide portions of the ribbon that extend past card edges */
+}
+
+/* overlay ribbon that appears during active or locked research */
+.research-card-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.research-overlay-ribbon {
+  position: absolute;
+  width: 150%;
+  height: 32px;
+  background: rgba(0, 0, 0, 0.85); /* thick black bar */
+  border-top: 2px solid rgba(255, 0, 0, 0.8); /* thin red bar */
+  border-bottom: 2px solid rgba(255, 0, 0, 0.8); /* thin red bar */
+  transform: rotate(-45deg); /* bottom left to top right */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+}
+
+.research-card-overlay .overlay-text {
+  color: #fff;
+  font-weight: bold;
+  font-size: 0.9rem;
+  letter-spacing: 0.05em;
+  text-shadow: 1px 1px 2px #000;
+  text-transform: uppercase;
 }
 
 .item-card:hover {
