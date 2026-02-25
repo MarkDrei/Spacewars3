@@ -140,9 +140,18 @@ describe('Battle Defense Persistence', () => {
         });
 
         // Call resolveBattle to end the battle and update user defense values
-        await battleService.resolveBattle(battleCtx, battle.id, attackerUser.id);
+        await battleService.resolveBattle(battleCtx, battle.id, attackerUser.id, defenderUser.id);
 
         console.log(`💥 Battle resolved`);
+
+        // verify that victory/defeat messages were sent
+        const msgCache = (await import('../../lib/server/messages/MessageCache')).MessageCache.getInstance();
+        const [attackerMsgs, defenderMsgs] = await Promise.all([
+          msgCache.getMessagesForUser(createLockContext(), attackerUser.id),
+          msgCache.getMessagesForUser(createLockContext(), defenderUser.id)
+        ]);
+        expect(attackerMsgs.some(m => m.message.includes('Victory'))).toBe(true);
+        expect(defenderMsgs.some(m => m.message.includes('Defeat'))).toBe(true);
       });
       
       

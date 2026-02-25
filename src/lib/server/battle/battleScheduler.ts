@@ -254,15 +254,7 @@ async function processBattleRoundInternal(context: LockContext<LocksAtMostAndHas
         if (outcome) {
           // Use battleService.resolveBattle instead of local endBattle
           // This ensures proper endStats snapshotting and teleportation
-          await resolveBattle(context, battleId, outcome.winnerId);
-          
-          // Send victory/defeat messages (battleService doesn't do this)
-          const winnerId = outcome.winnerId;
-          const loserId = outcome.loserId;
-          await createMessage(winnerId, `P: 🎉 **Victory!** You won the battle!`);
-          await createMessage(loserId, `A: 💀 **Defeat!** You lost the battle and have been teleported away.`);
-          
-          console.log(`⚔️ Battle ${battleId} ended: Winner ${winnerId}, Loser ${loserId}`);
+          await resolveBattle(context, battleId, outcome.winnerId, outcome.loserId);
         }
       }
     }

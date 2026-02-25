@@ -24,10 +24,10 @@ import { ApiError } from '../errors';
 import { UserCache } from '../user/userCache';
 import { getBattleCache } from './BattleCache';
 import { HasLock2Context, IronLocks, LockContext, LocksAtMost4, LocksAtMostAndHas2, LocksAtMostAndHas4 } from '@markdrei/ironguard-typescript-locks';
-import { WORLD_LOCK, USER_LOCK, DATABASE_LOCK_USERS } from '../typedLocks';
-import { getUserByIdFromDb } from '../user/userRepo';
+import { WORLD_LOCK, USER_LOCK } from '../typedLocks';
 import { WorldCache } from '../world/worldCache';
 import { DEFAULT_WORLD_WIDTH, DEFAULT_WORLD_HEIGHT } from '@shared/worldConstants';
+import { sendMessageToUser } from '../messages/MessageCache';
 
 /**
  * Maximum distance to initiate battle (same as collection distance)
@@ -358,13 +358,68 @@ export async function updateBattle(context: LockContext<LocksAtMostAndHas2>, bat
   return updatedBattle;
 }
 
+
+/**
+ * Helper for resolveBattle: load both users (from cache or DB) and assemble
+ * the final `BattleStats` snapshot based on their current defense values.
+ *
+ * This encapsulates the repeated locking and cache logic used by battle
+ * resolution and keeps `resolveBattle` cleaner.
+ */
+async function computeEndStats(
+  context: LockContext<LocksAtMostAndHas2>,
+  battle: Battle
+): Promise<[BattleStats, BattleStats]> {
+  const userWorldCache = UserCache.getInstance2();
+  return await context.useLockWithAcquire(USER_LOCK, async (userContext) => {
+    const attacker = await userWorldCache.getUserByIdWithLock(userContext, battle.attackerId);
+    const attackee = await userWorldCache.getUserByIdWithLock(userContext, battle.attackeeId);
+
+    if (!attacker || !attackee) {
+      throw new Error('Users not found when resolving battle');
+    }
+
+    const attackerStats: BattleStats = {
+      hull: { current: attacker.hullCurrent, max: attacker.techCounts.ship_hull * 100 },
+      armor: { current: attacker.armorCurrent, max: attacker.techCounts.kinetic_armor * 100 },
+      shield: { current: attacker.shieldCurrent, max: attacker.techCounts.energy_shield * 100 },
+      weapons: battle.attackerStartStats.weapons
+    };
+
+    const attackeeStats: BattleStats = {
+      hull: { current: attackee.hullCurrent, max: attackee.techCounts.ship_hull * 100 },
+      armor: { current: attackee.armorCurrent, max: attackee.techCounts.kinetic_armor * 100 },
+      shield: { current: attackee.shieldCurrent, max: attackee.techCounts.energy_shield * 100 },
+      weapons: battle.attackeeStartStats.weapons
+    };
+
+    return [attackerStats, attackeeStats] as const;
+  });
+}
+
 /**
  * Resolve a battle (determine winner and apply consequences)
+ *
+ * This function is typically invoked by the scheduler when it detects that a
+ * battle has finished during a processing round.  The scheduler calculates the
+ * winner/loser, then passes the winner ID to this service method which
+ * finalizes the outcome:
+ *   - snapshots end-of-battle defense values
+ *   - logs a battle_ended event
+ *   - persists the result and removes the battle from the cache
+ *   - clears the `inBattle` flags on both users and teleports the loser.
+ *
+ * After the battle state is finalized this method also sends the classic
+ * victory/defeat notifications to the two participants via `MessageCache`.
+ * This consolidates all end‑of‑battle logic in one place.  Callers (e.g. the
+ * scheduler) should **not** send their own messages after invoking this
+ * function, otherwise players would receive duplicates.
  */
 export async function resolveBattle(
   context: LockContext<LocksAtMostAndHas2>,
   battleId: number,
-  winnerId: number
+  winnerId: number,
+  loserId: number
 ): Promise<void> {
   const battle = await BattleRepo.getBattle(context, battleId);
 
@@ -376,55 +431,18 @@ export async function resolveBattle(
     throw new ApiError(400, 'Battle has already ended');
   }
 
-  const loserId = winnerId === battle.attackerId ? battle.attackeeId : battle.attackerId;
+  // send victory/defeat messages to users
+  try {
+    await sendMessageToUser(context, winnerId, `P: 🎉 **Victory!** You won the battle!`);
+    await sendMessageToUser(context, loserId, `A: 💀 **Defeat!** You lost the battle and have been teleported away.`);
+  } catch (msgErr) {
+    // logging only; don't abort resolution if message sending fails
+    console.error('⚠️ Failed to send battle outcome messages:', msgErr);
+  }
 
   // Snapshot final defense values from User objects to create endStats
-  // This is the "write once at end of battle" for endStats
-  const userWorldCache = UserCache.getInstance2();
-  const [attackerEndStats, attackeeEndStats] = await context.useLockWithAcquire(USER_LOCK, async (userContext) => {
-    let attacker = userWorldCache.getUserByIdFromCache(userContext, battle.attackerId);
-    let attackee = userWorldCache.getUserByIdFromCache(userContext, battle.attackeeId);
-
-    // Load from DB if not in cache
-    if (!attacker) {
-      attacker = await userContext.useLockWithAcquire(DATABASE_LOCK_USERS, async () => {
-        const db = await userWorldCache.getDatabaseConnection(userContext);
-        const loadedAttacker = await getUserByIdFromDb(db, battle.attackerId, async () => { });
-        if (loadedAttacker) userWorldCache.setUserUnsafe(userContext, loadedAttacker);
-        return loadedAttacker;
-      });
-    }
-
-    if (!attackee) {
-      attackee = await userContext.useLockWithAcquire(DATABASE_LOCK_USERS, async () => {
-        const db = await userWorldCache.getDatabaseConnection(userContext);
-        const loadedAttackee = await getUserByIdFromDb(db, battle.attackeeId, async () => { });
-        if (loadedAttackee) userWorldCache.setUserUnsafe(userContext, loadedAttackee);
-        return loadedAttackee;
-      });
-    }
-
-    if (!attacker || !attackee) {
-      throw new Error('Users not found when resolving battle');
-    }
-
-    // Create endStats from current user defense values
-    const attackerStats: BattleStats = {
-      hull: { current: attacker.hullCurrent, max: attacker.techCounts.ship_hull * 100 },
-      armor: { current: attacker.armorCurrent, max: attacker.techCounts.kinetic_armor * 100 },
-      shield: { current: attacker.shieldCurrent, max: attacker.techCounts.energy_shield * 100 },
-      weapons: battle.attackerStartStats.weapons // Weapons don't change
-    };
-
-    const attackeeStats: BattleStats = {
-      hull: { current: attackee.hullCurrent, max: attackee.techCounts.ship_hull * 100 },
-      armor: { current: attackee.armorCurrent, max: attackee.techCounts.kinetic_armor * 100 },
-      shield: { current: attackee.shieldCurrent, max: attackee.techCounts.energy_shield * 100 },
-      weapons: battle.attackeeStartStats.weapons // Weapons don't change
-    };
-
-    return [attackerStats, attackeeStats] as const;
-  });
+  // This is the "write once at end of battle" for endStats.
+  const [attackerEndStats, attackeeEndStats] = await computeEndStats(context, battle);
 
   // Log battle end event BEFORE ending battle (battle must still be in cache)
   // If event logging fails, we still proceed with ending the battle to avoid inconsistent state
@@ -479,6 +497,8 @@ export async function resolveBattle(
       await teleportShip(userContext, loserShipId, teleportPos.x, teleportPos.y);
 
       console.log(`⚔️ Battle ${battleId} ended: Winner ${winnerId}, Loser ${loserId} teleported to (${teleportPos.x.toFixed(0)}, ${teleportPos.y.toFixed(0)})`);
+    } else {
+      console.error(`⚠️ Could not get winner's ship position for battle ${battleId} resolution`);
     }
   });
 }
