@@ -58,7 +58,7 @@ describe('MessageCache - Summarization', () => {
       await messageCache.createMessage(createLockContext(), userId, 'N: 🛡️ Enemy **auto turret** fired 2 shot(s), **1 hit** you for **10 damage**! Your defenses: Hull: 600, Armor: 600, Shield: 278');
       await messageCache.createMessage(createLockContext(), userId, 'Your pulse laser fired 5 shot(s) but all missed!');
       await messageCache.createMessage(createLockContext(), userId, 'A: Enemy pulse laser fired 1 shot(s) but all missed!');
-      await messageCache.createMessage(createLockContext(), userId, 'P: 🎉 **Victory!** You won the battle!');
+      await messageCache.createMessage(createLockContext(), userId, 'P: 🎉 **Victory!** You won the battle! You gained 0 iron.');
 
       // Wait for async message creation to complete
       await messageCache.waitForPendingWrites();
@@ -154,7 +154,7 @@ describe('MessageCache - Summarization', () => {
       // Create messages for multiple battles
       await messageCache.createMessage(ctx, userId, 'P: 🎉 **Victory!** You won the battle!');
       await messageCache.createMessage(ctx, userId, 'P: ⚔️ Your **pulse laser** fired 5 shot(s), **5 hit** for **40 damage**! Enemy: Hull: 100, Armor: 0, Shield: 0');
-      await messageCache.createMessage(ctx, userId, 'A: 💀 **Defeat!** You lost the battle and have been teleported away.');
+      await messageCache.createMessage(ctx, userId, 'A: 💀 **Defeat!** You lost the battle and have been teleported away. You lost 0 iron.');
       await messageCache.createMessage(ctx, userId, 'N: 🛡️ Enemy **auto turret** fired 5 shot(s), **5 hit** you for **50 damage**! Your defenses: Hull: 0, Armor: 0, Shield: 0');
       await messageCache.createMessage(ctx, userId, 'P: 🎉 **Victory!** You won the battle!');
 

@@ -176,7 +176,7 @@ describe('MessageCache - Summary Accumulation', () => {
         // First battle
         await messageCache.createMessage(ctx, userId, 'P: ⚔️ Your **pulse laser** fired 10 shot(s), **8 hit** for **64 damage**! Enemy: Hull: 262, Armor: 0, Shield: 0');
         await messageCache.createMessage(ctx, userId, 'N: 🛡️ Enemy **pulse laser** fired 5 shot(s), **3 hit** you for **24 damage**! Your defenses: Hull: 600, Armor: 600, Shield: 288');
-        await messageCache.createMessage(ctx, userId, 'P: 🎉 **Victory!** You won the battle!');
+        await messageCache.createMessage(ctx, userId, 'P: 🎉 **Victory!** You won the battle! You gained 0 iron.');
         await messageCache.waitForPendingWrites();
         await messageCache.summarizeMessages(ctx, userId);
         await messageCache.waitForPendingWrites();
@@ -184,7 +184,7 @@ describe('MessageCache - Summary Accumulation', () => {
         // Second battle
         await messageCache.createMessage(ctx, userId, 'P: ⚔️ Your **pulse laser** fired 5 shot(s), **4 hit** for **32 damage**! Enemy: Hull: 262, Armor: 0, Shield: 0');
         await messageCache.createMessage(ctx, userId, 'N: 🛡️ Enemy **pulse laser** fired 6 shot(s), **2 hit** you for **16 damage**! Your defenses: Hull: 600, Armor: 600, Shield: 288');
-        await messageCache.createMessage(ctx, userId, 'P: 🎉 **Victory!** You won the battle!');
+        await messageCache.createMessage(ctx, userId, 'P: 🎉 **Victory!** You won the battle! You gained 0 iron.');
         await messageCache.waitForPendingWrites();
         const summary2 = await messageCache.summarizeMessages(ctx, userId);
 
@@ -205,14 +205,14 @@ describe('MessageCache - Summary Accumulation', () => {
 
         // First battle - victory
         await messageCache.createMessage(ctx, userId, 'P: ⚔️ Your **pulse laser** fired 5 shot(s), **3 hit** for **24 damage**! Enemy: Hull: 262, Armor: 0, Shield: 0');
-        await messageCache.createMessage(ctx, userId, 'P: 🎉 **Victory!** You won the battle!');
+        await messageCache.createMessage(ctx, userId, 'P: 🎉 **Victory!** You won the battle! You gained 0 iron.');
         await messageCache.waitForPendingWrites();
         await messageCache.summarizeMessages(ctx, userId);
         await messageCache.waitForPendingWrites();
 
         // Second battle - defeat
         await messageCache.createMessage(ctx, userId, 'N: 🛡️ Enemy **pulse laser** fired 8 shot(s), **6 hit** you for **48 damage**! Your defenses: Hull: 600, Armor: 600, Shield: 288');
-        await messageCache.createMessage(ctx, userId, 'A: 💀 **Defeat!** You lost the battle...');
+        await messageCache.createMessage(ctx, userId, 'A: 💀 **Defeat!** You lost the battle... You lost 0 iron.');
         await messageCache.waitForPendingWrites();
         const summary2 = await messageCache.summarizeMessages(ctx, userId);
 
@@ -233,7 +233,7 @@ describe('MessageCache - Summary Accumulation', () => {
         for (let i = 0; i < 3; i++) {
           await messageCache.createMessage(ctx, userId, 'P: ⚔️ Your **pulse laser** fired 5 shot(s), **3 hit** for **24 damage**! Enemy: Hull: 262, Armor: 0, Shield: 0');
           await messageCache.createMessage(ctx, userId, 'N: 🛡️ Enemy **pulse laser** fired 4 shot(s), **2 hit** you for **16 damage**! Your defenses: Hull: 600, Armor: 600, Shield: 288');
-          await messageCache.createMessage(ctx, userId, 'P: 🎉 **Victory!** You won the battle!');
+          await messageCache.createMessage(ctx, userId, 'P: 🎉 **Victory!** You won the battle! You gained 0 iron.');
           await messageCache.waitForPendingWrites();
           await messageCache.summarizeMessages(ctx, userId);
           await messageCache.waitForPendingWrites();

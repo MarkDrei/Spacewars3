@@ -196,7 +196,7 @@ describe('MessageCache - Collection Summarization', () => {
         await messageCache.createMessage(ctx, userId, 'P: Successfully collected asteroid and received **100** iron.');
         await messageCache.createMessage(ctx, userId, 'N: 🛡️ Enemy **pulse laser** fired 1 shot(s), **1 hit** you for **8 damage**! Your defenses: Hull: 600, Armor: 600, Shield: 288');
         await messageCache.createMessage(ctx, userId, 'P: Successfully collected shipwreck and received **500** iron.');
-        await messageCache.createMessage(ctx, userId, 'P: 🎉 **Victory!** You won the battle!');
+        await messageCache.createMessage(ctx, userId, 'P: 🎉 **Victory!** You won the battle! You gained 0 iron.');
 
         await messageCache.waitForPendingWrites();
 

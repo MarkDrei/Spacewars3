@@ -96,10 +96,10 @@ describe('Commander', () => {
         'Wade', 'Xander', 'Yuri', 'Zeke', 'Zen',
       ];
       const femaleFirst = [
-        'Nova', 'Lyra', 'Zara', 'Kira', 'Juno',
+        'Nova', 'Lyra', 'Zara', 'Kira', 'June',
         'Eos', 'Vega', 'Rhea', 'Luna', 'Iris',
         'Mira', 'Seren', 'Faye', 'Nyx', 'Aura',
-        'Sierra', 'Lola', 'Quinn', 'Maya', 'Xena',
+        'Sierra', 'Lola', 'Fox', 'Maya', 'Xena',
       ];
       const first = parts[0];
       if (maleFirst.includes(first)) {

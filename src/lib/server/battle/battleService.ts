@@ -366,6 +366,65 @@ export async function updateBattle(context: LockContext<LocksAtMostAndHas2>, bat
  * This encapsulates the repeated locking and cache logic used by battle
  * resolution and keeps `resolveBattle` cleaner.
  */
+async function logBattleEndEvent(
+  context: LockContext<LocksAtMostAndHas2>,
+  battleId: number,
+  battle: Battle,
+  winnerId: number
+): Promise<void> {
+  // Log battle end event BEFORE ending battle (battle must still be in cache)
+  // If event logging fails, we still proceed with ending the battle to avoid inconsistent state
+  try {
+    const endEvent: BattleEvent = {
+      timestamp: Math.floor(Date.now() / 1000),
+      type: 'battle_ended',
+      actor: winnerId === battle.attackerId ? 'attacker' : 'attackee',
+      data: {
+        message: `Battle ended. Winner: User ${winnerId}`
+      }
+    };
+
+    await BattleRepo.addBattleEvent(context, battleId, endEvent);
+  } catch (error) {
+    console.error(`⚠️ Failed to log battle end event for battle ${battleId}:`, error);
+    // Continue with battle resolution even if event logging fails
+  }
+}
+
+interface IronTransferResult {
+  amount: number;
+  winnerName: string;
+  loserName: string;
+}
+
+async function transferIronOnBattle(
+  context: LockContext<LocksAtMostAndHas4>,
+  winnerId: number,
+  loserId: number
+): Promise<IronTransferResult> {
+  // Transfers up to winner's remaining iron capacity from loser.
+  // Returns the actual amount moved along with both usernames.
+  const userWorldCache = UserCache.getInstance2();
+
+  const winner = await userWorldCache.getUserByIdWithLock(context, winnerId);
+  const loser = await userWorldCache.getUserByIdWithLock(context, loserId);
+  if (!winner || !loser) {
+    throw new Error('Users not found during iron transfer');
+  }
+
+  const amountAvailable = loser.iron;
+  const capacityLeft = winner.getMaxIronCapacity() - winner.iron;
+  const transfer = Math.min(amountAvailable, capacityLeft);
+  if (transfer > 0) {
+    // update users
+    winner.addIron(transfer);
+    loser.subtractIron(transfer);
+    await userWorldCache.updateUserInCache(context, winner);
+    await userWorldCache.updateUserInCache(context, loser);
+  }
+  return { amount: transfer, winnerName: winner.username, loserName: loser.username };
+}
+
 async function computeEndStats(
   context: LockContext<LocksAtMostAndHas2>,
   battle: Battle
@@ -431,36 +490,11 @@ export async function resolveBattle(
     throw new ApiError(400, 'Battle has already ended');
   }
 
-  // send victory/defeat messages to users
-  try {
-    await sendMessageToUser(context, winnerId, `P: 🎉 **Victory!** You won the battle!`);
-    await sendMessageToUser(context, loserId, `A: 💀 **Defeat!** You lost the battle and have been teleported away.`);
-  } catch (msgErr) {
-    // logging only; don't abort resolution if message sending fails
-    console.error('⚠️ Failed to send battle outcome messages:', msgErr);
-  }
-
   // Snapshot final defense values from User objects to create endStats
   // This is the "write once at end of battle" for endStats.
   const [attackerEndStats, attackeeEndStats] = await computeEndStats(context, battle);
 
-  // Log battle end event BEFORE ending battle (battle must still be in cache)
-  // If event logging fails, we still proceed with ending the battle to avoid inconsistent state
-  try {
-    const endEvent: BattleEvent = {
-      timestamp: Math.floor(Date.now() / 1000),
-      type: 'battle_ended',
-      actor: winnerId === battle.attackerId ? 'attacker' : 'attackee',
-      data: {
-        message: `Battle ended. Winner: User ${winnerId}`
-      }
-    };
-
-    await BattleRepo.addBattleEvent(context, battleId, endEvent);
-  } catch (error) {
-    console.error(`⚠️ Failed to log battle end event for battle ${battleId}:`, error);
-    // Continue with battle resolution even if event logging fails
-  }
+  await logBattleEndEvent(context, battleId, battle, winnerId);
 
   // End the battle in database (this removes it from cache)
   await BattleRepo.endBattle(
@@ -472,7 +506,11 @@ export async function resolveBattle(
     attackeeEndStats
   );
 
+  let ironResult: IronTransferResult = { amount: 0, winnerName: '', loserName: '' };
   await context.useLockWithAcquire(USER_LOCK, async (userContext) => {
+    // transfer iron from loser to winner before clearing other state
+    ironResult = await transferIronOnBattle(userContext, winnerId, loserId);
+
     // Clear battle state for both users
     await updateUserBattleState(userContext, battle.attackerId, false, null);
     await updateUserBattleState(userContext, battle.attackeeId, false, null);
@@ -501,4 +539,22 @@ export async function resolveBattle(
       console.error(`⚠️ Could not get winner's ship position for battle ${battleId} resolution`);
     }
   });
+
+  // send victory/defeat messages to users (include iron transfer and opponent name)
+  try {
+    await sendMessageToUser(
+      context,
+      winnerId,
+      `P: 🎉 **Victory!** You won the battle! You gained ${ironResult.amount} iron from ${ironResult.loserName}.`
+    );
+
+    await sendMessageToUser(
+      context,
+      loserId,
+      `A: 💀 **Defeat!** You lost the battle and have been teleported away. You lost ${ironResult.amount} iron to ${ironResult.winnerName}.`
+    );
+  } catch (msgErr) {
+    // logging only; don't abort resolution if message sending fails
+    console.error('⚠️ Failed to send battle outcome messages:', msgErr);
+  }
 }

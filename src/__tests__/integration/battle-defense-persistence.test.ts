@@ -144,14 +144,18 @@ describe('Battle Defense Persistence', () => {
 
         console.log(`💥 Battle resolved`);
 
-        // verify that victory/defeat messages were sent
+        // verify that victory/defeat messages were sent and include iron transfer details
         const msgCache = (await import('../../lib/server/messages/MessageCache')).MessageCache.getInstance();
         const [attackerMsgs, defenderMsgs] = await Promise.all([
           msgCache.getMessagesForUser(createLockContext(), attackerUser.id),
           msgCache.getMessagesForUser(createLockContext(), defenderUser.id)
         ]);
-        expect(attackerMsgs.some(m => m.message.includes('Victory'))).toBe(true);
-        expect(defenderMsgs.some(m => m.message.includes('Defeat'))).toBe(true);
+        expect(attackerMsgs.some(
+          m => m.message.includes('Victory') && m.message.includes(defenderUser.username) && m.message.includes('iron')
+        )).toBe(true);
+        expect(defenderMsgs.some(
+          m => m.message.includes('Defeat') && m.message.includes(attackerUser.username) && m.message.includes('iron')
+        )).toBe(true);
       });
       
       
