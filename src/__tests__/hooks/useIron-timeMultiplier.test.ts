@@ -30,7 +30,11 @@ describe('useIron hook - time multiplier integration', () => {
       level: 1,
       xpForNextLevel: 1000,
       timeMultiplier: 10,
-      last_updated: Date.now()
+      last_updated: Date.now(),
+      teleportCharges: 0,
+      teleportMaxCharges: 0,
+      teleportRechargeTimeSec: 0,
+      teleportRechargeSpeed: 0
     };
 
     mockUserStatsService.getUserStats.mockResolvedValueOnce(mockStats);
@@ -51,7 +55,11 @@ describe('useIron hook - time multiplier integration', () => {
       level: 1,
       xpForNextLevel: 1000,
       timeMultiplier: 1, // Server sends 1 when no multiplier is active
-      last_updated: Date.now()
+      last_updated: Date.now(),
+      teleportCharges: 0,
+      teleportMaxCharges: 0,
+      teleportRechargeTimeSec: 0,
+      teleportRechargeSpeed: 0
     };
 
     mockUserStatsService.getUserStats.mockResolvedValueOnce(mockStats);
@@ -72,7 +80,11 @@ describe('useIron hook - time multiplier integration', () => {
       level: 1,
       xpForNextLevel: 1000,
       timeMultiplier: 25,
-      last_updated: Date.now()
+      last_updated: Date.now(),
+      teleportCharges: 0,
+      teleportMaxCharges: 0,
+      teleportRechargeTimeSec: 0,
+      teleportRechargeSpeed: 0
     };
 
     mockUserStatsService.getUserStats.mockResolvedValueOnce(mockStats);
@@ -93,12 +105,20 @@ describe('useIron hook - time multiplier integration', () => {
       level: 1,
       xpForNextLevel: 1000,
       timeMultiplier: 10,
-      last_updated: Date.now()
+      last_updated: Date.now(),
+      teleportCharges: 0,
+      teleportMaxCharges: 0,
+      teleportRechargeTimeSec: 0,
+      teleportRechargeSpeed: 0
     };
 
     const mockStats2 = {
       ...mockStats1,
-      timeMultiplier: 50
+      timeMultiplier: 50,
+      teleportCharges: 0,
+      teleportMaxCharges: 0,
+      teleportRechargeTimeSec: 0,
+      teleportRechargeSpeed: 0
     };
 
     mockUserStatsService.getUserStats
@@ -133,7 +153,11 @@ describe('useIron hook - time multiplier integration', () => {
       level: 1,
       xpForNextLevel: 1000,
       timeMultiplier: 10,
-      last_updated: Date.now()
+      last_updated: Date.now(),
+      teleportCharges: 0,
+      teleportMaxCharges: 0,
+      teleportRechargeTimeSec: 0,
+      teleportRechargeSpeed: 0
     };
 
     const mockStats2 = {

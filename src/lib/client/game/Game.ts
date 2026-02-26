@@ -25,6 +25,8 @@ export class Game {
   private interceptionLines: InterceptionLines | null = null;
   private onNavigationCallback?: () => void; // Callback for when navigation happens
   private onAttackSuccessCallback?: () => void; // Callback for when attack succeeds
+  public teleportClickMode: boolean = false; // When true, next canvas click teleports ship
+  public onTeleportClick: ((worldX: number, worldY: number) => void) | null = null; // Callback for teleport click
 
   constructor(canvas: HTMLCanvasElement) {
     // Initialize the canvas context
@@ -76,7 +78,27 @@ export class Game {
       // Update mouse position for consistent coordinate handling
       this.mouseX = logicalX;
       this.mouseY = logicalY;
-      
+
+      // Handle teleport-click mode: convert canvas coords to world coords and call callback
+      if (this.teleportClickMode && this.onTeleportClick) {
+        const ship = this.world.getShip();
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+        const dx = logicalX - centerX;
+        const dy = logicalY - centerY;
+        // Convert to world coordinates (camera is centred on player ship)
+        let worldX = ship.getX() + dx;
+        let worldY = ship.getY() + dy;
+        // Toroidal wrap to world bounds
+        const worldWidth = this.world.getWidth();
+        const worldHeight = this.world.getHeight();
+        worldX = ((worldX % worldWidth) + worldWidth) % worldWidth;
+        worldY = ((worldY % worldHeight) + worldHeight) % worldHeight;
+        this.onTeleportClick(worldX, worldY);
+        this.teleportClickMode = false;
+        return; // Don't process normal click actions
+      }
+
       // Update hover states with fresh click coordinates to ensure accuracy
       this.updateHoverStates();
       
@@ -340,6 +362,15 @@ export class Game {
    */
   public setAttackSuccessCallback(callback: () => void): void {
     this.onAttackSuccessCallback = callback;
+  }
+
+  /**
+   * Enable or disable teleport-click mode.
+   * When enabled, the next canvas click will call onTeleportClick with world coordinates
+   * instead of performing the normal click action.
+   */
+  public setTeleportClickMode(enabled: boolean): void {
+    this.teleportClickMode = enabled;
   }
 
   /**

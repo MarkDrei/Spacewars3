@@ -119,3 +119,47 @@ The `saveUserToDb` UPDATE uses positional `$N` params; the WHERE clause param nu
 5. `public/assets/images/research/` — add research icon image
 
 The TechTree is stored as serialized JSON in the `tech_tree TEXT` column — NO schema migration is needed for new research fields. `createInitialTechTree()` provides defaults, and `userFromRow()` merges with initial tree on load (handles pre-existing users gracefully).
+
+## getResearchEffect Formula for Constant Type
+
+**Discovered by**: Knight  
+**Context**: When implementing Teleport as a charge-based research (Task 1.2)
+
+**Details**: The `getResearchEffect` function uses `baseValue + increase.value * (level - 1)` for constant type (NOT `baseValue + value * (level - startLevel)` as the plan assumed). This means:
+
+- To get level N → N charges: use `baseValue: 1, value: 1`
+  - level 0: 0 (explicit check)
+  - level 1: 1 + 1*(1-1) = 1 ✓
+  - level 2: 1 + 1*(2-1) = 2 ✓
+  - level N: N ✓
+- Using `baseValue: 0, value: 1` gives level 1→0 (wrong)
+
+**Always verify effect formulas by tracing through the actual `getResearchEffect` code before writing tests.**
+
+## User Constructor Parameter Order
+
+**Discovered by**: Knight  
+**Context**: Adding teleportCharges and teleportLastRegen to User class (Task 2.3)
+
+**Details**: When adding new fields to User constructor, place them before the optional `ship_id?` parameter. Current order after teleport addition:
+```
+id, username, password_hash, iron, xp, last_updated, techTree, saveCallback, techCounts, 
+hullCurrent, armorCurrent, shieldCurrent, defenseLastRegen, 
+inBattle, currentBattleId, buildQueue, buildStartSec, 
+teleportCharges, teleportLastRegen,
+ship_id?
+```
+
+When adding new constructor parameters, update ALL test files that call `new User(...)`. Pattern: search for `null // buildStartSec` and add the new parameters after it.
+
+## Pre-existing Flaky Tests
+
+**Discovered by**: Knight  
+**Context**: Running the full test suite (test:ci)
+
+**Details**: Tests known to be flaky when running in parallel:
+1. `TargetingLineRenderer.test.ts > opacity calculation > should calculate correct opacity for new targeting line` - timing-dependent, passes in isolation
+2. `techRepo-notifications.test.ts > processCompletedBuilds_notificationFails_continuesWithOtherNotifications` - resource contention in parallel runs
+3. `user-collection-rewards.test.ts > User Collection Rewards > collected_multipleShipwrecks_awardsVariousAmounts` - randomness test that occasionally returns 0 reward in parallel runs due to DB/state contention
+
+All pass when run in isolation with `npm run test -- <filename>`. These are pre-existing issues unrelated to any feature work.

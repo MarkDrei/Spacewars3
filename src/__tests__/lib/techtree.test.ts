@@ -124,7 +124,8 @@ describe('getResearchEffect', () => {
     expect(getResearchEffect(AllResearches[ResearchType.IronCapacity], 1)).toBeCloseTo(5000);
     expect(getResearchEffect(AllResearches[ResearchType.IronCapacity], 2)).toBeCloseTo(10000);
     expect(getResearchEffect(AllResearches[ResearchType.Teleport], 0)).toBeCloseTo(0);
-    expect(getResearchEffect(AllResearches[ResearchType.Teleport], 1)).toBeCloseTo(100);
+    // Teleport is now charge-based: level 1 = 1 charge
+    expect(getResearchEffect(AllResearches[ResearchType.Teleport], 1)).toBeCloseTo(1);
   });
 
   test('getResearchEffect_newSpyResearches_calculatesCorrectly', () => {
@@ -345,3 +346,103 @@ describe('getWeaponReloadTimeModifierFromTree', () => {
   });
 });
 
+
+describe('Teleport research effects', () => {
+  test('teleport_level0_returnsZeroCharges', () => {
+    // At level 0 (locked), effect should be 0
+    expect(getResearchEffect(AllResearches[ResearchType.Teleport], 0)).toBe(0);
+  });
+
+  test('teleport_level1_returnsOneCharge', () => {
+    // At level 1, baseValue=1, constant=1: 1 + 1*(1-1) = 1
+    expect(getResearchEffect(AllResearches[ResearchType.Teleport], 1)).toBe(1);
+  });
+
+  test('teleport_level2_returnsTwoCharges', () => {
+    // At level 2: 1 + 1*(2-1) = 2
+    expect(getResearchEffect(AllResearches[ResearchType.Teleport], 2)).toBe(2);
+  });
+
+  test('teleport_levelN_returnsNCharges', () => {
+    // Level N should return N charges
+    for (let n = 1; n <= 10; n++) {
+      expect(getResearchEffect(AllResearches[ResearchType.Teleport], n)).toBe(n);
+    }
+  });
+
+  test('teleport_costScaling_correct', () => {
+    // Base cost is 10000, upgradeCostIncrease is 3.0, startLevel is 0
+    // getResearchUpgradeCost(research, level): if level <= startLevel → baseCost, else baseCost * factor^(level-startLevel-1)
+    expect(getResearchUpgradeCost(AllResearches[ResearchType.Teleport], 0)).toBe(10000); // level <= startLevel(0)
+    expect(getResearchUpgradeCost(AllResearches[ResearchType.Teleport], 1)).toBe(10000); // 3^(1-0-1) = 3^0 = 1
+    expect(getResearchUpgradeCost(AllResearches[ResearchType.Teleport], 2)).toBe(30000); // 3^(2-0-1) = 3^1 = 3
+    expect(getResearchUpgradeCost(AllResearches[ResearchType.Teleport], 3)).toBe(90000); // 3^(3-0-1) = 3^2 = 9
+    expect(getResearchUpgradeCost(AllResearches[ResearchType.Teleport], 4)).toBe(270000); // 3^(4-0-1) = 3^3 = 27
+  });
+
+  test('teleport_durationScaling_correct', () => {
+    // Base duration 1800s, upgradeCostIncrease 3.0, startLevel 0
+    expect(getResearchUpgradeDuration(AllResearches[ResearchType.Teleport], 0)).toBe(1800); // level <= startLevel
+    expect(getResearchUpgradeDuration(AllResearches[ResearchType.Teleport], 1)).toBe(1800); // 3^(1-0-1) = 3^0 = 1
+    expect(getResearchUpgradeDuration(AllResearches[ResearchType.Teleport], 2)).toBe(1800 * 3);   // 3^(2-0-1) = 3
+    expect(getResearchUpgradeDuration(AllResearches[ResearchType.Teleport], 3)).toBe(1800 * 9);   // 3^(3-0-1) = 9
+  });
+
+  test('teleportFromTree_level0_returnsZero', () => {
+    const tree = createInitialTechTree();
+    // Initial level of Teleport is 0
+    expect(tree.teleport).toBe(0);
+    expect(getResearchEffectFromTree(tree, ResearchType.Teleport)).toBe(0);
+  });
+
+  test('teleportFromTree_level1_returnsOne', () => {
+    const tree = createInitialTechTree();
+    tree.teleport = 1;
+    expect(getResearchEffectFromTree(tree, ResearchType.Teleport)).toBe(1);
+  });
+});
+
+describe('TeleportRechargeSpeed research effects', () => {
+  test('teleportRechargeSpeed_level1_returns86400', () => {
+    // At level 1: 86400 * 0.9^(1-1) = 86400
+    expect(getResearchEffect(AllResearches[ResearchType.TeleportRechargeSpeed], 1)).toBeCloseTo(86400);
+  });
+
+  test('teleportRechargeSpeed_level2_returns77760', () => {
+    // At level 2: 86400 * 0.9^(2-1) = 77760
+    expect(getResearchEffect(AllResearches[ResearchType.TeleportRechargeSpeed], 2)).toBeCloseTo(77760);
+  });
+
+  test('teleportRechargeSpeed_level3_returns69984', () => {
+    // At level 3: 86400 * 0.9^(3-1) = 69984
+    expect(getResearchEffect(AllResearches[ResearchType.TeleportRechargeSpeed], 3)).toBeCloseTo(69984);
+  });
+
+  test('teleportRechargeSpeed_eachLevelIs90PercentOfPrevious', () => {
+    const prev = getResearchEffect(AllResearches[ResearchType.TeleportRechargeSpeed], 3);
+    const next = getResearchEffect(AllResearches[ResearchType.TeleportRechargeSpeed], 4);
+    expect(next / prev).toBeCloseTo(0.9);
+  });
+
+  test('teleportRechargeSpeed_costScaling_correct', () => {
+    // Base cost 10000, upgradeCostIncrease 1.3, startLevel=1
+    // getResearchUpgradeCost: if level <= startLevel(1) → 10000, else 10000 * 1.3^(level-startLevel-1)
+    expect(getResearchUpgradeCost(AllResearches[ResearchType.TeleportRechargeSpeed], 1)).toBe(10000); // level <= startLevel
+    expect(getResearchUpgradeCost(AllResearches[ResearchType.TeleportRechargeSpeed], 2)).toBe(10000); // 1.3^(2-1-1) = 1.3^0 = 1
+    expect(getResearchUpgradeCost(AllResearches[ResearchType.TeleportRechargeSpeed], 3)).toBeCloseTo(10000 * 1.3); // 1.3^1
+    expect(getResearchUpgradeCost(AllResearches[ResearchType.TeleportRechargeSpeed], 4)).toBeCloseTo(10000 * Math.pow(1.3, 2)); // 1.3^2
+  });
+
+  test('teleportRechargeSpeed_durationScaling_correct', () => {
+    // Base duration 1800s, upgradeCostIncrease 1.3, startLevel=1
+    expect(getResearchUpgradeDuration(AllResearches[ResearchType.TeleportRechargeSpeed], 1)).toBe(1800); // level <= startLevel
+    expect(getResearchUpgradeDuration(AllResearches[ResearchType.TeleportRechargeSpeed], 2)).toBe(1800); // 1.3^0 = 1
+    expect(getResearchUpgradeDuration(AllResearches[ResearchType.TeleportRechargeSpeed], 3)).toBeCloseTo(1800 * 1.3); // 1.3^1
+  });
+
+  test('teleportRechargeSpeed_initialTreeLevel_is1', () => {
+    const tree = createInitialTechTree();
+    expect(tree.teleportRechargeSpeed).toBe(1);
+    expect(getResearchEffectFromTree(tree, ResearchType.TeleportRechargeSpeed)).toBeCloseTo(86400);
+  });
+});

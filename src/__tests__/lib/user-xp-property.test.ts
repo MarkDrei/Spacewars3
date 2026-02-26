@@ -38,7 +38,9 @@ describe('User XP Property', () => {
       false, // inBattle
       null, // currentBattleId
       [], // buildQueue
-      null // buildStartSec
+      null, // buildStartSec
+      0, // teleportCharges
+      0  // teleportLastRegen
     );
 
     // Assert
@@ -64,7 +66,9 @@ describe('User XP Property', () => {
       false, // inBattle
       null, // currentBattleId
       [], // buildQueue
-      null // buildStartSec
+      null, // buildStartSec
+      0, // teleportCharges
+      0  // teleportLastRegen
     );
 
     // Assert
@@ -90,7 +94,9 @@ describe('User XP Property', () => {
       false, // inBattle
       null, // currentBattleId
       [], // buildQueue
-      null // buildStartSec
+      null, // buildStartSec
+      0, // teleportCharges
+      0  // teleportLastRegen
     );
 
     // Assert
@@ -116,7 +122,9 @@ describe('User XP Property', () => {
       false, // inBattle
       null, // currentBattleId
       [], // buildQueue
-      null // buildStartSec
+      null, // buildStartSec
+      0, // teleportCharges
+      0  // teleportLastRegen
     );
 
     // Assert
@@ -142,7 +150,9 @@ describe('User XP Property', () => {
       false, // inBattle
       null, // currentBattleId
       [], // buildQueue
-      null // buildStartSec
+      null, // buildStartSec
+      0, // teleportCharges
+      0  // teleportLastRegen
     );
 
     // Act
@@ -171,7 +181,9 @@ describe('User XP Property', () => {
       false, // inBattle
       null, // currentBattleId
       [], // buildQueue
-      null // buildStartSec
+      null, // buildStartSec
+      0, // teleportCharges
+      0  // teleportLastRegen
     );
 
     const originalIron = user.iron;

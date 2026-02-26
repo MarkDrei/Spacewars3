@@ -213,3 +213,54 @@
   box-shadow: 0 0 8px rgba(76, 175, 80, 0.6);
 }
 
+
+/* Teleport Controls */
+.teleport-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 1rem;
+  background-color: #1e1e1e;
+  border-radius: 8px;
+  border: 1px solid #333;
+  width: 100%;
+}
+
+.teleport-controls h3 {
+  color: var(--primary-green);
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.teleport-charges-display {
+  color: white;
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+.teleport-recharge-timer {
+  color: #aaa;
+  font-size: 0.85rem;
+}
+
+.teleport-click-button {
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  min-width: var(--min-width-button);
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.teleport-click-button.active {
+  background-color: #1565c0;
+  border-color: #42a5f5;
+  color: white;
+  box-shadow: 0 0 8px rgba(66, 165, 245, 0.5);
+}
+
+.teleport-click-active-hint {
+  color: #42a5f5;
+  font-size: 0.85rem;
+  font-style: italic;
+}

@@ -41,7 +41,11 @@ describe('collectionService', () => {
         xp: 0,
         level: 1,
         xpForNextLevel: 1000,
-      timeMultiplier: 1
+      timeMultiplier: 1,
+      teleportCharges: 0,
+      teleportMaxCharges: 0,
+      teleportRechargeTimeSec: 0,
+      teleportRechargeSpeed: 0
       };
       
       mockFetch.mockResolvedValueOnce({
@@ -88,7 +92,11 @@ describe('collectionService', () => {
         xp: 0,
         level: 1,
         xpForNextLevel: 1000,
-      timeMultiplier: 1
+      timeMultiplier: 1,
+      teleportCharges: 0,
+      teleportMaxCharges: 0,
+      teleportRechargeTimeSec: 0,
+      teleportRechargeSpeed: 0
       };
       
       mockFetch.mockResolvedValueOnce({
@@ -123,7 +131,11 @@ describe('collectionService', () => {
         xp: 0,
         level: 1,
         xpForNextLevel: 1000,
-      timeMultiplier: 1
+      timeMultiplier: 1,
+      teleportCharges: 0,
+      teleportMaxCharges: 0,
+      teleportRechargeTimeSec: 0,
+      teleportRechargeSpeed: 0
       };
       
       mockFetch.mockResolvedValueOnce({
@@ -193,7 +205,11 @@ describe('collectionService', () => {
         xp: 0,
         level: 1,
         xpForNextLevel: 1000,
-      timeMultiplier: 1
+      timeMultiplier: 1,
+      teleportCharges: 0,
+      teleportMaxCharges: 0,
+      teleportRechargeTimeSec: 0,
+      teleportRechargeSpeed: 0
       };
       
       mockFetch.mockRejectedValueOnce(new Error('Network error'));
@@ -252,7 +268,11 @@ describe('collectionService', () => {
         xp: 0,
         level: 1,
         xpForNextLevel: 1000,
-      timeMultiplier: 1
+      timeMultiplier: 1,
+      teleportCharges: 0,
+      teleportMaxCharges: 0,
+      teleportRechargeTimeSec: 0,
+      teleportRechargeSpeed: 0
       };
       
       mockFetch.mockResolvedValueOnce({
@@ -288,7 +308,11 @@ describe('collectionService', () => {
         xp: 0,
         level: 1,
         xpForNextLevel: 1000,
-      timeMultiplier: 1
+      timeMultiplier: 1,
+      teleportCharges: 0,
+      teleportMaxCharges: 0,
+      teleportRechargeTimeSec: 0,
+      teleportRechargeSpeed: 0
       };
       
       mockFetch.mockResolvedValueOnce({
@@ -328,7 +352,11 @@ describe('collectionService', () => {
         xp: 0,
         level: 1,
         xpForNextLevel: 1000,
-      timeMultiplier: 1
+      timeMultiplier: 1,
+      teleportCharges: 0,
+      teleportMaxCharges: 0,
+      teleportRechargeTimeSec: 0,
+      teleportRechargeSpeed: 0
       };
       
       mockFetch.mockResolvedValueOnce({
@@ -374,7 +402,11 @@ describe('collectionService', () => {
         xp: 0,
         level: 1,
         xpForNextLevel: 1000,
-      timeMultiplier: 1
+      timeMultiplier: 1,
+      teleportCharges: 0,
+      teleportMaxCharges: 0,
+      teleportRechargeTimeSec: 0,
+      teleportRechargeSpeed: 0
       };
       
       vi.mocked(userStatsService.getUserStats).mockResolvedValueOnce(mockUpdatedStats);
@@ -410,7 +442,11 @@ describe('collectionService', () => {
         xp: 0,
         level: 1,
         xpForNextLevel: 1000,
-      timeMultiplier: 1
+      timeMultiplier: 1,
+      teleportCharges: 0,
+      teleportMaxCharges: 0,
+      teleportRechargeTimeSec: 0,
+      teleportRechargeSpeed: 0
       };
       
       mockFetch.mockResolvedValueOnce({

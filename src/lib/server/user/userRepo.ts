@@ -43,6 +43,9 @@ interface UserRow {
   // Build queue
   build_queue?: string;
   build_start_sec?: number | null;
+  // Teleport state
+  teleport_charges?: number;
+  teleport_last_regen?: number;
 }
 
 function userFromRow(row: UserRow, saveCallback: SaveUserCallback): User {
@@ -94,6 +97,10 @@ function userFromRow(row: UserRow, saveCallback: SaveUserCallback): User {
   }
   const buildStartSec = row.build_start_sec || null;
 
+  // Extract teleport state, with fallback defaults
+  const teleportCharges = row.teleport_charges ?? 0;
+  const teleportLastRegen = row.teleport_last_regen ?? 0;
+
   return new User(
     row.id,
     row.username,
@@ -112,6 +119,8 @@ function userFromRow(row: UserRow, saveCallback: SaveUserCallback): User {
     currentBattleId,
     buildQueue,
     buildStartSec,
+    teleportCharges,
+    teleportLastRegen,
     row.ship_id
   );
 }
@@ -155,8 +164,8 @@ async function createUserWithShip(db: DatabaseConnection, username: string, pass
 
     // Then create the user with the ship_id (with default defense values)
     const userResult = await db.query(
-      'INSERT INTO users (username, password_hash, iron, last_updated, tech_tree, ship_id, hull_current, armor_current, shield_current, defense_last_regen, build_queue, build_start_sec) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id',
-      [username, password_hash, 0.0, now, JSON.stringify(techTree), shipId, 250.0, 250.0, 250.0, now, JSON.stringify([]), null]
+      'INSERT INTO users (username, password_hash, iron, last_updated, tech_tree, ship_id, hull_current, armor_current, shield_current, defense_last_regen, build_queue, build_start_sec, teleport_charges, teleport_last_regen) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING id',
+      [username, password_hash, 0.0, now, JSON.stringify(techTree), shipId, 250.0, 250.0, 250.0, now, JSON.stringify([]), null, 0.0, 0]
     );
 
     const userId = userResult.rows[0].id;
@@ -179,7 +188,7 @@ async function createUserWithShip(db: DatabaseConnection, username: string, pass
     // Calculate initial defense values based on default tech counts
     const initialMaxStats = TechService.calculateMaxDefense(defaultTechCounts, techTree);
 
-    const user = new User(userId, username, password_hash, 0.0, 0, now, techTree, saveCallback, defaultTechCounts, initialMaxStats.hull, initialMaxStats.armor, initialMaxStats.shield, now, false, null, [], null, shipId);
+    const user = new User(userId, username, password_hash, 0.0, 0, now, techTree, saveCallback, defaultTechCounts, initialMaxStats.hull, initialMaxStats.armor, initialMaxStats.shield, now, false, null, [], null, 0.0, 0, shipId);
 
     // Send welcome message to new user
     const ctx = createLockContext();
@@ -189,8 +198,8 @@ async function createUserWithShip(db: DatabaseConnection, username: string, pass
   } else {
     // Create user without ship (for testing, with default defense values)
     const userResult = await db.query(
-      'INSERT INTO users (username, password_hash, iron, last_updated, tech_tree, hull_current, armor_current, shield_current, defense_last_regen, build_queue, build_start_sec) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id',
-      [username, password_hash, 0.0, now, JSON.stringify(techTree), 250.0, 250.0, 250.0, now, JSON.stringify([]), null]
+      'INSERT INTO users (username, password_hash, iron, last_updated, tech_tree, hull_current, armor_current, shield_current, defense_last_regen, build_queue, build_start_sec, teleport_charges, teleport_last_regen) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING id',
+      [username, password_hash, 0.0, now, JSON.stringify(techTree), 250.0, 250.0, 250.0, now, JSON.stringify([]), null, 0.0, 0]
     );
 
     const id = userResult.rows[0].id;
@@ -212,7 +221,7 @@ async function createUserWithShip(db: DatabaseConnection, username: string, pass
     // Calculate initial defense values based on default tech counts
     const initialMaxStats = TechService.calculateMaxDefense(defaultTechCounts, techTree);
 
-    const user = new User(id, username, password_hash, 0.0, 0, now, techTree, saveCallback, defaultTechCounts, initialMaxStats.hull, initialMaxStats.armor, initialMaxStats.shield, now, false, null, [], null);
+    const user = new User(id, username, password_hash, 0.0, 0, now, techTree, saveCallback, defaultTechCounts, initialMaxStats.hull, initialMaxStats.armor, initialMaxStats.shield, now, false, null, [], null, 0.0, 0);
 
     return user;
   }
@@ -244,8 +253,10 @@ export function saveUserToDb(db: DatabaseConnection): SaveUserCallback {
         in_battle = $20,
         current_battle_id = $21,
         build_queue = $22,
-        build_start_sec = $23
-      WHERE id = $24`,
+        build_start_sec = $23,
+        teleport_charges = $24,
+        teleport_last_regen = $25
+      WHERE id = $26`,
       [
         user.iron,
         user.xp,
@@ -270,6 +281,8 @@ export function saveUserToDb(db: DatabaseConnection): SaveUserCallback {
         user.currentBattleId,
         JSON.stringify(user.buildQueue),
         user.buildStartSec,
+        user.teleportCharges,
+        user.teleportLastRegen,
         user.id
       ]
     );

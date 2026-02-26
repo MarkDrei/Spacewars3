@@ -23,7 +23,11 @@ describe('useIron - XP and Level Display', () => {
       xp: 5000,
       level: 3,
       xpForNextLevel: 10000,
-      timeMultiplier: 1
+      timeMultiplier: 1,
+      teleportCharges: 0,
+      teleportMaxCharges: 0,
+      teleportRechargeTimeSec: 0,
+      teleportRechargeSpeed: 0
     };
     mockUserStatsService.getUserStats.mockResolvedValueOnce(mockStats);
 
@@ -51,7 +55,11 @@ describe('useIron - XP and Level Display', () => {
       xp: 0,
       level: 1,
       xpForNextLevel: 1000,
-      timeMultiplier: 1
+      timeMultiplier: 1,
+      teleportCharges: 0,
+      teleportMaxCharges: 0,
+      teleportRechargeTimeSec: 0,
+      teleportRechargeSpeed: 0
     };
     mockUserStatsService.getUserStats.mockResolvedValueOnce(mockStats);
 
@@ -79,7 +87,11 @@ describe('useIron - XP and Level Display', () => {
       xp: 165000,
       level: 10,
       xpForNextLevel: 220000,
-      timeMultiplier: 1
+      timeMultiplier: 1,
+      teleportCharges: 0,
+      teleportMaxCharges: 0,
+      teleportRechargeTimeSec: 0,
+      teleportRechargeSpeed: 0
     };
     mockUserStatsService.getUserStats.mockResolvedValueOnce(mockStats);
 
@@ -107,7 +119,11 @@ describe('useIron - XP and Level Display', () => {
       xp: 900,
       level: 1,
       xpForNextLevel: 1000,
-      timeMultiplier: 1
+      timeMultiplier: 1,
+      teleportCharges: 0,
+      teleportMaxCharges: 0,
+      teleportRechargeTimeSec: 0,
+      teleportRechargeSpeed: 0
     };
     
     // Updated state after level up
@@ -119,7 +135,11 @@ describe('useIron - XP and Level Display', () => {
       xp: 1100,
       level: 2,
       xpForNextLevel: 4000,
-      timeMultiplier: 1
+      timeMultiplier: 1,
+      teleportCharges: 0,
+      teleportMaxCharges: 0,
+      teleportRechargeTimeSec: 0,
+      teleportRechargeSpeed: 0
     };
     
     mockUserStatsService.getUserStats

@@ -32,6 +32,10 @@ class User {
   buildQueue: BuildQueueItem[];
   buildStartSec: number | null;
 
+  // Teleport state (persisted)
+  teleportCharges: number;
+  teleportLastRegen: number;
+
   // TODO: Need to figure out where this is implemented: Should we use locks here?
   private saveCallback: SaveUserCallback;
 
@@ -53,6 +57,8 @@ class User {
     currentBattleId: number | null,
     buildQueue: BuildQueueItem[],
     buildStartSec: number | null,
+    teleportCharges: number,
+    teleportLastRegen: number,
     ship_id?: number
   ) {
     this.id = id;
@@ -71,6 +77,8 @@ class User {
     this.currentBattleId = currentBattleId;
     this.buildQueue = buildQueue;
     this.buildStartSec = buildStartSec;
+    this.teleportCharges = teleportCharges;
+    this.teleportLastRegen = teleportLastRegen;
     this.ship_id = ship_id;
     this.saveCallback = saveCallback;
   }
@@ -232,6 +240,9 @@ class User {
     // Also update defense values (regeneration)
     this.updateDefenseValues(now);
 
+    // Also update teleport charges
+    this.updateTeleportCharges(now);
+
     // Check if research completed and award XP
     let levelUpInfo: { leveledUp: boolean; oldLevel: number; newLevel: number; xpReward: number; source: 'research' } | undefined;
     if (researchResult?.completed) {
@@ -274,6 +285,35 @@ class User {
 
     // Update last regeneration timestamp (remains in real time)
     this.defenseLastRegen = now;
+  }
+
+  /**
+   * Update teleport charges based on elapsed time since last regeneration.
+   * Charges accumulate fractionally over time; only whole charges are usable.
+   * Uses the same delta-based pattern as updateDefenseValues().
+   */
+  updateTeleportCharges(now: number): void {
+    const maxCharges = getResearchEffectFromTree(this.techTree, ResearchType.Teleport);
+    if (maxCharges <= 0) return; // No teleport research
+
+    const rechargeTime = getResearchEffectFromTree(this.techTree, ResearchType.TeleportRechargeSpeed);
+    if (rechargeTime <= 0) return; // Safety check
+
+    // Initialize timestamp on first call to prevent retroactive accumulation
+    if (this.teleportLastRegen === 0) {
+      this.teleportLastRegen = now;
+      return;
+    }
+
+    const elapsed = now - this.teleportLastRegen;
+    if (elapsed <= 0) return;
+
+    // Apply time multiplier to accelerate charge filling
+    const gameElapsed = elapsed * TimeMultiplierService.getInstance().getMultiplier();
+
+    const chargeGain = gameElapsed / rechargeTime;
+    this.teleportCharges = Math.min(this.teleportCharges + chargeGain, maxCharges);
+    this.teleportLastRegen = now;
   }
 
   async save(): Promise<void> {

@@ -40,6 +40,10 @@ CREATE TABLE IF NOT EXISTS users (
   -- Battle state
   in_battle INTEGER NOT NULL DEFAULT 0,
   current_battle_id INTEGER DEFAULT NULL,
+
+  -- Teleport state
+  teleport_charges DOUBLE PRECISION NOT NULL DEFAULT 0.0,
+  teleport_last_regen INTEGER NOT NULL DEFAULT 0,
   
   FOREIGN KEY (ship_id) REFERENCES space_objects (id)
 )`;
@@ -157,4 +161,4 @@ export const MIGRATE_ADD_PICTURE_ID = [
 ];
 
 // Optional: Version management for migrations
-export const SCHEMA_VERSION = 11;
+export const SCHEMA_VERSION = 12;

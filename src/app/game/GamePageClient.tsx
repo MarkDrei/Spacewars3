@@ -6,8 +6,10 @@ import AuthenticatedLayout from '@/components/Layout/AuthenticatedLayout';
 import './GamePage.css';
 import { initGame, Game } from '@/lib/client/game/Game';
 import { useWorldData } from '@/lib/client/hooks/useWorldData';
+import { useTeleportData } from '@/lib/client/hooks/useTeleportData';
 import { navigateShip } from '@/lib/client/services/navigationService';
 import { getShipStats } from '@/lib/client/services/shipStatsService';
+import { teleportShip } from '@/lib/client/services/teleportService';
 import { ServerAuthState } from '@/lib/server/serverSession';
 import DataAgeIndicator from '@/components/DataAgeIndicator/DataAgeIndicator';
 
@@ -26,6 +28,12 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
   const [speedInput, setSpeedInput] = useState<string>('0');
   const [isSettingAngle, setIsSettingAngle] = useState(false);
   const [isSettingSpeed, setIsSettingSpeed] = useState(false);
+  // Teleport state
+  const [teleportX, setTeleportX] = useState<string>('0');
+  const [teleportY, setTeleportY] = useState<string>('0');
+  const [isTeleporting, setIsTeleporting] = useState(false);
+  const [isTeleportClickMode, setIsTeleportClickMode] = useState(false);
+  const { teleportData, refetch: refetchTeleport } = useTeleportData(5000);
   // Auth is guaranteed by server, so pass true and use auth.shipId
   const { worldData, isLoading, error, refetch, lastUpdateTime } = useWorldData(3000);
 
@@ -213,8 +221,61 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
     }
   };
 
-  const handleAngleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
+  const handleTeleportCoordinates = async () => {
+    if (isTeleporting) return;
+    const x = parseFloat(teleportX);
+    const y = parseFloat(teleportY);
+    if (isNaN(x) || isNaN(y)) {
+      console.error('Invalid teleport coordinates');
+      return;
+    }
+    setIsTeleporting(true);
+    try {
+      await teleportShip({ x, y, preserveVelocity: false });
+      refetch();
+      refetchTeleport();
+    } catch (err) {
+      console.error('❌ [CLIENT] Teleport failed:', err);
+    } finally {
+      setIsTeleporting(false);
+    }
+  };
+
+  const handleTeleportToClick = () => {
+    if (!gameInstanceRef.current) return;
+    if (isTeleportClickMode) {
+      // Deactivate
+      gameInstanceRef.current.setTeleportClickMode(false);
+      gameInstanceRef.current.onTeleportClick = null;
+      setIsTeleportClickMode(false);
+    } else {
+      // Activate
+      setIsTeleportClickMode(true);
+      gameInstanceRef.current.setTeleportClickMode(true);
+      gameInstanceRef.current.onTeleportClick = async (worldX: number, worldY: number) => {
+        setIsTeleportClickMode(false);
+        try {
+          await teleportShip({ x: worldX, y: worldY, preserveVelocity: true });
+          refetch();
+          refetchTeleport();
+        } catch (err) {
+          console.error('❌ [CLIENT] Teleport-to-click failed:', err);
+        }
+      };
+    }
+  };
+
+  const formatRechargeTime = (seconds: number): string => {
+    if (seconds <= 0) return '';
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = seconds % 60;
+    if (h > 0) return `${h}h ${m}m ${s}s`;
+    if (m > 0) return `${m}m ${s}s`;
+    return `${s}s`;
+  };
+
+  const handleAngleKeyPress = (e: React.KeyboardEvent) => {    if (e.key === 'Enter') {
       handleSetAngle();
     }
   };
@@ -319,6 +380,62 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
             </div>
           </div>
           
+          {/* Teleport Controls — only shown when player has teleport research */}
+          {teleportData && teleportData.teleportMaxCharges > 0 && (
+            <div className="teleport-controls">
+              <h3>Teleport</h3>
+              <div className="teleport-charges-display">
+                Teleport Charges: {teleportData.teleportCharges}/{teleportData.teleportMaxCharges}
+              </div>
+              {teleportData.teleportCharges < teleportData.teleportMaxCharges && teleportData.teleportRechargeTimeSec > 0 && (
+                <div className="teleport-recharge-timer">
+                  Next charge in: {formatRechargeTime(teleportData.teleportRechargeTimeSec)}
+                </div>
+              )}
+              <div className="control-row">
+                <label htmlFor="teleport-x-input">X:</label>
+                <input
+                  id="teleport-x-input"
+                  type="number"
+                  value={teleportX}
+                  onChange={(e) => setTeleportX(e.target.value)}
+                  disabled={isTeleporting || teleportData.teleportCharges < 1}
+                  min="0"
+                  step="1"
+                />
+                <label htmlFor="teleport-y-input">Y:</label>
+                <input
+                  id="teleport-y-input"
+                  type="number"
+                  value={teleportY}
+                  onChange={(e) => setTeleportY(e.target.value)}
+                  disabled={isTeleporting || teleportData.teleportCharges < 1}
+                  min="0"
+                  step="1"
+                />
+                <button
+                  onClick={handleTeleportCoordinates}
+                  disabled={isTeleporting || teleportData.teleportCharges < 1}
+                  className="control-button btn-primary"
+                >
+                  {isTeleporting ? 'Teleporting...' : 'Teleport'}
+                </button>
+              </div>
+              <div className="control-row">
+                <button
+                  onClick={handleTeleportToClick}
+                  disabled={!isTeleportClickMode && teleportData.teleportCharges < 1}
+                  className={`teleport-click-button btn-primary${isTeleportClickMode ? ' active' : ''}`}
+                >
+                  {isTeleportClickMode ? 'Cancel Click Teleport' : 'Teleport to Click'}
+                </button>
+                {isTeleportClickMode && (
+                  <span className="teleport-click-active-hint">Click on map to teleport...</span>
+                )}
+              </div>
+            </div>
+          )}
+
           <div className="debug-toggle-container">
             <label className="debug-toggle-label">
               Enable debug drawings
