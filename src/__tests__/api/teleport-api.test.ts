@@ -11,7 +11,6 @@ import { TimeMultiplierService } from '@/lib/server/timeMultiplier';
 import { UserCache } from '@/lib/server/user/userCache';
 import { USER_LOCK } from '@/lib/server/typedLocks';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
-import { ResearchType } from '@/lib/server/techs/techtree';
 
 /**
  * Helper to grant teleport charges to a user by username.
