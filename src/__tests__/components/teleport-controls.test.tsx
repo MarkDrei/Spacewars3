@@ -223,7 +223,7 @@ describe('GamePageClient teleport controls', () => {
     render(<GamePageClient auth={defaultAuth} />);
 
     await waitFor(() => {
-      expect(screen.getByText(/^Teleport$/i)).toBeDefined();
+      expect(screen.getByRole('heading', { name: /^Teleport$/i })).toBeDefined();
     });
   });
 
@@ -235,7 +235,7 @@ describe('GamePageClient teleport controls', () => {
     render(<GamePageClient auth={defaultAuth} />);
 
     await waitFor(() => {
-      expect(screen.getByText(/^Teleport$/i)).toBeDefined();
+      expect(screen.getByRole('heading', { name: /^Teleport$/i })).toBeDefined();
     });
 
     const teleportButton = screen.getByRole('button', { name: /^Teleport$/ });
@@ -250,7 +250,7 @@ describe('GamePageClient teleport controls', () => {
     render(<GamePageClient auth={defaultAuth} />);
 
     await waitFor(() => {
-      expect(screen.getByText(/^Teleport$/i)).toBeDefined();
+      expect(screen.getByRole('heading', { name: /^Teleport$/i })).toBeDefined();
     });
 
     const teleportButton = screen.getByRole('button', { name: /^Teleport$/ });
