@@ -91,3 +91,31 @@ const multiplier = TimeMultiplierService.getInstance().getMultiplier();
 **Context**: Planning escape pod commander collection revealed that `User.collected()` returns `void`
 
 **Details**: `User.collected(objectType)` currently returns `void`. The harvest API route computes `ironReward` by taking `user.iron - ironBefore` (comparing iron before/after). This pattern means the caller can't know what items were generated during collection. When extending collection to produce items (not just iron), the return type needs to change to a result object. The harvest route (`src/app/api/harvest/route.ts`) is the only caller of `collected()`.
+
+## Adding New User Fields Pattern
+
+**Discovered by**: Cartographer  
+**Context**: Planning the Teleport feature required adding new columns to the users table
+
+**Details**: When adding new persistent fields to the User model, the following files must all be updated in lockstep:
+1. `src/lib/server/schema.ts` — add column(s) to `CREATE_USERS_TABLE`, increment `SCHEMA_VERSION`
+2. `src/lib/server/migrations.ts` — add new migration version with `ALTER TABLE ADD COLUMN IF NOT EXISTS`
+3. `src/lib/server/user/user.ts` — add fields + constructor parameters (currently 18 params)
+4. `src/lib/server/user/userRepo.ts` — update `UserRow` interface, `userFromRow()` deserialization (with fallback defaults), `saveUserToDb()` UPDATE query (currently $1-$24), and `createUser()` INSERT
+5. No separate cache wiring needed — all data flows through `UserCache` write-behind persistence automatically
+
+The `saveUserToDb` UPDATE uses positional `$N` params; the WHERE clause param number must be incremented when adding new columns. Currently WHERE uses `$24`; after adding 2 columns it would be `$26`.
+
+## Research System Extension Pattern
+
+**Discovered by**: Cartographer  
+**Context**: Planning the Teleport feature, adding new researches
+
+**Details**: To add a new research type to the game:
+1. `src/shared/src/types/gameTypes.ts` — add value to `ResearchType` enum
+2. `src/lib/server/techs/techtree.ts` — add to `AllResearches` map, `IMPLEMENTED_RESEARCHES` set, `TechTree` interface, `createInitialTechTree()`, `getResearchLevelFromTree()` switch, `updateTechTree()` switch
+3. `src/lib/client/services/researchService.ts` — add field to client-side `TechTree` interface
+4. `src/app/research/ResearchPageClient.tsx` — add to `researchHierarchy`, `researchTypeToKey`, and image mapping
+5. `public/assets/images/research/` — add research icon image
+
+The TechTree is stored as serialized JSON in the `tech_tree TEXT` column — NO schema migration is needed for new research fields. `createInitialTechTree()` provides defaults, and `userFromRow()` merges with initial tree on load (handles pre-existing users gracefully).

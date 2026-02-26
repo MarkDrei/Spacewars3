@@ -1,0 +1,11 @@
+This file should outline the plan to implement stats for the player
+
+
+  'shipSpeed',
+  'projectileWeaponDamage',
+  'projectileWeaponReloadRate',
+  'projectileWeaponAccuracy',
+  'energyWeaponDamage',
+  'energyWeaponReloadRate',
+  'energyWeaponAccuracy',
+
