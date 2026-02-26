@@ -376,6 +376,31 @@ Logic:
 
 **Description**: Add teleport UI controls to the game page below the existing navigation controls. Controls are only visible when the player has researched Teleport (level ≥ 1).
 
+**Status**: ✅ COMPLETED  
+**Implementation Summary**: Created teleportService.ts, extended user-stats API with teleport fields, added teleport controls UI to GamePageClient (conditionally shown when teleportMaxCharges > 0), implemented canvas click teleport mode in Game.ts, added CSS styling, and updated existing tests for new interface fields.  
+**Files Modified/Created**:
+- `src/lib/client/services/teleportService.ts` — new file, HTTP client for /api/teleport
+- `src/app/api/user-stats/route.ts` — extended with 4 teleport fields
+- `src/lib/client/services/userStatsService.ts` — extended UserStatsResponse interface
+- `src/app/game/GamePageClient.tsx` — teleport controls UI + wiring
+- `src/lib/client/game/Game.ts` — teleportClickMode + setTeleportClickCallback
+- `src/app/game/GamePage.css` — teleport control styles
+- `src/__tests__/components/teleport-controls.test.tsx` — new test file
+- Multiple test files updated for new interface fields  
+**Deviations from Plan**: (1) `teleportRechargeTimeSec` returns static seconds-per-charge (research effect value) rather than dynamic "time until next charge". (2) Both coordinate and canvas teleport use the shared `teleportPreserveVelocity` state rather than hardcoding preserveVelocity: false for coordinate teleport. (3) Coordinate clamping used instead of toroidal wrapping for canvas click world coordinates.  
+**Test Results**: ✅ All tests passing
+
+**Review Status**: ⚠️ NEEDS REVISION  
+**Reviewer**: Medicus  
+**Issues Found**:
+1. **Critical Bug — Canvas teleport callback never registered**: The `useEffect` that calls `gameInstanceRef.current.setTeleportClickCallback(handleCanvasTeleport)` depends only on `[handleCanvasTeleport]`. Since `handleCanvasTeleport` is a stable `useCallback` (deps: `[teleportPreserveVelocity, refetch]`, both stable at startup with `refetch` being a stable `useCallback` from `useWorldData`), this effect fires exactly once on initial mount — but at that point `gameInstanceRef.current` is null (game initializes asynchronously via `requestAnimationFrame`). The worldData update effect (which fires after game init) does NOT register this callback. Result: `Game.onTeleportClickCallback` is always null. "Click to Teleport" mode activates visually but canvas clicks do nothing because `Game.ts` checks `if (this.teleportClickMode && this.onTeleportClickCallback)` — condition is never met.
+2. **"Click to Teleport" button missing `disabled` guard**: Plan explicitly requires "Disabled if charges < 1". The toggle button has no `disabled` prop, allowing users to enter click-to-teleport mode with 0 charges (which then silently fails at the API level).
+3. **Task 5.6 tests don't test the UI component**: `teleport-controls.test.tsx` tests `teleportService.ts` HTTP calls and `UserStatsResponse` type shape only. The 5 required component rendering tests are absent: controls hidden when `teleportMaxCharges === 0`, controls shown when > 0, coordinate teleport button disabled with 0 charges, buttons enabled with charges, recharge time display.  
+**Required Changes**:
+- **Fix 1**: Register `handleCanvasTeleport` inside the worldData update `useEffect` (same pattern as `setAttackSuccessCallback` and `setNavigationCallback`). Add `gameInstanceRef.current.setTeleportClickCallback(handleCanvasTeleport)` at the end of the worldData effect block. The dedicated single-responsibility effect can remain for updates when `teleportPreserveVelocity` changes, but the initial registration must happen after game init (tied to worldData arriving).
+- **Fix 2**: Add `disabled={Math.floor(teleportCharges) < 1}` to the "Click to Teleport" toggle button.
+- **Fix 3**: Replace the content of `teleport-controls.test.tsx` with proper GamePageClient component rendering tests covering the 5 planned test cases. Mock `userStatsService.getUserStats`, `teleportShip`, and `initGame` as needed (same pattern as `researchPageClient.test.tsx`).
+
 #### Task 5.1: Create teleport client service
 
 **Action**: Create a new service function to call the teleport API.

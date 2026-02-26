@@ -213,3 +213,51 @@
   box-shadow: 0 0 8px rgba(76, 175, 80, 0.6);
 }
 
+
+/* Teleport Controls */
+.teleport-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  margin-top: 0.5rem;
+}
+
+.teleport-controls h3 {
+  margin: 0 0 0.25rem 0;
+  color: var(--primary-green, #4caf50);
+  font-size: 1rem;
+}
+
+.teleport-charges {
+  color: #fff;
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+.teleport-recharge {
+  color: #aaa;
+  font-size: 0.85rem;
+  margin-top: 0.25rem;
+}
+
+.btn-active {
+  background-color: var(--primary-green, #4caf50);
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 0.4rem 0.8rem;
+}
+
+.btn-secondary {
+  background-color: #555;
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 0.4rem 0.8rem;
+}

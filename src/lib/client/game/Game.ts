@@ -25,6 +25,8 @@ export class Game {
   private interceptionLines: InterceptionLines | null = null;
   private onNavigationCallback?: () => void; // Callback for when navigation happens
   private onAttackSuccessCallback?: () => void; // Callback for when attack succeeds
+  private teleportClickMode: boolean = false;
+  private onTeleportClickCallback: ((x: number, y: number) => void) | null = null;
 
   constructor(canvas: HTMLCanvasElement) {
     // Initialize the canvas context
@@ -80,6 +82,20 @@ export class Game {
       // Update hover states with fresh click coordinates to ensure accuracy
       this.updateHoverStates();
       
+      // Handle teleport click mode first
+      if (this.teleportClickMode && this.onTeleportClickCallback) {
+        const ship = this.world.getShip();
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+        const dx = logicalX - centerX;
+        const dy = logicalY - centerY;
+        const worldX = Math.max(0, Math.min(5000, ship.getX() + dx));
+        const worldY = Math.max(0, Math.min(5000, ship.getY() + dy));
+        this.onTeleportClickCallback(worldX, worldY);
+        this.teleportClickMode = false; // exit click mode after use
+        return; // don't process normal click
+      }
+
       // Check if any object is hovered
       const hoveredObject = this.world.findHoveredObject();
       
@@ -333,6 +349,20 @@ export class Game {
    */
   public setNavigationCallback(callback: () => void): void {
     this.onNavigationCallback = callback;
+  }
+
+  /**
+   * Set teleport click mode - when enabled, next canvas click triggers teleport
+   */
+  public setTeleportClickMode(enabled: boolean): void {
+    this.teleportClickMode = enabled;
+  }
+
+  /**
+   * Set a callback to be called when canvas is clicked in teleport mode
+   */
+  public setTeleportClickCallback(callback: ((x: number, y: number) => void) | null): void {
+    this.onTeleportClickCallback = callback;
   }
 
   /**

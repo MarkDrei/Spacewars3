@@ -7,7 +7,9 @@ import './GamePage.css';
 import { initGame, Game } from '@/lib/client/game/Game';
 import { useWorldData } from '@/lib/client/hooks/useWorldData';
 import { navigateShip } from '@/lib/client/services/navigationService';
+import { teleportShip } from '@/lib/client/services/teleportService';
 import { getShipStats } from '@/lib/client/services/shipStatsService';
+import { userStatsService } from '@/lib/client/services/userStatsService';
 import { ServerAuthState } from '@/lib/server/serverSession';
 import DataAgeIndicator from '@/components/DataAgeIndicator/DataAgeIndicator';
 
@@ -26,6 +28,14 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
   const [speedInput, setSpeedInput] = useState<string>('0');
   const [isSettingAngle, setIsSettingAngle] = useState(false);
   const [isSettingSpeed, setIsSettingSpeed] = useState(false);
+  const [teleportMaxCharges, setTeleportMaxCharges] = useState(0);
+  const [teleportCharges, setTeleportCharges] = useState(0);
+  const [teleportX, setTeleportX] = useState<string>('0');
+  const [teleportY, setTeleportY] = useState<string>('0');
+  const [isTeleporting, setIsTeleporting] = useState(false);
+  const [teleportClickMode, setTeleportClickMode] = useState(false);
+  const [teleportPreserveVelocity, setTeleportPreserveVelocity] = useState(false);
+  const [teleportRechargeTimeSec, setTeleportRechargeTimeSec] = useState(0);
   // Auth is guaranteed by server, so pass true and use auth.shipId
   const { worldData, isLoading, error, refetch, lastUpdateTime } = useWorldData(3000);
 
@@ -47,6 +57,22 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
   const handleAttackSuccess = useCallback(() => {
     router.push('/');
   }, [router]);
+
+  // Memoize canvas teleport callback - called from Game when click-to-teleport mode is active
+  const handleCanvasTeleport = useCallback(async (worldX: number, worldY: number) => {
+    setTeleportClickMode(false);
+    try {
+      const result = await teleportShip({ x: worldX, y: worldY, preserveVelocity: teleportPreserveVelocity });
+      setTeleportCharges(result.remainingCharges);
+      setTeleportX(Math.round(worldX).toString());
+      setTeleportY(Math.round(worldY).toString());
+      if (refetch) {
+        refetch();
+      }
+    } catch (error) {
+      console.error('❌ [CLIENT] Canvas teleport failed:', error);
+    }
+  }, [teleportPreserveVelocity, refetch]);
 
   useEffect(() => {
     // Initialize game only when we have necessary data AND canvas is rendered (not loading)
@@ -91,8 +117,10 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
       gameInstanceRef.current.setNavigationCallback?.(updateInputFieldsFromShip);
       // Set the attack success callback to redirect to home page
       gameInstanceRef.current.setAttackSuccessCallback?.(handleAttackSuccess);
+      // Set the teleport click callback for canvas click-to-teleport mode
+      gameInstanceRef.current.setTeleportClickCallback?.(handleCanvasTeleport);
     }
-  }, [worldData, auth.shipId, refetch, handleAttackSuccess]);
+  }, [worldData, auth.shipId, refetch, handleAttackSuccess, handleCanvasTeleport]);
 
   // Initialize input fields with current ship state only once when game starts
   useEffect(() => {
@@ -225,6 +253,52 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
     }
   };
 
+  const fetchTeleportData = useCallback(async () => {
+    const stats = await userStatsService.getUserStats();
+    if (!('error' in stats)) {
+      setTeleportCharges(stats.teleportCharges);
+      setTeleportMaxCharges(stats.teleportMaxCharges);
+      setTeleportRechargeTimeSec(stats.teleportRechargeTimeSec);
+    }
+  }, []);
+
+  // Load teleport data on mount
+  useEffect(() => {
+    fetchTeleportData();
+  }, [fetchTeleportData]);
+
+  // Sync teleportClickMode with game instance
+  useEffect(() => {
+    if (gameInstanceRef.current) {
+      gameInstanceRef.current.setTeleportClickMode(teleportClickMode);
+    }
+  }, [teleportClickMode]);
+
+  const handleTeleport = async () => {
+    if (isTeleporting) return;
+
+    const x = parseFloat(teleportX);
+    const y = parseFloat(teleportY);
+
+    if (isNaN(x) || isNaN(y)) {
+      console.error('Invalid teleport coordinates');
+      return;
+    }
+
+    setIsTeleporting(true);
+    try {
+      const result = await teleportShip({ x, y, preserveVelocity: teleportPreserveVelocity });
+      setTeleportCharges(result.remainingCharges);
+      if (refetch) {
+        refetch();
+      }
+    } catch (error) {
+      console.error('❌ [CLIENT] Teleport failed:', error);
+    } finally {
+      setIsTeleporting(false);
+    }
+  };
+
   // Show loading or error states
   if (isLoading) {
     return (
@@ -318,6 +392,42 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
               </button>
             </div>
           </div>
+
+          {teleportMaxCharges > 0 && (
+            <div className="teleport-controls">
+              <h3>Teleport</h3>
+              <div className="teleport-charges">
+                Charges: {Math.floor(teleportCharges)} / {teleportMaxCharges}
+              </div>
+              <div className="control-row">
+                <label htmlFor="teleport-x">X:</label>
+                <input id="teleport-x" type="number" value={teleportX} onChange={(e) => setTeleportX(e.target.value)} min="0" max="5000" step="1" />
+              </div>
+              <div className="control-row">
+                <label htmlFor="teleport-y">Y:</label>
+                <input id="teleport-y" type="number" value={teleportY} onChange={(e) => setTeleportY(e.target.value)} min="0" max="5000" step="1" />
+              </div>
+              <div className="control-row">
+                <label>
+                  <input type="checkbox" checked={teleportPreserveVelocity} onChange={(e) => setTeleportPreserveVelocity(e.target.checked)} />
+                  Preserve velocity
+                </label>
+              </div>
+              <div className="control-row">
+                <button onClick={handleTeleport} disabled={isTeleporting || Math.floor(teleportCharges) < 1} className="control-button btn-primary">
+                  {isTeleporting ? 'Teleporting...' : 'Teleport'}
+                </button>
+                <button onClick={() => setTeleportClickMode(!teleportClickMode)} disabled={Math.floor(teleportCharges) < 1} className={`control-button ${teleportClickMode ? 'btn-active' : 'btn-secondary'}`}>
+                  {teleportClickMode ? 'Click to Teleport (ON)' : 'Click to Teleport (OFF)'}
+                </button>
+              </div>
+              {teleportRechargeTimeSec > 0 && (
+                <div className="teleport-recharge">
+                  Recharge: {(teleportRechargeTimeSec / 3600).toFixed(1)}h per charge
+                </div>
+              )}
+            </div>
+          )}
           
           <div className="debug-toggle-container">
             <label className="debug-toggle-label">

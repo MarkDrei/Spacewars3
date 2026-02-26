@@ -108,7 +108,11 @@ describe('ResearchPageClient card view', () => {
       xp: 0,
       level: 0,
       xpForNextLevel: 0,
-      timeMultiplier: 1
+      timeMultiplier: 1,
+      teleportCharges: 0,
+      teleportMaxCharges: 0,
+      teleportRechargeTimeSec: 0,
+      teleportRechargeSpeed: 0
     });
 
     vi.mocked(researchService.isResearchActive).mockReturnValue(true);
