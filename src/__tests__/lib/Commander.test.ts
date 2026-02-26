@@ -4,6 +4,7 @@
 
 import { describe, test, expect } from 'vitest';
 import { Commander, CommanderStatBonus, COMMANDER_STAT_KEYS } from '@/lib/server/inventory/Commander';
+import type { CommanderData } from '@/lib/server/inventory/Commander';
 
 describe('Commander', () => {
   describe('withStats', () => {
@@ -231,6 +232,57 @@ describe('Commander', () => {
       const cmd = Commander.fromJSON(data);
       expect(cmd.imageId).toBeGreaterThanOrEqual(0);
       expect(cmd.imageId).toBeLessThanOrEqual(9);
+    });
+  });
+
+  describe('calculateBonuses', () => {
+    function makeCommanderData(statBonuses: CommanderStatBonus[]): CommanderData {
+      return { itemType: 'commander', name: 'Test', imageId: 0, statBonuses };
+    }
+
+    test('calculateBonuses_noCommanders_returnsEmptyObject', () => {
+      const result = Commander.calculateBonuses([]);
+      expect(result).toEqual({});
+    });
+
+    test('calculateBonuses_singleCommanderSingleStat_returnsCorrectBonus', () => {
+      const commander = makeCommanderData([{ stat: 'shipSpeed', value: 10 }]);
+      const result = Commander.calculateBonuses([commander]);
+      expect(result.shipSpeed).toBeCloseTo(10, 10);
+    });
+
+    test('calculateBonuses_twoCommandersSameStat_stacksMultiplicatively', () => {
+      // (1 + 10/100) * (1 + 10/100) - 1 = 0.21, so 21%
+      const c1 = makeCommanderData([{ stat: 'shipSpeed', value: 10 }]);
+      const c2 = makeCommanderData([{ stat: 'shipSpeed', value: 10 }]);
+      const result = Commander.calculateBonuses([c1, c2]);
+      expect(result.shipSpeed).toBeCloseTo(21, 10);
+    });
+
+    test('calculateBonuses_twoCommandersDifferentStats_returnsIndependentBonuses', () => {
+      const c1 = makeCommanderData([{ stat: 'shipSpeed', value: 0.5 }]);
+      const c2 = makeCommanderData([{ stat: 'energyWeaponDamage', value: 0.3 }]);
+      const result = Commander.calculateBonuses([c1, c2]);
+      expect(result.shipSpeed).toBeCloseTo(0.5, 10);
+      expect(result.energyWeaponDamage).toBeCloseTo(0.3, 10);
+      expect(result.projectileWeaponDamage).toBeUndefined();
+    });
+
+    test('calculateBonuses_commanderWithMultipleStats_allStatsIncluded', () => {
+      const commander = makeCommanderData([
+        { stat: 'shipSpeed', value: 0.5 },
+        { stat: 'projectileWeaponDamage', value: 0.2 },
+      ]);
+      const result = Commander.calculateBonuses([commander]);
+      expect(result.shipSpeed).toBeCloseTo(0.5, 10);
+      expect(result.projectileWeaponDamage).toBeCloseTo(0.2, 10);
+    });
+
+    test('calculateBonuses_zeroBonusNotIncluded', () => {
+      // value=0 means no bonus; we don't pass it to withStats (not valid), but test directly
+      const commander = makeCommanderData([{ stat: 'shipSpeed', value: 0 }]);
+      const result = Commander.calculateBonuses([commander]);
+      expect(result.shipSpeed).toBeUndefined();
     });
   });
 });

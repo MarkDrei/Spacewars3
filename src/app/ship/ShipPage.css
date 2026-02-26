@@ -285,8 +285,40 @@
 }
 
 /* ============================================================
-   Inventory Section
+   Bridge Bonuses Summary
    ============================================================ */
+
+.bridge-bonuses {
+  margin-top: 1.25rem;
+  padding: 1rem 1.25rem;
+  background-color: #1a1a2e;
+  border: 1px solid #ce93d8;
+  border-radius: 8px;
+}
+
+.bridge-bonuses-heading {
+  font-size: 1rem;
+  color: #ce93d8;
+  margin-bottom: 0.75rem;
+}
+
+.bridge-bonuses-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.bridge-bonus-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.3rem 0;
+  border-bottom: 1px solid #2a2a3e;
+  font-size: 0.9rem;
+}
+
+.bridge-bonus-item:last-child {
+  border-bottom: none;
+}
 
 .inventory-section {
   margin-bottom: 2rem;

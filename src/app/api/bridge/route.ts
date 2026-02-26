@@ -7,6 +7,7 @@ import {
   BridgeSlotEmptyError,
   BridgeSlotInvalidError,
 } from '@/lib/server/inventory/InventoryService';
+import { Commander, CommanderData } from '@/lib/server/inventory/Commander';
 import { UserCache } from '@/lib/server/user/userCache';
 import { USER_LOCK } from '@/lib/server/typedLocks';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
@@ -32,7 +33,13 @@ export async function GET(request: NextRequest) {
 
     const maxBridgeSlots = await getMaxBridgeSlotsForUser(session.userId!);
     const grid = await inventoryService.getBridge(session.userId!, maxBridgeSlots);
-    return NextResponse.json({ grid, maxBridgeSlots });
+
+    const commanders: CommanderData[] = grid.flatMap(row =>
+      row.filter((slot): slot is CommanderData => slot !== null && slot.itemType === 'commander')
+    );
+    const bonuses = Commander.calculateBonuses(commanders);
+
+    return NextResponse.json({ grid, maxBridgeSlots, bonuses });
   } catch (error) {
     return handleApiError(error);
   }
