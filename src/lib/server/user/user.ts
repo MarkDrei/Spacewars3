@@ -240,6 +240,9 @@ class User {
     // Also update defense values (regeneration)
     this.updateDefenseValues(now);
 
+    // Update teleport charges (regeneration)
+    this.updateTeleportCharges(now);
+
     // Check if research completed and award XP
     let levelUpInfo: { leveledUp: boolean; oldLevel: number; newLevel: number; xpReward: number; source: 'research' } | undefined;
     if (researchResult?.completed) {
@@ -255,6 +258,35 @@ class User {
     }
 
     return levelUpInfo ? { levelUp: levelUpInfo } : {};
+  }
+
+  /**
+   * Update teleport charges based on elapsed time and recharge research.
+   * Charges accumulate fractionally but only whole charges are usable.
+   * @param now Current timestamp in seconds
+   */
+  updateTeleportCharges(now: number): void {
+    const maxCharges = getResearchEffectFromTree(this.techTree, ResearchType.Teleport);
+    if (maxCharges === 0) return; // no teleport research, skip
+
+    const rechargeTimeSec = getResearchEffectFromTree(this.techTree, ResearchType.TeleportRechargeSpeed);
+    if (rechargeTimeSec <= 0) return; // safety: no valid recharge time
+
+    if (this.teleportLastRegen === 0) {
+      // First call: initialize without accumulating retroactive charges
+      this.teleportLastRegen = now;
+      return;
+    }
+
+    const elapsed = now - this.teleportLastRegen;
+    if (elapsed <= 0) return;
+
+    const timeMultiplier = TimeMultiplierService.getInstance().getMultiplier();
+    const gameElapsed = elapsed * timeMultiplier;
+
+    const chargeGain = gameElapsed / rechargeTimeSec;
+    this.teleportCharges = Math.min(maxCharges, this.teleportCharges + chargeGain);
+    this.teleportLastRegen = now;
   }
 
   /**
