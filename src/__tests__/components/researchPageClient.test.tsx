@@ -52,6 +52,7 @@ const makeFakeTechTree = (overrides: Partial<TechTree> = {}) => ({
   afterburnerSpeedIncrease: 0,
   afterburnerDuration: 0,
   teleport: 0,
+  teleportRechargeSpeed: 1,
   ironCapacity: 0,
   inventorySlots: 0,
   bridgeSlots: 0,
