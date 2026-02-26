@@ -40,6 +40,10 @@ CREATE TABLE IF NOT EXISTS users (
   -- Battle state
   in_battle INTEGER NOT NULL DEFAULT 0,
   current_battle_id INTEGER DEFAULT NULL,
+
+  -- Teleport charges
+  teleport_charges DOUBLE PRECISION NOT NULL DEFAULT 0.0,
+  teleport_last_regen INTEGER NOT NULL DEFAULT 0,
   
   FOREIGN KEY (ship_id) REFERENCES space_objects (id)
 )`;
@@ -156,5 +160,11 @@ export const MIGRATE_ADD_PICTURE_ID = [
   'ALTER TABLE space_objects ADD COLUMN IF NOT EXISTS picture_id INTEGER NOT NULL DEFAULT 1'
 ];
 
+// Migration to add teleport charges columns (PostgreSQL syntax)
+export const MIGRATE_ADD_TELEPORT_CHARGES = [
+  'ALTER TABLE users ADD COLUMN IF NOT EXISTS teleport_charges DOUBLE PRECISION NOT NULL DEFAULT 0.0',
+  'ALTER TABLE users ADD COLUMN IF NOT EXISTS teleport_last_regen INTEGER NOT NULL DEFAULT 0'
+];
+
 // Optional: Version management for migrations
-export const SCHEMA_VERSION = 11;
+export const SCHEMA_VERSION = 12;

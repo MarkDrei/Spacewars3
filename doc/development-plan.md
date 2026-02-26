@@ -200,6 +200,40 @@ teleport_last_regen INTEGER NOT NULL DEFAULT 0
 **Files**:
 - `src/lib/server/user/userRepo.ts` — UserRow, userFromRow, saveUserToDb, createUser
 
+**Status**: ✅ COMPLETED
+**Implementation Summary**: Added `teleportCharges: number` and `teleportLastRegen: number` to User class constructor and all instantiation sites; updated `UserRow`, `userFromRow()` (with `?? 0` defaults), `saveUserToDb()` ($24/$25, WHERE $26), `createUser()`; added migration version 11 `add_teleport_charges` with `applyTeleportChargesMigration()`; incremented SCHEMA_VERSION to 12; updated all test files that construct User objects.
+**Files Modified/Created**:
+- `src/lib/server/schema.ts` — Added `MIGRATE_ADD_TELEPORT_CHARGES`, incremented SCHEMA_VERSION to 12
+- `src/lib/server/migrations.ts` — Added migration version 11, `applyTeleportChargesMigration()`, call in `applyTechMigrations()`
+- `src/lib/server/user/user.ts` — Added `teleportCharges`/`teleportLastRegen` fields and constructor params
+- `src/lib/server/user/userRepo.ts` — Updated UserRow, userFromRow, saveUserToDb, createUser
+- `src/__tests__/lib/iron-capacity.test.ts` — Updated User constructor call
+- `src/__tests__/lib/research-xp-rewards.test.ts` — Updated User constructor calls (×7)
+- `src/__tests__/lib/timeMultiplier-user.test.ts` — Updated User constructor call
+- `src/__tests__/lib/user-collection-rewards.test.ts` — Updated User constructor call
+- `src/__tests__/lib/user-domain.test.ts` — Updated User constructor calls (×3)
+- `src/__tests__/lib/user-level-system.test.ts` — Updated User constructor calls (×4)
+- `src/__tests__/lib/user-xp-property.test.ts` — Updated User constructor calls (×6)
+**Deviations from Plan**: Task 2.4 stated WHERE clause would use `$27` (2 new columns → +2 params, old $24 → new $26). Actual impl correctly uses `$26` because the old WHERE was `$24` with 23 SET params; the 2 new params push WHERE to `$26`. This is correct arithmetic. No other deviations.
+**Arc42 Updates**: None required
+**Test Results**: ✅ All tests passing (Knight verified)
+
+**Review Status**: ⚠️ NEEDS REVISION
+**Reviewer**: Medicus
+**Issues Found**:
+1. **Critical: `teleport_charges` and `teleport_last_regen` columns are missing from `CREATE_USERS_TABLE`** — Task 2.1 explicitly required adding the columns to `CREATE_USERS_TABLE`, but the implementation only added the `MIGRATE_ADD_TELEPORT_CHARGES` constant and incremented `SCHEMA_VERSION`. The `CREATE_USERS_TABLE` DDL in `schema.ts` still ends at `current_battle_id` with no teleport columns. Fresh database deployments (`initializeDatabase`) use `CREATE_TABLES` which includes `CREATE_USERS_TABLE`, but **do not run migrations** (`applyTechMigrations` is only called for existing databases). Consequence: on a new deployment, `saveUserToDb` will throw a PostgreSQL error when trying to UPDATE `teleport_charges = $24` and `teleport_last_regen = $25` on a table that doesn't have those columns. Existing tests pass because they use in-memory User objects and mock save callbacks; no integration test caught this.
+2. **Indentation inconsistency in `user-collection-rewards.test.ts`** — The two new constructor parameters (`0, // teleportCharges` and `0 // teleportLastRegen`) have 6-space indentation instead of matching the 4-space indent of the surrounding arguments.
+3. **Missing schema definition test** — There is no test analogous to `xp-schema-definition.test.ts` verifying that `CREATE_USERS_TABLE` contains the new `teleport_charges` and `teleport_last_regen` columns. Such a test would have caught issue #1.
+**Required Changes**:
+- In `src/lib/server/schema.ts`: Add the following two lines to `CREATE_USERS_TABLE`, inside the table body after the `-- Battle state` section (before the closing `FOREIGN KEY` line):
+  ```sql
+  -- Teleport charges
+  teleport_charges DOUBLE PRECISION NOT NULL DEFAULT 0.0,
+  teleport_last_regen INTEGER NOT NULL DEFAULT 0,
+  ```
+- In `src/__tests__/lib/user-collection-rewards.test.ts`: Fix indentation of the two new `0` params to 4 spaces (matching surrounding args).
+- In `src/__tests__/lib/xp-schema-definition.test.ts` (or a new `teleport-schema-definition.test.ts`): Add tests verifying `CREATE_USERS_TABLE` contains `teleport_charges DOUBLE PRECISION` and `teleport_last_regen INTEGER`.
+
 ---
 
 ### Goal 3: Backend Logic — Charge Filling & Teleport Action

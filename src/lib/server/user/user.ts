@@ -32,6 +32,10 @@ class User {
   buildQueue: BuildQueueItem[];
   buildStartSec: number | null;
 
+  // Teleport charges (persisted)
+  teleportCharges: number;
+  teleportLastRegen: number;
+
   // TODO: Need to figure out where this is implemented: Should we use locks here?
   private saveCallback: SaveUserCallback;
 
@@ -53,6 +57,8 @@ class User {
     currentBattleId: number | null,
     buildQueue: BuildQueueItem[],
     buildStartSec: number | null,
+    teleportCharges: number,
+    teleportLastRegen: number,
     ship_id?: number
   ) {
     this.id = id;
@@ -71,6 +77,8 @@ class User {
     this.currentBattleId = currentBattleId;
     this.buildQueue = buildQueue;
     this.buildStartSec = buildStartSec;
+    this.teleportCharges = teleportCharges;
+    this.teleportLastRegen = teleportLastRegen;
     this.ship_id = ship_id;
     this.saveCallback = saveCallback;
   }

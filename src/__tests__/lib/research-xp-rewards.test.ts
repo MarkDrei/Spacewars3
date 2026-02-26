@@ -124,7 +124,9 @@ describe('Research XP Rewards System', () => {
         false,
         null,
         [],
-        null
+        null,
+        0, // teleportCharges
+        0 // teleportLastRegen
       );
       
       user.techTree.ironHarvesting = 1;
@@ -160,7 +162,9 @@ describe('Research XP Rewards System', () => {
         false,
         null,
         [],
-        null
+        null,
+        0, // teleportCharges
+        0 // teleportLastRegen
       );
       
       user.techTree.ironHarvesting = 1;
@@ -200,7 +204,9 @@ describe('Research XP Rewards System', () => {
         false,
         null,
         [],
-        null
+        null,
+        0, // teleportCharges
+        0 // teleportLastRegen
       );
       
       user.techTree.activeResearch = undefined;
@@ -230,7 +236,9 @@ describe('Research XP Rewards System', () => {
         false,
         null,
         [],
-        null
+        null,
+        0, // teleportCharges
+        0 // teleportLastRegen
       );
       
       user.techTree.shipSpeed = 1;
@@ -265,7 +273,9 @@ describe('Research XP Rewards System', () => {
         false,
         null,
         [],
-        null
+        null,
+        0, // teleportCharges
+        0 // teleportLastRegen
       );
       
       user.techTree.ironHarvesting = 5; // Higher level
@@ -305,7 +315,9 @@ describe('Research XP Rewards System', () => {
         false,
         null,
         [],
-        null
+        null,
+        0, // teleportCharges
+        0 // teleportLastRegen
       );
       
       user.techTree.ironHarvesting = 1;
@@ -363,7 +375,9 @@ describe('Research XP Rewards System', () => {
         false,
         null,
         [],
-        null
+        null,
+        0, // teleportCharges
+        0 // teleportLastRegen
       );
       
       user.techTree.ironHarvesting = 1;
@@ -408,7 +422,9 @@ describe('Research XP Rewards System', () => {
         false,
         null,
         [],
-        null
+        null,
+        0, // teleportCharges
+        0 // teleportLastRegen
       );
       
       // First research

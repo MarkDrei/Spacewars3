@@ -3,7 +3,7 @@
 // ---
 
 import { DatabaseConnection } from './database';
-import { MIGRATE_ADD_PICTURE_ID } from './schema';
+import { MIGRATE_ADD_PICTURE_ID, MIGRATE_ADD_TELEPORT_CHARGES } from './schema';
 
 export interface Migration {
   version: number;
@@ -161,6 +161,18 @@ export const migrations: Migration[] = [
     down: [
       'ALTER TABLE inventories DROP COLUMN IF EXISTS bridge_data'
     ]
+  },
+  {
+    version: 11,
+    name: 'add_teleport_charges',
+    up: [
+      'ALTER TABLE users ADD COLUMN IF NOT EXISTS teleport_charges DOUBLE PRECISION NOT NULL DEFAULT 0.0',
+      'ALTER TABLE users ADD COLUMN IF NOT EXISTS teleport_last_regen INTEGER NOT NULL DEFAULT 0'
+    ],
+    down: [
+      'ALTER TABLE users DROP COLUMN IF EXISTS teleport_charges',
+      'ALTER TABLE users DROP COLUMN IF EXISTS teleport_last_regen'
+    ]
   }
 ];
 
@@ -282,6 +294,8 @@ export async function applyTechMigrations(db: DatabaseConnection): Promise<void>
   await applyInventoriesMigration(db);
   // Apply bridge_data column migration
   await applyBridgeMigration(db);
+  // Apply teleport charges migration
+  await applyTeleportChargesMigration(db);
 }
 
 /**
@@ -578,5 +592,30 @@ export async function applyXpSystemMigration(db: DatabaseConnection): Promise<vo
     console.log('✅ XP system migration completed');
   } catch (error) {
     console.error('❌ Error applying XP system migration:', error);
+  }
+}
+
+/**
+ * Apply teleport charges migration to the database
+ */
+export async function applyTeleportChargesMigration(db: DatabaseConnection): Promise<void> {
+  console.log('🔄 Checking for teleport charges migration...');
+
+  try {
+    const exists = await columnExists(db, 'users', 'teleport_charges');
+    if (exists) {
+      console.log('✅ Teleport charges columns already exist');
+      return;
+    }
+
+    console.log('🚀 Adding teleport charges columns...');
+
+    for (const statement of MIGRATE_ADD_TELEPORT_CHARGES) {
+      await runMigrationStatement(db, statement);
+    }
+
+    console.log('✅ Teleport charges migration completed');
+  } catch (error) {
+    console.error('❌ Error applying teleport charges migration:', error);
   }
 }
