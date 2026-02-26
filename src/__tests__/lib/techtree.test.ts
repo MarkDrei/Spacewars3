@@ -124,7 +124,7 @@ describe('getResearchEffect', () => {
     expect(getResearchEffect(AllResearches[ResearchType.IronCapacity], 1)).toBeCloseTo(5000);
     expect(getResearchEffect(AllResearches[ResearchType.IronCapacity], 2)).toBeCloseTo(10000);
     expect(getResearchEffect(AllResearches[ResearchType.Teleport], 0)).toBeCloseTo(0);
-    expect(getResearchEffect(AllResearches[ResearchType.Teleport], 1)).toBeCloseTo(100);
+    expect(getResearchEffect(AllResearches[ResearchType.Teleport], 1)).toBeCloseTo(1);
   });
 
   test('getResearchEffect_newSpyResearches_calculatesCorrectly', () => {

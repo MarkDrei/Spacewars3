@@ -23,7 +23,7 @@ vi.mock('@/lib/client/game/Game', () => ({
 vi.mock('@/lib/client/hooks/useWorldData', () => ({
   useWorldData: vi.fn(() => ({
     worldData: null,
-    isLoading: true,
+    isLoading: false,
     error: null,
     refetch: vi.fn(),
     lastUpdateTime: 0,
@@ -42,10 +42,6 @@ vi.mock('@/lib/client/services/navigationService', () => ({
   interceptTarget: vi.fn(),
 }));
 
-vi.mock('@/lib/client/services/teleportService', () => ({
-  teleportShip: vi.fn(),
-}));
-
 vi.mock('@/lib/client/services/shipStatsService', () => ({
   getShipStats: vi.fn(),
 }));
@@ -55,6 +51,7 @@ vi.mock('next/navigation', () => ({
 }));
 
 // ─────────── Re-import after mocks ──────────────────────────────────────────
+// teleportService is NOT mocked at module level so the real implementation is used in service tests
 import { teleportShip, TeleportRequest, TeleportResponse } from '@/lib/client/services/teleportService';
 import { userStatsService, UserStatsResponse } from '@/lib/client/services/userStatsService';
 import GamePageClient from '@/app/game/GamePageClient';
