@@ -20,63 +20,6 @@ describe('Complete Build API (Cheat Mode)', () => {
     await shutdownIntegrationTestServer();
   });
 
-  test('completeBuild_notAuthenticated_returns401', async () => {
-    await withTransaction(async () => {
-      const request = createRequest('http://localhost:3000/api/complete-build', 'POST', {});
-
-      const response = await completeBuildPOST(request);
-      const data = await response.json();
-
-      expect(response.status).toBe(401);
-      expect(data.error).toBe('Not authenticated');
-    });
-  });
-
-  test('completeBuild_invalidSession_returns401', async () => {
-    await withTransaction(async () => {
-      // Create request with invalid session cookie
-      const invalidSessionCookie = 'spacewars-session=invalid-session-data; Path=/; HttpOnly; SameSite=lax';
-      const request = createRequest(
-        'http://localhost:3000/api/complete-build', 
-        'POST', 
-        {}, 
-        invalidSessionCookie
-      );
-
-      const response = await completeBuildPOST(request);
-      const data = await response.json();
-
-      expect(response.status).toBe(401);
-      expect(data.error).toBe('Not authenticated');
-    });
-  });
-
-  test('completeBuild_emptyBody_stillValidatesAuth', async () => {
-    await withTransaction(async () => {
-      // Test that auth validation happens before body validation
-      const request = createRequest('http://localhost:3000/api/complete-build', 'POST');
-
-      const response = await completeBuildPOST(request);
-      const data = await response.json();
-
-      expect(response.status).toBe(401);
-      expect(data.error).toBe('Not authenticated');
-    });
-  });
-
-  test('completeBuild_postMethod_required', async () => {
-    await withTransaction(async () => {
-      // Only POST method should be allowed (this tests the API structure)
-      const request = createRequest('http://localhost:3000/api/complete-build', 'GET');
-
-      // This should fail since the route only handles POST
-      const response = await completeBuildPOST(request);
-      
-      // Even GET requests should go through auth first
-      expect(response.status).toBe(401);
-    });
-  });
-
   test('completeBuild_userA_canUseCheatMode', async () => {
     await withTransaction(async () => {
       // Use seeded user 'a' from test database (password 'a')
@@ -117,19 +60,6 @@ describe('Complete Build API (Cheat Mode)', () => {
       expect(data.completedItem).toBeDefined();
       expect(data.completedItem.itemKey).toBe('pulse_laser');
       expect(data.completedItem.itemType).toBe('weapon');
-    });
-  });
-
-  test('completeBuild_userQ_canUseCheatMode', async () => {
-    await withTransaction(async () => {
-      // NOTE: This is a placeholder test acknowledging that user 'q' is also authorized
-      // The backend code (lines 36-39 in complete-build/route.ts) checks for both 'a' and 'q'
-      // We cannot easily test the full flow for user 'q' because:
-      // 1. New users start with 0 iron (seeded user 'a' has 10000 iron)
-      // 2. The test for user 'a' already verifies the complete cheat mode flow
-      // 3. The test for regular users verifies the 403 authorization check
-      // The backend authorization logic is identical for both 'a' and 'q', so if one works, both work
-      expect(true).toBe(true); // Placeholder - backend already checks for 'q'
     });
   });
 

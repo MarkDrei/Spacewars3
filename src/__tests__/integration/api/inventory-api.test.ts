@@ -42,17 +42,6 @@ describe('Inventory API', () => {
   // ---------------------------------------------------------------------------
 
   describe('GET /api/inventory', () => {
-    it('inventoryGet_notAuthenticated_returns401', async () => {
-      await withTransaction(async () => {
-        const request = createRequest('http://localhost:3000/api/inventory', 'GET');
-        const response = await GET(request);
-        const data = await response.json();
-
-        expect(response.status).toBe(401);
-        expect(data.error).toBe('Not authenticated');
-      });
-    });
-
     it('inventoryGet_authenticatedUser_returnsEmptyGrid', async () => {
       await withTransaction(async () => {
         const sessionCookie = await createAuthenticatedSession('invgetuser');
@@ -119,21 +108,6 @@ describe('Inventory API', () => {
   // ---------------------------------------------------------------------------
 
   describe('DELETE /api/inventory', () => {
-    it('inventoryDelete_notAuthenticated_returns401', async () => {
-      await withTransaction(async () => {
-        const request = createRequest(
-          'http://localhost:3000/api/inventory',
-          'DELETE',
-          { row: 0, col: 0 }
-        );
-        const response = await DELETE(request);
-        const data = await response.json();
-
-        expect(response.status).toBe(401);
-        expect(data.error).toBe('Not authenticated');
-      });
-    });
-
     it('inventoryDelete_emptySlot_returns400', async () => {
       await withTransaction(async () => {
         const sessionCookie = await createAuthenticatedSession('invdeluser');

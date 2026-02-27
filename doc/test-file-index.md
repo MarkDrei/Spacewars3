@@ -19,12 +19,14 @@ Format: `[TAG: one-line reason]`
 | `REFACTOR→unit` | Could become a unit test after extracting logic or adding mocks       |
 | `PARTIAL`       | Split possible: some tests → unit/ui, others must stay in integration |
 
-## Unit Tests (10 files)
+## Unit Tests (12 files)
 
 No database setup. Fast, isolated tests for pure logic.
 
 - src/**tests**/unit/admin/space-object-count-summary.test.ts _(moved from integration)_
 - src/**tests**/unit/api/collection-api.test.ts _(moved from integration — uses `createMockSessionCookie`)_
+- src/**tests**/unit/api/complete-build-api.test.ts _(extracted from integration — auth-guard tests only)_
+- src/**tests**/unit/api/inventory-api.test.ts _(extracted from integration — GET+DELETE auth-guard tests only)_
 - src/**tests**/unit/lib/Commander.test.ts
 - src/**tests**/unit/renderers/TargetingLineRenderer.test.ts
 - src/**tests**/unit/services/collectionService.test.ts
@@ -34,17 +36,16 @@ No database setup. Fast, isolated tests for pure logic.
 - src/**tests**/unit/shared/physics.test.ts
 - src/**tests**/unit/shared/worldConstants.test.ts
 
-## Integration Tests (81 files)
+## Integration Tests (80 files)
 
 Require PostgreSQL test database. Use `withTransaction` or `initializeIntegrationTestServer`.
 
-- src/**tests**/integration/api/admin-api.test.ts `[KEEP: tests real login/session flow, reads seeded DB data — mocking would hollow out the test value]`
-- src/**tests**/integration/api/admin/spawn-objects.test.ts `[KEEP: spawn tests write to DB + WorldCache; auth-only cases (401/403) are too few to justify extraction]`
-- src/**tests**/integration/api/auth-api.test.ts `[KEEP: tests register/login with real bcrypt + DB user creation — mocking would bypass the integration under test]`
-- src/**tests**/integration/api/bridge-auto-transfer-api.test.ts `[KEEP: all functional tests seed DB inventory/bridge state via direct SQL and verify via follow-up API calls]`
-- src/**tests**/integration/api/complete-build-api.test.ts
-- src/**tests**/integration/api/complete-build-notifications.test.ts
-- src/**tests**/integration/api/inventory-api.test.ts
+- src/**tests**/integration/api/admin-api.test.ts `[PARTIAL: 401 test fires before UserCache (→ unit); 403 needs UserCache for userId→username lookup; 200 tests read real DB data]`
+- src/**tests**/integration/api/admin/spawn-objects.test.ts `[PARTIAL: 401 test fires before UserCache (→ unit); 403 needs UserCache for userId→username; spawn tests write DB + WorldCache]`
+- src/**tests**/integration/api/auth-api.test.ts `[KEEP: tests the register/login routes themselves — mocking would bypass the integration under test]`
+- src/**tests**/integration/api/bridge-auto-transfer-api.test.ts `[PARTIAL: 401 test fires before UserCache (→ unit); all other tests seed DB inventory/bridge state via direct SQL]`
+- src/**tests**/integration/api/complete-build-api.test.ts `[KEEP: 403 + 200 tests need real DB user and build queue; auth-guard tests extracted to unit/api/complete-build-api.test.ts]`
+- src/**tests**/integration/api/inventory-api.test.ts `[KEEP: functional tests seed DB via direct SQL; 401 guards extracted to unit/api/inventory-api.test.ts; move/401 stays here (UserCache init before requireAuth)]`
 - src/**tests**/integration/api/messages-api.test.ts
 - src/**tests**/integration/api/ships-api.test.ts
 - src/**tests**/integration/api/techtree-api.test.ts
