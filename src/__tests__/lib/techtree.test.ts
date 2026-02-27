@@ -382,8 +382,8 @@ describe('Teleport research', () => {
   });
 
   test('teleport_upgradeCostAtLevel2_appliesFactor', () => {
-    // level 2 is two above startLevel(0): 10000 * 3.0^(2-0-1) = 10000 * 3 = 30000
-    expect(getResearchUpgradeCost(AllResearches[ResearchType.Teleport], 2)).toBe(30000);
+    // level 2 is two above startLevel(0): 10000 * 1.3^(2-0-1) = 10000 * 1.3 = 13000
+    expect(getResearchUpgradeCost(AllResearches[ResearchType.Teleport], 2)).toBe(13000);
   });
 
   test('teleport_upgradeDurationAtLevel0_isBaseDuration', () => {

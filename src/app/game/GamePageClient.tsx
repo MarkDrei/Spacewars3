@@ -34,6 +34,7 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
   const [teleportY, setTeleportY] = useState<string>('0');
   const [isTeleporting, setIsTeleporting] = useState(false);
   const [teleportClickMode, setTeleportClickMode] = useState(false);
+  const [attackClickMode, setAttackClickMode] = useState(false);
   const [teleportRechargeTimeSec, setTeleportRechargeTimeSec] = useState(0);
   const [timeMultiplier, setTimeMultiplier] = useState(1);
   // Auth is guaranteed by server, so pass true and use auth.shipId
@@ -74,6 +75,23 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
     }
   }, [refetch]);
 
+  const initializeGame = useCallback(() => {
+    const gameCanvas = canvasRef.current;
+    if (gameCanvas) {
+      const game = initGame(gameCanvas);
+      gameInstanceRef.current = game;
+      if (!game) {
+        console.error('Game initialization failed: initGame returned undefined');
+        return;
+      }
+      console.log('🎮 Game initialized successfully');
+      // The game will receive world data through the update effect
+      // Initial mode state is synced via the dedicated useEffects below
+    } else {
+      console.error('Game canvas not found');
+    }
+  }, []); // intentionally empty: only run once on mount
+
   useEffect(() => {
     // Initialize game only when we have necessary data AND canvas is rendered (not loading)
     if (!gameInitializedRef.current && auth.shipId && !isLoading) {
@@ -105,7 +123,7 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
         gameInstanceRef.current = null;
       }
     };
-  }, [auth.shipId, isLoading]); // Depend on both shipId and loading state
+  }, [auth.shipId, isLoading, initializeGame]); // Depend on shipId, loading state, and the stable initializeGame callback
 
   // Update game world when server data changes
   useEffect(() => {
@@ -132,17 +150,6 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
       }
     }
   }, [worldData, auth.shipId, angleInput, speedInput]);
-
-  const initializeGame = () => {
-    const gameCanvas = canvasRef.current;
-    if (gameCanvas) {
-      gameInstanceRef.current = initGame(gameCanvas);
-      console.log('🎮 Game initialized successfully');
-      // The game will receive world data through the update effect
-    } else {
-      console.error('Game canvas not found');
-    }
-  };
 
   const handleMaxSpeed = async () => {
     if (isSettingMaxSpeed) return; // Prevent double-clicks
@@ -296,6 +303,13 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
     }
   }, [teleportClickMode]);
 
+  // Sync attackClickMode with game instance
+  useEffect(() => {
+    if (gameInstanceRef.current) {
+      gameInstanceRef.current.setAttackClickMode(attackClickMode);
+    }
+  }, [attackClickMode]);
+
   // Optimistic update for teleport charges
   useEffect(() => {
     if (teleportMaxCharges > 0 && teleportRechargeTimeSec > 0) {
@@ -376,11 +390,25 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
             width="800" 
             height="800"
           ></canvas>
+          <div className="canvas-overlay-controls-left">
+            <label className="debug-toggle-label">
+              Attack
+              <div className="toggle-switch">
+                <input
+                  type="checkbox"
+                  checked={attackClickMode}
+                  onChange={(e) => setAttackClickMode(e.target.checked)}
+                  className="toggle-input"
+                />
+                <span className="toggle-slider"></span>
+              </div>
+            </label>
+          </div>
           {teleportMaxCharges > 0 && (
             <div className="canvas-overlay-controls">
-              <label className="debug-toggle-label small-toggle">
+              <label className="debug-toggle-label">
                 Teleport
-                <div className="toggle-switch small-switch">
+                <div className="toggle-switch">
                   <input
                     type="checkbox"
                     checked={teleportClickMode}

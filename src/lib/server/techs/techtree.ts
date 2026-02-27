@@ -689,7 +689,7 @@ export function getWeaponDamageModifierFromTree(tree: TechTree, weaponType: stri
     // Default to 1.0 (100%) for unknown weapon types
     return 1.0;
   }
-  
+
   const research = AllResearches[researchType];
   // Guard against division by zero
   if (research.baseValue === 0) {
@@ -749,7 +749,7 @@ export function getWeaponReloadTimeModifierFromTree(tree: TechTree, weaponType: 
     // Default to 1.0 (no change) for unknown weapon types
     return 1.0;
   }
-  
+
   const effect = getResearchEffectFromTree(tree, researchType);
   // Effect is a percentage (e.g., 10, 20, 30)
   // Reload time multiplier = 1 - (effect / 100)
