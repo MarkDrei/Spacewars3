@@ -7,7 +7,9 @@ import './GamePage.css';
 import { initGame, Game } from '@/lib/client/game/Game';
 import { useWorldData } from '@/lib/client/hooks/useWorldData';
 import { navigateShip } from '@/lib/client/services/navigationService';
+import { teleportShip } from '@/lib/client/services/teleportService';
 import { getShipStats } from '@/lib/client/services/shipStatsService';
+import { userStatsService } from '@/lib/client/services/userStatsService';
 import { ServerAuthState } from '@/lib/server/serverSession';
 import DataAgeIndicator from '@/components/DataAgeIndicator/DataAgeIndicator';
 
@@ -26,6 +28,15 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
   const [speedInput, setSpeedInput] = useState<string>('0');
   const [isSettingAngle, setIsSettingAngle] = useState(false);
   const [isSettingSpeed, setIsSettingSpeed] = useState(false);
+  const [teleportMaxCharges, setTeleportMaxCharges] = useState(0);
+  const [teleportCharges, setTeleportCharges] = useState(0);
+  const [teleportX, setTeleportX] = useState<string>('0');
+  const [teleportY, setTeleportY] = useState<string>('0');
+  const [isTeleporting, setIsTeleporting] = useState(false);
+  const [teleportClickMode, setTeleportClickMode] = useState(false);
+  const [attackClickMode, setAttackClickMode] = useState(false);
+  const [teleportRechargeTimeSec, setTeleportRechargeTimeSec] = useState(0);
+  const [timeMultiplier, setTimeMultiplier] = useState(1);
   // Auth is guaranteed by server, so pass true and use auth.shipId
   const { worldData, isLoading, error, refetch, lastUpdateTime } = useWorldData(3000);
 
@@ -47,6 +58,39 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
   const handleAttackSuccess = useCallback(() => {
     router.push('/');
   }, [router]);
+
+  // Memoize canvas teleport callback - called from Game when click-to-teleport mode is active
+  const handleCanvasTeleport = useCallback(async (worldX: number, worldY: number) => {
+    setTeleportClickMode(false);
+    try {
+      const result = await teleportShip({ x: worldX, y: worldY, preserveVelocity: true });
+      setTeleportCharges(result.remainingCharges);
+      setTeleportX(Math.round(worldX).toString());
+      setTeleportY(Math.round(worldY).toString());
+      if (refetch) {
+        refetch();
+      }
+    } catch (error) {
+      console.error('❌ [CLIENT] Canvas teleport failed:', error);
+    }
+  }, [refetch]);
+
+  const initializeGame = useCallback(() => {
+    const gameCanvas = canvasRef.current;
+    if (gameCanvas) {
+      const game = initGame(gameCanvas);
+      gameInstanceRef.current = game;
+      if (!game) {
+        console.error('Game initialization failed: initGame returned undefined');
+        return;
+      }
+      console.log('🎮 Game initialized successfully');
+      // The game will receive world data through the update effect
+      // Initial mode state is synced via the dedicated useEffects below
+    } else {
+      console.error('Game canvas not found');
+    }
+  }, []); // intentionally empty: only run once on mount
 
   useEffect(() => {
     // Initialize game only when we have necessary data AND canvas is rendered (not loading)
@@ -79,7 +123,7 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
         gameInstanceRef.current = null;
       }
     };
-  }, [auth.shipId, isLoading]); // Depend on both shipId and loading state
+  }, [auth.shipId, isLoading, initializeGame]); // Depend on shipId, loading state, and the stable initializeGame callback
 
   // Update game world when server data changes
   useEffect(() => {
@@ -91,8 +135,10 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
       gameInstanceRef.current.setNavigationCallback?.(updateInputFieldsFromShip);
       // Set the attack success callback to redirect to home page
       gameInstanceRef.current.setAttackSuccessCallback?.(handleAttackSuccess);
+      // Set the teleport click callback for canvas click-to-teleport mode
+      gameInstanceRef.current.setTeleportClickCallback?.(handleCanvasTeleport);
     }
-  }, [worldData, auth.shipId, refetch, handleAttackSuccess]);
+  }, [worldData, auth.shipId, refetch, handleAttackSuccess, handleCanvasTeleport]);
 
   // Initialize input fields with current ship state only once when game starts
   useEffect(() => {
@@ -104,17 +150,6 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
       }
     }
   }, [worldData, auth.shipId, angleInput, speedInput]);
-
-  const initializeGame = () => {
-    const gameCanvas = canvasRef.current;
-    if (gameCanvas) {
-      gameInstanceRef.current = initGame(gameCanvas);
-      console.log('🎮 Game initialized successfully');
-      // The game will receive world data through the update effect
-    } else {
-      console.error('Game canvas not found');
-    }
-  };
 
   const handleMaxSpeed = async () => {
     if (isSettingMaxSpeed) return; // Prevent double-clicks
@@ -213,6 +248,27 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
     }
   };
 
+  const handleStop = async () => {
+    if (isSettingSpeed) return;
+    
+    setIsSettingSpeed(true);
+    try {
+      await navigateShip({ speed: 0 });
+      
+      // Refresh world data to get updated ship state
+      if (refetch) {
+        refetch();
+      }
+      
+      // Update input fields after successful navigation
+      setTimeout(updateInputFieldsFromShip, 100); // Small delay to ensure world data is updated
+    } catch (error) {
+      console.error('❌ [CLIENT] Failed to stop ship:', error);
+    } finally {
+      setIsSettingSpeed(false);
+    }
+  };
+
   const handleAngleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       handleSetAngle();
@@ -222,6 +278,84 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
   const handleSpeedKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       handleSetSpeed();
+    }
+  };
+
+  const fetchTeleportData = useCallback(async () => {
+    const stats = await userStatsService.getUserStats();
+    if (!('error' in stats)) {
+      setTeleportCharges(stats.teleportCharges);
+      setTeleportMaxCharges(stats.teleportMaxCharges);
+      setTeleportRechargeTimeSec(stats.teleportRechargeTimeSec);
+      setTimeMultiplier(stats.timeMultiplier);
+    }
+  }, []);
+
+  // Load teleport data on mount
+  useEffect(() => {
+    fetchTeleportData();
+  }, [fetchTeleportData]);
+
+  // Sync teleportClickMode with game instance
+  useEffect(() => {
+    if (gameInstanceRef.current) {
+      gameInstanceRef.current.setTeleportClickMode(teleportClickMode);
+    }
+  }, [teleportClickMode]);
+
+  // Sync attackClickMode with game instance
+  useEffect(() => {
+    if (gameInstanceRef.current) {
+      gameInstanceRef.current.setAttackClickMode(attackClickMode);
+    }
+  }, [attackClickMode]);
+
+  // Optimistic update for teleport charges
+  useEffect(() => {
+    if (teleportMaxCharges > 0 && teleportRechargeTimeSec > 0) {
+      const interval = setInterval(() => {
+        setTeleportCharges(prev => {
+          if (prev >= teleportMaxCharges) return prev;
+          const newCharges = prev + (timeMultiplier / teleportRechargeTimeSec);
+          return Math.min(newCharges, teleportMaxCharges);
+        });
+      }, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [teleportMaxCharges, teleportRechargeTimeSec, timeMultiplier]);
+
+  const formatTimeRemaining = (seconds: number) => {
+    if (!isFinite(seconds) || seconds <= 0) return '0s';
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = Math.floor(seconds % 60);
+    if (h > 0) return `${h}h ${m}m`;
+    if (m > 0) return `${m}m ${s}s`;
+    return `${s}s`;
+  };
+
+  const handleTeleport = async () => {
+    if (isTeleporting) return;
+
+    const x = parseFloat(teleportX);
+    const y = parseFloat(teleportY);
+
+    if (isNaN(x) || isNaN(y)) {
+      console.error('Invalid teleport coordinates');
+      return;
+    }
+
+    setIsTeleporting(true);
+    try {
+      const result = await teleportShip({ x, y, preserveVelocity: false });
+      setTeleportCharges(result.remainingCharges);
+      if (refetch) {
+        refetch();
+      }
+    } catch (error) {
+      console.error('❌ [CLIENT] Teleport failed:', error);
+    } finally {
+      setIsTeleporting(false);
     }
   };
 
@@ -256,36 +390,40 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
             width="800" 
             height="800"
           ></canvas>
+          <div className="canvas-overlay-controls-left">
+            <label className="debug-toggle-label">
+              Attack
+              <div className="toggle-switch">
+                <input
+                  type="checkbox"
+                  checked={attackClickMode}
+                  onChange={(e) => setAttackClickMode(e.target.checked)}
+                  className="toggle-input"
+                />
+                <span className="toggle-slider"></span>
+              </div>
+            </label>
+          </div>
+          {teleportMaxCharges > 0 && (
+            <div className="canvas-overlay-controls">
+              <label className="debug-toggle-label">
+                Teleport
+                <div className="toggle-switch">
+                  <input
+                    type="checkbox"
+                    checked={teleportClickMode}
+                    onChange={(e) => setTeleportClickMode(e.target.checked)}
+                    disabled={Math.floor(teleportCharges) < 1}
+                    className="toggle-input"
+                  />
+                  <span className="toggle-slider"></span>
+                </div>
+              </label>
+            </div>
+          )}
         </div>
-        {debugDrawingsEnabled && <DataAgeIndicator lastUpdateTime={lastUpdateTime} />}
         <div className="game-controls">
           <div className="navigation-controls">
-            <div className="control-row">
-              <label htmlFor="angle-input">Angle (degrees):</label>
-              <div className="input-container">
-                <input
-                  id="angle-input"
-                  type="number"
-                  value={angleInput}
-                  onChange={(e) => setAngleInput(e.target.value)}
-                  onKeyPress={handleAngleKeyPress}
-                  disabled={isSettingAngle}
-                  className={isSettingAngle ? 'loading' : ''}
-                  min="0"
-                  max="360"
-                  step="0.1"
-                />
-                {isSettingAngle && <div className="input-loading-indicator"></div>}
-              </div>
-              <button
-                onClick={handleSetAngle}
-                disabled={isSettingAngle}
-                className="control-button btn-primary"
-              >
-                {isSettingAngle ? 'Setting...' : 'Set Angle'}
-              </button>
-            </div>
-            
             <div className="control-row">
               <label htmlFor="speed-input">Speed:</label>
               <div className="input-container">
@@ -316,8 +454,71 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
               >
                 {isSettingMaxSpeed ? 'Setting Max Speed...' : 'Set Max Speed'}
               </button>
+              <button 
+                className="stop-button btn-secondary"
+                onClick={handleStop}
+                disabled={isSettingSpeed}
+              >
+                Stop
+              </button>
+            </div>
+
+            <div className="control-row">
+              <label htmlFor="angle-input">Angle (degrees):</label>
+              <div className="input-container">
+                <input
+                  id="angle-input"
+                  type="number"
+                  value={angleInput}
+                  onChange={(e) => setAngleInput(e.target.value)}
+                  onKeyPress={handleAngleKeyPress}
+                  disabled={isSettingAngle}
+                  className={isSettingAngle ? 'loading' : ''}
+                  min="0"
+                  max="360"
+                  step="0.1"
+                />
+                {isSettingAngle && <div className="input-loading-indicator"></div>}
+              </div>
+              <button
+                onClick={handleSetAngle}
+                disabled={isSettingAngle}
+                className="control-button btn-primary"
+              >
+                {isSettingAngle ? 'Setting...' : 'Set Angle'}
+              </button>
             </div>
           </div>
+
+          {teleportMaxCharges > 0 && (
+            <div className="navigation-controls teleport-controls-horizontal">
+              <div className="teleport-header">
+                <h3 className="teleport-title">Teleport</h3>
+                <span className="teleport-charges-badge">
+                  {Math.floor(teleportCharges)} / {teleportMaxCharges} Charges
+                </span>
+                {teleportCharges < teleportMaxCharges && teleportRechargeTimeSec > 0 && (
+                  <span className="teleport-timer">
+                    Next in: {formatTimeRemaining(
+                      (Math.ceil(teleportCharges) === Math.floor(teleportCharges) ? 1 : Math.ceil(teleportCharges) - teleportCharges) * teleportRechargeTimeSec / Math.max(1, timeMultiplier)
+                    )}
+                  </span>
+                )}
+              </div>
+              
+              <div className="control-row">
+                <label htmlFor="teleport-x">X:</label>
+                <input id="teleport-x" type="number" value={teleportX} onChange={(e) => setTeleportX(e.target.value)} min="0" max="5000" step="1" />
+                
+                <label htmlFor="teleport-y">Y:</label>
+                <input id="teleport-y" type="number" value={teleportY} onChange={(e) => setTeleportY(e.target.value)} min="0" max="5000" step="1" />
+                
+                <button onClick={handleTeleport} disabled={isTeleporting || Math.floor(teleportCharges) < 1} className="control-button btn-primary">
+                  {isTeleporting ? 'Teleporting...' : 'Teleport'}
+                </button>
+              </div>
+            </div>
+          )}
           
           <div className="debug-toggle-container">
             <label className="debug-toggle-label">
@@ -333,6 +534,7 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
               </div>
             </label>
           </div>
+          {debugDrawingsEnabled && <DataAgeIndicator lastUpdateTime={lastUpdateTime} />}
         </div>
       </div>
     </AuthenticatedLayout>

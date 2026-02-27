@@ -52,6 +52,7 @@ const makeFakeTechTree = (overrides: Partial<TechTree> = {}) => ({
   afterburnerSpeedIncrease: 0,
   afterburnerDuration: 0,
   teleport: 0,
+  teleportRechargeSpeed: 1,
   ironCapacity: 0,
   inventorySlots: 0,
   bridgeSlots: 0,
@@ -107,7 +108,11 @@ describe('ResearchPageClient card view', () => {
       xp: 0,
       level: 0,
       xpForNextLevel: 0,
-      timeMultiplier: 1
+      timeMultiplier: 1,
+      teleportCharges: 0,
+      teleportMaxCharges: 0,
+      teleportRechargeTimeSec: 0,
+      teleportRechargeSpeed: 0
     });
 
     vi.mocked(researchService.isResearchActive).mockReturnValue(true);

@@ -103,6 +103,7 @@ export enum ResearchType {
   AfterburnerSpeedIncrease = 'afterburnerSpeedIncrease',
   AfterburnerDuration = 'afterburnerDuration',
   Teleport = 'teleport',
+  TeleportRechargeSpeed = 'teleportRechargeSpeed',
   IronCapacity = 'ironCapacity',
   ConstructionSpeed = 'constructionSpeed',
   // Inventory

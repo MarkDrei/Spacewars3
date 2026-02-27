@@ -36,7 +36,9 @@ describe('User Level System - getLevel()', () => {
       false, // inBattle
       null, // currentBattleId
       [], // buildQueue
-      null // buildStartSec
+      null, // buildStartSec
+      0, // teleportCharges
+      0 // teleportLastRegen
     );
   });
 
@@ -150,7 +152,9 @@ describe('User Level System - getXpForNextLevel()', () => {
       false, // inBattle
       null, // currentBattleId
       [], // buildQueue
-      null // buildStartSec
+      null, // buildStartSec
+      0, // teleportCharges
+      0 // teleportLastRegen
     );
   });
 
@@ -267,7 +271,9 @@ describe('User Level System - addXp()', () => {
       false, // inBattle
       null, // currentBattleId
       [], // buildQueue
-      null // buildStartSec
+      null, // buildStartSec
+      0, // teleportCharges
+      0 // teleportLastRegen
     );
   });
 
@@ -463,7 +469,9 @@ describe('User Level System - Integration Tests', () => {
       false, // inBattle
       null, // currentBattleId
       [], // buildQueue
-      null // buildStartSec
+      null, // buildStartSec
+      0, // teleportCharges
+      0 // teleportLastRegen
     );
   });
 

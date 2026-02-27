@@ -8,6 +8,7 @@ import { USER_LOCK } from '@/lib/server/typedLocks';
 import { User } from '@/lib/server/user/user';
 import { createLockContext, LockContext, LocksAtMostAndHas4 } from '@markdrei/ironguard-typescript-locks';
 import { TimeMultiplierService } from '@/lib/server/timeMultiplier';
+import { getResearchEffectFromTree, ResearchType } from '@/lib/server/techs/techtree';
 
 export async function GET(request: NextRequest) {
   try {
@@ -61,7 +62,11 @@ async function processUserStats(user: User, userWorldCache: UserCache, userCtx: 
     xp: user.xp,
     level: user.getLevel(),
     xpForNextLevel: user.getXpForNextLevel(),
-    timeMultiplier: TimeMultiplierService.getInstance().getMultiplier()
+    timeMultiplier: TimeMultiplierService.getInstance().getMultiplier(),
+    teleportCharges: user.teleportCharges,
+    teleportMaxCharges: getResearchEffectFromTree(user.techTree, ResearchType.Teleport),
+    teleportRechargeTimeSec: getResearchEffectFromTree(user.techTree, ResearchType.TeleportRechargeSpeed),
+    teleportRechargeSpeed: user.techTree.teleportRechargeSpeed,
   };
   
   return NextResponse.json(responseData);

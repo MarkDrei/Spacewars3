@@ -17,6 +17,33 @@
   margin-left: calc(-50vw + 50% + 10px); /* Center and shift left by 10px for overdraw */
   overflow: hidden;
   height: fit-content;
+  position: relative;
+}
+
+.canvas-overlay-controls {
+  position: absolute;
+  bottom: 20px;
+  /* Center it relative to the 800px canvas, not the full screen width */
+  left: calc(50% + 400px - 160px); /* 50% is center, +400px is right edge of canvas, -160px is offset from edge */
+  background-color: rgba(30, 30, 30, 0.8);
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(4px);
+  z-index: 10;
+}
+
+.canvas-overlay-controls-left {
+  position: absolute;
+  bottom: 20px;
+  /* Center it relative to the 800px canvas, not the full screen width */
+  left: calc(50% - 400px + 20px); /* 50% is center, -400px is left edge of canvas, +20px is offset from edge */
+  background-color: rgba(30, 30, 30, 0.8);
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(4px);
+  z-index: 10;
 }
 
 #gameCanvas {
@@ -142,6 +169,19 @@
   min-width: var(--min-width-button);
 }
 
+/* Stop Button */
+.stop-button {
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  min-width: var(--min-width-button);
+  background-color: #d32f2f;
+  color: white;
+}
+
+.stop-button:hover:not(:disabled) {
+  background-color: #b71c1c;
+}
+
 /* Debug Toggle Switch */
 .debug-toggle-container {
   display: flex;
@@ -213,3 +253,61 @@
   box-shadow: 0 0 8px rgba(76, 175, 80, 0.6);
 }
 
+
+/* Teleport Controls */
+.teleport-controls-horizontal {
+  margin-top: 0.5rem;
+  width: 100%;
+}
+
+.teleport-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  width: 100%;
+  margin-bottom: 0.5rem;
+}
+
+.teleport-title {
+  color: var(--primary-green, #4caf50);
+  font-size: 1rem;
+  font-weight: bold;
+  margin: 0;
+}
+
+.teleport-charges-badge {
+  background-color: rgba(76, 175, 80, 0.2);
+  color: #fff;
+  padding: 0.2rem 0.6rem;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  border: 1px solid rgba(76, 175, 80, 0.3);
+}
+
+.teleport-timer {
+  color: #aaa;
+  font-size: 0.85rem;
+  background-color: rgba(255, 255, 255, 0.05);
+  padding: 0.2rem 0.6rem;
+  border-radius: 12px;
+}
+
+.btn-active {
+  background-color: var(--primary-green, #4caf50);
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 0.4rem 0.8rem;
+}
+
+.btn-secondary {
+  background-color: #555;
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 0.4rem 0.8rem;
+}

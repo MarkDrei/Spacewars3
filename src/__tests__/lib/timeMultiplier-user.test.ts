@@ -42,7 +42,9 @@ describe('User.updateStats with time multiplier', () => {
       false, // inBattle
       null, // currentBattleId
       [], // buildQueue
-      null // buildStartSec
+      null, // buildStartSec
+      0, // teleportCharges
+      0 // teleportLastRegen
     );
   });
 

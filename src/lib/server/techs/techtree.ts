@@ -24,6 +24,8 @@ export const IMPLEMENTED_RESEARCHES: ReadonlySet<ResearchType> = new Set([
   ResearchType.EnergyAccuracy,
   ResearchType.InventorySlots,
   ResearchType.BridgeSlots,
+  ResearchType.Teleport,
+  ResearchType.TeleportRechargeSpeed,
 ]);
 
 /**
@@ -290,13 +292,26 @@ export const AllResearches: Record<ResearchType, Research> = {
     name: 'Teleport',
     level: 0,
     baseUpgradeCost: 10000,
-    baseUpgradeDuration: 300,
-    baseValue: 100,
-    upgradeCostIncrease: 3.0,
-    baseValueIncrease: { type: 'factor', value: 1.3 },
-    description: 'Unlocks and improves teleport range.',
+    baseUpgradeDuration: 1800,
+    baseValue: 1,
+    upgradeCostIncrease: 1.3,
+    baseValueIncrease: { type: 'constant', value: 1 },
+    description: 'Unlocks teleport and adds one charge per level.',
     treeKey: 'teleport',
-    unit: 'units',
+    unit: 'charges',
+  },
+  [ResearchType.TeleportRechargeSpeed]: {
+    type: ResearchType.TeleportRechargeSpeed,
+    name: 'Teleport Recharge Speed',
+    level: 1,
+    baseUpgradeCost: 10000,
+    baseUpgradeDuration: 1800,
+    baseValue: 86400,
+    upgradeCostIncrease: 1.3,
+    baseValueIncrease: { type: 'factor', value: 0.9 },
+    description: 'Decreases teleport charge recharge time by 10% per level.',
+    treeKey: 'teleportRechargeSpeed',
+    unit: 'seconds',
   },
   [ResearchType.IronCapacity]: {
     type: ResearchType.IronCapacity,
@@ -453,6 +468,7 @@ export interface TechTree {
   afterburnerSpeedIncrease: number;
   afterburnerDuration: number;
   teleport: number;
+  teleportRechargeSpeed: number;
   ironCapacity: number;
   /** @deprecated TECH DEBT: Old DB key - remove fallback after migration. See TechnicalDebt.md */
   inventoryCapacity?: number;
@@ -501,6 +517,7 @@ export function createInitialTechTree(): TechTree {
     afterburnerSpeedIncrease: AllResearches[ResearchType.AfterburnerSpeedIncrease].level,
     afterburnerDuration: AllResearches[ResearchType.AfterburnerDuration].level,
     teleport: AllResearches[ResearchType.Teleport].level,
+    teleportRechargeSpeed: AllResearches[ResearchType.TeleportRechargeSpeed].level,
     ironCapacity: AllResearches[ResearchType.IronCapacity].level,
     inventorySlots: AllResearches[ResearchType.InventorySlots].level,
     bridgeSlots: AllResearches[ResearchType.BridgeSlots].level,
@@ -559,6 +576,8 @@ function getResearchLevelFromTree(tree: TechTree, type: ResearchType): number {
       return tree.afterburnerDuration;
     case ResearchType.Teleport:
       return tree.teleport;
+    case ResearchType.TeleportRechargeSpeed:
+      return tree.teleportRechargeSpeed;
     case ResearchType.IronCapacity:
       // TECH DEBT: fallback for old DB records with 'inventoryCapacity' key - remove after migration
       return tree.ironCapacity ?? tree.inventoryCapacity ?? AllResearches[ResearchType.IronCapacity].level;
@@ -670,7 +689,7 @@ export function getWeaponDamageModifierFromTree(tree: TechTree, weaponType: stri
     // Default to 1.0 (100%) for unknown weapon types
     return 1.0;
   }
-  
+
   const research = AllResearches[researchType];
   // Guard against division by zero
   if (research.baseValue === 0) {
@@ -730,7 +749,7 @@ export function getWeaponReloadTimeModifierFromTree(tree: TechTree, weaponType: 
     // Default to 1.0 (no change) for unknown weapon types
     return 1.0;
   }
-  
+
   const effect = getResearchEffectFromTree(tree, researchType);
   // Effect is a percentage (e.g., 10, 20, 30)
   // Reload time multiplier = 1 - (effect / 100)
@@ -834,6 +853,9 @@ export function updateTechTree(tree: TechTree, timeSeconds: number): { completed
         break;
       case ResearchType.Teleport:
         tree.teleport += 1;
+        break;
+      case ResearchType.TeleportRechargeSpeed:
+        tree.teleportRechargeSpeed += 1;
         break;
       case ResearchType.IronCapacity:
         // TECH DEBT: fallback for old DB records with 'inventoryCapacity' key - remove after migration

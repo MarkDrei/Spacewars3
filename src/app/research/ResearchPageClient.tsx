@@ -35,6 +35,7 @@ const researchTypeToKey: Record<ResearchType, keyof TechTree> = {
   afterburnerSpeedIncrease: 'afterburnerSpeedIncrease',
   afterburnerDuration: 'afterburnerDuration',
   teleport: 'teleport',
+  teleportRechargeSpeed: 'teleportRechargeSpeed',
   ironCapacity: 'ironCapacity',
   inventorySlots: 'inventorySlots',
   bridgeSlots: 'bridgeSlots',
@@ -111,7 +112,11 @@ const researchHierarchy: ResearchCategory[] = [
         children: [
           { type: 'afterburnerSpeedIncrease' as ResearchType },
           { type: 'afterburnerDuration' as ResearchType },
-          { type: 'teleport' as ResearchType }
+          { type: 'teleport' as ResearchType,
+            children: [
+              { type: 'teleportRechargeSpeed' as ResearchType }
+            ]
+          }
         ]
       },
       { type: 'ironCapacity' as ResearchType },
@@ -279,6 +284,7 @@ const ResearchPageClient: React.FC<ResearchPageClientProps> = () => {
       afterburnerSpeedIncrease: 'AfterburnerSpeed',
       afterburnerDuration: 'AfterburnerDuration',
       teleport: 'Teleport',
+      teleportRechargeSpeed: 'TeleportRechargeSpeed',
       constructionSpeed: 'ConstructionSpeed',
       // Add more as available, fallback to IronHarvesting for now
     };

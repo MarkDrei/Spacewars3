@@ -25,6 +25,9 @@ export class Game {
   private interceptionLines: InterceptionLines | null = null;
   private onNavigationCallback?: () => void; // Callback for when navigation happens
   private onAttackSuccessCallback?: () => void; // Callback for when attack succeeds
+  private teleportClickMode: boolean = false;
+  private attackClickMode: boolean = false;
+  private onTeleportClickCallback: ((x: number, y: number) => void) | null = null;
 
   constructor(canvas: HTMLCanvasElement) {
     // Initialize the canvas context
@@ -80,6 +83,20 @@ export class Game {
       // Update hover states with fresh click coordinates to ensure accuracy
       this.updateHoverStates();
       
+      // Handle teleport click mode first
+      if (this.teleportClickMode && this.onTeleportClickCallback) {
+        const ship = this.world.getShip();
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+        const dx = logicalX - centerX;
+        const dy = logicalY - centerY;
+        const worldX = Math.max(0, Math.min(5000, ship.getX() + dx));
+        const worldY = Math.max(0, Math.min(5000, ship.getY() + dy));
+        this.onTeleportClickCallback(worldX, worldY);
+        this.teleportClickMode = false; // exit click mode after use
+        return; // don't process normal click
+      }
+
       // Check if any object is hovered
       const hoveredObject = this.world.findHoveredObject();
       
@@ -94,12 +111,17 @@ export class Game {
         
         // Check if it's a player ship (attack) or collectible object
         if (hoveredObject.getType() === 'player_ship') {
-          if (distance <= 100) {
-            // Player ship is in attack range - initiate battle
-            this.handleAttack(hoveredObject);
+          if (this.attackClickMode) {
+            if (distance <= 100) {
+              // Player ship is in attack range - initiate battle
+              this.handleAttack(hoveredObject);
+            } else {
+              // Player ship is too far - use interception to get closer
+              this.handleInterception(hoveredObject);
+            }
           } else {
-            // Player ship is too far - use interception to get closer
-            this.handleInterception(hoveredObject);
+            // Attack mode is off, treat as empty space click
+            this.handleEmptySpaceClick(canvas, logicalX, logicalY);
           }
         } else if (distance <= 125) {
           // Object is close enough and collectible - try to collect it
@@ -110,20 +132,7 @@ export class Game {
         }
       } else {
         // If no object is hovered, use the regular click-to-aim behavior
-        // Use shared angleUtils for conversion
-        const centerX = canvas.width / 2;
-        const centerY = canvas.height / 2;
-        const dx = logicalX - centerX;
-        const dy = logicalY - centerY;
-        const angle = Math.atan2(dy, dx);
-        const angleDegrees = (angle * 180 / Math.PI + 360) % 360;
-        
-        // Convert click coordinates to world coordinates
-        const ship = this.world.getShip();
-        const worldTargetX = ship.getX() + dx;
-        const worldTargetY = ship.getY() + dy;
-        
-        this.handleDirectionChange(angleDegrees, worldTargetX, worldTargetY);
+        this.handleEmptySpaceClick(canvas, logicalX, logicalY);
       }
     });
 
@@ -142,6 +151,23 @@ export class Game {
       // Update hover states for all objects
       this.updateHoverStates();
     });
+  }
+
+  private handleEmptySpaceClick(canvas: HTMLCanvasElement, logicalX: number, logicalY: number): void {
+    // Use shared angleUtils for conversion
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+    const dx = logicalX - centerX;
+    const dy = logicalY - centerY;
+    const angle = Math.atan2(dy, dx);
+    const angleDegrees = (angle * 180 / Math.PI + 360) % 360;
+    
+    // Convert click coordinates to world coordinates
+    const ship = this.world.getShip();
+    const worldTargetX = ship.getX() + dx;
+    const worldTargetY = ship.getY() + dy;
+    
+    this.handleDirectionChange(angleDegrees, worldTargetX, worldTargetY);
   }
 
   // Handle direction change when clicking on empty space
@@ -333,6 +359,27 @@ export class Game {
    */
   public setNavigationCallback(callback: () => void): void {
     this.onNavigationCallback = callback;
+  }
+
+  /**
+   * Set teleport click mode - when enabled, next canvas click triggers teleport
+   */
+  public setTeleportClickMode(enabled: boolean): void {
+    this.teleportClickMode = enabled;
+  }
+
+  /**
+   * Set attack click mode - when enabled, clicking an enemy ship triggers attack
+   */
+  public setAttackClickMode(enabled: boolean): void {
+    this.attackClickMode = enabled;
+  }
+
+  /**
+   * Set a callback to be called when canvas is clicked in teleport mode
+   */
+  public setTeleportClickCallback(callback: ((x: number, y: number) => void) | null): void {
+    this.onTeleportClickCallback = callback;
   }
 
   /**
