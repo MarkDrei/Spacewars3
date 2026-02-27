@@ -259,14 +259,14 @@ describe('GamePageClient teleport controls', () => {
 
   it('teleportControls_rechargeTimer_showsCorrectTime', async () => {
     vi.mocked(userStatsService.getUserStats).mockResolvedValue(
-      makeUserStats({ teleportMaxCharges: 2, teleportCharges: 1, teleportRechargeTimeSec: 7200 })
+      makeUserStats({ teleportMaxCharges: 2, teleportCharges: 1.5, teleportRechargeTimeSec: 7200 })
     );
 
     render(<GamePageClient auth={defaultAuth} />);
 
     await waitFor(() => {
-      // 7200 seconds = 2.0 hours
-      expect(screen.getByText(/2\.0h per charge/i)).toBeDefined();
+      // 0.5 charges remaining * 7200 seconds = 3600 seconds = 1h 0m
+      expect(screen.getByText(/Next in: 1h 0m/i)).toBeDefined();
     });
   });
 });

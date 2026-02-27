@@ -34,8 +34,8 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
   const [teleportY, setTeleportY] = useState<string>('0');
   const [isTeleporting, setIsTeleporting] = useState(false);
   const [teleportClickMode, setTeleportClickMode] = useState(false);
-  const [teleportPreserveVelocity, setTeleportPreserveVelocity] = useState(false);
   const [teleportRechargeTimeSec, setTeleportRechargeTimeSec] = useState(0);
+  const [timeMultiplier, setTimeMultiplier] = useState(1);
   // Auth is guaranteed by server, so pass true and use auth.shipId
   const { worldData, isLoading, error, refetch, lastUpdateTime } = useWorldData(3000);
 
@@ -62,7 +62,7 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
   const handleCanvasTeleport = useCallback(async (worldX: number, worldY: number) => {
     setTeleportClickMode(false);
     try {
-      const result = await teleportShip({ x: worldX, y: worldY, preserveVelocity: teleportPreserveVelocity });
+      const result = await teleportShip({ x: worldX, y: worldY, preserveVelocity: true });
       setTeleportCharges(result.remainingCharges);
       setTeleportX(Math.round(worldX).toString());
       setTeleportY(Math.round(worldY).toString());
@@ -72,7 +72,7 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
     } catch (error) {
       console.error('❌ [CLIENT] Canvas teleport failed:', error);
     }
-  }, [teleportPreserveVelocity, refetch]);
+  }, [refetch]);
 
   useEffect(() => {
     // Initialize game only when we have necessary data AND canvas is rendered (not loading)
@@ -259,6 +259,7 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
       setTeleportCharges(stats.teleportCharges);
       setTeleportMaxCharges(stats.teleportMaxCharges);
       setTeleportRechargeTimeSec(stats.teleportRechargeTimeSec);
+      setTimeMultiplier(stats.timeMultiplier);
     }
   }, []);
 
@@ -274,6 +275,30 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
     }
   }, [teleportClickMode]);
 
+  // Optimistic update for teleport charges
+  useEffect(() => {
+    if (teleportMaxCharges > 0 && teleportRechargeTimeSec > 0) {
+      const interval = setInterval(() => {
+        setTeleportCharges(prev => {
+          if (prev >= teleportMaxCharges) return prev;
+          const newCharges = prev + (timeMultiplier / teleportRechargeTimeSec);
+          return Math.min(newCharges, teleportMaxCharges);
+        });
+      }, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [teleportMaxCharges, teleportRechargeTimeSec, timeMultiplier]);
+
+  const formatTimeRemaining = (seconds: number) => {
+    if (!isFinite(seconds) || seconds <= 0) return '0s';
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = Math.floor(seconds % 60);
+    if (h > 0) return `${h}h ${m}m`;
+    if (m > 0) return `${m}m ${s}s`;
+    return `${s}s`;
+  };
+
   const handleTeleport = async () => {
     if (isTeleporting) return;
 
@@ -287,7 +312,7 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
 
     setIsTeleporting(true);
     try {
-      const result = await teleportShip({ x, y, preserveVelocity: teleportPreserveVelocity });
+      const result = await teleportShip({ x, y, preserveVelocity: false });
       setTeleportCharges(result.remainingCharges);
       if (refetch) {
         refetch();
@@ -394,38 +419,36 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
           </div>
 
           {teleportMaxCharges > 0 && (
-            <div className="teleport-controls">
-              <h3>Teleport</h3>
-              <div className="teleport-charges">
-                Charges: {Math.floor(teleportCharges)} / {teleportMaxCharges}
+            <div className="navigation-controls teleport-controls-horizontal">
+              <div className="teleport-header">
+                <h3 className="teleport-title">Teleport</h3>
+                <span className="teleport-charges-badge">
+                  {Math.floor(teleportCharges)} / {teleportMaxCharges} Charges
+                </span>
+                {teleportCharges < teleportMaxCharges && teleportRechargeTimeSec > 0 && (
+                  <span className="teleport-timer">
+                    Next in: {formatTimeRemaining(
+                      (Math.ceil(teleportCharges) === Math.floor(teleportCharges) ? 1 : Math.ceil(teleportCharges) - teleportCharges) * teleportRechargeTimeSec / Math.max(1, timeMultiplier)
+                    )}
+                  </span>
+                )}
               </div>
+              
               <div className="control-row">
                 <label htmlFor="teleport-x">X:</label>
                 <input id="teleport-x" type="number" value={teleportX} onChange={(e) => setTeleportX(e.target.value)} min="0" max="5000" step="1" />
-              </div>
-              <div className="control-row">
+                
                 <label htmlFor="teleport-y">Y:</label>
                 <input id="teleport-y" type="number" value={teleportY} onChange={(e) => setTeleportY(e.target.value)} min="0" max="5000" step="1" />
-              </div>
-              <div className="control-row">
-                <label>
-                  <input type="checkbox" checked={teleportPreserveVelocity} onChange={(e) => setTeleportPreserveVelocity(e.target.checked)} />
-                  Preserve velocity
-                </label>
-              </div>
-              <div className="control-row">
+                
                 <button onClick={handleTeleport} disabled={isTeleporting || Math.floor(teleportCharges) < 1} className="control-button btn-primary">
                   {isTeleporting ? 'Teleporting...' : 'Teleport'}
                 </button>
+                
                 <button onClick={() => setTeleportClickMode(!teleportClickMode)} disabled={Math.floor(teleportCharges) < 1} className={`control-button ${teleportClickMode ? 'btn-active' : 'btn-secondary'}`}>
                   {teleportClickMode ? 'Click to Teleport (ON)' : 'Click to Teleport (OFF)'}
                 </button>
               </div>
-              {teleportRechargeTimeSec > 0 && (
-                <div className="teleport-recharge">
-                  Recharge: {(teleportRechargeTimeSec / 3600).toFixed(1)}h per charge
-                </div>
-              )}
             </div>
           )}
           

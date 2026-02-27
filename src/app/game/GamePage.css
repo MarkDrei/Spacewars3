@@ -215,33 +215,43 @@
 
 
 /* Teleport Controls */
-.teleport-controls {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  padding: 0.75rem;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+.teleport-controls-horizontal {
   margin-top: 0.5rem;
+  width: 100%;
 }
 
-.teleport-controls h3 {
-  margin: 0 0 0.25rem 0;
+.teleport-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  width: 100%;
+  margin-bottom: 0.5rem;
+}
+
+.teleport-title {
   color: var(--primary-green, #4caf50);
   font-size: 1rem;
+  font-weight: bold;
+  margin: 0;
 }
 
-.teleport-charges {
+.teleport-charges-badge {
+  background-color: rgba(76, 175, 80, 0.2);
   color: #fff;
-  font-size: 0.95rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 12px;
+  font-size: 0.9rem;
   font-weight: 500;
+  border: 1px solid rgba(76, 175, 80, 0.3);
 }
 
-.teleport-recharge {
+.teleport-timer {
   color: #aaa;
   font-size: 0.85rem;
-  margin-top: 0.25rem;
+  background-color: rgba(255, 255, 255, 0.05);
+  padding: 0.2rem 0.6rem;
+  border-radius: 12px;
 }
 
 .btn-active {
