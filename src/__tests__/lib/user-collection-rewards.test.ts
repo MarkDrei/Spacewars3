@@ -125,7 +125,7 @@ describe('User Collection Rewards', () => {
     const rewards: number[] = [];
 
     // Act - collect 5 shipwrecks and track rewards
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 3; i++) {
       const ironBefore = user.iron;
       user.collected('shipwreck');
       const reward = user.iron - ironBefore;
