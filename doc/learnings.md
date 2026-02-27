@@ -146,3 +146,23 @@ The TechTree is stored as serialized JSON in the `tech_tree TEXT` column — NO 
 - `getWeaponReloadTimeModifierFromTree()` → inverse multiplier (e.g., 0.85 = 15% faster) — inverse semantics
 
 These need refactoring to consistent multiplicative semantics before the bonus system can apply level/commander multipliers uniformly.
+
+## Weapon Modifier Semantics After Multiplicative Refactor
+
+**Discovered by**: Knight
+**Context**: Tasks 1.1 and 1.2 refactored weapon modifiers to consistent multiplicative semantics
+
+**Current weapon modifier functions after refactor:**
+- `getWeaponDamageModifierFromTree()` → `effect / baseValue` (factor ≥ 1.0, 1.0 = no bonus) ← was already this
+- `getWeaponAccuracyModifierFromTree()` → `effect / baseValue` (factor ≥ 1.0, 1.0 = no bonus) ← refactored
+- `getWeaponReloadTimeModifierFromTree()` → `1 / max(0.1, 1 - effect/100)` (speed factor ≥ 1.0, 1.0 = no bonus) ← refactored
+
+**Key pattern**: All three now return `1.0` when research is at the base level (level 1 for accuracy/damage, level 0 for reload).
+
+**Reload equivalence**: `baseCooldown / speedFactor` is numerically identical to the old `baseCooldown × (1 - effect/100)` at all levels, making the reload refactor backward-compatible.
+
+**Accuracy default changed**: `POSITIVE_ACCURACY_MODIFIER` in `DAMAGE_CALC_DEFAULTS` was changed from `0` to `1.0` to match the new multiplicative semantics. Any code passing this default to `calculateWeaponDamage()` must use `1.0` as the "no bonus" value, not `0`.
+
+**Parameter rename**: `positiveAccuracyModifier` in `TechFactory.calculateWeaponDamage()` was renamed to `accuracyMultiplier` for clarity.
+
+**IMPORTANT — Accuracy equivalence does NOT hold at levels 2+ for projectile weapons**: The old additive formula (`baseAccuracy + (effect - researchBaseValue)`) and the new multiplicative formula (`baseAccuracy × effect/researchBaseValue`) are only mathematically equal when `baseAccuracy === researchBaseValue`. For `auto_turret` (baseAccuracy=50) with `ProjectileAccuracy` (researchBaseValue=70), the formulas diverge at levels 2+: old additive bonus grows independently of baseAccuracy, while the new multiplicative formula scales proportionally. Accepted deltas: L2=−1.4pp, L5=−9.8pp, L10=−30.4pp. This is an intentional trade-off for consistent multiplicative semantics required by the bonus system. Energy accuracy has NO divergence because `pulse_laser.baseAccuracy (65) === EnergyAccuracy.researchBaseValue (65)`. Future agents: do not attempt to "fix" this by tweaking formula coefficients — the divergence is documented in TechnicalDebt.md and accepted.

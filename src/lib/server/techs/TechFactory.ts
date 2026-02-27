@@ -406,11 +406,12 @@ export class TechFactory {
     // Get base battle cooldown from reloadTimeMinutes
     const baseCooldown = this.getBaseBattleCooldown(weaponSpec);
 
-    // Get reload time multiplier from research
-    const multiplier = getWeaponReloadTimeModifierFromTree(techTree, weaponKey);
-    
-    // Apply multiplier to base cooldown
-    return baseCooldown * multiplier;
+    // Get reload speed factor from research (> 1.0 = faster reload)
+    const speedFactor = getWeaponReloadTimeModifierFromTree(techTree, weaponKey);
+
+    // Divide base cooldown by speed factor: baseCooldown / speedFactor
+    // Numerically equivalent to old: baseCooldown * (1 - effect/100)
+    return baseCooldown / speedFactor;
   }
 
   /**
@@ -421,7 +422,7 @@ export class TechFactory {
     techCounts: TechCounts,
     opponentShieldValue: number,
     opponentArmorValue: number,
-    positiveAccuracyModifier: number,
+    accuracyMultiplier: number,
     negativeAccuracyModifier: number,
     baseDamageModifier: number,
     ecmEffectiveness: number,
@@ -440,19 +441,20 @@ export class TechFactory {
     }
 
     // Calculate overall accuracy based on weapon type
+    // accuracyMultiplier is a multiplicative factor (1.0 = no bonus, >1.0 = better accuracy)
     let overallAccuracy: number;
 
     if (weaponKey === 'rocket_launcher') {
-      // Rocket Launcher: (base + positive) * (1 - ECM)
-      overallAccuracy = (weaponSpec.baseAccuracy + positiveAccuracyModifier) * (1 - ecmEffectiveness);
+      // Rocket Launcher: (base × multiplier) * (1 - ECM)
+      overallAccuracy = (weaponSpec.baseAccuracy * accuracyMultiplier) * (1 - ecmEffectiveness);
     } else if (weaponKey === 'photon_torpedo') {
-      // Photon Torpedo: (base + positive) * (1 - negative/3) * (1 - ECM/3)
-      overallAccuracy = (weaponSpec.baseAccuracy + positiveAccuracyModifier) *
+      // Photon Torpedo: (base × multiplier) * (1 - negative/3) * (1 - ECM/3)
+      overallAccuracy = (weaponSpec.baseAccuracy * accuracyMultiplier) *
         (1 - (negativeAccuracyModifier / 3)) *
         (1 - (ecmEffectiveness / 3));
     } else {
-      // Other weapons: (base + positive) * (1 - negative)
-      overallAccuracy = (weaponSpec.baseAccuracy + positiveAccuracyModifier) * (1 - negativeAccuracyModifier);
+      // Other weapons: (base × multiplier) * (1 - negative)
+      overallAccuracy = (weaponSpec.baseAccuracy * accuracyMultiplier) * (1 - negativeAccuracyModifier);
     }
 
     // Calculate weapons that hit (with spread and capped at weapon count)

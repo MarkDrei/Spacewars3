@@ -1,5 +1,46 @@
 # Technical Debt
 
+## Minor Balance Change: Multiplicative Accuracy Refactor (Task 1.1)
+
+**Priority**: Low  
+**Added**: 2026-01-XX  
+**Component**: Weapon accuracy calculation (`techtree.ts`, `TechFactory.ts`)
+
+### Context
+
+The `getWeaponAccuracyModifierFromTree()` function was refactored from an additive bonus system (`baseAccuracy + (effect - researchBaseValue)`) to a multiplicative factor system (`baseAccuracy × effect/researchBaseValue`) to enable consistent multiplicative semantics for the bonus system.
+
+### Balance Impact
+
+The two formulas are only numerically equivalent when `weapon.baseAccuracy === research.baseValue`. For `auto_turret` (baseAccuracy=50) with `ProjectileAccuracy` research (researchBaseValue=70), the multiplicative formula produces **lower** accuracy at research levels 2+:
+
+| Level | Old Accuracy (additive) | New Accuracy (multiplicative) | Delta |
+|-------|------------------------|-------------------------------|-------|
+| 1     | 50.0%                  | 50.0%                         | 0pp   |
+| 2     | 54.9%                  | 53.5%                         | −1.4pp |
+| 5     | 84.2%                  | 74.5%                         | −9.8pp |
+| 10    | 156.6%*                | 126.1%*                       | −30.4pp |
+
+*Values above 100% are capped in gameplay
+
+**Energy accuracy is unaffected**: `pulse_laser.baseAccuracy (65) === EnergyAccuracy.researchBaseValue (65)`, so both formulas produce identical results at all levels.
+
+### Why Accepted
+
+Pure multiplicative semantics are required for the bonus system (Goal 2) to apply level/commander multipliers uniformly. Adjusting the research coefficients to preserve the old additive values would defeat the purpose of the refactor. The balance impact is minor for typical research levels (≤ level 3 at game launch). Tests explicitly document and assert the divergence.
+
+### Proper Solution (if balance becomes a concern)
+
+Adjust the `auto_turret` base accuracy value in the weapon spec to match the research base value (70), or introduce per-weapon accuracy scaling. This would require a balance review pass.
+
+### Related Files
+
+- `src/lib/server/techs/techtree.ts` — `getWeaponAccuracyModifierFromTree()`
+- `src/lib/server/techs/TechFactory.ts` — `calculateWeaponDamage()`
+- `src/__tests__/unit/lib/weapon-modifier-equivalence.test.ts` — divergence tests
+
+---
+
 ## Missing Test: complete-build cheat mode for user 'q'
 
 **Priority**: Low

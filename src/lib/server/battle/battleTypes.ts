@@ -12,15 +12,15 @@
  * These values can be adjusted for future game balance or special effects.
  * 
  * Parameter details:
- * - POSITIVE_ACCURACY_MODIFIER: Added to weapon's baseAccuracy percentage (e.g., 10 = +10% accuracy)
+ * - POSITIVE_ACCURACY_MODIFIER: Multiplicative factor for weapon accuracy (1.0 = no bonus, >1.0 = better)
  * - NEGATIVE_ACCURACY_MODIFIER: Decimal multiplier reducing accuracy (e.g., 0.2 = 20% accuracy reduction)
  * - BASE_DAMAGE_MODIFIER: Decimal multiplier for damage (e.g., 1.5 = 150% damage)
  * - ECM_EFFECTIVENESS: Decimal effectiveness against guided weapons (e.g., 0.5 = 50% miss chance for rockets)
  * - SPREAD_VALUE: Decimal multiplier for hit randomization (e.g., 1.0 = normal, 0.8 = less hits)
  */
 export const DAMAGE_CALC_DEFAULTS = {
-  /** Added to weapon's baseAccuracy percentage (e.g., 10 = +10% accuracy bonus) */
-  POSITIVE_ACCURACY_MODIFIER: 0,
+  /** Multiplicative accuracy factor (e.g., 1.0 = no bonus, 1.1 = +10% accuracy) */
+  POSITIVE_ACCURACY_MODIFIER: 1.0,
   /** Decimal reducing accuracy via multiplication (e.g., 0.2 = 20% accuracy reduction) */
   NEGATIVE_ACCURACY_MODIFIER: 0,
   /** Decimal damage multiplier (e.g., 1.0 = 100% normal damage, 1.5 = 150% damage) */

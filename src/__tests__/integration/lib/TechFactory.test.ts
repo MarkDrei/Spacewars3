@@ -25,7 +25,7 @@ describe('TechFactory.calculateWeaponDamage', () => {
     weaponKey: string,
     opponentShield: number = 100,
     opponentArmor: number = 100,
-    positiveAccuracy: number = 0,
+    accuracyMultiplier: number = 1.0,
     negativeAccuracy: number = 0,
     damageModifier: number = 1.0,
     ecmEffectiveness: number = 0,
@@ -37,7 +37,7 @@ describe('TechFactory.calculateWeaponDamage', () => {
       techCounts,
       opponentShield,
       opponentArmor,
-      positiveAccuracy,
+      accuracyMultiplier,
       negativeAccuracy,
       damageModifier,
       ecmEffectiveness,
@@ -61,15 +61,15 @@ describe('TechFactory.calculateWeaponDamage', () => {
     });
 
     test('calculateWeaponDamage_perfectAccuracy_allWeaponsHit', async () => {
-      // Auto turret: base 50% + 50% modifier = 100% accuracy
-      const result = calculateDamage('auto_turret', 100, 100, 50, 0, 1.0, 0, 1.0);
+      // Auto turret: base 50% × 2.0 multiplier = 100% accuracy
+      const result = calculateDamage('auto_turret', 100, 100, 2.0, 0, 1.0, 0, 1.0);
 
       expect(result.weaponsHit).toBe(3); // Should hit with all 3 auto turrets
     });
 
     test('calculateWeaponDamage_zeroAccuracy_noWeaponsHit', async () => {
-      // Auto turret: base 50% accuracy completely negated: (50 + 0) * (1 - 1.0) = 0%
-      const result = calculateDamage('auto_turret', 100, 100, 0, 1.0, 1.0, 0, 1.0);
+      // Auto turret: base 50% accuracy completely negated: (50 × 1.0) * (1 - 1.0) = 0%
+      const result = calculateDamage('auto_turret', 100, 100, 1.0, 1.0, 1.0, 0, 1.0);
 
       expect(result.weaponsHit).toBe(0);
       expect(result.shieldDamage).toBe(0);
@@ -80,32 +80,32 @@ describe('TechFactory.calculateWeaponDamage', () => {
 
   describe('accuracy calculations by weapon type', () => {
     test('calculateWeaponDamage_autoTurret_standardAccuracyCalculation', async () => {
-      // Auto turret: (50 + 10) * (1 - 0.2) = 60 * 0.8 = 48%
+      // Auto turret: (50 × 1.2) * (1 - 0.2) = 60 * 0.8 = 48%
       // 3 weapons * 48% * 1.0 spread = 1.44 → 1 weapon hits
-      const result = calculateDamage('auto_turret', 100, 100, 10, 0.2, 1.0, 0, 1.0);
+      const result = calculateDamage('auto_turret', 100, 100, 1.2, 0.2, 1.0, 0, 1.0);
 
       expect(result.weaponsHit).toBe(1);
     });
 
     test('calculateWeaponDamage_rocketLauncher_ecmAffectsAccuracy', async () => {
-      // Rocket launcher: (100 + 0) * (1 - 0.3) = 100 * 0.7 = 70%
+      // Rocket launcher: (100 × 1.0) * (1 - 0.3) = 100 * 0.7 = 70%
       // 1 weapon * 70% * 1.0 spread = 0.7 → 1 weapon hits (rounded)
-      const result = calculateDamage('rocket_launcher', 100, 100, 0, 0.1, 1.0, 0.3, 1.0);
+      const result = calculateDamage('rocket_launcher', 100, 100, 1.0, 0.1, 1.0, 0.3, 1.0);
 
       expect(result.weaponsHit).toBe(1);
     });
 
     test('calculateWeaponDamage_rocketLauncher_negativeAccuracyIgnored', async () => {
-      // Rocket launcher: (100 + 0) * (1 - 0.2) = 100 * 0.8 = 80% (negative accuracy ignored)
-      const result = calculateDamage('rocket_launcher', 100, 100, 0, 0.5, 1.0, 0.2, 1.0);
+      // Rocket launcher: (100 × 1.0) * (1 - 0.2) = 100 * 0.8 = 80% (negative accuracy ignored)
+      const result = calculateDamage('rocket_launcher', 100, 100, 1.0, 0.5, 1.0, 0.2, 1.0);
 
       expect(result.weaponsHit).toBe(1);
     });
 
     test('calculateWeaponDamage_photonTorpedo_reducedECMAndNegativeEffects', async () => {
-      // Photon torpedo: (75 + 5) * (1 - 0.3/3) * (1 - 0.2/3) = 80 * 0.9 * 0.933 = 67.2%
-      // 1 weapon * 67.2% * 1.0 spread = 0.672 → 1 weapon hits (rounded)
-      const result = calculateDamage('photon_torpedo', 100, 100, 5, 0.3, 1.0, 0.2, 1.0);
+      // Photon torpedo: (75 × 1.0) * (1 - 0.3/3) * (1 - 0.2/3) = 75 * 0.9 * 0.933 ≈ 63%
+      // 1 weapon * 63% * 1.0 spread = 0.63 → 1 weapon hits (rounded)
+      const result = calculateDamage('photon_torpedo', 100, 100, 1.0, 0.3, 1.0, 0.2, 1.0);
 
       expect(result.weaponsHit).toBe(1);
     });
@@ -114,12 +114,12 @@ describe('TechFactory.calculateWeaponDamage', () => {
   describe('damage calculations', () => {
     test('calculateWeaponDamage_autoTurret_correctDamageDistribution', async () => {
       // Auto turret: 10 damage, 80% shield / 20% armor
-      // (50 + 50) * (1 - 0.5) = 50% accuracy, 3 weapons * 50% = 1.5 → 2 weapons hit
+      // (50 × 2.0) * (1 - 0.5) = 50% accuracy, 3 weapons * 50% = 1.5 → 2 weapons hit
       // 2 weapons hit: 20 damage total
       // Shield: 20 * 0.8 = 16 (but projectile halved) = 8
       // Armor: 20 * 0.2 = 4
       // Hull: 0 (no excess damage)
-      const result = calculateDamage('auto_turret', 100, 100, 50, 0.5, 1.0, 0, 1.0);
+      const result = calculateDamage('auto_turret', 100, 100, 2.0, 0.5, 1.0, 0, 1.0);
 
       expect(result.weaponsHit).toBe(2); // Corrected expectation
       expect(result.shieldDamage).toBe(8); // Projectile weapons halved against shields
@@ -129,10 +129,10 @@ describe('TechFactory.calculateWeaponDamage', () => {
 
     test('calculateWeaponDamage_pulseLaser_energyWeaponDamage', async () => {
       // Pulse laser: 7 damage, 90% shield / 10% armor
-      // 2 weapons hit (perfect accuracy): 14 damage total
+      // 2 weapons hit (high accuracy multiplier → 100%+): 14 damage total
       // Shield: 14 * 0.9 = 12.6
       // Armor: 14 * 0.1 = 1.4 (but energy halved) = 0.7
-      const result = calculateDamage('pulse_laser', 100, 100, 50, 0, 1.0, 0, 1.0);
+      const result = calculateDamage('pulse_laser', 100, 100, 2.0, 0, 1.0, 0, 1.0);
 
       expect(result.weaponsHit).toBe(2);
       expect(result.shieldDamage).toBe(13); // Rounded from 12.6
@@ -146,7 +146,7 @@ describe('TechFactory.calculateWeaponDamage', () => {
       // Excess shield damage: 12 - 5 = 7 (doubled back) = 14
       // Armor: 30 * 0.2 = 6
       // Hull: 14 (excess shield damage)
-      const result = calculateDamage('auto_turret', 5, 100, 50, 0, 1.0, 0, 1.0);
+      const result = calculateDamage('auto_turret', 5, 100, 2.0, 0, 1.0, 0, 1.0);
 
       expect(result.weaponsHit).toBe(3);
       expect(result.shieldDamage).toBe(5); // All available shield absorbed
@@ -155,12 +155,13 @@ describe('TechFactory.calculateWeaponDamage', () => {
     });
 
     test('calculateWeaponDamage_armorPenetration_excessDamageToHull', async () => {
-      // Gauss rifle vs low armor: 2 weapons, 80 total damage  
+      // Gauss rifle vs low armor: 2 weapons, 80 total damage
+      // gauss_rifle baseAccuracy=70, with 2.0 multiplier → 140% → all 2 hit
       // Shield: 80 * 0.1 = 8 (halved) = 4
       // Armor: 80 * 0.9 = 72, but only 10 armor available
       // Excess armor damage: 72 - 10 = 62
       // Hull: 62 (excess armor damage)
-      const result = calculateDamage('gauss_rifle', 100, 10, 50, 0, 1.0, 0, 1.0);
+      const result = calculateDamage('gauss_rifle', 100, 10, 2.0, 0, 1.0, 0, 1.0);
 
       expect(result.weaponsHit).toBe(2);
       expect(result.shieldDamage).toBe(4);
@@ -172,10 +173,10 @@ describe('TechFactory.calculateWeaponDamage', () => {
   describe('special weapon mechanics', () => {
     test('calculateWeaponDamage_rocketLauncher_highDamageGuidedWeapon', async () => {
       // Rocket launcher: 200 damage, 100% base accuracy, guided
-      // 1 weapon * 100% = 1 hit, 200 damage
+      // 1 weapon * 100% * 1.0 = 1 hit, 200 damage
       // Shield: 200 * 0.4 = 80 (halved) = 40
       // Armor: 200 * 0.6 = 120
-      const result = calculateDamage('rocket_launcher', 100, 100, 0, 0, 1.0, 0, 1.0);
+      const result = calculateDamage('rocket_launcher', 100, 100, 1.0, 0, 1.0, 0, 1.0);
 
       expect(result.weaponsHit).toBe(1);
       expect(result.shieldDamage).toBe(40);
@@ -184,10 +185,10 @@ describe('TechFactory.calculateWeaponDamage', () => {
     });
 
     test('calculateWeaponDamage_photonTorpedo_heavyShieldDamage', async () => {
-      // Photon torpedo: 200 damage, 75% base accuracy
+      // Photon torpedo: 200 damage, 75% base accuracy × 2.0 multiplier = 150% → 1 hit
       // Shield: 200 * 0.9 = 180
       // Armor: 200 * 0.1 = 20 (halved) = 10
-      const result = calculateDamage('photon_torpedo', 100, 100, 25, 0, 1.0, 0, 1.0);
+      const result = calculateDamage('photon_torpedo', 100, 100, 2.0, 0, 1.0, 0, 1.0);
 
       expect(result.weaponsHit).toBe(1);
       expect(result.shieldDamage).toBe(100); // Limited by available shield
@@ -198,9 +199,9 @@ describe('TechFactory.calculateWeaponDamage', () => {
 
   describe('damage modifiers', () => {
     test('calculateWeaponDamage_damageModifier_scalesDamage', async () => {
-      // Auto turret with 2x damage modifier
+      // Auto turret with 2x damage modifier and 2.0 accuracy multiplier → all 3 hit
       // 3 weapons * 10 damage * 2.0 = 60 total damage
-      const result = calculateDamage('auto_turret', 100, 100, 50, 0, 2.0, 0, 1.0);
+      const result = calculateDamage('auto_turret', 100, 100, 2.0, 0, 2.0, 0, 1.0);
 
       expect(result.weaponsHit).toBe(3);
       // Expected damage should be doubled
@@ -208,9 +209,9 @@ describe('TechFactory.calculateWeaponDamage', () => {
     });
 
     test('calculateWeaponDamage_spreadModifier_affectsHitCount', async () => {
-      // Auto turret with 0.5 spread (half effectiveness)
+      // Auto turret with 0.5 spread (half effectiveness) and 2.0 accuracy multiplier → 100% accuracy
       // 3 weapons * 100% accuracy * 0.5 spread = 1.5 → 2 weapons hit
-      const result = calculateDamage('auto_turret', 100, 100, 50, 0, 1.0, 0, 0.5);
+      const result = calculateDamage('auto_turret', 100, 100, 2.0, 0, 1.0, 0, 0.5);
 
       expect(result.weaponsHit).toBe(2); // Rounded from 1.5
     });
