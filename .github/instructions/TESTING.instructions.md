@@ -2,6 +2,59 @@
 applyTo: "src/__tests__/**"
 ---
 
+## Test Pyramid
+
+**Prefer unit tests.** Only use integration tests when a real database, cache, or network is genuinely required. Always ask: "can I test this without the DB?"
+
+```
+        ▲  integration  (slow — spin up DB + caches)
+       ▲▲▲  ui           (medium — jsdom, React)
+      ▲▲▲▲▲  unit         (fast — pure logic, no I/O)  ← default choice
+```
+
+### Helpers that unlock unit tests for API routes
+
+| Situation                                            | Helper                                       | Where                       |
+| ---------------------------------------------------- | -------------------------------------------- | --------------------------- |
+| Need an authenticated request without a real DB user | `createMockSessionCookie(userId?)`           | `helpers/apiTestHelpers.ts` |
+| Need a typed `NextRequest` with optional body/cookie | `createRequest(url, method, body?, cookie?)` | `helpers/apiTestHelpers.ts` |
+
+**`createMockSessionCookie`** seals `{ userId }` with the same iron-session key the app uses — no register/login round-trip, no DB touch. Use it whenever an API route's error path (401, 400 input validation) fires **before** any cache or DB access.
+
+**Rule of thumb:** read the route handler top-to-bottom. If the early-exit you want to test (auth guard, input validation) comes before the first `UserCache`/`WorldCache`/`getDatabase()` call, the test belongs in `unit/`.
+
+Tests are split into three folders, each mapped to a separate vitest project:
+
+| Folder                       | Vitest project | Environment | DB setup                      | Use for                               |
+| ---------------------------- | -------------- | ----------- | ----------------------------- | ------------------------------------- |
+| `src/__tests__/unit/`        | `unit`         | node        | none                          | Pure logic, no DB or network          |
+| `src/__tests__/integration/` | `integration`  | node        | `setup.ts` (PostgreSQL)       | API routes, caches, DB logic          |
+| `src/__tests__/ui/`          | `ui`           | jsdom       | `setup.ui.ts` (jest-dom only) | React components, hooks               |
+| `src/__tests__/helpers/`     | —              | —           | —                             | Shared test utilities, not test files |
+
+**Place every new test file in the correct folder.** The vitest project is determined solely by folder location.
+
+### Relative imports to helpers
+
+The depth of the `helpers/` import depends on where the test file lives:
+
+| Test file location                | Import path                            |
+| --------------------------------- | -------------------------------------- |
+| `integration/*.test.ts`           | `'../helpers/transactionHelper'`       |
+| `integration/api/*.test.ts`       | `'../../helpers/transactionHelper'`    |
+| `integration/api/admin/*.test.ts` | `'../../../helpers/transactionHelper'` |
+| `integration/lib/*.test.ts`       | `'../../helpers/transactionHelper'`    |
+
+Always use `@/` aliases for source imports (e.g. `@/lib/server/...`) rather than relative paths like `../../lib/`.
+
+### Running a single project
+
+```bash
+npm run test src/__tests__/unit/       # fast, no DB needed
+npm run test src/__tests__/integration/
+npm run test src/__tests__/ui/
+```
+
 ## Test Isolation Strategy
 
 **Goal:** All integration tests use transaction-based isolation for perfect test independence and reproducibility.
@@ -9,14 +62,14 @@ applyTo: "src/__tests__/**"
 ### Transaction Wrapper
 
 - **Every integration test** must wrap its body with `await withTransaction(async () => { ... })`
-- Import from: `import { withTransaction } from '../helpers/transactionHelper';`
+- Import path depends on folder depth (see table above), e.g. `import { withTransaction } from '../../helpers/transactionHelper';`
 - Automatic ROLLBACK after test completion ensures zero data pollution
 - Enables future parallel test execution
 
 ### Example
 
 ```typescript
-import { withTransaction } from "../helpers/transactionHelper";
+import { withTransaction } from "../../helpers/transactionHelper";
 
 it("myTest_scenario_expectedOutcome", async () => {
   await withTransaction(async () => {

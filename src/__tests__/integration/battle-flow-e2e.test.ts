@@ -202,48 +202,6 @@ describe('Phase 5: End-to-End Battle Flow with BattleCache', () => {
       });
     });
 
-    // Note: This test is disabled because the methods it calls don't exist in battleService
-    // The test should be updated when these methods are implemented
-    it.skip('battleFlow_cacheIntegration_properDelegation', async () => {
-      await withTransaction(async () => {
-        // Use test user IDs (created by createTestDatabase)
-        const user1Id = 1;
-      // const user2Id = 2;
-
-      // TODO: Re-enable these tests after refactoring battleService API
-      // These methods were removed during the cache refactoring
-      // and need to be re-implemented or tested through different means
-      
-      // const initialPos = await battleService.getShipPosition(user1Id);
-      // expect(initialPos).toBeDefined();
-      // expect(typeof initialPos.x).toBe('number');
-      // expect(typeof initialPos.y).toBe('number');
-
-      // await battleService.setShipSpeed(user1Id, 5.0, 45);
-      // const updatedPos = await battleService.getShipPosition(user1Id);
-      // expect(updatedPos).toBeDefined();
-
-      // await battleService.updateUserBattleState(user1Id, {
-      //   inBattle: true,
-      //   battleId: 999,
-      //   lastBattleAction: Date.now()
-      // });
-
-      // await battleService.updateUserDefense(user1Id, {
-      //   hull: 90,
-      //   armor: 45,
-      //   shield: 20
-      // });
-
-      // const shipId = await battleService.getUserShipId(user1Id);
-      // expect(shipId).toBeDefined();
-      // expect(typeof shipId).toBe('number');
-      
-      // Placeholder assertion to keep test valid
-        expect(user1Id).toBe(1);
-      });
-    });
-
     it('battleFlow_concurrentBattles_cacheSeparation', async () => {
       await withTransaction(async () => {
         await emptyCtx.useLockWithAcquire(BATTLE_LOCK, async (battleCtx) => {

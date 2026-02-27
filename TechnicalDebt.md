@@ -1,5 +1,26 @@
 # Technical Debt
 
+## Missing Test: complete-build cheat mode for user 'q'
+
+**Priority**: Low
+**Added**: 2026-02-27
+**Component**: `src/app/api/complete-build/route.ts`
+
+### Context
+
+The cheat-mode route grants access to usernames `'a'` and `'q'`. The integration test `completeBuild_userA_canUseCheatMode` verifies the full flow for user 'a'. User 'q' has no equivalent functional test — a placeholder (`expect(true).toBe(true)`) was removed during test pyramid refactoring.
+
+### Proper Solution
+
+Add an integration test that:
+
+1. Seeds user 'q' with enough iron (≥ build cost) via direct SQL
+2. Creates a build queue entry for 'q'
+3. Calls the complete-build endpoint as 'q'
+4. Asserts `200 + success: true + completedItem` is returned
+
+---
+
 ## IronCapacity Rename - Remove DB Backward Compatibility Fallback
 
 **Priority**: Low  

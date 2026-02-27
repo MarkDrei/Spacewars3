@@ -1,17 +1,6 @@
 import { defineConfig } from 'vitest/config'
 import { resolve } from 'path'
 
-const baseInclude = ['src/**/*.test.ts', 'src/**/*.test.tsx']
-const baseExclude: string[] = []
-const jsdomInclude = [
-  'src/__tests__/components/**/*.test.ts',
-  'src/__tests__/components/**/*.test.tsx',
-  'src/__tests__/hooks/**/*.test.ts',
-  'src/__tests__/hooks/**/*.test.tsx',
-  'src/__tests__/ui/**/*.test.ts',
-  'src/__tests__/ui/**/*.test.tsx',
-]
-
 export default defineConfig({
   test: {
     globals: true,
@@ -20,23 +9,43 @@ export default defineConfig({
       {
         extends: true,
         test: {
-          name: 'node',
+          name: 'unit',
           environment: 'node',
-          include: baseInclude,
-          exclude: [...baseExclude, 'src/__tests__/components/**', 'src/__tests__/hooks/**', 'src/__tests__/ui/**'],
+          include: [
+            'src/__tests__/unit/**/*.test.ts',
+            'src/__tests__/unit/**/*.test.tsx',
+          ],
+          exclude: [],
+          setupFiles: [], // No database setup for unit tests
         },
       },
       {
         extends: true,
         test: {
-          name: 'jsdom',
+          name: 'integration',
+          environment: 'node',
+          include: [
+            'src/__tests__/integration/**/*.test.ts',
+            'src/__tests__/integration/**/*.test.tsx',
+          ],
+          exclude: [],
+          setupFiles: ['./src/__tests__/setup.ts'], // Database setup for integration tests
+        },
+      },
+      {
+        extends: true,
+        test: {
+          name: 'ui',
           environment: 'jsdom',
-          include: jsdomInclude,
-          exclude: baseExclude,
+          include: [
+            'src/__tests__/ui/**/*.test.ts',
+            'src/__tests__/ui/**/*.test.tsx',
+          ],
+          exclude: [],
+          setupFiles: ['./src/__tests__/setup.ui.ts'], // jest-dom matchers for UI tests, no database
         },
       },
     ],
-    setupFiles: ['./src/__tests__/setup.ts'],
     include: [],
     exclude: [],
     env: {
