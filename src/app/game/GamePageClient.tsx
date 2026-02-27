@@ -376,6 +376,23 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
             width="800" 
             height="800"
           ></canvas>
+          {teleportMaxCharges > 0 && (
+            <div className="canvas-overlay-controls">
+              <label className="debug-toggle-label small-toggle">
+                Teleport
+                <div className="toggle-switch small-switch">
+                  <input
+                    type="checkbox"
+                    checked={teleportClickMode}
+                    onChange={(e) => setTeleportClickMode(e.target.checked)}
+                    disabled={Math.floor(teleportCharges) < 1}
+                    className="toggle-input"
+                  />
+                  <span className="toggle-slider"></span>
+                </div>
+              </label>
+            </div>
+          )}
         </div>
         <div className="game-controls">
           <div className="navigation-controls">
@@ -470,10 +487,6 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
                 
                 <button onClick={handleTeleport} disabled={isTeleporting || Math.floor(teleportCharges) < 1} className="control-button btn-primary">
                   {isTeleporting ? 'Teleporting...' : 'Teleport'}
-                </button>
-                
-                <button onClick={() => setTeleportClickMode(!teleportClickMode)} disabled={Math.floor(teleportCharges) < 1} className={`control-button ${teleportClickMode ? 'btn-active' : 'btn-secondary'}`}>
-                  {teleportClickMode ? 'Click to Teleport (ON)' : 'Click to Teleport (OFF)'}
                 </button>
               </div>
             </div>
