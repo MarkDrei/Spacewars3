@@ -103,3 +103,46 @@ The `saveUserToDb` UPDATE uses positional `$N` params; the WHERE clause param nu
 5. `public/assets/images/research/` — add research icon image
 
 The TechTree is stored as serialized JSON in the `tech_tree TEXT` column — NO schema migration is needed for new research fields. `createInitialTechTree()` provides defaults, and `userFromRow()` merges with initial tree on load (handles pre-existing users gracefully).
+
+## Research Effect Consumption Points
+
+**Discovered by**: Cartographer  
+**Context**: When planning the Player Bonus System, mapped all locations where research effects are directly consumed
+
+**Details**: The following locations call `getResearchEffectFromTree()` or weapon modifier functions directly:
+
+| Location                      | Research Used                                         | Method                                              |
+| ----------------------------- | ----------------------------------------------------- | --------------------------------------------------- |
+| `user.ts` L86-98              | IronHarvesting, ShipSpeed, IronCapacity               | Direct `getResearchEffectFromTree()`                |
+| `user.ts` L178-240            | IronHarvesting (updateStats)                          | Iron accrual with mid-tick handling                 |
+| `user.ts` L252-284            | Teleport, TeleportRechargeSpeed                       | Max charges and recharge rate                       |
+| `user.ts` L299-318            | HullStrength, ArmorEffectiveness, ShieldEffectiveness | Max defense via `TechService.calculateMaxDefense()` |
+| `navigate/route.ts` L91       | ShipSpeed                                             | `maxSpeed = 5 × speedMultiplier` (legacy factor!)   |
+| `ship-stats/route.ts` L67-68  | ShipSpeed, Afterburner                                | `baseSpeed × (1 + afterburner/100)`                 |
+| `TechService.ts` L303-316     | HullStrength, ArmorEffectiveness, ShieldEffectiveness | `calculateMaxDefense()`                             |
+| `TechFactory.ts` L397-413     | Reload rate                                           | `calculateWeaponReloadTime()`                       |
+| `battleScheduler.ts` L312-314 | Damage, Accuracy                                      | Weapon modifiers fed to `calculateWeaponDamage()`   |
+| `inventory/route.ts` L19-24   | InventorySlots                                        | Max inventory slots                                 |
+| `bridge/route.ts` L24-27      | BridgeSlots                                           | Max bridge slots                                    |
+
+**Key insight**: Navigate route uses `5 × speedMultiplier` while ship-stats uses `baseSpeed × (1 + afterburner/100)` — these are inconsistent and planned for unification via UserBonusCache.
+
+## Commander Bonuses Are Client-Side Only
+
+**Discovered by**: Cartographer  
+**Context**: When researching commander bonus application for the Player Bonus System
+
+**Details**: `Commander.calculateBonuses()` is currently called ONLY in the bridge GET API route for display purposes. Commander bonuses are NOT applied server-side to any game computation (ship speed, weapon damage, battle calculations). The UserBonusCache feature will be the first to actually apply commander bonuses to gameplay mechanics.
+
+## Accuracy/Reload Modifier Semantics
+
+**Discovered by**: Cartographer  
+**Context**: Planning multiplicative bonus system required understanding current modifier semantics
+
+**Details**: The techtree weapon modifier functions return different types of values:
+
+- `getWeaponDamageModifierFromTree()` → multiplicative factor (e.g., 1.15 = +15% damage) — already multiplicative
+- `getWeaponAccuracyModifierFromTree()` → additive percentage points (e.g., +5%) — not multiplicative
+- `getWeaponReloadTimeModifierFromTree()` → inverse multiplier (e.g., 0.85 = 15% faster) — inverse semantics
+
+These need refactoring to consistent multiplicative semantics before the bonus system can apply level/commander multipliers uniformly.
