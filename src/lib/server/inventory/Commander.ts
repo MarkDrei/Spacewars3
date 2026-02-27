@@ -59,7 +59,7 @@ export interface CommanderStatBonus {
 export interface CommanderData {
   readonly itemType: 'commander';
   readonly name: string;
-  /** Image identifier 0..9 (ten possible portraits) */
+  /** Image identifier 0..17 (eighteen possible portraits) */
   readonly imageId: number;
   /** One to three stat bonuses */
   readonly statBonuses: CommanderStatBonus[];
@@ -92,7 +92,7 @@ export class Commander {
    * Create a commander with explicitly provided stats.
    * @param name    Display name of the commander.
    * @param bonuses 1–3 stat bonuses. Throws if out of range or values invalid.
-   * @param imageId Optional image identifier (0..9). If omitted a random id is assigned.
+   * @param imageId Optional image identifier (0..17). If omitted a random id is assigned.
    */
   static withStats(name: string, bonuses: CommanderStatBonus[], imageId?: number): Commander {
     if (bonuses.length < 1 || bonuses.length > 3) {
@@ -105,9 +105,9 @@ export class Commander {
       }
     }
     // ensure valid image id
-    const finalImageId = imageId !== undefined ? imageId : Math.floor(Math.random() * 10);
-    if (finalImageId < 0 || finalImageId > 9) {
-      throw new Error(`imageId must be 0..9, got ${finalImageId}`);
+    const finalImageId = imageId !== undefined ? imageId : Math.floor(Math.random() * 18);
+    if (finalImageId < 0 || finalImageId > 17) {
+      throw new Error(`imageId must be 0..17, got ${finalImageId}`);
     }
     return new Commander(
       name,
@@ -148,7 +148,7 @@ export class Commander {
       imageId = result.imageId;
     } else {
       // explicit name, assign any picture id as before
-      imageId = Math.floor(rng() * 10);
+      imageId = Math.floor(rng() * 18);
     }
 
     return new Commander(finalName, imageId, bonuses);
@@ -174,8 +174,8 @@ export class Commander {
     const middle = MIDDLE_NAMES[Math.floor(rng() * MIDDLE_NAMES.length)];
     const last = LAST_NAMES[Math.floor(rng() * LAST_NAMES.length)];
 
-    // choose an index 0..4 then apply parity
-    const idx = Math.floor(rng() * 5);
+    // choose an index 0..8 then apply parity
+    const idx = Math.floor(rng() * 9);
     const imageId = isMale ? idx * 2 : idx * 2 + 1;
     // middle names are single letters; include a dot after the initial
     return { name: `${first} ${middle}. ${last}`, imageId };

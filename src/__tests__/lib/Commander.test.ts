@@ -16,7 +16,7 @@ describe('Commander', () => {
       expect(commander.statBonuses).toHaveLength(1);
       expect(commander.statBonuses[0]).toEqual({ stat: 'shipSpeed', value: 0.5 });
       expect(commander.imageId).toBeGreaterThanOrEqual(0);
-      expect(commander.imageId).toBeLessThanOrEqual(9);
+      expect(commander.imageId).toBeLessThanOrEqual(17);
     });
 
     test('withStats_threeBonuses_createsCommander', () => {
@@ -59,7 +59,7 @@ describe('Commander', () => {
       // 0.35 rounds to 0.4 (nearest 0.1)
       expect(commander.statBonuses[0].value).toBe(0.4);
       expect(commander.imageId).toBeGreaterThanOrEqual(0);
-      expect(commander.imageId).toBeLessThanOrEqual(9);
+      expect(commander.imageId).toBeLessThanOrEqual(17);
     });
 
     test('withStats_extremeValues_accepted', () => {
@@ -70,14 +70,14 @@ describe('Commander', () => {
       expect(commander.statBonuses[0].value).toBe(0.1);
       expect(commander.statBonuses[1].value).toBe(1.0);
       expect(commander.imageId).toBeGreaterThanOrEqual(0);
-      expect(commander.imageId).toBeLessThanOrEqual(9);
+      expect(commander.imageId).toBeLessThanOrEqual(17);
     });
 
     test('withStats_itemTypeIsCommander', () => {
       const commander = Commander.withStats('Test', [{ stat: 'shipSpeed', value: 0.5 }]);
       expect(commander.itemType).toBe('commander');
       expect(commander.imageId).toBeGreaterThanOrEqual(0);
-      expect(commander.imageId).toBeLessThanOrEqual(9);
+      expect(commander.imageId).toBeLessThanOrEqual(17);
     });
   });
 
@@ -117,7 +117,7 @@ describe('Commander', () => {
       const commander = Commander.random('Captain Nova');
       expect(commander.name).toBe('Captain Nova');
       expect(commander.imageId).toBeGreaterThanOrEqual(0);
-      expect(commander.imageId).toBeLessThanOrEqual(9);
+      expect(commander.imageId).toBeLessThanOrEqual(17);
     });
 
     test('random_bonusCountIsOneToThree', () => {
@@ -192,7 +192,7 @@ describe('Commander', () => {
         const n = commander.statBonuses.length as 1 | 2 | 3;
         counts[n]++;
         expect(commander.imageId).toBeGreaterThanOrEqual(0);
-        expect(commander.imageId).toBeLessThanOrEqual(9);
+        expect(commander.imageId).toBeLessThanOrEqual(17);
       }
       // 60% ± 5% for 1 stat
       expect(counts[1] / iterations).toBeGreaterThan(0.55);
@@ -231,7 +231,7 @@ describe('Commander', () => {
       const data: any = { itemType: 'commander', name: 'NoPic', statBonuses: [{ stat: 'shipSpeed', value: 0.5 }] };
       const cmd = Commander.fromJSON(data);
       expect(cmd.imageId).toBeGreaterThanOrEqual(0);
-      expect(cmd.imageId).toBeLessThanOrEqual(9);
+      expect(cmd.imageId).toBeLessThanOrEqual(17);
     });
   });
 
