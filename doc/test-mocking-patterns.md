@@ -86,6 +86,54 @@ inline; only a TypeScript type is imported.
 
 ---
 
+## Pattern 4 — Inline UI business-logic test (no imports from `src/`)
+
+**Location**: inline (all logic defined inside the test file)
+
+**What it does**: Tests pure business logic (formatting, validation, state calculations) that was
+written inline in a `ui/` test file. Because the logic has no React rendering, no DOM APIs,
+and no imports from `src/`, it runs fine in the `node` environment and belongs in `unit/`.
+
+**When to use**: A `ui/` test file whose every test function defines its own helper inline
+(e.g. `const formatX = (n) => …`) and calls only standard JS/TS — no `render`, no `renderHook`,
+no DOM queries, no `@testing-library/react`.
+
+**When NOT to use**:
+- The file imports React components or hooks from `src/`
+- The file uses `render`, `renderHook`, `screen`, `fireEvent`, or any `@testing-library/react` API
+- Any test accesses `document`, `window`, or other DOM globals
+
+**Usage**: Simply move the `.test.ts` file from `src/__tests__/ui/` to the corresponding
+`src/__tests__/unit/` subfolder. No code changes required.
+
+**Discovered**: Cleaner agent during UI test audit (2025-07-09).
+
+---
+
+## Pattern 5 — Extracted service tests from mixed UI file
+
+**Location**: new `unit/` file extracted from `ui/` file
+
+**What it does**: When a `ui/` test file contains a mix of pure service/fetch tests and React
+component render tests, the service tests are extracted to a new `unit/` file and the `ui/`
+file is trimmed to keep only the React rendering tests.
+
+**When to use**: A `ui/.test.tsx` file has two or more `describe` blocks where at least one
+block only uses `vi.stubGlobal('fetch', …)` and calls the real service function — no React.
+
+**When NOT to use**:
+- All tests in the file need DOM/React (just `KEEP` the whole file)
+- The service tests import server-side modules that throw outside integration context
+
+**Usage**:
+1. Create `unit/components/<service-name>.test.ts` containing only the service/type tests.
+2. Remove those `describe` blocks from the `ui/` file; leave only the React render blocks.
+3. Both files keep identical test logic — no behaviour change.
+
+**Discovered**: Cleaner agent during UI test audit (2025-07-09); applied to `teleport-controls.test.tsx`.
+
+---
+
 ## Template — Adding a new pattern
 
 When the Cleaner agent discovers a new mocking technique, append a section here with:

@@ -19,11 +19,15 @@ Format: `[TAG: one-line reason]`
 | `REFACTOR→unit` | Could become a unit test after extracting logic or adding mocks       |
 | `PARTIAL`       | Split possible: some tests → unit/ui, others must stay in integration |
 
-## Unit Tests (42 files)
+## Unit Tests (46 files)
 
 No database setup. Fast, isolated tests for pure logic.
 
 - src/**tests**/unit/admin/space-object-count-summary.test.ts _(moved from integration)_
+- src/**tests**/unit/components/admin-multiplier-ui.test.ts _(moved from ui — pure inline logic, no React/jsdom)_
+- src/**tests**/unit/components/login-business-logic.test.ts _(moved from ui — pure inline logic, no React/jsdom)_
+- src/**tests**/unit/components/StatusHeader-business-logic.test.ts _(moved from ui — pure inline logic, no React/jsdom)_
+- src/**tests**/unit/components/teleport-service.test.ts _(extracted from ui/teleport-controls — teleportService + UserStatsResponse type tests, no React rendering)_
 - src/**tests**/unit/api/collection-api.test.ts _(moved from integration — uses `createMockSessionCookie`)_
 - src/**tests**/unit/api/complete-build-api.test.ts _(extracted from integration — auth-guard tests only)_
 - src/**tests**/unit/api/inventory-api.test.ts _(extracted from integration — GET+DELETE auth-guard tests only)_
@@ -126,19 +130,16 @@ Require PostgreSQL test database. Use `withTransaction` or `initializeIntegratio
 - src/**tests**/integration/lib/xp-schema-definition.test.ts `[KEEP: first 3 tests check SQL strings; last 3 query DB — kept together to avoid split complexity]`
 - src/**tests**/integration/testServer-minimal.test.ts `[KEEP: tests server initialization + DB]`
 
-## UI Tests (12 files)
+## UI Tests (9 files)
 
 jsdom environment. Test React components and hooks.
 
-- src/**tests**/ui/components/admin-multiplier-ui.test.ts
-- src/**tests**/ui/components/inventory-grid.test.tsx
-- src/**tests**/ui/components/login-business-logic.test.ts
-- src/**tests**/ui/components/researchPageClient.test.tsx
-- src/**tests**/ui/components/StatusHeader-business-logic.test.ts
-- src/**tests**/ui/components/teleport-controls.test.tsx
-- src/**tests**/ui/hooks/useBuildQueue.test.ts
-- src/**tests**/ui/hooks/useFactoryDataCache.test.ts
-- src/**tests**/ui/hooks/useIron.test.ts
-- src/**tests**/ui/hooks/useIron-timeMultiplier.test.ts
-- src/**tests**/ui/hooks/useIron-xp-display.test.ts
-- src/**tests**/ui/hooks/useTechCounts.test.ts
+- src/**tests**/ui/components/inventory-grid.test.tsx `[KEEP: uses React render + fireEvent on InventoryGridComponent]`
+- src/**tests**/ui/components/researchPageClient.test.tsx `[KEEP: uses React render + screen on ResearchPageClient]`
+- src/**tests**/ui/components/teleport-controls.test.tsx `[PARTIAL: teleportService + type tests extracted to unit/components/teleport-service.test.ts; GamePageClient UI tests kept here (React render + screen)]`
+- src/**tests**/ui/hooks/useBuildQueue.test.ts `[KEEP: uses renderHook from @testing-library/react — requires jsdom]`
+- src/**tests**/ui/hooks/useFactoryDataCache.test.ts `[KEEP: uses renderHook + waitFor from @testing-library/react — requires jsdom]`
+- src/**tests**/ui/hooks/useIron.test.ts `[KEEP: uses renderHook + waitFor from @testing-library/react — requires jsdom]`
+- src/**tests**/ui/hooks/useIron-timeMultiplier.test.ts `[KEEP: uses renderHook + waitFor from @testing-library/react — requires jsdom]`
+- src/**tests**/ui/hooks/useIron-xp-display.test.ts `[KEEP: uses renderHook + waitFor from @testing-library/react — requires jsdom]`
+- src/**tests**/ui/hooks/useTechCounts.test.ts `[KEEP: uses renderHook + act from @testing-library/react — requires jsdom]`
