@@ -1,6 +1,8 @@
 import { describe, test, expect, beforeEach, vi, afterEach } from 'vitest';
 import { TechService } from '@/lib/server/techs/TechService';
 import { UserCache } from '@/lib/server/user/userCache';
+import { UserBonusCache } from '@/lib/server/bonus/UserBonusCache';
+import { InventoryService } from '@/lib/server/inventory/InventoryService';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 import { USER_LOCK, DATABASE_LOCK_MESSAGES } from '@/lib/server/typedLocks';
 import { getDatabase } from '@/lib/server/database';
@@ -15,7 +17,10 @@ describe('TechService - Build Completion XP Rewards', () => {
   beforeEach(async () => {
     // Initialize userCache
     UserCache.resetInstance();
+    UserBonusCache.resetInstance();
     await UserCache.intialize2(await getDatabase());
+    UserBonusCache.configureDependencies({ userCache: UserCache.getInstance2(), inventoryService: new InventoryService() });
+    UserBonusCache.getInstance();
     
     // Initialize MessageCache before TechService
     const ctx = createLockContext();
@@ -42,6 +47,7 @@ describe('TechService - Build Completion XP Rewards', () => {
   });
 
   afterEach(async () => {
+    UserBonusCache.resetInstance();
     UserCache.resetInstance();
   });
 

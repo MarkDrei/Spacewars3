@@ -201,9 +201,19 @@ graph TB
 
 The application employs a layered architecture separating caching, business logic, and data access:
 
-#### 5.2.1 Cache Layer (Four Independent Caches)
+#### 5.2.1 Cache Layer (Four Independent Caches + One Derived Cache)
 
-Four singleton cache managers handle different data domains with explicit dependency injection:
+Five cache managers handle different data domains. Four are persistent singletons with explicit dependency injection; one is a runtime-only derived cache:
+
+**UserBonusCache** (`src/lib/server/bonus/UserBonusCache.ts`)
+
+- **Responsibility:** Pre-computed bonus multipliers derived from player level, commanders, and research
+- **Storage:** Map<userId, UserBonuses> (runtime-only, no DB persistence)
+- **Lock Hierarchy:** No lock needed — `invalidate()` is synchronous Map.delete in single-threaded JS
+- **Initialization:** Lazy per user; rebuilt on first `getBonuses()` call after invalidation
+- **Key Features:** Sub-microsecond reads; invalidated on level-up, research completion, and bridge changes; lost on server restart (rebuilt lazily); depends on UserCache + InventoryService for recalculation
+
+
 
 **UserCache** (`src/lib/server/user/userCache.ts`)
 
@@ -245,6 +255,8 @@ graph TD
     WC[WorldCache]
     UC[UserCache]
     BC[BattleCache]
+    UBC[UserBonusCache<br/>Derived/Runtime-Only]
+    IS[InventoryService<br/>Direct DB Access]
 
     WC -->|depends on| MC
     UC -->|depends on| WC
@@ -252,11 +264,15 @@ graph TD
     BC -->|depends on| UC
     BC -->|depends on| WC
     BC -->|depends on| MC
+    UBC -->|reads user+level| UC
+    UBC -->|reads bridge| IS
 
     style MC fill:#ffeb3b
     style WC fill:#4caf50,color:#fff
     style UC fill:#2196f3,color:#fff
     style BC fill:#f44336,color:#fff
+    style UBC fill:#e1bee7,color:#000
+    style IS fill:#b0bec5,color:#000
 ```
 
 **Initialization Order (in main.ts):**
@@ -708,6 +724,29 @@ graph TB
 - ⚠️ Higher per-request DB latency (~5–15ms) compared to a cached path – acceptable given low access frequency
 
 ---
+
+### 9.6 ADR-006: Cache Derived Bonus Values in UserBonusCache
+
+**Context:** Game bonuses (derived from player level, commanders, and research) are needed frequently across multiple API endpoints (navigate, ship-stats, battle, harvest, etc.). Recalculating them on every request requires reading from UserCache and InventoryService, introducing unnecessary lock contention and latency. The bonus values are pure functions of existing source data — they contain no novel state that requires persistence.
+
+**Decision:** Cache derived bonus values in a runtime-only `UserBonusCache` (`src/lib/server/bonus/UserBonusCache.ts`). The cache is:
+
+- **Lazily initialised** per user — computed on first `getBonuses(userId)` call after invalidation or server start
+- **Invalidated synchronously** on source data changes (level-up, research completion, bridge item changes) via `invalidateBonuses(userId)` — a plain `Map.delete()`, no lock needed in single-threaded JS
+- **Not persisted** — purely runtime, lost on server restart (rebuilt lazily from existing source data)
+- **Combination formula** — all bonus sources multiply: `finalValue = researchEffect × levelMultiplier × commanderMultiplier`
+
+**Consequences:**
+
+- ✅ Sub-microsecond reads after first computation (simple Map lookup)
+- ✅ No new lock level needed — recalculation reuses existing `USER_LOCK` (LOCK_4) and `USER_INVENTORY_LOCK` (LOCK_5) in valid order
+- ✅ No schema changes — purely in-memory
+- ✅ Stale for at most one request after an invalidating event (lazy rebuild on next read)
+- ⚠️ Lost on server restart — users experience one slightly slower request while bonuses are rebuilt
+- ⚠️ Stats without a `CommanderStatKey` (iron capacity, iron rate, defense regen) receive only level × research multiplier; no commander bonus
+
+---
+
 
 ### 9.4 ADR-004: Transaction-Based Test Isolation
 

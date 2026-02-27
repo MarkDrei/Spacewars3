@@ -320,6 +320,10 @@ export class UserCache extends Cache {
       // Cache miss - load from database
       console.log(`🔍 Username "${username}" cache miss, loading from database`);
       user = await this.loadUserByUsernameFromDb(context, username);
+      if (user) {
+        // Add to in-memory map so UserBonusCache.getBonuses() can find the user
+        this.setUserUnsafe(context, user);
+      }
     }
 
     if (user) {

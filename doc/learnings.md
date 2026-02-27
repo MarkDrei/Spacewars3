@@ -287,3 +287,26 @@ When passing `totalReloadFactor`, the function uses `baseCooldown / totalReloadF
 **Context**: Task 5.2.1 — navigate route used `5 × speedMultiplier` while ship-stats used `baseSpeed`
 
 **Details**: The navigate route had an undocumented `5 × speedMultiplier` factor making max speed 5× higher than what ship-stats reported. This was a legacy inconsistency. Both routes now use `bonuses.maxShipSpeed`. Max speed at base level changed from 125 to 25. Documented in `TechnicalDebt.md`.
+
+## UserBonusCache: Runtime-Only Derived Cache Pattern
+
+**Discovered by**: Knight
+**Context**: Tasks 6.1–6.3 — ADR and architecture documentation for UserBonusCache
+
+**Details**: `UserBonusCache` introduces a **derived cache** pattern that differs from all other caches in the system. Key design decisions to remember:
+
+1. **No DB persistence** — bonuses are always computable from existing source data (UserCache + InventoryService). Restart cost = one slightly slower request per user while bonuses are rebuilt lazily.
+
+2. **No lock of its own** — `invalidateBonuses(userId)` is `Map.delete()`, which is atomic in single-threaded Node.js. No IronGuard lock needed for the cache itself. Recalculation internally acquires `USER_LOCK` (LOCK_4) then `USER_INVENTORY_LOCK` (LOCK_5) — a valid order in the IronGuard hierarchy.
+
+3. **Multiplicative combination** — all bonus sources multiply: `finalValue = researchEffect × levelMultiplier × commanderMultiplier`. Stats without a `CommanderStatKey` receive `commanderMultiplier = 1.0` (level + research only).
+
+4. **Lazy per-user** — first `getBonuses(userId)` call after a server start or invalidation triggers recalculation. No eager warmup needed.
+
+5. **Invalidation trigger points** — level-up, research completion, bridge item changes. Each calls the synchronous `invalidateBonuses(userId)`. The next read rebuilds.
+
+6. **Afterburner folded into maxShipSpeed** — `maxShipSpeed = ShipSpeed research × (1 + afterburner/100) × levelMultiplier × commanderMultiplier`. This resolves the previous inconsistency between the navigate route and ship-stats route.
+
+7. **updateStats() receives UserBonuses as optional parameter** — keeps the method synchronous while allowing bonus-aware callers to pass pre-computed values. Tests that don't supply bonuses fall back to legacy per-stat research lookups (backward-compatible).
+
+**Architectural implication**: When adding a new derived/computed value that is needed on every request but can always be reconstructed from existing cached data, prefer this "derived cache" pattern over either (a) recomputing on every request or (b) persisting to the database.

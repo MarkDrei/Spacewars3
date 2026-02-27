@@ -101,9 +101,10 @@ describe('TimeMultiplier - Battle Weapon Cooldowns', () => {
 
       const updatedCooldown = battle!.attackerWeaponCooldowns.pulse_laser;
       
-      // Cooldown should be set to currentTime + (50 / 10) = currentTime + 5
-      // Allow small time window for processing
-      const expectedCooldown = timeBefore + 5;
+      // Cooldown should be ceil(612 / 10) = 62 seconds
+      // pulse_laser base: 720s. User 'a' has energyRechargeRate:1 (15% → speed factor 1/0.85≈1.176)
+      // bonusedCooldown = ceil(720 / 1.176) = 612s. With 10x: ceil(612/10) = 62s.
+      const expectedCooldown = timeBefore + 62;
       expect(updatedCooldown).toBeGreaterThanOrEqual(expectedCooldown);
       expect(updatedCooldown).toBeLessThanOrEqual(expectedCooldown + 2);
     });
@@ -197,16 +198,16 @@ describe('TimeMultiplier - Battle Weapon Cooldowns', () => {
 
       const updatedCooldown = battle!.attackerWeaponCooldowns.pulse_laser;
       
-      // Cooldown should be set to currentTime + 30 (no multiplier effect since expired)
-      // Allow small time window for processing
-      const expectedCooldown = timeBefore + 30;
+      // Cooldown should be 612 seconds (no multiplier since expired)
+      // User 'a' energyRechargeRate:1 gives bonusedCooldown=612s; multiplier=1 → 612s.
+      const expectedCooldown = timeBefore + 612;
       expect(updatedCooldown).toBeGreaterThanOrEqual(expectedCooldown);
       expect(updatedCooldown).toBeLessThanOrEqual(expectedCooldown + 2);
     });
   });
 
-  test('fireWeapon_withMultiplier5_respectsMinimumCooldownOf1Second', async () => {
-    // Setup: Weapon with 2 second cooldown, 5x multiplier should reduce to 1 (minimum)
+  test('fireWeapon_withMultiplier5_reducesCooldown', async () => {
+    // Setup: pulse_laser base cooldown 720s, 5x multiplier reduces to 144s
     const battleCache = getBattleCache();
     const userWorldCache = UserCache.getInstance2();
 
@@ -282,16 +283,16 @@ describe('TimeMultiplier - Battle Weapon Cooldowns', () => {
 
       const updatedCooldown = battle!.attackerWeaponCooldowns.pulse_laser;
       
-      // Cooldown should be clamped to minimum of 1 second (2 / 5 = 0.4, ceil = 1, max(1, 1) = 1)
-      // So cooldown should be currentTime + 1
-      const expectedCooldown = timeBefore + 1;
+      // Cooldown should be ceil(612 / 5) = 123 seconds
+      // User 'a' energyRechargeRate:1 → bonusedCooldown=612s; 5x multiplier → ceil(612/5)=123s.
+      const expectedCooldown = timeBefore + 123;
       expect(updatedCooldown).toBeGreaterThanOrEqual(expectedCooldown);
       expect(updatedCooldown).toBeLessThanOrEqual(expectedCooldown + 2);
     });
   });
 
   test('fireWeapon_defaultCooldown_withMultiplier10', async () => {
-    // Setup: Test default cooldown of 5 seconds (when weaponData.cooldown is undefined)
+    // Setup: Weapon with no BattleStats cooldown; battleScheduler uses TechFactory spec (720s for pulse_laser)
     const battleCache = getBattleCache();
     const userWorldCache = UserCache.getInstance2();
 
@@ -367,8 +368,10 @@ describe('TimeMultiplier - Battle Weapon Cooldowns', () => {
 
       const updatedCooldown = battle!.attackerWeaponCooldowns.pulse_laser;
       
-      // Cooldown should be set to currentTime + (5 / 10) = currentTime + 1 (ceil of 0.5)
-      const expectedCooldown = timeBefore + 1;
+      // Cooldown should be ceil(612 / 10) = 62 seconds
+      // BattleStats.cooldown is ignored; battleScheduler uses TechFactory spec (720s for pulse_laser).
+      // User 'a' energyRechargeRate:1 → bonusedCooldown=612s; 10x multiplier → 62s.
+      const expectedCooldown = timeBefore + 62;
       expect(updatedCooldown).toBeGreaterThanOrEqual(expectedCooldown);
       expect(updatedCooldown).toBeLessThanOrEqual(expectedCooldown + 2);
     });

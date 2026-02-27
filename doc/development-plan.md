@@ -590,6 +590,14 @@ For reload time: Update `TechFactory.calculateWeaponReloadTime()` or its callers
 
 - `doc/architecture/arc42-architecture.md` — add ADR-006
 
+**Status**: ✅ COMPLETED
+**Implementation Summary**: Added ADR-006 as §9.6 in arc42-architecture.md covering context, decision, and consequences for the runtime-only derived bonus cache pattern.
+**Files Modified/Created**:
+- `doc/architecture/arc42-architecture.md` — added ADR-006 (§9.6) and updated §5.2.1 heading + dependency graph
+**Deviations from Plan**: None
+**Arc42 Updates**: Updated `doc/architecture/arc42-architecture.md` (§5 and §9)
+**Test Results**: ✅ Documentation only — no code changes, no tests required
+
 #### Task 6.2: Update Arc42 Building Block View
 
 **Action**: Add `UserBonusCache` to the building blocks documentation as a new cache component. Update the dependency graph to show UserBonusCache depending on UserCache and InventoryService.
@@ -599,6 +607,15 @@ For reload time: Update `TechFactory.calculateWeaponReloadTime()` or its callers
 - `doc/architecture/arc42-architecture.md` — update §5 Building Block View
 - `doc/architecture/building-blocks-cache-systems.md` — add UserBonusCache section
 
+**Status**: ✅ COMPLETED
+**Implementation Summary**: Updated §5.2.1 in arc42-architecture.md to list UserBonusCache as a fifth cache; updated the dependency graph Mermaid diagram to include UserBonusCache and InventoryService; added a full UserBonusCache section to building-blocks-cache-systems.md including shape, formula, lock strategy, and invalidation trigger table; updated the comparison table, Key Differences, and Summary sections.
+**Files Modified/Created**:
+- `doc/architecture/arc42-architecture.md` — updated §5.2.1 Cache Layer heading + dependency graph
+- `doc/architecture/building-blocks-cache-systems.md` — added UserBonusCache section, updated comparison table, Key Differences, Summary
+**Deviations from Plan**: None
+**Arc42 Updates**: Updated `doc/architecture/arc42-architecture.md` (§5) and `doc/architecture/building-blocks-cache-systems.md`
+**Test Results**: ✅ Documentation only — no code changes, no tests required
+
 #### Task 6.3: Update Learnings
 
 **Action**: Document the bonus cache pattern and key design decisions in learnings.md.
@@ -606,6 +623,15 @@ For reload time: Update `TechFactory.calculateWeaponReloadTime()` or its callers
 **Files**:
 
 - `doc/learnings.md` — add entry about UserBonusCache pattern
+
+**Status**: ✅ COMPLETED
+**Implementation Summary**: Added "UserBonusCache: Runtime-Only Derived Cache Pattern" section to learnings.md covering all 7 key design decisions (no DB persistence, no lock, multiplicative formula, lazy init, invalidation triggers, afterburner folding, updateStats parameter pattern) plus architectural implication.
+**Files Modified/Created**:
+- `doc/learnings.md` — added UserBonusCache pattern entry
+**Deviations from Plan**: None
+**Arc42 Updates**: None required (learnings.md is not Arc42)
+**Test Results**: ✅ Documentation only — no code changes, no tests required
+
 
 ---
 

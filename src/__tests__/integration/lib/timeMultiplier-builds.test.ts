@@ -1,6 +1,8 @@
 import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 import { TechService } from '@/lib/server/techs/TechService';
 import { UserCache } from '@/lib/server/user/userCache';
+import { UserBonusCache } from '@/lib/server/bonus/UserBonusCache';
+import { InventoryService } from '@/lib/server/inventory/InventoryService';
 import { TimeMultiplierService } from '@/lib/server/timeMultiplier';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 import { USER_LOCK, DATABASE_LOCK_MESSAGES } from '@/lib/server/typedLocks';
@@ -17,7 +19,10 @@ describe('TimeMultiplier - Build Queue Integration', () => {
     // Reset singleton instances
     TimeMultiplierService.resetInstance();
     UserCache.resetInstance();
+    UserBonusCache.resetInstance();
     await UserCache.intialize2(await getDatabase());
+    UserBonusCache.configureDependencies({ userCache: UserCache.getInstance2(), inventoryService: new InventoryService() });
+    UserBonusCache.getInstance();
     
     // Initialize MessageCache before TechService
     const ctx = createLockContext();
@@ -46,6 +51,7 @@ describe('TimeMultiplier - Build Queue Integration', () => {
   afterEach(async () => {
     vi.restoreAllMocks();
     TimeMultiplierService.resetInstance();
+    UserBonusCache.resetInstance();
     UserCache.resetInstance();
   });
 
