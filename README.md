@@ -191,8 +191,8 @@ npm run test
 | `POSTGRES_DB`        | Database name          | `spacewars`                                |
 | `POSTGRES_USER`      | Database user          | `spacewars`                                |
 | `POSTGRES_PASSWORD`  | Database password      | `spacewars`                                |
-| `POSTGRES_TEST_HOST` | Test DB host           | Auto-detected                              |
-| `POSTGRES_TEST_PORT` | Test DB port           | `5433` (local) or `5432` (CI/devcontainer) |
+| `POSTGRES_TEST_HOST` | Test DB host           | `localhost`                                |
+| `POSTGRES_TEST_PORT` | Test DB port           | `5432`                                     |
 | `POSTGRES_TEST_DB`   | Test database name     | `spacewars_test`                           |
 | `SESSION_SECRET`     | Session encryption key | -                                          |
 
@@ -202,24 +202,25 @@ npm run test
 
 - **Test Structure**: Tests located in `src/__tests__/`
 - **Pattern**: `whatIsTested_scenario_expectedOutcome`
-- **Coverage**: **196/196 tests passing (100%)**
+- **Coverage**: **1000/1000 tests passing (100%)**
 - **Environment**: jsdom for React components, node for API routes
 - **Concurrency Testing**: Comprehensive tests for lock ordering and deadlock prevention
-- **Auto-Detection**: Tests automatically detect devcontainer, CI, or local environments
 
 #### Test Environments
 
 | Environment                | Command              | Database Config                          |
 | -------------------------- | -------------------- | ---------------------------------------- |
-| **Devcontainer**           | `npm test`           | Uses `db-test` service on port 5432      |
+| **Devcontainer**           | `npm test`           | Uses `db` service (host=db, port=5432)   |
 | **CI/CD (GitHub Actions)** | `npm run test:ci`    | Uses service container on localhost:5432 |
-| **Local (docker compose)** | `npm run test:local` | Starts databases, uses localhost:5433    |
+| **Local (docker compose)** | `npm run test:local` | Starts `db` service, uses localhost:5432 |
 
-The test configuration in [vitest.config.ts](vitest.config.ts) automatically detects the environment using:
+The test configuration in [vitest.config.ts](vitest.config.ts) reads connection details from environment variables:
 
-- `CI` environment variable for GitHub Actions
-- `REMOTE_CONTAINERS` environment variable for devcontainer
-- Falls back to localhost with port 5433 for local development
+- `POSTGRES_TEST_HOST` → `POSTGRES_HOST` → `localhost`
+- `POSTGRES_TEST_PORT` → `POSTGRES_PORT` → `5432`
+- `POSTGRES_TEST_DB` → `spacewars_test`
+
+Each environment sets `POSTGRES_TEST_*` variables explicitly (devcontainer via `.devcontainer/docker-compose.yml`, GitHub Actions via `.github/workflows/test.yml`, and local via the defaults above).
 
 📚 **[Complete Testing Strategy Documentation](doc/testing.md)** - Comprehensive guide to database isolation, test categories, and execution patterns.
 

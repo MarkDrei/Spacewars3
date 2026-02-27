@@ -2,11 +2,13 @@
 
 ## Database Setup for Tests
 
+> **⚠️ Outdated (2026-02-10):** The setup described below (two separate DB containers, port 5433) was simplified. See the 2026-02-26 entry below for the current single-container setup.
+
 ### Issue Discovered (2026-02-10)
 
 Tests require PostgreSQL databases to be running and the `POSTGRES_TEST_PORT` environment variable to be set to `5433`.
 
-### Solution
+### Solution (superseded)
 
 1. Start both databases: `docker compose up db db-test -d`
 2. Export the test port: `export POSTGRES_TEST_PORT=5433`
