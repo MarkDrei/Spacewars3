@@ -166,3 +166,34 @@ These need refactoring to consistent multiplicative semantics before the bonus s
 **Parameter rename**: `positiveAccuracyModifier` in `TechFactory.calculateWeaponDamage()` was renamed to `accuracyMultiplier` for clarity.
 
 **IMPORTANT — Accuracy equivalence does NOT hold at levels 2+ for projectile weapons**: The old additive formula (`baseAccuracy + (effect - researchBaseValue)`) and the new multiplicative formula (`baseAccuracy × effect/researchBaseValue`) are only mathematically equal when `baseAccuracy === researchBaseValue`. For `auto_turret` (baseAccuracy=50) with `ProjectileAccuracy` (researchBaseValue=70), the formulas diverge at levels 2+: old additive bonus grows independently of baseAccuracy, while the new multiplicative formula scales proportionally. Accepted deltas: L2=−1.4pp, L5=−9.8pp, L10=−30.4pp. This is an intentional trade-off for consistent multiplicative semantics required by the bonus system. Energy accuracy has NO divergence because `pulse_laser.baseAccuracy (65) === EnergyAccuracy.researchBaseValue (65)`. Future agents: do not attempt to "fix" this by tweaking formula coefficients — the divergence is documented in TechnicalDebt.md and accepted.
+
+## UserBonusCache: resetInstance() Must Clear Static Dependencies
+
+**Discovered by**: Knight
+**Context**: Task 2.2.2 (UserBonusCache unit tests) — test isolation failure
+
+**Details**: When a singleton uses a static class field for dependency injection (`static dependencies = null`), calling `resetInstance()` that only sets `instance = null` leaves the stale dependencies in place. Tests that don't call `configureDependencies()` after `resetInstance()` will accidentally inherit dependencies from the previous test.
+
+**Solution**: `resetInstance()` must also clear the static dependencies field:
+```typescript
+static resetInstance(): void {
+  UserBonusCache.instance = null;
+  UserBonusCache.dependencies = null; // clear deps too, for test isolation
+}
+```
+
+This is distinct from `UserCache.resetInstance()` which doesn't use static dependencies in the same way. The pattern should be adopted by any future singleton that uses `static configureDependencies()`.
+
+## Bridge Slot Count Must Come from User Research
+
+**Discovered by**: Knight
+**Context**: Task 2.2.1 (UserBonusCache recalculation) — reading commanders from bridge
+
+**Details**: When reading the bridge grid via `InventoryService.getBridge(userId, maxBridgeSlots)`, passing `DEFAULT_BRIDGE_SLOTS` produces an incomplete view if the user has unlocked more bridge slots via `BridgeSlots` research. Always compute maxBridgeSlots from the user's tech tree:
+
+```typescript
+const maxBridgeSlots = Math.floor(getResearchEffectFromTree(user.techTree, ResearchType.BridgeSlots));
+const bridge = await inventoryService.getBridge(userId, maxBridgeSlots);
+```
+
+This pattern is consistent with how the bridge API route (`src/app/api/bridge/route.ts`) reads the bridge grid.

@@ -133,6 +133,14 @@ Introduce a global bonus system that combines **player level**, **commander effe
 
 - `src/lib/server/bonus/userBonusTypes.ts` — new file with `UserBonuses` interface, `BonusStatKey` type
 
+**Status**: ✅ COMPLETED
+**Implementation Summary**: Created `userBonusTypes.ts` with the full `UserBonuses` interface (raw multipliers, pre-computed final values, and weapon factors) plus the `BASE_REGEN_RATE` constant.
+**Files Modified/Created**:
+- `src/lib/server/bonus/userBonusTypes.ts` — New file: `UserBonuses` interface and `BASE_REGEN_RATE` constant
+**Deviations from Plan**: The plan mentioned a `BonusStatKey` type but it was not needed — `CommanderStatKey` from Commander.ts already covers all keys.
+**Arc42 Updates**: None required
+**Test Results**: ✅ Covered by Task 2.2.2 tests (100% coverage)
+
 #### Sub-Goal 2.2: Implement UserBonusCache Service
 
 ##### Task 2.2.1: Implement UserBonusCache Class
@@ -171,6 +179,14 @@ Introduce a global bonus system that combines **player level**, **commander effe
 
 - `src/lib/server/bonus/UserBonusCache.ts` — new file
 
+**Status**: ✅ COMPLETED
+**Implementation Summary**: Implemented `UserBonusCache` singleton with lazy computation, globalThis-based singleton pattern, full recalculation logic combining level/commander/research multipliers, and correct lock ordering (LOCK_4 held by caller, LOCK_5 acquired internally by InventoryService).
+**Files Modified/Created**:
+- `src/lib/server/bonus/UserBonusCache.ts` — New file: full UserBonusCache singleton implementation
+**Deviations from Plan**: `resetInstance()` also clears the static `dependencies` field (not mentioned in plan) to ensure proper test isolation. Bridge slot count is correctly read from the user's `BridgeSlots` research rather than using `DEFAULT_BRIDGE_SLOTS`, ensuring complete commander enumeration.
+**Arc42 Updates**: None required
+**Test Results**: ✅ Covered by Task 2.2.2 tests (100% coverage)
+
 ##### Task 2.2.2: Unit Tests for UserBonusCache
 
 **Action**: Write comprehensive unit tests with mocked UserCache and InventoryService. Test:
@@ -188,9 +204,17 @@ Introduce a global bonus system that combines **player level**, **commander effe
 
 **Files**:
 
-- `src/__tests__/lib/userBonusCache.test.ts` — new unit test file (mocked deps, no DB)
+- `src/__tests__/unit/lib/userBonusCache.test.ts` — new unit test file (mocked deps, no DB)
 
 **Quality Requirements**: >90% coverage of UserBonusCache. Pure unit tests with mocked dependencies.
+
+**Status**: ✅ COMPLETED
+**Implementation Summary**: 46 pure unit tests covering all cache operations, level multiplier math, commander stacking, combined final values, and edge cases; all dependencies are mocked with vi.fn().
+**Files Modified/Created**:
+- `src/__tests__/unit/lib/userBonusCache.test.ts` — New file: 46 unit tests for UserBonusCache (plan proposed `src/__tests__/lib/` path; used `src/__tests__/unit/lib/` to match existing unit-test conventions)
+**Deviations from Plan**: Test file path changed from `src/__tests__/lib/userBonusCache.test.ts` to `src/__tests__/unit/lib/userBonusCache.test.ts` to match the existing unit test directory structure.
+**Arc42 Updates**: None required
+**Test Results**: ✅ 46/46 tests passing, 100% statement/branch/function/line coverage, no linting errors
 
 ---
 
