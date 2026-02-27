@@ -2,7 +2,26 @@
 applyTo: "src/__tests__/**"
 ---
 
-## Test Folder Structure
+## Test Pyramid
+
+**Prefer unit tests.** Only use integration tests when a real database, cache, or network is genuinely required. Always ask: "can I test this without the DB?"
+
+```
+        ▲  integration  (slow — spin up DB + caches)
+       ▲▲▲  ui           (medium — jsdom, React)
+      ▲▲▲▲▲  unit         (fast — pure logic, no I/O)  ← default choice
+```
+
+### Helpers that unlock unit tests for API routes
+
+| Situation                                            | Helper                                       | Where                       |
+| ---------------------------------------------------- | -------------------------------------------- | --------------------------- |
+| Need an authenticated request without a real DB user | `createMockSessionCookie(userId?)`           | `helpers/apiTestHelpers.ts` |
+| Need a typed `NextRequest` with optional body/cookie | `createRequest(url, method, body?, cookie?)` | `helpers/apiTestHelpers.ts` |
+
+**`createMockSessionCookie`** seals `{ userId }` with the same iron-session key the app uses — no register/login round-trip, no DB touch. Use it whenever an API route's error path (401, 400 input validation) fires **before** any cache or DB access.
+
+**Rule of thumb:** read the route handler top-to-bottom. If the early-exit you want to test (auth guard, input validation) comes before the first `UserCache`/`WorldCache`/`getDatabase()` call, the test belongs in `unit/`.
 
 Tests are split into three folders, each mapped to a separate vitest project:
 

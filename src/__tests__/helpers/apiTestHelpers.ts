@@ -1,5 +1,7 @@
 import { NextRequest } from 'next/server';
 import { expect } from 'vitest';
+import { sealData } from 'iron-session';
+import { sessionOptions } from '@/lib/server/session';
 
 // Import API routes
 import { POST as registerPOST } from '@/app/api/register/route';
@@ -108,6 +110,24 @@ export async function createAuthenticatedSessionWithUser(usernamePrefix?: string
   expect(sessionCookie).toBeTruthy();
   
   return { sessionCookie: sessionCookie!, username };
+}
+
+/**
+ * Creates a valid iron-session cookie without any database interaction.
+ *
+ * Use this in unit/ui tests that need an authenticated request but do NOT care
+ * about the actual user record (e.g. input-validation or auth-guard tests that
+ * return 400/401/403 before ever touching a cache or the DB).
+ *
+ * @param userId - The user id to embed in the session (defaults to 1, the seeded
+ *                 user 'a' that always exists in both dev and test databases).
+ */
+export async function createMockSessionCookie(userId: number = 1): Promise<string> {
+  // sessionOptions.password is always a plain string in this project (see src/lib/server/session.ts)
+  const password = sessionOptions.password as string;
+  const ttl = (sessionOptions.cookieOptions?.maxAge as number | undefined) ?? 86400;
+  const sealed = await sealData({ userId }, { password, ttl });
+  return `spacewars-session=${sealed}`;
 }
 
 /**

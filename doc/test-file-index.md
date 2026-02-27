@@ -11,19 +11,20 @@ find src/__tests__ -name "*.test.ts" -o -name "*.test.tsx" | sort
 Each test file below may carry an inline annotation to guide test-speed improvements.
 Format: `[TAG: one-line reason]`
 
-| Tag | Meaning |
-|-----|---------|
-| `MOVE→unit` | Can be moved to unit tests as-is — no DB/server/cache needed |
-| `MOVE→ui` | Can be moved to UI tests — only needs jsdom/React, no DB |
-| `KEEP` | Must stay in integration — real DB, auth, or cache required |
-| `REFACTOR→unit` | Could become a unit test after extracting logic or adding mocks |
-| `PARTIAL` | Split possible: some tests → unit/ui, others must stay in integration |
+| Tag             | Meaning                                                               |
+| --------------- | --------------------------------------------------------------------- |
+| `MOVE→unit`     | Can be moved to unit tests as-is — no DB/server/cache needed          |
+| `MOVE→ui`       | Can be moved to UI tests — only needs jsdom/React, no DB              |
+| `KEEP`          | Must stay in integration — real DB, auth, or cache required           |
+| `REFACTOR→unit` | Could become a unit test after extracting logic or adding mocks       |
+| `PARTIAL`       | Split possible: some tests → unit/ui, others must stay in integration |
 
-## Unit Tests (9 files)
+## Unit Tests (10 files)
 
 No database setup. Fast, isolated tests for pure logic.
 
-- src/**tests**/unit/admin/space-object-count-summary.test.ts *(moved from integration)*
+- src/**tests**/unit/admin/space-object-count-summary.test.ts _(moved from integration)_
+- src/**tests**/unit/api/collection-api.test.ts _(moved from integration — uses `createMockSessionCookie`)_
 - src/**tests**/unit/lib/Commander.test.ts
 - src/**tests**/unit/renderers/TargetingLineRenderer.test.ts
 - src/**tests**/unit/services/collectionService.test.ts
@@ -33,15 +34,14 @@ No database setup. Fast, isolated tests for pure logic.
 - src/**tests**/unit/shared/physics.test.ts
 - src/**tests**/unit/shared/worldConstants.test.ts
 
-## Integration Tests (82 files)
+## Integration Tests (81 files)
 
 Require PostgreSQL test database. Use `withTransaction` or `initializeIntegrationTestServer`.
 
 - src/**tests**/integration/api/admin-api.test.ts `[KEEP: tests real login/session flow, reads seeded DB data — mocking would hollow out the test value]`
 - src/**tests**/integration/api/admin/spawn-objects.test.ts `[KEEP: spawn tests write to DB + WorldCache; auth-only cases (401/403) are too few to justify extraction]`
-- src/**tests**/integration/api/auth-api.test.ts
-- src/**tests**/integration/api/bridge-auto-transfer-api.test.ts
-- src/**tests**/integration/api/collection-api.test.ts
+- src/**tests**/integration/api/auth-api.test.ts `[KEEP: tests register/login with real bcrypt + DB user creation — mocking would bypass the integration under test]`
+- src/**tests**/integration/api/bridge-auto-transfer-api.test.ts `[KEEP: all functional tests seed DB inventory/bridge state via direct SQL and verify via follow-up API calls]`
 - src/**tests**/integration/api/complete-build-api.test.ts
 - src/**tests**/integration/api/complete-build-notifications.test.ts
 - src/**tests**/integration/api/inventory-api.test.ts
