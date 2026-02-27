@@ -35,12 +35,12 @@ import type { User } from '@/lib/server/user/user';
 function makeUser(xp: number, treeOverrides?: Partial<ReturnType<typeof createInitialTechTree>>): User {
   const tree = { ...createInitialTechTree(), ...treeOverrides };
 
-  // Mirror User.getLevel() logic
+  // Mirror User.getLevel() logic: increment for level N→N+1 is (N*(N+1)/2)*1000
   const getLevel = (): number => {
     let level = 1;
     let totalXpNeeded = 0;
     while (true) {
-      const increment = level * 1000;
+      const increment = (level * (level + 1) / 2) * 1000;
       if (xp < totalXpNeeded + increment) break;
       totalXpNeeded += increment;
       level++;
@@ -360,7 +360,7 @@ describe('UserBonusCache level multiplier', () => {
   });
 
   test('levelMultiplier_level4_is1point15cubed', async () => {
-    const user = makeUser(6000); // 1000+2000+3000 = 6000 XP = level 4
+    const user = makeUser(10000); // 1000+3000+6000 = 10000 XP = level 4
     expect(user.getLevel()).toBe(4);
     const cache = setupCache(user);
     const bonuses = await withLock4(ctx => cache.getBonuses(ctx, 1));

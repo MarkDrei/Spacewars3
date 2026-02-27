@@ -141,6 +141,10 @@ Introduce a global bonus system that combines **player level**, **commander effe
 **Arc42 Updates**: None required
 **Test Results**: ✅ Covered by Task 2.2.2 tests (100% coverage)
 
+**Review Status**: ✅ APPROVED
+**Reviewer**: Medicus
+**Review Notes**: Interface is clean, well-documented, correctly structured. `BASE_REGEN_RATE` constant placement is appropriate. Reuse of `CommanderStatKey` instead of introducing a redundant `BonusStatKey` is the right call.
+
 #### Sub-Goal 2.2: Implement UserBonusCache Service
 
 ##### Task 2.2.1: Implement UserBonusCache Class
@@ -187,6 +191,10 @@ Introduce a global bonus system that combines **player level**, **commander effe
 **Arc42 Updates**: None required
 **Test Results**: ✅ Covered by Task 2.2.2 tests (100% coverage)
 
+**Review Status**: ✅ APPROVED
+**Reviewer**: Medicus
+**Review Notes**: Excellent singleton implementation. globalThis pattern, static dependency injection, and `resetInstance()` clearing both instance and deps are all correct and consistent with codebase conventions. Lock ordering (LOCK_4 held by caller, LOCK_5 acquired by InventoryService internally) is well-documented. `buildCommanderMultipliers` correctly ensures all keys present with 1.0 defaults. Using `BridgeSlots` research instead of `DEFAULT_BRIDGE_SLOTS` is the right approach. Error messages are descriptive.
+
 ##### Task 2.2.2: Unit Tests for UserBonusCache
 
 **Action**: Write comprehensive unit tests with mocked UserCache and InventoryService. Test:
@@ -215,6 +223,10 @@ Introduce a global bonus system that combines **player level**, **commander effe
 **Deviations from Plan**: Test file path changed from `src/__tests__/lib/userBonusCache.test.ts` to `src/__tests__/unit/lib/userBonusCache.test.ts` to match the existing unit test directory structure.
 **Arc42 Updates**: None required
 **Test Results**: ✅ 46/46 tests passing, 100% statement/branch/function/line coverage, no linting errors
+
+**Review Status**: ✅ APPROVED
+**Reviewer**: Medicus
+**Review Notes**: XP formula fix confirmed correct. `makeUser()` now uses `(level * (level + 1) / 2) * 1000` — structurally identical to `User.getLevel()`, verified algebraically and against all level-boundary XP values (0, 1000, 4000, 10000, 20000). Level-4 test updated to `xp=10000` with accurate comment `// 1000+3000+6000 = 10000 XP = level 4`. Level-3 test correctly uses `xp=4000`. All assertions validate real game thresholds; no misleading XP values remain in the helper.
 
 ---
 
