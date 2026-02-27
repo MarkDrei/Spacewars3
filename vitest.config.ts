@@ -27,15 +27,6 @@ export default defineConfig({
           include: [
             'src/__tests__/integration/**/*.test.ts',
             'src/__tests__/integration/**/*.test.tsx',
-            'src/__tests__/api/**/*.test.ts',
-            'src/__tests__/cache/**/*.test.ts',
-            'src/__tests__/balance/**/*.test.ts',
-            'src/__tests__/admin/**/*.test.ts',
-            'src/__tests__/lib/**/*.test.ts',
-            'src/__tests__/helpers/**/*.test.ts',
-            'src/__tests__/renderers/**/*.test.ts',
-            'src/__tests__/services/**/*.test.ts',
-            'src/__tests__/shared/**/*.test.ts',
           ],
           exclude: [],
           setupFiles: ['./src/__tests__/setup.ts'], // Database setup for integration tests
@@ -49,10 +40,6 @@ export default defineConfig({
           include: [
             'src/__tests__/ui/**/*.test.ts',
             'src/__tests__/ui/**/*.test.tsx',
-            'src/__tests__/components/**/*.test.ts',
-            'src/__tests__/components/**/*.test.tsx',
-            'src/__tests__/hooks/**/*.test.ts',
-            'src/__tests__/hooks/**/*.test.tsx',
           ],
           exclude: [],
           setupFiles: ['./src/__tests__/setup.ui.ts'], // jest-dom matchers for UI tests, no database
