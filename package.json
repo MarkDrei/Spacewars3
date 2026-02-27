@@ -7,21 +7,21 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": ".devcontainer/init-db.sh && vitest run",
+    "test": "vitest run",
     "test:ci": "vitest run",
-    "test:local": "docker-compose up -d db db-test && vitest run",
+    "test:local": "docker compose up --wait db && vitest run",
     "ci": "npm run lint && npm run typecheck && npm run test:ci && npm run build",
     "ci:local": "npm run lint && npm run typecheck && npm run test:local && npm run build",
-    "test:ui": ".devcontainer/init-db.sh && vitest --ui",
-    "test:watch": ".devcontainer/init-db.sh && vitest",
-    "test:bc": ".devcontainer/init-db.sh && vitest run --reporter=tap | perl -pe \"s/ - ([^#]*) #/ - \\e[33m\\$1\\e[0m #/g\" | grep --line-buffered \"not ok\"",
+    "test:ui": "vitest --ui",
+    "test:watch": "vitest",
+    "test:bc": "vitest run --reporter=tap | perl -pe \"s/ - ([^#]*) #/ - \\e[33m\\$1\\e[0m #/g\" | grep --line-buffered \"not ok\"",
     "export-db": "npx tsx scripts/export-database-to-html.ts",
     "typecheck": "tsc --noEmit"
   },
   "_comments": {
-    "test": "Runs tests in devcontainer (uses init-db.sh script)",
-    "test:ci": "Runs tests in CI/CD environment (GitHub Actions with services)",
-    "test:local": "Runs tests locally outside devcontainer (starts docker-compose databases)"
+    "test": "Runs tests (devcontainer: uses db service via POSTGRES_TEST_* env vars set in docker-compose.yml)",
+    "test:ci": "Runs tests in CI/CD environment (GitHub Actions with services, uses POSTGRES_TEST_* env vars)",
+    "test:local": "Runs tests locally outside devcontainer (starts db Docker service, connects on localhost:5432)"
   },
   "dependencies": {
     "@markdrei/ironguard-typescript-locks": "0.2.3",

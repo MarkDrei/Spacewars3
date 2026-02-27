@@ -44,15 +44,15 @@ jobs:
       
       - name: Test Development Container
         run: |
-          docker-compose up -d dev
+          docker compose up -d dev
           echo "Waiting for container to be ready..."
-          timeout 60 bash -c 'until docker-compose ps | grep "dev" | grep "Up"; do sleep 2; done'
-          docker-compose ps
-          docker-compose logs dev
+          timeout 60 bash -c 'until docker compose ps | grep "dev" | grep "Up"; do sleep 2; done'
+          docker compose ps
+          docker compose logs dev
           # Test if container is running
-          docker-compose ps | grep "dev" | grep "Up" || exit 1
-          docker-compose down
+          docker compose ps | grep "dev" | grep "Up" || exit 1
+          docker compose down
       
       - name: Verify Docker Compose Configuration
         run: |
-          docker-compose config
+          docker compose config

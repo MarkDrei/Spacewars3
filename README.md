@@ -96,10 +96,10 @@ The project includes full Docker support for both local development and producti
 
 ```bash
 # Development mode with hot reload (includes PostgreSQL)
-docker-compose up dev
+docker compose up dev
 
 # Production mode (test production build locally)
-docker-compose up prod
+docker compose up prod
 ```
 
 The application will be available at `http://localhost:3000`.
@@ -108,12 +108,12 @@ The application will be available at `http://localhost:3000`.
 
 | Command                  | Description                                           |
 | ------------------------ | ----------------------------------------------------- |
-| `docker-compose up dev`  | Start development server with hot reload + PostgreSQL |
-| `docker-compose up prod` | Start production server + PostgreSQL                  |
-| `docker-compose up db`   | Start only the PostgreSQL database                    |
-| `docker-compose down`    | Stop and remove containers                            |
-| `docker-compose down -v` | Stop and remove containers + data volumes             |
-| `docker-compose build`   | Rebuild containers after dependency changes           |
+| `docker compose up dev`  | Start development server with hot reload + PostgreSQL |
+| `docker compose up prod` | Start production server + PostgreSQL                  |
+| `docker compose up db`   | Start only the PostgreSQL database                    |
+| `docker compose down`    | Stop and remove containers                            |
+| `docker compose down -v` | Stop and remove containers + data volumes             |
+| `docker compose build`   | Rebuild containers after dependency changes           |
 
 #### Docker Features
 
@@ -128,7 +128,7 @@ This project is fully configured for GitHub Codespaces development:
 
 1. Click "Code" → "Codespaces" → "Create codespace on main"
 2. Wait for the container to build (automatically installs dependencies)
-3. Start PostgreSQL: `docker-compose up db -d`
+3. Start PostgreSQL: `docker compose up db -d`
 4. Run `npm run dev` in the terminal
 5. Access the application through the forwarded port (3000)
 
@@ -144,7 +144,7 @@ The Codespace includes:
 
 ```bash
 # Start PostgreSQL database (using Docker)
-docker-compose up db -d
+docker compose up db -d
 
 # Install dependencies
 npm install
@@ -171,7 +171,7 @@ npm run test
 | `npm start`          | Start production server                             |
 | `npm run test`       | Run all tests (devcontainer environment)            |
 | `npm run test:ci`    | Run tests in CI/CD environment                      |
-| `npm run test:local` | Run tests locally (starts docker-compose databases) |
+| `npm run test:local` | Run tests locally (starts docker compose databases) |
 | `npm run test:ui`    | Run tests with UI interface                         |
 | `npm run lint`       | Run ESLint                                          |
 
@@ -213,7 +213,7 @@ npm run test
 | -------------------------- | -------------------- | ---------------------------------------- |
 | **Devcontainer**           | `npm test`           | Uses `db-test` service on port 5432      |
 | **CI/CD (GitHub Actions)** | `npm run test:ci`    | Uses service container on localhost:5432 |
-| **Local (docker-compose)** | `npm run test:local` | Starts databases, uses localhost:5433    |
+| **Local (docker compose)** | `npm run test:local` | Starts databases, uses localhost:5433    |
 
 The test configuration in [vitest.config.ts](vitest.config.ts) automatically detects the environment using:
 
@@ -238,7 +238,7 @@ The application is production-ready with multiple deployment options, featuring 
 ### Deployment Options
 
 - **Docker**: Use included `Dockerfile` for containerized deployment
-- **Docker Compose**: Use `docker-compose.yml` for orchestrated deployment with PostgreSQL
+- **Docker Compose**: Use `docker compose.yml` for orchestrated deployment with PostgreSQL
 - **Render**: Use included `render.yaml`
 - **Vercel**: Use included `vercel.json` (requires external PostgreSQL)
 - **Any Node.js host**: Standard Next.js build output (requires external PostgreSQL)
@@ -249,8 +249,8 @@ The application is production-ready with multiple deployment options, featuring 
 # Build production image
 docker build -t spacewars3:latest .
 
-# Run with docker-compose (includes PostgreSQL)
-docker-compose up prod
+# Run with docker compose (includes PostgreSQL)
+docker compose up prod
 
 # Or run standalone (requires external PostgreSQL)
 docker run -p 3000:3000 \
@@ -293,31 +293,31 @@ The application uses PostgreSQL database and features a mathematically deadlock-
 
 ```bash
 # Stop any running containers
-docker-compose down
+docker compose down
 
 # Or use a different port
-docker-compose run -p 3001:3000 dev
+docker compose run -p 3001:3000 dev
 ```
 
 **Container not updating after code changes:**
 
 ```bash
 # Rebuild the container
-docker-compose build dev
-docker-compose up dev
+docker compose build dev
+docker compose up dev
 ```
 
 **Database connection issues:**
 
 ```bash
 # Check if PostgreSQL is running
-docker-compose ps
+docker compose ps
 
 # View PostgreSQL logs
-docker-compose logs db
+docker compose logs db
 
 # Restart the database
-docker-compose restart db
+docker compose restart db
 ```
 
 ### GitHub Codespaces Issues
@@ -342,7 +342,7 @@ This is expected in restricted network environments. The application still works
 
 **Database connection failed:**
 
-- Ensure PostgreSQL is running (`docker-compose up db`)
+- Ensure PostgreSQL is running (`docker compose up db`)
 - Check environment variables match your PostgreSQL configuration
 - Verify network connectivity to the database host
 

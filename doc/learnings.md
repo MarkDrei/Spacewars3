@@ -119,3 +119,68 @@ The `saveUserToDb` UPDATE uses positional `$N` params; the WHERE clause param nu
 5. `public/assets/images/research/` — add research icon image
 
 The TechTree is stored as serialized JSON in the `tech_tree TEXT` column — NO schema migration is needed for new research fields. `createInitialTechTree()` provides defaults, and `userFromRow()` merges with initial tree on load (handles pre-existing users gracefully).
+
+## CI / Local Test Run Failures Investigation (2026-02-26)
+
+**Discovered by**: Copilot investigative agent  
+**Context**: `npm run ci` and `npm run ci:local` were investigated in a cloud sandbox environment
+
+### Three Root Causes Found
+
+#### 1. `docker-compose` (v1) Not Available — Affects `npm run ci:local`
+
+`npm run ci:local` calls `npm run test:local` which used `docker-compose` (Docker Compose v1 CLI). Modern systems and cloud sandboxes only ship Docker Compose v2, exposed as `docker compose` (without hyphen). This caused an immediate failure:
+
+```
+sh: 1: docker-compose: not found
+```
+
+**Fix**: Changed all `docker-compose` occurrences to `docker compose` in:
+- `package.json` (`test:local` script)
+- `.github/workflows/docker-build.yml`
+- `README.md`
+- Removed obsolete `version:` attribute from `docker-compose.yml` and `.devcontainer/docker-compose.yml` (causes a warning with Compose v2)
+
+#### 2. Healthcheck Passes Before Database Is Initialized — Race Condition in `test:local`
+
+Even after fixing the v1/v2 issue, tests failed with `database "spacewars_test" does not exist`. The cause is a race condition:
+
+- `docker compose up -d` returns as soon as the container *starts* — not when the database inside it is ready.
+- The healthcheck `pg_isready -U spacewars` checks via Unix socket. The PostgreSQL Docker entrypoint starts a *temporary* server (with `listen_addresses=''`, TCP disabled) while running init scripts. `pg_isready` via Unix socket can return OK *during* this init phase, before `POSTGRES_DB=spacewars_test` has been created.
+- Tests connect immediately, before the database exists.
+
+**Fix (two-part)**:
+1. Changed `docker compose up -d` to `docker compose up --wait` (Compose v2 flag). This waits until all services with healthchecks report healthy.
+2. Fixed the healthcheck itself to use `-h localhost` (TCP check):
+   ```yaml
+   test: ["CMD-SHELL", "pg_isready -h localhost -U $${POSTGRES_USER:-spacewars}"]
+   ```
+   TCP-based `pg_isready` only succeeds after PostgreSQL starts accepting TCP connections, which happens *after* the init scripts complete (including database creation).
+
+#### 3. `CI=true` Environment Variable Overrides Local Port Detection
+
+When `CI=true` is set (as it is in GitHub Actions *and* cloud sandboxes), `vitest.config.ts` auto-detects CI and uses `localhost:5432`. But `test:local` starts the test database on port `5433` (the `db-test` docker-compose service).
+
+With both `CI=true` and `test:local` running, vitest connected to `localhost:5432/spacewars_test`, but the `db` container on port 5432 only has the `spacewars` database. Result: `database "spacewars_test" does not exist`.
+
+**Fix**: Explicitly set `POSTGRES_TEST_HOST` and `POSTGRES_TEST_PORT` in the `test:local` script so they take priority over CI environment detection:
+
+```json
+"test:local": "docker compose up --wait db db-test && POSTGRES_TEST_HOST=localhost POSTGRES_TEST_PORT=5433 vitest run"
+```
+
+### Summary of All Changed Files
+
+| File | Change |
+|------|--------|
+| `package.json` | `docker-compose` → `docker compose`, added `--wait`, added explicit test DB env vars |
+| `.github/workflows/docker-build.yml` | `docker-compose` → `docker compose` |
+| `README.md` | `docker-compose` → `docker compose` throughout |
+| `docker-compose.yml` | Removed obsolete `version:`, fixed healthcheck to use `-h localhost` |
+| `.devcontainer/docker-compose.yml` | Removed obsolete `version:` |
+
+### Verification
+
+After all fixes:
+- `npm run ci` (with `CI=true` + PostgreSQL on `localhost:5432`): **✅ 999/1000 tests pass, build succeeds**
+- `npm run ci:local` (with `CI=true` + fresh docker volumes): **✅ 999/1000 tests pass, build succeeds**

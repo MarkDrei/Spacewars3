@@ -50,11 +50,11 @@ jobs:
         run: npm run test:ci
         env:
           NODE_ENV: test
-          POSTGRES_HOST: localhost
-          POSTGRES_PORT: 5432
-          POSTGRES_DB: spacewars_test
-          POSTGRES_USER: spacewars
-          POSTGRES_PASSWORD: spacewars
+          POSTGRES_TEST_HOST: localhost
+          POSTGRES_TEST_PORT: 5432
+          POSTGRES_TEST_DB: spacewars_test
+          POSTGRES_TEST_USER: spacewars
+          POSTGRES_TEST_PASSWORD: spacewars
 
   docker-integration:
     name: Docker Integration Tests

@@ -37,7 +37,7 @@
   },
   
   // Install dependencies after container is created
-  "postCreateCommand": "npm install && .devcontainer/init-db.sh",
+  "postCreateCommand": "npm install",
   
   // Show helpful message on attach
   "postAttachCommand": "echo '✅ PostgreSQL is running and ready! Run \"npm run dev\" to start the development server.'",
