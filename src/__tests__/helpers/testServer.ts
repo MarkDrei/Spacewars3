@@ -3,6 +3,7 @@ import { BattleCache } from '@/lib/server/battle/BattleCache';
 import { UserCache } from '@/lib/server/user/userCache';
 import { WorldCache } from '@/lib/server/world/worldCache';
 import { MessageCache } from '@/lib/server/messages/MessageCache';
+import { UserBonusCache } from '@/lib/server/bonus/UserBonusCache';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 import { DATABASE_LOCK_MESSAGES } from '@/lib/server/typedLocks';
 
@@ -77,6 +78,7 @@ export async function initializeIntegrationTestServer(): Promise<void> {
   const ctx = createLockContext();
   MessageCache.resetInstance(ctx);
   UserCache.resetInstance();
+  UserBonusCache.resetInstance();
   
   // Initialize server (this will reinitialize caches)
   // No database cleanup - tests use withTransaction() for isolation
@@ -100,4 +102,5 @@ export async function shutdownIntegrationTestServer(): Promise<void> {
   const ctx = createLockContext();
   MessageCache.resetInstance(ctx);
   UserCache.resetInstance();
+  UserBonusCache.resetInstance();
 }

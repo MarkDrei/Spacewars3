@@ -390,14 +390,18 @@ export class TechFactory {
   }
 
   /**
-   * Calculate research-modified reload time for a weapon in seconds
-   * Applies research effects from the tech tree to the base cooldown value
-   * 
+   * Calculate research-modified reload time for a weapon in seconds.
+   * Applies research effects from the tech tree to the base cooldown value.
+   *
    * @param weaponKey The weapon key (e.g., 'pulse_laser', 'rocket_launcher')
    * @param techTree The tech tree containing research levels
-   * @returns The reload time in seconds, modified by research
+   * @param totalReloadFactor Optional pre-computed combined bonus factor (research × level × commander).
+   *   When provided, it replaces the internal techtree lookup so the caller can apply
+   *   the full `bonuses.projectile/energyWeaponReloadFactor` directly.
+   *   When omitted, the factor is derived from techtree research only.
+   * @returns The reload time in seconds, modified by research (and bonus if provided)
    */
-  static calculateWeaponReloadTime(weaponKey: string, techTree: TechTree): number {
+  static calculateWeaponReloadTime(weaponKey: string, techTree: TechTree, totalReloadFactor?: number): number {
     const weaponSpec = this.getWeaponSpec(weaponKey);
     if (!weaponSpec) {
       throw new Error(`Unknown weapon: ${weaponKey}`);
@@ -406,12 +410,12 @@ export class TechFactory {
     // Get base battle cooldown from reloadTimeMinutes
     const baseCooldown = this.getBaseBattleCooldown(weaponSpec);
 
-    // Get reload speed factor from research (> 1.0 = faster reload)
-    const speedFactor = getWeaponReloadTimeModifierFromTree(techTree, weaponKey);
+    // Use the provided total factor (includes research + level + commander) or
+    // fall back to research-only factor from the tech tree.
+    const factor = totalReloadFactor ?? getWeaponReloadTimeModifierFromTree(techTree, weaponKey);
 
-    // Divide base cooldown by speed factor: baseCooldown / speedFactor
-    // Numerically equivalent to old: baseCooldown * (1 - effect/100)
-    return baseCooldown / speedFactor;
+    // Divide base cooldown by factor: baseCooldown / factor
+    return baseCooldown / factor;
   }
 
   /**

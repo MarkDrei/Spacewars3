@@ -17,12 +17,13 @@ import {
   getWeaponReloadTimeModifierFromTree,
   ResearchType,
   AllResearches,
+  triggerResearch,
 } from '@/lib/server/techs/techtree';
 import { Commander } from '@/lib/server/inventory/Commander';
+import { User, type SaveUserCallback } from '@/lib/server/user/user';
 import type { UserCache } from '@/lib/server/user/userCache';
 import type { InventoryService } from '@/lib/server/inventory/InventoryService';
 import type { BridgeGrid } from '@/lib/server/inventory/inventoryTypes';
-import type { User } from '@/lib/server/user/user';
 
 // ---------------------------------------------------------------------------
 // Test helpers
@@ -783,5 +784,175 @@ describe('UserBonusCache edge cases', () => {
     const cache = UserBonusCache.getInstance();
 
     expect(() => cache.discardAllBonuses()).not.toThrow();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Helper: create a real User instance for invalidation trigger tests
+// ---------------------------------------------------------------------------
+
+const DUMMY_SAVE: SaveUserCallback = async () => { /* no-op */ };
+const DEFAULT_TECH_COUNTS = {
+  pulse_laser: 0, auto_turret: 0, plasma_lance: 0, gauss_rifle: 0,
+  photon_torpedo: 0, rocket_launcher: 0, ship_hull: 0, kinetic_armor: 0,
+  energy_shield: 0, missile_jammer: 0,
+};
+
+function makeRealUser(id: number, xp: number): User {
+  return new User(
+    id, 'testuser', 'hash',
+    /* iron */ 0, xp, /* last_updated */ 1000,
+    createInitialTechTree(), DUMMY_SAVE, DEFAULT_TECH_COUNTS,
+    /* hull */ 100, /* armor */ 100, /* shield */ 100,
+    /* defenseLastRegen */ 1000,
+    /* inBattle */ false, /* currentBattleId */ null,
+    /* buildQueue */ [], /* buildStartSec */ null,
+    /* teleportCharges */ 0, /* teleportLastRegen */ 0
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Invalidation trigger tests — User.addXp()
+// ---------------------------------------------------------------------------
+
+describe('UserBonusCache invalidation triggers — User.addXp()', () => {
+  // addXp() calls UserBonusCache.getInstance().invalidateBonuses(userId) when a level-up occurs.
+  // These tests verify that path using vi.spyOn on the cache instance.
+
+  test('addXp_causesLevelUp_callsInvalidateBonuses', () => {
+    const cache = UserBonusCache.getInstance();
+    const spy = vi.spyOn(cache, 'invalidateBonuses');
+
+    const user = makeRealUser(7, /* xp */ 0);
+    // Level 1→2 requires 1000 XP: increment = (1*(1+1)/2)*1000 = 1000
+    user.addXp(1000);
+
+    expect(spy).toHaveBeenCalledOnce();
+    expect(spy).toHaveBeenCalledWith(7);
+
+    spy.mockRestore();
+  });
+
+  test('addXp_noLevelUp_doesNotCallInvalidateBonuses', () => {
+    const cache = UserBonusCache.getInstance();
+    const spy = vi.spyOn(cache, 'invalidateBonuses');
+
+    const user = makeRealUser(7, /* xp */ 0);
+    // Only 500 XP — not enough to reach level 2 (needs 1000)
+    user.addXp(500);
+
+    expect(spy).not.toHaveBeenCalled();
+
+    spy.mockRestore();
+  });
+
+  test('addXp_multiLevelJump_callsInvalidateBonusesOnce', () => {
+    const cache = UserBonusCache.getInstance();
+    const spy = vi.spyOn(cache, 'invalidateBonuses');
+
+    const user = makeRealUser(7, /* xp */ 0);
+    // Award 5000 XP — enough to skip several levels at once
+    // Level 1→2: 1000, L2→3: 3000 = 4000 total, L3→4: 6000 = 10000 total
+    // 5000 XP reaches level 3
+    user.addXp(5000);
+
+    // invalidateBonuses is called once (from addXp), not once per level
+    expect(spy).toHaveBeenCalledOnce();
+    expect(spy).toHaveBeenCalledWith(7);
+
+    spy.mockRestore();
+  });
+
+  test('addXp_zeroAmount_returnsUndefinedAndNoInvalidation', () => {
+    const cache = UserBonusCache.getInstance();
+    const spy = vi.spyOn(cache, 'invalidateBonuses');
+
+    const user = makeRealUser(7, /* xp */ 0);
+    const result = user.addXp(0);
+
+    expect(result).toBeUndefined();
+    expect(spy).not.toHaveBeenCalled();
+
+    spy.mockRestore();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Invalidation trigger tests — User.updateStats() research completion
+// ---------------------------------------------------------------------------
+
+describe('UserBonusCache invalidation triggers — User.updateStats() research', () => {
+  // updateStats() calls UserBonusCache.getInstance().invalidateBonuses(userId) when
+  // updateTechTree() reports a completed research.
+  // These tests verify that path using vi.spyOn on the cache instance.
+
+  test('updateStats_researchCompletes_callsInvalidateBonuses', () => {
+    const cache = UserBonusCache.getInstance();
+    const spy = vi.spyOn(cache, 'invalidateBonuses');
+
+    const user = makeRealUser(42, /* xp */ 0);
+    // Start IronHarvesting research (level 1 → 2, duration = 10 s at default time multiplier=1)
+    triggerResearch(user.techTree, ResearchType.IronHarvesting);
+    expect(user.techTree.activeResearch).toBeDefined();
+
+    // Advance time by 15 s — research completes (duration = 10 s)
+    user.updateStats(1000 + 15);
+
+    expect(spy).toHaveBeenCalledWith(42);
+
+    spy.mockRestore();
+  });
+
+  test('updateStats_researchNotYetComplete_doesNotCallInvalidateBonuses', () => {
+    const cache = UserBonusCache.getInstance();
+    const spy = vi.spyOn(cache, 'invalidateBonuses');
+
+    const user = makeRealUser(42, /* xp */ 0);
+    // Start IronHarvesting research (duration = 10 s)
+    triggerResearch(user.techTree, ResearchType.IronHarvesting);
+
+    // Only 5 s pass — research is still in progress
+    user.updateStats(1000 + 5);
+
+    expect(spy).not.toHaveBeenCalled();
+
+    spy.mockRestore();
+  });
+
+  test('updateStats_noActiveResearch_doesNotCallInvalidateBonuses', () => {
+    const cache = UserBonusCache.getInstance();
+    const spy = vi.spyOn(cache, 'invalidateBonuses');
+
+    const user = makeRealUser(42, /* xp */ 0);
+    // No research started — just time passing
+    user.updateStats(1000 + 10);
+
+    expect(spy).not.toHaveBeenCalled();
+
+    spy.mockRestore();
+  });
+
+  test('updateStats_researchCompletesAndLevelsUp_callsInvalidateBonusesAtLeastOnce', () => {
+    // When research completes AND the XP reward causes a level-up,
+    // invalidateBonuses should be called (at minimum once for the research,
+    // and once more for the level-up — both calls are with the same userId).
+    const cache = UserBonusCache.getInstance();
+    const spy = vi.spyOn(cache, 'invalidateBonuses');
+
+    // Give the user enough XP to be just below the level-2 threshold (999 XP)
+    const user = makeRealUser(42, /* xp */ 999);
+    // Start ShipSpeed research; XP reward will push user over the 1000 XP threshold
+    triggerResearch(user.techTree, ResearchType.ShipSpeed);
+    // ShipSpeed baseUpgradeDuration = 30 s; pass enough time to guarantee completion
+    const enoughTime = 100;
+
+    // Complete the research
+    user.updateStats(1000 + enoughTime);
+
+    // At minimum one call (from research completion); possibly two (if level-up occurred too)
+    expect(spy).toHaveBeenCalledWith(42);
+    expect(spy.mock.calls.length).toBeGreaterThanOrEqual(1);
+
+    spy.mockRestore();
   });
 });

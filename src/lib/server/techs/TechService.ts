@@ -301,9 +301,10 @@ export class TechService {
     }
 
     /**
-     * Calculate max defense values including research factors
+     * Calculate max defense values including research factors and optional level multiplier.
+     * @param levelMultiplier Optional level multiplier (1.15^(level-1)). Defaults to 1.0.
      */
-    static calculateMaxDefense(techCounts: TechCounts, techTree: TechTree): { hull: number; armor: number; shield: number } {
+    static calculateMaxDefense(techCounts: TechCounts, techTree: TechTree, levelMultiplier: number = 1.0): { hull: number; armor: number; shield: number } {
         const stackedBase = TechFactory.calculateStackedBaseDefense(techCounts);
 
         // Get research factors (percentage values, e.g. 100 = 100%)
@@ -312,32 +313,32 @@ export class TechService {
         const shieldFactor = getResearchEffectFromTree(techTree, ResearchType.ShieldEffectiveness) / 100;
 
         return {
-            hull: Math.round(stackedBase.hull * hullFactor),
-            armor: Math.round(stackedBase.armor * armorFactor),
-            shield: Math.round(stackedBase.shield * shieldFactor)
+            hull: Math.round(stackedBase.hull * hullFactor * levelMultiplier),
+            armor: Math.round(stackedBase.armor * armorFactor * levelMultiplier),
+            shield: Math.round(stackedBase.shield * shieldFactor * levelMultiplier)
         };
     }
 
-    static getDefenseStats(techCounts: TechCounts, techTree: TechTree, currentValues: { hull: number; armor: number; shield: number }): DefenseValues {
-        const maxStats = this.calculateMaxDefense(techCounts, techTree);
+    static getDefenseStats(techCounts: TechCounts, techTree: TechTree, currentValues: { hull: number; armor: number; shield: number }, levelMultiplier: number = 1.0, regenRates: { hull: number; armor: number; shield: number } = { hull: 1, armor: 1, shield: 1 }): DefenseValues {
+        const maxStats = this.calculateMaxDefense(techCounts, techTree, levelMultiplier);
         return {
             hull: {
                 name: 'Ship Hull',
                 current: currentValues.hull,
                 max: maxStats.hull,
-                regenRate: 1
+                regenRate: regenRates.hull
             },
             armor: {
                 name: 'Kinetic Armor',
                 current: currentValues.armor,
                 max: maxStats.armor,
-                regenRate: 1
+                regenRate: regenRates.armor
             },
             shield: {
                 name: 'Energy Shield',
                 current: currentValues.shield,
                 max: maxStats.shield,
-                regenRate: 1
+                regenRate: regenRates.shield
             }
         };
     }

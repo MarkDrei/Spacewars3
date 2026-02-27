@@ -12,6 +12,7 @@ import { UserCache } from '@/lib/server/user/userCache';
 import { USER_LOCK } from '@/lib/server/typedLocks';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 import { getResearchEffectFromTree, ResearchType } from '@/lib/server/techs/techtree';
+import { UserBonusCache } from '@/lib/server/bonus/UserBonusCache';
 
 const inventoryService = new InventoryService();
 
@@ -60,6 +61,7 @@ export async function DELETE(request: NextRequest) {
 
     const maxBridgeSlots = await getMaxBridgeSlotsForUser(session.userId!);
     const removed = await inventoryService.removeFromBridge(session.userId!, { row, col }, maxBridgeSlots);
+    UserBonusCache.getInstance().invalidateBonuses(session.userId!);
     return NextResponse.json({ removed });
   } catch (error) {
     if (error instanceof BridgeSlotEmptyError || error instanceof BridgeSlotInvalidError) {

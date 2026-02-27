@@ -14,6 +14,7 @@ import { User } from './user';
 import { getUserByIdFromDb, getUserByUsernameFromDb } from './userRepo';
 import { WorldCache } from '../world/worldCache';
 import { Cache } from '../caches/Cache';
+import { UserBonusCache } from '../bonus/UserBonusCache';
 
 type userCacheDependencies = {
   worldCache?: WorldCache;
@@ -272,7 +273,11 @@ export class UserCache extends Cache {
     }
 
     if (user) {
-      user.updateStats(Math.floor(Date.now() / 1000));
+      // Fetch (or compute) bonuses before calling updateStats so that bonused iron rate,
+      // capacity, and defense regen are used.  getBonuses() is a cache-hit for users that
+      // have been seen recently; it only computes on first access or after invalidation.
+      const bonuses = await UserBonusCache.getInstance().getBonuses(context, user.id);
+      user.updateStats(Math.floor(Date.now() / 1000), bonuses);
       await this.updateUserInCache(context, user);
       return user;
     }
@@ -318,7 +323,10 @@ export class UserCache extends Cache {
     }
 
     if (user) {
-      user.updateStats(Math.floor(Date.now() / 1000));
+      // Fetch (or compute) bonuses before calling updateStats so that bonused iron rate,
+      // capacity, and defense regen are used.
+      const bonuses = await UserBonusCache.getInstance().getBonuses(context, user.id);
+      user.updateStats(Math.floor(Date.now() / 1000), bonuses);
       await this.updateUserInCache(context, user);
       return user;
     }

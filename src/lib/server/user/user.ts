@@ -6,6 +6,8 @@ import { TechTree, ResearchType, getResearchEffectFromTree, updateTechTree, AllR
 import { TechCounts, BuildQueueItem } from '../techs/TechFactory';
 import { TechService } from '../techs/TechService';
 import { TimeMultiplierService } from '../timeMultiplier';
+import { UserBonusCache } from '../bonus/UserBonusCache';
+import { UserBonuses } from '../bonus/userBonusTypes';
 
 class User {
   id: number;
@@ -154,13 +156,14 @@ class User {
   /**
    * Add iron to the user's inventory with capacity enforcement
    * @param amount Amount of iron to add
+   * @param maxCapacity Optional bonused max capacity; defaults to getMaxIronCapacity() (research only)
    * @returns The actual amount added (may be less if cap is hit)
    */
-  addIron(amount: number): number {
+  addIron(amount: number, maxCapacity?: number): number {
     if (amount <= 0) return 0;
-    const maxCapacity = this.getMaxIronCapacity();
+    const cap = maxCapacity ?? this.getMaxIronCapacity();
     const newIron = this.iron + amount;
-    const cappedIron = Math.min(newIron, maxCapacity);
+    const cappedIron = Math.min(newIron, cap);
     const actualAdded = cappedIron - this.iron;
     this.iron = cappedIron;
     return actualAdded;
@@ -192,18 +195,30 @@ class User {
     const newLevel = this.getLevel();
 
     if (newLevel > oldLevel) {
+      UserBonusCache.getInstance().invalidateBonuses(this.id);
       return { leveledUp: true, oldLevel, newLevel };
     }
 
     return undefined;
   }
 
-  updateStats(now: number): { levelUp?: { leveledUp: boolean; oldLevel: number; newLevel: number; xpReward: number; source: 'research' } } {
+  /**
+   * Update user stats based on elapsed time.
+   * @param now Current timestamp in seconds
+   * @param bonuses Pre-computed user bonuses (optional). When provided, bonused iron rate and
+   *   capacity are used. When omitted, falls back to direct tech-tree lookups (backward-compat).
+   */
+  updateStats(now: number, bonuses?: UserBonuses): { levelUp?: { leveledUp: boolean; oldLevel: number; newLevel: number; xpReward: number; source: 'research' } } {
     const elapsed = now - this.last_updated;
     if (elapsed <= 0) return {};
 
     // Apply time multiplier to accelerate game progression
     const gameElapsed = elapsed * TimeMultiplierService.getInstance().getMultiplier();
+
+    // Determine the effective iron rate and max capacity from bonuses (if provided)
+    // or from tech tree directly (backward-compat fallback).
+    const ironRateFromBonuses = bonuses?.ironRechargeRate;
+    const maxCapacityFromBonuses = bonuses?.ironStorageCapacity;
 
     let ironToAdd = 0;
     let researchResult: { completed: boolean; type: ResearchType; completedLevel: number } | undefined;
@@ -211,34 +226,42 @@ class User {
     const active = techTree.activeResearch;
     if (!active || active.type !== ResearchType.IronHarvesting) {
       // No relevant research in progress, just award all time
-      ironToAdd += getResearchEffectFromTree(techTree, ResearchType.IronHarvesting) * gameElapsed;
+      const ironRate = ironRateFromBonuses ?? getResearchEffectFromTree(techTree, ResearchType.IronHarvesting);
+      ironToAdd += ironRate * gameElapsed;
       researchResult = updateTechTree(techTree, gameElapsed);
     } else {
       const timeToComplete = active.remainingDuration;
       if (gameElapsed < timeToComplete) {
         // Research does not complete in this interval
-        ironToAdd += getResearchEffectFromTree(techTree, ResearchType.IronHarvesting) * gameElapsed;
+        const ironRate = ironRateFromBonuses ?? getResearchEffectFromTree(techTree, ResearchType.IronHarvesting);
+        ironToAdd += ironRate * gameElapsed;
         researchResult = updateTechTree(techTree, gameElapsed);
       } else {
         // Research completes during this interval
         // 1. Award up to research completion at old rate
-        ironToAdd += getResearchEffectFromTree(techTree, ResearchType.IronHarvesting) * timeToComplete;
+        const ironRateBefore = ironRateFromBonuses ?? getResearchEffectFromTree(techTree, ResearchType.IronHarvesting);
+        ironToAdd += ironRateBefore * timeToComplete;
         researchResult = updateTechTree(techTree, timeToComplete);
         // 2. After research completes, award remaining time at new rate (if any)
         const remaining = gameElapsed - timeToComplete;
         if (remaining > 0) {
-          ironToAdd += getResearchEffectFromTree(techTree, ResearchType.IronHarvesting) * remaining;
+          // Bonuses are stale (computed before research completed).
+          // Re-compute the new iron rate from the updated tech tree, scaled by the cached level multiplier.
+          const ironRateAfter = bonuses
+            ? getResearchEffectFromTree(techTree, ResearchType.IronHarvesting) * bonuses.levelMultiplier
+            : getResearchEffectFromTree(techTree, ResearchType.IronHarvesting);
+          ironToAdd += ironRateAfter * remaining;
           // Second updateTechTree call should not complete another research (no overwrites)
           updateTechTree(techTree, remaining);
         }
       }
     }
     // Use centralized addIron method which enforces capacity cap
-    this.addIron(ironToAdd);
+    this.addIron(ironToAdd, maxCapacityFromBonuses);
     this.last_updated = now;
 
     // Also update defense values (regeneration)
-    this.updateDefenseValues(now);
+    this.updateDefenseValues(now, bonuses);
 
     // Update teleport charges (regeneration)
     this.updateTeleportCharges(now);
@@ -246,6 +269,10 @@ class User {
     // Check if research completed and award XP
     let levelUpInfo: { leveledUp: boolean; oldLevel: number; newLevel: number; xpReward: number; source: 'research' } | undefined;
     if (researchResult?.completed) {
+      // Invalidate cached bonuses because research-derived values have changed.
+      // (If addXp() also causes a level-up, it will call invalidateBonuses() again — that is harmless.)
+      UserBonusCache.getInstance().invalidateBonuses(this.id);
+
       const research = AllResearches[researchResult.type];
       // Get the cost of the level that was just completed (completedLevel + 1)
       const cost = getResearchUpgradeCost(research, researchResult.completedLevel + 1);
@@ -291,26 +318,35 @@ class User {
 
   /**
    * Update defense values based on elapsed time since last regeneration
-   * Regeneration rate: 1 point per second per defense type
+   * Regeneration rate: bonused repair speed per second (defaults to 1 point/sec if no bonuses)
    * Capped at maximum values (cannot exceed)
+   * @param now Current timestamp in seconds
+   * @param bonuses Pre-computed user bonuses (optional). When provided, bonused regen rates and
+   *   level-multiplied max defense are used. When omitted, falls back to base rates (backward-compat).
    */
-  updateDefenseValues(now: number): void {
+  updateDefenseValues(now: number, bonuses?: UserBonuses): void {
     const elapsed = now - this.defenseLastRegen;
     if (elapsed <= 0) return;
 
     // Apply time multiplier to accelerate regeneration
     const gameElapsed = elapsed * TimeMultiplierService.getInstance().getMultiplier();
 
-    // Calculate maximum values based on tech counts and research
-    const maxStats = TechService.calculateMaxDefense(this.techCounts, this.techTree);
+    // Calculate maximum values based on tech counts and research (with optional level multiplier)
+    const levelMultiplier = bonuses?.levelMultiplier;
+    const maxStats = TechService.calculateMaxDefense(this.techCounts, this.techTree, levelMultiplier);
     const maxHull = maxStats.hull;
     const maxArmor = maxStats.armor;
     const maxShield = maxStats.shield;
 
-    // Apply regeneration (1 point/second), clamped at max
-    this.hullCurrent = Math.min(this.hullCurrent + gameElapsed, maxHull);
-    this.armorCurrent = Math.min(this.armorCurrent + gameElapsed, maxArmor);
-    this.shieldCurrent = Math.min(this.shieldCurrent + gameElapsed, maxShield);
+    // Determine regen rates from bonuses or fall back to base rate (1.0/sec)
+    const hullRegen = bonuses?.hullRepairSpeed ?? 1;
+    const armorRegen = bonuses?.armorRepairSpeed ?? 1;
+    const shieldRegen = bonuses?.shieldRechargeRate ?? 1;
+
+    // Apply regeneration (bonused rate/second), clamped at max
+    this.hullCurrent = Math.min(this.hullCurrent + hullRegen * gameElapsed, maxHull);
+    this.armorCurrent = Math.min(this.armorCurrent + armorRegen * gameElapsed, maxArmor);
+    this.shieldCurrent = Math.min(this.shieldCurrent + shieldRegen * gameElapsed, maxShield);
 
     // Update last regeneration timestamp (remains in real time)
     this.defenseLastRegen = now;

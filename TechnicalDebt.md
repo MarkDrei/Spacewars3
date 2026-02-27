@@ -261,3 +261,38 @@ This ensures the cache is notified of changes and can persist them.
 
 - `src/lib/server/world/world.ts` - World class with save() method
 - `src/lib/server/world/worldCache.ts` - Cache manager with worldDirty flag
+
+---
+
+## Resolved: Legacy `5 × speedMultiplier` Factor in Navigate Route
+
+**Resolved in**: Task 5.2.1 (Player Bonus System — Ship Speed via Bonuses)
+
+### Background
+
+The navigate route (`src/app/api/navigate/route.ts`) previously computed `maxSpeed` as:
+```typescript
+const speedMultiplier = getResearchEffectFromTree(user.techTree, ResearchType.ShipSpeed);
+const maxSpeed = 5 * speedMultiplier; // e.g., 5 * 25 = 125 at base
+```
+
+The ship-stats route computed `maxSpeed` as:
+```typescript
+const maxSpeed = baseSpeed * (1 + afterburnerBonus / 100); // e.g., 25 at base
+```
+
+These two routes used inconsistent formulas — the navigate route produced a max speed 5× higher than ship-stats.
+
+### Resolution
+
+Both routes now use `bonuses.maxShipSpeed` from `UserBonusCache`, which is:
+```
+getResearchEffect(ShipSpeed) × (1 + afterburner/100) × levelMultiplier × commanderMultiplier(shipSpeed)
+```
+
+At base level (level 1, no afterburner, no commander): `maxShipSpeed = 25`.
+
+The legacy `5 ×` factor has been **permanently removed**. This changes the navigate API's
+maximum allowed speed from ~125 (base) to ~25 (base). Any clients that set speeds between
+25 and 125 will now receive a 400 error. The ship-stats route was always the authoritative
+source for `maxSpeed` — the navigate route's `5 ×` was an undocumented legacy artifact.
