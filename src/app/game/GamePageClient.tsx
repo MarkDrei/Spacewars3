@@ -241,6 +241,27 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
     }
   };
 
+  const handleStop = async () => {
+    if (isSettingSpeed) return;
+    
+    setIsSettingSpeed(true);
+    try {
+      await navigateShip({ speed: 0 });
+      
+      // Refresh world data to get updated ship state
+      if (refetch) {
+        refetch();
+      }
+      
+      // Update input fields after successful navigation
+      setTimeout(updateInputFieldsFromShip, 100); // Small delay to ensure world data is updated
+    } catch (error) {
+      console.error('❌ [CLIENT] Failed to stop ship:', error);
+    } finally {
+      setIsSettingSpeed(false);
+    }
+  };
+
   const handleAngleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       handleSetAngle();
@@ -356,35 +377,8 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
             height="800"
           ></canvas>
         </div>
-        {debugDrawingsEnabled && <DataAgeIndicator lastUpdateTime={lastUpdateTime} />}
         <div className="game-controls">
           <div className="navigation-controls">
-            <div className="control-row">
-              <label htmlFor="angle-input">Angle (degrees):</label>
-              <div className="input-container">
-                <input
-                  id="angle-input"
-                  type="number"
-                  value={angleInput}
-                  onChange={(e) => setAngleInput(e.target.value)}
-                  onKeyPress={handleAngleKeyPress}
-                  disabled={isSettingAngle}
-                  className={isSettingAngle ? 'loading' : ''}
-                  min="0"
-                  max="360"
-                  step="0.1"
-                />
-                {isSettingAngle && <div className="input-loading-indicator"></div>}
-              </div>
-              <button
-                onClick={handleSetAngle}
-                disabled={isSettingAngle}
-                className="control-button btn-primary"
-              >
-                {isSettingAngle ? 'Setting...' : 'Set Angle'}
-              </button>
-            </div>
-            
             <div className="control-row">
               <label htmlFor="speed-input">Speed:</label>
               <div className="input-container">
@@ -414,6 +408,39 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
                 disabled={isSettingMaxSpeed}
               >
                 {isSettingMaxSpeed ? 'Setting Max Speed...' : 'Set Max Speed'}
+              </button>
+              <button 
+                className="stop-button btn-secondary"
+                onClick={handleStop}
+                disabled={isSettingSpeed}
+              >
+                Stop
+              </button>
+            </div>
+
+            <div className="control-row">
+              <label htmlFor="angle-input">Angle (degrees):</label>
+              <div className="input-container">
+                <input
+                  id="angle-input"
+                  type="number"
+                  value={angleInput}
+                  onChange={(e) => setAngleInput(e.target.value)}
+                  onKeyPress={handleAngleKeyPress}
+                  disabled={isSettingAngle}
+                  className={isSettingAngle ? 'loading' : ''}
+                  min="0"
+                  max="360"
+                  step="0.1"
+                />
+                {isSettingAngle && <div className="input-loading-indicator"></div>}
+              </div>
+              <button
+                onClick={handleSetAngle}
+                disabled={isSettingAngle}
+                className="control-button btn-primary"
+              >
+                {isSettingAngle ? 'Setting...' : 'Set Angle'}
               </button>
             </div>
           </div>
@@ -466,6 +493,7 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
               </div>
             </label>
           </div>
+          {debugDrawingsEnabled && <DataAgeIndicator lastUpdateTime={lastUpdateTime} />}
         </div>
       </div>
     </AuthenticatedLayout>

@@ -142,6 +142,19 @@
   min-width: var(--min-width-button);
 }
 
+/* Stop Button */
+.stop-button {
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  min-width: var(--min-width-button);
+  background-color: #d32f2f;
+  color: white;
+}
+
+.stop-button:hover:not(:disabled) {
+  background-color: #b71c1c;
+}
+
 /* Debug Toggle Switch */
 .debug-toggle-container {
   display: flex;
