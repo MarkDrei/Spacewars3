@@ -41,14 +41,14 @@ export default defineConfig({
     exclude: [],
     env: {
       NODE_ENV: 'test',
-      // Auto-detect environment and use appropriate defaults
-      // Priority: explicit env var > CI detection > devcontainer detection > localhost fallback
-      POSTGRES_HOST: process.env.POSTGRES_TEST_HOST || process.env.POSTGRES_HOST || 
-                     (process.env.CI ? 'localhost' : 
-                      (process.env.REMOTE_CONTAINERS ? 'db-test' : 'localhost')),
-      POSTGRES_PORT: process.env.POSTGRES_TEST_PORT || process.env.POSTGRES_PORT || 
-                     (process.env.CI ? '5432' : 
-                      (process.env.REMOTE_CONTAINERS ? '5432' : '5433')),
+      // DB connection for tests.
+      // Each environment sets POSTGRES_TEST_* env vars explicitly:
+      //   - devcontainer/Codespace: set in .devcontainer/docker-compose.yml (host=db)
+      //   - GitHub Actions:         set in .github/workflows/test.yml (host=localhost)
+      //   - local (npm run test:local): docker compose starts db on localhost:5432
+      // Fallback chain: POSTGRES_TEST_HOST > POSTGRES_HOST > localhost
+      POSTGRES_HOST: process.env.POSTGRES_TEST_HOST || process.env.POSTGRES_HOST || 'localhost',
+      POSTGRES_PORT: process.env.POSTGRES_TEST_PORT || process.env.POSTGRES_PORT || '5432',
       POSTGRES_DB: process.env.POSTGRES_TEST_DB || 'spacewars_test',
       POSTGRES_USER: process.env.POSTGRES_TEST_USER || process.env.POSTGRES_USER || 'spacewars',
       POSTGRES_PASSWORD: process.env.POSTGRES_TEST_PASSWORD || process.env.POSTGRES_PASSWORD || 'spacewars',

@@ -110,6 +110,9 @@ case "$1" in
     echo ""
     echo "=== Space Objects Table ==="
     meta "\d space_objects"
+    echo ""
+    echo "=== Inventories Table ==="
+    meta "\d inventories"
     ;;
     
   clear)
@@ -118,7 +121,7 @@ case "$1" in
     read -p "Are you sure? (y/N) " -n 1 -r
     echo
     if [[ $REPLY =~ ^[Yy]$ ]]; then
-      query "TRUNCATE TABLE battles, messages, users, space_objects RESTART IDENTITY CASCADE;"
+      query "TRUNCATE TABLE battles, messages, inventories, users, space_objects RESTART IDENTITY CASCADE;"
       echo "✅ Test database cleared!"
       echo "💡 Tip: Run './scripts/db-inspect.sh seed' to reseed with default data"
     else
@@ -133,7 +136,7 @@ case "$1" in
     read -p "Are you sure? (y/N) " -n 1 -r
     echo
     if [[ $REPLY =~ ^[Yy]$ ]]; then
-      query "DROP TABLE IF EXISTS battles, messages, users, space_objects CASCADE;"
+      query "DROP TABLE IF EXISTS battles, messages, inventories, users, space_objects CASCADE;"
       echo "✅ All tables dropped!"
       echo "💡 Tip: Restart the application to recreate tables automatically"
     else

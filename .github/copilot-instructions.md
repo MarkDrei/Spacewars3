@@ -84,12 +84,12 @@
 - Seeding:
   - Production: Default user "a" and space objects (asteroids, shipwrecks, escape pods)
   - Test: Additional test users (testuser3-10) are created only in test environment
-- Use `docker-compose up db -d` to start PostgreSQL locally for development
-- Use `docker-compose up db-test -d` to start PostgreSQL test database (port 5433)
+- Use `docker compose up db -d` to start PostgreSQL locally for development
+- The `db` service automatically creates both `spacewars` (dev) and `spacewars_test` (test) databases on first start via `database/init-test-db.sh` — no separate test DB container needed
 
 Note for Codespaces / Devcontainers:
 
-- See `.devcontainer/README.md` for concise instructions on starting the database and running tests from inside the devcontainer. The file explains when to run `docker compose` on the host versus running tests inside the container, and links to `./.devcontainer/init-db.sh` which the test runner calls.
+- See `.devcontainer/README.md` for concise instructions on starting the database and running tests from inside the devcontainer.
 
 ## Testing
 
@@ -110,7 +110,7 @@ Note for Codespaces / Devcontainers:
 ## Building and Running
 
 - Use `npm install` to install dependencies.
-- Use `docker-compose up db -d` to start PostgreSQL database.
+- Use `docker compose up db -d` to start PostgreSQL database.
 - Use `npm run dev` to start the Next.js development server (port 3000).
 - Use `npm run build` to build the optimized production bundle.
 - Use `npm start` to start the production server.

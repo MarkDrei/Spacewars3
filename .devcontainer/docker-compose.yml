@@ -15,11 +15,15 @@ services:
       - POSTGRES_DB=spacewars
       - POSTGRES_USER=spacewars
       - POSTGRES_PASSWORD=spacewars
+      - POSTGRES_TEST_HOST=db
+      - POSTGRES_TEST_PORT=5432
+      - POSTGRES_TEST_DB=spacewars_test
     depends_on:
       db:
         condition: service_healthy
 
-  # PostgreSQL database (production)
+  # PostgreSQL database (dev).
+  # Also creates spacewars_test for running tests.
   db:
     image: postgres:16-alpine
     restart: unless-stopped
@@ -29,8 +33,9 @@ services:
       POSTGRES_DB: spacewars
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ../database/init-test-db.sh:/docker-entrypoint-initdb.d/init-test-db.sh:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U spacewars"]
+      test: ["CMD-SHELL", "pg_isready -h localhost -U spacewars"]
       interval: 5s
       timeout: 5s
       retries: 5
