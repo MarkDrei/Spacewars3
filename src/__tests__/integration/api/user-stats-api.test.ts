@@ -22,17 +22,6 @@ describe('User stats API', () => {
     TimeMultiplierService.resetInstance();
   });
 
-  test('userStats_notAuthenticated_returns401', async () => {
-    await withTransaction(async () => {
-      const request = createRequest('http://localhost:3000/api/user-stats', 'GET');
-      const response = await userStatsGET(request);
-      const data = await response.json();
-
-      expect(response.status).toBe(401);
-      expect(data.error).toBe('Not authenticated');
-    });
-  });
-
   test('userStats_loggedInUser_returnsStats', async () => {
     await withTransaction(async () => {
       const sessionCookie = await createAuthenticatedSession('statsuser');

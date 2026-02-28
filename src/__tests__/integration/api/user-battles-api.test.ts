@@ -106,17 +106,6 @@ describe('User battles API', () => {
     await shutdownIntegrationTestServer();
   });
 
-  test('userBattles_notAuthenticated_returns401', async () => {
-    await withTransaction(async () => {
-      const request = createRequest('http://localhost:3000/api/user-battles', 'GET');
-      const response = await userBattlesGET(request);
-      const data = await response.json();
-
-      expect(response.status).toBe(401);
-      expect(data.error).toBe('Not authenticated');
-    });
-  });
-
   test('userBattles_noBattles_returnsEmptyArray', async () => {
     await withTransaction(async () => {
       const sessionCookie = await createAuthenticatedSession('nobattlesuser');

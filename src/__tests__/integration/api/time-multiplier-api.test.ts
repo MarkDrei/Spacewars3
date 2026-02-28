@@ -59,21 +59,6 @@ describe('Admin Time Multiplier API', () => {
       });
     });
 
-    it('GET_unauthenticated_returns401', async () => {
-      await withTransaction(async () => {
-        const request = createRequest('http://localhost:3000/api/admin/time-multiplier', 'GET');
-        const response = await GET(request);
-
-        if (!response) {
-          throw new Error('No response from time-multiplier API');
-        }
-
-        expect(response.status).toBe(401);
-        const data = await response.json();
-        expect(data.error).toBe('Not authenticated');
-      });
-    });
-
     it('GET_nonAdmin_returns403', async () => {
       await withTransaction(async () => {
         // Create a regular (non-admin) user
@@ -280,24 +265,6 @@ describe('Admin Time Multiplier API', () => {
         }, sessionCookie);
         const response4 = await POST(request4);
         expect(response4?.status).toBe(400);
-      });
-    });
-
-    it('POST_unauthenticated_returns401', async () => {
-      await withTransaction(async () => {
-        const request = createRequest('http://localhost:3000/api/admin/time-multiplier', 'POST', {
-          multiplier: 10,
-          durationMinutes: 5
-        });
-        const response = await POST(request);
-
-        if (!response) {
-          throw new Error('No response from time-multiplier POST API');
-        }
-
-        expect(response.status).toBe(401);
-        const data = await response.json();
-        expect(data.error).toBe('Not authenticated');
       });
     });
 

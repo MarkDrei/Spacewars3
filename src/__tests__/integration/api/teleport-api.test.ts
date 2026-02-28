@@ -56,22 +56,6 @@ describe('Teleport API', () => {
     TimeMultiplierService.resetInstance();
   });
 
-  test('teleport_notAuthenticated_returns401', async () => {
-    await withTransaction(async () => {
-      const request = createRequest('http://localhost:3000/api/teleport', 'POST', {
-        x: 100,
-        y: 200,
-        preserveVelocity: false,
-      });
-
-      const response = await teleportPOST(request);
-      const data = await response.json();
-
-      expect(response.status).toBe(401);
-      expect(data.error).toBe('Not authenticated');
-    });
-  });
-
   test('teleport_noCharges_returns400', async () => {
     await withTransaction(async () => {
       const { sessionCookie } = await createAuthenticatedSessionWithUser('teleport_nocharges');

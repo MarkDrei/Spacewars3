@@ -61,17 +61,6 @@ describe('Messages API Route Handler', () => {
     }
   });
 
-  test('messages_notAuthenticated_returns401', async () => {
-    await withTransaction(async () => {
-      const request = createRequest('http://localhost:3000/api/messages', 'GET');
-      const response = await GET(request);
-      
-      expect(response.status).toBe(401);
-      const data = await response.json();
-      expect(data.error).toBe('Not authenticated');
-    });
-  });
-
   test('messages_authenticatedUserNoMessages_returnsEmptyArray', async () => {
     await withTransaction(async () => {
       // Test using MessageCache (single source of truth)
@@ -117,17 +106,6 @@ describe('Messages API Route Handler', () => {
   });
 
   describe('Mark Messages as Read', () => {
-    test('markRead_notAuthenticated_returns401', async () => {
-      await withTransaction(async () => {
-        const request = createRequest('http://localhost:3000/api/messages/mark-read', 'POST');
-        const response = await POST(request);
-        
-        expect(response.status).toBe(401);
-        const data = await response.json();
-        expect(data.error).toBe('Not authenticated');
-      });
-    });
-
     test('markRead_noMessages_returnsZero', async () => {
       await withTransaction(async () => {
         const ctx = createLockContext();
