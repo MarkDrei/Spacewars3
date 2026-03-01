@@ -8,6 +8,7 @@ import { useDefenseValues } from '@/lib/client/hooks/useDefenseValues';
 import { useBattleStatus } from '@/lib/client/hooks/useBattleStatus';
 import { useIron } from '@/lib/client/hooks/useIron';
 import { ServerAuthState } from '@/lib/server/serverSession';
+import { formatNumber } from '@/shared/numberFormat';
 import './HomePage.css';
 
 interface HomePageClientProps {
@@ -201,11 +202,11 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
                 <div className="battle-damage-stats">
                   <div className="damage-stat">
                     <span className="damage-label">Your Damage:</span>
-                    <span className="damage-value">{Math.round(battleStatus.battle.myTotalDamage)}</span>
+                    <span className="damage-value">{formatNumber(battleStatus.battle.myTotalDamage)}</span>
                   </div>
                   <div className="damage-stat">
                     <span className="damage-label">Opponent Damage:</span>
-                    <span className="damage-value">{Math.round(battleStatus.battle.opponentTotalDamage)}</span>
+                    <span className="damage-value">{formatNumber(battleStatus.battle.opponentTotalDamage)}</span>
                   </div>
                 </div>
                 {battleStatus.battle.weaponCooldowns && Object.keys(battleStatus.battle.weaponCooldowns).length > 0 && (
@@ -406,7 +407,7 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
                   <td className="data-cell">Experience</td>
                   <td className="data-cell">
                     <span className="stat-value">
-                      {xpLoading ? '...' : `${xp.toLocaleString()} / ${xpForNextLevel.toLocaleString()}`}
+                      {xpLoading ? '...' : `${formatNumber(xp)} / ${formatNumber(xpForNextLevel)}`}
                     </span>
                   </td>
                 </tr>
@@ -422,7 +423,7 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
                   <td className="data-cell">Level Bonus</td>
                   <td className="data-cell">
                     <span className="stat-value">
-                      {xpLoading ? '...' : `+${((bonuses.levelMultiplier - 1) * 100).toFixed(1)}%`}
+                      {xpLoading ? '...' : `+${formatNumber((bonuses.levelMultiplier - 1) * 100)}%`}
                     </span>
                   </td>
                 </tr>
@@ -446,7 +447,7 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
                   <td className="data-cell">Iron Recharge Rate</td>
                   <td className="data-cell">
                     <span className="stat-value">
-                      {xpLoading ? '...' : `${bonuses.ironRechargeRate.toFixed(2)} /s`}
+                      {xpLoading ? '...' : `${formatNumber(bonuses.ironRechargeRate)} /s`}
                     </span>
                   </td>
                 </tr>
@@ -454,7 +455,7 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
                   <td className="data-cell">Iron Storage</td>
                   <td className="data-cell">
                     <span className="stat-value">
-                      {xpLoading ? '...' : Math.round(bonuses.ironStorageCapacity).toLocaleString()}
+                      {xpLoading ? '...' : formatNumber(bonuses.ironStorageCapacity)}
                     </span>
                   </td>
                 </tr>
@@ -462,7 +463,7 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
                   <td className="data-cell">Max Ship Speed</td>
                   <td className="data-cell">
                     <span className="stat-value">
-                      {xpLoading ? '...' : bonuses.maxShipSpeed.toFixed(1)}
+                      {xpLoading ? '...' : formatNumber(bonuses.maxShipSpeed)}
                     </span>
                   </td>
                 </tr>
@@ -472,19 +473,19 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
                 <tr className="data-row">
                   <td className="data-cell">Hull Repair</td>
                   <td className="data-cell">
-                    <span className="stat-value">{xpLoading ? '...' : bonuses.hullRepairSpeed.toFixed(2)}</span>
+                    <span className="stat-value">{xpLoading ? '...' : formatNumber(bonuses.hullRepairSpeed)}</span>
                   </td>
                 </tr>
                 <tr className="data-row">
                   <td className="data-cell">Armor Repair</td>
                   <td className="data-cell">
-                    <span className="stat-value">{xpLoading ? '...' : bonuses.armorRepairSpeed.toFixed(2)}</span>
+                    <span className="stat-value">{xpLoading ? '...' : formatNumber(bonuses.armorRepairSpeed)}</span>
                   </td>
                 </tr>
                 <tr className="data-row">
                   <td className="data-cell">Shield Recharge</td>
                   <td className="data-cell">
-                    <span className="stat-value">{xpLoading ? '...' : bonuses.shieldRechargeRate.toFixed(2)}</span>
+                    <span className="stat-value">{xpLoading ? '...' : formatNumber(bonuses.shieldRechargeRate)}</span>
                   </td>
                 </tr>
                 <tr>
@@ -493,19 +494,19 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
                 <tr className="data-row">
                   <td className="data-cell">Damage</td>
                   <td className="data-cell">
-                    <span className="stat-value">{xpLoading ? '...' : `+${((bonuses.projectileWeaponDamageFactor - 1) * 100).toFixed(1)}%`}</span>
+                    <span className="stat-value">{xpLoading ? '...' : `+${formatNumber((bonuses.projectileWeaponDamageFactor - 1) * 100)}%`}</span>
                   </td>
                 </tr>
                 <tr className="data-row">
                   <td className="data-cell">Reload Speed</td>
                   <td className="data-cell">
-                    <span className="stat-value">{xpLoading ? '...' : `+${((bonuses.projectileWeaponReloadFactor - 1) * 100).toFixed(1)}%`}</span>
+                    <span className="stat-value">{xpLoading ? '...' : `+${formatNumber((bonuses.projectileWeaponReloadFactor - 1) * 100)}%`}</span>
                   </td>
                 </tr>
                 <tr className="data-row">
                   <td className="data-cell">Accuracy</td>
                   <td className="data-cell">
-                    <span className="stat-value">{xpLoading ? '...' : `+${((bonuses.projectileWeaponAccuracyFactor - 1) * 100).toFixed(1)}%`}</span>
+                    <span className="stat-value">{xpLoading ? '...' : `+${formatNumber((bonuses.projectileWeaponAccuracyFactor - 1) * 100)}%`}</span>
                   </td>
                 </tr>
                 <tr>
@@ -514,19 +515,19 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
                 <tr className="data-row">
                   <td className="data-cell">Damage</td>
                   <td className="data-cell">
-                    <span className="stat-value">{xpLoading ? '...' : `+${((bonuses.energyWeaponDamageFactor - 1) * 100).toFixed(1)}%`}</span>
+                    <span className="stat-value">{xpLoading ? '...' : `+${formatNumber((bonuses.energyWeaponDamageFactor - 1) * 100)}%`}</span>
                   </td>
                 </tr>
                 <tr className="data-row">
                   <td className="data-cell">Reload Speed</td>
                   <td className="data-cell">
-                    <span className="stat-value">{xpLoading ? '...' : `+${((bonuses.energyWeaponReloadFactor - 1) * 100).toFixed(1)}%`}</span>
+                    <span className="stat-value">{xpLoading ? '...' : `+${formatNumber((bonuses.energyWeaponReloadFactor - 1) * 100)}%`}</span>
                   </td>
                 </tr>
                 <tr className="data-row">
                   <td className="data-cell">Accuracy</td>
                   <td className="data-cell">
-                    <span className="stat-value">{xpLoading ? '...' : `+${((bonuses.energyWeaponAccuracyFactor - 1) * 100).toFixed(1)}%`}</span>
+                    <span className="stat-value">{xpLoading ? '...' : `+${formatNumber((bonuses.energyWeaponAccuracyFactor - 1) * 100)}%`}</span>
                   </td>
                 </tr>
               </tbody>
@@ -560,27 +561,27 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
                       <tr className="data-row">
                         <td className="data-cell">{displayDefenseValues.hull.name}</td>
                         <td className="data-cell defense-value-cell" style={{ color: getDefenseColor(displayDefenseValues.hull.current, displayDefenseValues.hull.max) }}>
-                          {displayDefenseValues.hull.current}
+                          {formatNumber(displayDefenseValues.hull.current)}
                         </td>
-                        <td className="data-cell defense-value-cell">{displayDefenseValues.hull.max}</td>
+                        <td className="data-cell defense-value-cell">{formatNumber(displayDefenseValues.hull.max)}</td>
                       </tr>
                     )}
                     {(displayDefenseValues.armor.max > 0) && (
                       <tr className="data-row">
                         <td className="data-cell">{displayDefenseValues.armor.name}</td>
                         <td className="data-cell defense-value-cell" style={{ color: getDefenseColor(displayDefenseValues.armor.current, displayDefenseValues.armor.max) }}>
-                          {displayDefenseValues.armor.current}
+                          {formatNumber(displayDefenseValues.armor.current)}
                         </td>
-                        <td className="data-cell defense-value-cell">{displayDefenseValues.armor.max}</td>
+                        <td className="data-cell defense-value-cell">{formatNumber(displayDefenseValues.armor.max)}</td>
                       </tr>
                     )}
                     {(displayDefenseValues.shield.max > 0) && (
                       <tr className="data-row">
                         <td className="data-cell">{displayDefenseValues.shield.name}</td>
                         <td className="data-cell defense-value-cell" style={{ color: getDefenseColor(displayDefenseValues.shield.current, displayDefenseValues.shield.max) }}>
-                          {displayDefenseValues.shield.current}
+                          {formatNumber(displayDefenseValues.shield.current)}
                         </td>
-                        <td className="data-cell defense-value-cell">{displayDefenseValues.shield.max}</td>
+                        <td className="data-cell defense-value-cell">{formatNumber(displayDefenseValues.shield.max)}</td>
                       </tr>
                     )}
                     {(displayDefenseValues.hull.max === 0 && displayDefenseValues.armor.max === 0 && displayDefenseValues.shield.max === 0) && (

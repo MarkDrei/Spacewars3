@@ -12,6 +12,7 @@ import { getShipStats } from '@/lib/client/services/shipStatsService';
 import { userStatsService } from '@/lib/client/services/userStatsService';
 import { ServerAuthState } from '@/lib/server/serverSession';
 import DataAgeIndicator from '@/components/DataAgeIndicator/DataAgeIndicator';
+import { formatNumber } from '@/shared/numberFormat';
 
 interface GamePageClientProps {
   auth: ServerAuthState;
@@ -497,7 +498,7 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
               <div className="teleport-header">
                 <h3 className="teleport-title">Teleport</h3>
                 <span className="teleport-charges-badge">
-                  {Math.floor(teleportCharges)} / {teleportMaxCharges} Charges
+                  {formatNumber(Math.floor(teleportCharges))} / {formatNumber(teleportMaxCharges)} Charges
                 </span>
                 {teleportCharges < teleportMaxCharges && teleportRechargeTimeSec > 0 && (
                   <span className="teleport-timer">
