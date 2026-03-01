@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getIronSession } from 'iron-session';
 import { UserCache } from '@/lib/server/user/userCache';
-import { getResearchEffectFromTree, ResearchType } from '@/lib/server/techs/techtree';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth, ApiError } from '@/lib/server/errors';
 import { USER_LOCK, WORLD_LOCK } from '@/lib/server/typedLocks';
@@ -10,6 +9,7 @@ import { World } from '@/lib/server/world/world';
 import { TechService } from '@/lib/server/techs/TechService';
 import { createLockContext, LockContext, LocksAtMostAndHas6 } from '@markdrei/ironguard-typescript-locks';
 import { WorldCache } from '@/lib/server/world/worldCache';
+import { UserBonusCache } from '@/lib/server/bonus/UserBonusCache';
 
 export async function GET(request: NextRequest) {
   try {
@@ -33,8 +33,11 @@ export async function GET(request: NextRequest) {
           throw new ApiError(404, 'User not found');
         }
 
+        // Fetch bonuses (cache hit — already computed by getUserByIdWithLock)
+        const bonuses = await UserBonusCache.getInstance().getBonuses(userContext, user.id);
+
         // Continue with ship stats logic
-        return await getShipStats(worldContext, world, user);
+        return await getShipStats(worldContext, world, user, bonuses);
       });
     });
   } catch (error) {
@@ -45,15 +48,16 @@ export async function GET(request: NextRequest) {
 async function getShipStats(
   worldContext: LockContext<LocksAtMostAndHas6>,
   world: World,
-  user: User
+  user: User,
+  bonuses: Awaited<ReturnType<typeof UserBonusCache.prototype.getBonuses>>
 ): Promise<NextResponse> {
   // Update physics for all objects first
   const currentTime = Date.now();
   world.updatePhysics(worldContext, currentTime);
 
-  // Update defense values based on elapsed time since last regen
+  // Update defense values based on elapsed time since last regen (using bonused rates)
   const now = Math.floor(Date.now() / 1000);
-  user.updateDefenseValues(now);
+  user.updateDefenseValues(now, bonuses);
 
   // Find player's ship in the world
   const playerShips = world.getSpaceObjectsByType(worldContext, 'player_ship');
@@ -63,10 +67,8 @@ async function getShipStats(
     throw new ApiError(404, 'Player ship not found');
   }
 
-  // Calculate max speed from tech tree
-  const baseSpeed = getResearchEffectFromTree(user.techTree, ResearchType.ShipSpeed);
-  const afterburnerBonus = getResearchEffectFromTree(user.techTree, ResearchType.Afterburner);
-  const maxSpeed = baseSpeed * (1 + afterburnerBonus / 100);
+  // Use bonused max ship speed (includes research × level × commander × afterburner)
+  const maxSpeed = bonuses.maxShipSpeed;
 
   // Calculate defense values using actual current values from database
   const currentValues = {
@@ -74,7 +76,18 @@ async function getShipStats(
     armor: user.armorCurrent,
     shield: user.shieldCurrent
   };
-  const defenseValues = TechService.getDefenseStats(user.techCounts, user.techTree, currentValues);
+  const regenRates = {
+    hull: bonuses.hullRepairSpeed,
+    armor: bonuses.armorRepairSpeed,
+    shield: bonuses.shieldRechargeRate
+  };
+  const defenseValues = TechService.getDefenseStats(
+    user.techCounts,
+    user.techTree,
+    currentValues,
+    bonuses.levelMultiplier,
+    regenRates
+  );
 
   const responseData = {
     x: playerShip.x,

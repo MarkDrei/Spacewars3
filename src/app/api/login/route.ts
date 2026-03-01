@@ -31,8 +31,8 @@ export async function POST(request: NextRequest) {
       throw new ApiError(400, 'Invalid credentials');
     }
     
-    const now = Math.floor(Date.now() / 1000);
-    user.updateStats(now);
+    // Note: updateStats() was already called inside getUserByUsername → getUserByUsernameInternal
+    // (with bonuses). The call here would be a no-op (elapsed ≈ 0), so it is intentionally omitted.
     await user.save();
     
     // Create response

@@ -1,5 +1,46 @@
 # Technical Debt
 
+## Minor Balance Change: Multiplicative Accuracy Refactor (Task 1.1)
+
+**Priority**: Low  
+**Added**: 2026-01-XX  
+**Component**: Weapon accuracy calculation (`techtree.ts`, `TechFactory.ts`)
+
+### Context
+
+The `getWeaponAccuracyModifierFromTree()` function was refactored from an additive bonus system (`baseAccuracy + (effect - researchBaseValue)`) to a multiplicative factor system (`baseAccuracy × effect/researchBaseValue`) to enable consistent multiplicative semantics for the bonus system.
+
+### Balance Impact
+
+The two formulas are only numerically equivalent when `weapon.baseAccuracy === research.baseValue`. For `auto_turret` (baseAccuracy=50) with `ProjectileAccuracy` research (researchBaseValue=70), the multiplicative formula produces **lower** accuracy at research levels 2+:
+
+| Level | Old Accuracy (additive) | New Accuracy (multiplicative) | Delta |
+|-------|------------------------|-------------------------------|-------|
+| 1     | 50.0%                  | 50.0%                         | 0pp   |
+| 2     | 54.9%                  | 53.5%                         | −1.4pp |
+| 5     | 84.2%                  | 74.5%                         | −9.8pp |
+| 10    | 156.6%*                | 126.1%*                       | −30.4pp |
+
+*Values above 100% are capped in gameplay
+
+**Energy accuracy is unaffected**: `pulse_laser.baseAccuracy (65) === EnergyAccuracy.researchBaseValue (65)`, so both formulas produce identical results at all levels.
+
+### Why Accepted
+
+Pure multiplicative semantics are required for the bonus system (Goal 2) to apply level/commander multipliers uniformly. Adjusting the research coefficients to preserve the old additive values would defeat the purpose of the refactor. The balance impact is minor for typical research levels (≤ level 3 at game launch). Tests explicitly document and assert the divergence.
+
+### Proper Solution (if balance becomes a concern)
+
+Adjust the `auto_turret` base accuracy value in the weapon spec to match the research base value (70), or introduce per-weapon accuracy scaling. This would require a balance review pass.
+
+### Related Files
+
+- `src/lib/server/techs/techtree.ts` — `getWeaponAccuracyModifierFromTree()`
+- `src/lib/server/techs/TechFactory.ts` — `calculateWeaponDamage()`
+- `src/__tests__/unit/lib/weapon-modifier-equivalence.test.ts` — divergence tests
+
+---
+
 ## Missing Test: complete-build cheat mode for user 'q'
 
 **Priority**: Low
@@ -220,3 +261,38 @@ This ensures the cache is notified of changes and can persist them.
 
 - `src/lib/server/world/world.ts` - World class with save() method
 - `src/lib/server/world/worldCache.ts` - Cache manager with worldDirty flag
+
+---
+
+## Resolved: Legacy `5 × speedMultiplier` Factor in Navigate Route
+
+**Resolved in**: Task 5.2.1 (Player Bonus System — Ship Speed via Bonuses)
+
+### Background
+
+The navigate route (`src/app/api/navigate/route.ts`) previously computed `maxSpeed` as:
+```typescript
+const speedMultiplier = getResearchEffectFromTree(user.techTree, ResearchType.ShipSpeed);
+const maxSpeed = 5 * speedMultiplier; // e.g., 5 * 25 = 125 at base
+```
+
+The ship-stats route computed `maxSpeed` as:
+```typescript
+const maxSpeed = baseSpeed * (1 + afterburnerBonus / 100); // e.g., 25 at base
+```
+
+These two routes used inconsistent formulas — the navigate route produced a max speed 5× higher than ship-stats.
+
+### Resolution
+
+Both routes now use `bonuses.maxShipSpeed` from `UserBonusCache`, which is:
+```
+getResearchEffect(ShipSpeed) × (1 + afterburner/100) × levelMultiplier × commanderMultiplier(shipSpeed)
+```
+
+At base level (level 1, no afterburner, no commander): `maxShipSpeed = 25`.
+
+The legacy `5 ×` factor has been **permanently removed**. This changes the navigate API's
+maximum allowed speed from ~125 (base) to ~25 (base). Any clients that set speeds between
+25 and 125 will now receive a 400 error. The ship-stats route was always the authoritative
+source for `maxSpeed` — the navigate route's `5 ×` was an undocumented legacy artifact.

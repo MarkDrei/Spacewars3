@@ -67,7 +67,7 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
   const { techCounts, weapons, defenses, isLoading: techLoading, error: techError } = useTechCounts();
   const { defenseValues, isLoading: defenseLoading, error: defenseError } = useDefenseValues();
   const { battleStatus, isLoading: battleLoading } = useBattleStatus();
-  const { xp, level, xpForNextLevel, isLoading: xpLoading } = useIron(5000);
+  const { xp, level, xpForNextLevel, isLoading: xpLoading, bonuses } = useIron(5000);
 
   // Handler for refreshing messages
   const handleRefreshMessages = async () => {
@@ -416,6 +416,117 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
                     <span className="stat-value">
                       {xpLoading ? '...' : `${Math.floor((xp / xpForNextLevel) * 100)}%`}
                     </span>
+                  </td>
+                </tr>
+                <tr className="data-row">
+                  <td className="data-cell">Level Bonus</td>
+                  <td className="data-cell">
+                    <span className="stat-value">
+                      {xpLoading ? '...' : `+${((bonuses.levelMultiplier - 1) * 100).toFixed(1)}%`}
+                    </span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          {/* Active Bonuses */}
+          <div id="bonuses" className="data-table-container">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th colSpan={2}>Active Bonuses</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td colSpan={2} className="category-header">Iron Economy</td>
+                </tr>
+                <tr className="data-row">
+                  <td className="data-cell">Iron Recharge Rate</td>
+                  <td className="data-cell">
+                    <span className="stat-value">
+                      {xpLoading ? '...' : `${bonuses.ironRechargeRate.toFixed(2)} /s`}
+                    </span>
+                  </td>
+                </tr>
+                <tr className="data-row">
+                  <td className="data-cell">Iron Storage</td>
+                  <td className="data-cell">
+                    <span className="stat-value">
+                      {xpLoading ? '...' : Math.round(bonuses.ironStorageCapacity).toLocaleString()}
+                    </span>
+                  </td>
+                </tr>
+                <tr className="data-row">
+                  <td className="data-cell">Max Ship Speed</td>
+                  <td className="data-cell">
+                    <span className="stat-value">
+                      {xpLoading ? '...' : bonuses.maxShipSpeed.toFixed(1)}
+                    </span>
+                  </td>
+                </tr>
+                <tr>
+                  <td colSpan={2} className="category-header">Defense Regen (/s)</td>
+                </tr>
+                <tr className="data-row">
+                  <td className="data-cell">Hull Repair</td>
+                  <td className="data-cell">
+                    <span className="stat-value">{xpLoading ? '...' : bonuses.hullRepairSpeed.toFixed(2)}</span>
+                  </td>
+                </tr>
+                <tr className="data-row">
+                  <td className="data-cell">Armor Repair</td>
+                  <td className="data-cell">
+                    <span className="stat-value">{xpLoading ? '...' : bonuses.armorRepairSpeed.toFixed(2)}</span>
+                  </td>
+                </tr>
+                <tr className="data-row">
+                  <td className="data-cell">Shield Recharge</td>
+                  <td className="data-cell">
+                    <span className="stat-value">{xpLoading ? '...' : bonuses.shieldRechargeRate.toFixed(2)}</span>
+                  </td>
+                </tr>
+                <tr>
+                  <td colSpan={2} className="category-header">Projectile Weapons</td>
+                </tr>
+                <tr className="data-row">
+                  <td className="data-cell">Damage</td>
+                  <td className="data-cell">
+                    <span className="stat-value">{xpLoading ? '...' : `+${((bonuses.projectileWeaponDamageFactor - 1) * 100).toFixed(1)}%`}</span>
+                  </td>
+                </tr>
+                <tr className="data-row">
+                  <td className="data-cell">Reload Speed</td>
+                  <td className="data-cell">
+                    <span className="stat-value">{xpLoading ? '...' : `+${((bonuses.projectileWeaponReloadFactor - 1) * 100).toFixed(1)}%`}</span>
+                  </td>
+                </tr>
+                <tr className="data-row">
+                  <td className="data-cell">Accuracy</td>
+                  <td className="data-cell">
+                    <span className="stat-value">{xpLoading ? '...' : `+${((bonuses.projectileWeaponAccuracyFactor - 1) * 100).toFixed(1)}%`}</span>
+                  </td>
+                </tr>
+                <tr>
+                  <td colSpan={2} className="category-header">Energy Weapons</td>
+                </tr>
+                <tr className="data-row">
+                  <td className="data-cell">Damage</td>
+                  <td className="data-cell">
+                    <span className="stat-value">{xpLoading ? '...' : `+${((bonuses.energyWeaponDamageFactor - 1) * 100).toFixed(1)}%`}</span>
+                  </td>
+                </tr>
+                <tr className="data-row">
+                  <td className="data-cell">Reload Speed</td>
+                  <td className="data-cell">
+                    <span className="stat-value">{xpLoading ? '...' : `+${((bonuses.energyWeaponReloadFactor - 1) * 100).toFixed(1)}%`}</span>
+                  </td>
+                </tr>
+                <tr className="data-row">
+                  <td className="data-cell">Accuracy</td>
+                  <td className="data-cell">
+                    <span className="stat-value">{xpLoading ? '...' : `+${((bonuses.energyWeaponAccuracyFactor - 1) * 100).toFixed(1)}%`}</span>
                   </td>
                 </tr>
               </tbody>

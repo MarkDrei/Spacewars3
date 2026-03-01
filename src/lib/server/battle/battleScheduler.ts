@@ -19,13 +19,13 @@ import { resolveBattle } from './battleService';
 import type { Battle, BattleEvent } from './battleTypes';
 import { DAMAGE_CALC_DEFAULTS } from './battleTypes';
 import { TechFactory, TechCounts } from '../techs/TechFactory';
-import { getWeaponDamageModifierFromTree, getWeaponAccuracyModifierFromTree } from '../techs/techtree';
 import { sendMessageToUser } from '../messages/MessageCache';
 import { getBattleCache } from './BattleCache';
 import { BATTLE_LOCK, USER_LOCK } from '../typedLocks';
 import { createLockContext, LockContext, LocksAtMostAndHas2, LocksAtMost3, LocksAtMostAndHas4 } from '@markdrei/ironguard-typescript-locks';
 import { UserCache } from '../user/userCache';
 import { TimeMultiplierService } from '../timeMultiplier';
+import { UserBonusCache } from '../bonus/UserBonusCache';
 
 // ========================================
 // Battle Helper Functions
@@ -303,20 +303,41 @@ async function fireWeapon(
       return;
     }
     
+    // Fetch pre-computed bonus factors for the attacker.
+    // These include research × level × commander multipliers for all weapon stats.
+    const attackerBonuses = await UserBonusCache.getInstance().getBonuses(userContext, attackerId);
+    
+    // Determine weapon category to select the right bonus factor.
+    const isProjectile = weaponSpec.subtype === 'Projectile';
+    const accuracyFactor = isProjectile
+      ? attackerBonuses.projectileWeaponAccuracyFactor
+      : attackerBonuses.energyWeaponAccuracyFactor;
+    const damageFactor = isProjectile
+      ? attackerBonuses.projectileWeaponDamageFactor
+      : attackerBonuses.energyWeaponDamageFactor;
+    const reloadFactor = isProjectile
+      ? attackerBonuses.projectileWeaponReloadFactor
+      : attackerBonuses.energyWeaponReloadFactor;
+    
     // Calculate damage using TechFactory with actual defense values and tech counts
     const damageCalc = TechFactory.calculateWeaponDamage(
       weaponType,
       attackerUser.techCounts as TechCounts,
       defenderUser.shieldCurrent,
       defenderUser.armorCurrent,
-      getWeaponAccuracyModifierFromTree(attackerUser.techTree, weaponType),
+      accuracyFactor,
       DAMAGE_CALC_DEFAULTS.NEGATIVE_ACCURACY_MODIFIER,
-      getWeaponDamageModifierFromTree(attackerUser.techTree, weaponType),
+      damageFactor,
       DAMAGE_CALC_DEFAULTS.ECM_EFFECTIVENESS,
       DAMAGE_CALC_DEFAULTS.SPREAD_VALUE
     );
     
     const shotsPerSalvo = weaponData.count;
+    
+    // Compute bonused reload time: baseCooldown / reloadFactor (includes research + level + commander)
+    const baseCooldown = TechFactory.getBaseBattleCooldown(weaponSpec);
+    const bonusedCooldown = baseCooldown / reloadFactor;
+    const effectiveCooldown = calculateEffectiveWeaponCooldown(bonusedCooldown);
     
     if (damageCalc.weaponsHit === 0) {
       // All shots missed
@@ -339,10 +360,7 @@ async function fireWeapon(
       await createMessage(attackerId, `Your ${weaponType.replace(/_/g, ' ')} fired ${shotsPerSalvo} shot(s) but all missed!`);
       await createMessage(defenderId, `A: Enemy ${weaponType.replace(/_/g, ' ')} fired ${shotsPerSalvo} shot(s) but all missed!`);
       
-      // Update cooldown - set to when weapon will be ready next
-      // Apply time multiplier to accelerate cooldowns
-      const baseCooldown = weaponData.cooldown || 5;
-      const effectiveCooldown = calculateEffectiveWeaponCooldown(baseCooldown);
+      // Update cooldown using bonused reload time
       const nextReadyTime = currentTime + effectiveCooldown;
       await BattleRepo.setWeaponCooldown(context, battle.id, attackerId, weaponType, nextReadyTime);
       
@@ -398,10 +416,7 @@ async function fireWeapon(
     await createMessage(attackerId, attackerMessage);
     await createMessage(defenderId, defenderMessage);
     
-    // Update cooldown - set to when weapon will be ready next
-    // Apply time multiplier to accelerate cooldowns
-    const baseCooldown = weaponData.cooldown || 5;
-    const effectiveCooldown = calculateEffectiveWeaponCooldown(baseCooldown);
+    // Update cooldown using bonused reload time (already computed above)
     const nextReadyTime = currentTime + effectiveCooldown;
     await BattleRepo.setWeaponCooldown(context, battle.id, attackerId, weaponType, nextReadyTime);
     

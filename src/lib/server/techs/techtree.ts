@@ -701,13 +701,13 @@ export function getWeaponDamageModifierFromTree(tree: TechTree, weaponType: stri
 }
 
 /**
- * Returns the accuracy modifier for a weapon type based on the research in the tech tree.
- * The modifier represents the bonus accuracy percentage added to the weapon's base accuracy
- * (e.g., 5 = +5% accuracy bonus). At the default research level (level 1), returns 0.
- * 
+ * Returns the accuracy multiplier for a weapon type based on the research in the tech tree.
+ * The multiplier is a factor applied to the weapon's base accuracy via multiplication
+ * (e.g., 1.0 = no change, 1.07 = +7% accuracy). At the default research level (level 1), returns 1.0.
+ *
  * @param tree The tech tree to read research levels from
  * @param weaponType The weapon key (e.g., 'pulse_laser', 'rocket_launcher', 'auto_turret')
- * @returns The accuracy bonus as a percentage value (e.g., 0 = no bonus, 5 = +5% accuracy)
+ * @returns The accuracy multiplier as a factor (e.g., 1.0 = no bonus, 1.07 = 7% more accurate)
  */
 export function getWeaponAccuracyModifierFromTree(tree: TechTree, weaponType: string): number {
   // Determine research type based on weapon type
@@ -717,26 +717,30 @@ export function getWeaponAccuracyModifierFromTree(tree: TechTree, weaponType: st
   } else if (ENERGY_WEAPONS.includes(weaponType as typeof ENERGY_WEAPONS[number])) {
     researchType = ResearchType.EnergyAccuracy;
   } else {
-    // Default to 0 (no bonus) for unknown weapon types
-    return 0;
+    // Default to 1.0 (no change) for unknown weapon types
+    return 1.0;
   }
 
   const research = AllResearches[researchType];
+  // Guard against division by zero
+  if (research.baseValue === 0) {
+    return 1.0;
+  }
   const effect = getResearchEffectFromTree(tree, researchType);
-  // Modifier = effect - baseValue (improvement over base level)
-  // At level 1: effect = baseValue, so modifier = 0 (no bonus)
-  // At higher levels: modifier > 0 (accuracy bonus)
-  return effect - research.baseValue;
+  // Multiplier = effect / baseValue (same pattern as damage modifier)
+  // At level 1: effect = baseValue, so multiplier = 1.0 (no change)
+  // At higher levels: multiplier > 1.0 (accuracy improvement)
+  return effect / research.baseValue;
 }
 
 /**
- * Returns the reload rate modifier for a weapon type based on the research in the tech tree.
- * The modifier represents the percentage reduction in reload time (faster firing).
- * For example, 10% research = 0.9x reload time (10% faster), 20% = 0.8x reload time (20% faster).
- * 
+ * Returns the reload speed factor for a weapon type based on the research in the tech tree.
+ * The factor is applied by dividing the base cooldown: `baseCooldown / reloadSpeedFactor`.
+ * A factor > 1.0 means faster reloading. At level 0 (no research), returns 1.0.
+ *
  * @param tree The tech tree to read research levels from
  * @param weaponType The weapon key (e.g., 'pulse_laser', 'rocket_launcher', 'auto_turret')
- * @returns The reload time multiplier as a decimal (e.g., 1.0 = no change, 0.8 = 20% faster)
+ * @returns The reload speed factor (e.g., 1.0 = no change, 1.11 = 10% faster reload)
  */
 export function getWeaponReloadTimeModifierFromTree(tree: TechTree, weaponType: string): number {
   // Determine research type based on weapon type
@@ -752,11 +756,12 @@ export function getWeaponReloadTimeModifierFromTree(tree: TechTree, weaponType: 
 
   const effect = getResearchEffectFromTree(tree, researchType);
   // Effect is a percentage (e.g., 10, 20, 30)
-  // Reload time multiplier = 1 - (effect / 100)
-  // Example: 10% faster = 1 - 0.10 = 0.9x reload time
-  // Cap at 0.1 (90% reduction max) to prevent near-zero reload times
-  const multiplier = 1 - (effect / 100);
-  return Math.max(0.1, multiplier);
+  // Old inverse multiplier: 1 - (effect / 100)  (e.g., 0.9 for 10% faster)
+  // New speed factor: 1 / (1 - effect/100)  (e.g., 1/0.9 ≈ 1.111 for 10% faster)
+  // Applying: baseCooldown / speedFactor ≡ baseCooldown * (1 - effect/100)  ← numerically identical
+  // Cap the inverse at 0.1 (90% reduction max) → speed factor caps at 10.0
+  const inverseMultiplier = Math.max(0.1, 1 - (effect / 100));
+  return 1 / inverseMultiplier;
 }
 
 /**

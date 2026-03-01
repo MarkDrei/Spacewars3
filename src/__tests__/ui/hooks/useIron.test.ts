@@ -299,4 +299,84 @@ describe('useIron', () => {
     const pollingCall = calls.find(call => call[1] === customInterval);
     expect(pollingCall).toBeDefined();
   });
+
+  test('useIron_withBonusData_exposesBonusesInReturnValue', async () => {
+    // Arrange: full response including bonus fields
+    const mockStats = {
+      iron: 500,
+      last_updated: 1674567890,
+      ironPerSecond: 1.15,
+      maxIronCapacity: 5750,
+      xp: 1000,
+      level: 2,
+      xpForNextLevel: 4000,
+      timeMultiplier: 1,
+      teleportCharges: 0,
+      teleportMaxCharges: 0,
+      teleportRechargeTimeSec: 0,
+      teleportRechargeSpeed: 0,
+      levelMultiplier: 1.15,
+      maxShipSpeed: 28.75,
+      hullRepairSpeed: 1.15,
+      armorRepairSpeed: 1.15,
+      shieldRechargeRate: 1.15,
+      projectileWeaponDamageFactor: 1.15,
+      projectileWeaponReloadFactor: 1.28,
+      projectileWeaponAccuracyFactor: 1.15,
+      energyWeaponDamageFactor: 1.15,
+      energyWeaponReloadFactor: 1.35,
+      energyWeaponAccuracyFactor: 1.15,
+    };
+    mockUserStatsService.getUserStats.mockResolvedValueOnce(mockStats);
+
+    // Act
+    const { result } = renderHook(() => useIron());
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    // Assert: bonuses object is populated from API response
+    expect(result.current.bonuses.levelMultiplier).toBe(1.15);
+    expect(result.current.bonuses.ironRechargeRate).toBe(1.15);
+    expect(result.current.bonuses.ironStorageCapacity).toBe(5750);
+    expect(result.current.bonuses.maxShipSpeed).toBe(28.75);
+    expect(result.current.bonuses.hullRepairSpeed).toBe(1.15);
+    expect(result.current.bonuses.armorRepairSpeed).toBe(1.15);
+    expect(result.current.bonuses.shieldRechargeRate).toBe(1.15);
+    expect(result.current.bonuses.projectileWeaponDamageFactor).toBe(1.15);
+    expect(result.current.bonuses.projectileWeaponReloadFactor).toBe(1.28);
+    expect(result.current.bonuses.energyWeaponDamageFactor).toBe(1.15);
+    expect(result.current.bonuses.energyWeaponReloadFactor).toBe(1.35);
+  });
+
+  test('useIron_withoutBonusData_usesDefaultBonuses', async () => {
+    // Arrange: response without bonus fields (older API or missing data)
+    const mockStats = {
+      iron: 100,
+      last_updated: 1674567890,
+      ironPerSecond: 1,
+      maxIronCapacity: 5000,
+      xp: 0,
+      level: 1,
+      xpForNextLevel: 1000,
+      timeMultiplier: 1,
+      teleportCharges: 0,
+      teleportMaxCharges: 0,
+      teleportRechargeTimeSec: 0,
+      teleportRechargeSpeed: 0,
+      // bonus fields absent
+    };
+    mockUserStatsService.getUserStats.mockResolvedValueOnce(mockStats);
+
+    // Act
+    const { result } = renderHook(() => useIron());
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    // Assert: defaults applied (1.0 for multipliers, sensible values for others)
+    expect(result.current.bonuses.levelMultiplier).toBe(1.0);
+    expect(result.current.bonuses.projectileWeaponDamageFactor).toBe(1.0);
+    expect(result.current.bonuses.energyWeaponDamageFactor).toBe(1.0);
+    expect(result.current.bonuses.hullRepairSpeed).toBe(1.0);
+    // iron fields default to values from the ironPerSecond / maxIronCapacity
+    expect(result.current.bonuses.ironRechargeRate).toBe(1);
+    expect(result.current.bonuses.ironStorageCapacity).toBe(5000);
+  });
 });

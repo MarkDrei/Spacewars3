@@ -8,6 +8,8 @@ import { UserCache } from "./user/userCache";
 import { BattleCache } from "./battle/BattleCache";
 import { MessageCache } from "./messages/MessageCache";
 import { WorldCache } from "./world/worldCache";
+import { UserBonusCache } from "./bonus/UserBonusCache";
+import { InventoryService } from "./inventory/InventoryService";
 
 export async function initializeServer() {
 
@@ -48,7 +50,15 @@ export async function initializeServer() {
             worldCache: WorldCache.getInstance(),
             messageCache
         });
-        
+
+        // Initialize UserBonusCache
+        UserBonusCache.configureDependencies({
+            userCache: UserCache.getInstance2(),
+            inventoryService: new InventoryService(),
+        });
+        UserBonusCache.getInstance();
+        console.log('🌱🪴 Application startup - ✅ UserBonusCache initialized');
+
         // Initialize BattleCache
         console.log('🌱🪴 Application startup - ⚔️ Initializing BattleCache...');
         await BattleCache.initialize(db, {

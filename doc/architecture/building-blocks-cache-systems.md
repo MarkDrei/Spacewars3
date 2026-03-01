@@ -6,30 +6,31 @@
 
 ## Overview
 
-The Spacewars application now uses four cache manager implementations to optimize database access and ensure data consistency. All four use the IronGuard lock system for compile-time deadlock prevention and are wired together explicitly during server startup.
+The Spacewars application uses four persistent cache managers and one runtime-only derived cache to optimize database access and ensure data consistency. The four persistent caches use the IronGuard lock system for compile-time deadlock prevention and are wired together explicitly during server startup. The derived cache (`UserBonusCache`) is a lightweight companion that computes and stores pre-calculated bonus multipliers.
 
 ---
 
 ## Cache Manager Comparison
 
-| Aspect | UserCache | WorldCache | MessageCache | BattleCache |
-|--------|-------------------|-----------|--------------|-------------|
-| **Primary Purpose** | User data, username mappings, coordination | Authoritative world state | User messages and notifications | Battle state and combat data |
-| **Data Scope** | Multi-entity (Users + indices) | Single-entity (World) | Single-entity (Messages) | Single-entity (Battles) |
-| **DB Abstraction** | Direct DB operations | Direct DB operations | MessagesRepo layer | Direct DB operations |
-| **Lock System** | Pure IronGuard | Pure IronGuard | Pure IronGuard | Pure IronGuard via delegation |
-| **Lock Hierarchy** | 4 levels (CACHE→WORLD→USER→DB) | WORLD + DB locks | 2 levels (CACHE→DATA) | 4 levels (via UserCache + BATTLE) |
-| **Async Operations** | Background persistence | Background persistence | Async creation + background persistence | Background persistence |
-| **Temporary IDs** | No | No | Yes (negative IDs) | No |
-| **Cache Structure** | Map<userId, User> | Single World instance | Map<userId, Message[]> | Map<battleId, Battle> + user→battle index |
-| **Singleton Pattern** | Yes | Yes | Yes | Yes |
-| **Initialization** | Idempotent, coordinates WorldCache | Eager (startup) or lazy fallback | Idempotent auto-init | Mixed strategy (sync + async) |
-| **Statistics Tracking** | Cache hits/misses per entity type | Cache hits/misses + dirty flag | Cache hits/misses + pending writes | No statistics |
-| **Background Timer** | 30s persistence interval | 30s persistence interval | 30s persistence interval | 30s persistence interval |
+| Aspect | UserCache | WorldCache | MessageCache | BattleCache | UserBonusCache |
+|--------|-----------|-----------|--------------|-------------|----------------|
+| **Primary Purpose** | User data, username mappings, coordination | Authoritative world state | User messages and notifications | Battle state and combat data | Pre-computed bonus multipliers |
+| **Data Scope** | Multi-entity (Users + indices) | Single-entity (World) | Single-entity (Messages) | Single-entity (Battles) | Per-user derived values |
+| **DB Abstraction** | Direct DB operations | Direct DB operations | MessagesRepo layer | Direct DB operations | None — runtime only |
+| **Lock System** | Pure IronGuard | Pure IronGuard | Pure IronGuard | Pure IronGuard via delegation | None (sync Map ops) |
+| **Lock Hierarchy** | 4 levels (CACHE→WORLD→USER→DB) | WORLD + DB locks | 2 levels (CACHE→DATA) | 4 levels (via UserCache + BATTLE) | Reuses USER_LOCK + USER_INVENTORY_LOCK during recalc |
+| **Async Operations** | Background persistence | Background persistence | Async creation + background persistence | Background persistence | None |
+| **Temporary IDs** | No | No | Yes (negative IDs) | No | No |
+| **Cache Structure** | Map<userId, User> | Single World instance | Map<userId, Message[]> | Map<battleId, Battle> + user→battle index | Map<userId, UserBonuses> |
+| **Singleton Pattern** | Yes | Yes | Yes | Yes | Yes |
+| **Initialization** | Idempotent, coordinates WorldCache | Eager (startup) or lazy fallback | Idempotent auto-init | Mixed strategy (sync + async) | Lazy per user |
+| **Statistics Tracking** | Cache hits/misses per entity type | Cache hits/misses + dirty flag | Cache hits/misses + pending writes | No statistics | No |
+| **Background Timer** | 30s persistence interval | 30s persistence interval | 30s persistence interval | 30s persistence interval | None |
+| **DB Persistence** | Yes | Yes | Yes | Yes | **No — runtime only** |
 
 ### Dependency Graph & Injection
 
-The caches now receive each other as explicit dependencies to simplify testing and avoid hidden singleton lookups:
+The persistent caches receive each other as explicit dependencies to simplify testing and avoid hidden singleton lookups. `UserBonusCache` depends on `UserCache` and `InventoryService` for recalculation:
 
 ```mermaid
 graph TD
@@ -37,18 +38,24 @@ graph TD
     WC[WorldCache]
     UC[UserCache]
     BC[BattleCache]
-    
+    UBC[UserBonusCache<br/>Derived/Runtime-Only]
+    IS[InventoryService<br/>Direct DB Access]
+
     WC -->|depends on| MC
     UC -->|depends on| WC
     UC -->|depends on| MC
     BC -->|depends on| UC
     BC -->|depends on| WC
     BC -->|depends on| MC
-    
+    UBC -->|reads user+level| UC
+    UBC -->|reads bridge| IS
+
     style MC fill:#ffeb3b
     style WC fill:#4caf50,color:#fff
     style UC fill:#2196f3,color:#fff
     style BC fill:#f44336,color:#fff
+    style UBC fill:#e1bee7,color:#000
+    style IS fill:#b0bec5,color:#000
 ```
 
 - `main.ts` is responsible for creating the real cache instances and wiring them together via the new `configureDependencies(...)` helpers before regular initialization runs.
@@ -398,14 +405,103 @@ private pendingWrites: Map<number, Promise<void>> = new Map();
 ### Async Operations
 - **MessageCache only:** Creates messages with temporary IDs for non-blocking operation (~0.5ms vs ~5-10ms)
 - **Others:** Synchronous updates with background persistence
+- **UserBonusCache:** No async operations — synchronous Map reads; async recalculation only on cache miss
 
 ### Initialization Strategy
 - **UserCache & MessageCache:** Internal auto-init pattern in all public methods
 - **BattleCache:** Dual API (sync `getInstance()` + async `getInitializedInstance()`) for database callback compatibility
+- **UserBonusCache:** Fully lazy — computed on first `getBonuses()` call per user after invalidation or server start
 
 ---
 
-## Cache Consistency
+## UserBonusCache
+
+**Location:** `src/lib/server/bonus/UserBonusCache.ts`
+
+**Design Pattern: Runtime-Only Derived Cache**
+
+Unlike the four persistent caches, `UserBonusCache` is a *derived cache* — it stores computed values that can always be reconstructed from existing source data (UserCache + InventoryService). There is no novel state to persist; on server restart, bonuses are rebuilt lazily on first access.
+
+```mermaid
+graph TD
+    subgraph UBC["UserBonusCache (Singleton)"]
+        BonusMap["bonuses: Map&lt;userId, UserBonuses&gt;"]
+        GetBonuses["getBonuses(userId)"]
+        Invalidate["invalidateBonuses(userId)"]
+        DiscardAll["discardAllBonuses()"]
+    end
+
+    UC[UserCache]
+    IS[InventoryService]
+
+    GetBonuses -->|cache miss: recalculate| UC
+    GetBonuses -->|cache miss: read bridge| IS
+    Invalidate -->|Map.delete| BonusMap
+    DiscardAll -->|Map.clear| BonusMap
+
+    style UBC fill:#e1bee7,stroke:#7b1fa2
+    style UC fill:#2196f3,color:#fff
+    style IS fill:#b0bec5,color:#000
+```
+
+### Responsibilities
+
+- Store a `UserBonuses` record per user containing pre-multiplied bonus factors for all stat types
+- Provide `getBonuses(userId): Promise<UserBonuses>` — returns cached entry or computes on cache miss
+- Provide `invalidateBonuses(userId): void` — synchronous Map.delete; called by level-up, research completion, and bridge change handlers
+- Provide `discardAllBonuses(): void` — synchronous Map.clear; called on server shutdown or full cache reset
+
+### UserBonuses Shape
+
+```typescript
+interface UserBonuses {
+  // Multiplicative factors (1.0 = no bonus)
+  ironRechargeRate: number;       // IronHarvesting research × level
+  ironCapacity: number;           // IronCapacity research × level
+  maxShipSpeed: number;           // ShipSpeed research × afterburner × level × commander
+  projectileWeaponReloadFactor: number; // ProjectileReloadRate × level × commander
+  energyWeaponReloadFactor: number;     // EnergyReloadRate × level × commander
+  projectileWeaponAccuracy: number;     // ProjectileAccuracy × level × commander
+  energyWeaponAccuracy: number;         // EnergyAccuracy × level × commander
+  hullRepairRate: number;         // base × level (no commander key)
+  armorRepairRate: number;        // ArmorRepair × level × commander
+  shieldRechargeRate: number;     // ShieldRecharge × level × commander (if applicable)
+  defenseRegen: number;           // base × level (no commander key)
+  levelMultiplier: number;        // 1.15^(level - 1) — convenience field
+}
+```
+
+### Bonus Combination Formula
+
+All sources combine **multiplicatively**:
+
+```
+finalValue = researchEffect × levelMultiplier × commanderMultiplier
+```
+
+Where:
+- `researchEffect` = `getResearchEffectFromTree(techTree, researchType)` (e.g. 1.1 for 10% bonus)
+- `levelMultiplier` = `1.15^(level - 1)` (level 1 → 1.0, level 2 → 1.15, …)
+- `commanderMultiplier` = derived from `Commander.calculateBonuses()` for stats with a matching `CommanderStatKey`; 1.0 for stats without a `CommanderStatKey`
+
+### Lock Strategy
+
+- **No new lock level** — recalculation acquires `USER_LOCK` (LOCK_4) to read user data and then `USER_INVENTORY_LOCK` (LOCK_5) to read bridge data; lock ordering 4 → 5 is valid in the IronGuard hierarchy
+- **Invalidation is lock-free** — `Map.delete()` is atomic in single-threaded Node.js; no lock needed
+- **Callers hold USER_LOCK** when calling `getBonuses()` during a tick; the cache handles the additional `USER_INVENTORY_LOCK` acquisition internally on cache miss
+
+### Invalidation Trigger Points
+
+| Event | Trigger Function | Reason |
+|-------|-----------------|--------|
+| Level-up | `invalidateBonuses(userId)` | `levelMultiplier` changes |
+| Research completion | `invalidateBonuses(userId)` | `researchEffect` changes |
+| Bridge item add/remove/move | `invalidateBonuses(userId)` | `commanderMultiplier` changes |
+| Server shutdown | `discardAllBonuses()` | Clean reset |
+
+---
+
+
 
 ### Known Issues
 
@@ -425,12 +521,17 @@ private pendingWrites: Map<number, Promise<void>> = new Map();
 
 ## Summary
 
-All four cache managers use the IronGuard lock system for type-safe, deadlock-free concurrent access. They share core patterns (singleton, write-behind caching, dirty tracking, background persistence) while differing in complexity, initialization strategy, and async operation support.
+## Summary
+
+All five cache managers share the goal of fast, consistent access to game data. The four persistent caches (UserCache, WorldCache, MessageCache, BattleCache) use the IronGuard lock system for type-safe, deadlock-free concurrent access, and share core patterns (singleton, write-behind caching, dirty tracking, background persistence) while differing in complexity, initialization strategy, and async operation support.
+
+`UserBonusCache` is a fifth, lighter-weight member: a **runtime-only derived cache** that stores pre-computed bonus multipliers. It has no lock of its own, no DB persistence, and no background timer — it simply memoises the result of an expensive recalculation and clears that memo on source data changes.
 
 **Key characteristics:**
 - **UserCache:** Central multi-entity cache with 4-level lock hierarchy
 - **MessageCache:** Fast async message creation with temporary IDs, uses MessagesRepo for DB abstraction
 - **BattleCache:** Simple delegation pattern for lock management
 - **WorldCache:** Authoritative world state with save callback pattern
+- **UserBonusCache:** Runtime-only derived cache; lazy per-user computation; no lock, no DB, no timer
 
-The separation ensures message operations don't block game updates, and battle operations don't interfere with user/world caching.
+The separation ensures message operations don't block game updates, battle operations don't interfere with user/world caching, and bonus lookups are sub-microsecond on the hot path.

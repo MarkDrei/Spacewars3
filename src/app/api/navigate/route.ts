@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getIronSession } from 'iron-session';
 import { UserCache } from '@/lib/server/user/userCache';
-import { getResearchEffectFromTree, ResearchType } from '@/lib/server/techs/techtree';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth, ApiError } from '@/lib/server/errors';
 import { USER_LOCK, WORLD_LOCK } from '@/lib/server/typedLocks';
@@ -9,6 +8,7 @@ import { User } from '@/lib/server/user/user';
 import { World } from '@/lib/server/world/world';
 import { createLockContext, LockContext, LocksAtMostAndHas4, LocksAtMostAndHas6 } from '@markdrei/ironguard-typescript-locks';
 import { WorldCache } from '@/lib/server/world/worldCache';
+import { UserBonusCache } from '@/lib/server/bonus/UserBonusCache';
 
 export async function POST(request: NextRequest) {
   try {
@@ -87,9 +87,9 @@ async function performNavigationLogic(
   
   // Update ship properties
   if (speed !== undefined) {
-    // Apply research speed bonuses
-    const speedMultiplier = getResearchEffectFromTree(user.techTree, ResearchType.ShipSpeed);
-    const maxSpeed = 5 * speedMultiplier;
+    // Use bonused max ship speed (includes research × level × commander × afterburner)
+    const bonuses = await UserBonusCache.getInstance().getBonuses(userCtx, user.id);
+    const maxSpeed = bonuses.maxShipSpeed;
     
     // Validate speed
     if (speed < 0 || speed > maxSpeed) {
