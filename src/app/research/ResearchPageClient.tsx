@@ -276,15 +276,18 @@ const ResearchPageClient: React.FC<ResearchPageClientProps> = () => {
       hullStrength: 'HullStrength',
       inventoryCapacity: 'IronCapacity',
       ironCapacity: 'IronCapacity',
-      inventorySlots: 'IronHarvesting', // placeholder until dedicated image is available
-      bridgeSlots: 'IronHarvesting', // placeholder until dedicated image is available
+      inventorySlots: 'InventorySlots',
+      bridgeSlots: 'BridgeSlots',
       armorEffectiveness: 'ArmorEffectiveness',
       shieldEffectiveness: 'ShieldEffectiveness',
       shieldRechargeRate: 'ShieldRechargeRate',
       afterburnerSpeedIncrease: 'AfterburnerSpeed',
       afterburnerDuration: 'AfterburnerDuration',
-      teleport: 'Teleport',
-      teleportRechargeSpeed: 'TeleportRechargeSpeed',
+      // use the more descriptive 'Teleportation' images that were recently
+      // added; the old 'Teleport' filenames remain in the repo but are no
+      // longer referenced by the code.
+      teleport: 'Teleportation',
+      teleportRechargeSpeed: 'TeleportationRechargeSpeed',
       constructionSpeed: 'ConstructionSpeed',
       // Add more as available, fallback to IronHarvesting for now
     };

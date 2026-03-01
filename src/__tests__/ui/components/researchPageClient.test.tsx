@@ -89,6 +89,62 @@ describe('ResearchPageClient card view', () => {
     vi.mocked(researchService.formatDuration).mockImplementation((s: number) => `${s}`);
   });
 
+  it('uses dedicated images for inventory, bridge, and teleport researches', async () => {
+    const techTree = makeFakeTechTree({
+      inventorySlots: 0,
+      bridgeSlots: 0,
+      teleport: 0,
+      teleportRechargeSpeed: 0
+    });
+
+    const researches = {
+      [ResearchType.InventorySlots]: makeFakeResearch(ResearchType.InventorySlots),
+      [ResearchType.BridgeSlots]: makeFakeResearch(ResearchType.BridgeSlots),
+      [ResearchType.Teleport]: makeFakeResearch(ResearchType.Teleport),
+      [ResearchType.TeleportRechargeSpeed]: makeFakeResearch(ResearchType.TeleportRechargeSpeed)
+    } as unknown as Record<ResearchType, ResearchDef>;
+
+    vi.mocked(researchService.getTechTree).mockResolvedValue({ techTree, researches });
+    vi.mocked(userStatsService.getUserStats).mockResolvedValue({
+      iron: 0,
+      last_updated: 0,
+      ironPerSecond: 0,
+      maxIronCapacity: 0,
+      xp: 0,
+      level: 0,
+      xpForNextLevel: 0,
+      timeMultiplier: 1,
+      teleportCharges: 0,
+      teleportMaxCharges: 0,
+      teleportRechargeTimeSec: 0,
+      teleportRechargeSpeed: 0
+    });
+
+    vi.mocked(researchService.isResearchActive).mockReturnValue(false);
+    render(<ResearchPageClient auth={{ userId: 1, username: 'test' }} />);
+
+    // wait for cards to load
+    await waitFor(() => {
+      expect(screen.getByText('inventorySlots')).toBeInTheDocument();
+      expect(screen.getByText('bridgeSlots')).toBeInTheDocument();
+    });
+
+    // check each image src matches its dedicated filename
+    const invImg = screen.getByAltText('inventorySlots icon') as HTMLImageElement;
+    // Next.js wraps images behind an internal loader; the actual src will
+    // include the original path url-encoded. We just need to ensure the
+    // filename itself is present somewhere in the generated string.
+    expect(invImg.src).toMatch(/InventorySlots\.png/);
+    const bridgeImg = screen.getByAltText('bridgeSlots icon') as HTMLImageElement;
+    expect(bridgeImg.src).toMatch(/BridgeSlots\.png/);
+
+    // teleport types should pick up the newly added 'Teleportation' assets
+    const tpImg = screen.getByAltText('teleport icon') as HTMLImageElement;
+    expect(tpImg.src).toMatch(/Teleportation\.png/);
+    const tpRechargeImg = screen.getByAltText('teleportRechargeSpeed icon') as HTMLImageElement;
+    expect(tpRechargeImg.src).toMatch(/TeleportationRechargeSpeed\.png/);
+  });
+
   it('displays countdown badge instead of button when a research is active', async () => {
     const techTree = makeFakeTechTree({
       activeResearch: { type: ResearchType.ShipSpeed, remainingDuration: 123 }
