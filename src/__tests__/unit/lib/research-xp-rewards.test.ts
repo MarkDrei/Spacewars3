@@ -255,6 +255,75 @@ describe('Research XP Rewards System', () => {
       expect(result.levelUp).toBeUndefined(); // Not enough to level up
     });
 
+    it('updateStats_researchCompletes_returnsResearchCompletedInfo', () => {
+      const user = new User(
+        1,
+        'testuser',
+        'hash',
+        1000,
+        0,
+        Math.floor(Date.now() / 1000),
+        createInitialTechTree(),
+        dummySave,
+        defaultTechCounts,
+        250,
+        250,
+        250,
+        Math.floor(Date.now() / 1000),
+        false,
+        null,
+        [],
+        null,
+        0,
+        0
+      );
+
+      user.techTree.shipSpeed = 1;
+      user.techTree.activeResearch = {
+        type: ResearchType.ShipSpeed,
+        remainingDuration: 5,
+      };
+
+      const now = user.last_updated + 10;
+      const result = user.updateStats(now);
+
+      expect(result.researchCompleted).toBeDefined();
+      expect(result.researchCompleted?.type).toBe(ResearchType.ShipSpeed);
+      expect(result.researchCompleted?.completedLevel).toBe(1);
+      expect(result.researchCompleted?.researchName).toBe('Ship Speed');
+    });
+
+    it('updateStats_noResearchCompletion_researchCompletedIsUndefined', () => {
+      const user = new User(
+        1,
+        'testuser',
+        'hash',
+        1000,
+        0,
+        Math.floor(Date.now() / 1000),
+        createInitialTechTree(),
+        dummySave,
+        defaultTechCounts,
+        250,
+        250,
+        250,
+        Math.floor(Date.now() / 1000),
+        false,
+        null,
+        [],
+        null,
+        0,
+        0
+      );
+
+      user.techTree.activeResearch = undefined;
+
+      const now = user.last_updated + 10;
+      const result = user.updateStats(now);
+
+      expect(result.researchCompleted).toBeUndefined();
+    });
+
     it('updateStats_correctXpCalculationForHigherLevels', () => {
       const user = new User(
         1,

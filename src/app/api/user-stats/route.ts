@@ -56,6 +56,17 @@ async function processUserStats(user: User, userWorldCache: UserCache, userCtx: 
       `P: 🎉 Level Up! You reached level ${updateResult.levelUp!.newLevel}! (+${updateResult.levelUp!.xpReward} XP from research completion)`
     );
   }
+
+  // Send research completion notification
+  if (updateResult.researchCompleted) {
+    const messageCache = MessageCache.getInstance();
+    const ctx = createLockContext();
+    await messageCache.createMessage(
+      ctx,
+      user.id,
+      `🔬 Research Complete: ${updateResult.researchCompleted.researchName} reached level ${updateResult.researchCompleted.completedLevel}!`
+    );
+  }
   
   const responseData = { 
     iron: user.iron, 

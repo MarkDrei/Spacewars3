@@ -472,8 +472,10 @@ export class UserCache extends Cache {
         in_battle = $20,
         current_battle_id = $21,
         build_queue = $22,
-        build_start_sec = $23
-      WHERE id = $24`,
+        build_start_sec = $23,
+        teleport_charges = $24,
+        teleport_last_regen = $25
+      WHERE id = $26`,
       [
         user.iron,
         user.xp,
@@ -498,6 +500,8 @@ export class UserCache extends Cache {
         user.currentBattleId,
         JSON.stringify(user.buildQueue),
         user.buildStartSec,
+        user.teleportCharges,
+        user.teleportLastRegen,
         user.id
       ]
     );

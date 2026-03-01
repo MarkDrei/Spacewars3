@@ -208,7 +208,7 @@ class User {
    * @param bonuses Pre-computed user bonuses (optional). When provided, bonused iron rate and
    *   capacity are used. When omitted, falls back to direct tech-tree lookups (backward-compat).
    */
-  updateStats(now: number, bonuses?: UserBonuses): { levelUp?: { leveledUp: boolean; oldLevel: number; newLevel: number; xpReward: number; source: 'research' } } {
+  updateStats(now: number, bonuses?: UserBonuses): { levelUp?: { leveledUp: boolean; oldLevel: number; newLevel: number; xpReward: number; source: 'research' }; researchCompleted?: { type: ResearchType; completedLevel: number; researchName: string } } {
     const elapsed = now - this.last_updated;
     if (elapsed <= 0) return {};
 
@@ -268,6 +268,7 @@ class User {
 
     // Check if research completed and award XP
     let levelUpInfo: { leveledUp: boolean; oldLevel: number; newLevel: number; xpReward: number; source: 'research' } | undefined;
+    let researchCompletedInfo: { type: ResearchType; completedLevel: number; researchName: string } | undefined;
     if (researchResult?.completed) {
       // Invalidate cached bonuses because research-derived values have changed.
       // (If addXp() also causes a level-up, it will call invalidateBonuses() again — that is harmless.)
@@ -279,12 +280,21 @@ class User {
       const xpReward = Math.floor(cost / 25);
       const levelUp = this.addXp(xpReward);
 
+      researchCompletedInfo = {
+        type: researchResult.type,
+        completedLevel: researchResult.completedLevel,
+        researchName: research.name,
+      };
+
       if (levelUp) {
         levelUpInfo = { ...levelUp, xpReward, source: 'research' as const };
       }
     }
 
-    return levelUpInfo ? { levelUp: levelUpInfo } : {};
+    const result: { levelUp?: typeof levelUpInfo; researchCompleted?: typeof researchCompletedInfo } = {};
+    if (levelUpInfo) result.levelUp = levelUpInfo;
+    if (researchCompletedInfo) result.researchCompleted = researchCompletedInfo;
+    return result;
   }
 
   /**
