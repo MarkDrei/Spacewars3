@@ -8,6 +8,7 @@ import { userStatsService } from '@/lib/client/services/userStatsService';
 import { globalEvents, EVENTS } from '@/lib/client/services/eventService';
 import { ServerAuthState } from '@/lib/server/serverSession';
 import { AllResearches, getResearchUpgradeCost, getResearchEffect } from '@/lib/server/techs/techtree';
+import { formatNumber } from '@/shared/numberFormat';
 import './ResearchPage.css';
 import ResearchCardOverlay from '@/components/Research/ResearchCardOverlay';
 
@@ -238,8 +239,8 @@ const CostTooltip: React.FC<{ research: ResearchDef; currentLevel: number }> = (
               {futureData.map(({ level, cost, effect }) => (
                 <tr key={level}>
                   <td>{level}</td>
-                  <td>{Math.round(cost).toLocaleString()}</td>
-                  <td>{Number.isInteger(effect) ? effect : effect.toFixed(1)} {research.unit}</td>
+                  <td>{formatNumber(cost)}</td>
+                  <td>{formatNumber(effect)} {research.unit}</td>
                 </tr>
               ))}
             </tbody>
@@ -509,7 +510,7 @@ const ResearchPageClient: React.FC<ResearchPageClientProps> = () => {
             ) : isAnyResearchActive ? (
               <>
                 <span className="cost-disabled">
-                  {research.nextUpgradeCost.toLocaleString()}
+                  {formatNumber(research.nextUpgradeCost)}
                 </span>
                 <CostTooltip research={research} currentLevel={level} />
               </>
@@ -520,14 +521,14 @@ const ResearchPageClient: React.FC<ResearchPageClientProps> = () => {
                   onClick={() => handleTriggerResearch(research.type)}
                   disabled={isTriggering}
                 >
-                  {isTriggering ? 'Processing...' : `Upgrade (${research.nextUpgradeCost.toLocaleString()})`}
+                  {isTriggering ? 'Processing...' : `Upgrade (${formatNumber(research.nextUpgradeCost)})`}
                 </button>
                 <CostTooltip research={research} currentLevel={level} />
               </>
             ) : (
               <>
                 <span className="cost-insufficient">
-                  {research.nextUpgradeCost.toLocaleString()}
+                  {formatNumber(research.nextUpgradeCost)}
                 </span>
                 <CostTooltip research={research} currentLevel={level} />
               </>
@@ -672,7 +673,7 @@ const ResearchPageClient: React.FC<ResearchPageClientProps> = () => {
                             <div className="card-detail">
                               <div className="card-detail-label">Cost</div>
                               <div className={`card-detail-value ${researchService.canAffordResearch(research, currentIron) ? 'cost-affordable' : 'cost-expensive'}`}>
-                                {research.nextUpgradeCost.toLocaleString()} Iron
+                                {formatNumber(research.nextUpgradeCost)} Iron
                               </div>
                             </div>
                           </div>

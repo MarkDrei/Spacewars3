@@ -4,6 +4,11 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Spacewars: Ironcore",
   description: "A space exploration and resource management game",
+  icons: {
+    icon: "/favicon/favicon.ico",
+    shortcut: "/favicon/favicon-32x32.png",
+    apple: "/favicon/apple-touch-icon.png",
+  },
 };
 
 export default function RootLayout({

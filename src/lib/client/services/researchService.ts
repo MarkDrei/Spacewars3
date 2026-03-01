@@ -1,4 +1,5 @@
 import { ResearchType } from '@/shared/src/types/gameTypes';
+import { formatNumber } from '@/shared/numberFormat';
 
 interface TechTree {
   ironHarvesting: number;
@@ -169,12 +170,11 @@ class ResearchService {
   }
 
   /**
-   * Format research effect values with units
+   * Format research effect values with units.
+   * Numeric part is formatted via {@link formatNumber} from `src/shared/numberFormat`.
    */
   formatEffect(value: number, unit: string): string {
-    return Number.isInteger(value) 
-      ? `${value} ${unit}` 
-      : `${value.toFixed(1)} ${unit}`;
+    return `${formatNumber(value)} ${unit}`;
   }
 
   /**
