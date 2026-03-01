@@ -94,14 +94,16 @@ describe('ResearchPageClient card view', () => {
       inventorySlots: 0,
       bridgeSlots: 0,
       teleport: 0,
-      teleportRechargeSpeed: 0
+      teleportRechargeSpeed: 0,
+      energyAccuracy: 0
     });
 
     const researches = {
       [ResearchType.InventorySlots]: makeFakeResearch(ResearchType.InventorySlots),
       [ResearchType.BridgeSlots]: makeFakeResearch(ResearchType.BridgeSlots),
       [ResearchType.Teleport]: makeFakeResearch(ResearchType.Teleport),
-      [ResearchType.TeleportRechargeSpeed]: makeFakeResearch(ResearchType.TeleportRechargeSpeed)
+      [ResearchType.TeleportRechargeSpeed]: makeFakeResearch(ResearchType.TeleportRechargeSpeed),
+      [ResearchType.EnergyAccuracy]: makeFakeResearch(ResearchType.EnergyAccuracy)
     } as unknown as Record<ResearchType, ResearchDef>;
 
     vi.mocked(researchService.getTechTree).mockResolvedValue({ techTree, researches });
@@ -143,6 +145,10 @@ describe('ResearchPageClient card view', () => {
     expect(tpImg.src).toMatch(/Teleportation\.png/);
     const tpRechargeImg = screen.getByAltText('teleportRechargeSpeed icon') as HTMLImageElement;
     expect(tpRechargeImg.src).toMatch(/TeleportationRechargeSpeed\.png/);
+
+    // energy accuracy now has its own icon rather than reusing projectile
+    const eaImg = screen.getByAltText('energyAccuracy icon') as HTMLImageElement;
+    expect(eaImg.src).toMatch(/EnergyAccuracy\.png/);
   });
 
   it('displays countdown badge instead of button when a research is active', async () => {

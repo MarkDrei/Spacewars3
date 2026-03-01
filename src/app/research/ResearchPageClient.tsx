@@ -272,7 +272,7 @@ const ResearchPageClient: React.FC<ResearchPageClientProps> = () => {
       projectileAccuracy: 'ProjectileAccuracy',
       energyDamage: 'EnergyDamage',
       energyRechargeRate: 'RechargeRate',
-      energyAccuracy: 'ProjectileAccuracy', // reuse
+      energyAccuracy: 'EnergyAccuracy',
       hullStrength: 'HullStrength',
       inventoryCapacity: 'IronCapacity',
       ironCapacity: 'IronCapacity',
