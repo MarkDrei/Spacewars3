@@ -4,6 +4,13 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Spacewars: Ironcore",
   description: "A space exploration and resource management game",
+  manifest: "/manifest.json",
+  themeColor: "#ff6600",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Spacewars",
+  },
   icons: {
     icon: "/favicon/favicon.ico",
     shortcut: "/favicon/favicon-32x32.png",
