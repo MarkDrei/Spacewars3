@@ -6,6 +6,38 @@ import { shouldRetryFetch, scheduleRetry, DEFAULT_RETRY_CONFIG } from './retryLo
 import { setupPolling, cancelPolling } from './pollingUtils';
 import { setTimeMultiplier, getTimeMultiplier } from '../../timeMultiplier';
 
+interface BonusData {
+  levelMultiplier: number;
+  ironRechargeRate: number;
+  ironStorageCapacity: number;
+  maxShipSpeed: number;
+  hullRepairSpeed: number;
+  armorRepairSpeed: number;
+  shieldRechargeRate: number;
+  projectileWeaponDamageFactor: number;
+  projectileWeaponReloadFactor: number;
+  projectileWeaponAccuracyFactor: number;
+  energyWeaponDamageFactor: number;
+  energyWeaponReloadFactor: number;
+  energyWeaponAccuracyFactor: number;
+}
+
+const DEFAULT_BONUS_DATA: BonusData = {
+  levelMultiplier: 1.0,
+  ironRechargeRate: 1.0,
+  ironStorageCapacity: 5000,
+  maxShipSpeed: 0,
+  hullRepairSpeed: 1.0,
+  armorRepairSpeed: 1.0,
+  shieldRechargeRate: 1.0,
+  projectileWeaponDamageFactor: 1.0,
+  projectileWeaponReloadFactor: 1.0,
+  projectileWeaponAccuracyFactor: 1.0,
+  energyWeaponDamageFactor: 1.0,
+  energyWeaponReloadFactor: 1.0,
+  energyWeaponAccuracyFactor: 1.0,
+};
+
 interface UseIronReturn {
   ironAmount: number;
   isLoading: boolean;
@@ -15,6 +47,7 @@ interface UseIronReturn {
   level: number;
   xpForNextLevel: number;
   timeMultiplier: number;
+  bonuses: BonusData;
 }
 
 export const useIron = (pollInterval: number = 5000): UseIronReturn => {
@@ -27,6 +60,7 @@ export const useIron = (pollInterval: number = 5000): UseIronReturn => {
   const [displayIronAmount, setDisplayIronAmount] = useState<number>(0);
   const [xpData, setXpData] = useState({ xp: 0, level: 1, xpForNextLevel: 1000 });
   const [currentTimeMultiplier, setCurrentTimeMultiplier] = useState<number>(1);
+  const [bonusData, setBonusData] = useState<BonusData>(DEFAULT_BONUS_DATA);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   
@@ -77,6 +111,21 @@ export const useIron = (pollInterval: number = 5000): UseIronReturn => {
         xp: result.xp,
         level: result.level,
         xpForNextLevel: result.xpForNextLevel
+      });
+      setBonusData({
+        levelMultiplier: result.levelMultiplier ?? 1.0,
+        ironRechargeRate: result.ironPerSecond ?? 1.0,
+        ironStorageCapacity: result.maxIronCapacity ?? 5000,
+        maxShipSpeed: result.maxShipSpeed ?? 0,
+        hullRepairSpeed: result.hullRepairSpeed ?? 1.0,
+        armorRepairSpeed: result.armorRepairSpeed ?? 1.0,
+        shieldRechargeRate: result.shieldRechargeRate ?? 1.0,
+        projectileWeaponDamageFactor: result.projectileWeaponDamageFactor ?? 1.0,
+        projectileWeaponReloadFactor: result.projectileWeaponReloadFactor ?? 1.0,
+        projectileWeaponAccuracyFactor: result.projectileWeaponAccuracyFactor ?? 1.0,
+        energyWeaponDamageFactor: result.energyWeaponDamageFactor ?? 1.0,
+        energyWeaponReloadFactor: result.energyWeaponReloadFactor ?? 1.0,
+        energyWeaponAccuracyFactor: result.energyWeaponAccuracyFactor ?? 1.0,
       });
       setIsLoading(false);
     } catch (err) {
@@ -165,6 +214,7 @@ export const useIron = (pollInterval: number = 5000): UseIronReturn => {
     xp: xpData.xp,
     level: xpData.level,
     xpForNextLevel: xpData.xpForNextLevel,
-    timeMultiplier: currentTimeMultiplier
+    timeMultiplier: currentTimeMultiplier,
+    bonuses: bonusData,
   };
 };

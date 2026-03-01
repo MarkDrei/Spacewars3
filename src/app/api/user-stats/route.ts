@@ -70,6 +70,18 @@ async function processUserStats(user: User, userWorldCache: UserCache, userCtx: 
     teleportMaxCharges: getResearchEffectFromTree(user.techTree, ResearchType.Teleport),
     teleportRechargeTimeSec: getResearchEffectFromTree(user.techTree, ResearchType.TeleportRechargeSpeed),
     teleportRechargeSpeed: user.techTree.teleportRechargeSpeed,
+    // Bonus system fields
+    levelMultiplier: bonuses.levelMultiplier,
+    maxShipSpeed: bonuses.maxShipSpeed,
+    hullRepairSpeed: bonuses.hullRepairSpeed,
+    armorRepairSpeed: bonuses.armorRepairSpeed,
+    shieldRechargeRate: bonuses.shieldRechargeRate,
+    projectileWeaponDamageFactor: bonuses.projectileWeaponDamageFactor,
+    projectileWeaponReloadFactor: bonuses.projectileWeaponReloadFactor,
+    projectileWeaponAccuracyFactor: bonuses.projectileWeaponAccuracyFactor,
+    energyWeaponDamageFactor: bonuses.energyWeaponDamageFactor,
+    energyWeaponReloadFactor: bonuses.energyWeaponReloadFactor,
+    energyWeaponAccuracyFactor: bonuses.energyWeaponAccuracyFactor,
   };
   
   return NextResponse.json(responseData);
