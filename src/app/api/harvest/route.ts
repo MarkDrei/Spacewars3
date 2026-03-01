@@ -12,6 +12,7 @@ import { WorldCache } from '@/lib/server/world/worldCache';
 import { createLockContext, LockContext, LocksAtMostAndHas4, LocksAtMostAndHas6 } from '@markdrei/ironguard-typescript-locks';
 import { Commander } from '@/lib/server/inventory/Commander';
 import { InventoryService, InventoryFullError } from '@/lib/server/inventory/InventoryService';
+import { getResearchEffectFromTree, ResearchType } from '@/lib/server/techs/techtree';
 
 export async function POST(request: NextRequest) {
   try {
@@ -77,7 +78,7 @@ export async function POST(request: NextRequest) {
         const commander = Commander.random();
         let notificationMessage: string;
         try {
-          await inventoryService.addItemToFirstFreeSlotWithLock(inventoryContext, session.userId!, commander.toJSON());
+          await inventoryService.addItemToFirstFreeSlotWithLock(inventoryContext, session.userId!, commander.toJSON(), collectionResult.maxInventorySlots);
           const bonusDesc = commander.statBonuses
             .map(b => `${b.stat} +${b.value}%`)
             .join(', ');
@@ -117,7 +118,7 @@ async function performCollectionLogic(
   user: User, 
   objectId: number,
   userWorldCache: UserCache,
-): Promise<{ response: NextResponse; escapePodCollected: boolean }> {
+): Promise<{ response: NextResponse; escapePodCollected: boolean; maxInventorySlots: number }> {
   const worldCache = WorldCache.getInstance();
   // Update physics for all objects first
   const currentTime = Date.now();
@@ -169,6 +170,7 @@ async function performCollectionLogic(
   await worldCache.updateWorldUnsafe(worldContext, world);
   
   const escapePodCollected = targetObject.type === 'escape_pod';
+  const maxInventorySlots = Math.floor(getResearchEffectFromTree(user.techTree, ResearchType.InventorySlots));
 
   // For non-escape-pod objects send the standard collection notification now.
   // Escape pod commander notification is sent after locks are released (in POST handler).
@@ -187,6 +189,7 @@ async function performCollectionLogic(
 
   return {
     escapePodCollected,
+    maxInventorySlots,
     response: NextResponse.json({
       success: true,
       distance,

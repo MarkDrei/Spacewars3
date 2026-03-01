@@ -182,6 +182,28 @@ describe('InventoryService', () => {
       const slot = await service.addItemToFirstFreeSlotWithoutLock(USER_ID, makeCommander(), TEST_MAX_SLOTS);
       expect(slot).toEqual(SLOT_0_1);
     });
+
+    // Regression test: collecting the 17th commander when the user has researched
+    // 24 inventory slots (3 rows × 8 cols). Before the fix the harvest route
+    // called addItemToFirstFreeSlotWithLock with the default of 16 slots, which
+    // caused a false InventoryFullError even though a 3rd row was available.
+    test('addItemToFirstFreeSlot_first16SlotsFull_researchedMaxSlotsOf24_placesAtRow2', async () => {
+      const RESEARCHED_MAX_SLOTS = 24; // level-2 InventorySlots research: 16 + 8 = 24
+      const grid = createEmptyInventoryGrid(RESEARCHED_MAX_SLOTS); // 3 rows × 8 cols
+      // Fill the first two rows (slots 0–15) – exactly what DEFAULT_INVENTORY_SLOTS covers
+      for (let col = 0; col < INVENTORY_COLS; col++) {
+        grid[0][col] = makeCommander(`row0-${col}`);
+        grid[1][col] = makeCommander(`row1-${col}`);
+      }
+      repo = makeMockRepo(grid);
+      service = new InventoryService(repo);
+
+      const commander = makeCommander('17th Commander');
+      const slot = await service.addItemToFirstFreeSlotWithoutLock(USER_ID, commander, RESEARCHED_MAX_SLOTS);
+
+      expect(slot).toEqual({ row: 2, col: 0 });
+      expect(repo._getStored()![2][0]).toEqual(commander);
+    });
   });
 
   // -------------------------------------------------------------------------
