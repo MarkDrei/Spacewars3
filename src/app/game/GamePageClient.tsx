@@ -384,6 +384,7 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
     <AuthenticatedLayout>
       <div className="game-page">
         <div className="canvas-container">
+          <div className="canvas-inner">
           <canvas 
             ref={canvasRef}
             id="gameCanvas" 
@@ -421,6 +422,7 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
               </label>
             </div>
           )}
+          </div>
         </div>
         <div className="game-controls">
           <div className="navigation-controls">

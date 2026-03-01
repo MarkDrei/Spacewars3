@@ -20,11 +20,17 @@
   position: relative;
 }
 
+/* Inner wrapper sizes itself to the canvas so overlay positions are always canvas-relative */
+.canvas-inner {
+  position: relative;
+  display: inline-block;
+  line-height: 0; /* remove extra space below canvas */
+}
+
 .canvas-overlay-controls {
   position: absolute;
   bottom: 20px;
-  /* Center it relative to the 800px canvas, not the full screen width */
-  left: calc(50% + 400px - 160px); /* 50% is center, +400px is right edge of canvas, -160px is offset from edge */
+  right: 20px;
   background-color: rgba(30, 30, 30, 0.8);
   padding: 8px 12px;
   border-radius: 8px;
@@ -36,8 +42,7 @@
 .canvas-overlay-controls-left {
   position: absolute;
   bottom: 20px;
-  /* Center it relative to the 800px canvas, not the full screen width */
-  left: calc(50% - 400px + 20px); /* 50% is center, -400px is left edge of canvas, +20px is offset from edge */
+  left: 20px;
   background-color: rgba(30, 30, 30, 0.8);
   padding: 8px 12px;
   border-radius: 8px;
