@@ -419,7 +419,28 @@ export class TechFactory {
   }
 
   /**
-   * Calculate weapon damage effects against a target
+   * Calculate weapon damage effects against a target.
+   *
+   * This utility centralises all of the hit‑rate and damage math used by the
+   * battle scheduler.  It does **not** compute any research/bonus factors;
+   * those are calculated elsewhere and supplied via the parameters below.
+   *
+   * @param weaponKey           Key for the weapon (e.g. 'pulse_laser').
+   * @param techCounts          Attacker's tech counts; used to determine how
+   *                            many units of `weaponKey` are firing.
+   * @param opponentShieldValue Current shield value of the defending ship.
+   * @param opponentArmorValue  Current armor value of the defending ship.
+   * @param accuracyMultiplier  Multiplicative accuracy bonus                
+   *                            (1.0 = no bonus, >1.0 increases hit chance).
+   * @param negativeAccuracyModifier  Decimal accuracy penalty             
+   *                            (e.g. ECM or torpedo penalty; 0 = no penalty).
+   * @param baseDamageModifier  Damage multiplier (1.0 = normal damage).
+   * @param ecmEffectiveness    ECM effectiveness against guided weapons       
+   *                            (0 = none, 1 = full effectiveness).
+   * @param spreadValue         Randomisation factor for hit calculation       
+   *                            (1.0 = normal spread).
+   * @returns Object containing
+   *          `{ weaponsHit, shieldDamage, armorDamage, hullDamage }`.
    */
   static calculateWeaponDamage(
     weaponKey: string,
