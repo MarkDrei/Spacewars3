@@ -426,8 +426,7 @@ export class TechFactory {
    * those are calculated elsewhere and supplied via the parameters below.
    *
    * @param weaponKey           Key for the weapon (e.g. 'pulse_laser').
-   * @param techCounts          Attacker's tech counts; used to determine how
-   *                            many units of `weaponKey` are firing.
+   * @param weaponCount         Number of weapons of this type firing.
    * @param opponentShieldValue Current shield value of the defending ship.
    * @param opponentArmorValue  Current armor value of the defending ship.
    * @param accuracyMultiplier  Multiplicative accuracy bonus                
@@ -444,7 +443,7 @@ export class TechFactory {
    */
   static calculateWeaponDamage(
     weaponKey: string,
-    techCounts: TechCounts,
+    weaponCount: number,
     opponentShieldValue: number,
     opponentArmorValue: number,
     accuracyMultiplier: number,
@@ -459,8 +458,7 @@ export class TechFactory {
       throw new Error(`Unknown weapon: ${weaponKey}`);
     }
 
-    // Get number of weapons of this type
-    const weaponCount = this.getTechCount(techCounts, weaponKey);
+    // If no weapons of this type are present, nothing can hit
     if (weaponCount === 0) {
       return { weaponsHit: 0, shieldDamage: 0, armorDamage: 0, hullDamage: 0 };
     }

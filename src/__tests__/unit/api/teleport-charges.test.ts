@@ -30,6 +30,7 @@ function createTestUser(overrides: {
   teleportLastRegen?: number;
   teleportLevel?: number;
   teleportRechargeSpeedLevel?: number;
+  timeMultiplier?: TimeMultiplierService;
 }): User {
   const techTree = createInitialTechTree();
 
@@ -60,11 +61,16 @@ function createTestUser(overrides: {
     null,                     // buildStartSec
     overrides.teleportCharges ?? 0,      // teleportCharges
     overrides.teleportLastRegen ?? 0,    // teleportLastRegen
-    undefined                 // ship_id
+    undefined,                // ship_id
+    undefined,                // bonusCache (use default)
+    overrides.timeMultiplier ?? TimeMultiplierService.getInstance()
   );
 }
 
 describe('updateTeleportCharges', () => {
+  // We still reset the singleton before/after each test to guarantee a known
+  // multiplier (default is 1). The helper accepts an injected service for
+  // cases where a specific multiplier value is desired.
   beforeEach(() => {
     TimeMultiplierService.resetInstance();
   });
@@ -99,7 +105,8 @@ describe('updateTeleportCharges', () => {
 
   test('updateTeleportCharges_accumulates_correctly', () => {
     // Level 1 → 1 max charge, recharge speed level 1 → 86400 seconds per charge
-    // With time multiplier = 1: 86400 seconds elapsed → gain exactly 1 charge
+    // With a unit multiplier (1) we expect exactly one charge.
+    // To prove the DI works we explicitly pass a time multiplier instance below.
     const rechargeTimeSec = 86400;
     const lastRegen = 1000;
     const elapsed = rechargeTimeSec; // exactly one full recharge period
@@ -110,6 +117,7 @@ describe('updateTeleportCharges', () => {
       teleportRechargeSpeedLevel: 1,
       teleportCharges: 0,
       teleportLastRegen: lastRegen,
+      timeMultiplier: TimeMultiplierService.getInstance(), // explicit injection
     });
 
     user.updateTeleportCharges(now);
