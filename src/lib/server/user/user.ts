@@ -8,7 +8,7 @@ import { TechService } from '../techs/TechService';
 import { TimeMultiplierService } from '../timeMultiplier';
 import { UserBonusCache } from '../bonus/UserBonusCache';
 import { UserBonuses } from '../bonus/userBonusTypes';
-import { HasLock4Context, IronLocks, LockContext } from '@markdrei/ironguard-typescript-locks';
+import { HasLock4Context, IronLocks } from '@markdrei/ironguard-typescript-locks';
 
 class User {
   id: number;

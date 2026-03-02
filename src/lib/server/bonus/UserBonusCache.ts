@@ -33,7 +33,6 @@ type UserBonusCacheDependencies = {
 };
 
 declare global {
-  // eslint-disable-next-line no-var
   var userBonusCacheInstance: UserBonusCache | null;  // required for globalThis augmentation
 }
 
