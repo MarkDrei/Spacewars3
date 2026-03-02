@@ -1,5 +1,5 @@
 import { describe, expect, test, vi } from 'vitest';
-import { setupPolling, cancelPolling } from '@/lib/client/hooks/useIron/pollingUtils';
+import { setupPolling, cancelPolling } from '@/lib/client/hooks/useUserStats/pollingUtils';
 
 describe('Polling Utils', () => {
   describe('setupPolling', () => {

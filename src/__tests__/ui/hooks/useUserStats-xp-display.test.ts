@@ -1,19 +1,19 @@
 import { describe, expect, vi, test, beforeEach } from 'vitest';
 import { Mocked } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
-import { useIron } from '@/lib/client/hooks/useIron';
+import { useUserStats } from '@/lib/client/hooks/useUserStats/useUserStats';
 import { userStatsService } from '@/lib/client/services/userStatsService';
 
 // Mock the userStatsService
 vi.mock('@/lib/client/services/userStatsService');
 const mockUserStatsService = userStatsService as Mocked<typeof userStatsService>;
 
-describe('useIron - XP and Level Display', () => {
+describe('useUserStats - XP and Level Display', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  test('useIron_returnsXpAndLevelData', async () => {
+  test('useUserStats_returnsXpAndLevelData', async () => {
     // Arrange
     const mockStats = {
       iron: 1500,
@@ -32,7 +32,7 @@ describe('useIron - XP and Level Display', () => {
     mockUserStatsService.getUserStats.mockResolvedValueOnce(mockStats);
 
     // Act
-    const { result } = renderHook(() => useIron());
+    const { result } = renderHook(() => useUserStats());
 
     // Wait for the async operation to complete
     await waitFor(() => {
@@ -45,7 +45,7 @@ describe('useIron - XP and Level Display', () => {
     expect(result.current.xpForNextLevel).toBe(10000);
   });
 
-  test('useIron_newUser_hasLevel1AndZeroXp', async () => {
+  test('useUserStats_newUser_hasLevel1AndZeroXp', async () => {
     // Arrange
     const mockStats = {
       iron: 0,
@@ -64,7 +64,7 @@ describe('useIron - XP and Level Display', () => {
     mockUserStatsService.getUserStats.mockResolvedValueOnce(mockStats);
 
     // Act
-    const { result } = renderHook(() => useIron());
+    const { result } = renderHook(() => useUserStats());
 
     // Wait for the async operation to complete
     await waitFor(() => {
@@ -77,7 +77,7 @@ describe('useIron - XP and Level Display', () => {
     expect(result.current.xpForNextLevel).toBe(1000);
   });
 
-  test('useIron_highLevelUser_hasCorrectXpData', async () => {
+  test('useUserStats_highLevelUser_hasCorrectXpData', async () => {
     // Arrange - Level 10 user
     const mockStats = {
       iron: 50000,
@@ -96,7 +96,7 @@ describe('useIron - XP and Level Display', () => {
     mockUserStatsService.getUserStats.mockResolvedValueOnce(mockStats);
 
     // Act
-    const { result } = renderHook(() => useIron());
+    const { result } = renderHook(() => useUserStats());
 
     // Wait for the async operation to complete
     await waitFor(() => {
@@ -109,7 +109,7 @@ describe('useIron - XP and Level Display', () => {
     expect(result.current.xpForNextLevel).toBe(220000);
   });
 
-  test('useIron_xpDataUpdatesOnRefetch', async () => {
+  test('useUserStats_xpDataUpdatesOnRefetch', async () => {
     // Arrange - Initial state
     const initialStats = {
       iron: 1000,
@@ -147,7 +147,7 @@ describe('useIron - XP and Level Display', () => {
       .mockResolvedValueOnce(updatedStats);
 
     // Act
-    const { result } = renderHook(() => useIron());
+    const { result } = renderHook(() => useUserStats());
 
     // Wait for initial load
     await waitFor(() => {
@@ -172,14 +172,14 @@ describe('useIron - XP and Level Display', () => {
     expect(result.current.xpForNextLevel).toBe(4000);
   });
 
-  test('useIron_loadingState_hasDefaultXpValues', async () => {
+  test('useUserStats_loadingState_hasDefaultXpValues', async () => {
     // Arrange
     mockUserStatsService.getUserStats.mockImplementation(() => 
       new Promise(() => {}) // Never resolves to keep loading state
     );
 
     // Act
-    const { result } = renderHook(() => useIron());
+    const { result } = renderHook(() => useUserStats());
 
     // Assert - Should have default values while loading
     expect(result.current.isLoading).toBe(true);
@@ -188,14 +188,14 @@ describe('useIron - XP and Level Display', () => {
     expect(result.current.xpForNextLevel).toBe(1000);
   });
 
-  test('useIron_apiError_maintainsDefaultXpValues', async () => {
+  test('useUserStats_apiError_maintainsDefaultXpValues', async () => {
     // Arrange
     mockUserStatsService.getUserStats.mockResolvedValueOnce({
       error: 'Server error'
     });
 
     // Act
-    const { result } = renderHook(() => useIron());
+    const { result } = renderHook(() => useUserStats());
 
     // Wait for error state
     await waitFor(() => {
