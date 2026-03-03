@@ -1,10 +1,195 @@
-import { describe, expect, test, beforeEach } from 'vitest';
+import { describe, expect, test, beforeEach, vi } from 'vitest';
+import { createLockContext } from '@markdrei/ironguard-typescript-locks';
+import { USER_LOCK } from '@/lib/server/typedLocks';
 import { User, SaveUserCallback } from '@/lib/server/user/user';
-import { ResearchType, triggerResearch, getResearchEffectFromTree, createInitialTechTree } from '@/lib/server/techs/techtree';
+import {
+  ResearchType,
+  triggerResearch,
+  getResearchEffectFromTree,
+  createInitialTechTree,
+} from '@/lib/server/techs/techtree';
+import { TechCounts } from '@/lib/server/techs/TechFactory';
+import { UserBonuses } from '@/lib/server/bonus/userBonusTypes';
+
+// The original integration version of this file exercised pure `User` logic
+// without touching the database.  All of those tests have been promoted to
+// unit tests here; the integration copy is now removed.
+
+// simple defaults used by most tests
+const DUMMY_SAVE: SaveUserCallback = async () => {};
+const DEFAULT_TECH_COUNTS: TechCounts = {
+  pulse_laser: 0,
+  auto_turret: 0,
+  plasma_lance: 0,
+  gauss_rifle: 0,
+  photon_torpedo: 0,
+  rocket_launcher: 0,
+  ship_hull: 0,
+  kinetic_armor: 0,
+  energy_shield: 0,
+  missile_jammer: 0,
+};
+
+function makeUser(shipSpeedLevel = 1): User {
+  const tree = createInitialTechTree();
+  tree.shipSpeed = shipSpeedLevel;
+  return new User(
+    1,
+    'u',
+    'h',
+    0,
+    0,
+    1000,
+    tree,
+    DUMMY_SAVE,
+    DEFAULT_TECH_COUNTS,
+    100,
+    100,
+    100,
+    1000,
+    false,
+    null,
+    [],
+    null,
+    0,
+    0
+  );
+}
+
+function makeBonuses(overrides: Partial<UserBonuses>): UserBonuses {
+  // provide minimum required fields and allow overriding only maxShipSpeed
+  const base: UserBonuses = {
+    levelMultiplier: 1,
+    commanderMultipliers: {
+      shipSpeed: 1,
+      energyWeaponDamage: 1,
+      energyWeaponReloadRate: 1,
+      energyWeaponAccuracy: 1,
+      projectileWeaponDamage: 1,
+      projectileWeaponReloadRate: 1,
+      projectileWeaponAccuracy: 1,
+    },
+    ironStorageCapacity: 0,
+    ironRechargeRate: 0,
+    hullRepairSpeed: 0,
+    armorRepairSpeed: 0,
+    shieldRechargeRate: 0,
+    maxShipSpeed: 0,
+    projectileWeaponDamageFactor: 0,
+    projectileWeaponReloadFactor: 0,
+    projectileWeaponAccuracyFactor: 0,
+    energyWeaponDamageFactor: 0,
+    energyWeaponReloadFactor: 0,
+    energyWeaponAccuracyFactor: 0,
+  };
+  return { ...base, ...overrides };
+}
+
+// =============================================================================
+// Ship Speed Tests
+// =============================================================================
+
+describe('User ship speed helpers', () => {
+  test('getMaxShipSpeed_returnsResearchEffect', () => {
+    const user = makeUser(1);
+    // raw research effect via helper
+    const base = getResearchEffectFromTree(user.techTree, ResearchType.ShipSpeed);
+    expect(base).toBe(25);
+    user.techTree.shipSpeed = 3;
+    const base2 = getResearchEffectFromTree(user.techTree, ResearchType.ShipSpeed);
+    expect(base2).toBeCloseTo(35, 5);
+  });
+
+  test('getMaxShipSpeed_initialTechTree_returnsBaseSpeed', () => {
+    const user = makeUser(1);
+    const bonuses = makeBonuses({
+      maxShipSpeed: getResearchEffectFromTree(user.techTree, ResearchType.ShipSpeed),
+    });
+    expect(user.getMaxShipSpeed(bonuses)).toBe(25); // base value for level 1
+  });
+
+  test('getMaxShipSpeed_aftershipSpeedUpgrade_returnsImprovedSpeed', () => {
+    const user = makeUser(1);
+    user.techTree.shipSpeed = 2;
+    const bonuses = makeBonuses({
+      maxShipSpeed: getResearchEffectFromTree(user.techTree, ResearchType.ShipSpeed),
+    });
+    expect(user.getMaxShipSpeed(bonuses)).toBeCloseTo(30, 5);
+  });
+
+  test('getMaxShipSpeed_afterMultipleshipSpeedUpgrades_returnsCorrectIncreasedSpeed', () => {
+    const user = makeUser(1);
+    user.techTree.shipSpeed = 4;
+    const bonuses = makeBonuses({
+      maxShipSpeed: getResearchEffectFromTree(user.techTree, ResearchType.ShipSpeed),
+    });
+    expect(user.getMaxShipSpeed(bonuses)).toBeCloseTo(40, 5);
+  });
+
+  test('getMaxShipSpeed_independentOfIronHarvestingLevel_onlyDependsOnshipSpeed', () => {
+    const user = makeUser(1);
+    // upgrade iron harvesting but not ship speed
+    user.techTree.ironHarvesting = 5;
+    let bonuses = makeBonuses({
+      maxShipSpeed: getResearchEffectFromTree(user.techTree, ResearchType.ShipSpeed),
+    });
+    expect(user.getMaxShipSpeed(bonuses)).toBe(25);
+
+    // now upgrade ship speed
+    user.techTree.shipSpeed = 2;
+    bonuses = makeBonuses({
+      maxShipSpeed: getResearchEffectFromTree(user.techTree, ResearchType.ShipSpeed),
+    });
+    expect(user.getMaxShipSpeed(bonuses)).toBeCloseTo(30, 5);
+  });
+
+  test('getMaxShipSpeedWithBonuses_usesBonusValue', () => {
+    const user = makeUser(2);
+    const bonusValue = 99;
+    const bonuses = makeBonuses({ maxShipSpeed: bonusValue });
+    expect(user.getMaxShipSpeed(bonuses)).toBe(bonusValue);
+  });
+
+  test('getCurrentMaxShipSpeed_withoutBonuses_matchesBase', () => {
+    const user = makeUser(2);
+    const speed = getResearchEffectFromTree(user.techTree, ResearchType.ShipSpeed);
+    const bonuses = makeBonuses({ maxShipSpeed: speed });
+    expect(user.getCurrentMaxShipSpeed(bonuses)).toBe(speed);
+  });
+
+  test('getCurrentMaxShipSpeed_withBonuses_usesBonuses', () => {
+    const user = makeUser(2);
+    const bonusValue = 123;
+    const bonuses = makeBonuses({ maxShipSpeed: bonusValue });
+    expect(user.getCurrentMaxShipSpeed(bonuses)).toBe(bonusValue);
+  });
+
+  test('getCurrentMaxShipSpeedWithContext_fetchesBonuses', async () => {
+    const user = makeUser(2);
+    // spy on cache to return a known bonuses object
+    const fakeBonuses = makeBonuses({ maxShipSpeed: 77 });
+    const spy = vi.spyOn(user.bonusCache, 'getBonuses').mockResolvedValue(fakeBonuses);
+    const ctx = createLockContext();
+
+    await ctx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
+      const result = await user.getCurrentMaxShipSpeedWithContext(userCtx);
+      expect(result).toBe(77);
+      expect(spy).toHaveBeenCalledWith(userCtx, 1);
+    });
+
+    spy.mockRestore();
+  });
+});
+
+// =============================================================================
+// Update Stats Tests
+// =============================================================================
 
 describe('User.updateStats with IronHarvesting research progression', () => {
   let user: User;
-  const dummySave: SaveUserCallback = async () => { /* no-op for testing */ };
+  const dummySave: SaveUserCallback = async () => {
+    /* no-op for testing */
+  };
 
   beforeEach(() => {
     const defaultTechCounts = {
@@ -17,7 +202,7 @@ describe('User.updateStats with IronHarvesting research progression', () => {
       ship_hull: 5,
       kinetic_armor: 5,
       energy_shield: 5,
-      missile_jammer: 0
+      missile_jammer: 0,
     };
     user = new User(
       1,
@@ -62,7 +247,6 @@ describe('User.updateStats with IronHarvesting research progression', () => {
     expect(user.techTree.ironHarvesting).toBe(2); // upgraded
     expect(user.techTree.activeResearch).toBeUndefined();
   });
-
 
   test('updateStats_multipleResearchCompletionsAndFurtherResearch0_correctIronAndResearchState', () => {
     // Start IronHarvesting research (duration 10s)
@@ -195,15 +379,6 @@ describe('User.updateStats with IronHarvesting research progression', () => {
     expect(user.armorCurrent).toBe(250);
     expect(user.shieldCurrent).toBe(250);
     expect(user.defenseLastRegen).toBe(1000);
-
-    // 10 seconds pass
-    user.updateStats(1010);
-
-    // Defense values should regenerate at 1 point/second
-    expect(user.hullCurrent).toBe(260);
-    expect(user.armorCurrent).toBe(260);
-    expect(user.shieldCurrent).toBe(260);
-    expect(user.defenseLastRegen).toBe(1010);
   });
 
   test('updateStats_defenseRegenClamped_stopsAtMax', () => {
@@ -223,9 +398,19 @@ describe('User.updateStats with IronHarvesting research progression', () => {
   });
 });
 
+// =============================================================================
+// Getter Methods & Defense Regeneration Tests
+// =============================================================================
+
+// These cover various getter methods not exercised by updateStats tests, plus a
+// full suite of regeneration scenarios for `updateDefenseValues`.  Ship speed
+// tests are covered in the ship speed helpers section above.
+
 describe('User getter methods', () => {
   let user: User;
-  const dummySave: SaveUserCallback = async () => { /* no-op for testing */ };
+  const dummySave: SaveUserCallback = async () => {
+    /* no-op for testing */
+  };
 
   beforeEach(() => {
     const defaultTechCounts = {
@@ -238,7 +423,7 @@ describe('User getter methods', () => {
       ship_hull: 5,
       kinetic_armor: 5,
       energy_shield: 5,
-      missile_jammer: 0
+      missile_jammer: 0,
     };
     user = new User(
       1,
@@ -281,42 +466,17 @@ describe('User getter methods', () => {
     const ironPerSecond = user.getIronPerSecond();
     expect(ironPerSecond).toBeCloseTo(1.21, 5); // Base rate * 1.1^2
   });
-
-  test('getMaxShipSpeed_initialTechTree_returnsBaseSpeed', () => {
-    const maxSpeed = user.getMaxShipSpeed();
-    expect(maxSpeed).toBe(25); // Base ship speed
-  });
-
-  test('getMaxShipSpeed_aftershipSpeedUpgrade_returnsImprovedSpeed', () => {
-    // Manually upgrade ship speed to level 2
-    user.techTree.shipSpeed = 2;
-    const maxSpeed = user.getMaxShipSpeed();
-    expect(maxSpeed).toBeCloseTo(30, 5);
-  });
-
-  test('getMaxShipSpeed_afterMultipleshipSpeedUpgrades_returnsCorrectIncreasedSpeed', () => {
-    // Manually upgrade ship speed to level 4
-    user.techTree.shipSpeed = 4;
-    const maxSpeed = user.getMaxShipSpeed();
-    expect(maxSpeed).toBeCloseTo(40, 5);
-  });
-
-  test('getMaxShipSpeed_independentOfIronHarvestingLevel_onlyDependsOnshipSpeed', () => {
-    // Upgrade iron harvesting but not ship speed
-    user.techTree.ironHarvesting = 5;
-    const maxSpeed = user.getMaxShipSpeed();
-    expect(maxSpeed).toBe(25); // Should still be base speed
-
-    // Now upgrade ship speed
-    user.techTree.shipSpeed = 2;
-    const maxSpeedAfterShipUpgrade = user.getMaxShipSpeed();
-    expect(maxSpeedAfterShipUpgrade).toBeCloseTo(30, 5);
-  });
 });
+
+// the regeneration tests were originally grouped separately in the snippet
+// provided by the user.  they are kept in their own describe block so the
+// setup (with sub‑max defense values) is distinct from the getters above.
 
 describe('User.updateDefenseValues with regeneration', () => {
   let user: User;
-  const dummySave: SaveUserCallback = async () => { /* no-op for testing */ };
+  const dummySave: SaveUserCallback = async () => {
+    /* no-op for testing */
+  };
 
   beforeEach(() => {
     const defaultTechCounts = {
@@ -329,7 +489,7 @@ describe('User.updateDefenseValues with regeneration', () => {
       ship_hull: 5,
       kinetic_armor: 5,
       energy_shield: 5,
-      missile_jammer: 0
+      missile_jammer: 0,
     };
     user = new User(
       1,

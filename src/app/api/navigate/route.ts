@@ -87,9 +87,9 @@ async function performNavigationLogic(
   
   // Update ship properties
   if (speed !== undefined) {
-    // Use bonused max ship speed (includes research × level × commander × afterburner)
+    // Use current max ship speed (affected by damage, modifiers, etc.)
     const bonuses = await UserBonusCache.getInstance().getBonuses(userCtx, user.id);
-    const maxSpeed = bonuses.maxShipSpeed;
+    const maxSpeed = user.getCurrentMaxShipSpeed(bonuses);
     
     // Validate speed
     if (speed < 0 || speed > maxSpeed) {

@@ -18,7 +18,7 @@ import { BattleRepo } from './BattleCache';
 import { resolveBattle } from './battleService';
 import type { Battle, BattleEvent } from './battleTypes';
 import { DAMAGE_CALC_DEFAULTS } from './battleTypes';
-import { TechFactory, TechCounts } from '../techs/TechFactory';
+import { TechFactory } from '../techs/TechFactory';
 import { sendMessageToUser } from '../messages/MessageCache';
 import { getBattleCache } from './BattleCache';
 import { BATTLE_LOCK, USER_LOCK } from '../typedLocks';
@@ -322,7 +322,7 @@ async function fireWeapon(
     // Calculate damage using TechFactory with actual defense values and tech counts
     const damageCalc = TechFactory.calculateWeaponDamage(
       weaponType,
-      attackerUser.techCounts as TechCounts,
+      weaponData.count,
       defenderUser.shieldCurrent,
       defenderUser.armorCurrent,
       accuracyFactor,

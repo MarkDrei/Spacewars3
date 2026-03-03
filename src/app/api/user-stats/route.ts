@@ -83,7 +83,8 @@ async function processUserStats(user: User, userWorldCache: UserCache, userCtx: 
     teleportRechargeSpeed: user.techTree.teleportRechargeSpeed,
     // Bonus system fields
     levelMultiplier: bonuses.levelMultiplier,
-    maxShipSpeed: bonuses.maxShipSpeed,
+    maxShipSpeed: bonuses.maxShipSpeed,  // theoretical max from research + bonuses
+    currentMaxShipSpeed: user.getCurrentMaxShipSpeed(bonuses),  // current actual max (affected by damage, etc.)
     hullRepairSpeed: bonuses.hullRepairSpeed,
     armorRepairSpeed: bonuses.armorRepairSpeed,
     shieldRechargeRate: bonuses.shieldRechargeRate,

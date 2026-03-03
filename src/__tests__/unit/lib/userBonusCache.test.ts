@@ -21,6 +21,7 @@ import {
 } from '@/lib/server/techs/techtree';
 import { Commander } from '@/lib/server/inventory/Commander';
 import { User, type SaveUserCallback } from '@/lib/server/user/user';
+import { TimeMultiplierService } from '@/lib/server/timeMultiplier';
 import type { UserCache } from '@/lib/server/user/userCache';
 import type { InventoryService } from '@/lib/server/inventory/InventoryService';
 import type { BridgeGrid } from '@/lib/server/inventory/inventoryTypes';
@@ -798,16 +799,37 @@ const DEFAULT_TECH_COUNTS = {
   energy_shield: 0, missile_jammer: 0,
 };
 
-function makeRealUser(id: number, xp: number): User {
+function makeRealUser(
+  id: number,
+  xp: number,
+  opts?: { bonusCache?: UserBonusCache; timeMultiplier?: TimeMultiplierService }
+): User {
+  const bonusCache = opts?.bonusCache ?? UserBonusCache.getInstance();
+  const timeMult = opts?.timeMultiplier ?? TimeMultiplierService.getInstance();
+
   return new User(
-    id, 'testuser', 'hash',
-    /* iron */ 0, xp, /* last_updated */ 1000,
-    createInitialTechTree(), DUMMY_SAVE, DEFAULT_TECH_COUNTS,
-    /* hull */ 100, /* armor */ 100, /* shield */ 100,
+    id,
+    'testuser',
+    'hash',
+    /* iron */ 0,
+    xp,
+    /* last_updated */ 1000,
+    createInitialTechTree(),
+    DUMMY_SAVE,
+    DEFAULT_TECH_COUNTS,
+    /* hull */ 100,
+    /* armor */ 100,
+    /* shield */ 100,
     /* defenseLastRegen */ 1000,
-    /* inBattle */ false, /* currentBattleId */ null,
-    /* buildQueue */ [], /* buildStartSec */ null,
-    /* teleportCharges */ 0, /* teleportLastRegen */ 0
+    /* inBattle */ false,
+    /* currentBattleId */ null,
+    /* buildQueue */ [],
+    /* buildStartSec */ null,
+    /* teleportCharges */ 0,
+    /* teleportLastRegen */ 0,
+    undefined,
+    bonusCache,
+    timeMult
   );
 }
 
@@ -820,47 +842,36 @@ describe('UserBonusCache invalidation triggers — User.addXp()', () => {
   // These tests verify that path using vi.spyOn on the cache instance.
 
   test('addXp_causesLevelUp_callsInvalidateBonuses', () => {
-    const cache = UserBonusCache.getInstance();
-    const spy = vi.spyOn(cache, 'invalidateBonuses');
+    const fakeCache = { invalidateBonuses: vi.fn() } as unknown as UserBonusCache;
+    const user = makeRealUser(7, /* xp */ 0, { bonusCache: fakeCache });
 
-    const user = makeRealUser(7, /* xp */ 0);
     // Level 1→2 requires 1000 XP: increment = (1*(1+1)/2)*1000 = 1000
     user.addXp(1000);
 
-    expect(spy).toHaveBeenCalledOnce();
-    expect(spy).toHaveBeenCalledWith(7);
-
-    spy.mockRestore();
+    expect(fakeCache.invalidateBonuses).toHaveBeenCalledOnce();
+    expect(fakeCache.invalidateBonuses).toHaveBeenCalledWith(7);
   });
 
   test('addXp_noLevelUp_doesNotCallInvalidateBonuses', () => {
-    const cache = UserBonusCache.getInstance();
-    const spy = vi.spyOn(cache, 'invalidateBonuses');
-
-    const user = makeRealUser(7, /* xp */ 0);
+    const fakeCache = { invalidateBonuses: vi.fn() } as unknown as UserBonusCache;
+    const user = makeRealUser(7, /* xp */ 0, { bonusCache: fakeCache });
     // Only 500 XP — not enough to reach level 2 (needs 1000)
     user.addXp(500);
 
-    expect(spy).not.toHaveBeenCalled();
-
-    spy.mockRestore();
+    expect(fakeCache.invalidateBonuses).not.toHaveBeenCalled();
   });
 
   test('addXp_multiLevelJump_callsInvalidateBonusesOnce', () => {
-    const cache = UserBonusCache.getInstance();
-    const spy = vi.spyOn(cache, 'invalidateBonuses');
-
-    const user = makeRealUser(7, /* xp */ 0);
+    const fakeCache = { invalidateBonuses: vi.fn() } as unknown as UserBonusCache;
+    const user = makeRealUser(7, /* xp */ 0, { bonusCache: fakeCache });
     // Award 5000 XP — enough to skip several levels at once
     // Level 1→2: 1000, L2→3: 3000 = 4000 total, L3→4: 6000 = 10000 total
     // 5000 XP reaches level 3
     user.addXp(5000);
 
     // invalidateBonuses is called once (from addXp), not once per level
-    expect(spy).toHaveBeenCalledOnce();
-    expect(spy).toHaveBeenCalledWith(7);
-
-    spy.mockRestore();
+    expect(fakeCache.invalidateBonuses).toHaveBeenCalledOnce();
+    expect(fakeCache.invalidateBonuses).toHaveBeenCalledWith(7);
   });
 
   test('addXp_zeroAmount_returnsUndefinedAndNoInvalidation', () => {

@@ -8,6 +8,7 @@ import { TechService } from '../techs/TechService';
 import { TimeMultiplierService } from '../timeMultiplier';
 import { UserBonusCache } from '../bonus/UserBonusCache';
 import { UserBonuses } from '../bonus/userBonusTypes';
+import { HasLock4Context, IronLocks } from '@markdrei/ironguard-typescript-locks';
 
 class User {
   id: number;
@@ -41,6 +42,10 @@ class User {
   // TODO: Need to figure out where this is implemented: Should we use locks here?
   private saveCallback: SaveUserCallback;
 
+  // for testing we allow injection of helpers that are otherwise singletons
+  bonusCache: UserBonusCache;
+  timeMultiplierService: TimeMultiplierService;
+
   constructor(
     id: number,
     username: string,
@@ -61,7 +66,11 @@ class User {
     buildStartSec: number | null,
     teleportCharges: number,
     teleportLastRegen: number,
-    ship_id?: number
+    ship_id?: number,
+    // dependencies injected for testing; production callers may omit and defaults will grab the
+    // global singletons. Placed at end so existing call sites are unaffected.
+    bonusCache: UserBonusCache = UserBonusCache.getInstance(),
+    timeMultiplierService: TimeMultiplierService = TimeMultiplierService.getInstance()
   ) {
     this.id = id;
     this.username = username;
@@ -83,14 +92,109 @@ class User {
     this.teleportLastRegen = teleportLastRegen;
     this.ship_id = ship_id;
     this.saveCallback = saveCallback;
+
+    // store injected dependencies for later use
+    this.bonusCache = bonusCache;
+    this.timeMultiplierService = timeMultiplierService;
+  }
+
+  /**
+   * Convenience factory that avoids having to think about the injectable
+   * dependencies in most call sites. Equivalent to calling the constructor
+   * without the last two parameters, which default to the global singletons.
+   */
+  static create(
+    id: number,
+    username: string,
+    password_hash: string,
+    iron: number,
+    xp: number,
+    last_updated: number,
+    techTree: TechTree,
+    saveCallback: SaveUserCallback,
+    techCounts: TechCounts,
+    hullCurrent: number,
+    armorCurrent: number,
+    shieldCurrent: number,
+    defenseLastRegen: number,
+    inBattle: boolean,
+    currentBattleId: number | null,
+    buildQueue: BuildQueueItem[],
+    buildStartSec: number | null,
+    teleportCharges: number,
+    teleportLastRegen: number,
+    ship_id?: number
+  ): User {
+    return new User(
+      id,
+      username,
+      password_hash,
+      iron,
+      xp,
+      last_updated,
+      techTree,
+      saveCallback,
+      techCounts,
+      hullCurrent,
+      armorCurrent,
+      shieldCurrent,
+      defenseLastRegen,
+      inBattle,
+      currentBattleId,
+      buildQueue,
+      buildStartSec,
+      teleportCharges,
+      teleportLastRegen,
+      ship_id
+    );
   }
 
   getIronPerSecond(): number {
     return getResearchEffectFromTree(this.techTree, ResearchType.IronHarvesting);
   }
 
-  getMaxShipSpeed(): number {
-    return getResearchEffectFromTree(this.techTree, ResearchType.ShipSpeed);
+
+  /**
+   * Get the ship's theoretical maximum speed based on the provided bonuses.
+   *
+   * The `bonuses` object is required; if the caller simply needs the research
+   * effect they can compute it independently via
+   * `getResearchEffectFromTree(this.techTree, ResearchType.ShipSpeed)`
+   * 
+   * @param bonuses Pre-computed bonuses.
+   */
+  getMaxShipSpeed(bonuses: UserBonuses): number {
+    return bonuses.maxShipSpeed;
+  }
+
+  /**
+   * Async helper: use the provided lock context to look up the current bonuses
+   * then delegate to the synchronous `getMaxShipSpeed` above.
+   */
+  async getMaxShipSpeedWithContext<THeld extends IronLocks>(context: HasLock4Context<THeld>): Promise<number> {
+    const bonuses = await this.bonusCache.getBonuses(context, this.id);
+    return this.getMaxShipSpeed(bonuses);
+  }
+
+  /**
+   * Get the user's **current** maximum speed.  This will normally equal the
+   * theoretical max returned by `getMaxShipSpeed(bonuses)` (and in fact simply
+   * delegates to that method) but it exists as a distinct call so callers can
+   * later subtract modifiers such as damage or temporary slowdowns.
+   *
+   * @param bonuses Pre-computed bonuses.
+   */
+  getCurrentMaxShipSpeed(bonuses: UserBonuses): number {
+    return this.getMaxShipSpeed(bonuses);
+  }
+
+  /**
+   * Convenience variant that looks up bonuses for this user under the supplied
+   * lock context, then returns the resulting speed.
+   */
+  async getCurrentMaxShipSpeedWithContext<THeld extends IronLocks>(context: HasLock4Context<THeld>): Promise<number> {
+    const bonuses = await this.bonusCache.getBonuses(context, this.id);
+    return this.getCurrentMaxShipSpeed(bonuses);
   }
 
   calculateIronIncrement(elapsedSeconds: number): number {
@@ -195,7 +299,7 @@ class User {
     const newLevel = this.getLevel();
 
     if (newLevel > oldLevel) {
-      UserBonusCache.getInstance().invalidateBonuses(this.id);
+      this.bonusCache.invalidateBonuses(this.id);
       return { leveledUp: true, oldLevel, newLevel };
     }
 
@@ -213,7 +317,7 @@ class User {
     if (elapsed <= 0) return {};
 
     // Apply time multiplier to accelerate game progression
-    const gameElapsed = elapsed * TimeMultiplierService.getInstance().getMultiplier();
+    const gameElapsed = elapsed * this.timeMultiplierService.getMultiplier();
 
     // Determine the effective iron rate and max capacity from bonuses (if provided)
     // or from tech tree directly (backward-compat fallback).
@@ -272,7 +376,7 @@ class User {
     if (researchResult?.completed) {
       // Invalidate cached bonuses because research-derived values have changed.
       // (If addXp() also causes a level-up, it will call invalidateBonuses() again — that is harmless.)
-      UserBonusCache.getInstance().invalidateBonuses(this.id);
+      this.bonusCache.invalidateBonuses(this.id);
 
       const research = AllResearches[researchResult.type];
       // Get the cost of the level that was just completed (completedLevel + 1)
@@ -318,7 +422,7 @@ class User {
     const elapsed = now - this.teleportLastRegen;
     if (elapsed <= 0) return;
 
-    const timeMultiplier = TimeMultiplierService.getInstance().getMultiplier();
+    const timeMultiplier = this.timeMultiplierService.getMultiplier();
     const gameElapsed = elapsed * timeMultiplier;
 
     const chargeGain = gameElapsed / rechargeTimeSec;
@@ -339,7 +443,7 @@ class User {
     if (elapsed <= 0) return;
 
     // Apply time multiplier to accelerate regeneration
-    const gameElapsed = elapsed * TimeMultiplierService.getInstance().getMultiplier();
+    const gameElapsed = elapsed * this.timeMultiplierService.getMultiplier();
 
     // Calculate maximum values based on tech counts and research (with optional level multiplier)
     const levelMultiplier = bonuses?.levelMultiplier;

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Navigation from '@/components/Navigation/Navigation';
 import StatusHeader from '@/components/StatusHeader/StatusHeader';
 import { useAuth } from '@/lib/client/hooks/useAuth';
-import { useIron } from '@/lib/client/hooks/useIron';
+import { useUserStats } from '@/lib/client/hooks/useUserStats';
 import { useResearchStatus } from '@/lib/client/hooks/useResearchStatus';
 
 interface AuthenticatedLayoutProps {
@@ -15,7 +15,7 @@ interface AuthenticatedLayoutProps {
 const AuthenticatedLayout: React.FC<AuthenticatedLayoutProps> = ({ children }) => {
   const router = useRouter();
   const { logout } = useAuth();
-  const { ironAmount, isLoading: ironLoading, error: ironError, refetch: refetchIron, level } = useIron(5000);
+  const { ironAmount, isLoading: ironLoading, error: ironError, refetch: refetchIron, level } = useUserStats(5000);
   const { isResearchActive, error: researchError } = useResearchStatus(10000);
 
   // Handle logout with redirect

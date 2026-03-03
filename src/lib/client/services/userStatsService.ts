@@ -19,6 +19,7 @@ export interface UserStatsResponse {
   // Bonus system fields (optional for backward compatibility)
   levelMultiplier?: number;
   maxShipSpeed?: number;
+  currentMaxShipSpeed?: number;
   hullRepairSpeed?: number;
   armorRepairSpeed?: number;
   shieldRechargeRate?: number;
