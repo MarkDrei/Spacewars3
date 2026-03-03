@@ -11,6 +11,7 @@ interface BonusData {
   ironRechargeRate: number;
   ironStorageCapacity: number;
   maxShipSpeed: number;
+  currentMaxShipSpeed: number;
   hullRepairSpeed: number;
   armorRepairSpeed: number;
   shieldRechargeRate: number;
@@ -27,6 +28,7 @@ const DEFAULT_BONUS_DATA: BonusData = {
   ironRechargeRate: 1.0,
   ironStorageCapacity: 5000,
   maxShipSpeed: 0,
+  currentMaxShipSpeed: 0,
   hullRepairSpeed: 1.0,
   armorRepairSpeed: 1.0,
   shieldRechargeRate: 1.0,
@@ -38,7 +40,7 @@ const DEFAULT_BONUS_DATA: BonusData = {
   energyWeaponAccuracyFactor: 1.0,
 };
 
-interface UseIronReturn {
+interface UseUserStatsReturn {
   ironAmount: number;
   isLoading: boolean;
   error: string | null;
@@ -50,7 +52,7 @@ interface UseIronReturn {
   bonuses: BonusData;
 }
 
-export const useIron = (pollInterval: number = 5000): UseIronReturn => {
+export const useUserStats = (pollInterval: number = 5000): UseUserStatsReturn => {
   const [ironData, setIronData] = useState<IronData>({
     serverAmount: 0,
     ironPerSecond: 0,
@@ -70,7 +72,7 @@ export const useIron = (pollInterval: number = 5000): UseIronReturn => {
   // Use ref to track if display interval is already started
   const displayIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  const fetchIron = useCallback(async (retryCount: number = 0) => {
+  const fetchUserStats = useCallback(async (retryCount: number = 0) => {
     try {
       setError(null);
       const result = await userStatsService.getUserStats();
@@ -82,8 +84,8 @@ export const useIron = (pollInterval: number = 5000): UseIronReturn => {
         const retryDecision = shouldRetryFetch(result.error, retryCount, DEFAULT_RETRY_CONFIG);
         
         if (retryDecision.shouldRetry) {
-          console.log(`Retrying iron fetch (attempt ${retryDecision.nextRetryCount}/${DEFAULT_RETRY_CONFIG.maxRetries})...`);
-          scheduleRetry(() => fetchIron(retryDecision.nextRetryCount), DEFAULT_RETRY_CONFIG.retryDelay);
+          console.log(`Retrying user-stats fetch (attempt ${retryDecision.nextRetryCount}/${DEFAULT_RETRY_CONFIG.maxRetries})...`);
+          scheduleRetry(() => fetchUserStats(retryDecision.nextRetryCount), DEFAULT_RETRY_CONFIG.retryDelay);
           return;
         }
         
@@ -117,6 +119,7 @@ export const useIron = (pollInterval: number = 5000): UseIronReturn => {
         ironRechargeRate: result.ironPerSecond ?? 1.0,
         ironStorageCapacity: result.maxIronCapacity ?? 5000,
         maxShipSpeed: result.maxShipSpeed ?? 0,
+        currentMaxShipSpeed: result.currentMaxShipSpeed ?? 0,
         hullRepairSpeed: result.hullRepairSpeed ?? 1.0,
         armorRepairSpeed: result.armorRepairSpeed ?? 1.0,
         shieldRechargeRate: result.shieldRechargeRate ?? 1.0,
@@ -134,8 +137,8 @@ export const useIron = (pollInterval: number = 5000): UseIronReturn => {
         const retryDecision = shouldRetryFetch('Network error', retryCount, DEFAULT_RETRY_CONFIG);
         
         if (retryDecision.shouldRetry) {
-          console.log(`Retrying iron fetch (attempt ${retryDecision.nextRetryCount}/${DEFAULT_RETRY_CONFIG.maxRetries})...`);
-          scheduleRetry(() => fetchIron(retryDecision.nextRetryCount), DEFAULT_RETRY_CONFIG.retryDelay);
+          console.log(`Retrying user-stats fetch (attempt ${retryDecision.nextRetryCount}/${DEFAULT_RETRY_CONFIG.maxRetries})...`);
+          scheduleRetry(() => fetchUserStats(retryDecision.nextRetryCount), DEFAULT_RETRY_CONFIG.retryDelay);
           return;
         }
         
@@ -143,7 +146,7 @@ export const useIron = (pollInterval: number = 5000): UseIronReturn => {
         setIsLoading(false);
       }
     }
-  }, []); // Empty dependency array since fetchIron doesn't depend on any changing values
+  }, []); // Empty dependency array since fetchUserStats doesn't depend on any changing values
 
   // Update displayed iron amount based on time elapsed and iron per second
   const updateDisplayIron = useCallback(() => {
@@ -161,18 +164,18 @@ export const useIron = (pollInterval: number = 5000): UseIronReturn => {
     isMountedRef.current = true;
     
     // Initial fetch (auth guaranteed by server component)
-    fetchIron();
+    fetchUserStats();
     
     // Set up server polling
-    const serverInterval = setupPolling(fetchIron, pollInterval);
+    const serverInterval = setupPolling(fetchUserStats, pollInterval);
     
-    // Listen for iron update events (e.g., after research trigger)
-    const handleIronUpdate = () => {
-      fetchIron();
+// Listen for user‑stats update events (e.g., after research trigger)
+    const handleUserStatsUpdate = () => {
+      fetchUserStats();
     };
     
-    globalEvents.on(EVENTS.IRON_UPDATED, handleIronUpdate);
-    globalEvents.on(EVENTS.RESEARCH_TRIGGERED, handleIronUpdate);
+    globalEvents.on(EVENTS.IRON_UPDATED, handleUserStatsUpdate);
+    globalEvents.on(EVENTS.RESEARCH_TRIGGERED, handleUserStatsUpdate);
     
     // Cleanup
     return () => {
@@ -182,10 +185,10 @@ export const useIron = (pollInterval: number = 5000): UseIronReturn => {
         cancelPolling(displayIntervalRef.current);
         displayIntervalRef.current = null;
       }
-      globalEvents.off(EVENTS.IRON_UPDATED, handleIronUpdate);
-      globalEvents.off(EVENTS.RESEARCH_TRIGGERED, handleIronUpdate);
+      globalEvents.off(EVENTS.IRON_UPDATED, handleUserStatsUpdate);
+      globalEvents.off(EVENTS.RESEARCH_TRIGGERED, handleUserStatsUpdate);
     };
-  }, [pollInterval, fetchIron]);
+  }, [pollInterval, fetchUserStats]);
 
   // Start display interval after data is loaded
   useEffect(() => {
@@ -210,7 +213,7 @@ export const useIron = (pollInterval: number = 5000): UseIronReturn => {
     ironAmount: displayIronAmount,
     isLoading,
     error,
-    refetch: fetchIron,
+    refetch: fetchUserStats,
     xp: xpData.xp,
     level: xpData.level,
     xpForNextLevel: xpData.xpForNextLevel,

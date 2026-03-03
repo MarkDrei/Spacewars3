@@ -1,9 +1,9 @@
 /**
- * Tests for useIron hook with time multiplier integration
+ * Tests for useUserStats hook with time multiplier integration
  */
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
-import { useIron } from '@/lib/client/hooks/useIron/useIron';
+import { useUserStats } from '@/lib/client/hooks/useUserStats/useUserStats';
 import { userStatsService } from '@/lib/client/services/userStatsService';
 import { getTimeMultiplier, resetTimeMultiplier } from '@/lib/client/timeMultiplier';
 
@@ -11,7 +11,7 @@ import { getTimeMultiplier, resetTimeMultiplier } from '@/lib/client/timeMultipl
 vi.mock('@/lib/client/services/userStatsService');
 const mockUserStatsService = vi.mocked(userStatsService);
 
-describe('useIron hook - time multiplier integration', () => {
+describe('useUserStats hook - time multiplier integration', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     resetTimeMultiplier();
@@ -21,7 +21,7 @@ describe('useIron hook - time multiplier integration', () => {
     resetTimeMultiplier();
   });
 
-  it('useIron_receivesTimeMultiplier_storesInModuleState', async () => {
+  it('useUserStats_receivesTimeMultiplier_storesInModuleState', async () => {
     const mockStats = {
       iron: 1000,
       ironPerSecond: 10,
@@ -40,14 +40,14 @@ describe('useIron hook - time multiplier integration', () => {
 
     mockUserStatsService.getUserStats.mockResolvedValueOnce(mockStats);
 
-    renderHook(() => useIron(5000));
+    renderHook(() => useUserStats(5000));
 
     await waitFor(() => {
       expect(getTimeMultiplier()).toBe(10);
     });
   });
 
-  it('useIron_noTimeMultiplierInResponse_defaultsTo1', async () => {
+  it('useUserStats_noTimeMultiplierInResponse_defaultsTo1', async () => {
     const mockStats = {
       iron: 1000,
       ironPerSecond: 10,
@@ -66,14 +66,14 @@ describe('useIron hook - time multiplier integration', () => {
 
     mockUserStatsService.getUserStats.mockResolvedValueOnce(mockStats);
 
-    renderHook(() => useIron(5000));
+    renderHook(() => useUserStats(5000));
 
     await waitFor(() => {
       expect(getTimeMultiplier()).toBe(1);
     });
   });
 
-  it('useIron_returnsTimeMultiplierInHookResult', async () => {
+  it('useUserStats_returnsTimeMultiplierInHookResult', async () => {
     const mockStats = {
       iron: 1000,
       ironPerSecond: 10,
@@ -92,14 +92,14 @@ describe('useIron hook - time multiplier integration', () => {
 
     mockUserStatsService.getUserStats.mockResolvedValueOnce(mockStats);
 
-    const { result } = renderHook(() => useIron(5000));
+    const { result } = renderHook(() => useUserStats(5000));
 
     await waitFor(() => {
       expect(result.current.timeMultiplier).toBe(25);
     });
   });
 
-  it('useIron_timeMultiplierUpdates_updatesModuleState', async () => {
+  it('useUserStats_timeMultiplierUpdates_updatesModuleState', async () => {
     const mockStats1 = {
       iron: 1000,
       ironPerSecond: 10,
@@ -129,7 +129,7 @@ describe('useIron hook - time multiplier integration', () => {
       .mockResolvedValueOnce(mockStats1)
       .mockResolvedValueOnce(mockStats2);
 
-    const { result, rerender } = renderHook(() => useIron(5000));
+    const { result, rerender } = renderHook(() => useUserStats(5000));
 
     // Wait for initial fetch
     await waitFor(() => {
@@ -148,7 +148,7 @@ describe('useIron hook - time multiplier integration', () => {
     expect(getTimeMultiplier()).toBe(50);
   });
 
-  it('useIron_multiplierExpires_updatesTo1', async () => {
+  it('useUserStats_multiplierExpires_updatesTo1', async () => {
     const mockStats1 = {
       iron: 1000,
       ironPerSecond: 10,
@@ -174,7 +174,7 @@ describe('useIron hook - time multiplier integration', () => {
       .mockResolvedValueOnce(mockStats1)
       .mockResolvedValueOnce(mockStats2);
 
-    const { result, rerender } = renderHook(() => useIron(5000));
+    const { result, rerender } = renderHook(() => useUserStats(5000));
 
     // Wait for initial fetch
     await waitFor(() => {

@@ -67,8 +67,8 @@ async function getShipStats(
     throw new ApiError(404, 'Player ship not found');
   }
 
-  // Use bonused max ship speed (includes research × level × commander × afterburner)
-  const maxSpeed = bonuses.maxShipSpeed;
+  // Use current max ship speed (affected by damage, modifiers, etc.)
+  const maxSpeed = user.getCurrentMaxShipSpeed(bonuses);
 
   // Calculate defense values using actual current values from database
   const currentValues = {

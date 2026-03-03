@@ -270,12 +270,12 @@ describe('Battle Research Effects Integration', () => {
           // auto_turret with 1 weapon, no shields/armor, spread=1.0
           const baseCalc = TechFactory.calculateWeaponDamage(
             'auto_turret',
-            attacker.techCounts,
+            attacker.techCounts.auto_turret,
             0, 0, 1.0, 0, baseDamageModifier, 0, 1.0
           );
           const upgradedCalc = TechFactory.calculateWeaponDamage(
             'auto_turret',
-            attacker.techCounts,
+            attacker.techCounts.auto_turret,
             0, 0, 1.0, 0, upgradedDamageModifier, 0, 1.0
           );
 
@@ -310,12 +310,12 @@ describe('Battle Research Effects Integration', () => {
           // Verify damage calculation uses the modifier
           const baseCalc = TechFactory.calculateWeaponDamage(
             'pulse_laser',
-            attacker.techCounts,
+            attacker.techCounts.pulse_laser,
             0, 0, 1.0, 0, baseDamageModifier, 0, 1.0
           );
           const upgradedCalc = TechFactory.calculateWeaponDamage(
             'pulse_laser',
-            attacker.techCounts,
+            attacker.techCounts.pulse_laser,
             0, 0, 1.0, 0, upgradedDamageModifier, 0, 1.0
           );
 
@@ -380,12 +380,12 @@ describe('Battle Research Effects Integration', () => {
           attacker.techCounts.auto_turret = 10;
           const baseCalc = TechFactory.calculateWeaponDamage(
             'auto_turret',
-            attacker.techCounts,
+            attacker.techCounts.auto_turret,
             0, 0, baseAccuracyModifier, 0, 1.0, 0, 1.0
           );
           const upgradedCalc = TechFactory.calculateWeaponDamage(
             'auto_turret',
-            attacker.techCounts,
+            attacker.techCounts.auto_turret,
             0, 0, upgradedAccuracyModifier, 0, 1.0, 0, 1.0
           );
 

@@ -2,7 +2,7 @@
  * Tests for iron calculations with time multiplier support
  */
 import { describe, it, expect } from 'vitest';
-import { calculatePredictedIron, shouldUpdateDisplay, type IronData } from '@/lib/client/hooks/useIron/ironCalculations';
+import { calculatePredictedIron, shouldUpdateDisplay, type IronData } from '@/lib/client/hooks/useUserStats/ironCalculations';
 
 describe('Iron Calculations - Time Multiplier', () => {
   describe('calculatePredictedIron with multiplier', () => {

@@ -101,7 +101,7 @@ function userFromRow(row: UserRow, saveCallback: SaveUserCallback): User {
   const teleportCharges = row.teleport_charges ?? 0;
   const teleportLastRegen = row.teleport_last_regen ?? 0;
 
-  return new User(
+  return User.create(
     row.id,
     row.username,
     row.password_hash,
@@ -188,7 +188,7 @@ async function createUserWithShip(db: DatabaseConnection, username: string, pass
     // Calculate initial defense values based on default tech counts
     const initialMaxStats = TechService.calculateMaxDefense(defaultTechCounts, techTree);
 
-    const user = new User(userId, username, password_hash, 0.0, 0, now, techTree, saveCallback, defaultTechCounts, initialMaxStats.hull, initialMaxStats.armor, initialMaxStats.shield, now, false, null, [], null, 0, 0, shipId);
+    const user = User.create(userId, username, password_hash, 0.0, 0, now, techTree, saveCallback, defaultTechCounts, initialMaxStats.hull, initialMaxStats.armor, initialMaxStats.shield, now, false, null, [], null, 0, 0, shipId);
 
     // Send welcome message to new user
     const ctx = createLockContext();
@@ -221,7 +221,7 @@ async function createUserWithShip(db: DatabaseConnection, username: string, pass
     // Calculate initial defense values based on default tech counts
     const initialMaxStats = TechService.calculateMaxDefense(defaultTechCounts, techTree);
 
-    const user = new User(id, username, password_hash, 0.0, 0, now, techTree, saveCallback, defaultTechCounts, initialMaxStats.hull, initialMaxStats.armor, initialMaxStats.shield, now, false, null, [], null, 0, 0);
+    const user = User.create(id, username, password_hash, 0.0, 0, now, techTree, saveCallback, defaultTechCounts, initialMaxStats.hull, initialMaxStats.armor, initialMaxStats.shield, now, false, null, [], null, 0, 0);
 
     return user;
   }

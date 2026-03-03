@@ -6,7 +6,7 @@ import { messagesService, UnreadMessage } from '@/lib/client/services/messagesSe
 import { useTechCounts } from '@/lib/client/hooks/useTechCounts';
 import { useDefenseValues } from '@/lib/client/hooks/useDefenseValues';
 import { useBattleStatus } from '@/lib/client/hooks/useBattleStatus';
-import { useIron } from '@/lib/client/hooks/useIron';
+import { useUserStats } from '@/lib/client/hooks/useUserStats';
 import { ServerAuthState } from '@/lib/server/serverSession';
 import { formatNumber } from '@/shared/numberFormat';
 import './HomePage.css';
@@ -68,7 +68,7 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
   const { techCounts, weapons, defenses, isLoading: techLoading, error: techError } = useTechCounts();
   const { defenseValues, isLoading: defenseLoading, error: defenseError } = useDefenseValues();
   const { battleStatus, isLoading: battleLoading } = useBattleStatus();
-  const { xp, level, xpForNextLevel, isLoading: xpLoading, bonuses } = useIron(5000);
+  const { xp, level, xpForNextLevel, isLoading: xpLoading, bonuses } = useUserStats(5000);
 
   // Handler for refreshing messages
   const handleRefreshMessages = async () => {
@@ -460,10 +460,18 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
                   </td>
                 </tr>
                 <tr className="data-row">
-                  <td className="data-cell">Max Ship Speed</td>
+                  <td className="data-cell">Max Ship Speed (Theoretical)</td>
                   <td className="data-cell">
                     <span className="stat-value">
                       {xpLoading ? '...' : formatNumber(bonuses.maxShipSpeed)}
+                    </span>
+                  </td>
+                </tr>
+                <tr className="data-row">
+                  <td className="data-cell">Max Ship Speed (Current)</td>
+                  <td className="data-cell">
+                    <span className="stat-value">
+                      {xpLoading ? '...' : formatNumber(bonuses.currentMaxShipSpeed)}
                     </span>
                   </td>
                 </tr>

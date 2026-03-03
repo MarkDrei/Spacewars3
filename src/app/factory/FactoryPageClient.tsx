@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Image from 'next/image';
 import AuthenticatedLayout from '@/components/Layout/AuthenticatedLayout';
-import { useIron } from '@/lib/client/hooks/useIron';
+import { useUserStats } from '@/lib/client/hooks/useUserStats';
 import { useBuildQueue } from '@/lib/client/hooks/useBuildQueue';
 import { useTechCounts } from '@/lib/client/hooks/useTechCounts';
 import { 
@@ -19,7 +19,7 @@ interface FactoryPageClientProps {
 
 const FactoryPageClient: React.FC<FactoryPageClientProps> = ({ auth }) => {
   // Auth is guaranteed by server, so pass true to hooks
-  const { ironAmount } = useIron();
+  const { ironAmount } = useUserStats();
   const {
     buildQueue,
     isLoading: isBuildQueueLoading,

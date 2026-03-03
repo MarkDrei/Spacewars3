@@ -1,5 +1,5 @@
 import { describe, expect, test, vi } from 'vitest';
-import { shouldRetryFetch, scheduleRetry, DEFAULT_RETRY_CONFIG } from '@/lib/client/hooks/useIron/retryLogic';
+import { shouldRetryFetch, scheduleRetry, DEFAULT_RETRY_CONFIG } from '@/lib/client/hooks/useUserStats/retryLogic';
 
 describe('Retry Logic', () => {
   describe('shouldRetryFetch', () => {

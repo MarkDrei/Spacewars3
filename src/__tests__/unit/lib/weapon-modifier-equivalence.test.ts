@@ -205,7 +205,7 @@ describe('Task 1.1 – Accuracy modifier multiplicative refactor', () => {
     test('accuracyFactor1_level1_sameFinalAccuracyAsOldZeroBonus', () => {
       // Old: baseAccuracy + 0 = 50%. New: 50 * 1.0 = 50%. Same result.
       const result = TechFactory.calculateWeaponDamage(
-        'auto_turret', defaultTechCounts, 100, 100,
+        'auto_turret', defaultTechCounts.auto_turret, 100, 100,
         1.0, 0, 1.0, 0, 1.0
       );
       // 10 weapons at 50% accuracy * 1.0 spread = 5 hit
@@ -215,7 +215,7 @@ describe('Task 1.1 – Accuracy modifier multiplicative refactor', () => {
     test('accuracyFactor2_doubles_final_accuracy', () => {
       // 50 * 2.0 = 100% accuracy → all 10 weapons hit
       const result = TechFactory.calculateWeaponDamage(
-        'auto_turret', defaultTechCounts, 100, 100,
+        'auto_turret', defaultTechCounts.auto_turret, 100, 100,
         2.0, 0, 1.0, 0, 1.0
       );
       expect(result.weaponsHit).toBe(10);

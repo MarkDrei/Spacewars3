@@ -139,7 +139,7 @@ jsdom environment. Test React components and hooks.
 - src/**tests**/ui/components/teleport-controls.test.tsx `[PARTIAL: teleportService + type tests extracted to unit/components/teleport-service.test.ts; GamePageClient UI tests kept here (React render + screen)]`
 - src/**tests**/ui/hooks/useBuildQueue.test.ts `[KEEP: uses renderHook from @testing-library/react — requires jsdom]`
 - src/**tests**/ui/hooks/useFactoryDataCache.test.ts `[KEEP: uses renderHook + waitFor from @testing-library/react — requires jsdom]`
-- src/**tests**/ui/hooks/useIron.test.ts `[KEEP: uses renderHook + waitFor from @testing-library/react — requires jsdom]`
-- src/**tests**/ui/hooks/useIron-timeMultiplier.test.ts `[KEEP: uses renderHook + waitFor from @testing-library/react — requires jsdom]`
-- src/**tests**/ui/hooks/useIron-xp-display.test.ts `[KEEP: uses renderHook + waitFor from @testing-library/react — requires jsdom]`
+- src/**tests**/ui/hooks/useUserStats.test.ts `[KEEP: uses renderHook + waitFor from @testing-library/react — requires jsdom]`
+- src/**tests**/ui/hooks/useUserStats-timeMultiplier.test.ts `[KEEP: uses renderHook + waitFor from @testing-library/react — requires jsdom]`
+- src/**tests**/ui/hooks/useUserStats-xp-display.test.ts `[KEEP: uses renderHook + waitFor from @testing-library/react — requires jsdom]`
 - src/**tests**/ui/hooks/useTechCounts.test.ts `[KEEP: uses renderHook + act from @testing-library/react — requires jsdom]`

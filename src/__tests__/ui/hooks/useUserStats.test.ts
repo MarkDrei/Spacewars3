@@ -1,16 +1,16 @@
 import { describe, expect, vi, test, beforeEach } from 'vitest';
 import { Mocked } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
-import { useIron } from '@/lib/client/hooks/useIron';
+import { useUserStats } from '@/lib/client/hooks/useUserStats/useUserStats';
 import { userStatsService } from '@/lib/client/services/userStatsService';
-import * as retryLogic from '@/lib/client/hooks/useIron/retryLogic';
-import * as pollingUtils from '@/lib/client/hooks/useIron/pollingUtils';
+import * as retryLogic from '@/lib/client/hooks/useUserStats/retryLogic';
+import * as pollingUtils from '@/lib/client/hooks/useUserStats/pollingUtils';
 
 // Mock the userStatsService
 vi.mock('@/lib/client/services/userStatsService');
 const mockUserStatsService = userStatsService as Mocked<typeof userStatsService>;
 
-describe('useIron', () => {
+describe('useUserStats', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -18,7 +18,7 @@ describe('useIron', () => {
     vi.clearAllMocks();
   });
 
-  test('useIron_initiatesFetchAndReturnsData', async () => {
+  test('useUserStats_initiatesFetchAndReturnsData', async () => {
     // Arrange
     const mockStats = {
       iron: 1500,
@@ -37,7 +37,7 @@ describe('useIron', () => {
     mockUserStatsService.getUserStats.mockResolvedValueOnce(mockStats);
 
     // Act
-    const { result } = renderHook(() => useIron());
+    const { result } = renderHook(() => useUserStats());
 
     // Assert initial state
     expect(result.current.isLoading).toBe(true);
@@ -55,14 +55,14 @@ describe('useIron', () => {
     expect(result.current.error).toBe(null);
   });
 
-  test('useIron_apiError_setsErrorState', async () => {
+  test('useUserStats_apiError_setsErrorState', async () => {
     // Arrange
     mockUserStatsService.getUserStats.mockResolvedValueOnce({
       error: 'Server error'
     });
 
     // Act
-    const { result } = renderHook(() => useIron());
+    const { result } = renderHook(() => useUserStats());
 
     // Assert
     await waitFor(() => {
@@ -73,7 +73,7 @@ describe('useIron', () => {
     expect(result.current.ironAmount).toBe(0);
   });
 
-  test('useIron_withIronProduction_calculatesDisplayIron', async () => {
+  test('useUserStats_withIronProduction_calculatesDisplayIron', async () => {
     // Arrange
     const mockStats = {
       iron: 1000,
@@ -92,7 +92,7 @@ describe('useIron', () => {
     mockUserStatsService.getUserStats.mockResolvedValueOnce(mockStats);
 
     // Act
-    const { result } = renderHook(() => useIron());
+    const { result } = renderHook(() => useUserStats());
 
     // Wait for initial load
     await waitFor(() => {
@@ -104,14 +104,14 @@ describe('useIron', () => {
   });
 
   // Test that retry logic is correctly wired up (not the timing!)
-  test('useIron_networkError_callsRetryLogic', async () => {
+  test('useUserStats_networkError_callsRetryLogic', async () => {
     const scheduleRetrySpy = vi.spyOn(retryLogic, 'scheduleRetry');
     
     mockUserStatsService.getUserStats.mockResolvedValueOnce({
       error: 'Network error'
     });
 
-    renderHook(() => useIron());
+    renderHook(() => useUserStats());
 
     // Wait for the fetch to complete
     await waitFor(() => {
@@ -124,7 +124,7 @@ describe('useIron', () => {
     });
   });
 
-  test('useIron_successfulFetch_doesNotRetry', async () => {
+  test('useUserStats_successfulFetch_doesNotRetry', async () => {
     const scheduleRetrySpy = vi.spyOn(retryLogic, 'scheduleRetry');
     
     mockUserStatsService.getUserStats.mockResolvedValueOnce({
@@ -142,7 +142,7 @@ describe('useIron', () => {
       teleportRechargeSpeed: 0
     });
 
-    renderHook(() => useIron());
+    renderHook(() => useUserStats());
 
     await waitFor(() => {
       expect(mockUserStatsService.getUserStats).toHaveBeenCalledTimes(1);
@@ -152,7 +152,7 @@ describe('useIron', () => {
     expect(scheduleRetrySpy).not.toHaveBeenCalled();
   });
 
-  test('useIron_zeroIronPerSecond_displaysServerValue', async () => {
+  test('useUserStats_zeroIronPerSecond_displaysServerValue', async () => {
     // Arrange
     const mockStats = {
       iron: 1000,
@@ -171,7 +171,7 @@ describe('useIron', () => {
     mockUserStatsService.getUserStats.mockResolvedValueOnce(mockStats);
 
     // Act
-    const { result } = renderHook(() => useIron());
+    const { result } = renderHook(() => useUserStats());
 
     // Wait for initial load
     await waitFor(() => {
@@ -181,7 +181,7 @@ describe('useIron', () => {
     expect(result.current.ironAmount).toBe(1000);
   });
 
-  test('useIron_refetchFunction_triggersNewFetch', async () => {
+  test('useUserStats_refetchFunction_triggersNewFetch', async () => {
     // Arrange
     const mockStats = {
       iron: 1000,
@@ -200,7 +200,7 @@ describe('useIron', () => {
     mockUserStatsService.getUserStats.mockResolvedValue(mockStats);
 
     // Act
-    const { result } = renderHook(() => useIron());
+    const { result } = renderHook(() => useUserStats());
 
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false);
@@ -216,7 +216,7 @@ describe('useIron', () => {
     expect(mockUserStatsService.getUserStats).toHaveBeenCalledTimes(1);
   });
 
-  test('useIron_withIronProduction_smoothUpdatesWorkWithTime', async () => {
+  test('useUserStats_withIronProduction_smoothUpdatesWorkWithTime', async () => {
     // Arrange
     const originalDateNow = Date.now;
     const startTime = 1674567890000;
@@ -242,7 +242,7 @@ describe('useIron', () => {
     mockUserStatsService.getUserStats.mockResolvedValueOnce(mockStats);
 
     // Act
-    const { result } = renderHook(() => useIron());
+    const { result } = renderHook(() => useUserStats());
 
     // Wait for initial load
     await waitFor(() => {
@@ -268,7 +268,7 @@ describe('useIron', () => {
   });
 
   // Test that polling is set up correctly (not the timing!)
-  test('useIron_setsUpPolling_withCorrectInterval', async () => {
+  test('useUserStats_setsUpPolling_withCorrectInterval', async () => {
     const setupPollingSpy = vi.spyOn(pollingUtils, 'setupPolling');
     
     mockUserStatsService.getUserStats.mockResolvedValue({
@@ -287,7 +287,7 @@ describe('useIron', () => {
     });
 
     const customInterval = 3000;
-    renderHook(() => useIron(customInterval));
+    renderHook(() => useUserStats(customInterval));
 
     // Verify that polling was set up with the correct interval
     await waitFor(() => {
@@ -300,7 +300,7 @@ describe('useIron', () => {
     expect(pollingCall).toBeDefined();
   });
 
-  test('useIron_withBonusData_exposesBonusesInReturnValue', async () => {
+  test('useUserStats_withBonusData_exposesBonusesInReturnValue', async () => {
     // Arrange: full response including bonus fields
     const mockStats = {
       iron: 500,
@@ -330,7 +330,7 @@ describe('useIron', () => {
     mockUserStatsService.getUserStats.mockResolvedValueOnce(mockStats);
 
     // Act
-    const { result } = renderHook(() => useIron());
+    const { result } = renderHook(() => useUserStats());
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
     // Assert: bonuses object is populated from API response
@@ -347,7 +347,7 @@ describe('useIron', () => {
     expect(result.current.bonuses.energyWeaponReloadFactor).toBe(1.35);
   });
 
-  test('useIron_withoutBonusData_usesDefaultBonuses', async () => {
+  test('useUserStats_withoutBonusData_usesDefaultBonuses', async () => {
     // Arrange: response without bonus fields (older API or missing data)
     const mockStats = {
       iron: 100,
@@ -367,7 +367,7 @@ describe('useIron', () => {
     mockUserStatsService.getUserStats.mockResolvedValueOnce(mockStats);
 
     // Act
-    const { result } = renderHook(() => useIron());
+    const { result } = renderHook(() => useUserStats());
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
     // Assert: defaults applied (1.0 for multipliers, sensible values for others)
