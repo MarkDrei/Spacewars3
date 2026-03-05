@@ -184,9 +184,9 @@ describe('ResearchPageClient card view', () => {
 
     render(<ResearchPageClient auth={{ userId: 1, username: 'test' }} />);
 
-    // wait for the card to appear
+    // wait for the card to appear (use specific selector since the overlay also shows the name)
     await waitFor(() => {
-      expect(screen.getByText('shipSpeed')).toBeInTheDocument();
+      expect(screen.getByText('shipSpeed', { selector: '.card-title' })).toBeInTheDocument();
     });
 
     // countdown should be visible inside the countdown container; other
@@ -208,5 +208,14 @@ describe('ResearchPageClient card view', () => {
       const { queryByRole } = within(activeCard as HTMLElement);
       expect(queryByRole('button', { name: /research/i })).toBeNull();
     }
+
+    // fixed progress overlay should show the active research name and remaining time
+    const progressOverlay = document.querySelector('.research-progress-overlay');
+    expect(progressOverlay).not.toBeNull();
+    expect(progressOverlay).toHaveTextContent('In Progress:');
+    expect(progressOverlay).toHaveTextContent('shipSpeed');
+    // the timer uses the same formatDuration mock, so it should show '00:02:03'
+    const progressTimer = document.querySelector('.research-progress-timer');
+    expect(progressTimer).toHaveTextContent('00:02:03');
   });
 });

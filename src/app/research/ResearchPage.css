@@ -546,3 +546,64 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Research Progress Fixed Overlay */
+.research-progress-overlay {
+  position: fixed;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  background: rgba(18, 18, 18, 0.95);
+  border: 2px solid var(--primary-green);
+  border-radius: 8px;
+  padding: 0.75rem 1.5rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  min-width: 300px;
+  pointer-events: none;
+}
+
+.research-progress-content {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  white-space: nowrap;
+}
+
+.research-progress-label {
+  color: #aaa;
+  font-size: 0.9rem;
+}
+
+.research-progress-name {
+  color: var(--primary-green);
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.research-progress-separator {
+  color: #555;
+}
+
+.research-progress-timer {
+  color: var(--primary-green);
+  font-weight: 700;
+  font-family: 'Courier New', monospace;
+  font-size: 1.1rem;
+}
+
+@media (max-width: 600px) {
+  .research-progress-overlay {
+    bottom: 1rem;
+    left: 1rem;
+    right: 1rem;
+    transform: none;
+    min-width: unset;
+  }
+
+  .research-progress-content {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+}
