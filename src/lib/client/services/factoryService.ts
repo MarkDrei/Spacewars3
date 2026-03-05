@@ -171,9 +171,9 @@ class FactoryService {
   /**
    * Start building an item
    */
-  async buildItem(itemKey: string, itemType: 'weapon' | 'defense'): Promise<BuildItemResponse | FactoryErrorResponse> {
+  async buildItem(itemKey: string, itemType: 'weapon' | 'defense', count: number = 1): Promise<BuildItemResponse | FactoryErrorResponse> {
     try {
-      console.log(`🔨 Building ${itemType}: ${itemKey}`);
+      console.log(`🔨 Building ${itemType}: ${itemKey} x${count}`);
       
       const response = await fetch('/api/build-item', {
         method: 'POST',
@@ -181,7 +181,7 @@ class FactoryService {
           'Content-Type': 'application/json',
         },
         credentials: 'include',
-        body: JSON.stringify({ itemKey, itemType }),
+        body: JSON.stringify({ itemKey, itemType, count }),
       });
 
       const data = await response.json();
