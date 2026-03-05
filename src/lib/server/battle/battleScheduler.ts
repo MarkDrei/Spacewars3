@@ -24,40 +24,78 @@ import { getBattleCache } from './BattleCache';
 import { BATTLE_LOCK, USER_LOCK } from '../typedLocks';
 import { createLockContext, LockContext, LocksAtMostAndHas2, LocksAtMost3, LocksAtMostAndHas4 } from '@markdrei/ironguard-typescript-locks';
 import { UserCache } from '../user/userCache';
+import type { User } from '../user/user';
 import { TimeMultiplierService } from '../timeMultiplier';
 import { UserBonusCache } from '../bonus/UserBonusCache';
+
+// ========================================
+// Constants
+// ========================================
+
+/**
+ * When a weapon is fired but the current weapon count is 0 (weapon lost or not yet
+ * re-acquired mid-battle), back off and recheck after this many seconds rather than
+ * spinning immediately.
+ */
+const WEAPON_UNAVAILABLE_RECHECK_INTERVAL_S = 60;
 
 // ========================================
 // Battle Helper Functions
 // ========================================
 
 /**
- * Check if a weapon is ready to fire (cooldown expired)
- */
-function isWeaponReady(battle: Battle, userId: number, weaponType: string, currentTime: number): boolean {
-  const isAttacker = battle.attackerId === userId;
-  const cooldowns = isAttacker ? battle.attackerWeaponCooldowns : battle.attackeeWeaponCooldowns;
-  const nextReadyTime = cooldowns[weaponType] || 0;
-  
-  // Cooldown stores "next ready time" - weapon is ready if current time >= that
-  return currentTime >= nextReadyTime;
-}
-
-/**
- * Get all weapons that are ready to fire for a user
+ * Get all weapons that are ready to fire for a user.
+ *
+ * Iterates the weapon-cooldowns map (not startStats) so that weapons discovered
+ * mid-battle via discoverNewWeapons are automatically included.  Count validation
+ * (weapon still owned?) is deferred to fireWeapon which already holds USER_LOCK.
  */
 function getReadyWeapons(battle: Battle, userId: number, currentTime: number): string[] {
   const isAttacker = battle.attackerId === userId;
-  const stats = isAttacker ? battle.attackerStartStats : battle.attackeeStartStats;
+  const cooldowns = isAttacker ? battle.attackerWeaponCooldowns : battle.attackeeWeaponCooldowns;
   const readyWeapons: string[] = [];
 
-  for (const [weaponType, weaponData] of Object.entries(stats.weapons)) {
-    if (weaponData.count > 0 && isWeaponReady(battle, userId, weaponType, currentTime)) {
+  for (const [weaponType, nextReadyTime] of Object.entries(cooldowns)) {
+    if (currentTime >= nextReadyTime) {
       readyWeapons.push(weaponType);
     }
   }
 
   return readyWeapons;
+}
+
+/**
+ * Discover weapon types that were built after battle start for a given user and
+ * register them in the battle's cooldown map so they can fire on the next round.
+ *
+ * This is called whenever a weapon fires and we are already inside USER_LOCK with
+ * live user data – effectively piggybacking on an existing lock acquisition.
+ * Newly discovered weapons are registered with a cooldown of 0 (ready immediately).
+ *
+ * Issue addressed: weapon categories that did not exist at battle-start (e.g., a
+ * rocket_launcher built mid-battle) will never appear in getReadyWeapons unless
+ * we proactively scan the user's current techCounts.
+ */
+async function discoverNewWeapons(
+  context: LockContext<LocksAtMostAndHas2>,
+  userId: number,
+  user: User,
+  battle: Battle
+): Promise<void> {
+  const isAttacker = userId === battle.attackerId;
+  const cooldowns = isAttacker ? battle.attackerWeaponCooldowns : battle.attackeeWeaponCooldowns;
+
+  const allWeaponKeys = TechFactory.getWeaponKeys();
+  const techCounts = user.techCounts as Record<string, number>;
+
+  for (const weaponType of allWeaponKeys) {
+    const count = techCounts[weaponType] ?? 0;
+    if (count > 0 && !(weaponType in cooldowns)) {
+      // New weapon not yet registered in this battle – add it with immediate cooldown
+      await BattleRepo.setWeaponCooldown(context, battle.id, userId, weaponType, 0);
+      console.log(`⚔️ Battle ${battle.id}: User ${userId} built ${weaponType} mid-battle (count: ${count}), registering`);
+    }
+  }
 }
 
 /**
@@ -266,6 +304,11 @@ async function processBattleRoundInternal(context: LockContext<LocksAtMostAndHas
  * 
  * This function uses the centralized damage calculation from TechFactory
  * which properly handles weapon types, defense penetration, and damage distribution.
+ *
+ * Issue 1: weapon count is read from live UserCache data (not the stale startStats snapshot)
+ *   so changes (e.g. more weapons built) are reflected for every shot.
+ * Issue 2: while USER_LOCK is held we also call discoverNewWeapons for both participants
+ *   so newly built weapon categories are registered for the next round.
  */
 async function fireWeapon(
   context: LockContext<LocksAtMostAndHas2>,
@@ -283,14 +326,6 @@ async function fireWeapon(
     return;
   }
   
-  const isAttacker = attackerId === battle.attackerId;
-  const attackerStats = isAttacker ? battle.attackerStartStats : battle.attackeeStartStats;
-  
-  const weaponData = attackerStats.weapons[weaponType];
-  if (!weaponData || weaponData.count === 0) {
-    return;
-  }
-  
   // Use TechFactory.calculateWeaponDamage for centralized damage calculation
   // Acquire USER_LOCK to access user data from cache
   await context.useLockWithAcquire(USER_LOCK, async (userContext) => {
@@ -302,6 +337,22 @@ async function fireWeapon(
       console.error(`❌ User not found: attacker=${attackerId}, defender=${defenderId}`);
       return;
     }
+
+    // Issue 1: Query current weapon count from live user data instead of the stale
+    // startStats snapshot.  The user may have built more (or lost) weapons since the
+    // battle started.
+    const currentCount = (attackerUser.techCounts as Record<string, number>)[weaponType] ?? 0;
+    if (currentCount === 0) {
+      // Weapon no longer available – update cooldown to prevent re-firing until re-acquired
+      const nextReadyTime = currentTime + WEAPON_UNAVAILABLE_RECHECK_INTERVAL_S;
+      await BattleRepo.setWeaponCooldown(context, battle.id, attackerId, weaponType, nextReadyTime);
+      return;
+    }
+
+    // Issue 2: While we already hold USER_LOCK and have live user data, scan for weapon
+    // types that were built after this battle started and register them immediately.
+    await discoverNewWeapons(context, attackerId, attackerUser, battle);
+    await discoverNewWeapons(context, defenderId, defenderUser, battle);
     
     // Fetch pre-computed bonus factors for the attacker.
     // These include research × level × commander multipliers for all weapon stats.
@@ -319,10 +370,10 @@ async function fireWeapon(
       ? attackerBonuses.projectileWeaponReloadFactor
       : attackerBonuses.energyWeaponReloadFactor;
     
-    // Calculate damage using TechFactory with actual defense values and tech counts
+    // Calculate damage using TechFactory with actual defense values and current weapon count
     const damageCalc = TechFactory.calculateWeaponDamage(
       weaponType,
-      weaponData.count,
+      currentCount,
       defenderUser.shieldCurrent,
       defenderUser.armorCurrent,
       accuracyFactor,
@@ -332,7 +383,7 @@ async function fireWeapon(
       DAMAGE_CALC_DEFAULTS.SPREAD_VALUE
     );
     
-    const shotsPerSalvo = weaponData.count;
+    const shotsPerSalvo = currentCount;
     
     // Compute bonused reload time: baseCooldown / reloadFactor (includes research + level + commander)
     const baseCooldown = TechFactory.getBaseBattleCooldown(weaponSpec);
