@@ -116,7 +116,7 @@ describe('useBuildQueue', () => {
     });
 
     // Assert
-    expect(mockFactoryService.buildItem).toHaveBeenCalledWith('pulse_laser', 'weapon');
+    expect(mockFactoryService.buildItem).toHaveBeenCalledWith('pulse_laser', 'weapon', 1);
     expect(result.current.isBuilding).toBe(false); // Should be false after completion
   });
 

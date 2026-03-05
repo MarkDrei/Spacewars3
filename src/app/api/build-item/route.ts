@@ -17,9 +17,9 @@ export async function POST(request: NextRequest) {
     requireAuth(session.userId);
 
     const body = await request.json();
-    const { itemKey, itemType } = body;
+    const { itemKey, itemType, count = 1 } = body;
 
-    console.log(`🔨 Build item request: ${itemType}/${itemKey} by user: ${session.userId}`);
+    console.log(`🔨 Build item request: ${itemType}/${itemKey} x${count} by user: ${session.userId}`);
 
     // Validate required fields
     validateRequired(itemKey, 'itemKey');
@@ -27,6 +27,10 @@ export async function POST(request: NextRequest) {
 
     if (itemType !== 'weapon' && itemType !== 'defense') {
       throw new ApiError(400, 'Invalid item type. Must be "weapon" or "defense"');
+    }
+
+    if (!Number.isInteger(count) || count < 1 || count > 100) {
+      throw new ApiError(400, 'Count must be an integer between 1 and 100');
     }
 
     // Validate item exists in catalog
@@ -39,22 +43,25 @@ export async function POST(request: NextRequest) {
     const techService = TechService.getInstance();
 
     const result = await context.useLockWithAcquire(USER_LOCK, async (userContext) => {
-      // Check if user has enough iron
+      // Check if user has enough iron for all items
       const userIron = await techService.getIron(session.userId!, userContext);
 
       if (userIron === null) {
         throw new ApiError(404, 'User not found');
       }
 
-      if (userIron < spec.baseCost) {
-        throw new ApiError(400, `Insufficient iron. Required: ${spec.baseCost}, Available: ${userIron}`);
+      const totalCost = spec.baseCost * count;
+      if (userIron < totalCost) {
+        throw new ApiError(400, `Insufficient iron. Required: ${totalCost} (${count}x${spec.baseCost}), Available: ${userIron}`);
       }
 
-      // Add to build queue
-      const addResult = await techService.addTechItemToBuildQueue(session.userId!, itemKey, itemType, userContext);
+      // Add items to build queue one by one within the same lock
+      for (let i = 0; i < count; i++) {
+        const addResult = await techService.addTechItemToBuildQueue(session.userId!, itemKey, itemType, userContext);
 
-      if (!addResult.success) {
-        throw new ApiError(400, addResult.error || 'Failed to add item to build queue');
+        if (!addResult.success) {
+          throw new ApiError(400, addResult.error || 'Failed to add item to build queue');
+        }
       }
 
       // Calculate estimated completion time
@@ -63,16 +70,17 @@ export async function POST(request: NextRequest) {
       return { estimatedCompletion };
     });
 
-    console.log(`✅ Started building ${itemType}/${itemKey} for user ${session.userId}. Cost: ${spec.baseCost} iron`);
+    console.log(`✅ Started building ${count}x ${itemType}/${itemKey} for user ${session.userId}. Cost: ${spec.baseCost * count} iron`);
 
     return NextResponse.json({
       success: true,
       itemKey,
       itemType,
-      cost: spec.baseCost,
+      count,
+      cost: spec.baseCost * count,
       buildDurationMinutes: spec.buildDurationMinutes,
       estimatedCompletion: result.estimatedCompletion,
-      message: `Started building ${spec.name}`
+      message: count === 1 ? `Started building ${spec.name}` : `Started building ${count}x ${spec.name}`
     });
 
   } catch (error) {

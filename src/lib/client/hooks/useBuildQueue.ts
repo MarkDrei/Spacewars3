@@ -9,7 +9,7 @@ interface UseBuildQueueReturn {
   isBuilding: boolean;
   isCompletingBuild: boolean;
   error: string | null;
-  buildItem: (itemKey: string, itemType: 'weapon' | 'defense') => Promise<void>;
+  buildItem: (itemKey: string, itemType: 'weapon' | 'defense', count?: number) => Promise<void>;
   completeBuild: () => Promise<void>;
   refetch: () => void;
 }
@@ -94,14 +94,14 @@ export const useBuildQueue = (pollInterval: number = 5000): UseBuildQueueReturn 
   }, [refetchCache]);
 
   // Build item function
-  const buildItem = useCallback(async (itemKey: string, itemType: 'weapon' | 'defense') => {
+  const buildItem = useCallback(async (itemKey: string, itemType: 'weapon' | 'defense', count: number = 1) => {
     if (isBuilding) return;
 
     setIsBuilding(true);
     setError(null);
 
     try {
-      const result = await factoryService.buildItem(itemKey, itemType);
+      const result = await factoryService.buildItem(itemKey, itemType, count);
 
       if (!isMountedRef.current) return;
 

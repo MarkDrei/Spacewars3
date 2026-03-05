@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import Image from 'next/image';
 import AuthenticatedLayout from '@/components/Layout/AuthenticatedLayout';
 import { useUserStats } from '@/lib/client/hooks/useUserStats';
@@ -41,6 +41,43 @@ const FactoryPageClient: React.FC<FactoryPageClientProps> = ({ auth }) => {
 
   // View mode state
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
+
+  // Build count state: keyed by itemKey, defaults to 1
+  const [buildCounts, setBuildCounts] = useState<Record<string, number>>({});
+  const longPressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const getBuildCount = (key: string): number => buildCounts[key] ?? 1;
+
+  const changeBuildCount = useCallback((key: string, delta: number) => {
+    setBuildCounts(prev => ({
+      ...prev,
+      [key]: Math.max(1, (prev[key] ?? 1) + delta),
+    }));
+  }, []);
+
+  const startLongPress = useCallback((key: string, delta: number) => {
+    if (longPressIntervalRef.current) return;
+    longPressIntervalRef.current = setInterval(() => {
+      changeBuildCount(key, delta);
+    }, 150);
+  }, [changeBuildCount]);
+
+  const stopLongPress = useCallback(() => {
+    if (longPressIntervalRef.current) {
+      clearInterval(longPressIntervalRef.current);
+      longPressIntervalRef.current = null;
+    }
+  }, []);
+
+  // Cleanup long-press interval on unmount
+  React.useEffect(() => {
+    return () => {
+      if (longPressIntervalRef.current) {
+        clearInterval(longPressIntervalRef.current);
+        longPressIntervalRef.current = null;
+      }
+    };
+  }, []);
 
   // Combine loading and error states from both hooks
   const isLoading = isBuildQueueLoading || isTechCountsLoading;
@@ -109,6 +146,48 @@ const FactoryPageClient: React.FC<FactoryPageClientProps> = ({ auth }) => {
       </AuthenticatedLayout>
     );
   }
+
+  const renderBuildControls = (key: string, itemType: 'weapon' | 'defense', baseCost: number) => {
+    const count = getBuildCount(key);
+    const canAfford = factoryService.canAfford(baseCost * count, ironAmount);
+    return (
+      <div className="build-controls">
+        <button
+          className="build-button"
+          disabled={!canAfford || isBuilding}
+          onClick={() => buildItem(key, itemType, count)}
+        >
+          {isBuilding ? 'Building...' : `Build ${count}`}
+        </button>
+        <button
+          className="build-count-btn"
+          disabled={isBuilding || count <= 1}
+          onClick={() => changeBuildCount(key, -1)}
+          onMouseDown={() => count > 2 && startLongPress(key, -1)}
+          onMouseUp={stopLongPress}
+          onMouseLeave={stopLongPress}
+          onTouchStart={() => count > 2 && startLongPress(key, -1)}
+          onTouchEnd={stopLongPress}
+          aria-label="Decrease build count"
+        >
+          −
+        </button>
+        <button
+          className="build-count-btn"
+          disabled={isBuilding}
+          onClick={() => changeBuildCount(key, 1)}
+          onMouseDown={() => startLongPress(key, 1)}
+          onMouseUp={stopLongPress}
+          onMouseLeave={stopLongPress}
+          onTouchStart={() => startLongPress(key, 1)}
+          onTouchEnd={stopLongPress}
+          aria-label="Increase build count"
+        >
+          +
+        </button>
+      </div>
+    );
+  };
 
   return (
     <AuthenticatedLayout>
@@ -244,13 +323,7 @@ const FactoryPageClient: React.FC<FactoryPageClientProps> = ({ auth }) => {
                         {defense.description}
                       </td>
                       <td className="data-cell action-cell">
-                        <button
-                          className="build-button"
-                          disabled={!factoryService.canAfford(defense.baseCost, ironAmount) || isBuilding}
-                          onClick={() => buildItem(key, 'defense')}
-                        >
-                          {isBuilding ? 'Building...' : 'Build'}
-                        </button>
+                        {renderBuildControls(key, 'defense', defense.baseCost)}
                       </td>
                     </tr>
                   ))}
@@ -295,13 +368,7 @@ const FactoryPageClient: React.FC<FactoryPageClientProps> = ({ auth }) => {
                     {defense.description}
                   </div>
                   <div className="card-actions">
-                    <button
-                      className="build-button"
-                      disabled={!factoryService.canAfford(defense.baseCost, ironAmount) || isBuilding}
-                      onClick={() => buildItem(key, 'defense')}
-                    >
-                      {isBuilding ? 'Building...' : 'Build'}
-                    </button>
+                    {renderBuildControls(key, 'defense', defense.baseCost)}
                   </div>
                 </div>
               ))}
@@ -367,13 +434,7 @@ const FactoryPageClient: React.FC<FactoryPageClientProps> = ({ auth }) => {
                         )}
                       </td>
                       <td className="data-cell action-cell">
-                        <button
-                          className="build-button"
-                          disabled={!factoryService.canAfford(weapon.baseCost, ironAmount) || isBuilding}
-                          onClick={() => buildItem(key, 'weapon')}
-                        >
-                          {isBuilding ? 'Building...' : 'Build'}
-                        </button>
+                        {renderBuildControls(key, 'weapon', weapon.baseCost)}
                       </td>
                     </tr>
                   ))}
@@ -446,13 +507,7 @@ const FactoryPageClient: React.FC<FactoryPageClientProps> = ({ auth }) => {
                     )}
                   </div>
                   <div className="card-actions">
-                    <button
-                      className="build-button"
-                      disabled={!factoryService.canAfford(weapon.baseCost, ironAmount) || isBuilding}
-                      onClick={() => buildItem(key, 'weapon')}
-                    >
-                      {isBuilding ? 'Building...' : 'Build'}
-                    </button>
+                    {renderBuildControls(key, 'weapon', weapon.baseCost)}
                   </div>
                 </div>
               ))}
@@ -517,13 +572,7 @@ const FactoryPageClient: React.FC<FactoryPageClientProps> = ({ auth }) => {
                         )}
                       </td>
                       <td className="data-cell action-cell">
-                        <button
-                          className="build-button"
-                          disabled={!factoryService.canAfford(weapon.baseCost, ironAmount) || isBuilding}
-                          onClick={() => buildItem(key, 'weapon')}
-                        >
-                          {isBuilding ? 'Building...' : 'Build'}
-                        </button>
+                        {renderBuildControls(key, 'weapon', weapon.baseCost)}
                       </td>
                     </tr>
                   ))}
@@ -596,13 +645,7 @@ const FactoryPageClient: React.FC<FactoryPageClientProps> = ({ auth }) => {
                     )}
                   </div>
                   <div className="card-actions">
-                    <button
-                      className="build-button"
-                      disabled={!factoryService.canAfford(weapon.baseCost, ironAmount) || isBuilding}
-                      onClick={() => buildItem(key, 'weapon')}
-                    >
-                      {isBuilding ? 'Building...' : 'Build'}
-                    </button>
+                    {renderBuildControls(key, 'weapon', weapon.baseCost)}
                   </div>
                 </div>
               ))}
