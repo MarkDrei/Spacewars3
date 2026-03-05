@@ -714,6 +714,22 @@ const ResearchPageClient: React.FC<ResearchPageClientProps> = () => {
           )}
         </div>
       </div>
+
+      {/* Fixed overlay showing active research name and remaining time */}
+      {techTree?.activeResearch && researches && (
+        <div className="research-progress-overlay">
+          <div className="research-progress-content">
+            <span className="research-progress-label">🔬 In Progress:</span>
+            <span className="research-progress-name">
+              {researches[techTree.activeResearch.type]?.name ?? techTree.activeResearch.type}
+            </span>
+            <span className="research-progress-separator">|</span>
+            <span className="research-progress-timer">
+              {remaining !== null ? researchService.formatDuration(remaining) : '...'}
+            </span>
+          </div>
+        </div>
+      )}
     </AuthenticatedLayout>
   );
 };
