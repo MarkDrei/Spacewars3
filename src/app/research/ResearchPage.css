@@ -593,9 +593,17 @@
   font-size: 1.1rem;
 }
 
+/* On tablet/mobile (≤1280px) the bottom nav bar is 70px – push overlay above it */
+@media (max-width: 1280px) {
+  .research-progress-overlay {
+    bottom: calc(110px + 1rem);
+    z-index: 1001;
+  }
+}
+
+/* On small screens also adjust lateral positioning */
 @media (max-width: 600px) {
   .research-progress-overlay {
-    bottom: 1rem;
     left: 1rem;
     right: 1rem;
     transform: none;
