@@ -58,13 +58,6 @@ export interface BattleStats {
   hull: { current: number; max: number };
   armor: { current: number; max: number };
   shield: { current: number; max: number };
-  weapons: {
-    [weaponType: string]: {
-      count: number;
-      damage: number;
-      cooldown: number;
-    };
-  };
 }
 
 export interface BattleEvent {

@@ -23,12 +23,11 @@ function makeCooldowns(weapons: Record<string, number>): WeaponCooldowns {
   return { ...weapons };
 }
 
-function makeStats(weapons: Record<string, { count: number; damage: number; cooldown: number }>): BattleStats {
+function makeStats(): BattleStats {
   return {
     hull: { current: 100, max: 100 },
     armor: { current: 50, max: 50 },
     shield: { current: 25, max: 25 },
-    weapons,
   };
 }
 
@@ -48,8 +47,8 @@ function makeBattle(
     loserId: null,
     attackerWeaponCooldowns: attackerCooldowns,
     attackeeWeaponCooldowns: attackeeCooldowns,
-    attackerStartStats: attackerStats ?? makeStats({}),
-    attackeeStartStats: attackeeStats ?? makeStats({}),
+    attackerStartStats: attackerStats ?? makeStats(),
+    attackeeStartStats: attackeeStats ?? makeStats(),
     attackerEndStats: null,
     attackeeEndStats: null,
     battleLog: [],
@@ -80,15 +79,11 @@ describe('Battle cooldowns map as source of truth', () => {
     expect(NOW >= cooldowns['pulse_laser']).toBe(false);
   });
 
-  it('weaponsOnlyInStartStats_notInCooldownsMap_areNotInCooldownsIteration', () => {
+  it('weaponsNotInCooldownsMap_areNotReady', () => {
     // Under the new design, getReadyWeapons iterates cooldowns, NOT startStats.
-    // A weapon present in startStats but absent from cooldowns should NOT be
-    // returned by a cooldown-based iteration.
-    const attackerStats = makeStats({
-      pulse_laser: { count: 1, damage: 8, cooldown: 30 },
-    });
+    // Weapons absent from cooldowns are not fired regardless of techCounts.
     const attackerCooldowns = makeCooldowns({}); // pulse_laser NOT registered
-    const battle = makeBattle(attackerCooldowns, {}, attackerStats);
+    const battle = makeBattle(attackerCooldowns, {});
 
     // The cooldowns map for attacker is empty → no ready weapons
     const readyFromCooldowns = Object.entries(battle.attackerWeaponCooldowns)

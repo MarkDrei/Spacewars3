@@ -86,7 +86,7 @@ async function discoverNewWeapons(
   const cooldowns = isAttacker ? battle.attackerWeaponCooldowns : battle.attackeeWeaponCooldowns;
 
   const allWeaponKeys = TechFactory.getWeaponKeys();
-  const techCounts = user.techCounts as Record<string, number>;
+  const techCounts = user.techCounts as unknown as Record<string, number>;
 
   for (const weaponType of allWeaponKeys) {
     const count = techCounts[weaponType] ?? 0;
@@ -341,7 +341,7 @@ async function fireWeapon(
     // Issue 1: Query current weapon count from live user data instead of the stale
     // startStats snapshot.  The user may have built more (or lost) weapons since the
     // battle started.
-    const currentCount = (attackerUser.techCounts as Record<string, number>)[weaponType] ?? 0;
+    const currentCount = (attackerUser.techCounts as unknown as Record<string, number>)[weaponType] ?? 0;
     if (currentCount === 0) {
       // Weapon no longer available – update cooldown to prevent re-firing until re-acquired
       const nextReadyTime = currentTime + WEAPON_UNAVAILABLE_RECHECK_INTERVAL_S;
