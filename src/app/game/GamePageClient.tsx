@@ -60,6 +60,11 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
     router.push('/');
   }, [router]);
 
+  // Memoize starbase entry callback - called from Game when player enters a starbase
+  const handleStarbaseEntry = useCallback(() => {
+    router.push('/starbase');
+  }, [router]);
+
   // Memoize canvas teleport callback - called from Game when click-to-teleport mode is active
   const handleCanvasTeleport = useCallback(async (worldX: number, worldY: number) => {
     setTeleportClickMode(false);
@@ -138,8 +143,10 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
       gameInstanceRef.current.setAttackSuccessCallback?.(handleAttackSuccess);
       // Set the teleport click callback for canvas click-to-teleport mode
       gameInstanceRef.current.setTeleportClickCallback?.(handleCanvasTeleport);
+      // Set the starbase entry callback to redirect to starbase page
+      gameInstanceRef.current.setStarbaseEntryCallback(handleStarbaseEntry);
     }
-  }, [worldData, auth.shipId, refetch, handleAttackSuccess, handleCanvasTeleport]);
+  }, [worldData, auth.shipId, refetch, handleAttackSuccess, handleCanvasTeleport, handleStarbaseEntry]);
 
   // Initialize input fields with current ship state only once when game starts
   useEffect(() => {

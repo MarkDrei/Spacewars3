@@ -85,6 +85,7 @@ function makeMocks(user: User, bridge: BridgeGrid) {
 
   const inventoryServiceMock = {
     getBridge: mockGetBridge,
+    getBridgeWithContext: mockGetBridge,
   } as unknown as InventoryService;
 
   return { userCacheMock, inventoryServiceMock, mockGetUserByIdFromCache, mockGetBridge };
@@ -188,7 +189,7 @@ describe('UserBonusCache lazy caching', () => {
 
     UserBonusCache.configureDependencies({
       userCache: { getUserByIdFromCache: mockGetUserById } as unknown as UserCache,
-      inventoryService: { getBridge: mockGetBridge } as unknown as InventoryService,
+      inventoryService: { getBridge: mockGetBridge, getBridgeWithContext: mockGetBridge } as unknown as InventoryService,
     });
     const cache = UserBonusCache.getInstance();
 
@@ -246,7 +247,7 @@ describe('UserBonusCache invalidateBonuses', () => {
 
     UserBonusCache.configureDependencies({
       userCache: { getUserByIdFromCache: mockGetById } as unknown as UserCache,
-      inventoryService: { getBridge: mockGetBridge } as unknown as InventoryService,
+      inventoryService: { getBridge: mockGetBridge, getBridgeWithContext: mockGetBridge } as unknown as InventoryService,
     });
     const cache = UserBonusCache.getInstance();
 
@@ -311,7 +312,7 @@ describe('UserBonusCache discardAllBonuses', () => {
 
     UserBonusCache.configureDependencies({
       userCache: { getUserByIdFromCache: mockGetById } as unknown as UserCache,
-      inventoryService: { getBridge: mockGetBridge } as unknown as InventoryService,
+      inventoryService: { getBridge: mockGetBridge, getBridgeWithContext: mockGetBridge } as unknown as InventoryService,
     });
     const cache = UserBonusCache.getInstance();
 
@@ -727,7 +728,7 @@ describe('UserBonusCache edge cases', () => {
 
     UserBonusCache.configureDependencies({
       userCache: { getUserByIdFromCache: mockGetById } as unknown as UserCache,
-      inventoryService: { getBridge: mockGetBridge } as unknown as InventoryService,
+      inventoryService: { getBridge: mockGetBridge, getBridgeWithContext: mockGetBridge } as unknown as InventoryService,
     });
     const cache = UserBonusCache.getInstance();
 

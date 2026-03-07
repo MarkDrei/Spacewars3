@@ -141,8 +141,10 @@ export class GameRenderer {
         // Get collectibles and ships
         const objects = this.world.getSpaceObjects();
         const nonPlayerObjects = objects.filter(obj => !(obj instanceof Ship && obj.getId() === ship.getId()));
-        // convert to SpaceObjects
-        const spaceObjects = nonPlayerObjects.map(obj => obj.getServerData());
+        // convert to SpaceObjects – starbases first so they render behind ships/collectibles
+        const spaceObjects = nonPlayerObjects
+            .sort((a, b) => (a.getType() === 'starbase' ? -1 : b.getType() === 'starbase' ? 1 : 0))
+            .map(obj => obj.getServerData());
         
         // Draw radar centered around the player ship (now clipped to circle)
         this.radarRenderer.drawRadar(

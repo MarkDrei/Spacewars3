@@ -4,6 +4,7 @@ import { EscapePodRenderer } from './EscapePodRenderer';
 import { AsteroidRenderer } from './AsteroidRenderer';
 import { SpaceObject } from '@shared/types';
 import { OtherShipRenderer } from './OtherShipRenderer';
+import { StarbaseRenderer } from './StarbaseRenderer';
 
 export class SpaceObjectsRenderer {
     private ctx: CanvasRenderingContext2D;
@@ -12,6 +13,7 @@ export class SpaceObjectsRenderer {
     private escapePodRenderer: EscapePodRenderer;
     private asteroidRenderer: AsteroidRenderer;
     private shipRenderer: OtherShipRenderer;
+    private starbaseRenderer: StarbaseRenderer;
 
     constructor(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement) {
         this.ctx = ctx;
@@ -20,6 +22,7 @@ export class SpaceObjectsRenderer {
         this.escapePodRenderer = new EscapePodRenderer();
         this.asteroidRenderer = new AsteroidRenderer();
         this.shipRenderer = new OtherShipRenderer();
+        this.starbaseRenderer = new StarbaseRenderer();
     }
 
     /**
@@ -95,6 +98,15 @@ export class SpaceObjectsRenderer {
                 shipY,
                 collectible
             );
+        } else if (collectible.type === 'starbase') {
+            this.starbaseRenderer.drawStarbase(
+                this.ctx,
+                screenX + offsetX,
+                screenY + offsetY,
+                shipX,
+                shipY,
+                collectible
+            );
         }
     }
     
@@ -109,8 +121,8 @@ export class SpaceObjectsRenderer {
         visibleTop: number, 
         visibleBottom: number
     ): boolean {
-        // Add a small margin to account for object size
-        const margin = 50;
+        // Add a margin to account for large objects (e.g. Starbase rendered at 250px radius)
+        const margin = 250;
         return (
             worldX >= visibleLeft - margin && 
             worldX <= visibleRight + margin &&

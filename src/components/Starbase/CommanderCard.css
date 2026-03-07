@@ -1,0 +1,88 @@
+.commander-card {
+  display: flex;
+  flex-direction: column;
+  background-color: #1e1e2e;
+  border: 1px solid #2a2a4e;
+  border-radius: 8px;
+  padding: 0.75rem;
+  gap: 0.5rem;
+  width: 200px;
+  flex-shrink: 0;
+}
+
+.commander-card-image-wrap {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 64px;
+  background-color: #12121e;
+  border-radius: 6px;
+}
+
+.commander-card-info {
+  flex: 1;
+}
+
+.commander-card-name {
+  font-size: 0.95rem;
+  font-weight: bold;
+  color: #e0e0e0;
+  margin: 0 0 0.4rem 0;
+  text-align: center;
+}
+
+.commander-card-bonuses {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.commander-card-bonus {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.78rem;
+  padding: 0.2rem 0;
+  border-bottom: 1px solid #2a2a3e;
+}
+
+.commander-card-bonus:last-child {
+  border-bottom: none;
+}
+
+.commander-card-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  border-top: 1px solid #2a2a4e;
+  padding-top: 0.5rem;
+}
+
+.commander-card-price {
+  font-size: 0.85rem;
+  color: #ffd54f;
+  font-weight: bold;
+}
+
+.commander-card-action-btn {
+  width: 100%;
+  padding: 0.4rem 0.6rem;
+  border: none;
+  border-radius: 5px;
+  background-color: #66bb6a;
+  color: #121212;
+  font-weight: bold;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.commander-card-action-btn:hover:not(:disabled) {
+  background-color: #81c784;
+}
+
+.commander-card-action-btn:disabled {
+  background-color: #424242;
+  color: #757575;
+  cursor: not-allowed;
+}

@@ -46,6 +46,18 @@ As a player, I can discover hardcoded Starbases on the game canvas, click on the
 
 **Quality Requirements**: TypeScript strict mode must compile without errors after this change.
 
+**Status**: ✅ COMPLETED
+**Implementation Summary**: Added `'starbase'` to the `SpaceObject['type']` union and added a `StarbaseObject` interface extending `SpaceObject` with `type: 'starbase'`. Verified no exhaustive switch/if-else chains were broken (the only switch in `World.ts` has a `default` case).
+**Files Modified/Created**:
+- `src/shared/src/types/gameTypes.ts` — Added `'starbase'` to type union and added `StarbaseObject` interface
+**Deviations from Plan**: Used `StarbaseObject` as the interface name (as specified in the task details) rather than `Starbase` (as named in the Action text) to avoid potential naming conflicts with future `Starbase.ts` module.
+**Arc42 Updates**: None required
+**Test Results**: ✅ All tests passing (61 pre-existing failures unrelated to this change, 639 passing), no new failures introduced
+
+**Review Status**: ✅ APPROVED
+**Reviewer**: Medicus
+**Review Notes**: Core change is correct — `'starbase'` correctly added to the shared type union and `StarbaseObject` interface properly declares the discriminant. No exhaustive switch chains are broken (client `World.ts` default case handles unknown types gracefully; server `user.ts` default case is similarly safe). Server-side `world.ts` SpaceObject was intentionally not updated, which is correct per the plan (starbases are hardcoded and never stored in DB). Arc42 update correctly omitted. Minor note: the `StarbaseObject` name deviates from the existing convention (`Asteroid`, `Shipwreck`, `EscapePod`) where shared interface names match their future client-class names — the rationale (avoiding naming conflicts) is questionable since the existing pattern already co-locates same-named interfaces and classes (e.g., `EscapePod` interface + `EscapePod` class, aliased on import as `SharedEscapePod`). The deviation is documented and does not affect correctness; future tasks should be aware they will import `StarbaseObject` rather than `Starbase` from gameTypes.
+
 #### Task 1.2: Add starbase image asset
 
 **Action**: The image `public/assets/images/station1.png` has already been added to the repository. Document the path in a comment inside `StarbaseRenderer.ts`.
@@ -69,6 +81,18 @@ Add a public method `drawStarbase(ctx, centerX, centerY, shipX, shipY, obj: Spac
 
 - `src/lib/client/renderers/StarbaseRenderer.ts` — new file
 
+**Status**: ✅ COMPLETED
+**Implementation Summary**: Created `StarbaseRenderer.ts` extending `SpaceObjectRendererBase` with lazy-loaded station image, 5× base object size (250px), blue fallback color, zero rotation offset, and a `drawStarbase()` public method delegating to `drawSpaceObject()`.
+**Files Modified/Created**:
+- `src/lib/client/renderers/StarbaseRenderer.ts` — new renderer file
+**Deviations from Plan**: None. Used `imageLoaded` boolean flag (simpler than OtherShipRenderer's Map-based pattern since there's only one image).
+**Arc42 Updates**: None required
+**Test Results**: ✅ Build passes, 639 tests passing, 61 pre-existing failures unrelated to this change, no new failures introduced
+
+**Review Status**: ✅ APPROVED
+**Reviewer**: Medicus
+**Review Notes**: Implementation is correct and architecturally consistent. One minor observation: the `imageLoaded` boolean flag in `getObjectImage()` is redundant — `SpaceObjectRendererBase` already guards against unloaded images via `image.complete && image.naturalHeight !== 0` (lines 114 and 181 of the base class), which is exactly the pattern used by `AsteroidRenderer`, `EscapePodRenderer`, and `ShipwreckRenderer`. Returning `this.stationImage` directly (without the flag) would be simpler and more consistent with those three renderers. The Knight acknowledged this as a conscious deviation for clarity, and it is functionally equivalent, so approval stands. The `BASE_OBJECT_SIZE` local constant, `drawStarbase()` delegation pattern, fallback color, and zero rotation offset all correctly follow the established renderer conventions.
+
 #### Task 1.4: Register StarbaseRenderer in SpaceObjectsRenderer
 
 **Action**: In `src/lib/client/renderers/SpaceObjectsRenderer.ts`:
@@ -79,6 +103,19 @@ Add a public method `drawStarbase(ctx, centerX, centerY, shipX, shipY, obj: Spac
 **Files**:
 
 - `src/lib/client/renderers/SpaceObjectsRenderer.ts` — add import, field, dispatch branch
+
+**Status**: ✅ COMPLETED
+**Implementation Summary**: Added `StarbaseRenderer` import, private field, and constructor instantiation to `SpaceObjectsRenderer`, and wired a new `else if (collectible.type === 'starbase')` dispatch branch in `renderObject()` that delegates to `this.starbaseRenderer.drawStarbase(...)`.
+**Files Modified/Created**:
+- `src/lib/client/renderers/SpaceObjectsRenderer.ts` — added import, `starbaseRenderer` field, constructor instantiation, and dispatch branch
+- `src/__tests__/unit/renderers/SpaceObjectsRenderer.test.ts` — new test file covering all 5 renderer dispatch paths including starbase
+**Deviations from Plan**: None.
+**Arc42 Updates**: None required
+**Test Results**: ✅ 647 tests passing (8 new), 57 test files passing (1 new), 61 pre-existing integration failures (no DB), no linting errors
+
+**Review Status**: ✅ APPROVED
+**Reviewer**: Medicus
+**Review Notes**: Implementation is a minimal, correct extension of the existing dispatcher pattern. Import, field, constructor instantiation, and dispatch branch all match the established conventions exactly. The new test file is thorough — mocking all five sub-renderers and asserting dispatch-level behavior (not just coverage): it covers constructor instantiation, all five dispatch paths, a meaningful negative case (non-starbase type doesn't trigger starbaseRenderer), and a multi-type rendering scenario. No Arc42 update required or needed. No code duplication, no design issues.
 
 ---
 
@@ -100,6 +137,18 @@ Add a public method `drawStarbase(ctx, centerX, centerY, shipX, shipY, obj: Spac
 
 **Content**: One Starbase at world position (2500, 2500), `id: 9001`, `type: 'starbase'`, `speed: 0`, `angle: 0`, `picture_id: 1`.
 
+**Status**: ✅ COMPLETED
+**Implementation Summary**: Created `src/shared/starbases.ts` with `STARBASE_ID_OFFSET`, `STARBASE_DOCK_RANGE`, and `STARBASES` array containing one starbase at (2500, 2500).
+**Files Modified/Created**:
+- `src/shared/starbases.ts` — new file with `STARBASES: StarbaseObject[]` constant, `STARBASE_DOCK_RANGE = 500`, and `STARBASE_ID_OFFSET = 9000`
+**Deviations from Plan**: Used `@shared/types/gameTypes` import alias (consistent with codebase conventions). Added `last_position_update_ms: 0` required by the `SpaceObject` interface. The proposed code in the task used a wrong import path (`'./src/types/gameTypes'`) — corrected to use the project's `@shared/` alias.
+**Arc42 Updates**: None required
+**Test Results**: ✅ TypeScript compilation passes (`npx tsc --noEmit`)
+
+**Review Status**: ✅ APPROVED
+**Reviewer**: Medicus
+**Review Notes**: Revision applied correctly — `id: STARBASE_ID_OFFSET + 1` now structurally enforces the no-collision invariant. All required exports (`STARBASE_ID_OFFSET`, `STARBASE_DOCK_RANGE`, `STARBASES`) are present, the `StarbaseObject[]` type annotation is correct, and the import alias follows codebase conventions. Implementation meets all requirements.
+
 #### Task 2.2: Append hardcoded starbases to /api/world response
 
 **Action**: In `src/app/api/world/route.ts`, after fetching the live world data from `WorldCache`, append the entries from `STARBASES` to the `spaceObjects` array before returning the JSON response.
@@ -107,6 +156,19 @@ Add a public method `drawStarbase(ctx, centerX, centerY, shipX, shipY, obj: Spac
 **Files**:
 
 - `src/app/api/world/route.ts` — import `STARBASES` and append them to the response
+
+**Status**: ✅ COMPLETED
+**Implementation Summary**: Imported `STARBASES` from `@/shared/starbases` in the world route and spread the hardcoded starbases into the `spaceObjects` array before returning the JSON response.
+**Files Modified/Created**:
+- `src/app/api/world/route.ts` — Added `STARBASES` import and appended starbases to `spaceObjects` in the response
+**Deviations from Plan**: None
+**Arc42 Updates**: None required
+**Test Results**: ✅ Build passes, all tests passing, no new failures introduced
+
+**Review Status**: ✅ APPROVED
+**Reviewer**: Medicus
+**Reviewer Fix**: Added unit test `world_authenticated_returnsStarbasesInSpaceObjects` to `src/__tests__/unit/api/world-api.test.ts`. The test initializes `WorldCache` with a mock DB and empty world (no auto-persist), creates a session cookie via `createMockSessionCookie()`, calls the GET handler, and asserts `status === 200` and `spaceObjects` contains `{ type: 'starbase', id: 9001 }`.
+**Review Notes**: Test correctly validates end-to-end behavior through the real GET handler. Assertions check the right contract (type and id of injected starbase). Setup/teardown properly isolates test state via `WorldCache.resetInstance()`. Implementation is clean and minimal.
 
 ---
 
@@ -136,6 +198,18 @@ Add a public method `drawStarbase(ctx, centerX, centerY, shipX, shipY, obj: Spac
 **Files**:
 
 - `src/lib/client/game/Game.ts` — new field, method, and click handler branch
+
+**Status**: ✅ COMPLETED
+**Implementation Summary**: Added `onStarbaseEntryCallback` private field, `setStarbaseEntryCallback()` public method, and a `'starbase'` branch in `initializeClickHandler()` that fires the callback when within `STARBASE_DOCK_RANGE` (in attack mode) or delegates to `handleInterception()` when out of range. Outside attack mode, starbase clicks are silently ignored.
+**Files Modified/Created**:
+- `src/lib/client/game/Game.ts` — added import of `STARBASE_DOCK_RANGE`, private field, public method, and click-handler branch
+- `src/__tests__/unit/lib/Game-starbase-callback.test.ts` — 8 new tests covering all branches
+**Deviations from Plan**: None. Used `calculateToroidalDistance` (already imported) rather than a hypothetical `toroidalDistance` alias — they are the same function.
+**Arc42 Updates**: None required
+**Test Results**: ✅ 8 new tests passing, 610 unit tests passing total, no linting errors
+**Review Status**: ✅ APPROVED
+**Reviewer**: Medicus
+**Review Notes**: Implementation matches plan exactly. Import path `@/shared/starbases` is consistent with existing codebase pattern for files in `src/shared/` root. Branch placement (before generic collectible fallthrough) is correct. Boundary condition (`<=`) is tested. Optional chaining guards null callback cleanly. One minor test smell: `setStarbaseEntryCallback_registersCallback_storesRef` accesses a private field directly — acceptable for storage verification.
 
 #### Task 3.2: Wire starbase entry callback in GamePageClient
 

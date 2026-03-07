@@ -1,7 +1,9 @@
 import { SessionOptions } from 'iron-session';
+import type { CommanderData } from '@/lib/server/inventory/Commander';
 
 export interface SessionData {
   userId?: number;
+  starbaseShop?: CommanderData[];
 }
 
 export const sessionOptions: SessionOptions = {

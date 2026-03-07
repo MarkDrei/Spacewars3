@@ -9,6 +9,7 @@ import { InterceptCalculator } from './InterceptCalculator';
 import { SpaceObjectOld } from './SpaceObject';
 import { collectionService } from '../services/collectionService';
 import { calculateToroidalDistance } from '@shared/physics';
+import { STARBASE_DOCK_RANGE } from '@/shared/starbases';
 import { debugState } from '../debug/debugState';
 import { InterceptionLineRenderer } from '../renderers/InterceptionLineRenderer';
 
@@ -28,6 +29,7 @@ export class Game {
   private teleportClickMode: boolean = false;
   private attackClickMode: boolean = false;
   private onTeleportClickCallback: ((x: number, y: number) => void) | null = null;
+  private onStarbaseEntryCallback: ((starbaseId: number) => void) | null = null;
 
   constructor(canvas: HTMLCanvasElement) {
     // Initialize the canvas context
@@ -123,6 +125,17 @@ export class Game {
             // Attack mode is off, treat as empty space click
             this.handleEmptySpaceClick(canvas, logicalX, logicalY);
           }
+        } else if (hoveredObject.getType() === 'starbase') {
+          if (this.attackClickMode) {
+            if (distance <= STARBASE_DOCK_RANGE) {
+              // Close enough to dock - fire entry callback
+              this.onStarbaseEntryCallback?.(hoveredObject.getId());
+            } else {
+              // Too far - fly toward the starbase first
+              this.handleInterception(hoveredObject);
+            }
+          }
+          // Outside attack mode: starbase click does nothing
         } else if (distance <= 125) {
           // Object is close enough and collectible - try to collect it
           this.handleCollection(hoveredObject);
@@ -387,6 +400,13 @@ export class Game {
    */
   public setAttackSuccessCallback(callback: () => void): void {
     this.onAttackSuccessCallback = callback;
+  }
+
+  /**
+   * Set a callback function to trigger when player docks at a starbase
+   */
+  public setStarbaseEntryCallback(fn: (starbaseId: number) => void): void {
+    this.onStarbaseEntryCallback = fn;
   }
 
   /**

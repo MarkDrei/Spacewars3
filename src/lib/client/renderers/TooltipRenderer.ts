@@ -3,6 +3,7 @@ import { SpaceObjectOld } from '../game/SpaceObject';
 import { Collectible } from '../game/Collectible';
 import { Shipwreck } from '../game/Shipwreck';
 import { EscapePod } from '../game/EscapePod';
+import { Starbase } from '../game/Starbase';
 
 export class TooltipRenderer {
     private ctx: CanvasRenderingContext2D;
@@ -89,6 +90,12 @@ export class TooltipRenderer {
                 'Type: Ship',
                 `Speed: ${object.getSpeed()}`,
                 `Angle: ${angleDegrees}°`
+            ];
+        } else if (object instanceof Starbase) {
+            return [
+                'Type: Starbase',
+                `Distance: ${Math.round(distance)}`,
+                'Click to dock',
             ];
         } else if (object instanceof Collectible) {
             return this.getCollectibleTooltip(object as Collectible, distance, angleDegrees);
