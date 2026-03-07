@@ -5,7 +5,7 @@
 // All public methods acquire USER_INVENTORY_LOCK internally.
 // ---
 
-import { createLockContext, HasLock5Context, IronLocks, LockLevel } from '@markdrei/ironguard-typescript-locks';
+import { createLockContext, HasLock5Context, IronLocks, LockContext, LockLevel, LocksAtMostAndHas4 } from '@markdrei/ironguard-typescript-locks';
 import { USER_INVENTORY_LOCK } from '../typedLocks';
 import { InventoryRepo } from './InventoryRepo';
 import {
@@ -251,19 +251,45 @@ export class InventoryService {
   async getBridge(userId: number, maxBridgeSlots: number = DEFAULT_BRIDGE_SLOTS): Promise<BridgeGrid> {
     const ctx = createLockContext();
     return ctx.useLockWithAcquire(USER_INVENTORY_LOCK, async (lockCtx) => {
-      const existing = await this.repo.getBridge(lockCtx, userId);
-      if (existing !== null) {
-        const sized = ensureBridgeGridSize(existing, maxBridgeSlots);
-        if (sized !== existing) {
-          await this.repo.saveBridge(lockCtx, userId, sized);
-        }
-        return sized;
-      }
-      // First access – persist and return empty grid
-      const empty = createEmptyBridgeGrid(maxBridgeSlots);
-      await this.repo.saveBridge(lockCtx, userId, empty);
-      return empty;
+      return this.getBridgeCore(lockCtx, userId, maxBridgeSlots);
     });
+  }
+
+  /**
+   * Get the full bridge grid for a user, reusing an existing lock context
+   * that already holds USER_LOCK (LOCK_4).
+   * Acquires USER_INVENTORY_LOCK (LOCK_5) through the provided context, keeping
+   * the full lock chain intact so ironguard can enforce ordering across callers.
+   * Caller must hold USER_LOCK (LOCK_4) and no higher locks (LocksAtMostAndHas4).
+   */
+  async getBridgeWithContext(
+    ctx: LockContext<LocksAtMostAndHas4>,
+    userId: number,
+    maxBridgeSlots: number = DEFAULT_BRIDGE_SLOTS
+  ): Promise<BridgeGrid> {
+    return ctx.useLockWithAcquire(USER_INVENTORY_LOCK, async (lockCtx) => {
+      return this.getBridgeCore(lockCtx, userId, maxBridgeSlots);
+    });
+  }
+
+  /** Shared implementation used by getBridge and getBridgeWithContext. */
+  private async getBridgeCore<THeld extends IronLocks>(
+    lockCtx: HasLock5Context<THeld>, // THeld always satisfies ≤5 here because we only acquire LOCK_5 from ≤4 contexts
+    userId: number,
+    maxBridgeSlots: number
+  ): Promise<BridgeGrid> {
+    const existing = await this.repo.getBridge(lockCtx, userId);
+    if (existing !== null) {
+      const sized = ensureBridgeGridSize(existing, maxBridgeSlots);
+      if (sized !== existing) {
+        await this.repo.saveBridge(lockCtx, userId, sized);
+      }
+      return sized;
+    }
+    // First access – persist and return empty grid
+    const empty = createEmptyBridgeGrid(maxBridgeSlots);
+    await this.repo.saveBridge(lockCtx, userId, empty);
+    return empty;
   }
 
   // ---------------------------------------------------------------------------

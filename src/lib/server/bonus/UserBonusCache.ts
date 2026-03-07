@@ -3,14 +3,14 @@
 //
 // Dependencies (injected via configureDependencies()):
 //   - UserCache        — reads User from in-memory cache (LOCK_4 held by caller)
-//   - InventoryService — reads bridge grid (acquires LOCK_5 internally; lock order 4→5 is valid)
+//   - InventoryService — reads bridge grid via getBridgeWithContext (extends LOCK_4 context to LOCK_5; order 4→5 is valid)
 //
 // Lock usage:
 //   - getBonuses / updateBonuses require the caller to hold USER_LOCK (LOCK_4).
 //   - invalidateBonuses / discardAllBonuses are synchronous and require no lock.
 // ---
 
-import { HasLock4Context, IronLocks } from '@markdrei/ironguard-typescript-locks';
+import { HasLock4Context, IronLocks, LockContext, LocksAtMostAndHas4 } from '@markdrei/ironguard-typescript-locks';
 import { UserCache } from '../user/userCache';
 import { InventoryService } from '../inventory/InventoryService';
 import { Commander, COMMANDER_STAT_KEYS, CommanderStatKey, CommanderData } from '../inventory/Commander';
@@ -116,11 +116,18 @@ export class UserBonusCache {
     // 2. Level multiplier.
     const levelMultiplier = Math.pow(1.15, user.getLevel() - 1);
 
-    // 3. Read bridge grid — InventoryService acquires LOCK_5 internally (order 4→5 is valid).
+    // 3. Read bridge grid — extend the existing LOCK_4 context to also acquire LOCK_5,
+    // keeping the full lock chain intact (order 4→5 is valid).
+    // Safe cast: all callers of updateBonuses hold USER_LOCK (LOCK_4) and no higher locks,
+    // so ctx is always compatible with LockContext<LocksAtMostAndHas4>.
     const maxBridgeSlots = Math.floor(
       getResearchEffectFromTree(user.techTree, ResearchType.BridgeSlots)
     );
-    const bridgeGrid = await deps.inventoryService.getBridge(userId, maxBridgeSlots);
+    const bridgeGrid = await deps.inventoryService.getBridgeWithContext(
+      ctx as unknown as LockContext<LocksAtMostAndHas4>,
+      userId,
+      maxBridgeSlots
+    );
 
     // 4. Collect commanders from the bridge grid.
     const commanders: CommanderData[] = bridgeGrid.flatMap(row =>
