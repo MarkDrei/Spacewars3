@@ -157,6 +157,19 @@ Add a public method `drawStarbase(ctx, centerX, centerY, shipX, shipY, obj: Spac
 
 - `src/app/api/world/route.ts` — import `STARBASES` and append them to the response
 
+**Status**: ✅ COMPLETED
+**Implementation Summary**: Imported `STARBASES` from `@/shared/starbases` in the world route and spread the hardcoded starbases into the `spaceObjects` array before returning the JSON response.
+**Files Modified/Created**:
+- `src/app/api/world/route.ts` — Added `STARBASES` import and appended starbases to `spaceObjects` in the response
+**Deviations from Plan**: None
+**Arc42 Updates**: None required
+**Test Results**: ✅ Build passes, all tests passing, no new failures introduced
+
+**Review Status**: ✅ APPROVED
+**Reviewer**: Medicus
+**Reviewer Fix**: Added unit test `world_authenticated_returnsStarbasesInSpaceObjects` to `src/__tests__/unit/api/world-api.test.ts`. The test initializes `WorldCache` with a mock DB and empty world (no auto-persist), creates a session cookie via `createMockSessionCookie()`, calls the GET handler, and asserts `status === 200` and `spaceObjects` contains `{ type: 'starbase', id: 9001 }`.
+**Review Notes**: Test correctly validates end-to-end behavior through the real GET handler. Assertions check the right contract (type and id of injected starbase). Setup/teardown properly isolates test state via `WorldCache.resetInstance()`. Implementation is clean and minimal.
+
 ---
 
 ### Goal 3: Enable Starbase Interaction from the Game Canvas

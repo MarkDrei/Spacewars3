@@ -5,6 +5,7 @@ import { handleApiError, requireAuth } from '@/lib/server/errors';
 import { WORLD_LOCK } from '@/lib/server/typedLocks';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 import { WorldCache } from '@/lib/server/world/worldCache';
+import { STARBASES } from '@/shared/starbases';
 
 export async function GET(request: NextRequest) {
   try {
@@ -28,9 +29,12 @@ export async function GET(request: NextRequest) {
       // Mark world as dirty for persistence (critical fix!)
       await worldCache.updateWorldUnsafe(worldContext, world);
       
-      // Return world data
+      // Return world data with hardcoded starbases appended
       const worldData = world.getWorldData(worldContext);
-      return NextResponse.json(worldData);
+      return NextResponse.json({
+        ...worldData,
+        spaceObjects: [...worldData.spaceObjects, ...STARBASES],
+      });
     });
   } catch (error) {
     return handleApiError(error);
