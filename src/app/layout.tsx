@@ -1,11 +1,14 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
+
+export const viewport: Viewport = {
+  themeColor: "#4caf50",
+};
 
 export const metadata: Metadata = {
   title: "Spacewars: Ironcore",
   description: "A space exploration and resource management game",
   manifest: "/manifest.json",
-  themeColor: "#ff6600",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",

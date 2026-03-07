@@ -4,8 +4,8 @@
   "description": "A space exploration and resource management game",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#000000",
-  "theme_color": "#333333",
+  "background_color": "#0a0a0a",
+  "theme_color": "#4caf50",
   "orientation": "portrait-primary",
   "icons": [
     {
