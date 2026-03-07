@@ -151,16 +151,12 @@ describe('BattleScheduler Integration', () => {
       hull: { current: 100, max: 100 },
       armor: { current: 50, max: 50 },
       shield: { current: 25, max: 25 },
-      weapons: {
-        pulse_laser: { count: 1, damage: 10, cooldown: 3 }
-      }
     };
     
     const defenderStats: BattleStats = {
       hull: { current: 100, max: 100 },
       armor: { current: 50, max: 50 },
       shield: { current: 25, max: 25 },
-      weapons: {}
     };
 
     const cooldowns: WeaponCooldowns = {
@@ -227,16 +223,12 @@ describe('BattleScheduler Integration', () => {
         hull: { current: 1000, max: 1000 },
         armor: { current: 500, max: 500 },
         shield: { current: 250, max: 250 },
-        weapons: {
-          pulse_laser: { count: 1, damage: 10, cooldown: 5 }
-        }
       };
       
       const defenderStats: BattleStats = {
         hull: { current: 1000, max: 1000 },
         armor: { current: 500, max: 500 },
         shield: { current: 250, max: 250 },
-        weapons: {}
       };
 
       // Initial cooldown set to 0 (ready to fire)

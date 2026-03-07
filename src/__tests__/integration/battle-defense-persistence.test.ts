@@ -92,14 +92,12 @@ describe('Battle Defense Persistence', () => {
         hull: { current: attackerUser.hullCurrent, max: attackerMaxStats.hull },
         armor: { current: attackerUser.armorCurrent, max: attackerMaxStats.armor },
         shield: { current: attackerUser.shieldCurrent, max: attackerMaxStats.shield },
-        weapons: {}
       };
       
       const defenderStats: BattleStats = {
         hull: { current: defenderUser.hullCurrent, max: defenderMaxStats.hull },
         armor: { current: defenderUser.armorCurrent, max: defenderMaxStats.armor },
         shield: { current: defenderUser.shieldCurrent, max: defenderMaxStats.shield },
-        weapons: {}
       };
       
       await emptyCtx.useLockWithAcquire(BATTLE_LOCK, async (battleCtx) => {

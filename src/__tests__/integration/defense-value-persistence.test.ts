@@ -79,13 +79,11 @@ describe('Defense Value Persistence After Battle', () => {
             armor: { current: attacker!.armorCurrent, max: attackerMaxStats.armor },
             shield: { current: attacker!.shieldCurrent, max: attackerMaxStats.shield },
             // High weapon count to ensure battle ends quickly
-            weapons: { pulse_laser: { count: 100, damage: 10, cooldown: 0 } }
           };
           defenderStats = {
             hull: { current: defender!.hullCurrent, max: defenderMaxStats.hull },
             armor: { current: defender!.armorCurrent, max: defenderMaxStats.armor },
             shield: { current: defender!.shieldCurrent, max: defenderMaxStats.shield },
-            weapons: { pulse_laser: { count: 1, damage: 10, cooldown: 0 } }
           };
           attackerCooldowns = { pulse_laser: 0 };
           defenderCooldowns = { pulse_laser: 5 };

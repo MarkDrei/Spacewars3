@@ -49,17 +49,11 @@ describe('Phase 5: End-to-End Battle Flow with BattleCache', () => {
           hull: { current: 100, max: 100 },
           armor: { current: 50, max: 50 },
           shield: { current: 25, max: 25 },
-          weapons: {
-            pulse_laser: { count: 1, damage: 10, cooldown: 2000 }
-          }
         };
         const defenderStats: BattleStats = {
           hull: { current: 80, max: 80 },
           armor: { current: 40, max: 40 },
           shield: { current: 20, max: 20 },
-          weapons: {
-            pulse_laser: { count: 1, damage: 10, cooldown: 2000 }
-          }
         };
   
         // Initial weapon cooldowns (no weapons ready)
@@ -175,8 +169,7 @@ describe('Phase 5: End-to-End Battle Flow with BattleCache', () => {
             { 
               hull: { current: 0, max: 80 },
               armor: { current: 0, max: 40 },
-              shield: { current: 0, max: 20 },
-              weapons: defenderStats.weapons
+              shield: { current: 0, max: 20 }
             } // Defender defeated
           );
   
@@ -220,9 +213,6 @@ describe('Phase 5: End-to-End Battle Flow with BattleCache', () => {
           hull: { current: 100, max: 100 },
           armor: { current: 50, max: 50 },
           shield: { current: 25, max: 25 },
-          weapons: {
-            pulse_laser: { count: 1, damage: 10, cooldown: 2000 }
-          }
         };
         const cooldowns: WeaponCooldowns = { pulse_laser: 0, auto_turret: 0, missile_launcher: 0 };
 
@@ -281,9 +271,6 @@ describe('Phase 5: End-to-End Battle Flow with BattleCache', () => {
           hull: { current: 100, max: 100 },
           armor: { current: 50, max: 50 },
           shield: { current: 25, max: 25 },
-          weapons: {
-            pulse_laser: { count: 1, damage: 10, cooldown: 2000 }
-          }
         };
         const cooldowns: WeaponCooldowns = { pulse_laser: 0, auto_turret: 0, missile_launcher: 0 };
 
@@ -363,9 +350,6 @@ describe('Phase 5: End-to-End Battle Flow with BattleCache', () => {
           hull: { current: 100, max: 100 },
           armor: { current: 50, max: 50 },
           shield: { current: 25, max: 25 },
-          weapons: {
-            pulse_laser: { count: 1, damage: 10, cooldown: 2000 }
-          }
         };
         const cooldowns: WeaponCooldowns = { pulse_laser: 0, auto_turret: 0, missile_launcher: 0 };
 
