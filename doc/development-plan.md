@@ -1,724 +1,401 @@
-# Development Plan: Player Bonus System
+# Development Plan: Starbase Feature
 
 ## Vision
 
-Introduce a global bonus system that combines **player level**, **commander effects** (bridge), and **research effects** into unified, cached multipliers. All existing game mechanics (ship speed, weapon stats, iron capacity, defense regeneration) should reference these cached values instead of querying the tech tree directly. This minimizes DB access, creates a single source of truth for bonused values, and lays the foundation for adding future bonus sources.
+As a player, I can discover hardcoded Starbases on the game canvas, click on them while in Attack Mode to dock, and open a shop where I can sell Commanders from my inventory or buy one of 10 randomly generated Commanders — paying and receiving Iron based on each Commander's total bonus value.
+
+---
 
 ## Technology Stack
 
 - **Framework**: Next.js 15 (App Router)
 - **Language**: TypeScript (strict mode)
 - **Runtime**: Node.js
-- **Database**: PostgreSQL
+- **Database**: PostgreSQL (no new tables — Starbases are hardcoded; shop state lives in iron-session)
 - **Testing**: Vitest with jsdom
 - **Session**: iron-session with HTTP-only cookies
-- **Module System**: ES Modules exclusively (`import`/`export` only, no CommonJS)
-- **Lock System**: IronGuard TypeScript Locks for compile-time deadlock prevention
+- **Module System**: ES Modules exclusively (`import`/`export` only)
 
 ## Project Structure
 
-- `src/app/` - Next.js App Router pages and API routes
-- `src/lib/client/` - Client-side code (hooks, services, game engine)
-- `src/lib/server/` - Server-side code (database, typed locks, cache)
-- `src/shared/` - Shared types and utilities
-- `src/__tests__/` - Test files
-- `doc/architecture/` - Arc42 architecture documentation
+- `src/app/starbase/` — new Starbase page (Server Component + Client Component)
+- `src/app/api/starbase/` — new API routes (shop, buy, sell)
+- `src/lib/client/renderers/StarbaseRenderer.ts` — new renderer
+- `src/lib/client/game/Starbase.ts` — hardcoded starbase definitions (positions, IDs)
+- `src/shared/src/types/gameTypes.ts` — extend SpaceObject type union
+- `src/lib/server/session.ts` — extend SessionData with starbase shop state
+- `public/assets/images/station1.png` — new image asset (**already added to repo**)
 
 ---
 
 ## Goals
 
-### Goal 1: Refactor Accuracy & Reload Modifiers to Multiplicative
+### Goal 1: Extend SpaceObject Model and Rendering for Starbases
 
-**Description**: Currently, accuracy uses an additive bonus (`baseAccuracy + bonusPercent`) and reload time uses an inverse multiplier (`cooldown × factor`, where `factor < 1` = faster). Refactor both to pure multiplicative semantics so all bonus stats are consistently applied via multiplication.
+**Description**: Add `'starbase'` as a recognized object type, create a dedicated renderer that draws it at 5× the standard size, and wire it into the existing `SpaceObjectsRenderer` dispatch.
 
-**Quality Requirements**: All existing battle tests must pass. Reload time refactor must produce identical results for current research levels. Accuracy refactor intentionally produces slightly lower final accuracy at research levels 2+ for projectile weapons (due to mathematical incompatibility of additive and multiplicative formulas when weapon base accuracy ≠ research base value); this is an accepted trade-off for consistent multiplicative semantics needed by the bonus system. See Task 1.1 status notes and TechnicalDebt.md for details.
+**Quality Requirements**: The renderer must follow the existing `SpaceObjectRendererBase` template-method pattern so wrapping and hover detection are inherited for free.
 
-#### Task 1.1: Convert Accuracy Modifier to Multiplicative
+#### Task 1.1: Add 'starbase' to the SpaceObject type union
 
-**Action**: Refactor `getWeaponAccuracyModifierFromTree()` in techtree.ts to return a multiplicative factor (`> 1.0` = better accuracy) instead of an additive bonus. Update `TechFactory.calculateWeaponDamage()` to use `baseAccuracy × accuracyMultiplier` instead of `baseAccuracy + positiveAccuracyModifier`. **Note**: Full formula equivalence is mathematically impossible — the additive formula (`baseAccuracy + (effect - baseValue)`) and multiplicative formula (`baseAccuracy × effect/baseValue`) only coincide when `baseAccuracy === researchBaseValue`. For auto_turret (baseAccuracy=50) with ProjectileAccuracy (researchBaseValue=70), the new formula produces lower accuracy at levels 2+. This divergence is accepted as a trade-off for consistent multiplicative semantics.
-
-**Files**:
-
-- `src/lib/server/techs/techtree.ts` — refactor `getWeaponAccuracyModifierFromTree()` (L712)
-- `src/lib/server/techs/TechFactory.ts` — update `calculateWeaponDamage()` accuracy calculation (L440+)
-- `src/lib/server/battle/battleScheduler.ts` — update call site (L312)
-- `src/__tests__/` — update affected tests
-
-**Quality Requirements**: Before/after old-vs-new comparison tests for accuracy at levels 1–10 (projectile: assert divergence at levels 2+; energy: assert equivalence at all levels). The divergence is explicitly documented and accepted, not hidden.
-
-**Status**: ✅ COMPLETED (Review Resolved)
-**Implementation Summary**: Refactored `getWeaponAccuracyModifierFromTree()` to return `effect / research.baseValue` (factor ≥ 1.0 at all levels), updated `calculateWeaponDamage()` to use `baseAccuracy × accuracyMultiplier`, and updated the `POSITIVE_ACCURACY_MODIFIER` default to `1.0`. At level 1 both formulas produce identical results (factor=1.0 ↔ bonus=0). At levels 2+, projectile accuracy is intentionally lower due to mathematical incompatibility of additive and multiplicative formulas when `autoTurret.baseAccuracy (50) ≠ ProjectileAccuracy.researchBaseValue (70)`.
-**Files Modified/Created**:
-
-- `src/lib/server/techs/techtree.ts` — refactored `getWeaponAccuracyModifierFromTree()` to multiplicative
-- `src/lib/server/techs/TechFactory.ts` — renamed param to `accuracyMultiplier`, changed `+` to `×`
-- `src/lib/server/battle/battleTypes.ts` — updated `POSITIVE_ACCURACY_MODIFIER` default from `0` to `1.0`
-- `src/__tests__/integration/lib/TechFactory.test.ts` — updated all accuracy-related test calls
-- `src/__tests__/integration/battle-research-effects.test.ts` — restored level-2 check to `toBeCloseTo(1.070, 2)`
-- `src/__tests__/unit/lib/weapon-modifier-equivalence.test.ts` — old-vs-new divergence tests at levels 2–10 for projectile accuracy (asserting NOT equal); equivalence tests for energy accuracy (asserting equal); file header updated with accepted-delta documentation
-**Deviations from Plan**: `battleScheduler.ts` needed no code change since it directly passes `getWeaponAccuracyModifierFromTree()` output to `calculateWeaponDamage()` — the call automatically passes the new multiplicative factor. `battleTypes.ts` needed a default update (0 → 1.0). Accuracy formula equivalence replaced by documented-divergence requirement per Medicus review.
-**Arc42 Updates**: None required
-**Test Results**: ✅ All tests passing, no linting errors
-
-**Review Status**: ✅ APPROVED
-**Reviewer**: Medicus
-**Review Notes**: All five original revision issues resolved. Old-vs-new comparison tests (levels 2–10) present and asserting correct divergence. Projectile accuracy level-2 integration test restored to `toBeCloseTo(1.070, 2)`. Development plan, learnings.md, and TechnicalDebt.md all updated with the accepted balance delta. Minor: energy accuracy integration test still uses `toBeGreaterThan(1.0)` even though the comment states `≈ 1.070`; this is acceptable because the exact value is fully covered by the unit tests in `weapon-modifier-equivalence.test.ts` at all levels 1–10.
-
-#### Task 1.2: Convert Reload Modifier to Multiplicative
-
-**Action**: Refactor `getWeaponReloadTimeModifierFromTree()` to return a "reload speed" factor (`> 1.0` = faster reloading). Update `TechFactory.calculateWeaponReloadTime()` to divide cooldown by this factor: `baseCooldown / reloadSpeedFactor`. Adjust research formula coefficients so existing research levels produce identical cooldown values.
+**Action**: In `src/shared/src/types/gameTypes.ts`, add `'starbase'` to `SpaceObject['type']`. Add a `Starbase` interface extending `SpaceObject` with `type: 'starbase'` (no extra fields needed). Update any exhaustive `switch`/`if-else` chains in the codebase that already narrow on `SpaceObject['type']` to either handle `'starbase'` or add a compile-time exhaustiveness check.
 
 **Files**:
 
-- `src/lib/server/techs/techtree.ts` — refactor `getWeaponReloadTimeModifierFromTree()` (L741)
-- `src/lib/server/techs/TechFactory.ts` — update `calculateWeaponReloadTime()` (L397)
-- `src/__tests__/` — update affected tests
+- `src/shared/src/types/gameTypes.ts` — add union member + `Starbase` interface
 
-**Quality Requirements**: Before/after numeric equivalence test for reload time at levels 1–10.
+**Quality Requirements**: TypeScript strict mode must compile without errors after this change.
 
-**Status**: ✅ COMPLETED
-**Implementation Summary**: Refactored `getWeaponReloadTimeModifierFromTree()` to return `1 / max(0.1, 1 - effect/100)` (speed factor ≥ 1.0), updated `calculateWeaponReloadTime()` to use `baseCooldown / speedFactor`. This is numerically identical to the old formula at all levels: `baseCooldown / (1/(1-e/100)) = baseCooldown × (1-e/100)`.
-**Files Modified/Created**:
+#### Task 1.2: Add starbase image asset
 
-- `src/lib/server/techs/techtree.ts` — refactored `getWeaponReloadTimeModifierFromTree()` to speed factor
-- `src/lib/server/techs/TechFactory.ts` — changed `baseCooldown * multiplier` to `baseCooldown / speedFactor`
-- `src/__tests__/integration/lib/techtree.test.ts` — updated reload modifier test expectations (e.g., 0.9 → 1/0.9)
-- `src/__tests__/unit/lib/weapon-modifier-equivalence.test.ts` — new file with numeric equivalence tests (20 reload tests, levels 1–10, both weapon types)
-**Deviations from Plan**: None.
-**Arc42 Updates**: None required
-**Test Results**: ✅ All 1114 tests passing, coverage via 70-test equivalence suite, no linting errors
+**Action**: The image `public/assets/images/station1.png` has already been added to the repository. Document the path in a comment inside `StarbaseRenderer.ts`.
 
-**Review Status**: ✅ APPROVED
-**Reviewer**: Medicus
-**Review Notes**: Reload refactoring is excellent — mathematically exact reciprocal equivalence proven at all levels 1–10 for both projectile and energy weapons. Formula, implementation, and tests are consistent and complete.
+**Files**:
+
+- `public/assets/images/station1.png` — already present in repo (no action needed)
+
+#### Task 1.3: Create StarbaseRenderer
+
+**Action**: Create `src/lib/client/renderers/StarbaseRenderer.ts` extending `SpaceObjectRendererBase`. Override:
+
+- `getObjectImage()` → load/return the `station1.png` image at `/assets/images/station1.png` (same lazy-load pattern as `OtherShipRenderer`)
+- `getObjectSize()` → return `5 * BASE_OBJECT_SIZE` (where `BASE_OBJECT_SIZE` matches the value used by other renderers, e.g. `50`)
+- `getFallbackColor()` → return a distinct color (e.g. `'#4488ff'`) for when the image is not yet loaded
+- `getImageRotationOffset()` → `0` (no rotation offset needed for a station)
+
+Add a public method `drawStarbase(ctx, centerX, centerY, shipX, shipY, obj: SpaceObject): void` that delegates to `this.drawSpaceObject(...)`.
+
+**Files**:
+
+- `src/lib/client/renderers/StarbaseRenderer.ts` — new file
+
+#### Task 1.4: Register StarbaseRenderer in SpaceObjectsRenderer
+
+**Action**: In `src/lib/client/renderers/SpaceObjectsRenderer.ts`:
+
+1. Import and instantiate `StarbaseRenderer` alongside the other renderers.
+2. Add an `else if (collectible.type === 'starbase')` branch in `renderObject()` that calls `this.starbaseRenderer.drawStarbase(...)`.
+
+**Files**:
+
+- `src/lib/client/renderers/SpaceObjectsRenderer.ts` — add import, field, dispatch branch
 
 ---
 
-### Goal 2: Design and Implement UserBonusCache
+### Goal 2: Expose Hardcoded Starbases via the World API
 
-**Description**: As a developer, I want a `UserBonusCache` service that lazily computes and caches per-user bonus values derived from player level, bridge commanders, and tech tree research. This centralizes bonus computation and minimizes repeated DB/cache lookups.
+**Description**: Starbases are hardcoded (not stored in the DB). The `/api/world` route appends static starbase objects to the response so the client's `World` class treats them like any other `SpaceObject` — enabling hover detection and rendering without special-casing.
 
-**Inputs**: User data (level, techTree) from UserCache; bridge commander data from InventoryService.
-**Outputs**: `UserBonuses` object with pre-computed final values and bonus factors.
-**Quality Requirements**: >80% coverage; unit tests with mocked dependencies (testing pyramid).
+**Quality Requirements**: Starbase IDs must never collide with auto-incremented DB IDs. Use a constant offset (e.g. `STARBASE_ID_OFFSET = 9000`).
 
-#### Sub-Goal 2.1: Define Types and Interfaces
+#### Task 2.1: Define hardcoded Starbase constants
 
-##### Task 2.1.1: Create UserBonuses Interface and Types
+**Action**: Create `src/lib/client/game/Starbase.ts` with an exported `STARBASES` constant — an array of `SpaceObject` records with `type: 'starbase'`, fixed positions, `speed: 0`, `angle: 0`, and IDs starting at `9001`. Start with a single starbase at approximately (2500, 2500) (center of the 5000×5000 world). This file is imported by both the server route and the client, so it must live in `src/shared/` rather than `src/lib/client/` to avoid a client-only import from a server route.
 
-**Action**: Define the `UserBonuses` interface and related types in a new file. The interface stores:
-
-1. **Raw multipliers** (for mid-tick recalculation and debugging):
-   - `levelMultiplier: number` — `1.15^(level - 1)`
-   - `commanderMultipliers: Record<CommanderStatKey, number>` — from `Commander.calculateBonuses()`
-
-2. **Pre-computed final values** (research × level × commander, or research × level if no commander stat):
-   - `ironStorageCapacity: number` — `getResearchEffect(IronCapacity) × levelMult`
-   - `ironRechargeRate: number` — `getResearchEffect(IronHarvesting) × levelMult`
-   - `hullRepairSpeed: number` — `BASE_REGEN_RATE × levelMult` (base = 1.0/sec, no research)
-   - `armorRepairSpeed: number` — `BASE_REGEN_RATE × levelMult`
-   - `shieldRechargeRate: number` — `BASE_REGEN_RATE × levelMult`
-   - `maxShipSpeed: number` — `getResearchEffect(ShipSpeed) × (1 + afterburner/100) × levelMult × commanderMult(shipSpeed)`
-
-3. **Pre-computed weapon factors** (combined multiplier for battle system):
-   - `projectileWeaponDamageFactor: number` — `researchDamageMod × levelMult × commanderMult`
-   - `projectileWeaponReloadFactor: number` — `researchReloadSpeedMod × levelMult × commanderMult`
-   - `projectileWeaponAccuracyFactor: number` — `researchAccuracyMod × levelMult × commanderMult`
-   - `energyWeaponDamageFactor: number` — same pattern for energy weapons
-   - `energyWeaponReloadFactor: number`
-   - `energyWeaponAccuracyFactor: number`
+**Decision**: Place in `src/shared/starbases.ts` so it can be imported from `src/app/api/world/route.ts` (server) and from `src/lib/client/game/World.ts` (client) without bundling client-only code into server routes. Export `STARBASE_DOCK_RANGE = 500` from this file as well, so both `Game.ts` and any future server-side range checks share the same constant.
 
 **Files**:
 
-- `src/lib/server/bonus/userBonusTypes.ts` — new file with `UserBonuses` interface, `BonusStatKey` type
+- `src/shared/starbases.ts` — new file with `STARBASES: StarbaseObject[]` constant and `STARBASE_DOCK_RANGE = 500`
 
-**Status**: ✅ COMPLETED
-**Implementation Summary**: Created `userBonusTypes.ts` with the full `UserBonuses` interface (raw multipliers, pre-computed final values, and weapon factors) plus the `BASE_REGEN_RATE` constant.
-**Files Modified/Created**:
-- `src/lib/server/bonus/userBonusTypes.ts` — New file: `UserBonuses` interface and `BASE_REGEN_RATE` constant
-**Deviations from Plan**: The plan mentioned a `BonusStatKey` type but it was not needed — `CommanderStatKey` from Commander.ts already covers all keys.
-**Arc42 Updates**: None required
-**Test Results**: ✅ Covered by Task 2.2.2 tests (100% coverage)
+**Content**: One Starbase at world position (2500, 2500), `id: 9001`, `type: 'starbase'`, `speed: 0`, `angle: 0`, `picture_id: 1`.
 
-**Review Status**: ✅ APPROVED
-**Reviewer**: Medicus
-**Review Notes**: Interface is clean, well-documented, correctly structured. `BASE_REGEN_RATE` constant placement is appropriate. Reuse of `CommanderStatKey` instead of introducing a redundant `BonusStatKey` is the right call.
+#### Task 2.2: Append hardcoded starbases to /api/world response
 
-#### Sub-Goal 2.2: Implement UserBonusCache Service
-
-##### Task 2.2.1: Implement UserBonusCache Class
-
-**Action**: Create `UserBonusCache` as a singleton (globalThis pattern, consistent with UserCache/WorldCache). Key design:
-
-- **Storage**: `Map<number, UserBonuses>` keyed by userId
-- **Dependencies** (injected via `configureDependencies()`): `UserCache`, `InventoryService`
-- **Lock**: Reuses `USER_LOCK` (LOCK_4); internally acquires `USER_INVENTORY_LOCK` (LOCK_5) for bridge data. Lock ordering 4 → 5 is valid.
-- **Singleton**: `getInstance()`, `resetInstance()` for test isolation
-- **No DB persistence**: Purely runtime cache, lost on restart, lazily rebuilt
-
-**Public API**:
-
-| Method                  | Signature                                        | Description                             |
-| ----------------------- | ------------------------------------------------ | --------------------------------------- |
-| `configureDependencies` | `static (deps: { userCache, inventoryService })` | DI setup                                |
-| `getInstance`           | `static (): UserBonusCache`                      | Singleton getter                        |
-| `resetInstance`         | `static ()`                                      | Test teardown                           |
-| `getBonuses`            | `async (ctx: HasLock4, userId): UserBonuses`     | Lazy: returns cached or recalculates    |
-| `updateBonuses`         | `async (ctx: HasLock4, userId): UserBonuses`     | Force recalculation                     |
-| `invalidateBonuses`     | `(userId: number): void`                         | Mark as stale (sync, no lock needed)    |
-| `discardAllBonuses`     | `(): void`                                       | Clear entire cache (admin/extreme case) |
-
-**Recalculation logic** (inside `updateBonuses`):
-
-1. Read `User` from UserCache via `getUserByIdFromCache(ctx, userId)` — synchronous, LOCK_4 held
-2. Compute `levelMultiplier = 1.15^(user.getLevel() - 1)`
-3. Read bridge from InventoryService via `getBridge(userId)` — acquires LOCK_5 internally
-4. Compute `commanderMultipliers` via `Commander.calculateBonuses(bridgeCommanders)`
-5. Read research effects from `user.techTree` using techtree functions
-6. Combine: `finalValue = researchEffect × levelMultiplier × commanderMultiplier(stat)`
-7. Store in Map
+**Action**: In `src/app/api/world/route.ts`, after fetching the live world data from `WorldCache`, append the entries from `STARBASES` to the `spaceObjects` array before returning the JSON response.
 
 **Files**:
 
-- `src/lib/server/bonus/UserBonusCache.ts` — new file
-
-**Status**: ✅ COMPLETED
-**Implementation Summary**: Implemented `UserBonusCache` singleton with lazy computation, globalThis-based singleton pattern, full recalculation logic combining level/commander/research multipliers, and correct lock ordering (LOCK_4 held by caller, LOCK_5 acquired internally by InventoryService).
-**Files Modified/Created**:
-- `src/lib/server/bonus/UserBonusCache.ts` — New file: full UserBonusCache singleton implementation
-**Deviations from Plan**: `resetInstance()` also clears the static `dependencies` field (not mentioned in plan) to ensure proper test isolation. Bridge slot count is correctly read from the user's `BridgeSlots` research rather than using `DEFAULT_BRIDGE_SLOTS`, ensuring complete commander enumeration.
-**Arc42 Updates**: None required
-**Test Results**: ✅ Covered by Task 2.2.2 tests (100% coverage)
-
-**Review Status**: ✅ APPROVED
-**Reviewer**: Medicus
-**Review Notes**: Excellent singleton implementation. globalThis pattern, static dependency injection, and `resetInstance()` clearing both instance and deps are all correct and consistent with codebase conventions. Lock ordering (LOCK_4 held by caller, LOCK_5 acquired by InventoryService internally) is well-documented. `buildCommanderMultipliers` correctly ensures all keys present with 1.0 defaults. Using `BridgeSlots` research instead of `DEFAULT_BRIDGE_SLOTS` is the right approach. Error messages are descriptive.
-
-##### Task 2.2.2: Unit Tests for UserBonusCache
-
-**Action**: Write comprehensive unit tests with mocked UserCache and InventoryService. Test:
-
-- Lazy initialization: first `getBonuses` call triggers calculation
-- Cache hit: second call returns same object without recalculation
-- `invalidateBonuses` causes next `getBonuses` to recalculate
-- `updateBonuses` always recalculates
-- `discardAllBonuses` clears everything
-- Level multiplier calculation: level 1 → 1.0, level 2 → 1.15, level 3 → 1.3225
-- Commander multiplier stacking (multiplicative)
-- Combined final values: research × level × commander
-- Stats without commander (iron, defense regen): research × level only
-- Edge cases: user not found, no bridge commanders, level 1 (no bonus)
-
-**Files**:
-
-- `src/__tests__/unit/lib/userBonusCache.test.ts` — new unit test file (mocked deps, no DB)
-
-**Quality Requirements**: >90% coverage of UserBonusCache. Pure unit tests with mocked dependencies.
-
-**Status**: ✅ COMPLETED
-**Implementation Summary**: 46 pure unit tests covering all cache operations, level multiplier math, commander stacking, combined final values, and edge cases; all dependencies are mocked with vi.fn().
-**Files Modified/Created**:
-- `src/__tests__/unit/lib/userBonusCache.test.ts` — New file: 46 unit tests for UserBonusCache (plan proposed `src/__tests__/lib/` path; used `src/__tests__/unit/lib/` to match existing unit-test conventions)
-**Deviations from Plan**: Test file path changed from `src/__tests__/lib/userBonusCache.test.ts` to `src/__tests__/unit/lib/userBonusCache.test.ts` to match the existing unit test directory structure.
-**Arc42 Updates**: None required
-**Test Results**: ✅ 46/46 tests passing, 100% statement/branch/function/line coverage, no linting errors
-
-**Review Status**: ✅ APPROVED
-**Reviewer**: Medicus
-**Review Notes**: XP formula fix confirmed correct. `makeUser()` now uses `(level * (level + 1) / 2) * 1000` — structurally identical to `User.getLevel()`, verified algebraically and against all level-boundary XP values (0, 1000, 4000, 10000, 20000). Level-4 test updated to `xp=10000` with accurate comment `// 1000+3000+6000 = 10000 XP = level 4`. Level-3 test correctly uses `xp=4000`. All assertions validate real game thresholds; no misleading XP values remain in the helper.
+- `src/app/api/world/route.ts` — import `STARBASES` and append them to the response
 
 ---
 
-### Goal 3: Wire UserBonusCache into Server Lifecycle
+### Goal 3: Enable Starbase Interaction from the Game Canvas
 
-**Description**: Integrate UserBonusCache into the server initialization and ensure it's available to all consumers.
+**Description**: When the player is in Attack Mode and clicks on a Starbase object, the game navigates to the `/starbase` page instead of initiating a battle. Outside Attack Mode, clicking a Starbase does nothing.
 
-#### Task 3.1: Add to Server Initialization
+**Quality Requirements**: The interaction hook must follow the same callback-injection pattern as `setTeleportClickCallback` and `setAttackSuccessCallback` so `Game.ts` remains decoupled from React routing.
 
-**Action**: Wire `UserBonusCache` into `main.ts` initialization, after `UserCache` and before/after `BattleCache`. Configure dependencies and add to the initialization sequence.
+#### Task 3.1: Add Starbase entry callback to Game.ts
 
-**Files**:
+**Action**: In `src/lib/client/game/Game.ts`:
 
-- `src/lib/server/main.ts` — add UserBonusCache initialization
-- `src/__tests__/helpers/testServer.ts` — add UserBonusCache reset in `shutdownIntegrationTestServer()`
-
-**Status**: ✅ COMPLETED
-**Implementation Summary**: Added `UserBonusCache.configureDependencies()` and `UserBonusCache.getInstance()` to `initializeServer()` in `main.ts` after `UserCache` initialization; added `UserBonusCache.resetInstance()` to both `initializeIntegrationTestServer()` and `shutdownIntegrationTestServer()` in `testServer.ts`.
-**Files Modified/Created**:
-- `src/lib/server/main.ts` — added UserBonusCache import, InventoryService import, and initialization after UserCache
-- `src/__tests__/helpers/testServer.ts` — added UserBonusCache import and resetInstance() calls in both init and shutdown helpers
-**Deviations from Plan**: None
-**Arc42 Updates**: None required
-**Test Results**: ✅ 295 unit tests passing, TypeScript compiles cleanly (no DB available for integration tests in this environment)
-
-#### Task 3.2: Integration Test for Initialization
-
-**Action**: Verify that UserBonusCache is properly initialized after server startup, that bonuses can be retrieved for the default test user, and that the cache is correctly reset between tests.
+1. Add a private field `private onStarbaseEntryCallback: ((starbaseId: number) => void) | null = null`.
+2. Add a public method `setStarbaseEntryCallback(fn: (starbaseId: number) => void): void`.
+3. In `initializeClickHandler()`, after the existing player-ship attack branch, add a branch:
+   ```
+   if hoveredObject.type === 'starbase' && attackClickMode:
+     const dist = toroidalDistance(ship, hoveredObject, World.WIDTH, World.HEIGHT)
+     if dist <= 500:
+       this.onStarbaseEntryCallback?.(hoveredObject.id)
+     else:
+       handleInterception(hoveredObject)   // fly toward it first
+   ```
+   This branch must be checked before the generic empty-space click fallthrough. The `500` distance constant should be defined as `STARBASE_DOCK_RANGE = 500` in `src/shared/starbases.ts`.
 
 **Files**:
 
-- `src/__tests__/integration/api/user-bonus-cache.test.ts` — new integration test
+- `src/lib/client/game/Game.ts` — new field, method, and click handler branch
 
-**Status**: ✅ COMPLETED
-**Implementation Summary**: Created 5 integration tests covering: instance availability after startup, valid bonus computation for a new user, cache hit on second call, discardAllBonuses() clearing the cache, and invalidateBonuses() affecting only the targeted user.
-**Files Modified/Created**:
-- `src/__tests__/integration/api/user-bonus-cache.test.ts` — new integration test file with 5 tests
-**Deviations from Plan**: File placed at `src/__tests__/integration/api/user-bonus-cache.test.ts` (consistent with all other integration tests) rather than the plan's `src/__tests__/api/user-bonus-cache.test.ts`.
-**Arc42 Updates**: None required
-**Test Results**: ✅ TypeScript compiles cleanly; integration tests require PostgreSQL (consistent with all other integration tests)
+#### Task 3.2: Wire starbase entry callback in GamePageClient
+
+**Action**: In `src/app/game/GamePageClient.tsx`:
+
+1. Create a `handleStarbaseEntry` callback (with `useCallback`) that calls `router.push('/starbase')`.
+2. In the `useEffect` that wires world data to the game instance, also call `gameInstanceRef.current.setStarbaseEntryCallback?.(handleStarbaseEntry)`.
+
+**Files**:
+
+- `src/app/game/GamePageClient.tsx` — new callback and wiring in the world-data useEffect
 
 ---
 
-### Goal 4: Implement Invalidation Triggers
+### Goal 4: Starbase Shop API
 
-**Description**: Bonus cache entries must be invalidated when any of the three input sources change: player level (XP), bridge commanders, or research. The design uses **lazy invalidation** — triggers call `invalidateBonuses(userId)`, and the next `getBonuses()` call recalculates.
+**Description**: Three new API routes handle the shop: fetch the shop's 10 random Commanders (generating fresh ones on each call), buy a Commander from the shop (slot-indexed, deducts Iron, adds to inventory), and sell a Commander from inventory (adds Iron, removes from inventory).
 
-#### Task 4.1: Invalidate on Level-Up (XP Change)
+**Quality Requirements**: Buy/sell operations must be atomic and lock-safe. Sell-price and buy-price formulas must be implemented in a single shared helper function to avoid divergence. Shop state is stored in the iron-session so buy requests are validated server-side against the generated shop.
 
-**Action**: In `User.addXp()`, when `leveledUp` is true, call `UserBonusCache.getInstance().invalidateBonuses(this.id)`. Since `addXp()` is synchronous and `invalidateBonuses()` is synchronous (just deletes from Map), no lock changes needed.
+#### Task 4.1: Create price calculation utility
 
-Note: `addXp()` is called from two places:
+**Action**: Create `src/lib/server/starbase/commanderPrice.ts` exporting:
 
-1. `user.updateStats()` (L253) — research completion awards XP
-2. `TechService.applyCompletedBuild()` (L278) — build completion awards XP
+- `commanderSellPrice(commander: CommanderData): number` → `Math.round(totalBonusValue / 0.1) * 100`  
+  where `totalBonusValue = sum of all statBonuses[i].value`
+- `commanderBuyPrice(commander: CommanderData): number` → `Math.round(totalBonusValue / 0.1) * 500`
 
-Both already hold USER_LOCK.
-
-**Files**:
-
-- `src/lib/server/user/user.ts` — add invalidation call in `addXp()` when leveledUp
-
-**Status**: ✅ COMPLETED
-**Implementation Summary**: Added `UserBonusCache.getInstance().invalidateBonuses(this.id)` call in `User.addXp()` when `newLevel > oldLevel`, and imported `UserBonusCache` at the top of `user.ts`.
-**Files Modified/Created**:
-- `src/lib/server/user/user.ts` — added UserBonusCache import and invalidation call in `addXp()`
-**Deviations from Plan**: None.
-**Arc42 Updates**: None required
-**Test Results**: ✅ All unit tests passing
-
-#### Task 4.2: Invalidate on Research Completion
-
-**Action**: In `User.updateStats()`, when `updateTechTree()` returns a completed research, call `UserBonusCache.getInstance().invalidateBonuses(this.id)`. This handles changes to research-derived bonus values.
-
-Note: Research completion also awards XP (which may cause level-up), so Task 4.1 already covers the level-change path. The research invalidation handles the case where research completes but the user doesn't level up.
+These are pure functions with no I/O — unit-testable directly.
 
 **Files**:
 
-- `src/lib/server/user/user.ts` — add invalidation in `updateStats()` after research completion
+- `src/lib/server/starbase/commanderPrice.ts` — new file
 
-**Status**: ✅ COMPLETED
-**Implementation Summary**: Added `UserBonusCache.getInstance().invalidateBonuses(this.id)` call inside `updateStats()` when `researchResult?.completed` is true, placed before the XP award so any subsequent level-up also invalidates.
-**Files Modified/Created**:
-- `src/lib/server/user/user.ts` — added invalidation call in `updateStats()` on research completion
-**Deviations from Plan**: None.
-**Arc42 Updates**: None required
-**Test Results**: ✅ All unit tests passing
+#### Task 4.2: Extend SessionData with starbase shop state
 
-#### Task 4.3: Invalidate on Bridge Change
-
-**Action**: In all bridge API routes that modify the bridge contents, call `UserBonusCache.getInstance().invalidateBonuses(userId)` after the InventoryService operation succeeds.
-
-Affected routes (all in `src/app/api/bridge/`):
-
-- `DELETE /api/bridge` — remove from bridge
-- `POST /api/bridge/move` — move within bridge
-- `POST /api/bridge/transfer` — inventory ↔ bridge transfer
-- `POST /api/bridge/transfer/auto` — auto-transfer
-
-Since these routes release all locks after the operation, the invalidation is a simple sync call after the response data is computed but before returning.
+**Action**: In `src/lib/server/session.ts`, extend the `SessionData` interface with `starbaseShop?: CommanderData[]`. Import `CommanderData` from the shared Commander module.
 
 **Files**:
 
-- `src/app/api/bridge/route.ts` — DELETE handler
-- `src/app/api/bridge/move/route.ts`
-- `src/app/api/bridge/transfer/route.ts`
-- `src/app/api/bridge/transfer/auto/route.ts`
+- `src/lib/server/session.ts` — add optional `starbaseShop` field to `SessionData`
 
-**Status**: ✅ COMPLETED
-**Implementation Summary**: Added `UserBonusCache` import and `UserBonusCache.getInstance().invalidateBonuses(session.userId!)` call after each successful InventoryService operation in all four bridge route files.
-**Files Modified/Created**:
-- `src/app/api/bridge/route.ts` — added UserBonusCache import and invalidation in DELETE handler
-- `src/app/api/bridge/move/route.ts` — added UserBonusCache import and invalidation in POST handler
-- `src/app/api/bridge/transfer/route.ts` — added UserBonusCache import and invalidation in POST handler
-- `src/app/api/bridge/transfer/auto/route.ts` — added UserBonusCache import and invalidation in POST handler
-**Deviations from Plan**: None.
-**Arc42 Updates**: None required
-**Test Results**: ✅ All unit tests passing
+#### Task 4.3: Create GET /api/starbase/shop
 
-#### Task 4.4: Tests for Invalidation Triggers
+**Action**: Create `src/app/api/starbase/shop/route.ts`. On each GET:
 
-**Action**: Write tests verifying that bonuses are correctly invalidated at each trigger point:
+1. Authenticate with `getIronSession()` and `requireAuth()`.
+2. Generate 10 commanders using `Commander.random()`.
+3. Store them in `session.starbaseShop` and call `session.save()`.
+4. Return `{ commanders: CommanderData[] }`.
 
-- XP gain causing level-up → bonuses invalidated
-- XP gain without level-up → bonuses NOT invalidated
-- Research completion → bonuses invalidated
-- Bridge item added/removed/moved → bonuses invalidated
+This re-rolls on every visit (no caching), matching the spec.
 
 **Files**:
 
-- `src/__tests__/lib/userBonusCache.test.ts` — extend with invalidation trigger tests
+- `src/app/api/starbase/shop/route.ts` — new file
 
-**Status**: ✅ COMPLETED
-**Implementation Summary**: Added 10 invalidation trigger tests covering all four scenarios: addXp level-up/no-level-up/multi-level/zero-amount, updateStats research completion/not-yet-complete/no-research/combined-level-up; and 6 bridge route tests verifying invalidateBonuses is called in DELETE, move, both transfer directions, and both auto-transfer directions.
-**Files Modified/Created**:
-- `src/__tests__/unit/lib/userBonusCache.test.ts` — extended with User.addXp() and User.updateStats() invalidation trigger tests (8 new tests), changed `import type { User }` to value import and added `triggerResearch` import
-- `src/__tests__/unit/api/bridge-invalidation.test.ts` — NEW file: 6 unit tests for bridge route invalidation using vi.mock() for iron-session, UserCache, and InventoryService
-**Deviations from Plan**: Bridge route invalidation tests placed in a separate file (`src/__tests__/unit/api/bridge-invalidation.test.ts`) rather than the existing `userBonusCache.test.ts` to keep vi.mock() declarations isolated from the pure UserBonusCache unit tests. This is architecturally cleaner since bridge route tests have different dependency requirements.
-**Arc42 Updates**: None required
-**Test Results**: ✅ All 406 unit tests passing (60 new tests for this task), no linting errors, build successful
+#### Task 4.4: Create POST /api/starbase/buy-commander
+
+**Action**: Create `src/app/api/starbase/buy/route.ts`. On POST `{ slotIndex: number }`:
+
+1. Authenticate and load session.
+2. Validate `slotIndex` is 0–9 and `session.starbaseShop` exists.
+3. Get the `CommanderData` for that slot.
+4. Compute `price = commanderBuyPrice(commander)`.
+5. Acquire USER_LOCK, then USER_INVENTORY_LOCK in order.
+6. Verify user has enough Iron (`user.iron >= price`); return 400 if not.
+7. Deduct Iron from user (call `user.updateStats(now, bonuses)` first to apply accrual, then subtract).
+8. Add the Commander to the user's inventory via `InventoryService.addItem(userId, commander)`.
+9. Save user (dirty flag) and release locks.
+10. Return `{ success: true, newIron: number }`.
+
+**Files**:
+
+- `src/app/api/starbase/buy/route.ts` — new file
+
+**Inputs**: `session.starbaseShop` (set by Task 4.3)
+
+#### Task 4.5: Create POST /api/starbase/sell-commander
+
+**Action**: Create `src/app/api/starbase/sell/route.ts`. On POST `{ row: number, col: number }`:
+
+1. Authenticate.
+2. Acquire USER_INVENTORY_LOCK and retrieve the item at `(row, col)`.
+3. Validate it is a Commander (`item.itemType === 'commander'`).
+4. Compute `price = commanderSellPrice(commander)`.
+5. Remove the Commander from inventory via `InventoryService.removeItem(userId, row, col)`.
+6. Acquire USER_LOCK and add Iron to user.
+7. Return `{ success: true, newIron: number, ironEarned: number }`.
+
+**Lock order**: Acquire USER_LOCK (4) first, then USER_INVENTORY_LOCK (5) — respecting the ascending lock hierarchy. Both locks are held for the duration of the route handler: read item, validate it's a Commander, remove from inventory, then add Iron to user. Release both in finally block.
+
+**Files**:
+
+- `src/app/api/starbase/sell/route.ts` — new file
 
 ---
 
-### Goal 5: Integrate UserBonusCache at Consumption Points
+### Goal 5: Starbase Frontend Page
 
-**Description**: Replace all direct tech tree access for bonus-affected values with calls to `UserBonusCache`. This is the largest goal — every place that currently calls `getResearchEffectFromTree()` or weapon modifier functions for a bonused stat should instead use the cached bonus values.
+**Description**: A new `/starbase` page (not linked in the Navigation menu) with two panels: a "Sell" panel listing the player's inventory Commanders with sell prices and a "Buy" panel showing the 10 shop Commanders. Layout mirrors the Ship page's Inventory section style.
 
-#### Sub-Goal 5.1: Iron Economy
+**Quality Requirements**: The page must redirect unauthenticated users to `/login` via `requireAuth()`. It must provide a "Return to Game" button. The Buy panel must reflect real-time Iron balance after transactions.
 
-##### Task 5.1.1: Iron Rate and Iron Capacity via Bonuses
+#### Task 5.1: Create Starbase page route (Server Component)
 
-**Action**: Update `User.updateStats()` to use bonused iron rate and iron capacity instead of direct research lookups. The bonuses are passed as a parameter to `updateStats()` to keep the method synchronous.
-
-Pattern change:
-
-```
-// Before:
-const ironPerSecond = getResearchEffectFromTree(this.techTree, IronHarvesting);
-const maxCapacity = this.getMaxIronCapacity(); // → getResearchEffectFromTree(IronCapacity)
-
-// After:
-const ironPerSecond = bonuses.ironRechargeRate;
-const maxCapacity = bonuses.ironStorageCapacity;
-```
-
-**Special handling for mid-tick research completion**: When IronHarvesting research completes during `updateStats()`, bonuses are stale. Use `bonuses.levelMultiplier` to locally compute the new iron rate: `getResearchEffectFromTree(updatedTree, IronHarvesting) × bonuses.levelMultiplier`. Then invalidate bonuses at the end.
-
-**Callers of `updateStats()` must obtain bonuses first**:
-
-- `UserCache.getUserByIdWithLock()` — call `await UserBonusCache.getBonuses(ctx, userId)` before `user.updateStats(now, bonuses)`
-- `UserCache.getUserByUsernameInternal()` — same pattern
-- `user-stats/route.ts` — same pattern
-- `trigger-research/route.ts` — same pattern
-- `login/route.ts` — same pattern (review lock situation; currently may not have LOCK_4)
+**Action**: Create `src/app/starbase/page.tsx` as a Next.js async Server Component. Call `requireAuth()` to protect the route. Pass `auth: ServerAuthState` to the `StarbasePageClient`.
 
 **Files**:
 
-- `src/lib/server/user/user.ts` — change `updateStats()` signature to accept `UserBonuses`, use bonused values
-- `src/lib/server/user/userCache.ts` — pass bonuses from cache
-- `src/app/api/user-stats/route.ts`
-- `src/app/api/trigger-research/route.ts`
-- `src/app/api/login/route.ts`
+- `src/app/starbase/page.tsx` — new file
 
-**Status**: ✅ COMPLETED
-**Implementation Summary**: `updateStats()` now accepts optional `UserBonuses` parameter; when provided, uses `bonuses.ironRechargeRate` and `bonuses.ironStorageCapacity`; mid-tick completion uses `newRate × bonuses.levelMultiplier`; login route removes redundant updateStats call (already called by getUserByUsername). All callers in userCache and API routes updated.
-**Files Modified/Created**:
-- `src/lib/server/user/user.ts` — `updateStats(now, bonuses?)`, `updateDefenseValues(now, bonuses?)`, `addIron(amount, maxCapacity?)`
-- `src/lib/server/user/userCache.ts` — added UserBonusCache import, getBonuses() calls in both getUserByIdWithLock and getUserByUsernameInternal
-- `src/app/api/user-stats/route.ts` — getBonuses(), pass to updateStats, use for response fields
-- `src/app/api/trigger-research/route.ts` — getBonuses(), pass to updateStats
-- `src/app/api/login/route.ts` — removed redundant updateStats call
-**Deviations from Plan**: Made `bonuses` parameter optional (backward-compatible) rather than required, to avoid breaking the many integration tests that call `updateStats()` directly. The `addIron()` method gained optional `maxCapacity` parameter. `getUserByUsernameInternal` in userCache already handled the login case so login only needed redundant call removal.
-**Arc42 Updates**: None required
-**Test Results**: ✅ 335 unit tests passing, no linting errors, build succeeds
+#### Task 5.2: Create StarbasePageClient (Client Component)
 
-##### Task 5.1.2: Max Iron Capacity in API Responses
+**Action**: Create `src/app/starbase/StarbasePageClient.tsx` as a `'use client'` React component. It should:
 
-**Action**: The `user-stats` API returns `maxIron` to the client. This should use the bonused value.
+1. On mount, `GET /api/starbase/shop` to load the 10 shop Commanders and `GET /api/inventory` to load the player's current inventory Commanders.
+2. Display current Iron balance (from `GET /api/user-stats`).
+3. Render the **Sell Panel**: list all Commander items from inventory with name, bonus stats, computed sell price, and a "Sell" button. On sell: `POST /api/starbase/sell`, then refresh inventory and Iron balance.
+4. Render the **Buy Panel**: list 10 shop Commanders with name, bonus stats, computed buy price, and a "Buy" button (disabled if insufficient Iron or if inventory is full). On buy: `POST /api/starbase/buy`, then refresh inventory and Iron balance.
+5. Show a "Return to Game" button that calls `router.push('/game')`.
+6. Display a status message (success/error, auto-cleared after 3 seconds) — same pattern as `ShipPageClient`.
 
 **Files**:
 
-- `src/app/api/user-stats/route.ts` — use `bonuses.ironStorageCapacity` for maxIron response field
+- `src/app/starbase/StarbasePageClient.tsx` — new file
+- `src/app/starbase/StarbasePage.css` — new CSS file for page layout
 
-**Status**: ✅ COMPLETED
-**Implementation Summary**: user-stats route now returns `bonuses.ironStorageCapacity` for `maxIronCapacity` and `bonuses.ironRechargeRate` for `ironPerSecond`.
-**Files Modified/Created**:
-- `src/app/api/user-stats/route.ts` — use bonuses.ironStorageCapacity and bonuses.ironRechargeRate in response
-**Deviations from Plan**: Also updated `ironPerSecond` to use `bonuses.ironRechargeRate` (consistent with iron economy unification).
-**Arc42 Updates**: None required
-**Test Results**: ✅ All unit tests passing
+#### Task 5.3: Create CommanderCard component
 
-#### Sub-Goal 5.2: Ship Speed
-
-##### Task 5.2.1: Navigate Route Speed via Bonuses
-
-**Action**: Replace direct `getResearchEffectFromTree(ShipSpeed)` in navigate route with `bonuses.maxShipSpeed`.
-
-Note: Current navigate route uses `5 × speedMultiplier`, while ship-stats uses `baseSpeed × (1 + afterburnerBonus/100)`. These should be unified — the bonus system is a good opportunity to resolve this inconsistency.
-
-Afterburner is folded into `maxShipSpeed`: `ShipSpeed × (1 + afterburner/100) × levelMult × commanderMult(shipSpeed)`. The legacy `5 × speedMultiplier` factor in navigate route is removed — both routes use `bonuses.maxShipSpeed` directly. Document the removed factor in `TechnicalDebt.md`.
+**Action**: Create `src/components/Starbase/CommanderCard.tsx` as a reusable component for displaying a single Commander in both panels. Props: `commander: CommanderData`, `price: number`, `actionLabel: string`, `onAction: () => void`, `disabled?: boolean`. Shows: commander name, portrait image (from `imageId`), each stat bonus as a labeled row, and the price + action button.
 
 **Files**:
 
-- `src/app/api/navigate/route.ts` — use `bonuses.maxShipSpeed`, remove `5 ×` factor
-- `src/app/api/ship-stats/route.ts` — use `bonuses.maxShipSpeed`
-- `TechnicalDebt.md` — document removed legacy factor
+- `src/components/Starbase/CommanderCard.tsx` — new file
+- `src/components/Starbase/CommanderCard.css` — new CSS file
 
-**Status**: ✅ COMPLETED
-**Implementation Summary**: Both routes now use `bonuses.maxShipSpeed`; legacy `5×` factor removed from navigate; TechnicalDebt.md updated; ship-stats also passes bonused defense data (levelMultiplier, regenRates) to getDefenseStats.
-**Files Modified/Created**:
-- `src/app/api/navigate/route.ts` — replaced legacy `5 × speedMultiplier` with `bonuses.maxShipSpeed`
-- `src/app/api/ship-stats/route.ts` — use `bonuses.maxShipSpeed`, pass bonuses to getDefenseStats
-- `TechnicalDebt.md` — documented removed legacy factor
-**Deviations from Plan**: None
-**Arc42 Updates**: None required
-**Test Results**: ✅ All unit tests passing
+#### Task 5.4: Expose iron balance from sell/buy responses
 
-#### Sub-Goal 5.3: Defense Values
+**Action**: Both `/api/starbase/sell` and `/api/starbase/buy` must return `newIron` in their response. `StarbasePageClient` uses this to update the displayed Iron balance optimistically without a separate `GET /api/user-stats` round-trip after each transaction.
 
-##### Task 5.3.1: Max Defense via Bonuses
-
-**Action**: Update `TechService.calculateMaxDefense()` (or its callers) to use bonused values. Currently it computes `stackedBase × (researchEffect / 100)` — the level multiplier should be applied on top.
-
-Note: `calculateMaxDefense` uses `techCounts` (number of defense items built) as input. The bonus doesn't replace `techCounts`, only adds the level multiplier to the research factor.
-
-**Files**:
-
-- `src/lib/server/techs/TechService.ts` — update `calculateMaxDefense()` to accept/use level multiplier
-- `src/lib/server/user/user.ts` — `updateDefenseValues()` passes bonus to `calculateMaxDefense`
-
-**Status**: ✅ COMPLETED
-**Implementation Summary**: `calculateMaxDefense()` now accepts optional `levelMultiplier` (default 1.0); applies `× levelMultiplier` to stacked hull/armor/shield values; `updateDefenseValues()` passes `bonuses?.levelMultiplier`.
-**Files Modified/Created**:
-- `src/lib/server/techs/TechService.ts` — added `levelMultiplier` param to `calculateMaxDefense()` and `getDefenseStats()`
-- `src/lib/server/user/user.ts` — `updateDefenseValues()` passes bonuses (including levelMultiplier) to calculateMaxDefense
-**Deviations from Plan**: `levelMultiplier` is optional with default 1.0 for backward compatibility. `getDefenseStats()` also updated to accept optional `levelMultiplier` and `regenRates`.
-**Arc42 Updates**: None required
-**Test Results**: ✅ All unit tests passing
-
-##### Task 5.3.2: Defense Regen Rates via Bonuses
-
-**Action**: Replace hardcoded `regenRate: 1` in `TechService.getDefenseStats()` with bonused values: `bonuses.hullRepairSpeed`, `bonuses.armorRepairSpeed`, `bonuses.shieldRechargeRate`.
-
-Update `User.updateDefenseValues()` to use bonused regen rates instead of hardcoded 1/sec.
-
-**Files**:
-
-- `src/lib/server/techs/TechService.ts` — update `getDefenseStats()` to accept regen rates
-- `src/lib/server/user/user.ts` — use bonused regen rates in `updateDefenseValues()`
-- `src/shared/defenseValues.ts` — no change (interface already has `regenRate` field)
-
-**Status**: ✅ COMPLETED
-**Implementation Summary**: `getDefenseStats()` accepts optional `regenRates` object (defaults to 1.0/sec each); `updateDefenseValues()` reads `bonuses?.hullRepairSpeed`, `armorRepairSpeed`, `shieldRechargeRate` or falls back to 1.
-**Files Modified/Created**:
-- `src/lib/server/techs/TechService.ts` — added optional `regenRates` parameter to `getDefenseStats()`
-- `src/lib/server/user/user.ts` — `updateDefenseValues()` uses bonused regen rates
-**Deviations from Plan**: None
-**Arc42 Updates**: None required
-**Test Results**: ✅ All unit tests passing
-
-#### Sub-Goal 5.4: Battle System — Weapon Stats
-
-##### Task 5.4.1: Weapon Damage, Accuracy, Reload via Bonuses
-
-**Action**: In `battleScheduler.ts` `fireWeapon()`, replace direct calls to `getWeaponDamageModifierFromTree()`, `getWeaponAccuracyModifierFromTree()` with bonused factors from UserBonusCache.
-
-Pattern change:
-
-```
-// Before:
-getWeaponAccuracyModifierFromTree(attackerUser.techTree, weaponType)
-getWeaponDamageModifierFromTree(attackerUser.techTree, weaponType)
-
-// After (using pre-computed factors from bonus cache):
-bonuses.projectileWeaponAccuracyFactor  // or energyWeaponAccuracyFactor
-bonuses.projectileWeaponDamageFactor    // or energyWeaponDamageFactor
-```
-
-For reload time: Update `TechFactory.calculateWeaponReloadTime()` or its callers to use `bonuses.projectileWeaponReloadFactor` (or energy equivalent).
-
-**Files**:
-
-- `src/lib/server/battle/battleScheduler.ts` — use bonus factors for accuracy and damage
-- `src/lib/server/techs/TechFactory.ts` — update `calculateWeaponReloadTime()` to accept bonus factor
-
-**Status**: ✅ COMPLETED
-**Implementation Summary**: `fireWeapon()` now calls `UserBonusCache.getBonuses(userContext, attackerId)` and uses `bonuses.projectile/energyWeapon{Accuracy,Damage,Reload}Factor` for all weapon calculations; `TechFactory.calculateWeaponReloadTime()` accepts optional `totalReloadFactor` parameter; cooldown computed as `baseCooldown / reloadFactor` using raw base cooldown.
-**Files Modified/Created**:
-- `src/lib/server/battle/battleScheduler.ts` — getBonuses() for attacker, use bonus factors for accuracy/damage/reload
-- `src/lib/server/techs/TechFactory.ts` — added optional `totalReloadFactor` parameter to `calculateWeaponReloadTime()`
-**Deviations from Plan**: Reload time computed from raw `getBaseBattleCooldown()` at fire time rather than using stored `weaponData.cooldown` (which had research already applied). This ensures the full bonus factor (research × level × commander) is applied correctly without double-counting.
-**Arc42 Updates**: None required
-**Test Results**: ✅ All unit tests passing
-
-#### Sub-Goal 5.5: Inventory Slot Counts (Not Bonused)
-
-**Note**: Inventory slots (`InventorySlots`) and bridge slots (`BridgeSlots`) are research-derived but are NOT in the bonus list. These should NOT be routed through UserBonusCache — they remain direct techtree lookups. Document this decision.
-
-#### Sub-Goal 5.6: Update Affected Tests
-
-##### Task 5.6.1: Update Existing Integration Tests
-
-**Action**: All integration tests that test bonused values (iron rate, ship speed, defense, battle damage) need updating to account for the bonus system. Since tests use level-1 users (bonus = 1.0), most values should remain identical. Tests that modify XP/level will need adjustments.
-
-**Files**:
-
-- `src/__tests__/api/user-stats-api.test.ts`
-- `src/__tests__/api/collection-api.test.ts`
-- `src/__tests__/api/trigger-research-api.test.ts`
-- `src/__tests__/api/user-battles-api.test.ts`
-- `src/__tests__/api/ships-api.test.ts`
-- `src/__tests__/api/world-api.test.ts`
-- `src/__tests__/api/complete-build-api.test.ts`
-- Other tests as needed
-
-**Status**: ✅ COMPLETED
-**Implementation Summary**: No integration test updates were needed. By making `bonuses` optional (with backward-compat fallback to tech-tree lookups), all existing tests continue to pass unchanged. New unit tests in `bonus-integration.test.ts` cover all new bonus-system code paths.
-**Files Modified/Created**:
-- `src/__tests__/unit/lib/bonus-integration.test.ts` — new: 26 unit tests covering Tasks 5.1.1, 5.3.1, 5.3.2, 5.4.1 and addIron() capacity
-**Deviations from Plan**: Integration tests did not need updates because optional parameters preserve backward compatibility. New comprehensive unit tests were added instead.
-**Arc42 Updates**: None required
-**Test Results**: ✅ 335 unit tests passing, no linting errors, build succeeds
+**Files**: Already covered by Tasks 4.4 and 4.5 response shapes.
 
 ---
 
-### Goal 6: Architecture Documentation
+### Goal 6: Tests
 
-**Description**: Document the bonus cache as an ADR and update Arc42.
+**Description**: Cover all new business logic with appropriate tests following the test pyramid (unit > integration > UI).
 
-#### Task 6.1: Add ADR for Caching Derived Bonus Values
+#### Task 6.1: Unit tests for price calculation
 
-**Action**: Add ADR-006 to the Architecture Decisions section of arc42-architecture.md:
+**Action**: Create `src/__tests__/unit/lib/commanderPrice.test.ts`. Test cases:
 
-**Context**: Game bonuses (derived from player level, commanders, and research) are needed frequently across multiple API endpoints. Recalculating them on every request requires reading from UserCache and InventoryService, introducing unnecessary lock contention and latency.
-
-**Decision**: Cache derived bonus values in a runtime-only `UserBonusCache` (no DB persistence). Lazily initialize per user, invalidate on source data changes (level-up, research completion, bridge changes).
-
-**Consequences**: Fast reads (sub-microsecond from Map), stale for at most one request after invalidation, lost on server restart (rebuilt lazily).
-
-**Files**:
-
-- `doc/architecture/arc42-architecture.md` — add ADR-006
-
-**Status**: ✅ COMPLETED
-**Implementation Summary**: Added ADR-006 as §9.6 in arc42-architecture.md covering context, decision, and consequences for the runtime-only derived bonus cache pattern.
-**Files Modified/Created**:
-- `doc/architecture/arc42-architecture.md` — added ADR-006 (§9.6) and updated §5.2.1 heading + dependency graph
-**Deviations from Plan**: None
-**Arc42 Updates**: Updated `doc/architecture/arc42-architecture.md` (§5 and §9)
-**Test Results**: ✅ Documentation only — no code changes, no tests required
-
-#### Task 6.2: Update Arc42 Building Block View
-
-**Action**: Add `UserBonusCache` to the building blocks documentation as a new cache component. Update the dependency graph to show UserBonusCache depending on UserCache and InventoryService.
+- `commanderSellPrice_singleBonus0.1_returns100`
+- `commanderSellPrice_threeBonus0.2each_returns600`
+- `commanderBuyPrice_singleBonus0.1_returns500`
+- `commanderBuyPrice_threeBonus0.2each_returns3000`
 
 **Files**:
 
-- `doc/architecture/arc42-architecture.md` — update §5 Building Block View
-- `doc/architecture/building-blocks-cache-systems.md` — add UserBonusCache section
+- `src/__tests__/unit/lib/commanderPrice.test.ts` — new file
 
-**Status**: ✅ COMPLETED
-**Implementation Summary**: Updated §5.2.1 in arc42-architecture.md to list UserBonusCache as a fifth cache; updated the dependency graph Mermaid diagram to include UserBonusCache and InventoryService; added a full UserBonusCache section to building-blocks-cache-systems.md including shape, formula, lock strategy, and invalidation trigger table; updated the comparison table, Key Differences, and Summary sections.
-**Files Modified/Created**:
-- `doc/architecture/arc42-architecture.md` — updated §5.2.1 Cache Layer heading + dependency graph
-- `doc/architecture/building-blocks-cache-systems.md` — added UserBonusCache section, updated comparison table, Key Differences, Summary
-**Deviations from Plan**: None
-**Arc42 Updates**: Updated `doc/architecture/arc42-architecture.md` (§5) and `doc/architecture/building-blocks-cache-systems.md`
-**Test Results**: ✅ Documentation only — no code changes, no tests required
+#### Task 6.2: Unit tests for shop route (auth guard)
 
-#### Task 6.3: Update Learnings
-
-**Action**: Document the bonus cache pattern and key design decisions in learnings.md.
+**Action**: Create `src/__tests__/unit/api/starbase.test.ts`. Use `createMockSessionCookie` and `createRequest` helpers to test the early-exit paths of all three routes (missing auth, invalid slot index, etc.) without touching the DB.
 
 **Files**:
 
-- `doc/learnings.md` — add entry about UserBonusCache pattern
+- `src/__tests__/unit/api/starbase.test.ts` — new file
 
-**Status**: ✅ COMPLETED
-**Implementation Summary**: Added "UserBonusCache: Runtime-Only Derived Cache Pattern" section to learnings.md covering all 7 key design decisions (no DB persistence, no lock, multiplicative formula, lazy init, invalidation triggers, afterburner folding, updateStats parameter pattern) plus architectural implication.
-**Files Modified/Created**:
-- `doc/learnings.md` — added UserBonusCache pattern entry
-**Deviations from Plan**: None
-**Arc42 Updates**: None required (learnings.md is not Arc42)
-**Test Results**: ✅ Documentation only — no code changes, no tests required
+#### Task 6.3: Integration tests for buy and sell flows
 
+**Action**: Create `src/__tests__/integration/api/starbase-shop.test.ts`. Cover:
+
+- `buyCommander_sufficientIron_deductsIronAndAddsToInventory`
+- `buyCommander_insufficientIron_returns400AndNoChange`
+- `buyCommander_invalidSlotIndex_returns400`
+- `sellCommander_commanderInInventory_addsIronAndRemovesItem`
+- `sellCommander_emptySlot_returns400`
+
+Each test uses `withTransaction()` for rollback isolation.
+
+**Files**:
+
+- `src/__tests__/integration/api/starbase-shop.test.ts` — new file
+
+#### Task 6.4: Unit tests for StarbaseRenderer
+
+**Action**: Create `src/__tests__/unit/renderers/StarbaseRenderer.test.ts`. Verify:
+
+- `getObjectSize_returnsBaseSizeMultiplied5x`
+- `getFallbackColor_returnsExpectedHex`
+- Renderer instantiates and exposes `drawStarbase` method
+
+**Files**:
+
+- `src/__tests__/unit/renderers/StarbaseRenderer.test.ts` — new file
 
 ---
 
 ## Dependencies
 
-No new npm packages required. All dependencies are internal.
+No new npm packages required. All functionality uses existing packages: iron-session (session storage), existing Commander/InventoryService, existing lock infrastructure.
+
+---
 
 ## Arc42 Documentation Updates
 
 **Proposed Changes**:
 
-- **§5 Building Block View**: Add UserBonusCache as a new cache component with dependency graph
-- **§9 Architecture Decisions**: Add ADR-006 for caching derived bonus values
-- **building-blocks-cache-systems.md**: Add UserBonusCache section
+- Update `doc/architecture/arc42-architecture.md` Section 8 (Concepts) to document the Starbase as a hardcoded, non-persisted world object appended to the world API response.
+- No new architectural patterns introduced — this reuses the existing click-callback injection pattern, inventory service, lock hierarchy, and renderer base class.
+
+---
 
 ## Architecture Notes
 
-### Design Pattern: Runtime-Only Derived Cache
+### Hardcoded Starbase Pattern
 
-Unlike other caches (UserCache, WorldCache, etc.) that persist to PostgreSQL, UserBonusCache is purely runtime. It stores derived/computed values that can always be recomputed from source data. This is a new pattern in the codebase — a "derived cache" as opposed to a "persistent cache".
+Starbases do not live in the DB. They are defined in `src/shared/starbases.ts` as static `SpaceObject` records. The `/api/world` route appends them to every world response. IDs start at `9001` (well above auto-increment DB IDs) to prevent collisions. Client-side, they behave identically to DB objects for rendering and hover detection.
 
-### Lock Strategy
+### Lock Order for Sell
 
-- UserBonusCache reuses `USER_LOCK` (LOCK_4) — no new lock level needed
-- Recalculation acquires `USER_INVENTORY_LOCK` (LOCK_5) internally for bridge data
-- Lock ordering 4 → 5 is valid in the IronGuard hierarchy
-- `invalidateBonuses()` is synchronous (Map.delete) — no lock needed in single-threaded JS
-- `discardAllBonuses()` is synchronous (Map.clear) — no lock needed
+The sell flow must NOT acquire USER_INVENTORY_LOCK (5) and then USER_LOCK (4) — that violates the ascending lock hierarchy (4 must come before 5). Instead, acquire USER_LOCK first, then USER_INVENTORY_LOCK, perform both the inventory removal and the iron update within that scope, then release in reverse order.
 
-### Bonus Combination Formula
+### Shop State in Session
 
-All bonus sources combine **multiplicatively**:
+The 10 shop Commanders are stored in the iron-session cookie after `GET /api/starbase/shop`. This prevents a client from submitting fabricated CommanderData in a buy request — the server always resolves the Commander from its own session-stored shop list. The session payload size increase is small (≈ 1–2 KB for 10 Commander JSON objects).
 
-```
-finalValue = researchEffect × levelMultiplier × commanderMultiplier
-```
+### Starbase Interaction in Attack Mode
 
-Where:
+Clicking a Starbase in Attack Mode checks the toroidal distance between the player's ship and the Starbase. If within **500 world units** (`STARBASE_DOCK_RANGE`), the `onStarbaseEntryCallback` is fired and the player navigates to `/starbase`. If outside range, `handleInterception()` is called so the ship flies toward the Starbase — the same behavior as clicking a distant collectible. The `setStarbaseEntryCallback` pattern mirrors `setTeleportClickCallback`.
 
-- `researchEffect` = value from `getResearchEffectFromTree(techTree, researchType)`
-- `levelMultiplier` = `1.15^(level - 1)` (level 1 = no bonus = 1.0)
-- `commanderMultiplier` = from `Commander.calculateBonuses()` for stats with matching `CommanderStatKey`; for stats without a commander key (iron, defense regen), commanderMultiplier = 1.0
+### Commander Portrait Images
 
-### Stats without Commander Bonuses
+`CommanderCard` uses `imageId` (0–17) to reference portrait images at `public/assets/images/commander/` — the same path pattern used by the existing Ship page inventory UI.
 
-The following stats only get level bonus (no `CommanderStatKey` exists):
-
-- Iron storage capacity (IronCapacity research × level)
-- Iron recharge rate (IronHarvesting research × level)
-- Hull repair speed (base 1.0/sec × level)
-- Armor repair speed (base 1.0/sec × level)
-- Shield recharge rate (base 1.0/sec × level)
-
-### updateStats() Design
-
-`User.updateStats()` remains synchronous but receives `UserBonuses` as a parameter. This avoids making it async while still using bonus values. Callers (UserCache, API routes) obtain bonuses before calling `updateStats()`. Mid-tick research completion is handled by locally recomputing affected values using `bonuses.levelMultiplier`.
+---
 
 ## Agent Decisions
 
-1. **Multiplicative combination** (confirmed with user): All bonus sources multiply. `finalValue = research × level × commander`.
+1. **Starbases in `src/shared/starbases.ts` (not `src/lib/client/`)**: Since `/api/world/route.ts` (server) needs to import the starbase definitions, they cannot live under `src/lib/client/`. Placing them in `src/shared/` makes them importable from both server and client code.
 
-2. **Level-only for iron/defense stats** (confirmed with user): Stats without `CommanderStatKey` (iron capacity, iron rate, defense regen) only get the level multiplier. No `CommanderStatKey` extension planned.
+2. **Session-based shop state over deterministic seeding**: Storing shop Commanders in the session is simpler and more flexible than a seeded RNG approach. The 10 Commanders are re-generated on each `GET /api/starbase/shop` call. Client re-entry re-rolls the shop.
 
-3. **Accuracy/reload refactoring as prerequisite** (confirmed with user): All bonuses operate multiplicatively. The existing additive accuracy and inverse reload modifiers are refactored to multiplicative FIRST (Goal 1) before the bonus system is implemented.
+3. **500-unit dock range with interception fallback**: If the player is outside 500 world units when clicking a Starbase in Attack Mode, `handleInterception()` is called — consistent with how distant collectibles and player-ships behave.
 
-4. **Lazy invalidation** (confirmed with user): Trigger events call `invalidateBonuses(userId)` (sync, no lock). Next `getBonuses()` call recalculates. This avoids lock contention at trigger points and keeps the implementation simple.
+4. **Full page navigation to `/starbase` (not a modal)**: Consistent with the existing full-page pattern (e.g. `/game` → `/` after attack). A separate page is simpler to implement, authenticate, and test than a canvas overlay.
 
-5. **UserBonuses passed as parameter to updateStats()**: To keep `updateStats()` synchronous, bonuses are passed in rather than looked up internally. This also improves testability (pass mock bonuses in unit tests).
+5. **`STARBASE_ID_OFFSET = 9000`**: Provides ample headroom above DB auto-increment IDs. Could be increased if needed.
 
-6. **No DB persistence for bonuses**: UserBonusCache is runtime-only. On server restart, bonuses are lazily rebuilt on first access per user. This avoids schema changes and keeps the implementation simple.
+6. **Sell lock order**: USER_LOCK (4) acquired first, then USER_INVENTORY_LOCK (5), in the sell route handler — respects the ascending lock hierarchy. Both operations (inventory removal + iron credit) execute within the same combined lock scope.
 
-7. **New file directory**: `src/lib/server/bonus/` — follows the pattern of `src/lib/server/user/`, `src/lib/server/battle/`, etc.
+7. **Image asset `station1.png`**: Already added to `public/assets/images/station1.png` by the user. Renderer references this path directly.
 
-8. **Afterburner handling** (confirmed with user): Afterburner research is folded into `maxShipSpeed` in the UserBonusCache: `ShipSpeed × (1 + afterburner/100) × levelMult × commanderMult`. This resolves the existing inconsistency between navigate and ship-stats routes.
+---
 
-9. **Navigate route factor 5** (confirmed with user): The legacy `5 × speedMultiplier` in the navigate route is removed. Both navigate and ship-stats will use `bonuses.maxShipSpeed` directly. The removed factor is documented in `TechnicalDebt.md` for traceability.
+## Resolved Decisions
 
-10. **Goal ordering** (confirmed with user): Goal 1 (accuracy/reload refactoring to multiplicative) is implemented first, before the UserBonusCache (Goal 2+). This ensures the bonus cache operates on consistent multiplicative modifiers.
-
-## Resolved Questions
-
-All open questions have been resolved during planning:
-
-1. **Afterburner**: ✅ Folded into `maxShipSpeed` in the bonus cache (Option A confirmed)
-2. **Navigate factor 5**: ✅ Removed, documented in TechnicalDebt.md (confirmed)
-3. **Goal ordering**: ✅ Goal 1 (accuracy/reload refactoring) first (confirmed)
-4. **Combination formula**: ✅ All multiplicative (confirmed)
-5. **Iron/defense without commander**: ✅ Level-only bonus (confirmed)
-6. **Accuracy/reload refactoring**: ✅ Separate step, prerequisite for bonus system (confirmed)
-7. **Lazy invalidation**: ✅ Triggers invalidate, next read recalculates (confirmed)
+1. **Starbase entry distance**: **500 world units**. Outside range → `handleInterception()` (fly toward it). Inside range → navigate to `/starbase`.
+2. **Number of Starbases**: **One**, at world center (2500, 2500).
+3. **Sell lock order**: Route acquires **USER_LOCK (4) then USER_INVENTORY_LOCK (5)** in the correct ascending order. Both held for the full remove+iron-credit operation.
+4. **Image asset**: `public/assets/images/station1.png` — already added to the repository.
