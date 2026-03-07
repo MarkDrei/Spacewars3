@@ -121,8 +121,8 @@ export class SpaceObjectsRenderer {
         visibleTop: number, 
         visibleBottom: number
     ): boolean {
-        // Add a small margin to account for object size
-        const margin = 50;
+        // Add a margin to account for large objects (e.g. Starbase rendered at 250px radius)
+        const margin = 250;
         return (
             worldX >= visibleLeft - margin && 
             worldX <= visibleRight + margin &&

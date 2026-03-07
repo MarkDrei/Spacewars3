@@ -66,4 +66,11 @@ export class StarbaseRenderer extends SpaceObjectRendererBase {
     protected override getImageRotationOffset(): number {
         return 0;
     }
+
+    /**
+     * Hover indicator ring matches the rendered size of the starbase
+     */
+    protected override getHoverIndicatorRadius(): number {
+        return this.getObjectSize() / 2;
+    }
 }

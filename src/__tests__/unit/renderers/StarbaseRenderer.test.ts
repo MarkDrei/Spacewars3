@@ -21,8 +21,10 @@ describe('StarbaseRenderer', () => {
     expect(color).toBe('#4488ff');
   });
 
-  test('drawStarbase_methodExists', () => {
+  test('getHoverIndicatorRadius_returnsHalfObjectSize', () => {
     const renderer = new StarbaseRenderer();
-    expect(typeof renderer.drawStarbase).toBe('function');
+    const r = (renderer as unknown as { getHoverIndicatorRadius(): number }).getHoverIndicatorRadius();
+    const size = (renderer as unknown as { getObjectSize(): number }).getObjectSize();
+    expect(r).toBe(size / 2); // 125
   });
 });

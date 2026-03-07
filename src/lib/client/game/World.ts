@@ -5,7 +5,8 @@ import { Asteroid } from './Asteroid';
 import { Player } from './Player';
 import { Shipwreck } from './Shipwreck';
 import { EscapePod } from './EscapePod';
-import { WorldData, Asteroid as SharedAsteroid, Shipwreck as SharedShipwreck, EscapePod as SharedEscapePod } from '@shared/types/gameTypes';
+import { Starbase } from './Starbase';
+import { WorldData, Asteroid as SharedAsteroid, Shipwreck as SharedShipwreck, EscapePod as SharedEscapePod, StarbaseObject as SharedStarbase } from '@shared/types/gameTypes';
 import { DEFAULT_WORLD_WIDTH, DEFAULT_WORLD_HEIGHT } from '@shared/worldConstants';
 import { normalizePosition } from '@shared/physics';
 import { WorldBounds } from '@shared/physics';
@@ -158,6 +159,12 @@ export class World {
                 case 'escape_pod': {
                     const podData = normalizedObject as SharedEscapePod;
                     clientObject = new EscapePod(podData);
+                    break;
+                }
+                    
+                case 'starbase': {
+                    const starbaseData = normalizedObject as SharedStarbase;
+                    clientObject = new Starbase(starbaseData);
                     break;
                 }
                     

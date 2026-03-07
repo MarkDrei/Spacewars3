@@ -144,7 +144,7 @@ export abstract class SpaceObjectRendererBase {
         if ( World.getInstance().getHoveredObjectId() === spaceObject.id)
         {
             ctx.beginPath();
-            ctx.arc(0, 0, 25, 0, Math.PI * 2);
+            ctx.arc(0, 0, this.getHoverIndicatorRadius(), 0, Math.PI * 2);
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
             ctx.lineWidth = 2;
             ctx.stroke();
@@ -153,6 +153,14 @@ export abstract class SpaceObjectRendererBase {
         ctx.restore();
     }
     
+    /**
+     * Get the radius of the hover indicator circle (in pixels).
+     * Override in subclasses to use a different hover indicator size.
+     */
+    protected getHoverIndicatorRadius(): number {
+        return 25;
+    }
+
     /**
      * Get the image to use for this object type
      * Return null to use fallback shape instead
