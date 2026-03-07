@@ -45,7 +45,7 @@ async function run() {
 
   // ── Login ────────────────────────────────────────────────────────────────
   console.log('🔑 Logging in...');
-  await page.goto(`${BASE_URL}/login`, { waitUntil: 'networkidle' });
+  await page.goto(`${BASE_URL}/login`, { waitUntil: 'load', timeout: 60_000 });
   await page.fill('input[name="username"]', USERNAME);
   await page.fill('input[name="password"]', PASSWORD);
 
@@ -63,7 +63,7 @@ async function run() {
   // ── Authenticated pages ──────────────────────────────────────────────────
   for (const cfg of PAGES.filter((p) => p.requiresAuth)) {
     console.log(`📸 Capturing /${cfg.name}...`);
-    await page.goto(`${BASE_URL}${cfg.path}`, { waitUntil: 'networkidle' });
+    await page.goto(`${BASE_URL}${cfg.path}`, { waitUntil: 'load', timeout: 60_000 });
 
     if (cfg.waitFor) {
       await page.waitForSelector(cfg.waitFor, { timeout: 8_000 });
