@@ -62,13 +62,11 @@ describe('Battle iron transfer', () => {
         hull: { current: 100, max: 100 },
         armor: { current: 50, max: 50 },
         shield: { current: 25, max: 25 },
-        weapons: {}
       };
       const defenderStats: BattleStats = {
         hull: { current: 0, max: 100 },
         armor: { current: 0, max: 50 },
         shield: { current: 0, max: 25 },
-        weapons: {}
       };
 
       const cooldowns: Record<string, number> = {};
@@ -136,13 +134,11 @@ describe('Battle iron transfer', () => {
         hull: { current: 100, max: 100 },
         armor: { current: 50, max: 50 },
         shield: { current: 25, max: 25 },
-        weapons: {}
       };
       const defenderStats: BattleStats = {
         hull: { current: 0, max: 100 },
         armor: { current: 0, max: 50 },
         shield: { current: 0, max: 25 },
-        weapons: {}
       };
       const cooldowns: Record<string, number> = {};
 

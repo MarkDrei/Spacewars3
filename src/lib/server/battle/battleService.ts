@@ -59,39 +59,16 @@ function getUserMaxDefenseStats(user: User): { hull: number; armor: number; shie
 }
 
 /**
- * Create battle stats snapshot for a user
+ * Create battle stats snapshot for a user (defense values only)
  */
 function createBattleStats(user: User): BattleStats {
   const current = getUserDefenseStats(user);
   const max = getUserMaxDefenseStats(user);
 
-  const weapons: BattleStats['weapons'] = {};
-
-  // Add all weapons the user has
-  const weaponTypes = ['pulse_laser', 'auto_turret', 'plasma_lance', 'gauss_rifle', 'photon_torpedo', 'rocket_launcher'] as const;
-
-  for (const weaponType of weaponTypes) {
-    const count = user.techCounts[weaponType];
-    if (count > 0) {
-      const spec = TechFactory.getWeaponSpec(weaponType);
-      if (spec) {
-        // Calculate research-modified reload time
-        const reloadTime = TechFactory.calculateWeaponReloadTime(weaponType, user.techTree);
-        
-        weapons[weaponType] = {
-          count,
-          damage: spec.damage,
-          cooldown: reloadTime // Use calculated reloadTime instead of spec.cooldown
-        };
-      }
-    }
-  }
-
   return {
     hull: { current: current.hull, max: max.hull },
     armor: { current: current.armor, max: max.armor },
     shield: { current: current.shield, max: max.shield },
-    weapons
   };
 }
 
@@ -262,28 +239,29 @@ export async function initiateBattle<THeld extends IronLocks>(
   }
 
   console.log(`⚔️ initiateBattle: Creating battle stats...`);
-  // Create battle stats snapshots
+  // Create defense value snapshots (hull/armor/shield only)
   const attackerStats = createBattleStats(attacker);
   const attackeeStats = createBattleStats(attackee);
 
-  // Validation: Check if attacker has weapons
-  if (Object.keys(attackerStats.weapons).length === 0) {
-    throw new ApiError(400, 'You need at least one weapon to attack');
-  }
-
   console.log(`⚔️ initiateBattle: Initializing weapon cooldowns...`);
-  // Initialize weapon cooldowns - all weapons start ready to fire (cooldown = 0)
+  // Initialize weapon cooldowns — iterate live techCounts so that every weapon
+  // the user currently owns starts ready to fire (cooldown = 0).
   const attackerCooldowns: WeaponCooldowns = {};
   const attackeeCooldowns: WeaponCooldowns = {};
 
-  // Set cooldown to 0 (ready to fire immediately) for all weapons
-  Object.keys(attackerStats.weapons).forEach(weaponName => {
-    attackerCooldowns[weaponName] = 0;
-  });
+  for (const weaponType of TechFactory.getWeaponKeys()) {
+    if (attacker.techCounts[weaponType as keyof typeof attacker.techCounts] > 0) {
+      attackerCooldowns[weaponType] = 0;
+    }
+    if (attackee.techCounts[weaponType as keyof typeof attackee.techCounts] > 0) {
+      attackeeCooldowns[weaponType] = 0;
+    }
+  }
 
-  Object.keys(attackeeStats.weapons).forEach(weaponName => {
-    attackeeCooldowns[weaponName] = 0;
-  });
+  // Validation: Check if attacker has weapons
+  if (Object.keys(attackerCooldowns).length === 0) {
+    throw new ApiError(400, 'You need at least one weapon to attack');
+  }
 
   console.log(`⚔️ initiateBattle: Setting ship speeds to 0...`);
   // Set both ships' speeds to 0
@@ -442,14 +420,12 @@ async function computeEndStats(
       hull: { current: attacker.hullCurrent, max: attacker.techCounts.ship_hull * 100 },
       armor: { current: attacker.armorCurrent, max: attacker.techCounts.kinetic_armor * 100 },
       shield: { current: attacker.shieldCurrent, max: attacker.techCounts.energy_shield * 100 },
-      weapons: battle.attackerStartStats.weapons
     };
 
     const attackeeStats: BattleStats = {
       hull: { current: attackee.hullCurrent, max: attackee.techCounts.ship_hull * 100 },
       armor: { current: attackee.armorCurrent, max: attackee.techCounts.kinetic_armor * 100 },
       shield: { current: attackee.shieldCurrent, max: attackee.techCounts.energy_shield * 100 },
-      weapons: battle.attackeeStartStats.weapons
     };
 
     return [attackerStats, attackeeStats] as const;

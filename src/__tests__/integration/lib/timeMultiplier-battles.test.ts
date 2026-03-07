@@ -53,16 +53,12 @@ describe('TimeMultiplier - Battle Weapon Cooldowns', () => {
       hull: { current: 1000, max: 1000 },
       armor: { current: 500, max: 500 },
       shield: { current: 250, max: 250 },
-      weapons: {
-        pulse_laser: { count: 1, damage: 10, cooldown: 50 }
-      }
     };
     
     const defenderStats: BattleStats = {
       hull: { current: 1000, max: 1000 },
       armor: { current: 500, max: 500 },
       shield: { current: 250, max: 250 },
-      weapons: {}
     };
 
     // Initial cooldown set to 0 (ready to fire immediately)
@@ -150,16 +146,12 @@ describe('TimeMultiplier - Battle Weapon Cooldowns', () => {
       hull: { current: 1000, max: 1000 },
       armor: { current: 500, max: 500 },
       shield: { current: 250, max: 250 },
-      weapons: {
-        pulse_laser: { count: 1, damage: 10, cooldown: 30 }
-      }
     };
     
     const defenderStats: BattleStats = {
       hull: { current: 1000, max: 1000 },
       armor: { current: 500, max: 500 },
       shield: { current: 250, max: 250 },
-      weapons: {}
     };
 
     // Initial cooldown set to 0 (ready to fire immediately)
@@ -235,16 +227,12 @@ describe('TimeMultiplier - Battle Weapon Cooldowns', () => {
       hull: { current: 1000, max: 1000 },
       armor: { current: 500, max: 500 },
       shield: { current: 250, max: 250 },
-      weapons: {
-        pulse_laser: { count: 1, damage: 10, cooldown: 2 }
-      }
     };
     
     const defenderStats: BattleStats = {
       hull: { current: 1000, max: 1000 },
       armor: { current: 500, max: 500 },
       shield: { current: 250, max: 250 },
-      weapons: {}
     };
 
     // Initial cooldown set to 0 (ready to fire immediately)
@@ -320,16 +308,12 @@ describe('TimeMultiplier - Battle Weapon Cooldowns', () => {
       hull: { current: 1000, max: 1000 },
       armor: { current: 500, max: 500 },
       shield: { current: 250, max: 250 },
-      weapons: {
-        pulse_laser: { count: 1, damage: 10, cooldown: undefined as unknown as number } // Force undefined
-      }
     };
     
     const defenderStats: BattleStats = {
       hull: { current: 1000, max: 1000 },
       armor: { current: 500, max: 500 },
       shield: { current: 250, max: 250 },
-      weapons: {}
     };
 
     // Initial cooldown set to 0 (ready to fire immediately)

@@ -37,9 +37,6 @@ async function createTestBattle(
     hull: { current: 500, max: 500 },
     armor: { current: 500, max: 500 },
     shield: { current: 500, max: 500 },
-    weapons: {
-      pulse_laser: { count: 5, damage: 10, cooldown: 1000 }
-    }
   };
 
   const emptyCtx = createLockContext();
@@ -68,18 +65,12 @@ async function createTestBattle(
       hull: { current: 100, max: 500 },
       armor: { current: 50, max: 500 },
       shield: { current: 0, max: 500 },
-      weapons: {
-        pulse_laser: { count: 5, damage: 10, cooldown: 1000 }
-      }
     };
   
     const loserEndStats: BattleStats = {
       hull: { current: 0, max: 500 },
       armor: { current: 0, max: 500 },
       shield: { current: 0, max: 500 },
-      weapons: {
-        pulse_laser: { count: 5, damage: 10, cooldown: 1000 }
-      }
     };
   
     await endBattle(

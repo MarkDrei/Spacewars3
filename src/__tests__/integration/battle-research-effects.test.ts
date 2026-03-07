@@ -70,28 +70,17 @@ describe('Battle Research Effects Integration', () => {
 
           // === Phase 3: Create battle with upgraded research ===
           const battle = await battleCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
-            const attacker = (await userCache.getUserByUsername(userCtx, 'a'))!;
-            //const defender = (await userCache.getUserByUsername(userCtx, 'dummy'))!;
-
-            // Create battle stats - these should reflect the upgraded research
+            // Create defense-only battle stats (weapons field removed)
             const attackerStats: BattleStats = {
               hull: { current: 100, max: 100 },
               armor: { current: 50, max: 50 },
               shield: { current: 25, max: 25 },
-              weapons: {
-                auto_turret: { 
-                  count: attacker.techCounts.auto_turret, 
-                  damage: 10, 
-                  cooldown: TechFactory.calculateWeaponReloadTime('auto_turret', attacker.techTree)
-                }
-              }
             };
             
             const defenderStats: BattleStats = {
               hull: { current: 80, max: 80 },
               armor: { current: 40, max: 40 },
               shield: { current: 20, max: 20 },
-              weapons: {}
             };
 
             const attackerCooldowns: WeaponCooldowns = { auto_turret: 0 };
@@ -109,17 +98,22 @@ describe('Battle Research Effects Integration', () => {
             );
           });
 
-          // === Phase 4: Verify battle stats reflect upgraded research ===
+          // === Phase 4: Verify battle creation and that reload time reflects upgraded research ===
           expect(battle).toBeDefined();
-          expect(battle.attackerStartStats.weapons.auto_turret).toBeDefined();
-          
-          // The cooldown in battle stats should be ~504 seconds (with level 3 research)
-          const battleCooldown = battle.attackerStartStats.weapons.auto_turret.cooldown;
-          expect(battleCooldown).toBeCloseTo(504, 1);
-          
+          // Verify the weapon is registered in the cooldowns map (ready to fire)
+          expect(battle.attackerWeaponCooldowns['auto_turret']).toBe(0);
+
+          // Reload time is now computed dynamically per shot via TechFactory/UserBonusCache.
+          // Verify the research-modified reload time formula directly.
+          const attackerUser = await battleCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
+            return (await userCache.getUserByUsername(userCtx, 'a'))!;
+          });
+          const researchCooldown = TechFactory.calculateWeaponReloadTime('auto_turret', attackerUser.techTree);
+          expect(researchCooldown).toBeCloseTo(504, 1);
+
           // Verify it's different from base cooldown without research
           const baseCooldown = TechFactory.getBaseBattleCooldown(TechFactory.getWeaponSpec('auto_turret')!);
-          expect(battleCooldown).toBeLessThan(baseCooldown);
+          expect(researchCooldown).toBeLessThan(baseCooldown);
         });
       });
     });
@@ -151,27 +145,16 @@ describe('Battle Research Effects Integration', () => {
 
           // === Phase 2: Create battle and verify cooldowns ===
           const battle = await battleCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
-            const attacker = (await userCache.getUserByUsername(userCtx, 'a'))!;
-            //const defender = (await userCache.getUserByUsername(userCtx, 'dummy'))!;
-
             const attackerStats: BattleStats = {
               hull: { current: 100, max: 100 },
               armor: { current: 50, max: 50 },
               shield: { current: 25, max: 25 },
-              weapons: {
-                pulse_laser: { 
-                  count: attacker.techCounts.pulse_laser, 
-                  damage: 8, 
-                  cooldown: TechFactory.calculateWeaponReloadTime('pulse_laser', attacker.techTree)
-                }
-              }
             };
             
             const defenderStats: BattleStats = {
               hull: { current: 80, max: 80 },
               armor: { current: 40, max: 40 },
               shield: { current: 20, max: 20 },
-              weapons: {}
             };
 
             const attackerCooldowns: WeaponCooldowns = { pulse_laser: 0 };
@@ -189,17 +172,21 @@ describe('Battle Research Effects Integration', () => {
             );
           });
 
-          // === Phase 3: Verify battle stats reflect upgraded research ===
+          // === Phase 3: Verify battle creation and that reload time reflects upgraded research ===
           expect(battle).toBeDefined();
-          expect(battle.attackerStartStats.weapons.pulse_laser).toBeDefined();
-          
-          // The cooldown in battle stats should be ~288 seconds (with level 4 research)
-          const battleCooldown = battle.attackerStartStats.weapons.pulse_laser.cooldown;
-          expect(battleCooldown).toBeCloseTo(288, 1);
-          
+          // Weapon registered in cooldowns map (ready to fire)
+          expect(battle.attackerWeaponCooldowns['pulse_laser']).toBe(0);
+
+          // Reload time is computed dynamically per shot. Verify the formula directly.
+          const attackerUser = await battleCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
+            return (await userCache.getUserByUsername(userCtx, 'a'))!;
+          });
+          const researchCooldown = TechFactory.calculateWeaponReloadTime('pulse_laser', attackerUser.techTree);
+          expect(researchCooldown).toBeCloseTo(288, 1);
+
           // Verify it's much faster than base cooldown
           const baseCooldown = TechFactory.getBaseBattleCooldown(TechFactory.getWeaponSpec('pulse_laser')!);
-          expect(battleCooldown).toBeLessThan(baseCooldown * 0.5); // At least 50% faster
+          expect(researchCooldown).toBeLessThan(baseCooldown * 0.5); // At least 50% faster
         });
       });
     });
