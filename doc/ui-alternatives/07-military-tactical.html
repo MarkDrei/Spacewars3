@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Design 7: Military Tactical HUD</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&display=swap');
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --amber: #ffb300;
+    --amber-dim: #7a5500;
+    --amber-glow: rgba(255, 179, 0, 0.15);
+    --bg: #0a0900;
+    --bg2: #0e0c00;
+    --bg3: #151200;
+    --red: #cc3300;
+    --olive: #3a3800;
+    --text: #d4a000;
+    --text-dim: #8a6a00;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Rajdhani', 'Arial Narrow', sans-serif;
+    min-height: 100vh;
+    display: flex; flex-direction: column;
+    letter-spacing: 0.5px;
+  }
+
+  /* Top military banner */
+  .mil-header {
+    background: var(--bg3);
+    border-bottom: 2px solid var(--amber-dim);
+    padding: 0 16px;
+    height: 44px;
+    display: flex; align-items: center; justify-content: space-between;
+    flex-shrink: 0;
+  }
+  .mil-header .unit-id {
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--amber);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .status-light {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: #00cc44;
+    box-shadow: 0 0 6px #00cc44;
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+  .mil-header nav { display: flex; gap: 0; }
+  .mil-header nav a {
+    color: var(--text-dim);
+    text-decoration: none;
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    padding: 0 14px;
+    height: 44px;
+    display: flex; align-items: center;
+    border-left: 1px solid var(--amber-dim);
+    transition: all 0.15s;
+  }
+  .mil-header nav a:hover { background: var(--amber-glow); color: var(--amber); }
+  .mil-header nav a.active { background: var(--amber-glow); color: var(--amber); border-top: 2px solid var(--amber); }
+
+  /* Main layout */
+  .mil-body {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 200px 1fr 200px;
+    min-height: 0;
+  }
+
+  /* Left panel */
+  .mil-panel {
+    background: var(--bg2);
+    border-right: 1px solid var(--amber-dim);
+    display: flex; flex-direction: column;
+    overflow-y: auto;
+  }
+  .mil-panel.right {
+    border-right: none;
+    border-left: 1px solid var(--amber-dim);
+  }
+
+  .mil-section {
+    border-bottom: 1px solid var(--olive);
+    padding: 12px;
+  }
+  .mil-section-title {
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--amber-dim);
+    margin-bottom: 10px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .mil-section-title::before {
+    content: '▶';
+    font-size: 0.55rem;
+    color: var(--amber);
+  }
+
+  .mil-field { margin-bottom: 10px; }
+  .mil-field-label { font-size: 0.65rem; letter-spacing: 1px; text-transform: uppercase; color: var(--text-dim); margin-bottom: 4px; }
+  .mil-input-row { display: flex; gap: 4px; }
+  input[type=number] {
+    flex: 1;
+    background: var(--bg3);
+    border: 1px solid var(--amber-dim);
+    color: var(--amber);
+    padding: 5px 7px;
+    font-family: inherit;
+    font-size: 0.85rem;
+    font-weight: 600;
+    min-width: 0;
+  }
+  input[type=number]:focus { outline: none; border-color: var(--amber); box-shadow: 0 0 6px var(--amber-glow); }
+  .mil-btn {
+    background: transparent;
+    border: 1px solid var(--amber-dim);
+    color: var(--text);
+    padding: 5px 8px;
+    font-family: inherit;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.1s;
+    white-space: nowrap;
+  }
+  .mil-btn:hover { background: var(--amber-glow); border-color: var(--amber); color: var(--amber); }
+  .mil-btn.engage { background: var(--amber-glow); border-color: var(--amber); color: var(--amber); }
+  .mil-btn.danger { border-color: var(--red); color: var(--red); }
+  .mil-btn.danger:hover { background: rgba(204,51,0,0.2); }
+  .mil-btn.block { display: block; width: 100%; padding: 6px; text-align: center; margin-top: 4px; }
+
+  /* Charge bar */
+  .charge-bar-container { margin: 8px 0; }
+  .charge-bar-label { display: flex; justify-content: space-between; font-size: 0.65rem; color: var(--text-dim); margin-bottom: 4px; }
+  .charge-bar { height: 6px; background: var(--olive); border: 1px solid var(--amber-dim); }
+  .charge-fill { height: 100%; width: 60%; background: var(--amber); box-shadow: 0 0 4px var(--amber); }
+
+  /* Toggle */
+  .mil-toggle-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .mil-toggle-label { font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-dim); }
+  .sq-toggle {
+    width: 32px; height: 18px;
+    background: var(--bg3);
+    border: 1px solid var(--amber-dim);
+    position: relative; cursor: pointer;
+  }
+  .sq-toggle.on { background: var(--amber-glow); border-color: var(--amber); }
+  .sq-toggle::after {
+    content: ''; position: absolute;
+    width: 12px; height: 12px;
+    background: var(--amber-dim);
+    top: 2px; left: 2px;
+    transition: transform 0.15s;
+  }
+  .sq-toggle.on::after { background: var(--amber); transform: translateX(14px); box-shadow: 0 0 4px var(--amber); }
+
+  /* Center: Tactical map */
+  .mil-map-area {
+    position: relative;
+    background: #000;
+    overflow: hidden;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .mil-map {
+    width: 100%; height: 100%;
+    position: absolute; inset: 0;
+    background:
+      repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 39px,
+        rgba(255,179,0,0.04) 39px,
+        rgba(255,179,0,0.04) 40px
+      ),
+      repeating-linear-gradient(
+        90deg,
+        transparent,
+        transparent 39px,
+        rgba(255,179,0,0.04) 39px,
+        rgba(255,179,0,0.04) 40px
+      );
+  }
+  .map-border {
+    position: absolute; inset: 0;
+    border: 1px solid var(--amber-dim);
+    pointer-events: none;
+  }
+  /* Corner brackets */
+  .corner-bracket {
+    position: absolute;
+    width: 16px; height: 16px;
+    border-color: var(--amber);
+    border-style: solid;
+  }
+  .cb-tl { top: 4px; left: 4px; border-width: 2px 0 0 2px; }
+  .cb-tr { top: 4px; right: 4px; border-width: 2px 2px 0 0; }
+  .cb-bl { bottom: 4px; left: 4px; border-width: 0 0 2px 2px; }
+  .cb-br { bottom: 4px; right: 4px; border-width: 0 2px 2px 0; }
+
+  /* Player ship marker */
+  .map-ship {
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%) rotate(-30deg);
+    width: 0; height: 0;
+    border-left: 7px solid transparent;
+    border-right: 7px solid transparent;
+    border-bottom: 20px solid var(--amber);
+    filter: drop-shadow(0 0 6px var(--amber));
+  }
+  /* Heading line */
+  .map-heading {
+    position: absolute; top: 50%; left: 50%;
+    width: 140px; height: 1px;
+    background: linear-gradient(90deg, var(--amber), transparent);
+    transform-origin: left;
+    transform: rotate(-30deg);
+    opacity: 0.6;
+  }
+  /* Range rings */
+  .range-ring {
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    border: 1px solid rgba(255,179,0,0.12);
+    border-radius: 50%;
+  }
+  /* Targets */
+  .tgt {
+    position: absolute;
+    width: 8px; height: 8px;
+    border: 1px solid var(--amber);
+    transform: translate(-50%, -50%) rotate(45deg);
+  }
+
+  /* HUD callout boxes on map */
+  .map-callout {
+    position: absolute;
+    background: rgba(10, 9, 0, 0.85);
+    border: 1px solid var(--amber-dim);
+    padding: 3px 7px;
+    font-size: 0.65rem;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+  }
+  .map-callout span { color: var(--amber); }
+  .mc-tl { top: 24px; left: 24px; }
+  .mc-tr { top: 24px; right: 24px; }
+
+  /* Bottom status strip */
+  .mil-status {
+    background: var(--bg3);
+    border-top: 2px solid var(--amber-dim);
+    height: 32px;
+    display: flex; align-items: center;
+    padding: 0 12px;
+    gap: 20px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    flex-shrink: 0;
+  }
+  .mil-status .val { color: var(--amber); margin-left: 4px; }
+  .mil-status .divider { flex: 1; }
+</style>
+</head>
+<body>
+
+<div class="mil-header">
+  <div class="unit-id">
+    <div class="status-light"></div>
+    SPACEWARS · COMBAT OPS
+  </div>
+  <nav>
+    <a href="#">BRIDGE</a>
+    <a href="#" class="active">TACTICAL</a>
+    <a href="#">R&amp;D</a>
+    <a href="#">PILOT</a>
+  </nav>
+</div>
+
+<div class="mil-body">
+
+  <!-- LEFT: Navigation -->
+  <div class="mil-panel">
+    <div class="mil-section">
+      <div class="mil-section-title">NAVIGATION</div>
+      <div class="mil-field">
+        <div class="mil-field-label">Speed</div>
+        <div class="mil-input-row">
+          <input type="number" value="24.5" min="0" step="0.1">
+          <button class="mil-btn">SET</button>
+        </div>
+      </div>
+      <div class="mil-field">
+        <div class="mil-field-label">Heading °</div>
+        <div class="mil-input-row">
+          <input type="number" value="135" min="0" max="360" step="0.1">
+          <button class="mil-btn">SET</button>
+        </div>
+      </div>
+      <button class="mil-btn block engage">▲ MAX SPEED</button>
+      <button class="mil-btn danger block">■ FULL STOP</button>
+    </div>
+
+    <div class="mil-section">
+      <div class="mil-section-title">COMBAT MODE</div>
+      <div class="mil-toggle-row">
+        <span class="mil-toggle-label">ENGAGE</span>
+        <div class="sq-toggle"></div>
+      </div>
+      <div class="mil-toggle-row">
+        <span class="mil-toggle-label">JUMP MODE</span>
+        <div class="sq-toggle on"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CENTER: Tactical map -->
+  <div class="mil-map-area">
+    <div class="mil-map"></div>
+    <div class="map-border"></div>
+    <div class="corner-bracket cb-tl"></div>
+    <div class="corner-bracket cb-tr"></div>
+    <div class="corner-bracket cb-bl"></div>
+    <div class="corner-bracket cb-br"></div>
+    <div class="range-ring" style="width:120px;height:120px"></div>
+    <div class="range-ring" style="width:240px;height:240px"></div>
+    <div class="range-ring" style="width:380px;height:380px"></div>
+    <div class="map-ship"></div>
+    <div class="map-heading"></div>
+    <div class="tgt" style="top:28%;left:62%"></div>
+    <div class="tgt" style="top:65%;left:30%;border-color:rgba(255,179,0,0.5)"></div>
+    <div class="map-callout mc-tl">SECTOR: <span>7-GAMMA</span></div>
+    <div class="map-callout mc-tr">CONTACTS: <span>2</span></div>
+  </div>
+
+  <!-- RIGHT: Teleport + Settings -->
+  <div class="mil-panel right">
+    <div class="mil-section">
+      <div class="mil-section-title">JUMP DRIVE</div>
+      <div class="charge-bar-container">
+        <div class="charge-bar-label">
+          <span>CHARGE STATUS</span>
+          <span>3 / 5</span>
+        </div>
+        <div class="charge-bar"><div class="charge-fill"></div></div>
+        <div style="font-size:0.62rem;color:var(--text-dim);margin-top:4px">RCHG: 2M 14S</div>
+      </div>
+      <div class="mil-field">
+        <div class="mil-field-label">Target X</div>
+        <input type="number" value="2450" style="width:100%">
+      </div>
+      <div class="mil-field">
+        <div class="mil-field-label">Target Y</div>
+        <input type="number" value="1870" style="width:100%">
+      </div>
+      <button class="mil-btn engage block">⚡ INITIATE JUMP</button>
+    </div>
+
+    <div class="mil-section">
+      <div class="mil-section-title">DISPLAY</div>
+      <div class="mil-toggle-row">
+        <span class="mil-toggle-label">TACTICAL OVL</span>
+        <div class="sq-toggle on"></div>
+      </div>
+      <div style="font-size:0.62rem; color:var(--text-dim); margin-top:8px;">
+        DATA AGE: <span style="color:var(--amber)">1.2S</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="mil-status">
+  <span>SPEED:<span class="val">24.5</span></span>
+  <span>HDG:<span class="val">135°</span></span>
+  <span>X:<span class="val">2,450</span></span>
+  <span>Y:<span class="val">1,870</span></span>
+  <span class="divider"></span>
+  <span>THREAT LEVEL: <span style="color:#00cc44">LOW</span></span>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Design 9: Minimal Nordic</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --white: #ffffff;
+    --off-white: #f9f9f9;
+    --bg: #f4f4f2;
+    --surface: #ffffff;
+    --surface2: #f0f0ee;
+    --border: #e2e2df;
+    --text: #1a1a1a;
+    --text-mid: #555550;
+    --text-muted: #9a9a95;
+    --accent: #1a6b3a;
+    --accent-hover: #155730;
+    --accent-light: #e8f5ed;
+    --danger: #c0392b;
+    --danger-light: #fdf0ee;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    min-height: 100vh;
+    display: flex; flex-direction: column;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Minimal top nav */
+  .nav {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 28px;
+    height: 56px;
+    display: flex; align-items: center; justify-content: space-between;
+    flex-shrink: 0;
+  }
+  .nav-logo {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text);
+    letter-spacing: -0.3px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .nav-logo .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--accent);
+  }
+  .nav-links { display: flex; gap: 4px; }
+  .nav-links a {
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 500;
+    padding: 6px 12px;
+    border-radius: 6px;
+    transition: all 0.15s;
+  }
+  .nav-links a:hover { background: var(--bg); color: var(--text-mid); }
+  .nav-links a.active { background: var(--accent-light); color: var(--accent); }
+
+  /* Page layout */
+  .page {
+    flex: 1;
+    max-width: 1000px;
+    margin: 0 auto;
+    width: 100%;
+    padding: 24px 24px;
+    display: flex; flex-direction: column; gap: 20px;
+  }
+
+  /* Canvas card */
+  .canvas-card {
+    background: #0a0a18;
+    border-radius: 16px;
+    overflow: hidden;
+    position: relative;
+    aspect-ratio: 2.2;
+    max-height: 480px;
+    box-shadow: 0 2px 16px rgba(0,0,0,0.15), 0 1px 3px rgba(0,0,0,0.1);
+  }
+
+  /* Stars */
+  .star { position: absolute; background: rgba(255,255,255,0.6); border-radius: 50%; }
+
+  /* Subtle nebula */
+  .nebula {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(80px);
+    opacity: 0.06;
+  }
+  .ship-marker {
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 0; height: 0;
+    border-left: 7px solid transparent;
+    border-right: 7px solid transparent;
+    border-bottom: 20px solid #4caf50;
+    filter: drop-shadow(0 0 6px rgba(76,175,80,0.8));
+  }
+  .traj {
+    position: absolute; top: 50%; left: 50%;
+    width: 120px; height: 1px;
+    background: linear-gradient(90deg, rgba(76,175,80,0.5), transparent);
+    transform-origin: left;
+    transform: rotate(-22deg);
+  }
+
+  /* Canvas overlay chips - minimal style */
+  .canvas-chip {
+    position: absolute;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.12);
+    backdrop-filter: blur(8px);
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 0.72rem;
+    color: rgba(255,255,255,0.75);
+    display: flex; align-items: center; gap: 7px;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .canvas-chip:hover { background: rgba(255,255,255,0.14); }
+  .canvas-chip.bl { bottom: 12px; left: 12px; }
+  .canvas-chip.br { bottom: 12px; right: 12px; }
+
+  /* Mini toggle */
+  .mini-toggle {
+    width: 28px; height: 15px;
+    background: rgba(255,255,255,0.15);
+    border-radius: 8px;
+    position: relative; cursor: pointer;
+  }
+  .mini-toggle.on { background: #4caf50; }
+  .mini-toggle::after {
+    content: ''; position: absolute;
+    width: 9px; height: 9px;
+    background: #fff; border-radius: 50%;
+    top: 3px; left: 3px;
+    transition: transform 0.15s;
+  }
+  .mini-toggle.on::after { transform: translateX(13px); }
+
+  /* Controls area */
+  .controls-area {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 12px;
+  }
+
+  /* Control card */
+  .ctrl-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 18px 20px;
+  }
+  .ctrl-title {
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 16px;
+  }
+
+  /* Fields */
+  .field { margin-bottom: 14px; }
+  .field-label { font-size: 0.75rem; font-weight: 500; color: var(--text-mid); margin-bottom: 6px; }
+  .field-row { display: flex; gap: 8px; align-items: center; }
+  input[type=number] {
+    flex: 1;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 0.84rem;
+    min-width: 0;
+    transition: border-color 0.15s;
+    font-family: inherit;
+  }
+  input[type=number]:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(26,107,58,0.1); }
+
+  .btn {
+    padding: 8px 14px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-weight: 500;
+    font-family: inherit;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .btn-accent { background: var(--accent); color: #fff; }
+  .btn-accent:hover { background: var(--accent-hover); }
+  .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--text-mid); }
+  .btn-ghost:hover { background: var(--bg); border-color: #ccc; }
+  .btn-danger { background: var(--danger-light); color: var(--danger); border: 1px solid rgba(192,57,43,0.2); }
+  .btn-danger:hover { background: rgba(192,57,43,0.15); }
+  .btn-block { display: block; width: 100%; text-align: center; margin-top: 8px; }
+
+  /* Charge progress */
+  .charges-display { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+  .progress-track {
+    flex: 1; height: 4px;
+    background: var(--border);
+    border-radius: 2px; overflow: hidden;
+  }
+  .progress-fill { height: 100%; width: 60%; background: var(--accent); border-radius: 2px; }
+  .charges-text { font-size: 0.75rem; color: var(--text-muted); white-space: nowrap; }
+  .timer-label { font-size: 0.72rem; color: var(--text-muted); margin-bottom: 12px; }
+
+  /* Settings toggle */
+  .setting-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .setting-row:last-child { border-bottom: none; padding-bottom: 0; }
+  .setting-label { font-size: 0.82rem; color: var(--text-mid); }
+  .setting-sub { font-size: 0.7rem; color: var(--text-muted); margin-top: 2px; }
+  .toggle {
+    width: 38px; height: 22px;
+    background: var(--border);
+    border-radius: 11px;
+    position: relative; cursor: pointer;
+    transition: background 0.2s;
+  }
+  .toggle.on { background: var(--accent); }
+  .toggle::after {
+    content: ''; position: absolute;
+    width: 16px; height: 16px;
+    background: #fff; border-radius: 50%;
+    top: 3px; left: 3px;
+    transition: transform 0.2s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  }
+  .toggle.on::after { transform: translateX(16px); }
+
+  .data-age-tag {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: var(--accent-light);
+    color: var(--accent);
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 0.72rem;
+    font-weight: 500;
+  }
+  .data-age-tag .dot2 { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-logo">
+    <div class="dot"></div>
+    Spacewars
+  </div>
+  <div class="nav-links">
+    <a href="#">Home</a>
+    <a href="#" class="active">Game</a>
+    <a href="#">Research</a>
+    <a href="#">Profile</a>
+  </div>
+</nav>
+
+<div class="page">
+
+  <!-- Canvas -->
+  <div class="canvas-card">
+    <div class="nebula" style="width:400px;height:350px;background:#3060c0;top:0;left:10%"></div>
+    <div class="nebula" style="width:300px;height:260px;background:#6030c0;top:30%;left:55%"></div>
+    <div class="star" style="width:2px;height:2px;top:8%;left:12%"></div>
+    <div class="star" style="width:1px;height:1px;top:20%;left:55%"></div>
+    <div class="star" style="width:2px;height:2px;top:55%;left:80%"></div>
+    <div class="star" style="width:1px;height:1px;top:75%;left:40%"></div>
+    <div class="star" style="width:2px;height:2px;top:38%;left:22%"></div>
+    <div class="star" style="width:1px;height:1px;top:15%;left:88%"></div>
+    <div class="ship-marker"></div>
+    <div class="traj"></div>
+    <!-- Canvas overlay chips -->
+    <div class="canvas-chip bl">
+      <div class="mini-toggle"></div>
+      Attack
+    </div>
+    <div class="canvas-chip br">
+      <div class="mini-toggle on"></div>
+      Teleport
+    </div>
+  </div>
+
+  <!-- Controls -->
+  <div class="controls-area">
+
+    <!-- Navigation card -->
+    <div class="ctrl-card">
+      <div class="ctrl-title">Navigation</div>
+      <div class="field">
+        <div class="field-label">Speed</div>
+        <div class="field-row">
+          <input type="number" value="24.5" min="0" step="0.1">
+          <button class="btn btn-accent">Set</button>
+        </div>
+      </div>
+      <div class="field" style="margin-bottom:0">
+        <div class="field-label">Heading</div>
+        <div class="field-row">
+          <input type="number" value="135.0" min="0" max="360" step="0.1">
+          <button class="btn btn-accent">Set</button>
+        </div>
+      </div>
+      <button class="btn btn-ghost btn-block">Max Speed</button>
+      <button class="btn btn-danger btn-block">Stop</button>
+    </div>
+
+    <!-- Teleport card -->
+    <div class="ctrl-card">
+      <div class="ctrl-title">Teleport</div>
+      <div class="charges-display">
+        <div class="progress-track"><div class="progress-fill"></div></div>
+        <span class="charges-text">3 / 5</span>
+      </div>
+      <div class="timer-label">Next charge in 2 min 14 sec</div>
+      <div class="field">
+        <div class="field-label">X</div>
+        <input type="number" value="2450" min="0" max="5000" style="width:100%">
+      </div>
+      <div class="field" style="margin-bottom:0">
+        <div class="field-label">Y</div>
+        <input type="number" value="1870" min="0" max="5000" style="width:100%">
+      </div>
+      <button class="btn btn-accent btn-block">Teleport</button>
+    </div>
+
+    <!-- Settings card -->
+    <div class="ctrl-card">
+      <div class="ctrl-title">Settings</div>
+      <div class="setting-row">
+        <div>
+          <div class="setting-label">Debug drawings</div>
+          <div class="setting-sub">Overlay trajectories & vectors</div>
+        </div>
+        <div class="toggle on"></div>
+      </div>
+      <div class="setting-row" style="border-bottom:none;padding-bottom:0;margin-top:8px">
+        <div class="setting-label">Data freshness</div>
+        <div class="data-age-tag"><div class="dot2"></div>1.2s</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</body>
+</html>

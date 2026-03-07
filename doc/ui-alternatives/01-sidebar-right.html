@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Design 1: Sidebar Right Panel</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0a0a0a;
+    color: #ededed;
+    font-family: 'Segoe UI', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+  /* Top nav bar */
+  .navbar {
+    background: #111;
+    border-bottom: 1px solid #222;
+    padding: 0 20px;
+    height: 52px;
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    flex-shrink: 0;
+  }
+  .navbar .logo { color: #4caf50; font-weight: 700; font-size: 1.1rem; letter-spacing: 2px; }
+  .navbar a { color: #888; text-decoration: none; font-size: 0.9rem; }
+  .navbar a:hover { color: #4caf50; }
+
+  /* Main layout: canvas + sidebar */
+  .main-layout {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+  }
+
+  /* Canvas area fills remaining width */
+  .canvas-area {
+    flex: 1;
+    background: #000;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+  .canvas-placeholder {
+    width: 800px;
+    height: 800px;
+    max-width: 100%;
+    max-height: calc(100vh - 52px);
+    background: #080818;
+    border: 1px solid #1a1a2e;
+    position: relative;
+    overflow: hidden;
+  }
+  /* Starfield dots */
+  .star { position: absolute; background: #fff; border-radius: 50%; }
+  .planet {
+    position: absolute; width: 40px; height: 40px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #6b8cff, #1a2aaa);
+    top: 30%; left: 25%;
+    box-shadow: 0 0 20px rgba(107,140,255,0.5);
+  }
+  .asteroid {
+    position: absolute; width: 14px; height: 11px; border-radius: 40%;
+    background: #5a4a3a; transform: rotate(30deg);
+  }
+  .ship {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    width: 0; height: 0;
+    border-left: 8px solid transparent;
+    border-right: 8px solid transparent;
+    border-bottom: 22px solid #4caf50;
+    filter: drop-shadow(0 0 6px #4caf50);
+  }
+  .trajectory {
+    position: absolute; top: 50%; left: 50%;
+    width: 120px; height: 1px;
+    background: linear-gradient(90deg, rgba(76,175,80,0.8), transparent);
+    transform-origin: left center;
+    transform: rotate(-35deg);
+  }
+
+  /* Canvas overlays */
+  .overlay-chip {
+    position: absolute;
+    background: rgba(10,10,10,0.82);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 8px;
+    padding: 6px 12px;
+    backdrop-filter: blur(6px);
+    display: flex; align-items: center; gap: 8px;
+    font-size: 0.82rem;
+  }
+  .overlay-chip.top-left { top: 14px; left: 14px; }
+  .overlay-chip.top-right { top: 14px; right: 14px; }
+  .overlay-chip label { color: #ccc; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+  .pill-toggle {
+    width: 36px; height: 20px; background: #333; border-radius: 10px;
+    position: relative; cursor: pointer; border: 1px solid #555;
+  }
+  .pill-toggle.on { background: #4caf50; border-color: #4caf50; }
+  .pill-toggle::after {
+    content: ''; position: absolute; width: 14px; height: 14px;
+    background: #fff; border-radius: 50%; top: 2px; left: 2px;
+    transition: transform 0.2s;
+  }
+  .pill-toggle.on::after { transform: translateX(16px); }
+
+  /* RIGHT SIDEBAR */
+  .sidebar {
+    width: 280px;
+    background: #111;
+    border-left: 1px solid #222;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    flex-shrink: 0;
+  }
+  .sidebar-section {
+    padding: 18px 16px;
+    border-bottom: 1px solid #1e1e1e;
+  }
+  .sidebar-section h3 {
+    color: #4caf50;
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-bottom: 14px;
+  }
+  .field-group { margin-bottom: 12px; }
+  .field-label {
+    color: #888;
+    font-size: 0.78rem;
+    margin-bottom: 5px;
+    display: block;
+  }
+  .field-row { display: flex; gap: 8px; align-items: center; }
+  input[type=number] {
+    flex: 1;
+    background: #1a1a1a;
+    border: 1px solid #333;
+    color: #ededed;
+    padding: 7px 10px;
+    border-radius: 5px;
+    font-size: 0.88rem;
+    width: 100%;
+  }
+  input[type=number]:focus { outline: none; border-color: #4caf50; }
+  .btn {
+    padding: 7px 12px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.82rem;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .btn-green { background: #4caf50; color: #fff; }
+  .btn-green:hover { background: #45a049; }
+  .btn-red { background: #d32f2f; color: #fff; }
+  .btn-red:hover { background: #b71c1c; }
+  .btn-gray { background: #2e2e2e; color: #ccc; border: 1px solid #444; }
+  .btn-gray:hover { background: #3a3a3a; }
+  .btn-block { width: 100%; padding: 8px; }
+
+  .charges-row {
+    display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
+  }
+  .charge-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: #4caf50;
+    box-shadow: 0 0 5px #4caf50;
+  }
+  .charge-dot.empty { background: #333; box-shadow: none; }
+  .timer-text { color: #666; font-size: 0.78rem; margin-top: 4px; }
+
+  .debug-row {
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .debug-label { color: #666; font-size: 0.82rem; }
+
+  .data-age {
+    margin-top: 8px; font-size: 0.75rem; color: #555;
+    border-top: 1px solid #1e1e1e; padding-top: 8px;
+  }
+  .data-age span { color: #4caf50; }
+</style>
+</head>
+<body>
+
+<nav class="navbar">
+  <span class="logo">⚡ SPACEWARS</span>
+  <a href="#">Home</a>
+  <a href="#" style="color:#4caf50">Game</a>
+  <a href="#">Research</a>
+  <a href="#">Profile</a>
+</nav>
+
+<div class="main-layout">
+
+  <!-- Canvas area -->
+  <div class="canvas-area">
+    <div class="canvas-placeholder">
+      <!-- Stars -->
+      <div class="star" style="width:2px;height:2px;top:8%;left:12%"></div>
+      <div class="star" style="width:1px;height:1px;top:22%;left:55%"></div>
+      <div class="star" style="width:2px;height:2px;top:45%;left:80%"></div>
+      <div class="star" style="width:1px;height:1px;top:70%;left:35%"></div>
+      <div class="star" style="width:2px;height:2px;top:15%;left:72%"></div>
+      <div class="star" style="width:1px;height:1px;top:85%;left:60%"></div>
+      <div class="star" style="width:2px;height:2px;top:60%;left:15%"></div>
+      <div class="star" style="width:1px;height:1px;top:35%;left:90%"></div>
+      <!-- Asteroid cluster -->
+      <div class="asteroid" style="top:20%;left:60%"></div>
+      <div class="asteroid" style="top:23%;left:65%;transform:rotate(55deg);width:10px;height:8px"></div>
+      <div class="asteroid" style="top:18%;left:63%;transform:rotate(80deg);width:8px;height:7px"></div>
+      <!-- Planet -->
+      <div class="planet"></div>
+      <!-- Ship + trajectory -->
+      <div class="ship"></div>
+      <div class="trajectory"></div>
+    </div>
+
+    <!-- Canvas overlays -->
+    <div class="overlay-chip top-left">
+      <label>
+        <div class="pill-toggle"></div>
+        Attack Mode
+      </label>
+    </div>
+    <div class="overlay-chip top-right">
+      <label>
+        <div class="pill-toggle on"></div>
+        Teleport Mode
+      </label>
+    </div>
+  </div>
+
+  <!-- Right Sidebar -->
+  <aside class="sidebar">
+
+    <!-- Navigation Section -->
+    <div class="sidebar-section">
+      <h3>Navigation</h3>
+
+      <div class="field-group">
+        <span class="field-label">Speed</span>
+        <div class="field-row">
+          <input type="number" value="24.5" min="0" step="0.1">
+          <button class="btn btn-green">Set</button>
+        </div>
+        <div class="field-row" style="margin-top:6px; gap:6px">
+          <button class="btn btn-green btn-block" style="flex:1">Max Speed</button>
+          <button class="btn btn-red" style="flex:0 0 auto">Stop</button>
+        </div>
+      </div>
+
+      <div class="field-group" style="margin-bottom:0">
+        <span class="field-label">Heading (degrees)</span>
+        <div class="field-row">
+          <input type="number" value="135.0" min="0" max="360" step="0.1">
+          <button class="btn btn-green">Set</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Teleport Section -->
+    <div class="sidebar-section">
+      <h3>Teleport</h3>
+      <div class="charges-row">
+        <div class="charge-dot"></div>
+        <div class="charge-dot"></div>
+        <div class="charge-dot"></div>
+        <div class="charge-dot empty"></div>
+        <div class="charge-dot empty"></div>
+        <span style="font-size:0.8rem; color:#888; margin-left:4px">3 / 5</span>
+      </div>
+      <div class="timer-text">Next charge in: 2m 14s</div>
+
+      <div class="field-group" style="margin-top:12px">
+        <span class="field-label">X Coordinate</span>
+        <input type="number" value="2450" min="0" max="5000" style="width:100%">
+      </div>
+      <div class="field-group">
+        <span class="field-label">Y Coordinate</span>
+        <input type="number" value="1870" min="0" max="5000" style="width:100%">
+      </div>
+      <button class="btn btn-green btn-block">Teleport</button>
+    </div>
+
+    <!-- Settings Section -->
+    <div class="sidebar-section">
+      <h3>Settings</h3>
+      <div class="debug-row">
+        <span class="debug-label">Debug Drawings</span>
+        <div class="pill-toggle on"></div>
+      </div>
+      <div class="data-age">Last update: <span>1.2s ago</span></div>
+    </div>
+
+  </aside>
+</div>
+
+</body>
+</html>

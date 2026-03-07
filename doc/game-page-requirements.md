@@ -1,120 +1,80 @@
-# Game Page — Realised Requirements
+# Game Page Requirements
 
-This document describes what the game page currently offers to the player: what information is visible and what actions can be taken. Implementation details are intentionally omitted.
-
----
-
-## Canvas View (800 × 800 px, circular viewport)
-
-The main view is a circular canvas showing the immediate surroundings of the player's ship. The player's ship is always centred.
-
-### What is visible
-
-| Element | Information shown |
-|---|---|
-| **Player ship** | Ship image facing the current travel direction |
-| **Other player ships** | Ship images facing their travel direction; username label below each ship |
-| **Asteroids** | Asteroid image with animated dust/particle trail behind them |
-| **Shipwrecks** | Shipwreck image |
-| **Escape pods** | Escape pod image |
-| **Grid** | Background grid for spatial orientation |
-| **World boundary** | Visual border marking the edge of the explorable world (only in debug mode) |
-
-### Radar / coordinate overlay (always on)
-
-- Two concentric range rings centred on the player ship
-- Crosshairs (horizontal + vertical lines) crossing the canvas centre
-- World coordinate labels along both axes (every 100 units), indicating the player's absolute position in the world
-
-### Hover tooltips (on mouse-over of any object)
-
-When the cursor hovers over any object, a tooltip appears with:
-
-- **Player ship**: Type, current speed, current heading angle
-- **Asteroids**: Type, speed, heading angle, distance from player
-- **Shipwrecks**: Type, speed, heading angle, distance from player
-- **Escape pods**: Type, speed, heading angle, distance from player
-- **Other ships**: Type, speed, heading angle, distance from player
-
-### Targeting / attack feedback (temporary overlays)
-
-After an attack is triggered, a fading overlay appears showing:
-
-- A cyan line from the player ship to the attack target (fades out over time)
-- A small crosshair marker at the target position
-
-When intercept calculations are available, an additional overlay shows:
-
-- A dashed blue-green line: the path the player's ship will travel to the intercept point
-- A dashed orange-red line: the predicted path the target will travel to the same point
-- A yellow diamond marker at the calculated intercept point
-- A countdown timer (MM:SS) near the player ship showing estimated time to intercept
+This document captures the realized requirements for the Game Page (`/game`). It is intentionally free of implementation details and intended as a reference for designing alternative UIs.
 
 ---
 
-## Controls Panel (below the canvas)
+## Overview
 
-### Speed control
-
-- Numeric input showing the current travel speed; value can be edited
-- **Set Speed** button — applies the entered speed
-- **Set Max Speed** button — automatically sets speed to the ship's maximum
-- **Stop** button — sets speed to zero
-
-### Angle (heading) control
-
-- Numeric input (0–360°) showing the current heading; value can be edited
-- **Set Angle** button — applies the entered angle
-
-### Teleport section *(only visible if the player has teleport charges)*
-
-**Status display:**
-- Current charges / maximum charges (e.g. "2 / 3 Charges")
-- Countdown to next charge recharge ("Next in: Xm Ys")
-
-**Coordinate teleport:**
-- X coordinate input
-- Y coordinate input
-- **Teleport** button (disabled when no charges remain)
-
-**Click-to-teleport toggle** (on the canvas overlay):
-- Toggle switch labelled "Teleport" — when enabled, the next click on the canvas teleports the ship to the clicked world position (disabled when no charges remain)
-
-### Attack mode
-
-- Toggle switch on the canvas overlay labelled "Attack" — when enabled, the next click on the canvas initiates an attack against the clicked target; on a successful attack the player is redirected to the home page
-
-### Debug toggle
-
-- Toggle switch labelled "Enable debug drawings" — shows or hides world boundaries and the targeting line overlay
-
-### Data age indicator *(visible when debug drawings are enabled)*
-
-- Shows how long ago the world data was last fetched from the server, giving the player a sense of data freshness
+The Game Page is the primary gameplay screen. It renders the game world on a canvas and provides controls for navigating the player's ship, teleporting, and toggling visual settings.
 
 ---
 
-## Information summary
+## Canvas / Game World Display
 
-| Category | Information available to the player |
-|---|---|
-| Position | Current X/Y world coordinates (visible on radar axes) |
-| Movement | Current speed and heading angle (readable from inputs; also shown in ship tooltip on hover) |
-| Surroundings | All objects within the viewport: asteroids, shipwrecks, escape pods, other player ships |
-| Nearby objects detail | Type, speed, heading, distance (via hover tooltip) |
-| Teleport resource | Current charges, max charges, recharge countdown |
-| Combat feedback | Visual line to attacked target; interception point with time-to-intercept countdown |
+- **Game Canvas** — An 800×800 interactive canvas that renders the space world in real time.
+  - Updates every 3 seconds via server polling.
+  - Renders: asteroids, escape pods, shipwrecks, the player's ship, other ships, trajectories, and debug overlays.
+  - **Click-to-Navigate** — Clicking on the canvas with no mode active sets a navigation target. The input fields update to reflect the clicked course.
+  - **Click-to-Teleport mode** — When enabled, clicking the canvas teleports the ship to that world coordinate and consumes one teleport charge.
+  - **Click-to-Attack mode** — When enabled, clicking on the canvas fires a weapon at the selected target. A successful attack redirects the player to the home page.
 
 ---
 
-## Interaction summary
+## Navigation Controls
 
-| Action | How it is triggered |
-|---|---|
-| Set travel speed | Edit speed input + Set Speed button, or Set Max Speed button |
-| Stop the ship | Stop button |
-| Set heading angle | Edit angle input + Set Angle button |
-| Teleport to coordinates | Enter X/Y + Teleport button |
-| Teleport by clicking the map | Enable Teleport toggle, then click on canvas |
-| Attack a target | Enable Attack toggle, then click on target on canvas |
-| Toggle debug visuals | Enable debug drawings toggle |
+The player controls their ship's movement via two parameters:
+
+### Speed
+- **Speed input** — Numeric field (min 0, step 0.1). Shows current ship speed.
+- **Set Speed button** — Sends the entered speed to the server. Shows "Setting…" while in flight.
+- **Set Max Speed button** — Queries ship stats for the maximum speed and applies it immediately.
+- **Stop button** — Sets ship speed to 0 immediately.
+
+### Angle
+- **Angle input** — Numeric field (degrees, 0–360, step 0.1). Shows current heading.
+- **Set Angle button** — Sends the entered angle to the server. Shows "Setting…" while in flight.
+- Both speed and angle inputs accept `Enter` to submit.
+
+---
+
+## Teleport Controls
+
+Shown only when the player has unlocked at least one teleport charge slot.
+
+- **Teleport header**
+  - Title: "Teleport"
+  - **Charges badge** — Displays current and maximum charges (e.g., "3 / 5 Charges"). Charges refill over time.
+  - **Recharge timer** — Shows time until the next charge refills (e.g., "Next in: 2m 30s"). Hidden when fully charged.
+- **Coordinate inputs** — Two numeric fields for X and Y destination coordinates (world space, 0–5000).
+- **Teleport button** — Executes the teleport. Disabled when no charges remain or while a teleport is in progress.
+- **Canvas toggle: Teleport mode** — Overlay toggle on the canvas (bottom-right). When enabled, the next canvas click teleports the ship preserving its velocity. Disabled when charges < 1.
+
+---
+
+## Combat Controls
+
+- **Canvas toggle: Attack mode** — Overlay toggle on the canvas (bottom-left). When enabled, the next canvas click fires a weapon at the target under the cursor.
+
+---
+
+## Visual / Debug Settings
+
+- **Debug drawings toggle** — Enables/disables visual debug overlays on the canvas (trajectory lines, vectors, bounding boxes, etc.).
+- **Data Age Indicator** — Shown when debug drawings are enabled. Displays how stale the last server update is, as a visual freshness indicator.
+
+---
+
+## Loading & Error States
+
+- **Loading state** — Shown while world data is being fetched on first load.
+- **Error state** — Shown if world data fails to load, with the error message.
+
+---
+
+## Global Behavior
+
+- The page is **authenticated-only** — unauthenticated users are redirected to `/login`.
+- World data auto-refreshes every 3 seconds in the background.
+- Teleport charges regenerate in real time on the client (optimistic update), based on the server-provided recharge rate and the current time multiplier.
+- Time multiplier (turbo mode) affects how fast teleport charges regenerate.

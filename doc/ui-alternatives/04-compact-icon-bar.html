@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Design 4: Compact Icon Bar</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0a0a0a;
+    color: #ededed;
+    font-family: 'Segoe UI', sans-serif;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .navbar {
+    background: #111;
+    border-bottom: 1px solid #1e1e1e;
+    padding: 0 20px;
+    height: 46px;
+    display: flex; align-items: center; gap: 20px;
+    flex-shrink: 0;
+  }
+  .logo { color: #4caf50; font-weight: 700; font-size: 0.95rem; letter-spacing: 2px; }
+  .navbar a { color: #666; text-decoration: none; font-size: 0.82rem; }
+  .navbar a.active { color: #4caf50; }
+
+  /* Canvas takes up all remaining space */
+  .canvas-area {
+    flex: 1;
+    background: #050510;
+    position: relative;
+    overflow: hidden;
+    min-height: 0;
+  }
+  .canvas-mock {
+    width: 100%; height: 100%;
+    position: absolute; inset: 0;
+  }
+  .star { position: absolute; background: rgba(255,255,255,0.7); border-radius: 50%; }
+  .ship-icon {
+    position: absolute; top: 48%; left: 48%;
+    width: 0; height: 0;
+    border-left: 8px solid transparent;
+    border-right: 8px solid transparent;
+    border-bottom: 22px solid #4caf50;
+    filter: drop-shadow(0 0 8px #4caf50);
+  }
+  .traj {
+    position: absolute; top: 48%; left: 48%;
+    width: 200px; height: 1px;
+    background: linear-gradient(90deg, rgba(76,175,80,0.6), transparent);
+    transform-origin: left;
+    transform: rotate(-20deg);
+  }
+
+  /* ─── COMPACT BOTTOM TOOLBAR ─── */
+  .toolbar {
+    height: 58px;
+    background: #111;
+    border-top: 1px solid #222;
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    gap: 4px;
+    flex-shrink: 0;
+    position: relative;
+  }
+  .toolbar-divider {
+    width: 1px;
+    height: 32px;
+    background: #2a2a2a;
+    margin: 0 6px;
+  }
+
+  /* Icon button with tooltip */
+  .icon-btn {
+    width: 42px; height: 42px;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 2px;
+    color: #666;
+    font-size: 18px;
+    position: relative;
+    transition: all 0.15s;
+  }
+  .icon-btn:hover { background: #1e1e1e; border-color: #333; color: #ccc; }
+  .icon-btn.active { background: rgba(76,175,80,0.15); border-color: rgba(76,175,80,0.4); color: #4caf50; }
+  .icon-btn .icon-label {
+    font-size: 0.58rem;
+    color: inherit;
+    font-weight: 500;
+    letter-spacing: 0.3px;
+    line-height: 1;
+  }
+
+  /* Tooltip popover that appears above icon */
+  .tooltip-panel {
+    display: none;
+    position: absolute;
+    bottom: 58px;
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 10px;
+    padding: 14px;
+    min-width: 200px;
+    box-shadow: 0 -8px 24px rgba(0,0,0,0.5);
+    z-index: 50;
+  }
+  .icon-btn:hover .tooltip-panel,
+  .icon-btn.open .tooltip-panel { display: block; }
+  .tooltip-panel h5 {
+    color: #4caf50;
+    font-size: 0.7rem;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+  .tp-field { margin-bottom: 8px; }
+  .tp-label { font-size: 0.7rem; color: #666; margin-bottom: 3px; }
+  .tp-row { display: flex; gap: 6px; align-items: center; }
+  input[type=number] {
+    background: #222;
+    border: 1px solid #3a3a3a;
+    color: #e0e0e0;
+    padding: 5px 8px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    width: 70px;
+  }
+  input[type=number]:focus { outline: none; border-color: #4caf50; }
+  .tp-btn {
+    padding: 5px 9px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.72rem;
+    font-weight: 600;
+  }
+  .tp-btn.green { background: #4caf50; color: #fff; }
+  .tp-btn.red { background: #c62828; color: #fff; }
+  .tp-btn.ghost { background: transparent; border: 1px solid #4caf50; color: #4caf50; }
+  .tp-btn.block { display: block; width: 100%; padding: 6px; margin-top: 6px; text-align: center; }
+
+  /* Status readouts in toolbar */
+  .toolbar-stats {
+    margin-left: auto;
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    font-size: 0.75rem;
+    color: #555;
+  }
+  .stat-item { display: flex; gap: 5px; }
+  .stat-item .val { color: #ccc; }
+  .stat-item .val.ok { color: #4caf50; }
+
+  /* Charge dots inline */
+  .charge-pip {
+    display: inline-block;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: #4caf50;
+    box-shadow: 0 0 4px rgba(76,175,80,0.7);
+    margin-right: 2px;
+  }
+  .charge-pip.empty { background: #2a2a2a; box-shadow: none; }
+
+  /* Toggle row in tooltip */
+  .tp-toggle-row { display: flex; align-items: center; justify-content: space-between; }
+  .tp-toggle-text { font-size: 0.78rem; color: #aaa; }
+  .pill {
+    width: 32px; height: 17px;
+    background: #333; border-radius: 9px;
+    position: relative; cursor: pointer; border: 1px solid #555;
+  }
+  .pill.on { background: #4caf50; border-color: #4caf50; }
+  .pill::after {
+    content: '';
+    position: absolute;
+    width: 11px; height: 11px;
+    background: #fff; border-radius: 50%;
+    top: 2px; left: 2px;
+    transition: transform 0.2s;
+  }
+  .pill.on::after { transform: translateX(15px); }
+</style>
+</head>
+<body>
+
+<nav class="navbar">
+  <span class="logo">⚡ SPACEWARS</span>
+  <a href="#">Home</a>
+  <a href="#" class="active">Game</a>
+  <a href="#">Research</a>
+  <a href="#">Profile</a>
+</nav>
+
+<!-- Full-height canvas -->
+<div class="canvas-area">
+  <div class="canvas-mock">
+    <div class="star" style="width:2px;height:2px;top:8%;left:12%"></div>
+    <div class="star" style="width:1px;height:1px;top:22%;left:60%"></div>
+    <div class="star" style="width:2px;height:2px;top:55%;left:82%"></div>
+    <div class="star" style="width:1px;height:1px;top:72%;left:35%"></div>
+    <div class="star" style="width:2px;height:2px;top:35%;left:25%"></div>
+    <div class="star" style="width:1px;height:1px;top:18%;left:45%"></div>
+    <div class="star" style="width:2px;height:2px;top:85%;left:70%"></div>
+    <div class="ship-icon"></div>
+    <div class="traj"></div>
+  </div>
+</div>
+
+<!-- Compact bottom toolbar -->
+<div class="toolbar">
+
+  <!-- Speed icon button -->
+  <div class="icon-btn open" style="width:50px">
+    <span>🚀</span>
+    <span class="icon-label">Speed</span>
+    <div class="tooltip-panel" style="left:0">
+      <h5>Speed</h5>
+      <div class="tp-field">
+        <div class="tp-label">Value</div>
+        <div class="tp-row">
+          <input type="number" value="24.5" min="0" step="0.1">
+          <button class="tp-btn green">Set</button>
+          <button class="tp-btn red">0</button>
+        </div>
+      </div>
+      <button class="tp-btn ghost block">Set Max Speed</button>
+    </div>
+  </div>
+
+  <!-- Angle icon button -->
+  <div class="icon-btn" style="width:50px">
+    <span>🧭</span>
+    <span class="icon-label">Angle</span>
+    <div class="tooltip-panel" style="left:60px">
+      <h5>Heading</h5>
+      <div class="tp-field">
+        <div class="tp-label">Degrees (0–360)</div>
+        <div class="tp-row">
+          <input type="number" value="135.0" min="0" max="360" step="0.1">
+          <button class="tp-btn green">Set</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toolbar-divider"></div>
+
+  <!-- Teleport icon button -->
+  <div class="icon-btn active" style="width:60px">
+    <span>⚡</span>
+    <span class="icon-label">Teleport</span>
+    <div class="tooltip-panel" style="left:110px">
+      <h5>Teleport</h5>
+      <div style="margin-bottom:8px; font-size:0.75rem; color:#888;">
+        <span class="charge-pip"></span>
+        <span class="charge-pip"></span>
+        <span class="charge-pip"></span>
+        <span class="charge-pip empty"></span>
+        <span class="charge-pip empty"></span>
+        3 / 5 — next: 2m 14s
+      </div>
+      <div class="tp-field">
+        <div class="tp-label">Destination X / Y</div>
+        <div class="tp-row">
+          <input type="number" value="2450">
+          <input type="number" value="1870">
+        </div>
+      </div>
+      <button class="tp-btn green block">Teleport Here</button>
+      <button class="tp-btn ghost block">Click-to-Teleport</button>
+    </div>
+  </div>
+
+  <div class="toolbar-divider"></div>
+
+  <!-- Attack icon button -->
+  <div class="icon-btn">
+    <span>🎯</span>
+    <span class="icon-label">Attack</span>
+    <div class="tooltip-panel" style="left:180px">
+      <h5>Combat</h5>
+      <div class="tp-toggle-row">
+        <span class="tp-toggle-text">Attack-click mode</span>
+        <div class="pill"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toolbar-divider"></div>
+
+  <!-- Settings icon button -->
+  <div class="icon-btn">
+    <span>⚙</span>
+    <span class="icon-label">View</span>
+    <div class="tooltip-panel" style="left:260px">
+      <h5>View Settings</h5>
+      <div class="tp-toggle-row">
+        <span class="tp-toggle-text">Debug drawings</span>
+        <div class="pill on"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Status readouts -->
+  <div class="toolbar-stats">
+    <div class="stat-item"><span>Spd</span><span class="val">24.5</span></div>
+    <div class="stat-item"><span>Hdg</span><span class="val">135°</span></div>
+    <div class="stat-item"><span>Pos</span><span class="val">2450,1870</span></div>
+    <div class="stat-item"><span>Data</span><span class="val ok">1.2s</span></div>
+  </div>
+</div>
+
+</body>
+</html>
