@@ -137,6 +137,18 @@ Add a public method `drawStarbase(ctx, centerX, centerY, shipX, shipY, obj: Spac
 
 **Content**: One Starbase at world position (2500, 2500), `id: 9001`, `type: 'starbase'`, `speed: 0`, `angle: 0`, `picture_id: 1`.
 
+**Status**: ✅ COMPLETED
+**Implementation Summary**: Created `src/shared/starbases.ts` with `STARBASE_ID_OFFSET`, `STARBASE_DOCK_RANGE`, and `STARBASES` array containing one starbase at (2500, 2500).
+**Files Modified/Created**:
+- `src/shared/starbases.ts` — new file with `STARBASES: StarbaseObject[]` constant, `STARBASE_DOCK_RANGE = 500`, and `STARBASE_ID_OFFSET = 9000`
+**Deviations from Plan**: Used `@shared/types/gameTypes` import alias (consistent with codebase conventions). Added `last_position_update_ms: 0` required by the `SpaceObject` interface. The proposed code in the task used a wrong import path (`'./src/types/gameTypes'`) — corrected to use the project's `@shared/` alias.
+**Arc42 Updates**: None required
+**Test Results**: ✅ TypeScript compilation passes (`npx tsc --noEmit`)
+
+**Review Status**: ✅ APPROVED
+**Reviewer**: Medicus
+**Review Notes**: Revision applied correctly — `id: STARBASE_ID_OFFSET + 1` now structurally enforces the no-collision invariant. All required exports (`STARBASE_ID_OFFSET`, `STARBASE_DOCK_RANGE`, `STARBASES`) are present, the `StarbaseObject[]` type annotation is correct, and the import alias follows codebase conventions. Implementation meets all requirements.
+
 #### Task 2.2: Append hardcoded starbases to /api/world response
 
 **Action**: In `src/app/api/world/route.ts`, after fetching the live world data from `WorldCache`, append the entries from `STARBASES` to the `spaceObjects` array before returning the JSON response.
