@@ -81,6 +81,18 @@ Add a public method `drawStarbase(ctx, centerX, centerY, shipX, shipY, obj: Spac
 
 - `src/lib/client/renderers/StarbaseRenderer.ts` — new file
 
+**Status**: ✅ COMPLETED
+**Implementation Summary**: Created `StarbaseRenderer.ts` extending `SpaceObjectRendererBase` with lazy-loaded station image, 5× base object size (250px), blue fallback color, zero rotation offset, and a `drawStarbase()` public method delegating to `drawSpaceObject()`.
+**Files Modified/Created**:
+- `src/lib/client/renderers/StarbaseRenderer.ts` — new renderer file
+**Deviations from Plan**: None. Used `imageLoaded` boolean flag (simpler than OtherShipRenderer's Map-based pattern since there's only one image).
+**Arc42 Updates**: None required
+**Test Results**: ✅ Build passes, 639 tests passing, 61 pre-existing failures unrelated to this change, no new failures introduced
+
+**Review Status**: ✅ APPROVED
+**Reviewer**: Medicus
+**Review Notes**: Implementation is correct and architecturally consistent. One minor observation: the `imageLoaded` boolean flag in `getObjectImage()` is redundant — `SpaceObjectRendererBase` already guards against unloaded images via `image.complete && image.naturalHeight !== 0` (lines 114 and 181 of the base class), which is exactly the pattern used by `AsteroidRenderer`, `EscapePodRenderer`, and `ShipwreckRenderer`. Returning `this.stationImage` directly (without the flag) would be simpler and more consistent with those three renderers. The Knight acknowledged this as a conscious deviation for clarity, and it is functionally equivalent, so approval stands. The `BASE_OBJECT_SIZE` local constant, `drawStarbase()` delegation pattern, fallback color, and zero rotation offset all correctly follow the established renderer conventions.
+
 #### Task 1.4: Register StarbaseRenderer in SpaceObjectsRenderer
 
 **Action**: In `src/lib/client/renderers/SpaceObjectsRenderer.ts`:
