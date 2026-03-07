@@ -9,15 +9,15 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
-    const response = NextResponse.json({});
+    const commanders = Array.from({ length: 10 }, () => Commander.random().toJSON());
+    const response = NextResponse.json({ commanders });
     const session = await getIronSession<SessionData>(request, response, sessionOptions);
     requireAuth(session.userId);
 
-    const commanders = Array.from({ length: 10 }, () => Commander.random().toJSON());
     session.starbaseShop = commanders;
     await session.save();
 
-    return NextResponse.json({ commanders });
+    return response;
   } catch (error) {
     return handleApiError(error);
   }

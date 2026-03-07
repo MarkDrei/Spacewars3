@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
         throw new ApiError(400, `Insufficient iron. Need ${price}, have ${user.iron}`);
       }
 
-      const bonuses = await UserBonusCache.getInstance().getBonuses(userId);
+      const bonuses = await UserBonusCache.getInstance().getBonuses(userContext, userId);
       user.updateStats(Math.floor(Date.now() / 1000), bonuses);
       user.subtractIron(price);
 

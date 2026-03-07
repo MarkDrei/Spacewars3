@@ -4,7 +4,7 @@ import { getIronSession } from 'iron-session';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth, ApiError } from '@/lib/server/errors';
 import { UserCache } from '@/lib/server/user/userCache';
-import { InventoryService } from '@/lib/server/inventory/InventoryService';
+import { InventoryService, InventorySlotEmptyError, InventorySlotInvalidError } from '@/lib/server/inventory/InventoryService';
 import { USER_LOCK } from '@/lib/server/typedLocks';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 import { commanderSellPrice } from '@/lib/server/starbase/commanderPrice';
@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
       const user = await userCache.getUserByIdWithLock(userContext, userId);
       if (!user) throw new ApiError(404, 'User not found');
 
-      const bonuses = await UserBonusCache.getInstance().getBonuses(userId);
+      const bonuses = await UserBonusCache.getInstance().getBonuses(userContext, userId);
       user.updateStats(Math.floor(Date.now() / 1000), bonuses);
       user.addIron(price);
 
@@ -58,6 +58,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, newIron, ironEarned: price });
   } catch (error) {
+    if (error instanceof InventorySlotEmptyError || error instanceof InventorySlotInvalidError) {
+      return NextResponse.json({ error: 'Invalid or empty inventory slot' }, { status: 400 });
+    }
     return handleApiError(error);
   }
 }

@@ -1,0 +1,104 @@
+.starbase-page {
+  min-height: calc(100vh - 60px);
+  background-color: #121212;
+  color: white;
+  padding: 2rem 1rem;
+}
+
+.starbase-container {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.starbase-header {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+}
+
+.starbase-title {
+  font-size: 2rem;
+  color: #4488ff;
+  margin: 0;
+}
+
+.starbase-iron-display {
+  font-size: 1.1rem;
+  color: #ffd54f;
+  flex: 1;
+}
+
+.starbase-return-btn {
+  background-color: #2a2a2a;
+  color: #e0e0e0;
+  border: 1px solid #555;
+  border-radius: 6px;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 0.2s;
+}
+
+.starbase-return-btn:hover {
+  background-color: #3a3a3a;
+}
+
+.starbase-message {
+  background-color: #1a3a1a;
+  border: 1px solid #66bb6a;
+  color: #e0e0e0;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+  animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.starbase-loading {
+  text-align: center;
+  padding: 3rem;
+  opacity: 0.7;
+  font-size: 1.1rem;
+}
+
+.starbase-panels {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+}
+
+@media (max-width: 900px) {
+  .starbase-panels {
+    grid-template-columns: 1fr;
+  }
+}
+
+.starbase-panel {
+  background-color: #1e1e1e;
+  border-radius: 8px;
+  padding: 1.5rem;
+  border-left: 4px solid #4488ff;
+}
+
+.starbase-panel-heading {
+  font-size: 1.3rem;
+  color: #4488ff;
+  margin: 0 0 1rem 0;
+}
+
+.starbase-empty {
+  color: #757575;
+  font-style: italic;
+}
+
+.starbase-card-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
