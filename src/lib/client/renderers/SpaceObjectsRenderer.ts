@@ -4,6 +4,7 @@ import { EscapePodRenderer } from './EscapePodRenderer';
 import { AsteroidRenderer } from './AsteroidRenderer';
 import { SpaceObject } from '@shared/types';
 import { OtherShipRenderer } from './OtherShipRenderer';
+import { StarbaseRenderer } from './StarbaseRenderer';
 
 export class SpaceObjectsRenderer {
     private ctx: CanvasRenderingContext2D;
@@ -12,6 +13,7 @@ export class SpaceObjectsRenderer {
     private escapePodRenderer: EscapePodRenderer;
     private asteroidRenderer: AsteroidRenderer;
     private shipRenderer: OtherShipRenderer;
+    private starbaseRenderer: StarbaseRenderer;
 
     constructor(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement) {
         this.ctx = ctx;
@@ -20,6 +22,7 @@ export class SpaceObjectsRenderer {
         this.escapePodRenderer = new EscapePodRenderer();
         this.asteroidRenderer = new AsteroidRenderer();
         this.shipRenderer = new OtherShipRenderer();
+        this.starbaseRenderer = new StarbaseRenderer();
     }
 
     /**
@@ -88,6 +91,15 @@ export class SpaceObjectsRenderer {
             );
         } else if (collectible.type === 'player_ship') {
             this.shipRenderer.drawOtherShip(
+                this.ctx,
+                screenX + offsetX,
+                screenY + offsetY,
+                shipX,
+                shipY,
+                collectible
+            );
+        } else if (collectible.type === 'starbase') {
+            this.starbaseRenderer.drawStarbase(
                 this.ctx,
                 screenX + offsetX,
                 screenY + offsetY,

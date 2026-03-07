@@ -104,6 +104,19 @@ Add a public method `drawStarbase(ctx, centerX, centerY, shipX, shipY, obj: Spac
 
 - `src/lib/client/renderers/SpaceObjectsRenderer.ts` — add import, field, dispatch branch
 
+**Status**: ✅ COMPLETED
+**Implementation Summary**: Added `StarbaseRenderer` import, private field, and constructor instantiation to `SpaceObjectsRenderer`, and wired a new `else if (collectible.type === 'starbase')` dispatch branch in `renderObject()` that delegates to `this.starbaseRenderer.drawStarbase(...)`.
+**Files Modified/Created**:
+- `src/lib/client/renderers/SpaceObjectsRenderer.ts` — added import, `starbaseRenderer` field, constructor instantiation, and dispatch branch
+- `src/__tests__/unit/renderers/SpaceObjectsRenderer.test.ts` — new test file covering all 5 renderer dispatch paths including starbase
+**Deviations from Plan**: None.
+**Arc42 Updates**: None required
+**Test Results**: ✅ 647 tests passing (8 new), 57 test files passing (1 new), 61 pre-existing integration failures (no DB), no linting errors
+
+**Review Status**: ✅ APPROVED
+**Reviewer**: Medicus
+**Review Notes**: Implementation is a minimal, correct extension of the existing dispatcher pattern. Import, field, constructor instantiation, and dispatch branch all match the established conventions exactly. The new test file is thorough — mocking all five sub-renderers and asserting dispatch-level behavior (not just coverage): it covers constructor instantiation, all five dispatch paths, a meaningful negative case (non-starbase type doesn't trigger starbaseRenderer), and a multi-type rendering scenario. No Arc42 update required or needed. No code duplication, no design issues.
+
 ---
 
 ### Goal 2: Expose Hardcoded Starbases via the World API
