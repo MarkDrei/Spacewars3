@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Design 6: Retro Terminal</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --green: #33ff33;
+    --green-dim: #1a8a1a;
+    --green-mid: #22cc22;
+    --bg: #000300;
+    --scanline: rgba(0, 255, 0, 0.03);
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--green);
+    font-family: 'Share Tech Mono', 'Courier New', monospace;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    /* CRT phosphor glow on the whole page */
+    text-shadow: 0 0 4px rgba(51, 255, 51, 0.5);
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Scanline overlay */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      var(--scanline) 2px,
+      var(--scanline) 4px
+    );
+    pointer-events: none;
+    z-index: 1000;
+  }
+  /* CRT vignette */
+  body::after {
+    content: '';
+    position: fixed; inset: 0;
+    background: radial-gradient(ellipse at center, transparent 60%, rgba(0,0,0,0.6) 100%);
+    pointer-events: none;
+    z-index: 999;
+  }
+
+  /* Top header line */
+  .term-header {
+    border-bottom: 1px solid var(--green-dim);
+    padding: 6px 16px;
+    font-size: 0.72rem;
+    display: flex;
+    justify-content: space-between;
+    color: var(--green-mid);
+    flex-shrink: 0;
+  }
+  .blink { animation: blink 1s step-start infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  /* Main terminal layout */
+  .term-body {
+    flex: 1;
+    display: flex;
+    gap: 0;
+    padding: 8px;
+    min-height: 0;
+  }
+
+  /* Canvas / viewport area */
+  .term-canvas-area {
+    flex: 1;
+    border: 1px solid var(--green-dim);
+    position: relative;
+    overflow: hidden;
+    background: #000;
+  }
+  .term-canvas-area::before {
+    content: 'TACTICAL DISPLAY — SECTOR 7G';
+    position: absolute; top: 0; left: 0; right: 0;
+    background: var(--green-dim);
+    color: #000;
+    font-size: 0.65rem;
+    padding: 2px 8px;
+    letter-spacing: 2px;
+  }
+  .viewport {
+    width: 100%; height: 100%;
+    padding-top: 18px;
+    position: absolute; inset: 0;
+  }
+  /* ASCII-ish grid */
+  .grid-lines {
+    position: absolute; inset: 18px 0 0 0;
+    opacity: 0.08;
+    background-image:
+      linear-gradient(var(--green) 1px, transparent 1px),
+      linear-gradient(90deg, var(--green) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+  /* Ship + trajectory in terminal style */
+  .t-ship {
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    color: var(--green);
+    font-size: 16px;
+    text-shadow: 0 0 10px var(--green);
+    animation: ship-pulse 2s ease-in-out infinite;
+  }
+  @keyframes ship-pulse {
+    0%, 100% { text-shadow: 0 0 6px var(--green); }
+    50% { text-shadow: 0 0 16px var(--green), 0 0 30px rgba(51,255,51,0.3); }
+  }
+  .t-traj {
+    position: absolute; top: 50%; left: 50%;
+    width: 160px; height: 1px;
+    background: linear-gradient(90deg, var(--green-mid), transparent);
+    transform-origin: left;
+    transform: rotate(-28deg);
+    opacity: 0.5;
+  }
+  .t-range {
+    position: absolute; top: 50%; left: 50%;
+    width: 160px; height: 160px;
+    transform: translate(-50%, -50%);
+    border: 1px dashed var(--green-dim);
+    border-radius: 50%;
+    opacity: 0.3;
+  }
+  /* Target blip */
+  .blip {
+    position: absolute;
+    width: 6px; height: 6px;
+    background: var(--green);
+    border-radius: 50%;
+    box-shadow: 0 0 8px var(--green);
+  }
+  /* Corner coords */
+  .corner-coord {
+    position: absolute;
+    font-size: 0.6rem;
+    color: var(--green-dim);
+    opacity: 0.6;
+  }
+  .corner-coord.tl { top: 22px; left: 6px; }
+  .corner-coord.tr { top: 22px; right: 6px; }
+  .corner-coord.bl { bottom: 4px; left: 6px; }
+  .corner-coord.br { bottom: 4px; right: 6px; }
+
+  /* Right panel: terminal controls */
+  .term-panel {
+    width: 260px;
+    border: 1px solid var(--green-dim);
+    border-left: none;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    background: #000;
+  }
+
+  .t-section {
+    border-bottom: 1px solid var(--green-dim);
+    padding: 10px 12px;
+  }
+  .t-section-title {
+    color: var(--bg);
+    background: var(--green-dim);
+    font-size: 0.65rem;
+    letter-spacing: 2px;
+    padding: 1px 6px;
+    margin-bottom: 10px;
+    display: inline-block;
+  }
+  .t-row {
+    display: flex; align-items: center; gap: 6px; margin-bottom: 8px;
+    font-size: 0.78rem;
+  }
+  .t-label { color: var(--green-dim); width: 60px; flex-shrink: 0; }
+  input[type=number] {
+    background: #000;
+    border: 1px solid var(--green-dim);
+    color: var(--green);
+    padding: 4px 6px;
+    font-family: inherit;
+    font-size: 0.78rem;
+    width: 68px;
+    text-shadow: 0 0 4px rgba(51,255,51,0.5);
+  }
+  input[type=number]:focus { outline: none; border-color: var(--green); box-shadow: 0 0 6px rgba(51,255,51,0.3); }
+  .t-btn {
+    background: transparent;
+    border: 1px solid var(--green-mid);
+    color: var(--green);
+    padding: 3px 8px;
+    font-family: inherit;
+    font-size: 0.72rem;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: all 0.1s;
+  }
+  .t-btn:hover { background: var(--green-dim); color: #000; }
+  .t-btn.danger { border-color: #ff3333; color: #ff3333; }
+  .t-btn.danger:hover { background: #ff3333; color: #000; }
+  .t-btn.block { display: block; width: 100%; padding: 5px; text-align: center; margin-top: 4px; }
+
+  /* Charge pips */
+  .t-pips { display: flex; gap: 4px; align-items: center; margin-bottom: 6px; }
+  .pip {
+    width: 8px; height: 8px;
+    border: 1px solid var(--green-dim);
+    background: var(--green-mid);
+    box-shadow: 0 0 4px var(--green-mid);
+  }
+  .pip.empty { background: transparent; box-shadow: none; }
+  .pip-text { font-size: 0.7rem; color: var(--green-dim); margin-left: 4px; }
+
+  /* Toggle */
+  .t-toggle-row { display: flex; align-items: center; justify-content: space-between; font-size: 0.78rem; margin-bottom: 6px; }
+  .t-toggle-label { color: var(--green-dim); }
+  .t-chk { accent-color: var(--green); width: 14px; height: 14px; }
+
+  /* Status footer */
+  .term-footer {
+    border-top: 1px solid var(--green-dim);
+    padding: 4px 16px;
+    font-size: 0.65rem;
+    color: var(--green-dim);
+    display: flex; justify-content: space-between;
+    flex-shrink: 0;
+  }
+</style>
+</head>
+<body>
+
+<div class="term-header">
+  <span>SPACEWARS TERMINAL v2.4.1 — PILOT: COMMANDER_A</span>
+  <span>SYS: <span style="color:var(--green)">ONLINE</span> | TIME: 22:09:36 <span class="blink">█</span></span>
+</div>
+
+<div class="term-body">
+
+  <!-- Tactical display -->
+  <div class="term-canvas-area">
+    <div class="viewport">
+      <div class="grid-lines"></div>
+      <div class="t-range"></div>
+      <div class="t-ship">△</div>
+      <div class="t-traj"></div>
+      <!-- Blips -->
+      <div class="blip" style="top:25%;left:60%"></div>
+      <div class="blip" style="top:40%;left:22%;width:4px;height:4px;opacity:0.6"></div>
+      <div class="blip" style="top:68%;left:75%;width:4px;height:4px;opacity:0.6"></div>
+      <div class="blip" style="top:32%;left:40%;width:3px;height:3px;opacity:0.4"></div>
+      <!-- Corner coordinates -->
+      <div class="corner-coord tl">X:0000 Y:0000</div>
+      <div class="corner-coord tr">X:5000 Y:0000</div>
+      <div class="corner-coord bl">X:0000 Y:5000</div>
+      <div class="corner-coord br">X:5000 Y:5000</div>
+    </div>
+  </div>
+
+  <!-- Terminal control panel -->
+  <div class="term-panel">
+
+    <div class="t-section">
+      <span class="t-section-title">// NAVIGATION</span>
+      <div class="t-row">
+        <span class="t-label">SPEED:</span>
+        <input type="number" value="24.5">
+        <button class="t-btn">SET</button>
+      </div>
+      <div class="t-row">
+        <span class="t-label">HEADING:</span>
+        <input type="number" value="135">
+        <button class="t-btn">SET</button>
+      </div>
+      <button class="t-btn block">[ MAX SPEED ]</button>
+      <button class="t-btn danger block" style="margin-top:4px">[ FULL STOP ]</button>
+    </div>
+
+    <div class="t-section">
+      <span class="t-section-title">// TELEPORT</span>
+      <div class="t-pips">
+        <div class="pip"></div>
+        <div class="pip"></div>
+        <div class="pip"></div>
+        <div class="pip empty"></div>
+        <div class="pip empty"></div>
+        <span class="pip-text">3/5 — RCHG: 2M14S</span>
+      </div>
+      <div class="t-row">
+        <span class="t-label">TARGET X:</span>
+        <input type="number" value="2450">
+      </div>
+      <div class="t-row">
+        <span class="t-label">TARGET Y:</span>
+        <input type="number" value="1870">
+      </div>
+      <button class="t-btn block">[ EXECUTE JUMP ]</button>
+      <button class="t-btn block" style="margin-top:4px; border-style:dashed; opacity:0.8">[ CLICK MODE ]</button>
+    </div>
+
+    <div class="t-section">
+      <span class="t-section-title">// COMBAT</span>
+      <div class="t-toggle-row">
+        <span class="t-toggle-label">ATTACK ON CLICK:</span>
+        <input type="checkbox" class="t-chk">
+      </div>
+      <div class="t-toggle-row">
+        <span class="t-toggle-label">TELEPORT ON CLICK:</span>
+        <input type="checkbox" class="t-chk" checked>
+      </div>
+    </div>
+
+    <div class="t-section">
+      <span class="t-section-title">// DISPLAY</span>
+      <div class="t-toggle-row">
+        <span class="t-toggle-label">DEBUG OVERLAY:</span>
+        <input type="checkbox" class="t-chk" checked>
+      </div>
+      <div style="font-size:0.68rem; color:var(--green-dim); margin-top:6px;">
+        DATA AGE: <span style="color:var(--green)">1.2S</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="term-footer">
+  <span>SHIP POS: X=2450 Y=1870 | SPD=24.5 | HDG=135°</span>
+  <span>PRESS [?] FOR HELP</span>
+</div>
+
+</body>
+</html>

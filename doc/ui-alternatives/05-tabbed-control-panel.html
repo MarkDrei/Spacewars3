@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Design 5: Tabbed Control Panel</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0d0d0d;
+    color: #ededed;
+    font-family: 'Segoe UI', sans-serif;
+    min-height: 100vh;
+    display: flex; flex-direction: column;
+  }
+  .navbar {
+    background: #111;
+    border-bottom: 1px solid #1e1e1e;
+    padding: 0 20px;
+    height: 48px;
+    display: flex; align-items: center; gap: 24px;
+    flex-shrink: 0;
+  }
+  .logo { color: #4caf50; font-weight: 700; font-size: 1rem; letter-spacing: 2px; }
+  .navbar a { color: #666; text-decoration: none; font-size: 0.85rem; }
+  .navbar a.active { color: #4caf50; }
+
+  .page-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 12px;
+    gap: 12px;
+    align-items: center;
+  }
+
+  /* Canvas */
+  .canvas-container {
+    position: relative;
+    width: 100%;
+    max-width: 760px;
+  }
+  .canvas-box {
+    background: #050512;
+    border: 1px solid #1a1a2e;
+    border-radius: 10px;
+    width: 100%;
+    aspect-ratio: 1;
+    max-height: calc(100vh - 300px);
+    position: relative;
+    overflow: hidden;
+  }
+  .star { position: absolute; background: rgba(255,255,255,0.7); border-radius: 50%; }
+  .ship-icon {
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 0; height: 0;
+    border-left: 8px solid transparent;
+    border-right: 8px solid transparent;
+    border-bottom: 22px solid #4caf50;
+    filter: drop-shadow(0 0 8px #4caf50);
+  }
+  .traj {
+    position: absolute; top: 50%; left: 50%;
+    width: 150px; height: 1px;
+    background: linear-gradient(90deg, rgba(76,175,80,0.6), transparent);
+    transform-origin: left;
+    transform: rotate(-28deg);
+  }
+  /* Canvas corner overlays */
+  .canvas-corner {
+    position: absolute;
+    background: rgba(0,0,0,0.65);
+    border: 1px solid rgba(76,175,80,0.2);
+    border-radius: 6px;
+    padding: 5px 9px;
+    font-size: 0.72rem;
+    color: #666;
+    display: flex; align-items: center; gap: 6px;
+    backdrop-filter: blur(4px);
+  }
+  .canvas-corner label { cursor: pointer; display: flex; align-items: center; gap: 5px; color: #aaa; }
+  .cc-bl { bottom: 12px; left: 12px; }
+  .cc-br { bottom: 12px; right: 12px; }
+  .mini-pill {
+    width: 30px; height: 16px;
+    background: #333; border-radius: 8px;
+    position: relative; cursor: pointer; border: 1px solid #555;
+    flex-shrink: 0;
+  }
+  .mini-pill.on { background: #4caf50; border-color: #4caf50; }
+  .mini-pill::after {
+    content: ''; position: absolute;
+    width: 10px; height: 10px;
+    background: #fff; border-radius: 50%;
+    top: 2px; left: 2px; transition: transform 0.2s;
+  }
+  .mini-pill.on::after { transform: translateX(14px); }
+
+  /* ─── TABBED CONTROL PANEL ─── */
+  .control-panel {
+    width: 100%;
+    max-width: 760px;
+    background: #141414;
+    border: 1px solid #252525;
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  /* Tab bar */
+  .tab-bar {
+    display: flex;
+    background: #0e0e0e;
+    border-bottom: 1px solid #222;
+  }
+  .tab {
+    padding: 10px 20px;
+    font-size: 0.8rem;
+    color: #555;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.15s;
+    display: flex; align-items: center; gap: 6px;
+    white-space: nowrap;
+  }
+  .tab:hover { color: #aaa; }
+  .tab.active { color: #4caf50; border-bottom-color: #4caf50; }
+  .tab .badge {
+    background: rgba(76,175,80,0.2);
+    color: #4caf50;
+    font-size: 0.65rem;
+    padding: 1px 5px;
+    border-radius: 8px;
+    border: 1px solid rgba(76,175,80,0.3);
+    font-weight: 600;
+  }
+
+  /* Tab content */
+  .tab-content { padding: 16px 20px; }
+  .tab-pane { display: none; }
+  .tab-pane.active { display: block; }
+
+  /* Navigation tab */
+  .nav-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px 20px;
+  }
+  .field-group { }
+  .field-label { font-size: 0.72rem; color: #666; margin-bottom: 5px; }
+  .field-row { display: flex; gap: 6px; align-items: center; }
+  input[type=number] {
+    flex: 1;
+    background: #1e1e1e;
+    border: 1px solid #333;
+    color: #e0e0e0;
+    padding: 7px 10px;
+    border-radius: 5px;
+    font-size: 0.84rem;
+    min-width: 0;
+  }
+  input[type=number]:focus { outline: none; border-color: #4caf50; }
+  .btn {
+    padding: 7px 12px;
+    border: none; border-radius: 5px;
+    cursor: pointer; font-size: 0.78rem; font-weight: 600;
+    white-space: nowrap;
+  }
+  .btn-green { background: #4caf50; color: #fff; }
+  .btn-green:hover { background: #45a049; }
+  .btn-red { background: #c62828; color: #fff; }
+  .btn-ghost { background: transparent; border: 1px solid #4caf50; color: #4caf50; }
+  .btn-wide { padding: 7px 18px; }
+  .actions-row {
+    margin-top: 10px;
+    display: flex; gap: 8px;
+    grid-column: 1 / 3;
+  }
+
+  /* Teleport tab */
+  .teleport-header {
+    display: flex; align-items: center; gap: 12px; margin-bottom: 14px;
+    flex-wrap: wrap;
+  }
+  .charges-badge {
+    background: rgba(76,175,80,0.15);
+    border: 1px solid rgba(76,175,80,0.3);
+    color: #e0e0e0;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+  }
+  .timer-badge {
+    background: rgba(255,255,255,0.05);
+    color: #777;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 0.78rem;
+  }
+  .charge-dots { display: flex; gap: 5px; align-items: center; }
+  .cdot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: #4caf50;
+    box-shadow: 0 0 5px rgba(76,175,80,0.6);
+  }
+  .cdot.empty { background: #2a2a2a; box-shadow: none; border: 1px solid #444; }
+
+  .tele-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: 8px; align-items: end;
+  }
+
+  /* Settings tab */
+  .settings-grid {
+    display: flex; flex-direction: column; gap: 12px;
+  }
+  .setting-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 0; border-bottom: 1px solid #1e1e1e;
+  }
+  .setting-row:last-child { border-bottom: none; }
+  .setting-label { font-size: 0.84rem; color: #aaa; }
+  .setting-desc { font-size: 0.72rem; color: #555; margin-top: 2px; }
+  .pill {
+    width: 36px; height: 20px;
+    background: #333; border-radius: 10px;
+    position: relative; cursor: pointer; border: 1px solid #555;
+    flex-shrink: 0;
+  }
+  .pill.on { background: #4caf50; border-color: #4caf50; }
+  .pill::after {
+    content: ''; position: absolute;
+    width: 14px; height: 14px;
+    background: #fff; border-radius: 50%;
+    top: 2px; left: 2px; transition: transform 0.2s;
+  }
+  .pill.on::after { transform: translateX(16px); }
+  .data-age-chip {
+    font-size: 0.75rem; color: #555;
+    background: #111; padding: 4px 10px; border-radius: 8px;
+    border: 1px solid #222;
+  }
+  .data-age-chip span { color: #4caf50; }
+</style>
+</head>
+<body>
+
+<nav class="navbar">
+  <span class="logo">⚡ SPACEWARS</span>
+  <a href="#">Home</a>
+  <a href="#" class="active">Game</a>
+  <a href="#">Research</a>
+  <a href="#">Profile</a>
+</nav>
+
+<div class="page-body">
+
+  <!-- Canvas -->
+  <div class="canvas-container">
+    <div class="canvas-box">
+      <div class="star" style="width:2px;height:2px;top:8%;left:12%"></div>
+      <div class="star" style="width:1px;height:1px;top:28%;left:50%"></div>
+      <div class="star" style="width:2px;height:2px;top:55%;left:78%"></div>
+      <div class="star" style="width:1px;height:1px;top:72%;left:32%"></div>
+      <div class="star" style="width:2px;height:2px;top:18%;left:85%"></div>
+      <div class="star" style="width:1px;height:1px;top:42%;left:5%"></div>
+      <div class="ship-icon"></div>
+      <div class="traj"></div>
+      <!-- Canvas corner controls -->
+      <div class="canvas-corner cc-bl">
+        <label>
+          <div class="mini-pill"></div>
+          Attack
+        </label>
+      </div>
+      <div class="canvas-corner cc-br">
+        <label>
+          <div class="mini-pill on"></div>
+          Teleport
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tabbed control panel -->
+  <div class="control-panel">
+    <div class="tab-bar">
+      <div class="tab active">🚀 Navigation</div>
+      <div class="tab">⚡ Teleport <span class="badge">3</span></div>
+      <div class="tab">⚙ Settings</div>
+    </div>
+
+    <div class="tab-content">
+
+      <!-- Navigation tab (active) -->
+      <div class="tab-pane active">
+        <div class="nav-grid">
+          <div class="field-group">
+            <div class="field-label">Speed</div>
+            <div class="field-row">
+              <input type="number" value="24.5" min="0" step="0.1">
+              <button class="btn btn-green">Set</button>
+            </div>
+          </div>
+          <div class="field-group">
+            <div class="field-label">Heading (degrees)</div>
+            <div class="field-row">
+              <input type="number" value="135.0" min="0" max="360" step="0.1">
+              <button class="btn btn-green">Set</button>
+            </div>
+          </div>
+          <div class="actions-row">
+            <button class="btn btn-ghost btn-wide">⬆ Set Max Speed</button>
+            <button class="btn btn-red btn-wide">■ Stop</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Teleport tab (hidden) -->
+      <div class="tab-pane">
+        <div class="teleport-header">
+          <div class="charge-dots">
+            <div class="cdot"></div><div class="cdot"></div><div class="cdot"></div>
+            <div class="cdot empty"></div><div class="cdot empty"></div>
+          </div>
+          <span class="charges-badge">3 / 5 Charges</span>
+          <span class="timer-badge">Next in: 2m 14s</span>
+        </div>
+        <div class="tele-grid">
+          <div class="field-group">
+            <div class="field-label">X Coordinate</div>
+            <input type="number" value="2450" min="0" max="5000" style="width:100%">
+          </div>
+          <div class="field-group">
+            <div class="field-label">Y Coordinate</div>
+            <input type="number" value="1870" min="0" max="5000" style="width:100%">
+          </div>
+          <button class="btn btn-green" style="align-self:end">Teleport</button>
+        </div>
+      </div>
+
+      <!-- Settings tab (hidden) -->
+      <div class="tab-pane">
+        <div class="settings-grid">
+          <div class="setting-row">
+            <div>
+              <div class="setting-label">Debug drawings</div>
+              <div class="setting-desc">Show trajectory lines, vectors & bounding boxes</div>
+            </div>
+            <div class="pill on"></div>
+          </div>
+          <div class="setting-row">
+            <div>
+              <div class="setting-label">Data freshness</div>
+              <div class="setting-desc">Time since last server sync</div>
+            </div>
+            <div class="data-age-chip">Last: <span>1.2s ago</span></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

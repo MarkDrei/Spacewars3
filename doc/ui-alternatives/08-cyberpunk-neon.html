@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Design 8: Cyberpunk Neon</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Share+Tech+Mono&display=swap');
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --pink: #ff00aa;
+    --cyan: #00eeff;
+    --yellow: #ffee00;
+    --bg: #04000e;
+    --bg2: #080014;
+    --bg3: #0c001e;
+    --pink-glow: rgba(255,0,170,0.3);
+    --cyan-glow: rgba(0,238,255,0.3);
+    --text: #e0ccff;
+    --dim: #604080;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    min-height: 100vh;
+    display: flex; flex-direction: column;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  /* Animated background grid */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image:
+      linear-gradient(rgba(0,238,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,238,255,0.03) 1px, transparent 1px);
+    background-size: 30px 30px;
+    animation: grid-scroll 20s linear infinite;
+    z-index: 0;
+  }
+  @keyframes grid-scroll { from{background-position:0 0} to{background-position:0 60px} }
+
+  /* Everything else above the grid */
+  body > * { position: relative; z-index: 1; }
+
+  /* ── HEADER ── */
+  .cy-header {
+    border-bottom: 1px solid rgba(255,0,170,0.4);
+    padding: 0 16px;
+    height: 48px;
+    display: flex; align-items: center; justify-content: space-between;
+    background: rgba(4,0,14,0.9);
+    position: relative;
+  }
+  .cy-header::after {
+    content: '';
+    position: absolute; bottom: -2px; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--pink), var(--cyan), transparent);
+    box-shadow: 0 0 8px var(--pink);
+  }
+  .cy-logo {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1rem;
+    font-weight: 900;
+    background: linear-gradient(90deg, var(--pink), var(--cyan));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: 3px;
+  }
+  .cy-nav { display: flex; gap: 0; }
+  .cy-nav a {
+    color: var(--dim);
+    text-decoration: none;
+    font-size: 0.72rem;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    padding: 0 14px;
+    height: 48px;
+    display: flex; align-items: center;
+    border-left: 1px solid rgba(255,0,170,0.15);
+    transition: all 0.15s;
+  }
+  .cy-nav a:hover { color: var(--pink); text-shadow: 0 0 8px var(--pink); }
+  .cy-nav a.active { color: var(--cyan); text-shadow: 0 0 8px var(--cyan); border-bottom: 2px solid var(--cyan); }
+
+  /* ── MAIN LAYOUT ── */
+  .cy-body {
+    flex: 1;
+    display: flex;
+    min-height: 0;
+    gap: 2px;
+    padding: 10px;
+  }
+
+  /* Left panel */
+  .cy-panel {
+    width: 230px;
+    flex-shrink: 0;
+    display: flex; flex-direction: column; gap: 2px;
+  }
+  .cy-panel.right { margin-left: 2px; }
+
+  /* Panel card */
+  .cy-card {
+    background: var(--bg3);
+    border: 1px solid rgba(255,0,170,0.25);
+    padding: 12px 14px;
+    position: relative;
+    clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px));
+  }
+  .cy-card.cyan-border {
+    border-color: rgba(0,238,255,0.25);
+  }
+  /* Animated corner accent */
+  .cy-card::before {
+    content: '';
+    position: absolute; top: -1px; right: -1px;
+    width: 20px; height: 20px;
+    background: linear-gradient(135deg, transparent 50%, rgba(255,0,170,0.6) 50%);
+  }
+  .cy-card.cyan-border::before {
+    background: linear-gradient(135deg, transparent 50%, rgba(0,238,255,0.6) 50%);
+  }
+
+  .cy-card-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.6rem;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--pink);
+    margin-bottom: 12px;
+    text-shadow: 0 0 8px var(--pink);
+  }
+  .cy-card.cyan-border .cy-card-title { color: var(--cyan); text-shadow: 0 0 8px var(--cyan); }
+
+  /* Form */
+  .cy-field { margin-bottom: 10px; }
+  .cy-field-label { font-size: 0.65rem; color: var(--dim); letter-spacing: 1px; margin-bottom: 4px; text-transform: uppercase; }
+  .cy-row { display: flex; gap: 5px; }
+  input[type=number] {
+    flex: 1;
+    background: rgba(255,0,170,0.05);
+    border: 1px solid rgba(255,0,170,0.3);
+    color: var(--pink);
+    padding: 6px 8px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.82rem;
+    min-width: 0;
+    text-shadow: 0 0 4px rgba(255,0,170,0.5);
+  }
+  .cy-card.cyan-border input[type=number] {
+    background: rgba(0,238,255,0.05);
+    border-color: rgba(0,238,255,0.3);
+    color: var(--cyan);
+    text-shadow: 0 0 4px rgba(0,238,255,0.5);
+  }
+  input[type=number]:focus { outline: none; border-color: var(--pink); box-shadow: 0 0 8px var(--pink-glow); }
+  .cy-card.cyan-border input[type=number]:focus { border-color: var(--cyan); box-shadow: 0 0 8px var(--cyan-glow); }
+  .cy-btn {
+    background: transparent;
+    border: 1px solid var(--pink);
+    color: var(--pink);
+    padding: 5px 10px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.72rem;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    clip-path: polygon(4px 0, 100% 0, calc(100% - 4px) 100%, 0 100%);
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .cy-btn:hover { background: var(--pink-glow); text-shadow: 0 0 6px var(--pink); }
+  .cy-btn.cyan { border-color: var(--cyan); color: var(--cyan); }
+  .cy-btn.cyan:hover { background: var(--cyan-glow); text-shadow: 0 0 6px var(--cyan); }
+  .cy-btn.danger { border-color: #ff3333; color: #ff3333; }
+  .cy-btn.block { display: block; width: 100%; padding: 7px; text-align: center; margin-top: 5px; }
+
+  /* Charge display */
+  .charge-slots { display: flex; gap: 4px; margin-bottom: 8px; flex-wrap: wrap; }
+  .charge-slot {
+    width: 20px; height: 20px;
+    border: 1px solid rgba(0,238,255,0.4);
+    background: rgba(0,238,255,0.12);
+    clip-path: polygon(3px 0, 100% 0, calc(100% - 3px) 100%, 0 100%);
+    box-shadow: 0 0 4px rgba(0,238,255,0.3);
+  }
+  .charge-slot.empty { background: transparent; box-shadow: none; border-color: rgba(0,238,255,0.15); }
+  .charge-text { font-size: 0.7rem; color: var(--dim); margin-bottom: 8px; }
+  .charge-text span { color: var(--cyan); text-shadow: 0 0 4px var(--cyan); }
+
+  /* Toggle */
+  .cy-toggle-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .cy-toggle-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; color: var(--dim); }
+  .neon-toggle {
+    width: 36px; height: 18px;
+    border: 1px solid rgba(255,0,170,0.3);
+    background: var(--bg3);
+    position: relative; cursor: pointer;
+    clip-path: polygon(3px 0, 100% 0, calc(100% - 3px) 100%, 0 100%);
+  }
+  .neon-toggle.on { border-color: var(--pink); box-shadow: 0 0 6px var(--pink-glow); }
+  .neon-toggle::after {
+    content: ''; position: absolute;
+    width: 10px; height: 12px;
+    background: var(--dim);
+    top: 2px; left: 3px;
+    transition: transform 0.15s;
+    clip-path: polygon(2px 0, 100% 0, calc(100% - 2px) 100%, 0 100%);
+  }
+  .neon-toggle.on::after { background: var(--pink); transform: translateX(18px); box-shadow: 0 0 6px var(--pink); }
+
+  /* Center: Canvas */
+  .cy-canvas-wrap {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(0,238,255,0.15);
+    background: var(--bg);
+    min-height: 0;
+  }
+  .cy-canvas-inner {
+    width: 100%; height: 100%;
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  /* HUD overlay on canvas */
+  .hud-overlay-tl, .hud-overlay-tr, .hud-overlay-bl, .hud-overlay-br {
+    position: absolute;
+    background: rgba(4,0,14,0.8);
+    border: 1px solid rgba(0,238,255,0.3);
+    padding: 5px 10px;
+    font-size: 0.68rem;
+    color: var(--dim);
+    backdrop-filter: blur(4px);
+  }
+  .hud-overlay-tl { top: 10px; left: 10px; border-left: 2px solid var(--cyan); }
+  .hud-overlay-tr { top: 10px; right: 10px; border-right: 2px solid var(--pink); }
+  .hud-overlay-bl { bottom: 10px; left: 10px; }
+  .hud-overlay-br { bottom: 10px; right: 10px; }
+  .hud-overlay-tl span, .hud-overlay-tr span { text-shadow: 0 0 6px; }
+  .hud-overlay-tl span { color: var(--cyan); text-shadow: 0 0 4px var(--cyan); }
+  .hud-overlay-tr span { color: var(--pink); text-shadow: 0 0 4px var(--pink); }
+
+  /* Ship */
+  .cy-ship {
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 0; height: 0;
+    border-left: 9px solid transparent;
+    border-right: 9px solid transparent;
+    border-bottom: 26px solid var(--cyan);
+    filter: drop-shadow(0 0 10px var(--cyan)) drop-shadow(0 0 20px rgba(0,238,255,0.4));
+    animation: ship-glow 1.5s ease-in-out infinite;
+  }
+  @keyframes ship-glow {
+    0%,100% { filter: drop-shadow(0 0 8px var(--cyan)); }
+    50% { filter: drop-shadow(0 0 18px var(--cyan)) drop-shadow(0 0 35px rgba(0,238,255,0.3)); }
+  }
+  .cy-traj {
+    position: absolute; top: 50%; left: 50%;
+    width: 170px; height: 1px;
+    background: linear-gradient(90deg, rgba(0,238,255,0.7), transparent);
+    transform-origin: left;
+    transform: rotate(-25deg);
+  }
+  .cy-ring {
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    border: 1px solid rgba(0,238,255,0.1);
+    border-radius: 50%;
+  }
+
+  /* Toggle overlays on canvas edges */
+  .canvas-toggle-chip {
+    position: absolute;
+    bottom: 10px;
+    background: rgba(4,0,14,0.85);
+    border: 1px solid rgba(255,0,170,0.3);
+    padding: 5px 10px;
+    font-size: 0.68rem;
+    display: flex; align-items: center; gap: 6px;
+    cursor: pointer;
+    backdrop-filter: blur(4px);
+    clip-path: polygon(6px 0, 100% 0, calc(100% - 6px) 100%, 0 100%);
+  }
+  .canvas-toggle-chip.left { left: 10px; }
+  .canvas-toggle-chip.right { right: 10px; border-color: rgba(0,238,255,0.3); }
+  .canvas-toggle-chip .label { color: var(--dim); text-transform: uppercase; letter-spacing: 1px; }
+
+  /* Footer status */
+  .cy-footer {
+    background: var(--bg2);
+    border-top: 1px solid rgba(255,0,170,0.3);
+    height: 34px;
+    display: flex; align-items: center;
+    padding: 0 14px; gap: 20px;
+    font-size: 0.68rem; letter-spacing: 1px; text-transform: uppercase;
+    color: var(--dim);
+    position: relative;
+  }
+  .cy-footer::before {
+    content: '';
+    position: absolute; top: -1px; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--pink), transparent);
+  }
+  .cy-footer .fv { color: var(--cyan); text-shadow: 0 0 4px var(--cyan); margin-left: 4px; }
+  .cy-footer .spacer { flex: 1; }
+</style>
+</head>
+<body>
+
+<div class="cy-header">
+  <span class="cy-logo">✦ SPACEWARS</span>
+  <nav class="cy-nav">
+    <a href="#">Home</a>
+    <a href="#" class="active">Game</a>
+    <a href="#">Research</a>
+    <a href="#">Profile</a>
+  </nav>
+</div>
+
+<div class="cy-body">
+
+  <!-- LEFT: Navigation + Combat -->
+  <div class="cy-panel">
+    <div class="cy-card">
+      <div class="cy-card-title">Navigation</div>
+      <div class="cy-field">
+        <div class="cy-field-label">Speed</div>
+        <div class="cy-row">
+          <input type="number" value="24.5">
+          <button class="cy-btn">Set</button>
+        </div>
+      </div>
+      <div class="cy-field">
+        <div class="cy-field-label">Heading °</div>
+        <div class="cy-row">
+          <input type="number" value="135">
+          <button class="cy-btn">Set</button>
+        </div>
+      </div>
+      <button class="cy-btn block">↑ Max Thrust</button>
+      <button class="cy-btn danger block" style="margin-top:4px">■ Full Stop</button>
+    </div>
+
+    <div class="cy-card" style="flex:1">
+      <div class="cy-card-title">Combat</div>
+      <div class="cy-toggle-row">
+        <span class="cy-toggle-label">Attack mode</span>
+        <div class="neon-toggle"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CENTER: Canvas -->
+  <div class="cy-canvas-wrap">
+    <div class="cy-canvas-inner">
+      <div class="cy-ring" style="width:140px;height:140px"></div>
+      <div class="cy-ring" style="width:280px;height:280px"></div>
+      <div class="cy-ship"></div>
+      <div class="cy-traj"></div>
+    </div>
+    <!-- Corner overlays -->
+    <div class="hud-overlay-tl">POS <span>2450 × 1870</span></div>
+    <div class="hud-overlay-tr">MODE <span>CRUISE</span></div>
+    <!-- Canvas toggles -->
+    <div class="canvas-toggle-chip left">
+      <div class="neon-toggle"></div>
+      <span class="label">Attack</span>
+    </div>
+    <div class="canvas-toggle-chip right">
+      <div class="neon-toggle on" style="border-color:rgba(0,238,255,0.5)"></div>
+      <span class="label" style="color:rgba(0,238,255,0.7)">Teleport</span>
+    </div>
+  </div>
+
+  <!-- RIGHT: Teleport + Settings -->
+  <div class="cy-panel right">
+    <div class="cy-card cyan-border" style="flex:1">
+      <div class="cy-card-title">Jump Drive</div>
+      <div class="charge-slots">
+        <div class="charge-slot"></div>
+        <div class="charge-slot"></div>
+        <div class="charge-slot"></div>
+        <div class="charge-slot empty"></div>
+        <div class="charge-slot empty"></div>
+      </div>
+      <div class="charge-text">3 / 5 — next: <span>2m 14s</span></div>
+      <div class="cy-field">
+        <div class="cy-field-label">Target X</div>
+        <input type="number" value="2450" style="width:100%">
+      </div>
+      <div class="cy-field">
+        <div class="cy-field-label">Target Y</div>
+        <input type="number" value="1870" style="width:100%">
+      </div>
+      <button class="cy-btn cyan block">⚡ Jump</button>
+    </div>
+
+    <div class="cy-card cyan-border">
+      <div class="cy-card-title">Display</div>
+      <div class="cy-toggle-row" style="margin-bottom:0">
+        <span class="cy-toggle-label">Debug HUD</span>
+        <div class="neon-toggle on"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="cy-footer">
+  <span>SPD<span class="fv">24.5</span></span>
+  <span>HDG<span class="fv">135°</span></span>
+  <span>X<span class="fv">2450</span></span>
+  <span>Y<span class="fv">1870</span></span>
+  <span class="spacer"></span>
+  <span>SYNC<span class="fv">1.2s</span></span>
+</div>
+
+</body>
+</html>
