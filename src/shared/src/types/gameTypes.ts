@@ -4,7 +4,7 @@
 
 export interface SpaceObject {
   id: number;
-  type: 'player_ship' | 'asteroid' | 'shipwreck' | 'escape_pod';
+  type: 'player_ship' | 'asteroid' | 'shipwreck' | 'escape_pod' | 'starbase';
   x: number;
   y: number;
   speed: number;
@@ -44,6 +44,10 @@ export interface EscapePod extends SpaceObject {
   type: 'escape_pod';
   value: number;
   survivors: number;
+}
+
+export interface StarbaseObject extends SpaceObject {
+  type: 'starbase';
 }
 
 export interface Collectible extends SpaceObject {
