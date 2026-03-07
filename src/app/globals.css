@@ -60,6 +60,12 @@ body {
   margin: 0;
 }
 
+.app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
 code {
   font-family: var(--font-geist-mono), source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;

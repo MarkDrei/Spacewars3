@@ -123,7 +123,7 @@ describe('GamePageClient teleport controls', () => {
       expect(screen.getByRole('heading', { name: /^Teleport$/i })).toBeDefined();
     });
 
-    const teleportButton = screen.getByRole('button', { name: /^Teleport$/ });
+    const teleportButton = screen.getByRole('button', { name: /^teleport$/i });
     expect(teleportButton).toHaveProperty('disabled', true);
   });
 
@@ -138,7 +138,7 @@ describe('GamePageClient teleport controls', () => {
       expect(screen.getByRole('heading', { name: /^Teleport$/i })).toBeDefined();
     });
 
-    const teleportButton = screen.getByRole('button', { name: /^Teleport$/ });
+    const teleportButton = screen.getByRole('button', { name: /^teleport$/i });
     expect(teleportButton).toHaveProperty('disabled', false);
   });
 
@@ -151,7 +151,7 @@ describe('GamePageClient teleport controls', () => {
 
     await waitFor(() => {
       // 0.5 charges remaining * 7200 seconds = 3600 seconds = 1h 0m
-      expect(screen.getByText(/Next in: 1h 0m/i)).toBeDefined();
+      expect(screen.getByText(/next in: 1h 0m/i)).toBeDefined();
     });
   });
 });
