@@ -23,10 +23,11 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
   const gameInitializedRef = useRef(false);
   const gameInstanceRef = useRef<Game | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [isSettingMaxSpeed, setIsSettingMaxSpeed] = useState(false);
+  const canvasContainerRef = useRef<HTMLDivElement>(null);
   const [debugDrawingsEnabled, setDebugDrawingsEnabled] = useState(true);
   const [angleInput, setAngleInput] = useState<string>('0');
   const [speedInput, setSpeedInput] = useState<string>('0');
+  const [maxSpeed, setMaxSpeed] = useState<number>(100);
   const [isSettingAngle, setIsSettingAngle] = useState(false);
   const [isSettingSpeed, setIsSettingSpeed] = useState(false);
   const [teleportMaxCharges, setTeleportMaxCharges] = useState(0);
@@ -41,11 +42,60 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
   // Auth is guaranteed by server, so pass true and use auth.shipId
   const { worldData, isLoading, error, refetch, lastUpdateTime } = useWorldData(3000);
 
+  // Prevent page scrolling while on the game page
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    const appEl = document.querySelector('.app') as HTMLElement | null;
+    if (appEl) {
+      appEl.style.height = '100vh';
+      appEl.style.overflow = 'hidden';
+    }
+    return () => {
+      document.body.style.overflow = '';
+      if (appEl) {
+        appEl.style.height = '';
+        appEl.style.overflow = '';
+      }
+    };
+  }, []);
+
+  // Resize canvas to fill its container whenever the container size changes
+  useEffect(() => {
+    const container = canvasContainerRef.current;
+    const canvas = canvasRef.current;
+    if (!container || !canvas) return;
+
+    const resize = () => {
+      canvas.width = container.clientWidth;
+      canvas.height = container.clientHeight;
+    };
+
+    resize();
+    const observer = new ResizeObserver(resize);
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, []);
+
   // Sync debugDrawingsEnabled state with game instance
   useEffect(() => {
     if (gameInstanceRef.current) {
       setDebugDrawingsEnabled(gameInstanceRef.current.getDebugDrawingsEnabled());
     }
+  }, []);
+
+  // Fetch max speed for the slider
+  useEffect(() => {
+    const fetchMaxSpeed = async () => {
+      try {
+        const stats = await getShipStats();
+        if (stats && !('error' in stats)) {
+          setMaxSpeed(stats.maxSpeed);
+        }
+      } catch {
+        // ignore – keep default maxSpeed
+      }
+    };
+    fetchMaxSpeed();
   }, []);
 
   const handleDebugToggle = (enabled: boolean) => {
@@ -152,36 +202,6 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
     }
   }, [worldData, auth.shipId, angleInput, speedInput]);
 
-  const handleMaxSpeed = async () => {
-    if (isSettingMaxSpeed) return; // Prevent double-clicks
-    
-    setIsSettingMaxSpeed(true);
-    try {
-      // Get current ship stats to determine max speed
-      const shipStats = await getShipStats();
-      
-      if ('error' in shipStats) {
-        console.error('Failed to get ship stats:', shipStats.error);
-        return;
-      }
-      
-      // Set ship to max speed (keep current angle)
-      await navigateShip({ speed: shipStats.maxSpeed });
-      
-      // Refresh world data to get updated ship state
-      if (refetch) {
-        refetch();
-      }
-      
-      // Update input fields after successful navigation
-      setTimeout(updateInputFieldsFromShip, 100); // Small delay to ensure world data is updated
-    } catch (error) {
-      console.error('❌ [CLIENT] Failed to set max speed:', error);
-    } finally {
-      setIsSettingMaxSpeed(false);
-    }
-  };
-
   const updateInputFieldsFromShip = () => {
     if (gameInstanceRef.current) {
       const ship = gameInstanceRef.current.getWorld().getShip();
@@ -249,36 +269,9 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
     }
   };
 
-  const handleStop = async () => {
-    if (isSettingSpeed) return;
-    
-    setIsSettingSpeed(true);
-    try {
-      await navigateShip({ speed: 0 });
-      
-      // Refresh world data to get updated ship state
-      if (refetch) {
-        refetch();
-      }
-      
-      // Update input fields after successful navigation
-      setTimeout(updateInputFieldsFromShip, 100); // Small delay to ensure world data is updated
-    } catch (error) {
-      console.error('❌ [CLIENT] Failed to stop ship:', error);
-    } finally {
-      setIsSettingSpeed(false);
-    }
-  };
-
   const handleAngleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       handleSetAngle();
-    }
-  };
-
-  const handleSpeedKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleSetSpeed();
     }
   };
 
@@ -384,17 +377,16 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
   return (
     <AuthenticatedLayout>
       <div className="game-page">
-        <div className="canvas-container">
-          <div className="canvas-inner">
-          <canvas 
+        <div className="canvas-container" ref={canvasContainerRef}>
+          <canvas
             ref={canvasRef}
-            id="gameCanvas" 
-            width="800" 
-            height="800"
+            id="gameCanvas"
           ></canvas>
-          <div className="canvas-overlay-controls-left">
+
+          {/* Top-left: combat + debug toggles */}
+          <div className="hud-panel panel-top-left">
             <label className="debug-toggle-label">
-              Attack
+              attack
               <div className="toggle-switch">
                 <input
                   type="checkbox"
@@ -405,69 +397,40 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
                 <span className="toggle-slider"></span>
               </div>
             </label>
-          </div>
-          {teleportMaxCharges > 0 && (
-            <div className="canvas-overlay-controls">
-              <label className="debug-toggle-label">
-                Teleport
-                <div className="toggle-switch">
-                  <input
-                    type="checkbox"
-                    checked={teleportClickMode}
-                    onChange={(e) => setTeleportClickMode(e.target.checked)}
-                    disabled={Math.floor(teleportCharges) < 1}
-                    className="toggle-input"
-                  />
-                  <span className="toggle-slider"></span>
-                </div>
-              </label>
-            </div>
-          )}
-          </div>
-        </div>
-        <div className="game-controls">
-          <div className="navigation-controls">
-            <div className="control-row">
-              <label htmlFor="speed-input">Speed:</label>
-              <div className="input-container">
+            <label className="debug-toggle-label">
+              debug
+              <div className="toggle-switch">
                 <input
-                  id="speed-input"
-                  type="number"
-                  value={speedInput}
-                  onChange={(e) => setSpeedInput(e.target.value)}
-                  onKeyPress={handleSpeedKeyPress}
-                  disabled={isSettingSpeed}
-                  className={isSettingSpeed ? 'loading' : ''}
-                  min="0"
-                  step="0.1"
+                  type="checkbox"
+                  checked={debugDrawingsEnabled}
+                  onChange={(e) => handleDebugToggle(e.target.checked)}
+                  className="toggle-input"
                 />
-                {isSettingSpeed && <div className="input-loading-indicator"></div>}
+                <span className="toggle-slider"></span>
               </div>
-              <button
-                onClick={handleSetSpeed}
-                disabled={isSettingSpeed}
-                className="control-button btn-primary"
-              >
-                {isSettingSpeed ? 'Setting...' : 'Set Speed'}
-              </button>
-              <button 
-                className="max-speed-button btn-primary"
-                onClick={handleMaxSpeed}
-                disabled={isSettingMaxSpeed}
-              >
-                {isSettingMaxSpeed ? 'Setting Max Speed...' : 'Set Max Speed'}
-              </button>
-              <button 
-                className="stop-button btn-secondary"
-                onClick={handleStop}
-                disabled={isSettingSpeed}
-              >
-                Stop
-              </button>
-            </div>
+            </label>
+          </div>
 
+          {/* Bottom-left: navigation panel */}
+          <div className="hud-panel panel-bottom-left">
+            <p className="panel-heading">navigation</p>
+            <div className="speed-slider-row">
+              <label>speed</label>
+              <input
+                type="range"
+                min={0}
+                max={maxSpeed}
+                step={0.1}
+                value={parseFloat(speedInput) || 0}
+                onChange={(e) => setSpeedInput(e.target.value)}
+                onPointerUp={handleSetSpeed}
+                disabled={isSettingSpeed}
+                className="speed-slider"
+              />
+              <span className="speed-value">{parseFloat(speedInput).toFixed(1)}</span>
+            </div>
             <div className="control-row">
-              <label htmlFor="angle-input">Angle (degrees):</label>
+              <label htmlFor="angle-input">angle °</label>
               <div className="input-container">
                 <input
                   id="angle-input"
@@ -488,56 +451,58 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
                 disabled={isSettingAngle}
                 className="control-button btn-primary"
               >
-                {isSettingAngle ? 'Setting...' : 'Set Angle'}
+                {isSettingAngle ? '...' : 'set'}
               </button>
             </div>
           </div>
 
+          {/* Bottom-right: teleport panel */}
           {teleportMaxCharges > 0 && (
-            <div className="navigation-controls teleport-controls-horizontal">
+            <div className="hud-panel panel-bottom-right">
+              <h4 className="panel-heading">teleport</h4>
               <div className="teleport-header">
-                <h3 className="teleport-title">Teleport</h3>
                 <span className="teleport-charges-badge">
-                  {formatNumber(Math.floor(teleportCharges))} / {formatNumber(teleportMaxCharges)} Charges
+                  {formatNumber(Math.floor(teleportCharges))} / {formatNumber(teleportMaxCharges)}
                 </span>
                 {teleportCharges < teleportMaxCharges && teleportRechargeTimeSec > 0 && (
                   <span className="teleport-timer">
-                    Next in: {formatTimeRemaining(
+                    next in: {formatTimeRemaining(
                       (Math.ceil(teleportCharges) === Math.floor(teleportCharges) ? 1 : Math.ceil(teleportCharges) - teleportCharges) * teleportRechargeTimeSec / Math.max(1, timeMultiplier)
                     )}
                   </span>
                 )}
+                <label className="debug-toggle-label">
+                  click mode
+                  <div className="toggle-switch">
+                    <input
+                      type="checkbox"
+                      checked={teleportClickMode}
+                      onChange={(e) => setTeleportClickMode(e.target.checked)}
+                      disabled={Math.floor(teleportCharges) < 1}
+                      className="toggle-input"
+                    />
+                    <span className="toggle-slider"></span>
+                  </div>
+                </label>
               </div>
-              
               <div className="control-row">
-                <label htmlFor="teleport-x">X:</label>
+                <label htmlFor="teleport-x">x</label>
                 <input id="teleport-x" type="number" value={teleportX} onChange={(e) => setTeleportX(e.target.value)} min="0" max="5000" step="1" />
-                
-                <label htmlFor="teleport-y">Y:</label>
+                <label htmlFor="teleport-y">y</label>
                 <input id="teleport-y" type="number" value={teleportY} onChange={(e) => setTeleportY(e.target.value)} min="0" max="5000" step="1" />
-                
                 <button onClick={handleTeleport} disabled={isTeleporting || Math.floor(teleportCharges) < 1} className="control-button btn-primary">
-                  {isTeleporting ? 'Teleporting...' : 'Teleport'}
+                  {isTeleporting ? '...' : 'teleport'}
                 </button>
               </div>
             </div>
           )}
-          
-          <div className="debug-toggle-container">
-            <label className="debug-toggle-label">
-              Enable debug drawings
-              <div className="toggle-switch">
-                <input
-                  type="checkbox"
-                  checked={debugDrawingsEnabled}
-                  onChange={(e) => handleDebugToggle(e.target.checked)}
-                  className="toggle-input"
-                />
-                <span className="toggle-slider"></span>
-              </div>
-            </label>
-          </div>
-          {debugDrawingsEnabled && <DataAgeIndicator lastUpdateTime={lastUpdateTime} />}
+
+          {/* Data age indicator */}
+          {debugDrawingsEnabled && (
+            <div className="hud-panel panel-top-right">
+              <DataAgeIndicator lastUpdateTime={lastUpdateTime} />
+            </div>
+          )}
         </div>
       </div>
     </AuthenticatedLayout>
