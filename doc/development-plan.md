@@ -199,6 +199,18 @@ Add a public method `drawStarbase(ctx, centerX, centerY, shipX, shipY, obj: Spac
 
 - `src/lib/client/game/Game.ts` — new field, method, and click handler branch
 
+**Status**: ✅ COMPLETED
+**Implementation Summary**: Added `onStarbaseEntryCallback` private field, `setStarbaseEntryCallback()` public method, and a `'starbase'` branch in `initializeClickHandler()` that fires the callback when within `STARBASE_DOCK_RANGE` (in attack mode) or delegates to `handleInterception()` when out of range. Outside attack mode, starbase clicks are silently ignored.
+**Files Modified/Created**:
+- `src/lib/client/game/Game.ts` — added import of `STARBASE_DOCK_RANGE`, private field, public method, and click-handler branch
+- `src/__tests__/unit/lib/Game-starbase-callback.test.ts` — 8 new tests covering all branches
+**Deviations from Plan**: None. Used `calculateToroidalDistance` (already imported) rather than a hypothetical `toroidalDistance` alias — they are the same function.
+**Arc42 Updates**: None required
+**Test Results**: ✅ 8 new tests passing, 610 unit tests passing total, no linting errors
+**Review Status**: ✅ APPROVED
+**Reviewer**: Medicus
+**Review Notes**: Implementation matches plan exactly. Import path `@/shared/starbases` is consistent with existing codebase pattern for files in `src/shared/` root. Branch placement (before generic collectible fallthrough) is correct. Boundary condition (`<=`) is tested. Optional chaining guards null callback cleanly. One minor test smell: `setStarbaseEntryCallback_registersCallback_storesRef` accesses a private field directly — acceptable for storage verification.
+
 #### Task 3.2: Wire starbase entry callback in GamePageClient
 
 **Action**: In `src/app/game/GamePageClient.tsx`:
