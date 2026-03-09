@@ -13,7 +13,7 @@ import { userStatsService } from '@/lib/client/services/userStatsService';
 import { ServerAuthState } from '@/lib/server/serverSession';
 import DataAgeIndicator from '@/components/DataAgeIndicator/DataAgeIndicator';
 import { formatNumber } from '@/shared/numberFormat';
-import { DEFAULT_ZOOM, MIN_ZOOM, MAX_ZOOM } from '@/shared/viewportConstants';
+import { DEFAULT_ZOOM, MIN_ZOOM, MAX_ZOOM } from '@shared/viewportConstants';
 
 interface GamePageClientProps {
   auth: ServerAuthState;
