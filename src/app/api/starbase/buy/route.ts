@@ -17,7 +17,9 @@ const inventoryService = new InventoryService();
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getIronSession<SessionData>(request, NextResponse.json({}), sessionOptions);
+    // Read session using a temporary response for input validation
+    const tempRes = NextResponse.json({});
+    const session = await getIronSession<SessionData>(request, tempRes, sessionOptions);
     requireAuth(session.userId);
 
     const body = await request.json();
@@ -64,7 +66,14 @@ export async function POST(request: NextRequest) {
       return user.iron;
     });
 
-    return NextResponse.json({ success: true, newIron });
+    // Create the final response and attach the session to it so the updated
+    // shop (with the purchased slot nulled out) is persisted in the cookie.
+    const response = NextResponse.json({ success: true, newIron });
+    const finalSession = await getIronSession<SessionData>(request, response, sessionOptions);
+    finalSession.starbaseShop = session.starbaseShop.map((c, i) => (i === slotIndex ? null : c));
+    await finalSession.save();
+
+    return response;
   } catch (error) {
     return handleApiError(error);
   }
