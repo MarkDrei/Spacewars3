@@ -16,7 +16,9 @@ const mockWorld = {
 
 // Mock GameRenderer
 const mockRenderer = {
-  drawWorld: vi.fn()
+  drawWorld: vi.fn(),
+  getWorldScale: vi.fn(() => 1),
+  setZoom: vi.fn(),
 } as unknown as GameRenderer;
 
 // Define mocks with factory functions (Vitest 4.x style)

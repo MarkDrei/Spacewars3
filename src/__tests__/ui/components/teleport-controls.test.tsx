@@ -123,7 +123,7 @@ describe('GamePageClient teleport controls', () => {
       expect(screen.getByRole('heading', { name: /^Teleport$/i })).toBeDefined();
     });
 
-    const teleportButton = screen.getByRole('button', { name: /^Teleport$/ });
+    const teleportButton = screen.getByRole('button', { name: /^teleport$/i });
     expect(teleportButton).toHaveProperty('disabled', true);
   });
 
@@ -138,7 +138,7 @@ describe('GamePageClient teleport controls', () => {
       expect(screen.getByRole('heading', { name: /^Teleport$/i })).toBeDefined();
     });
 
-    const teleportButton = screen.getByRole('button', { name: /^Teleport$/ });
+    const teleportButton = screen.getByRole('button', { name: /^teleport$/i });
     expect(teleportButton).toHaveProperty('disabled', false);
   });
 

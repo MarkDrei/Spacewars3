@@ -27,6 +27,8 @@ vi.mock('@/lib/client/game/World', () => ({
 vi.mock('@/lib/client/renderers/GameRenderer', () => ({
   GameRenderer: class {
     drawWorld = vi.fn();
+    getWorldScale = vi.fn(() => 1);
+    setZoom = vi.fn();
   },
 }));
 

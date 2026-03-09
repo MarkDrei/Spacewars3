@@ -88,10 +88,12 @@ export class Game {
       // Handle teleport click mode first
       if (this.teleportClickMode && this.onTeleportClickCallback) {
         const ship = this.world.getShip();
-        const centerX = canvas.width / 2;
-        const centerY = canvas.height / 2;
-        const dx = logicalX - centerX;
-        const dy = logicalY - centerY;
+        const dpr = (typeof window !== 'undefined' && window.devicePixelRatio) || 1;
+        const worldScale = this.renderer.getWorldScale();
+        const centerX = canvas.width / 2; // physical pixels
+        const centerY = canvas.height / 2; // physical pixels
+        const dx = (logicalX - centerX) / (dpr * worldScale); // world units
+        const dy = (logicalY - centerY) / (dpr * worldScale); // world units
         const worldX = Math.max(0, Math.min(5000, ship.getX() + dx));
         const worldY = Math.max(0, Math.min(5000, ship.getY() + dy));
         this.onTeleportClickCallback(worldX, worldY);
@@ -167,11 +169,13 @@ export class Game {
   }
 
   private handleEmptySpaceClick(canvas: HTMLCanvasElement, logicalX: number, logicalY: number): void {
-    // Use shared angleUtils for conversion
-    const centerX = canvas.width / 2;
-    const centerY = canvas.height / 2;
-    const dx = logicalX - centerX;
-    const dy = logicalY - centerY;
+    // logicalX/Y are in physical pixels. Convert offset from center to world units.
+    const dpr = (typeof window !== 'undefined' && window.devicePixelRatio) || 1;
+    const worldScale = this.renderer.getWorldScale();
+    const centerX = canvas.width / 2;  // physical pixels
+    const centerY = canvas.height / 2; // physical pixels
+    const dx = (logicalX - centerX) / (dpr * worldScale); // world units
+    const dy = (logicalY - centerY) / (dpr * worldScale); // world units
     const angle = Math.atan2(dy, dx);
     const angleDegrees = (angle * 180 / Math.PI + 360) % 360;
     
@@ -343,9 +347,14 @@ export class Game {
   
   // Update hover states based on current mouse position
   private updateHoverStates(): void {
-    // Convert mouse coordinates to world coordinates
-    const worldMouseX = this.mouseX - this.ctx.canvas.width / 2 + this.ship.getX();
-    const worldMouseY = this.mouseY - this.ctx.canvas.height / 2 + this.ship.getY();
+    // Convert physical-pixel mouse coords to world coordinates.
+    // this.mouseX/Y are stored in physical pixels (canvas.width / rect.width = dpr).
+    const dpr = (typeof window !== 'undefined' && window.devicePixelRatio) || 1;
+    const worldScale = this.renderer.getWorldScale();
+    const cssW = this.ctx.canvas.width / dpr;
+    const cssH = this.ctx.canvas.height / dpr;
+    const worldMouseX = (this.mouseX / dpr - cssW / 2) / worldScale + this.ship.getX();
+    const worldMouseY = (this.mouseY / dpr - cssH / 2) / worldScale + this.ship.getY();
 
     // Update hover states for all objects
     this.world.updateHoverStates(worldMouseX, worldMouseY);
@@ -407,6 +416,13 @@ export class Game {
    */
   public setStarbaseEntryCallback(fn: (starbaseId: number) => void): void {
     this.onStarbaseEntryCallback = fn;
+  }
+
+  /**
+   * Set the zoom level (>1 zooms out, showing more world; <1 zooms in).
+   */
+  public setZoom(zoom: number): void {
+    this.renderer.setZoom(zoom);
   }
 
   /**
