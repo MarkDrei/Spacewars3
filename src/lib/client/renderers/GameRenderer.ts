@@ -122,20 +122,26 @@ export class GameRenderer {
         // Clear the canvas and draw space background
         this.drawBackground();
         
-        // Set up circular clipping for all game content
         const centerX = this.canvas.width / 2;
         const centerY = this.canvas.height / 2;
+
+        // ── Circular clipping ─────────────────────────────────────────────────
+        // Disabled: the fullscreen canvas should show the entire playing field.
+        // To re-enable, set clipToCircle = true below.
+        // When enabled, only content within `maxRadius` pixels of the center is
+        // drawn; everything else appears as the black background.
+        const clipToCircle = false;
         const maxRadius = Math.min(centerX, centerY);
-        
-        // Save context state
+
         this.ctx.save();
+        if (clipToCircle) {
+            this.ctx.beginPath();
+            this.ctx.arc(centerX, centerY, maxRadius, 0, Math.PI * 2);
+            this.ctx.clip();
+        }
+        // ─────────────────────────────────────────────────────────────────────
         
-        // Create circular clipping path
-        this.ctx.beginPath();
-        this.ctx.arc(centerX, centerY, maxRadius, 0, Math.PI * 2);
-        this.ctx.clip();
-        
-        // Draw background elements (grid and world boundaries) inside the clipped area
+        // Draw background elements (grid and world boundaries)
         this.drawBackgroundElements();
         
         // Get collectibles and ships
@@ -144,7 +150,7 @@ export class GameRenderer {
         // convert to SpaceObjects
         const spaceObjects = nonPlayerObjects.map(obj => obj.getServerData());
         
-        // Draw radar centered around the player ship (now clipped to circle)
+        // Draw radar centered around the player ship
         this.radarRenderer.drawRadar(
             this.ctx,
             centerX,
@@ -152,7 +158,7 @@ export class GameRenderer {
             ship
         );
         
-        // Draw collectibles using the collectibles renderer (now clipped to circle)
+        // Draw collectibles
         this.collectiblesRenderer.drawSpaceObjects(
             ship, 
             spaceObjects, 
@@ -179,10 +185,10 @@ export class GameRenderer {
             ship
         );
         
-        // Restore context state (removes clipping)
+        // Restore context state
         this.ctx.restore();
         
-        // Draw tooltip for all objects (outside the clipped area, so they can extend beyond)
+        // Draw tooltip for all objects
         this.tooltipRenderer.drawTooltip(
             this.world.getSpaceObjects(),
             ship
