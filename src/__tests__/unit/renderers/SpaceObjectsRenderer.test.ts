@@ -1,5 +1,6 @@
 import { describe, expect, test, beforeEach, vi } from 'vitest';
 import { SpaceObjectsRenderer } from '@/lib/client/renderers/SpaceObjectsRenderer';
+import type { ViewportInfo } from '@/lib/client/renderers/GameRenderer';
 import type { SpaceObject } from '@shared/types';
 
 // Mock all individual renderers so we can verify dispatch without real canvas logic
@@ -40,6 +41,9 @@ describe('SpaceObjectsRenderer', () => {
         last_position_update_ms: 0,
     });
 
+    // Viewport centred on ship (100, 100), showing 400wu in each direction
+    const mockViewport: ViewportInfo = { centerX: 400, centerY: 300, halfW: 400, halfH: 300 };
+
     beforeEach(() => {
         mockCanvas = { width: 800, height: 600 } as HTMLCanvasElement;
         mockCtx = {} as CanvasRenderingContext2D;
@@ -63,7 +67,7 @@ describe('SpaceObjectsRenderer', () => {
 
         test('dispatches starbase objects to StarbaseRenderer.drawStarbase', () => {
             const starbase = makeSpaceObject('starbase');
-            renderer.drawSpaceObjects(mockShip as never, [starbase], WORLD, WORLD);
+            renderer.drawSpaceObjects(mockShip as never, [starbase], WORLD, WORLD, mockViewport);
 
             const starbaseRenderer = getField<{ drawStarbase: ReturnType<typeof vi.fn> }>(
                 renderer, 'starbaseRenderer'
@@ -81,7 +85,7 @@ describe('SpaceObjectsRenderer', () => {
 
         test('dispatches shipwreck objects to ShipwreckRenderer', () => {
             const shipwreck = makeSpaceObject('shipwreck');
-            renderer.drawSpaceObjects(mockShip as never, [shipwreck], WORLD, WORLD);
+            renderer.drawSpaceObjects(mockShip as never, [shipwreck], WORLD, WORLD, mockViewport);
 
             const shipwreckRenderer = getField<{ drawShipwreck: ReturnType<typeof vi.fn> }>(
                 renderer, 'shipwreckRenderer'
@@ -91,7 +95,7 @@ describe('SpaceObjectsRenderer', () => {
 
         test('dispatches escape_pod objects to EscapePodRenderer', () => {
             const escapePod = makeSpaceObject('escape_pod');
-            renderer.drawSpaceObjects(mockShip as never, [escapePod], WORLD, WORLD);
+            renderer.drawSpaceObjects(mockShip as never, [escapePod], WORLD, WORLD, mockViewport);
 
             const escapePodRenderer = getField<{ drawEscapePod: ReturnType<typeof vi.fn> }>(
                 renderer, 'escapePodRenderer'
@@ -101,7 +105,7 @@ describe('SpaceObjectsRenderer', () => {
 
         test('dispatches asteroid objects to AsteroidRenderer', () => {
             const asteroid = makeSpaceObject('asteroid');
-            renderer.drawSpaceObjects(mockShip as never, [asteroid], WORLD, WORLD);
+            renderer.drawSpaceObjects(mockShip as never, [asteroid], WORLD, WORLD, mockViewport);
 
             const asteroidRenderer = getField<{ drawAsteroid: ReturnType<typeof vi.fn> }>(
                 renderer, 'asteroidRenderer'
@@ -111,7 +115,7 @@ describe('SpaceObjectsRenderer', () => {
 
         test('dispatches player_ship objects to OtherShipRenderer', () => {
             const playerShip = makeSpaceObject('player_ship');
-            renderer.drawSpaceObjects(mockShip as never, [playerShip], WORLD, WORLD);
+            renderer.drawSpaceObjects(mockShip as never, [playerShip], WORLD, WORLD, mockViewport);
 
             const shipRenderer = getField<{ drawOtherShip: ReturnType<typeof vi.fn> }>(
                 renderer, 'shipRenderer'
@@ -121,7 +125,7 @@ describe('SpaceObjectsRenderer', () => {
 
         test('does not call starbaseRenderer for non-starbase objects', () => {
             const asteroid = makeSpaceObject('asteroid');
-            renderer.drawSpaceObjects(mockShip as never, [asteroid], WORLD, WORLD);
+            renderer.drawSpaceObjects(mockShip as never, [asteroid], WORLD, WORLD, mockViewport);
 
             const starbaseRenderer = getField<{ drawStarbase: ReturnType<typeof vi.fn> }>(
                 renderer, 'starbaseRenderer'
@@ -135,7 +139,7 @@ describe('SpaceObjectsRenderer', () => {
                 makeSpaceObject('asteroid'),
                 makeSpaceObject('shipwreck'),
             ];
-            renderer.drawSpaceObjects(mockShip as never, objects, WORLD, WORLD);
+            renderer.drawSpaceObjects(mockShip as never, objects, WORLD, WORLD, mockViewport);
 
             const starbaseRenderer = getField<{ drawStarbase: ReturnType<typeof vi.fn> }>(renderer, 'starbaseRenderer');
             const asteroidRenderer = getField<{ drawAsteroid: ReturnType<typeof vi.fn> }>(renderer, 'asteroidRenderer');

@@ -29,7 +29,7 @@ export class SpaceObjectsRenderer {
     /**
      * Draw collectible objects
      */
-    drawSpaceObjects(ship: Ship, collectibles: SpaceObject[], worldWidth: number, worldHeight: number, viewportInfo?: ViewportInfo): void {
+    drawSpaceObjects(ship: Ship, collectibles: SpaceObject[], worldWidth: number, worldHeight: number, viewportInfo: ViewportInfo): void {
         // Draw the main collectibles first
         this.drawMainObjects(ship, collectibles, viewportInfo);
         
@@ -40,9 +40,9 @@ export class SpaceObjectsRenderer {
     /**
      * Draw the main collectible objects
      */
-    private drawMainObjects(ship: Ship, collectibles: SpaceObject[], viewportInfo?: ViewportInfo): void {
-        const centerX = viewportInfo ? viewportInfo.centerX : this.canvas.width / 2;
-        const centerY = viewportInfo ? viewportInfo.centerY : this.canvas.height / 2;
+    private drawMainObjects(ship: Ship, collectibles: SpaceObject[], viewportInfo: ViewportInfo): void {
+        const centerX = viewportInfo.centerX;
+        const centerY = viewportInfo.centerY;
         const shipX = ship.getX();
         const shipY = ship.getY();
         
@@ -135,15 +135,15 @@ export class SpaceObjectsRenderer {
     /**
      * Draw wrapped collectible objects
      */
-    private drawWrappedObjects(ship: Ship, collectibles: SpaceObject[], worldWidth: number, worldHeight: number, viewportInfo?: ViewportInfo): void {
-        const centerX = viewportInfo ? viewportInfo.centerX : this.canvas.width / 2;
-        const centerY = viewportInfo ? viewportInfo.centerY : this.canvas.height / 2;
+    private drawWrappedObjects(ship: Ship, collectibles: SpaceObject[], worldWidth: number, worldHeight: number, viewportInfo: ViewportInfo): void {
+        const centerX = viewportInfo.centerX;
+        const centerY = viewportInfo.centerY;
         const shipX = ship.getX();
         const shipY = ship.getY();
         
-        // Calculate visible area in world coordinates using ViewportInfo when available
-        const halfW = viewportInfo ? viewportInfo.halfW : this.canvas.width / 2;
-        const halfH = viewportInfo ? viewportInfo.halfH : this.canvas.height / 2;
+        // Calculate visible area in world coordinates using ViewportInfo
+        const halfW = viewportInfo.halfW;
+        const halfH = viewportInfo.halfH;
         const visibleLeft = shipX - halfW;
         const visibleRight = shipX + halfW;
         const visibleTop = shipY - halfH;

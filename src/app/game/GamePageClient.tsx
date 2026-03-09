@@ -94,8 +94,9 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
         if (stats && !('error' in stats)) {
           setMaxSpeed(stats.maxSpeed);
         }
-      } catch {
+      } catch (err) {
         // ignore – keep default maxSpeed
+        console.warn('Failed to fetch max speed:', err);
       }
     };
     fetchMaxSpeed();
