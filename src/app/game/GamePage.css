@@ -10,20 +10,16 @@
 }
 
 .canvas-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  width: calc(100vw + 20px); /* Full viewport width + 20px overdraw (10px each side) */
-  margin-left: calc(-50vw + 50% + 10px); /* Center and shift left by 10px for overdraw */
-  overflow: hidden;
-  height: fit-content;
+  width: min(calc(100vw - 40px), calc(100vh - 200px));
+  aspect-ratio: 1;
   position: relative;
+  flex-shrink: 0;
 }
 
-/* Inner wrapper sizes itself to the canvas so overlay positions are always canvas-relative */
+/* Inner wrapper fills the container; overlays are positioned relative to it */
 .canvas-inner {
-  position: relative;
-  display: inline-block;
+  position: absolute;
+  inset: 0;
   line-height: 0; /* remove extra space below canvas */
 }
 
@@ -53,11 +49,8 @@
 
 #gameCanvas {
   display: block;
-  width: auto;
-  height: auto;
-  max-width: 100%;
-  max-height: calc(100vh - 160px); /* Keep max-height to prevent overflow */
-  object-fit: contain;
+  width: 100%;
+  height: 100%;
 }
 
 /* Game Controls */

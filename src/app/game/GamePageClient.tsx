@@ -23,6 +23,7 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
   const gameInitializedRef = useRef(false);
   const gameInstanceRef = useRef<Game | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const canvasContainerRef = useRef<HTMLDivElement>(null);
   const [isSettingMaxSpeed, setIsSettingMaxSpeed] = useState(false);
   const [debugDrawingsEnabled, setDebugDrawingsEnabled] = useState(true);
   const [angleInput, setAngleInput] = useState<string>('0');
@@ -46,6 +47,33 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
     if (gameInstanceRef.current) {
       setDebugDrawingsEnabled(gameInstanceRef.current.getDebugDrawingsEnabled());
     }
+  }, []);
+
+  // Dynamically resize the canvas to fill available viewport space
+  useEffect(() => {
+    const container = canvasContainerRef.current;
+    const canvas = canvasRef.current;
+    if (!container || !canvas) return;
+
+    const updateCanvasSize = (width: number, height: number) => {
+      const size = Math.min(width, height);
+      if (size > 0 && (canvas.width !== size || canvas.height !== size)) {
+        canvas.width = size;
+        canvas.height = size;
+      }
+    };
+
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        updateCanvasSize(entry.contentRect.width, entry.contentRect.height);
+      }
+    });
+
+    observer.observe(container);
+    // Set initial size
+    updateCanvasSize(container.clientWidth, container.clientHeight);
+
+    return () => observer.disconnect();
   }, []);
 
   const handleDebugToggle = (enabled: boolean) => {
@@ -391,13 +419,11 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
   return (
     <AuthenticatedLayout>
       <div className="game-page">
-        <div className="canvas-container">
+        <div className="canvas-container" ref={canvasContainerRef}>
           <div className="canvas-inner">
           <canvas 
             ref={canvasRef}
             id="gameCanvas" 
-            width="800" 
-            height="800"
           ></canvas>
           <div className="canvas-overlay-controls-left">
             <label className="debug-toggle-label">

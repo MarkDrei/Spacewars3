@@ -12,7 +12,7 @@ The Game Page is the primary gameplay screen. It renders the game world on a can
 
 ## Canvas / Game World Display
 
-- **Game Canvas** — An 800×800 interactive canvas that renders the space world in real time.
+- **Game Canvas** — A responsive square canvas that fills the available viewport, rendering the space world in real time. The canvas dynamically sizes to `min(viewport-width − 40px, viewport-height − 200px)` so it uses maximum screen real-estate on any device.
   - Updates every 3 seconds via server polling.
   - Renders: asteroids, escape pods, shipwrecks, the player's ship, other ships, trajectories, and debug overlays.
   - **Click-to-Navigate** — Clicking on the canvas with no mode active sets a navigation target. The input fields update to reflect the clicked course.
