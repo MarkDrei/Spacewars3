@@ -17,6 +17,7 @@ const StarbasePageClient: React.FC<StarbasePageClientProps> = (_props) => {
   const router = useRouter();
   const [shopCommanders, setShopCommanders] = useState<CommanderData[]>([]);
   const [inventoryCommanders, setInventoryCommanders] = useState<{ commander: CommanderData; row: number; col: number }[]>([]);
+  const [maxInventorySlots, setMaxInventorySlots] = useState<number>(DEFAULT_INVENTORY_SLOTS);
   const [iron, setIron] = useState<number>(0);
   const [message, setMessage] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
@@ -48,6 +49,7 @@ const StarbasePageClient: React.FC<StarbasePageClientProps> = (_props) => {
         });
       });
       setInventoryCommanders(commanders);
+      setMaxInventorySlots(data.maxSlots);
     }
   }, []);
 
@@ -110,7 +112,6 @@ const StarbasePageClient: React.FC<StarbasePageClientProps> = (_props) => {
     }
   }, [fetchInventory, showMessage]);
 
-  const maxInventorySlots = DEFAULT_INVENTORY_SLOTS;
   const inventoryFull = inventoryCommanders.length >= maxInventorySlots;
 
   return (

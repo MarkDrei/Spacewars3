@@ -9,6 +9,7 @@ import { USER_LOCK } from '@/lib/server/typedLocks';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 import { commanderBuyPrice } from '@/lib/server/starbase/commanderPrice';
 import { UserBonusCache } from '@/lib/server/bonus/UserBonusCache';
+import { getResearchEffectFromTree, ResearchType } from '@/lib/server/techs/techtree';
 
 export const dynamic = 'force-dynamic';
 
@@ -55,10 +56,13 @@ export async function POST(request: NextRequest) {
 
       await userCache.updateUserInCache(userContext, user);
 
+      const maxSlots = Math.floor(getResearchEffectFromTree(user.techTree, ResearchType.InventorySlots));
+
+      // Add to inventory (USER_INVENTORY_LOCK acquired internally — safe to nest under USER_LOCK)
+      await inventoryService.addItemToFirstFreeSlotWithoutLock(userId, commander, maxSlots);
+
       return user.iron;
     });
-
-    await inventoryService.addItemToFirstFreeSlotWithoutLock(userId, commander);
 
     return NextResponse.json({ success: true, newIron });
   } catch (error) {
