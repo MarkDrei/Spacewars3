@@ -9,6 +9,7 @@ import { USER_LOCK } from '@/lib/server/typedLocks';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 import { commanderSellPrice } from '@/lib/server/starbase/commanderPrice';
 import { UserBonusCache } from '@/lib/server/bonus/UserBonusCache';
+import { getResearchEffectFromTree, ResearchType } from '@/lib/server/techs/techtree';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,36 +28,36 @@ export async function POST(request: NextRequest) {
     }
 
     const userId = session.userId!;
-
-    // Remove item from inventory (acquires USER_INVENTORY_LOCK internally)
-    const item = await inventoryService.removeItem(userId, { row, col });
-
-    if (item.itemType !== 'commander') {
-      // Re-add the item since we removed the wrong type
-      await inventoryService.addItemToFirstFreeSlotWithoutLock(userId, item);
-      throw new ApiError(400, 'Item is not a commander');
-    }
-
-    const price = commanderSellPrice(item);
-
-    // Acquire USER_LOCK to update iron balance
     const userCache = UserCache.getInstance2();
-    const context = createLockContext();
 
-    const newIron = await context.useLockWithAcquire(USER_LOCK, async (userContext) => {
+    // Acquire USER_LOCK for the entire operation to avoid double acquisition
+    const context = createLockContext();
+    const { newIron, ironEarned } = await context.useLockWithAcquire(USER_LOCK, async (userContext) => {
       const user = await userCache.getUserByIdWithLock(userContext, userId);
       if (!user) throw new ApiError(404, 'User not found');
+
+      const maxSlots = Math.floor(getResearchEffectFromTree(user.techTree, ResearchType.InventorySlots));
+
+      // Remove item from inventory (acquires USER_INVENTORY_LOCK internally — safe to nest under USER_LOCK)
+      const item = await inventoryService.removeItem(userId, { row, col }, maxSlots);
+
+      if (item.itemType !== 'commander') {
+        // Re-add the item since we removed the wrong type
+        await inventoryService.addItemToFirstFreeSlotWithoutLock(userId, item, maxSlots);
+        throw new ApiError(400, 'Item is not a commander');
+      }
+
+      const price = commanderSellPrice(item);
 
       const bonuses = await UserBonusCache.getInstance().getBonuses(userContext, userId);
       user.updateStats(Math.floor(Date.now() / 1000), bonuses);
       user.addIron(price);
-
       await userCache.updateUserInCache(userContext, user);
 
-      return user.iron;
+      return { newIron: user.iron, ironEarned: price };
     });
 
-    return NextResponse.json({ success: true, newIron, ironEarned: price });
+    return NextResponse.json({ success: true, newIron, ironEarned });
   } catch (error) {
     if (error instanceof InventorySlotEmptyError || error instanceof InventorySlotInvalidError) {
       return NextResponse.json({ error: 'Invalid or empty inventory slot' }, { status: 400 });
