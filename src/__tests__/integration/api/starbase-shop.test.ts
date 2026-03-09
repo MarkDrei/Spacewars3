@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { POST as buyPOST } from '@/app/api/starbase/buy/route';
 import { POST as sellPOST } from '@/app/api/starbase/sell/route';
-import { createRequest, createAuthenticatedSession } from '../../helpers/apiTestHelpers';
+import { createRequest, createAuthenticatedSession, extractSessionCookie } from '../../helpers/apiTestHelpers';
 import { initializeIntegrationTestServer, shutdownIntegrationTestServer } from '../../helpers/testServer';
 import { withTransaction } from '../../helpers/transactionHelper';
 import { Commander } from '@/lib/server/inventory/Commander';
@@ -177,6 +177,35 @@ describe('Starbase Shop API', () => {
         expect(buyRes.status).toBe(200);
         expect(buyData.success).toBe(true);
         expect(buyData.newIron).toBe(0);
+      });
+    });
+
+    it('buyCommander_sameSlotTwice_secondPurchaseReturns400', async () => {
+      await withTransaction(async () => {
+        await createAuthenticatedSession('buydouble');
+        const userId = await getLatestUserId();
+
+        const shopCommanders = Array.from({ length: 10 }, () => Commander.random().toJSON());
+        const price = commanderBuyPrice(shopCommanders[0]);
+
+        // Give enough iron for two purchases to confirm the second is rejected by slot, not iron
+        await setUserIronAndEvictCache(userId, price * 2);
+
+        const shopCookie = await createShopSessionCookie(userId, shopCommanders);
+
+        // First purchase — should succeed
+        const firstReq = createRequest('http://localhost:3000/api/starbase/buy', 'POST', { slotIndex: 0 }, shopCookie);
+        const firstRes = await buyPOST(firstReq);
+        expect(firstRes.status).toBe(200);
+
+        // Extract the updated session cookie that has slot 0 nulled out
+        const updatedCookie = extractSessionCookie(firstRes);
+        expect(updatedCookie).toBeTruthy();
+
+        // Second purchase with the same slot using the updated cookie — should fail
+        const secondReq = createRequest('http://localhost:3000/api/starbase/buy', 'POST', { slotIndex: 0 }, updatedCookie!);
+        const secondRes = await buyPOST(secondReq);
+        expect(secondRes.status).toBe(400);
       });
     });
   });
