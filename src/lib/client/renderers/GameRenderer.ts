@@ -50,12 +50,18 @@ export class GameRenderer {
 
     /**
      * Returns the current world-scale: CSS pixels per world unit.
-     * Computed as (cssHeight / BASE_VIEWPORT_WORLD_H) / zoom.
      */
     getWorldScale(): number {
         const dpr = (typeof window !== 'undefined' && window.devicePixelRatio) || 1;
+        const cssW = this.canvas.width / dpr;
         const cssH = this.canvas.height / dpr;
-        return (cssH / BASE_VIEWPORT_WORLD_H) / this.zoom;
+        
+        // Target a constant visible world area regardless of screen aspect ratio.
+        // For a reference 800x800 viewpoint (zoom=1), the visible area is 800*800 = 640000.
+        const CONSTANT_AREA = BASE_VIEWPORT_WORLD_H * BASE_VIEWPORT_WORLD_H;
+        
+        // worldScale is chosen such that (cssW / worldScale) * (cssH / worldScale) = CONSTANT_AREA * zoom^2
+        return Math.sqrt((cssW * cssH) / CONSTANT_AREA) / this.zoom;
     }
 
     drawBackground(): void {

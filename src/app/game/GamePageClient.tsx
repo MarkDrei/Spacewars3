@@ -69,12 +69,21 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
 
     const resize = () => {
       const dpr = window.devicePixelRatio || 1;
-      canvas.width = Math.round(container.clientWidth * dpr);
-      canvas.height = Math.round(container.clientHeight * dpr);
+      const cssW = container.clientWidth;
+      const cssH = container.clientHeight;
+      
+      const newWidth = Math.round(cssW * dpr);
+      const newHeight = Math.round(cssH * dpr);
+      
+      // Only set canvas size if it actually changed to prevent unnecessary clears/state resets
+      if (canvas.width !== newWidth || canvas.height !== newHeight) {
+        canvas.width = newWidth;
+        canvas.height = newHeight;
+      }
     };
 
     resize();
-    const observer = new ResizeObserver(resize);
+    const observer = new ResizeObserver(() => resize());
     observer.observe(container);
     return () => observer.disconnect();
   }, []);

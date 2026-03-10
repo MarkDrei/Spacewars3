@@ -566,9 +566,16 @@ export class Game {
   private drawInterceptionLines(): void {
     const interceptionLines = this.getInterceptionLines();
     if (interceptionLines) {
-      const centerX = this.ctx.canvas.width / 2;
-      const centerY = this.ctx.canvas.height / 2;
+      const dpr = (typeof window !== 'undefined' && window.devicePixelRatio) || 1;
+      const worldScale = this.renderer.getWorldScale();
+      const cssW = this.ctx.canvas.width / dpr;
+      const cssH = this.ctx.canvas.height / dpr;
+      const centerX = (cssW / 2) / worldScale;
+      const centerY = (cssH / 2) / worldScale;
       const ship = this.world.getShip();
+      
+      this.ctx.save();
+      this.ctx.scale(dpr * worldScale, dpr * worldScale);
       
       this.interceptionRenderer.drawInterceptionLines(
         interceptionLines,
@@ -577,6 +584,8 @@ export class Game {
         ship.getX(),
         ship.getY()
       );
+      
+      this.ctx.restore();
     }
   }
 }
