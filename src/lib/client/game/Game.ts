@@ -103,8 +103,9 @@ export class Game {
       const mouseX = event.clientX - rect.left;
       const mouseY = event.clientY - rect.top;
       
-      // Scale CSS coordinates to canvas buffer coordinates
-      // (canvas buffer always matches display size via ResizeObserver, so ratio ≈ 1)
+      // Scale CSS pixel coordinates to canvas buffer coordinates.
+      // ResizeObserver keeps the buffer synced to the CSS display size,
+      // so this ratio is normally 1.0 but guards against browser zoom/DPR edge cases.
       const scaleX = canvas.width / rect.width;
       const scaleY = canvas.height / rect.height;
       const logicalX = mouseX * scaleX;

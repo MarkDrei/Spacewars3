@@ -57,7 +57,7 @@ describe('viewportState', () => {
             expect(area).toBeCloseTo(TARGET_WORLD_AREA, 1);
         });
 
-        it('visibleWorldArea_wideAndTallSamePixelCount_sameWorldAreaDifferentShape', () => {
+        it('visibleWorldArea_samePixelCountDifferentShape_maintainsSameArea', () => {
             // 500×1000 and 1000×500 have the same pixel count → same scale and same world area
             viewportState.updateFromCanvas(makeCanvas(500, 1000));
             const area1 = viewportState.visibleWorldWidth * viewportState.visibleWorldHeight;

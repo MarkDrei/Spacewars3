@@ -62,12 +62,12 @@ export class RadarRenderer {
         const shipX = ship.getX();
         const shipY = ship.getY();
         const scale = viewportState.scale;
-        // coordinateDistance and innerExclusionZone are in screen pixels;
+        // coordinateDistancePixels and innerExclusionZonePixels are in screen pixels;
         // convert to world units for the loop range
-        const coordinateDistancePx = 400;
-        const innerExclusionZonePx = 70;
-        const coordinateDistance = coordinateDistancePx / scale;
-        const innerExclusionZone = innerExclusionZonePx / scale;
+        const coordinateDistancePixels = 400;
+        const innerExclusionZonePixels = 70;
+        const coordinateDistance = coordinateDistancePixels / scale;
+        const innerExclusionZone = innerExclusionZonePixels / scale;
 
         ctx.font = '12px Arial';
         ctx.fillStyle = '#ff0000';
