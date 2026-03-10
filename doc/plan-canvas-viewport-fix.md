@@ -64,19 +64,24 @@ CSS px       = world units × worldScale
 
 ## Correct Solution: Unified World-Scale Transform
 
-### The core formula
+### The core formula (area-based)
 
 ```ts
-// src/shared/viewportConstants.ts  (new)
-export const BASE_VIEWPORT_WORLD_H = 800;  // world units visible vertically at zoom=1
+// src/shared/viewportConstants.ts
+// BASE_VIEWPORT_WORLD_H is the reference side length; the formula keeps the
+// *area* of the visible world constant = BASE_VIEWPORT_WORLD_H^2.
+export const BASE_VIEWPORT_WORLD_H = 1000;
 
 // Computed each frame in GameRenderer:
-const dpr        = window.devicePixelRatio || 1;
-const cssH       = canvas.height / dpr;            // CSS pixels tall
-const worldScale = (cssH / BASE_VIEWPORT_WORLD_H) / zoom;
-//   zoom = 1.0 → 800 wu visible vertically, on every device
-//   zoom = 2.0 → 1600 wu visible vertically (zoomed out, see more world)
-//   zoom = 0.5 →  400 wu visible vertically (zoomed in, see less)
+const dpr   = window.devicePixelRatio || 1;
+const cssW  = canvas.width  / dpr;
+const cssH  = canvas.height / dpr;
+const CONSTANT_AREA = BASE_VIEWPORT_WORLD_H * BASE_VIEWPORT_WORLD_H;
+const worldScale = Math.sqrt((cssW * cssH) / CONSTANT_AREA) / zoom;
+//   Visible world area  = CONSTANT_AREA / zoom^2  (constant regardless of canvas shape)
+//   Visible world W x H = (cssW / worldScale) x (cssH / worldScale)
+//   Aspect ratio of visible world = cssW / cssH  (always matches the canvas)
+//   A larger canvas shows the same world region at higher pixel density.
 ```
 
 Apply once per frame before all draw calls:

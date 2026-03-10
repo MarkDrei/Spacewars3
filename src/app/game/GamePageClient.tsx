@@ -61,7 +61,9 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
     };
   }, []);
 
-  // Resize canvas to fill its container, accounting for devicePixelRatio for crisp rendering
+  // Resize canvas to fill its container, accounting for devicePixelRatio for crisp rendering.
+  // Depends on isLoading so it re-runs once the canvas mounts (the canvas is only rendered
+  // after loading completes, so the first run with empty deps would see null refs).
   useEffect(() => {
     const container = canvasContainerRef.current;
     const canvas = canvasRef.current;
@@ -71,22 +73,31 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
       const dpr = window.devicePixelRatio || 1;
       const cssW = container.clientWidth;
       const cssH = container.clientHeight;
-      
+
       const newWidth = Math.round(cssW * dpr);
       const newHeight = Math.round(cssH * dpr);
-      
-      // Only set canvas size if it actually changed to prevent unnecessary clears/state resets
+
+      // Update the drawing buffer only when dimensions actually change
       if (canvas.width !== newWidth || canvas.height !== newHeight) {
         canvas.width = newWidth;
         canvas.height = newHeight;
       }
+
+      // Always keep the CSS display size equal to the CSS-pixel dimensions of the container.
+      // Without this the browser stretches the buffer to the container, causing blurriness and
+      // a wrong aspect ratio when the window is resized.
+      canvas.style.width = `${cssW}px`;
+      canvas.style.height = `${cssH}px`;
     };
 
     resize();
     const observer = new ResizeObserver(() => resize());
     observer.observe(container);
     return () => observer.disconnect();
-  }, []);
+  // canvasContainerRef and canvasRef are stable React refs (never change identity),
+  // so they don't need to be listed; isLoading is the only value that gates
+  // whether the canvas is in the DOM.
+  }, [isLoading]);
 
   // Sync debugDrawingsEnabled state with game instance
   useEffect(() => {

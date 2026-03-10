@@ -49,18 +49,27 @@ export class GameRenderer {
     }
 
     /**
-     * Returns the current world-scale: CSS pixels per world unit.
+     * Returns the world-scale factor: CSS pixels per world unit.
+     *
+     * The scale is chosen so that the visible world area is constant regardless
+     * of canvas size or aspect ratio:
+     *   (cssW / worldScale) × (cssH / worldScale) = BASE_VIEWPORT_WORLD_H²
+     *
+     * This means:
+     *  - A larger canvas shows the same world region at higher pixel density.
+     *  - A wider/taller canvas shows more world in that direction while keeping
+     *    the same total world area visible.
+     *  - zoom > 1 zooms out (more world visible); zoom < 1 zooms in.
      */
     getWorldScale(): number {
         const dpr = (typeof window !== 'undefined' && window.devicePixelRatio) || 1;
         const cssW = this.canvas.width / dpr;
         const cssH = this.canvas.height / dpr;
-        
-        // Target a constant visible world area regardless of screen aspect ratio.
-        // For a reference 800x800 viewpoint (zoom=1), the visible area is 800*800 = 640000.
+
+        // Constant visible world area = BASE_VIEWPORT_WORLD_H^2
         const CONSTANT_AREA = BASE_VIEWPORT_WORLD_H * BASE_VIEWPORT_WORLD_H;
-        
-        // worldScale is chosen such that (cssW / worldScale) * (cssH / worldScale) = CONSTANT_AREA * zoom^2
+
+        // worldScale satisfies: (cssW / worldScale) * (cssH / worldScale) = CONSTANT_AREA / zoom^2
         return Math.sqrt((cssW * cssH) / CONSTANT_AREA) / this.zoom;
     }
 
