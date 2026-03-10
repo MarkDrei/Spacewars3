@@ -396,8 +396,6 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
           <canvas 
             ref={canvasRef}
             id="gameCanvas" 
-            width="800" 
-            height="800"
           ></canvas>
           <div className="canvas-overlay-controls-left">
             <label className="debug-toggle-label">

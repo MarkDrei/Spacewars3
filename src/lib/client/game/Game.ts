@@ -12,6 +12,7 @@ import { calculateToroidalDistance } from '@shared/physics';
 import { STARBASE_DOCK_RANGE } from '@/shared/starbases';
 import { debugState } from '../debug/debugState';
 import { InterceptionLineRenderer } from '../renderers/InterceptionLineRenderer';
+import { viewportState } from './viewportState';
 
 export class Game {
   private world: World;
@@ -30,6 +31,7 @@ export class Game {
   private attackClickMode: boolean = false;
   private onTeleportClickCallback: ((x: number, y: number) => void) | null = null;
   private onStarbaseEntryCallback: ((starbaseId: number) => void) | null = null;
+  private resizeObserver: ResizeObserver | null = null;
 
   constructor(canvas: HTMLCanvasElement) {
     // Initialize the canvas context
@@ -51,6 +53,12 @@ export class Game {
     // Initialize the interception line renderer
     this.interceptionRenderer = new InterceptionLineRenderer(this.ctx);
     
+    // Set up viewport from initial canvas size
+    viewportState.updateFromCanvas(canvas);
+
+    // Watch for canvas resize and keep buffer in sync with display size
+    this.setupResizeObserver(canvas);
+
     // Initialize click handlers
     this.initializeClickHandler(canvas);
   }
@@ -59,7 +67,30 @@ export class Game {
   public getWorld(): World {
     return this.world;
   }
-  
+
+  /**
+   * Keep the canvas buffer in sync with its CSS display size.
+   * This prevents blurriness caused by CSS scaling an undersized buffer.
+   * Only runs in browser environments where ResizeObserver is available.
+   */
+  private setupResizeObserver(canvas: HTMLCanvasElement): void {
+    if (typeof ResizeObserver === 'undefined') return;
+
+    this.resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const { width, height } = entry.contentRect;
+        const newWidth = Math.round(width);
+        const newHeight = Math.round(height);
+        if (canvas.width !== newWidth || canvas.height !== newHeight) {
+          canvas.width = newWidth;
+          canvas.height = newHeight;
+          viewportState.updateFromCanvas(canvas);
+        }
+      }
+    });
+    this.resizeObserver.observe(canvas);
+  }
+
   private mouseX: number = 0;
   private mouseY: number = 0;
 
@@ -72,7 +103,8 @@ export class Game {
       const mouseX = event.clientX - rect.left;
       const mouseY = event.clientY - rect.top;
       
-      // Scale coordinates to match canvas logical size
+      // Scale CSS coordinates to canvas buffer coordinates
+      // (canvas buffer always matches display size via ResizeObserver, so ratio ≈ 1)
       const scaleX = canvas.width / rect.width;
       const scaleY = canvas.height / rect.height;
       const logicalX = mouseX * scaleX;
@@ -92,8 +124,9 @@ export class Game {
         const centerY = canvas.height / 2;
         const dx = logicalX - centerX;
         const dy = logicalY - centerY;
-        const worldX = Math.max(0, Math.min(5000, ship.getX() + dx));
-        const worldY = Math.max(0, Math.min(5000, ship.getY() + dy));
+        // Convert screen delta to world delta using viewport scale
+        const worldX = Math.max(0, Math.min(5000, ship.getX() + viewportState.screenToWorldOffset(dx)));
+        const worldY = Math.max(0, Math.min(5000, ship.getY() + viewportState.screenToWorldOffset(dy)));
         this.onTeleportClickCallback(worldX, worldY);
         this.teleportClickMode = false; // exit click mode after use
         return; // don't process normal click
@@ -175,10 +208,10 @@ export class Game {
     const angle = Math.atan2(dy, dx);
     const angleDegrees = (angle * 180 / Math.PI + 360) % 360;
     
-    // Convert click coordinates to world coordinates
+    // Convert screen offset to world offset using viewport scale
     const ship = this.world.getShip();
-    const worldTargetX = ship.getX() + dx;
-    const worldTargetY = ship.getY() + dy;
+    const worldTargetX = ship.getX() + viewportState.screenToWorldOffset(dx);
+    const worldTargetY = ship.getY() + viewportState.screenToWorldOffset(dy);
     
     this.handleDirectionChange(angleDegrees, worldTargetX, worldTargetY);
   }
@@ -343,9 +376,9 @@ export class Game {
   
   // Update hover states based on current mouse position
   private updateHoverStates(): void {
-    // Convert mouse coordinates to world coordinates
-    const worldMouseX = this.mouseX - this.ctx.canvas.width / 2 + this.ship.getX();
-    const worldMouseY = this.mouseY - this.ctx.canvas.height / 2 + this.ship.getY();
+    // Convert screen pixel offset from center to world coordinates using viewport scale
+    const worldMouseX = this.ship.getX() + viewportState.screenToWorldOffset(this.mouseX - this.ctx.canvas.width / 2);
+    const worldMouseY = this.ship.getY() + viewportState.screenToWorldOffset(this.mouseY - this.ctx.canvas.height / 2);
 
     // Update hover states for all objects
     this.world.updateHoverStates(worldMouseX, worldMouseY);
@@ -434,6 +467,8 @@ export class Game {
   public stop(): void {
     this.running = false;
     this.clearTargetingLine(); // Clean up targeting line when game stops
+    this.resizeObserver?.disconnect();
+    this.resizeObserver = null;
   }
 
   private gameLoop(): void {

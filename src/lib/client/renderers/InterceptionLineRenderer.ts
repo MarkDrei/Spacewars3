@@ -1,4 +1,5 @@
 import type { InterceptionLines } from '@shared/types/gameTypes';
+import { viewportState } from '../game/viewportState';
 
 export class InterceptionLineRenderer {
   constructor(private ctx: CanvasRenderingContext2D) {}
@@ -12,14 +13,16 @@ export class InterceptionLineRenderer {
   ): void {
     const opacity = this.calculateOpacity(interceptionLines);
     if (opacity <= 0) return; // Don't render if fully faded
+
+    const scale = viewportState.scale;
     
-    // Convert world coordinates to screen coordinates
-    const shipScreenX = centerX + (interceptionLines.shipToInterceptX - shipX);
-    const shipScreenY = centerY + (interceptionLines.shipToInterceptY - shipY);
-    const targetScreenX = centerX + (interceptionLines.targetToInterceptX - shipX);
-    const targetScreenY = centerY + (interceptionLines.targetToInterceptY - shipY);
-    const interceptScreenX = centerX + (interceptionLines.interceptX - shipX);
-    const interceptScreenY = centerY + (interceptionLines.interceptY - shipY);
+    // Convert world coordinates to screen coordinates (applying viewport scale)
+    const shipScreenX = centerX + (interceptionLines.shipToInterceptX - shipX) * scale;
+    const shipScreenY = centerY + (interceptionLines.shipToInterceptY - shipY) * scale;
+    const targetScreenX = centerX + (interceptionLines.targetToInterceptX - shipX) * scale;
+    const targetScreenY = centerY + (interceptionLines.targetToInterceptY - shipY) * scale;
+    const interceptScreenX = centerX + (interceptionLines.interceptX - shipX) * scale;
+    const interceptScreenY = centerY + (interceptionLines.interceptY - shipY) * scale;
     
     // Draw ship-to-intercept line (green-blue)
     this.drawShipLine(shipScreenX, shipScreenY, interceptScreenX, interceptScreenY, opacity);

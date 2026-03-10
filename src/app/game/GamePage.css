@@ -53,11 +53,8 @@
 
 #gameCanvas {
   display: block;
-  width: auto;
-  height: auto;
-  max-width: 100%;
-  max-height: calc(100vh - 160px); /* Keep max-height to prevent overflow */
-  object-fit: contain;
+  width: 100%;
+  height: calc(100vh - 160px);
 }
 
 /* Game Controls */

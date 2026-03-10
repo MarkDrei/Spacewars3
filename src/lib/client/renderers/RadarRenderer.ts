@@ -1,4 +1,5 @@
 import { Ship } from '../game/Ship';
+import { viewportState } from '../game/viewportState';
 
 export class RadarRenderer {
     drawRadar(ctx: CanvasRenderingContext2D, centerX: number, centerY: number, ship: Ship): void {
@@ -60,8 +61,13 @@ export class RadarRenderer {
         // Draw coordinates
         const shipX = ship.getX();
         const shipY = ship.getY();
-        const coordinateDistance = 400;
-        const innerExclusionZone = 70;
+        const scale = viewportState.scale;
+        // coordinateDistance and innerExclusionZone are in screen pixels;
+        // convert to world units for the loop range
+        const coordinateDistancePx = 400;
+        const innerExclusionZonePx = 70;
+        const coordinateDistance = coordinateDistancePx / scale;
+        const innerExclusionZone = innerExclusionZonePx / scale;
 
         ctx.font = '12px Arial';
         ctx.fillStyle = '#ff0000';
@@ -70,7 +76,7 @@ export class RadarRenderer {
             // Draw X coordinates along bottom edge (above the line)
             ctx.textAlign = 'center';
             for (let x = Math.floor((shipX - coordinateDistance) / 100) * 100; x <= Math.ceil((shipX + coordinateDistance) / 100) * 100; x += 100) {
-                const screenX = centerX + (x - shipX);
+                const screenX = centerX + (x - shipX) * scale;
                 if (screenX >= 0 && screenX <= centerX * 2) { // Keep on screen
                     ctx.fillText(x.toString(), screenX, centerY * 2 - 5);
                 }
@@ -81,7 +87,7 @@ export class RadarRenderer {
             for (let y = Math.floor((shipY - coordinateDistance) / 100) * 100; y <= Math.ceil((shipY + coordinateDistance) / 100) * 100; y += 100) {
                 const distanceFromShip = Math.abs(y - shipY);
                 if (distanceFromShip >= innerExclusionZone && distanceFromShip <= coordinateDistance) {
-                    const screenY = centerY + (y - shipY);
+                    const screenY = centerY + (y - shipY) * scale;
                     if (screenY >= 15 && screenY <= centerY * 2) { // Keep on screen
                         ctx.fillText(y.toString(), 5, screenY);
                     }
@@ -93,7 +99,7 @@ export class RadarRenderer {
             for (let x = Math.floor((shipX - coordinateDistance) / 100) * 100; x <= Math.ceil((shipX + coordinateDistance) / 100) * 100; x += 100) {
                 const distanceFromShip = Math.abs(x - shipX);
                 if (distanceFromShip >= innerExclusionZone && distanceFromShip <= coordinateDistance) {
-                    ctx.fillText(x.toString(), centerX + (x - shipX), centerY + 15);
+                    ctx.fillText(x.toString(), centerX + (x - shipX) * scale, centerY + 15);
                 }
             }
 
@@ -102,7 +108,7 @@ export class RadarRenderer {
             for (let y = Math.floor((shipY - coordinateDistance) / 100) * 100; y <= Math.ceil((shipY + coordinateDistance) / 100) * 100; y += 100) {
                 const distanceFromShip = Math.abs(y - shipY);
                 if (distanceFromShip >= innerExclusionZone && distanceFromShip <= coordinateDistance) {
-                    ctx.fillText(y.toString(), centerX - 15, centerY + (y - shipY));
+                    ctx.fillText(y.toString(), centerX - 15, centerY + (y - shipY) * scale);
                 }
             }
         }

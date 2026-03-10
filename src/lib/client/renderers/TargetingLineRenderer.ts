@@ -1,6 +1,7 @@
 import { World } from '../game/World';
 import type { TargetingLine } from '@shared/types/gameTypes';
 import { debugState } from '../debug/debugState';
+import { viewportState } from '../game/viewportState';
 
 export class TargetingLineRenderer {
   constructor(private ctx: CanvasRenderingContext2D) {}
@@ -16,12 +17,14 @@ export class TargetingLineRenderer {
 
     const opacity = this.calculateOpacity(targetingLine);
     if (opacity <= 0) return; // Don't render if fully faded
+
+    const scale = viewportState.scale;
     
-    // Convert world coordinates to screen coordinates
-    const startScreenX = centerX + (targetingLine.startX - shipX);
-    const startScreenY = centerY + (targetingLine.startY - shipY);
-    const targetScreenX = centerX + (targetingLine.targetX - shipX);
-    const targetScreenY = centerY + (targetingLine.targetY - shipY);
+    // Convert world coordinates to screen coordinates (applying viewport scale)
+    const startScreenX = centerX + (targetingLine.startX - shipX) * scale;
+    const startScreenY = centerY + (targetingLine.startY - shipY) * scale;
+    const targetScreenX = centerX + (targetingLine.targetX - shipX) * scale;
+    const targetScreenY = centerY + (targetingLine.targetY - shipY) * scale;
     
     // Draw the main line
     this.drawLine(startScreenX, startScreenY, targetScreenX, targetScreenY, opacity);
@@ -84,6 +87,7 @@ export class TargetingLineRenderer {
   ): void {
     const worldWidth = World.WIDTH;
     const worldHeight = World.HEIGHT;
+    const scale = viewportState.scale;
     
     // Define offsets for wrapped positions
     const wrapOffsets = [
@@ -103,14 +107,14 @@ export class TargetingLineRenderer {
       const wrappedTargetX = targetingLine.targetX + offset.x;
       const wrappedTargetY = targetingLine.targetY + offset.y;
       
-      // Convert to screen coordinates
-      const wrappedScreenX = centerX + (wrappedTargetX - shipX);
-      const wrappedScreenY = centerY + (wrappedTargetY - shipY);
+      // Convert to screen coordinates (applying viewport scale)
+      const wrappedScreenX = centerX + (wrappedTargetX - shipX) * scale;
+      const wrappedScreenY = centerY + (wrappedTargetY - shipY) * scale;
       
       // Only draw if the wrapped target would be visible on screen
       if (this.isPositionVisible(wrappedScreenX, wrappedScreenY)) {
-        const startScreenX = centerX + (targetingLine.startX - shipX);
-        const startScreenY = centerY + (targetingLine.startY - shipY);
+        const startScreenX = centerX + (targetingLine.startX - shipX) * scale;
+        const startScreenY = centerY + (targetingLine.startY - shipY) * scale;
         
         this.drawLine(startScreenX, startScreenY, wrappedScreenX, wrappedScreenY, opacity);
         this.drawTargetIndicator(wrappedScreenX, wrappedScreenY, opacity);

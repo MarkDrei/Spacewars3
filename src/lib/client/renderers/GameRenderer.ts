@@ -8,6 +8,7 @@ import { SpaceObjectsRenderer } from './SpaceObjectsRenderer';
 import { TargetingLineRenderer } from './TargetingLineRenderer';
 import type { TargetingLine } from '@shared/types/gameTypes';
 import { debugState } from '../debug/debugState';
+import { viewportState } from '../game/viewportState';
 
 export class GameRenderer {
     private ctx: CanvasRenderingContext2D;
@@ -51,18 +52,19 @@ export class GameRenderer {
         
         const shipX = this.world.getShip().getX();
         const shipY = this.world.getShip().getY();
+        const scale = viewportState.scale;
         
-        // Calculate visible area in world coordinates
-        const viewportWidth = this.canvas.width;
-        const viewportHeight = this.canvas.height;
-        const visibleLeft = shipX - viewportWidth / 2;
-        const visibleRight = shipX + viewportWidth / 2;
-        const visibleTop = shipY - viewportHeight / 2;
-        const visibleBottom = shipY + viewportHeight / 2;
+        // Calculate visible area in world coordinates using viewport scale
+        const halfWorldW = viewportState.visibleWorldWidth / 2;
+        const halfWorldH = viewportState.visibleWorldHeight / 2;
+        const visibleLeft = shipX - halfWorldW;
+        const visibleRight = shipX + halfWorldW;
+        const visibleTop = shipY - halfWorldH;
+        const visibleBottom = shipY + halfWorldH;
         
         // Draw vertical grid lines
         for (let x = Math.floor(visibleLeft / gridSize) * gridSize; x <= visibleRight; x += gridSize) {
-            const screenX = this.canvas.width / 2 + (x - shipX);
+            const screenX = this.canvas.width / 2 + (x - shipX) * scale;
             this.ctx.beginPath();
             this.ctx.moveTo(screenX, 0);
             this.ctx.lineTo(screenX, this.canvas.height);
@@ -71,7 +73,7 @@ export class GameRenderer {
         
         // Draw horizontal grid lines
         for (let y = Math.floor(visibleTop / gridSize) * gridSize; y <= visibleBottom; y += gridSize) {
-            const screenY = this.canvas.height / 2 + (y - shipY);
+            const screenY = this.canvas.height / 2 + (y - shipY) * scale;
             this.ctx.beginPath();
             this.ctx.moveTo(0, screenY);
             this.ctx.lineTo(this.canvas.width, screenY);
@@ -90,18 +92,19 @@ export class GameRenderer {
         const centerY = this.canvas.height / 2;
         const worldWidth = this.world.getWidth();
         const worldHeight = this.world.getHeight();
+        const scale = viewportState.scale;
 
-        // Calculate the screen coordinates of the world boundaries
-        const leftEdgeX = centerX - shipX;
-        const topEdgeY = centerY - shipY;
+        // Calculate the screen coordinates of the world boundaries (top-left corner)
+        const leftEdgeX = centerX - shipX * scale;
+        const topEdgeY = centerY - shipY * scale;
 
         // Draw the world boundaries with a more visible style
         this.ctx.strokeStyle = '#214923ff'; // Green color for boundaries
         this.ctx.lineWidth = 2;
 
-        // Draw the boundary rectangle
+        // Draw the boundary rectangle (scaled to screen pixels)
         this.ctx.beginPath();
-        this.ctx.rect(leftEdgeX, topEdgeY, worldWidth, worldHeight);
+        this.ctx.rect(leftEdgeX, topEdgeY, worldWidth * scale, worldHeight * scale);
         this.ctx.stroke();
     }
 

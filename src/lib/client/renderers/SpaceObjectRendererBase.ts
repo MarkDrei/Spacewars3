@@ -1,5 +1,6 @@
 import { SpaceObject } from '@shared/types';
 import { World } from '../game/World';
+import { viewportState } from '../game/viewportState';
 
 /**
  * Base renderer for all space objects
@@ -22,9 +23,11 @@ export abstract class SpaceObjectRendererBase {
         viewportY: number,
         spaceObject: SpaceObject
     ): void {
-        // Calculate screen position
-        const screenX = centerX + (spaceObject.x - viewportX);
-        const screenY = centerY + (spaceObject.y - viewportY);
+        const scale = viewportState.scale;
+
+        // Calculate screen position applying viewport scale
+        const screenX = centerX + (spaceObject.x - viewportX) * scale;
+        const screenY = centerY + (spaceObject.y - viewportY) * scale;
         
         // Check if the object is visible on screen (with some margin)
         const margin = 100;
@@ -53,6 +56,8 @@ export abstract class SpaceObjectRendererBase {
         // Get world dimensions from the World class
         const worldWidth = World.WIDTH;
         const worldHeight = World.HEIGHT;
+
+        const scale = viewportState.scale;
         
         // Define offsets for the 8 possible wrapped positions (including diagonals)
         const wrapOffsets = [
@@ -83,9 +88,9 @@ export abstract class SpaceObjectRendererBase {
             const wrappedX = spaceObject.x + offset.x;
             const wrappedY = spaceObject.y + offset.y;
             
-            // Calculate where this would be on screen
-            const wrappedScreenX = centerX + (wrappedX - viewportX);
-            const wrappedScreenY = centerY + (wrappedY - viewportY);
+            // Calculate where this would be on screen (applying viewport scale)
+            const wrappedScreenX = centerX + (wrappedX - viewportX) * scale;
+            const wrappedScreenY = centerY + (wrappedY - viewportY) * scale;
             
             // Only draw if it would be visible on screen
             if (isPositionVisible(wrappedScreenX, wrappedScreenY)) {

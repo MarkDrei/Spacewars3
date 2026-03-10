@@ -5,6 +5,7 @@ import { AsteroidRenderer } from './AsteroidRenderer';
 import { SpaceObject } from '@shared/types';
 import { OtherShipRenderer } from './OtherShipRenderer';
 import { StarbaseRenderer } from './StarbaseRenderer';
+import { viewportState } from '../game/viewportState';
 
 export class SpaceObjectsRenderer {
     private ctx: CanvasRenderingContext2D;
@@ -140,13 +141,13 @@ export class SpaceObjectsRenderer {
         const shipX = ship.getX();
         const shipY = ship.getY();
         
-        // Calculate visible area in world coordinates
-        const canvasWidth = this.canvas.width;
-        const canvasHeight = this.canvas.height;
-        const visibleLeft = shipX - canvasWidth / 2;
-        const visibleRight = shipX + canvasWidth / 2;
-        const visibleTop = shipY - canvasHeight / 2;
-        const visibleBottom = shipY + canvasHeight / 2;
+        // Calculate visible area in world coordinates using viewport scale
+        const halfWorldW = viewportState.visibleWorldWidth / 2;
+        const halfWorldH = viewportState.visibleWorldHeight / 2;
+        const visibleLeft = shipX - halfWorldW;
+        const visibleRight = shipX + halfWorldW;
+        const visibleTop = shipY - halfWorldH;
+        const visibleBottom = shipY + halfWorldH;
         
         // Define offsets for the 8 possible wrapped positions (including diagonals)
         const wrapOffsets = [
