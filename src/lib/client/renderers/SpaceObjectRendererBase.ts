@@ -7,7 +7,7 @@ import { World } from '../game/World';
  */
 export abstract class SpaceObjectRendererBase {
     /**
-     * Standard ship length in pixels (Y-axis height)
+     * Standard ship length in world units (Y-axis height)
      * Used for consistent scaling of all ship types
      */
     public static readonly SHIP_LENGTH = 70;
@@ -22,14 +22,16 @@ export abstract class SpaceObjectRendererBase {
         viewportY: number,
         spaceObject: SpaceObject
     ): void {
-        // Calculate screen position
+        // Calculate screen position in world units (ctx is already scaled)
         const screenX = centerX + (spaceObject.x - viewportX);
         const screenY = centerY + (spaceObject.y - viewportY);
         
-        // Check if the object is visible on screen (with some margin)
+        // Visible area in world units: [0, centerX*2] × [0, centerY*2]
+        const canvasW = centerX * 2;
+        const canvasH = centerY * 2;
         const margin = 100;
-        if (screenX < -margin || screenX > ctx.canvas.width + margin ||
-            screenY < -margin || screenY > ctx.canvas.height + margin) {
+        if (screenX < -margin || screenX > canvasW + margin ||
+            screenY < -margin || screenY > canvasH + margin) {
             // Try drawing wrapped versions
             this.drawWrappedObjects(ctx, centerX, centerY, viewportX, viewportY, spaceObject);
             return;
@@ -66,14 +68,18 @@ export abstract class SpaceObjectRendererBase {
             { x: worldWidth, y: worldHeight }     // Bottom-Right
         ];
         
-        // Helper function to check if a screen position is visible
+        // Visible area in world units
+        const canvasW = centerX * 2;
+        const canvasH = centerY * 2;
+        
+        // Helper function to check if a screen position is visible (in world units)
         const isPositionVisible = (screenX: number, screenY: number): boolean => {
             const margin = 100;
             return (
                 screenX > -margin && 
-                screenX < ctx.canvas.width + margin && 
+                screenX < canvasW + margin && 
                 screenY > -margin && 
-                screenY < ctx.canvas.height + margin
+                screenY < canvasH + margin
             );
         };
         

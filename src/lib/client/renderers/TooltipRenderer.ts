@@ -22,13 +22,18 @@ export class TooltipRenderer {
         return Math.sqrt(dx * dx + dy * dy);
     }
 
-    drawTooltip(spaceObjects: SpaceObjectOld[], ship: Ship): void {
+    drawTooltip(spaceObjects: SpaceObjectOld[], ship: Ship, worldScale?: number): void {
         // Find the first hovered object
         const hoveredObject = spaceObjects.find(obj => obj.isHoveredState());
         
         if (!hoveredObject) return;
         
-        // Calculate screen position for the tooltip
+        // Calculate screen position for the tooltip (in physical pixels)
+        // With the DPR-aware canvas, canvas.width is in physical pixels.
+        // World-unit offsets need multiplying by dpr * worldScale to become physical pixels.
+        const dpr = (typeof window !== 'undefined' && window.devicePixelRatio) || 1;
+        const effectiveScale = (worldScale ?? 1) * dpr;
+        
         let screenX: number;
         let screenY: number;
         
@@ -36,8 +41,8 @@ export class TooltipRenderer {
             screenX = this.canvas.width / 2;
             screenY = this.canvas.height / 2;
         } else {
-            screenX = this.canvas.width / 2 + hoveredObject.getX() - ship.getX();
-            screenY = this.canvas.height / 2 + hoveredObject.getY() - ship.getY();
+            screenX = this.canvas.width / 2 + (hoveredObject.getX() - ship.getX()) * effectiveScale;
+            screenY = this.canvas.height / 2 + (hoveredObject.getY() - ship.getY()) * effectiveScale;
         }
         
         // Get object information

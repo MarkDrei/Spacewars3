@@ -4,13 +4,6 @@ export class RadarRenderer {
     drawRadar(ctx: CanvasRenderingContext2D, centerX: number, centerY: number, ship: Ship): void {
         const maxRadius = Math.min(centerX, centerY);
 
-        // Draw outer circle
-        ctx.beginPath();
-        ctx.arc(centerX, centerY, maxRadius, 0, Math.PI * 2);
-        ctx.strokeStyle = '#8b0000';  // Dark red for rings
-        ctx.lineWidth = 1;
-        ctx.stroke();
-
         // Draw inner circle at 125 distance
         ctx.beginPath();
         ctx.arc(centerX, centerY, 125, 0, Math.PI * 2);
@@ -23,7 +16,7 @@ export class RadarRenderer {
     }
 
     private drawCrosshairsAndCoordinates(ctx: CanvasRenderingContext2D, centerX: number, centerY: number, maxRadius: number, ship: Ship): void {
-        const useScreenEdges = false; // Hardcoded boolean - true for screen edges, false for center crossing
+        const useScreenEdges = true; // true for screen edges (left/bottom), false for center crossing
         
         // Draw horizontal and vertical lines
         ctx.strokeStyle = '#8b0000';  // Dark red for lines
@@ -79,12 +72,9 @@ export class RadarRenderer {
             // Draw Y coordinates along left edge
             ctx.textAlign = 'left';
             for (let y = Math.floor((shipY - coordinateDistance) / 100) * 100; y <= Math.ceil((shipY + coordinateDistance) / 100) * 100; y += 100) {
-                const distanceFromShip = Math.abs(y - shipY);
-                if (distanceFromShip >= innerExclusionZone && distanceFromShip <= coordinateDistance) {
-                    const screenY = centerY + (y - shipY);
-                    if (screenY >= 15 && screenY <= centerY * 2) { // Keep on screen
-                        ctx.fillText(y.toString(), 5, screenY);
-                    }
+                const screenY = centerY + (y - shipY);
+                if (screenY >= 15 && screenY <= centerY * 2) { // Keep on screen
+                    ctx.fillText(y.toString(), 5, screenY);
                 }
             }
         } else {

@@ -5,6 +5,7 @@ import { AsteroidRenderer } from './AsteroidRenderer';
 import { SpaceObject } from '@shared/types';
 import { OtherShipRenderer } from './OtherShipRenderer';
 import { StarbaseRenderer } from './StarbaseRenderer';
+import type { ViewportInfo } from './GameRenderer';
 
 export class SpaceObjectsRenderer {
     private ctx: CanvasRenderingContext2D;
@@ -28,20 +29,20 @@ export class SpaceObjectsRenderer {
     /**
      * Draw collectible objects
      */
-    drawSpaceObjects(ship: Ship, collectibles: SpaceObject[], worldWidth: number, worldHeight: number): void {
+    drawSpaceObjects(ship: Ship, collectibles: SpaceObject[], worldWidth: number, worldHeight: number, viewportInfo: ViewportInfo): void {
         // Draw the main collectibles first
-        this.drawMainObjects(ship, collectibles);
+        this.drawMainObjects(ship, collectibles, viewportInfo);
         
         // Now draw the wrapped collectibles
-        this.drawWrappedObjects(ship, collectibles, worldWidth, worldHeight);
+        this.drawWrappedObjects(ship, collectibles, worldWidth, worldHeight, viewportInfo);
     }
     
     /**
      * Draw the main collectible objects
      */
-    private drawMainObjects(ship: Ship, collectibles: SpaceObject[]): void {
-        const centerX = this.canvas.width / 2;
-        const centerY = this.canvas.height / 2;
+    private drawMainObjects(ship: Ship, collectibles: SpaceObject[], viewportInfo: ViewportInfo): void {
+        const centerX = viewportInfo.centerX;
+        const centerY = viewportInfo.centerY;
         const shipX = ship.getX();
         const shipY = ship.getY();
         
@@ -134,19 +135,19 @@ export class SpaceObjectsRenderer {
     /**
      * Draw wrapped collectible objects
      */
-    private drawWrappedObjects(ship: Ship, collectibles: SpaceObject[], worldWidth: number, worldHeight: number): void {
-        const centerX = this.canvas.width / 2;
-        const centerY = this.canvas.height / 2;
+    private drawWrappedObjects(ship: Ship, collectibles: SpaceObject[], worldWidth: number, worldHeight: number, viewportInfo: ViewportInfo): void {
+        const centerX = viewportInfo.centerX;
+        const centerY = viewportInfo.centerY;
         const shipX = ship.getX();
         const shipY = ship.getY();
         
-        // Calculate visible area in world coordinates
-        const canvasWidth = this.canvas.width;
-        const canvasHeight = this.canvas.height;
-        const visibleLeft = shipX - canvasWidth / 2;
-        const visibleRight = shipX + canvasWidth / 2;
-        const visibleTop = shipY - canvasHeight / 2;
-        const visibleBottom = shipY + canvasHeight / 2;
+        // Calculate visible area in world coordinates using ViewportInfo
+        const halfW = viewportInfo.halfW;
+        const halfH = viewportInfo.halfH;
+        const visibleLeft = shipX - halfW;
+        const visibleRight = shipX + halfW;
+        const visibleTop = shipY - halfH;
+        const visibleBottom = shipY + halfH;
         
         // Define offsets for the 8 possible wrapped positions (including diagonals)
         const wrapOffsets = [
