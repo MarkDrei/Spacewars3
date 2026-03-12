@@ -320,3 +320,11 @@
 .btn-secondary:hover:not(:disabled) {
   background-color: #555;
 }
+
+/* Mobile: Adjust canvas and HUD panels to avoid navbar */
+@media (max-width: 1280px) {
+  /* Add bottom margin to canvas container to account for fixed navbar */
+  .canvas-container {
+    margin-bottom: 70px;
+  }
+}
