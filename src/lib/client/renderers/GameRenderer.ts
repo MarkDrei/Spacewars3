@@ -146,92 +146,67 @@ export class GameRenderer {
         // Clear the canvas and draw space background
         this.drawBackground();
 
-        // ── Unified world-scale transform ───────────────────────────────────
-        // After ctx.scale(dpr * worldScale) every draw call works in world units.
-        const dpr = (typeof window !== 'undefined' && window.devicePixelRatio) || 1;
-        const worldScale = this.getWorldScale();
+        // ── DEBUG: centered 100×100 CSS-pixel square ──────────────────────
+        // Compute the actual buffer-to-CSS-pixel ratio on each axis from the
+        // live rendered size of the canvas element.  This stays a true square
+        // (100 CSS px × 100 CSS px) no matter the window size or aspect ratio,
+        // and is sharp on HiDPI displays (100 × DPR physical pixels each side).
+        const cssW = this.canvas.clientWidth  || this.canvas.width;
+        const cssH = this.canvas.clientHeight || this.canvas.height;
+        const scaleX = this.canvas.width  / cssW;
+        const scaleY = this.canvas.height / cssH;
+        const sizeW = Math.round(100 * scaleX);
+        const sizeH = Math.round(100 * scaleY);
+        const x = Math.round((this.canvas.width  - sizeW) / 2);
+        const y = Math.round((this.canvas.height - sizeH) / 2);
+        this.ctx.fillStyle = '#4caf50';
+        this.ctx.fillRect(x, y, sizeW, sizeH);
+        // ─────────────────────────────────────────────────────────────────
 
-        // Centre of the canvas in world units
+        // ── All renderers below are disabled while debugging ──────────────
+        /*
+        const worldScale = this.getWorldScale();
         const cssW = this.canvas.width / dpr;
         const cssH = this.canvas.height / dpr;
         const centerX = (cssW / 2) / worldScale;
         const centerY = (cssH / 2) / worldScale;
-        // Half-extents of the visible area in world units
         const halfW = centerX;
         const halfH = centerY;
-
         const viewportInfo: ViewportInfo = { centerX, centerY, halfW, halfH };
-
-        // ── Circular clipping ─────────────────────────────────────────────
-        // Disabled: the fullscreen canvas should show the entire playing field.
-        const clipToCircle = false;
-        const maxRadius = Math.min(centerX, centerY);
 
         this.ctx.save();
         this.ctx.scale(dpr * worldScale, dpr * worldScale);
 
-        if (clipToCircle) {
-            this.ctx.beginPath();
-            this.ctx.arc(centerX, centerY, maxRadius, 0, Math.PI * 2);
-            this.ctx.clip();
-        }
-        // ──────────────────────────────────────────────────────────────────
-        
-        // Draw background elements (grid and world boundaries)
         this.drawBackgroundElements(centerX, centerY, halfW, halfH);
-        
-        // Get collectibles and ships
+
         const objects = this.world.getSpaceObjects();
         const nonPlayerObjects = objects.filter(obj => !(obj instanceof Ship && obj.getId() === ship.getId()));
-        // convert to SpaceObjects – starbases first so they render behind ships/collectibles
         const spaceObjects = nonPlayerObjects
             .sort((a, b) => (a.getType() === 'starbase' ? -1 : b.getType() === 'starbase' ? 1 : 0))
             .map(obj => obj.getServerData());
-        
-        // Draw radar centered around the player ship
-        this.radarRenderer.drawRadar(
-            this.ctx,
-            centerX,
-            centerY,
-            ship
-        );
-        
-        // Draw collectibles
+
+        this.radarRenderer.drawRadar(this.ctx, centerX, centerY, ship);
+
         this.collectiblesRenderer.drawSpaceObjects(
-            ship, 
-            spaceObjects, 
-            this.world.getWidth(), 
-            this.world.getHeight(),
-            viewportInfo
+            ship, spaceObjects, this.world.getWidth(), this.world.getHeight(), viewportInfo
         );
-        
-        // Draw targeting line if present (before player ship so it appears underneath)
+
         if (targetingLine) {
             this.targetingLineRenderer.drawTargetingLine(
-                targetingLine,
-                centerX,
-                centerY,
-                ship.getX(),
-                ship.getY()
+                targetingLine, centerX, centerY, ship.getX(), ship.getY()
             );
         }
-        
-        // Draw player's ship in the center
-        this.playerShipRenderer.drawPlayerShip(
-            this.ctx,
-            centerX,
-            centerY,
-            ship
-        );
-        
-        // Restore context state (removes scale transform)
+
+        this.playerShipRenderer.drawPlayerShip(this.ctx, centerX, centerY, ship);
+
         this.ctx.restore();
-        
-        // Draw tooltip for all objects (outside the scaled area, in physical pixel space)
-        this.tooltipRenderer.drawTooltip(
-            this.world.getSpaceObjects(),
-            ship,
-            worldScale
-        );
+
+        this.tooltipRenderer.drawTooltip(this.world.getSpaceObjects(), ship, worldScale);
+        */
+        // ─────────────────────────────────────────────────────────────────
+
+        // Suppress unused-parameter warnings while renderers are disabled.
+        void ship;
+        void targetingLine;
     }
 }

@@ -61,7 +61,10 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
     };
   }, []);
 
-  // Resize canvas to fill its container, accounting for devicePixelRatio for crisp rendering
+  // Resize canvas buffer to match physical pixel count: reads rendered CSS dimensions,
+  // multiplies by devicePixelRatio to get the buffer size, and re-runs when isLoading
+  // completes (ensuring the canvas is in the DOM). ResizeObserver handles subsequent
+  // window/container resizes. CSS rule width:100%;height:100% keeps the canvas fluid.
   useEffect(() => {
     const container = canvasContainerRef.current;
     const canvas = canvasRef.current;
@@ -69,15 +72,15 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
 
     const resize = () => {
       const dpr = window.devicePixelRatio || 1;
-      canvas.width = Math.round(container.clientWidth * dpr);
-      canvas.height = Math.round(container.clientHeight * dpr);
+      canvas.width = Math.round(canvas.clientWidth * dpr);
+      canvas.height = Math.round(canvas.clientHeight * dpr);
     };
 
-    resize();
+    requestAnimationFrame(resize);
     const observer = new ResizeObserver(resize);
     observer.observe(container);
     return () => observer.disconnect();
-  }, []);
+  }, [isLoading]);
 
   // Sync debugDrawingsEnabled state with game instance
   useEffect(() => {
