@@ -72,12 +72,9 @@ export class RadarRenderer {
             // Draw Y coordinates along left edge
             ctx.textAlign = 'left';
             for (let y = Math.floor((shipY - coordinateDistance) / 100) * 100; y <= Math.ceil((shipY + coordinateDistance) / 100) * 100; y += 100) {
-                const distanceFromShip = Math.abs(y - shipY);
-                if (distanceFromShip >= innerExclusionZone && distanceFromShip <= coordinateDistance) {
-                    const screenY = centerY + (y - shipY);
-                    if (screenY >= 15 && screenY <= centerY * 2) { // Keep on screen
-                        ctx.fillText(y.toString(), 5, screenY);
-                    }
+                const screenY = centerY + (y - shipY);
+                if (screenY >= 15 && screenY <= centerY * 2) { // Keep on screen
+                    ctx.fillText(y.toString(), 5, screenY);
                 }
             }
         } else {
