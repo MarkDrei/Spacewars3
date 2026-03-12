@@ -143,29 +143,11 @@ export class GameRenderer {
     }
 
     drawWorld(ship: Ship, targetingLine: TargetingLine | null = null): void {
-        // Clear the canvas and draw space background
         this.drawBackground();
 
-        // ── DEBUG: centered 100×100 CSS-pixel square ──────────────────────
-        // Compute the actual buffer-to-CSS-pixel ratio on each axis from the
-        // live rendered size of the canvas element.  This stays a true square
-        // (100 CSS px × 100 CSS px) no matter the window size or aspect ratio,
-        // and is sharp on HiDPI displays (100 × DPR physical pixels each side).
-        const cssW = this.canvas.clientWidth  || this.canvas.width;
-        const cssH = this.canvas.clientHeight || this.canvas.height;
-        const scaleX = this.canvas.width  / cssW;
-        const scaleY = this.canvas.height / cssH;
-        const sizeW = Math.round(100 * scaleX);
-        const sizeH = Math.round(100 * scaleY);
-        const x = Math.round((this.canvas.width  - sizeW) / 2);
-        const y = Math.round((this.canvas.height - sizeH) / 2);
-        this.ctx.fillStyle = '#4caf50';
-        this.ctx.fillRect(x, y, sizeW, sizeH);
-        // ─────────────────────────────────────────────────────────────────
-
-        // ── All renderers below are disabled while debugging ──────────────
-        /*
+        const dpr = (typeof window !== 'undefined' && window.devicePixelRatio) || 1;
         const worldScale = this.getWorldScale();
+
         const cssW = this.canvas.width / dpr;
         const cssH = this.canvas.height / dpr;
         const centerX = (cssW / 2) / worldScale;
@@ -201,12 +183,7 @@ export class GameRenderer {
 
         this.ctx.restore();
 
+        // Tooltip is drawn after restore, in physical pixel space
         this.tooltipRenderer.drawTooltip(this.world.getSpaceObjects(), ship, worldScale);
-        */
-        // ─────────────────────────────────────────────────────────────────
-
-        // Suppress unused-parameter warnings while renderers are disabled.
-        void ship;
-        void targetingLine;
     }
 }
