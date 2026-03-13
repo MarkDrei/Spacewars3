@@ -41,6 +41,8 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
   const [teleportRechargeTimeSec, setTeleportRechargeTimeSec] = useState(0);
   const [timeMultiplier, setTimeMultiplier] = useState(1);
   const [zoom, setZoom] = useState(DEFAULT_ZOOM);
+  const [isNavigationCollapsed, setIsNavigationCollapsed] = useState(false);
+  const [isTeleportCollapsed, setIsTeleportCollapsed] = useState(false);
   // Auth is guaranteed by server, so pass true and use auth.shipId
   const { worldData, isLoading, error, refetch, lastUpdateTime } = useWorldData(3000);
 
@@ -60,6 +62,41 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
       }
     };
   }, []);
+
+  // Load panel collapse preferences from localStorage on mount
+  useEffect(() => {
+    try {
+      const savedNavigationCollapsed = localStorage.getItem('game-ui-navigation-collapsed');
+      const savedTeleportCollapsed = localStorage.getItem('game-ui-teleport-collapsed');
+      
+      if (savedNavigationCollapsed !== null) {
+        setIsNavigationCollapsed(JSON.parse(savedNavigationCollapsed));
+      }
+      if (savedTeleportCollapsed !== null) {
+        setIsTeleportCollapsed(JSON.parse(savedTeleportCollapsed));
+      }
+    } catch (err) {
+      console.warn('Failed to load UI preferences from localStorage:', err);
+    }
+  }, []);
+
+  // Save navigation collapse preference to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('game-ui-navigation-collapsed', JSON.stringify(isNavigationCollapsed));
+    } catch (err) {
+      console.warn('Failed to save navigation collapse preference:', err);
+    }
+  }, [isNavigationCollapsed]);
+
+  // Save teleport collapse preference to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('game-ui-teleport-collapsed', JSON.stringify(isTeleportCollapsed));
+    } catch (err) {
+      console.warn('Failed to save teleport collapse preference:', err);
+    }
+  }, [isTeleportCollapsed]);
 
   // Resize canvas buffer to match physical pixel count: reads rendered CSS dimensions,
   // multiplies by devicePixelRatio to get the buffer size, and re-runs when isLoading
@@ -434,108 +471,134 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
 
           {/* Bottom-left: navigation panel */}
           <div className="hud-panel panel-bottom-left">
-            <p className="panel-heading">navigation</p>
-            <div className="speed-slider-row">
-              <label>speed</label>
-              <input
-                type="range"
-                min={0}
-                max={maxSpeed}
-                step={0.1}
-                value={parseFloat(speedInput) || 0}
-                onChange={(e) => setSpeedInput(e.target.value)}
-                onPointerUp={handleSetSpeed}
-                disabled={isSettingSpeed}
-                className="speed-slider"
-              />
-              <span className="speed-value">{parseFloat(speedInput).toFixed(1)}</span>
-            </div>
-            <div className="control-row">
-              <label htmlFor="angle-input">angle °</label>
-              <div className="input-container">
-                <input
-                  id="angle-input"
-                  type="number"
-                  value={angleInput}
-                  onChange={(e) => setAngleInput(e.target.value)}
-                  onKeyPress={handleAngleKeyPress}
-                  disabled={isSettingAngle}
-                  className={isSettingAngle ? 'loading' : ''}
-                  min="0"
-                  max="360"
-                  step="0.1"
-                />
-                {isSettingAngle && <div className="input-loading-indicator"></div>}
-              </div>
+            <div className="panel-heading-row">
+              <p className="panel-heading">navigation</p>
               <button
-                onClick={handleSetAngle}
-                disabled={isSettingAngle}
-                className="control-button btn-primary"
+                className="collapse-button"
+                onClick={() => setIsNavigationCollapsed(!isNavigationCollapsed)}
+                title={isNavigationCollapsed ? 'Expand' : 'Collapse'}
               >
-                {isSettingAngle ? '...' : 'set'}
+                {isNavigationCollapsed ? '▶' : '▼'}
               </button>
             </div>
-            <div className="control-row">
-              <label htmlFor="zoom-input">zoom</label>
-              <input
-                id="zoom-input"
-                type="range"
-                min={MIN_ZOOM}
-                max={MAX_ZOOM}
-                step={0.05}
-                value={zoom}
-                onChange={(e) => setZoom(parseFloat(e.target.value))}
-                className="speed-slider"
-              />
-              <span className="speed-value">{zoom.toFixed(2)}×</span>
-            </div>
+            {!isNavigationCollapsed && (
+              <>
+                <div className="speed-slider-row">
+                  <label>speed</label>
+                  <input
+                    type="range"
+                    min={0}
+                    max={maxSpeed}
+                    step={0.1}
+                    value={parseFloat(speedInput) || 0}
+                    onChange={(e) => setSpeedInput(e.target.value)}
+                    onPointerUp={handleSetSpeed}
+                    disabled={isSettingSpeed}
+                    className="speed-slider"
+                  />
+                  <span className="speed-value">{parseFloat(speedInput).toFixed(1)}</span>
+                </div>
+                <div className="control-row">
+                  <label htmlFor="angle-input">angle °</label>
+                  <div className="input-container">
+                    <input
+                      id="angle-input"
+                      type="number"
+                      value={angleInput}
+                      onChange={(e) => setAngleInput(e.target.value)}
+                      onKeyPress={handleAngleKeyPress}
+                      disabled={isSettingAngle}
+                      className={isSettingAngle ? 'loading' : ''}
+                      min="0"
+                      max="360"
+                      step="0.1"
+                    />
+                    {isSettingAngle && <div className="input-loading-indicator"></div>}
+                  </div>
+                  <button
+                    onClick={handleSetAngle}
+                    disabled={isSettingAngle}
+                    className="control-button btn-primary"
+                  >
+                    {isSettingAngle ? '...' : 'set'}
+                  </button>
+                </div>
+                <div className="control-row">
+                  <label htmlFor="zoom-input">zoom</label>
+                  <input
+                    id="zoom-input"
+                    type="range"
+                    min={MIN_ZOOM}
+                    max={MAX_ZOOM}
+                    step={0.05}
+                    value={zoom}
+                    onChange={(e) => setZoom(parseFloat(e.target.value))}
+                    className="speed-slider"
+                  />
+                  <span className="speed-value">{zoom.toFixed(2)}×</span>
+                </div>
+              </>
+            )}
           </div>
 
-          {/* Bottom-right: teleport panel */}
-          {teleportMaxCharges > 0 && (
+          {/* Bottom-right: Data age debug output */}
+          {debugDrawingsEnabled && (
             <div className="hud-panel panel-bottom-right">
-              <h4 className="panel-heading">teleport</h4>
-              <div className="teleport-header">
-                <span className="teleport-charges-badge">
-                  {formatNumber(Math.floor(teleportCharges))} / {formatNumber(teleportMaxCharges)}
-                </span>
-                {teleportCharges < teleportMaxCharges && teleportRechargeTimeSec > 0 && (
-                  <span className="teleport-timer">
-                    next in: {formatTimeRemaining(
-                      (Math.ceil(teleportCharges) === Math.floor(teleportCharges) ? 1 : Math.ceil(teleportCharges) - teleportCharges) * teleportRechargeTimeSec / Math.max(1, timeMultiplier)
-                    )}
-                  </span>
-                )}
-                <label className="debug-toggle-label">
-                  click mode
-                  <div className="toggle-switch">
-                    <input
-                      type="checkbox"
-                      checked={teleportClickMode}
-                      onChange={(e) => setTeleportClickMode(e.target.checked)}
-                      disabled={Math.floor(teleportCharges) < 1}
-                      className="toggle-input"
-                    />
-                    <span className="toggle-slider"></span>
-                  </div>
-                </label>
-              </div>
-              <div className="control-row">
-                <label htmlFor="teleport-x">x</label>
-                <input id="teleport-x" type="number" value={teleportX} onChange={(e) => setTeleportX(e.target.value)} min="0" max="5000" step="1" />
-                <label htmlFor="teleport-y">y</label>
-                <input id="teleport-y" type="number" value={teleportY} onChange={(e) => setTeleportY(e.target.value)} min="0" max="5000" step="1" />
-                <button onClick={handleTeleport} disabled={isTeleporting || Math.floor(teleportCharges) < 1} className="control-button btn-primary">
-                  {isTeleporting ? '...' : 'teleport'}
-                </button>
-              </div>
+              <DataAgeIndicator lastUpdateTime={lastUpdateTime} />
             </div>
           )}
 
-          {/* Data age indicator */}
-          {debugDrawingsEnabled && (
+          {/* Top-right: teleport panel */}
+          {teleportMaxCharges > 0 && (
             <div className="hud-panel panel-top-right">
-              <DataAgeIndicator lastUpdateTime={lastUpdateTime} />
+              <div className="panel-heading-row">
+                <h4 className="panel-heading">teleport</h4>
+                <button
+                  className="collapse-button"
+                  onClick={() => setIsTeleportCollapsed(!isTeleportCollapsed)}
+                  title={isTeleportCollapsed ? 'Expand' : 'Collapse'}
+                >
+                  {isTeleportCollapsed ? '▶' : '▼'}
+                </button>
+              </div>
+              {!isTeleportCollapsed && (
+                <>
+                  <div className="teleport-header">
+                    <span className="teleport-charges-badge">
+                      {formatNumber(Math.floor(teleportCharges))} / {formatNumber(teleportMaxCharges)}
+                    </span>
+                    {teleportCharges < teleportMaxCharges && teleportRechargeTimeSec > 0 && (
+                      <span className="teleport-timer">
+                        next in: {formatTimeRemaining(
+                          (Math.ceil(teleportCharges) === Math.floor(teleportCharges) ? 1 : Math.ceil(teleportCharges) - teleportCharges) * teleportRechargeTimeSec / Math.max(1, timeMultiplier)
+                        )}
+                      </span>
+                    )}
+                    <label className="debug-toggle-label">
+                      click mode
+                      <div className="toggle-switch">
+                        <input
+                          type="checkbox"
+                          checked={teleportClickMode}
+                          onChange={(e) => setTeleportClickMode(e.target.checked)}
+                          disabled={Math.floor(teleportCharges) < 1}
+                          className="toggle-input"
+                        />
+                        <span className="toggle-slider"></span>
+                      </div>
+                    </label>
+                  </div>
+                  <div className="control-row">
+                    <label htmlFor="teleport-x">x</label>
+                    <input id="teleport-x" type="number" value={teleportX} onChange={(e) => setTeleportX(e.target.value)} min="0" max="5000" step="1" />
+                    <label htmlFor="teleport-y">y</label>
+                    <input id="teleport-y" type="number" value={teleportY} onChange={(e) => setTeleportY(e.target.value)} min="0" max="5000" step="1" />
+                    <button onClick={handleTeleport} disabled={isTeleporting || Math.floor(teleportCharges) < 1} className="control-button btn-primary">
+                      {isTeleporting ? '...' : 'teleport'}
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           )}
         </div>
