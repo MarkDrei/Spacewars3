@@ -25,7 +25,7 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
   const gameInstanceRef = useRef<Game | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const canvasContainerRef = useRef<HTMLDivElement>(null);
-  const [debugDrawingsEnabled, setDebugDrawingsEnabled] = useState(true);
+  const [debugDrawingsEnabled, setDebugDrawingsEnabled] = useState(false);
   const [angleInput, setAngleInput] = useState<string>('0');
   const [speedInput, setSpeedInput] = useState<string>('0');
   const [maxSpeed, setMaxSpeed] = useState<number>(100);
@@ -68,12 +68,20 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
     try {
       const savedNavigationCollapsed = localStorage.getItem('game-ui-navigation-collapsed');
       const savedTeleportCollapsed = localStorage.getItem('game-ui-teleport-collapsed');
+      const savedDebugEnabled = localStorage.getItem('game-ui-debug-enabled');
+      const savedZoom = localStorage.getItem('game-ui-zoom');
       
       if (savedNavigationCollapsed !== null) {
         setIsNavigationCollapsed(JSON.parse(savedNavigationCollapsed));
       }
       if (savedTeleportCollapsed !== null) {
         setIsTeleportCollapsed(JSON.parse(savedTeleportCollapsed));
+      }
+      if (savedDebugEnabled !== null) {
+        setDebugDrawingsEnabled(JSON.parse(savedDebugEnabled));
+      }
+      if (savedZoom !== null) {
+        setZoom(JSON.parse(savedZoom));
       }
     } catch (err) {
       console.warn('Failed to load UI preferences from localStorage:', err);
@@ -97,6 +105,24 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
       console.warn('Failed to save teleport collapse preference:', err);
     }
   }, [isTeleportCollapsed]);
+
+  // Save debug flag to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('game-ui-debug-enabled', JSON.stringify(debugDrawingsEnabled));
+    } catch (err) {
+      console.warn('Failed to save debug preference:', err);
+    }
+  }, [debugDrawingsEnabled]);
+
+  // Save zoom to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('game-ui-zoom', JSON.stringify(zoom));
+    } catch (err) {
+      console.warn('Failed to save zoom preference:', err);
+    }
+  }, [zoom]);
 
   // Resize canvas buffer to match physical pixel count: reads rendered CSS dimensions,
   // multiplies by devicePixelRatio to get the buffer size, and re-runs when isLoading
