@@ -17,8 +17,8 @@ const CommanderDetails: React.FC<{ data: CommanderData }> = ({ data }) => (
       <Image
         src={`/assets/images/inventory/commander${data.imageId}.png`}
         alt={data.name}
-        width={80}
-        height={80}
+        width={200}
+        height={200}
         style={{ objectFit: 'contain' }}
         unoptimized
       />

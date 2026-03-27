@@ -157,8 +157,8 @@ const InventoryGridComponent: React.FC<InventoryGridProps> = ({
                       : `/assets/images/inventory/${item.itemType}.png`
                   }
                   alt={item.itemType === 'commander' ? item.name : item.itemType}
-                  width={48}
-                  height={48}
+                  width={120}
+                  height={120}
                   style={{ objectFit: 'contain', pointerEvents: 'none' }}
                   unoptimized
                 />
@@ -166,8 +166,8 @@ const InventoryGridComponent: React.FC<InventoryGridProps> = ({
                 <Image
                   src="/assets/images/inventory/empty.png"
                   alt="Empty slot"
-                  width={48}
-                  height={48}
+                  width={120}
+                  height={120}
                   style={{ objectFit: 'contain', pointerEvents: 'none', opacity: 0.2 }}
                   unoptimized
                 />
