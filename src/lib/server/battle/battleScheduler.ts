@@ -380,7 +380,8 @@ async function fireWeapon(
       DAMAGE_CALC_DEFAULTS.NEGATIVE_ACCURACY_MODIFIER,
       damageFactor,
       DAMAGE_CALC_DEFAULTS.ECM_EFFECTIVENESS,
-      DAMAGE_CALC_DEFAULTS.SPREAD_VALUE
+      DAMAGE_CALC_DEFAULTS.SPREAD_VALUE,
+      attackerUser.techTree.projectileWeaponTier
     );
     
     const shotsPerSalvo = currentCount;

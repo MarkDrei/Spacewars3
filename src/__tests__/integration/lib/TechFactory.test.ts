@@ -114,87 +114,86 @@ describe('TechFactory.calculateWeaponDamage', () => {
 
   describe('damage calculations', () => {
     test('calculateWeaponDamage_autoTurret_correctDamageDistribution', async () => {
-      // Auto turret: 10 damage, 80% shield / 20% armor
+      // Auto turret (Projectile): projectile deals full damage to shields, half to armor.
       // (50 × 2.0) * (1 - 0.5) = 50% accuracy, 3 weapons * 50% = 1.5 → 2 weapons hit
-      // 2 weapons hit: 20 damage total
-      // Shield: 20 * 0.8 = 16 (but projectile halved) = 8
-      // Armor: 20 * 0.2 = 4
-      // Hull: 0 (no excess damage)
+      // 2 weapons hit: 20 raw damage
+      // Shield: projectile 1.0× → 20 effective → 20 HP removed. consumed=20. remain=0.
+      // Armor: 0 remaining → 0. Hull: 0.
       const result = calculateDamage('auto_turret', 3, 100, 100, 2.0, 0.5, 1.0, 0, 1.0);
 
-      expect(result.weaponsHit).toBe(2); // Corrected expectation
-      expect(result.shieldDamage).toBe(8); // Projectile weapons halved against shields
-      expect(result.armorDamage).toBe(4);
+      expect(result.weaponsHit).toBe(2);
+      expect(result.shieldDamage).toBe(20); // Projectile deals full damage to shields
+      expect(result.armorDamage).toBe(0);
       expect(result.hullDamage).toBe(0);
     });
 
     test('calculateWeaponDamage_pulseLaser_energyWeaponDamage', async () => {
-      // Pulse laser: 7 damage, 90% shield / 10% armor
-      // 2 weapons hit (high accuracy multiplier → 100%+): 14 damage total
-      // Shield: 14 * 0.9 = 12.6
-      // Armor: 14 * 0.1 = 1.4 (but energy halved) = 0.7
+      // Pulse laser (Energy): energy deals half damage to shields (shields resist energy).
+      // 2 weapons hit (100%+ accuracy): 14 raw damage
+      // Shield: energy 0.5× → effective=7 → 7 HP removed. consumed=14. remain=0.
+      // Armor: 0 remaining → 0. Hull: 0.
       const result = calculateDamage('pulse_laser', 2, 100, 100, 2.0, 0, 1.0, 0, 1.0);
 
       expect(result.weaponsHit).toBe(2);
-      expect(result.shieldDamage).toBe(13); // Rounded from 12.6
-      expect(result.armorDamage).toBe(1); // Rounded from 0.7
+      expect(result.shieldDamage).toBe(7); // Energy deals 0.5× to shields
+      expect(result.armorDamage).toBe(0);
       expect(result.hullDamage).toBe(0);
     });
 
-    test('calculateWeaponDamage_shieldPenetration_excessDamageToHull', async () => {
-      // Auto turret vs low shields: 3 weapons, 30 total damage
-      // Shield: 30 * 0.8 = 24 (halved) = 12, but only 5 shield available
-      // Excess shield damage: 12 - 5 = 7 (doubled back) = 14
-      // Armor: 30 * 0.2 = 6
-      // Hull: 14 (excess shield damage)
+    test('calculateWeaponDamage_shieldExcess_flowsToArmor', async () => {
+      // Auto turret (Projectile) vs low shields: excess damage flows through to armor.
+      // 3 weapons, all hit (100% accuracy): 30 raw damage. shield=5, armor=100.
+      // Shield: 1.0× → effective=30. Shield HP=5 → 5 absorbed. consumed=5. remain=25.
+      // Armor: 0.5× → effective=12.5 → 12 or 13 HP removed. consumed=25. remain=0.
+      // Hull: 0 (all excess absorbed by armor)
       const result = calculateDamage('auto_turret', 3, 5, 100, 2.0, 0, 1.0, 0, 1.0);
 
       expect(result.weaponsHit).toBe(3);
       expect(result.shieldDamage).toBe(5); // All available shield absorbed
-      expect(result.armorDamage).toBe(6);
-      expect(result.hullDamage).toBe(14); // Excess shield damage
+      expect(result.armorDamage).toBe(13); // Excess shield damage absorbed by armor (0.5× modifier)
+      expect(result.hullDamage).toBe(0);
     });
 
     test('calculateWeaponDamage_armorPenetration_excessDamageToHull', async () => {
-      // Gauss rifle vs low armor: 2 weapons, 80 total damage
-      // gauss_rifle baseAccuracy=70, with 2.0 multiplier → 140% → all 2 hit
-      // Shield: 80 * 0.1 = 8 (halved) = 4
-      // Armor: 80 * 0.9 = 72, but only 10 armor available
-      // Excess armor damage: 72 - 10 = 62
-      // Hull: 62 (excess armor damage)
-      const result = calculateDamage('gauss_rifle', 2, 100, 10, 2.0, 0, 1.0, 0, 1.0);
+      // Gauss rifle (Projectile, no shield bypass at level 0) vs no shield, low armor.
+      // 2 weapons hit (140% accuracy): 80 raw damage. shield=0, armor=10.
+      // Shield: 1.0× → effective=80. Shield HP=0 → 0 absorbed. remain=80.
+      // Armor: 0.5× → effective=40. Armor HP=10 → 10 absorbed. consumed=10/0.5=20. remain=60.
+      // Hull: 60 (excess armor damage)
+      const result = calculateDamage('gauss_rifle', 2, 0, 10, 2.0, 0, 1.0, 0, 1.0);
 
       expect(result.weaponsHit).toBe(2);
-      expect(result.shieldDamage).toBe(4);
+      expect(result.shieldDamage).toBe(0);
       expect(result.armorDamage).toBe(10); // All available armor absorbed
-      expect(result.hullDamage).toBe(62); // Excess armor damage
+      expect(result.hullDamage).toBe(60); // Excess armor damage hits hull
     });
   });
 
   describe('special weapon mechanics', () => {
     test('calculateWeaponDamage_rocketLauncher_highDamageGuidedWeapon', async () => {
-      // Rocket launcher: 200 damage, 100% base accuracy, guided
-      // 1 weapon * 100% * 1.0 = 1 hit, 200 damage
-      // Shield: 200 * 0.4 = 80 (halved) = 40
-      // Armor: 200 * 0.6 = 120
+      // Rocket launcher (Projectile): full damage to shields, half to armor.
+      // 1 weapon hits, 200 raw damage. shield=100, armor=100.
+      // Shield: 1.0× → effective=200. Shield HP=100 → 100 absorbed. consumed=100. remain=100.
+      // Armor: 0.5× → effective=50 → 50 HP removed. consumed=100. remain=0. Hull=0.
       const result = calculateDamage('rocket_launcher', 1, 100, 100, 1.0, 0, 1.0, 0, 1.0);
 
       expect(result.weaponsHit).toBe(1);
-      expect(result.shieldDamage).toBe(40);
-      expect(result.armorDamage).toBe(100); // Limited by available armor
-      expect(result.hullDamage).toBe(20); // Excess armor damage
+      expect(result.shieldDamage).toBe(100);
+      expect(result.armorDamage).toBe(50);
+      expect(result.hullDamage).toBe(0);
     });
 
-    test('calculateWeaponDamage_photonTorpedo_heavyShieldDamage', async () => {
-      // Photon torpedo: 200 damage, 75% base accuracy × 2.0 multiplier = 150% → 1 hit
-      // Shield: 200 * 0.9 = 180
-      // Armor: 200 * 0.1 = 20 (halved) = 10
-      const result = calculateDamage('photon_torpedo', 1, 100, 100, 2.0, 0, 1.0, 0, 1.0);
+    test('calculateWeaponDamage_photonTorpedo_heavyArmorDamage', async () => {
+      // Photon torpedo (Energy): shields resist energy (0.5×), armor does not resist energy (1.0×).
+      // 1 weapon hits, 200 raw damage. shield=50, armor=100.
+      // Shield: 0.5× → effective=100. Shield HP=50 → 50 absorbed. consumed=100. remain=100.
+      // Armor: 1.0× → effective=100. Armor HP=100 → 100 absorbed. consumed=100. remain=0. Hull=0.
+      const result = calculateDamage('photon_torpedo', 1, 50, 100, 2.0, 0, 1.0, 0, 1.0);
 
       expect(result.weaponsHit).toBe(1);
-      expect(result.shieldDamage).toBe(100); // Limited by available shield
-      expect(result.armorDamage).toBe(10);
-      expect(result.hullDamage).toBe(80); // Excess shield damage
+      expect(result.shieldDamage).toBe(50); // 0.5× shield modifier
+      expect(result.armorDamage).toBe(100); // Full energy damage to armor
+      expect(result.hullDamage).toBe(0);
     });
   });
 

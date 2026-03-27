@@ -68,8 +68,8 @@ export class TechFactory {
       shieldDamageRatio: 80,
       armorDamageRatio: 20,
       buildDurationMinutes: 1,
-      advantage: 'Cheap and good damage per second',
-      disadvantage: 'Low accuracy vs agile targets',
+      advantage: 'Cheap, fast reload; full damage against shields',
+      disadvantage: 'Reduced damage against kinetic armor',
       damage: 10 // 10 damage per shot
     },
     pulse_laser: {
@@ -83,8 +83,8 @@ export class TechFactory {
       shieldDamageRatio: 90,
       armorDamageRatio: 10,
       buildDurationMinutes: 2,
-      advantage: 'High accuracy',
-      disadvantage: 'Low damage output',
+      advantage: 'High accuracy; full damage against armor',
+      disadvantage: 'Reduced damage against energy shields; low base damage',
       damage: 8 // 8 damage per shot
     },
     gauss_rifle: {
@@ -98,8 +98,8 @@ export class TechFactory {
       shieldDamageRatio: 10,
       armorDamageRatio: 90,
       buildDurationMinutes: 5,
-      advantage: 'High impact; penetrates shields',
-      disadvantage: 'Low accuracy vs agile targets',
+      advantage: 'Increasingly penetrates shields with higher projectile research; full damage against shields',
+      disadvantage: 'Reduced damage against kinetic armor',
       damage: 35 // 35 damage per shot
     },
     plasma_lance: {
@@ -113,8 +113,8 @@ export class TechFactory {
       shieldDamageRatio: 70,
       armorDamageRatio: 30,
       buildDurationMinutes: 5,
-      advantage: 'Locally overheats shields and causes hull damage',
-      disadvantage: '',
+      advantage: 'High accuracy bypasses a portion of armor — the more accurate, the more armor it skips',
+      disadvantage: 'Reduced damage against energy shields',
       damage: 30 // 30 damage per shot
     },
     rocket_launcher: {
@@ -128,8 +128,8 @@ export class TechFactory {
       shieldDamageRatio: 40,
       armorDamageRatio: 60,
       buildDurationMinutes: 20,
-      advantage: 'Guided; always hits unless ECM Jammer is active',
-      disadvantage: 'Susceptible to ECM jammers',
+      advantage: 'Guided; always hits unless ECM Jammer is active; full damage against shields',
+      disadvantage: 'Reduced damage against kinetic armor; susceptible to ECM jammers',
       damage: 150 // 150 damage per shot (huge!)
     },
     photon_torpedo: {
@@ -143,8 +143,8 @@ export class TechFactory {
       shieldDamageRatio: 90,
       armorDamageRatio: 10,
       buildDurationMinutes: 10,
-      advantage: 'Heavy shield damage',
-      disadvantage: 'Slightly susceptible to ECM jammers',
+      advantage: 'Heavy armor and hull damage; full damage against armor',
+      disadvantage: 'Reduced damage against energy shields; slightly susceptible to ECM jammers',
       damage: 120 // 120 damage per shot (heavy)
     }
   };
@@ -421,23 +421,40 @@ export class TechFactory {
   /**
    * Calculate weapon damage effects against a target.
    *
-   * This utility centralises all of the hit‑rate and damage math used by the
-   * battle scheduler.  It does **not** compute any research/bonus factors;
-   * those are calculated elsewhere and supplied via the parameters below.
+   * Damage flows sequentially: shield → armor → hull.  Each layer has a
+   * resistance modifier that determines how many real-damage units are needed
+   * to remove one HP from that layer.  Any damage not absorbed by a layer
+   * carries through to the next.
    *
-   * @param weaponKey           Key for the weapon (e.g. 'pulse_laser').
-   * @param weaponCount         Number of weapons of this type firing.
-   * @param opponentShieldValue Current shield value of the defending ship.
-   * @param opponentArmorValue  Current armor value of the defending ship.
-   * @param accuracyMultiplier  Multiplicative accuracy bonus                
-   *                            (1.0 = no bonus, >1.0 increases hit chance).
-   * @param negativeAccuracyModifier  Decimal accuracy penalty             
-   *                            (e.g. ECM or torpedo penalty; 0 = no penalty).
-   * @param baseDamageModifier  Damage multiplier (1.0 = normal damage).
-   * @param ecmEffectiveness    ECM effectiveness against guided weapons       
-   *                            (0 = none, 1 = full effectiveness).
-   * @param spreadValue         Randomisation factor for hit calculation       
-   *                            (1.0 = normal spread).
+   * Layer resistances:
+   *   - Shields resist energy weapons  (energy weapons deal 0.5× to shields)
+   *   - Armor   resists projectile weapons (projectile weapons deal 0.5× to armor)
+   *   - Hull    has no resistance (all weapon types deal full damage)
+   *
+   * Special weapon mechanics:
+   *   - Gauss Rifle (Projectile): progressively penetrates shields based on
+   *     `projectileResearchLevel`.  Bypass fraction = 1 − 0.95^level.
+   *     At level 0: 0% bypass.  Level 10: ~40%.  Level 20: ~64%.
+   *   - Plasma Lance (Energy): accuracy above 100% bypasses a portion of armor.
+   *     Bypass fraction = max(0, 1 − 1/accuracyMultiplier).
+   *     At 1.0× accuracy: 0% bypass.  2.0×: 50%.  3.0×: ~67%.
+   *
+   * @param weaponKey                Key for the weapon (e.g. 'pulse_laser').
+   * @param weaponCount              Number of weapons of this type firing.
+   * @param opponentShieldValue      Current shield HP of the defending ship.
+   * @param opponentArmorValue       Current armor HP of the defending ship.
+   * @param accuracyMultiplier       Multiplicative accuracy bonus
+   *                                 (1.0 = no bonus, >1.0 = better accuracy).
+   * @param negativeAccuracyModifier Decimal accuracy penalty
+   *                                 (e.g. ECM or torpedo penalty; 0 = no penalty).
+   * @param baseDamageModifier       Damage multiplier (1.0 = normal damage).
+   * @param ecmEffectiveness         ECM effectiveness against guided weapons
+   *                                 (0 = none, 1 = full effectiveness).
+   * @param spreadValue              Randomisation factor for hit calculation
+   *                                 (1.0 = normal spread).
+   * @param projectileResearchLevel  Projectile weapon tier research level;
+   *                                 controls Gauss Rifle shield penetration
+   *                                 (default 0 = no penetration).
    * @returns Object containing
    *          `{ weaponsHit, shieldDamage, armorDamage, hullDamage }`.
    */
@@ -450,7 +467,8 @@ export class TechFactory {
     negativeAccuracyModifier: number,
     baseDamageModifier: number,
     ecmEffectiveness: number,
-    spreadValue: number
+    spreadValue: number,
+    projectileResearchLevel: number = 0
   ): { weaponsHit: number; shieldDamage: number; armorDamage: number; hullDamage: number } {
     // Get weapon specification
     const weaponSpec = this.getWeaponSpec(weaponKey);
@@ -488,45 +506,66 @@ export class TechFactory {
       return { weaponsHit: 0, shieldDamage: 0, armorDamage: 0, hullDamage: 0 };
     }
 
-    // Calculate overall damage
-    const overallDamage = weaponsHit * weaponSpec.baseDamage * baseDamageModifier;
+    // Total raw damage from all hits
+    let remainingDamage = weaponsHit * weaponSpec.baseDamage * baseDamageModifier;
 
-    // Calculate shield damage
-    let shieldDamageFloat = overallDamage * (weaponSpec.shieldDamageRatio / 100);
-    // Projectile weapons are less effective against shields
-    if (weaponSpec.subtype === 'Projectile') {
-      shieldDamageFloat = shieldDamageFloat / 2;
-    }
-    // Calculate actual shield damage and excess
-    const actualShieldDamage = Math.min(shieldDamageFloat, opponentShieldValue);
-    let excessShieldDamage = Math.max(0, shieldDamageFloat - opponentShieldValue);
+    // ------------------------------------------------------------------ //
+    // SHIELD LAYER                                                         //
+    // Shields resist energy weapons: energy deals 0.5× effective damage.  //
+    // Projectile weapons deal full damage to shields.                      //
+    //                                                                      //
+    // Gauss Rifle special: a fraction of damage bypasses shields entirely, //
+    // determined by projectile research level.                             //
+    // ------------------------------------------------------------------ //
+    const shieldMod = weaponSpec.subtype === 'Energy' ? 0.5 : 1.0;
 
-    // For projectile weapons, double the excess damage (compensating for halving)
-    if (weaponSpec.subtype === 'Projectile') {
-      excessShieldDamage = excessShieldDamage * 2;
-    }
+    // Gauss Rifle shield bypass: bypass fraction = 1 - 0.95^level
+    const gaussBypassFraction =
+      weaponKey === 'gauss_rifle' ? 1 - Math.pow(0.95, projectileResearchLevel) : 0;
+    const shieldBypassDamage = remainingDamage * gaussBypassFraction;
+    const shieldFacingDamage = remainingDamage - shieldBypassDamage;
 
-    // Calculate armor damage
-    let armorDamageFloat = (overallDamage * (weaponSpec.armorDamageRatio / 100));
-    // Energy weapons are less effective against armor
-    if (weaponSpec.subtype === 'Energy') {
-      armorDamageFloat = armorDamageFloat / 2;
-    }
-    // Calculate actual armor damage and excess
-    const actualArmorDamage = Math.min(armorDamageFloat, opponentArmorValue);
-    let excessArmorDamage = Math.max(0, armorDamageFloat - opponentArmorValue);
-    if (weaponSpec.subtype === 'Energy') {
-      excessArmorDamage = excessArmorDamage * 2;
-    }
+    // Effective damage to shield HP = shieldFacingDamage × shieldMod
+    const effectiveDamageAtShield = shieldFacingDamage * shieldMod;
+    const shieldHPRemoved = Math.min(effectiveDamageAtShield, opponentShieldValue);
+    // Real damage consumed by shield = HP removed / shieldMod
+    const damageConsumedByShield = shieldHPRemoved / shieldMod;
+    remainingDamage = shieldFacingDamage - damageConsumedByShield + shieldBypassDamage;
 
-    // all remaining damage goes to hull
-    const hullDamageFloat = excessShieldDamage + excessArmorDamage;
+    // ------------------------------------------------------------------ //
+    // ARMOR LAYER                                                          //
+    // Armor resists projectile weapons: projectile deals 0.5× effective.  //
+    // Energy weapons deal full damage to armor.                            //
+    //                                                                      //
+    // Plasma Lance special: high accuracy bypasses a portion of armor.    //
+    // bypass fraction = max(0, 1 - 1/accuracyMultiplier).                 //
+    // ------------------------------------------------------------------ //
+    const armorMod = weaponSpec.subtype === 'Projectile' ? 0.5 : 1.0;
+
+    // Plasma Lance armor bypass: bypass fraction = max(0, 1 - 1/accuracyMultiplier)
+    const plasmaBypassFraction =
+      weaponKey === 'plasma_lance' ? Math.max(0, 1 - 1 / accuracyMultiplier) : 0;
+    const armorBypassDamage = remainingDamage * plasmaBypassFraction;
+    const armorFacingDamage = remainingDamage - armorBypassDamage;
+
+    // Effective damage to armor HP = armorFacingDamage × armorMod
+    const effectiveDamageAtArmor = armorFacingDamage * armorMod;
+    const armorHPRemoved = Math.min(effectiveDamageAtArmor, opponentArmorValue);
+    // Real damage consumed by armor = HP removed / armorMod
+    const damageConsumedByArmor = armorHPRemoved / armorMod;
+    remainingDamage = armorFacingDamage - damageConsumedByArmor + armorBypassDamage;
+
+    // ------------------------------------------------------------------ //
+    // HULL LAYER                                                           //
+    // No resistance — all remaining damage hits hull directly.            //
+    // ------------------------------------------------------------------ //
+    const hullDamage = remainingDamage;
 
     return {
       weaponsHit,
-      shieldDamage: Math.round(actualShieldDamage),
-      armorDamage: Math.round(actualArmorDamage),
-      hullDamage: Math.round(hullDamageFloat)
+      shieldDamage: Math.round(shieldHPRemoved),
+      armorDamage: Math.round(armorHPRemoved),
+      hullDamage: Math.round(hullDamage)
     };
   }
 }
