@@ -41,6 +41,7 @@ Revise the progression system to separate Score (general progression metric from
 **Action**: Add migration version 13 (note: version 12 is already taken by starbases) with `ALTER TABLE users ADD COLUMN IF NOT EXISTS score INTEGER NOT NULL DEFAULT 0`. Update `CREATE_USERS_TABLE` in schema.ts. Increment `SCHEMA_VERSION` to 13.
 
 **Files**:
+
 - `src/lib/server/schema.ts` — add `score INTEGER NOT NULL DEFAULT 0` column, bump `SCHEMA_VERSION`
 - `src/lib/server/migrations.ts` — add version 13 migration
 
@@ -49,6 +50,7 @@ Revise the progression system to separate Score (general progression metric from
 **Action**: Add `score: number` property to the `User` class. Add `addScore(amount)` method (similar to current `addXp` but without level-up logic). Update constructor to accept score parameter.
 
 **Files**:
+
 - `src/lib/server/user/user.ts` — add `score` property, `addScore()` method
 - `src/__tests__/unit/` — unit tests for `addScore()`
 
@@ -57,6 +59,7 @@ Revise the progression system to separate Score (general progression metric from
 **Action**: Add `score` to `UserRow` interface, `userFromRow()` deserialization, `saveUserToDb()` UPDATE query (add column to SET clause, increment WHERE param number), and `createUser()` INSERT.
 
 **Files**:
+
 - `src/lib/server/user/userRepo.ts` — add score to UserRow, userFromRow, saveUserToDb, createUser
 
 #### Task 1.4: Convert research XP awards to score awards
@@ -64,6 +67,7 @@ Revise the progression system to separate Score (general progression metric from
 **Action**: In `user.ts` `updateStats()`, replace `this.addXp(xpReward)` with `this.addScore(scoreReward)` for research completion. Update the return type to reflect `scoreReward` instead of `xpReward` with `source: 'research'`. Update the level-up message in `userCache.ts` (if research triggers level-up messaging) to say "score" instead of "XP".
 
 **Files**:
+
 - `src/lib/server/user/user.ts` — change `updateStats()` to call `addScore()` instead of `addXp()` for research
 - `src/__tests__/unit/` — update existing research XP tests to verify score is awarded instead
 
@@ -72,6 +76,7 @@ Revise the progression system to separate Score (general progression metric from
 **Action**: In `TechService.ts` `applyCompletedBuild()`, replace `user.addXp(xpReward)` with `user.addScore(scoreReward)`. Update return type and level-up message from "XP from build" to "score from build". Since score doesn't trigger level-ups, the level-up check/message for builds is removed.
 
 **Files**:
+
 - `src/lib/server/techs/TechService.ts` — change `applyCompletedBuild()` to call `addScore()`, remove level-up messaging for builds
 - `src/__tests__/unit/` — update existing build XP tests to verify score is awarded instead
 
@@ -80,6 +85,7 @@ Revise the progression system to separate Score (general progression metric from
 **Action**: Add `score` field to the user-stats API response alongside existing `xp`, `level`, `xpForNextLevel`.
 
 **Files**:
+
 - `src/app/api/user-stats/route.ts` — include `score` in response
 
 #### Task 1.7: Update UI to display Score alongside XP/Level
@@ -87,6 +93,7 @@ Revise the progression system to separate Score (general progression metric from
 **Action**: Update profile page and status header to show Score separately from XP/Level. Score is displayed as a general progression metric. XP and Level remain for battle progression.
 
 **Files**:
+
 - `src/app/profile/ProfilePageClient.tsx` — display real score value (currently shows dummy data)
 - `src/components/StatusHeader/` — add score display if appropriate
 - `src/lib/client/services/` — update client-side types to include score
@@ -98,6 +105,7 @@ Revise the progression system to separate Score (general progression metric from
 **Description**: XP is now awarded exclusively when winning a battle. The formula scales with the winner's level and adjusts based on the level difference between combatants.
 
 **Formula**:
+
 - Base XP = `winner_level × 200`
 - Enemy higher level: multiply by `1.3^(enemy_level - winner_level)`
 - Enemy lower level: multiply by `0.7^(winner_level - enemy_level)`
@@ -112,6 +120,7 @@ The gained XP is shown in the victory message. The loser does NOT see the XP val
 #### Task 2.1: Create battle XP calculation function
 
 **Action**: Create a pure function `calculateBattleXp(winnerLevel: number, loserLevel: number): number` in the battle service module (or a shared utility). This function computes:
+
 - `baseXp = winnerLevel * 200`
 - `levelDiff = loserLevel - winnerLevel`
 - If `levelDiff > 0`: `xp = baseXp * (1.3 ^ levelDiff)` (enemy higher → more XP)
@@ -120,6 +129,7 @@ The gained XP is shown in the victory message. The loser does NOT see the XP val
 - Return `Math.floor(xp)` (integer XP)
 
 **Files**:
+
 - `src/lib/server/battle/battleService.ts` — add `calculateBattleXp()` function (exported for testing)
 - `src/__tests__/unit/battle/` — comprehensive unit tests:
   - `calculateBattleXp_sameLevelAtLevel1_returns200`
@@ -131,6 +141,7 @@ The gained XP is shown in the victory message. The loser does NOT see the XP val
 #### Task 2.2: Award XP to battle winner in resolveBattle
 
 **Action**: In `resolveBattle()`, after determining the winner:
+
 1. Load both users (already available via UserCache in the resolution flow)
 2. Get winner and loser levels via `user.getLevel()`
 3. Call `calculateBattleXp(winnerLevel, loserLevel)`
@@ -139,6 +150,7 @@ The gained XP is shown in the victory message. The loser does NOT see the XP val
 6. Pass the XP amount to the victory message (Task 2.3)
 
 **Files**:
+
 - `src/lib/server/battle/battleService.ts` — modify `resolveBattle()` to calculate and award XP
 - `src/__tests__/unit/battle/` or `src/__tests__/integration/` — test that XP is awarded on battle win
 
@@ -148,13 +160,16 @@ The gained XP is shown in the victory message. The loser does NOT see the XP val
 #### Task 2.3: Update victory/defeat messages
 
 **Action**: Modify the victory message to include gained XP:
+
 - **Winner**: `P: 🎉 **Victory!** You won the battle! You gained {iron} iron and {xp} XP from {loserName}.`
 - **Loser**: `A: 💀 **Defeat!** You lost the battle and have been teleported away. You lost {iron} iron to {winnerName}.` (NO XP info for loser — unchanged)
 
 If the winner also leveled up, send an additional message:
+
 - `P: 🎉 Level Up! You reached level {newLevel}!`
 
 **Files**:
+
 - `src/lib/server/battle/battleService.ts` — update message strings in `resolveBattle()`
 
 ---
@@ -174,6 +189,7 @@ If the winner also leveled up, send an additional message:
 The query: `SELECT attackee_id FROM battles WHERE attacker_id = $1 AND battle_end_time IS NOT NULL ORDER BY battle_end_time DESC LIMIT $2`
 
 **Files**:
+
 - `src/lib/server/battle/battleRepo.ts` — add `getRecentAttackeesFromDb()` DB query function
 - `src/lib/server/battle/BattleCache.ts` — add `getRecentAttackees()` method that delegates to repo (or add directly to battleService)
 - `src/__tests__/unit/battle/` — unit tests for the query function
@@ -185,6 +201,7 @@ The query: `SELECT attackee_id FROM battles WHERE attacker_id = $1 AND battle_en
 Also verify: the existing `attacker.inBattle` and `attackee.inBattle` checks in `initiateBattle()` already prevent concurrent battles. Confirm this is sufficient (user mentioned this should be enforced).
 
 **Files**:
+
 - `src/lib/server/battle/battleService.ts` — add recent-victim check in `initiateBattle()`
 - `src/app/api/attack/route.ts` — no changes needed if validation is in battleService
 - `src/__tests__/unit/battle/` — tests:
@@ -200,6 +217,7 @@ Also verify: the existing `attacker.inBattle` and `attackee.inBattle` checks in 
 Update the query to: `SELECT attackee_id FROM battles WHERE attacker_id = $1 ORDER BY battle_start_time DESC LIMIT $2` (remove the `battle_end_time IS NOT NULL` filter, use `battle_start_time` for ordering).
 
 **Files**:
+
 - `src/lib/server/battle/battleRepo.ts` — adjust query to include active battles
 - `src/__tests__/unit/battle/` — test edge case with active battle
 
