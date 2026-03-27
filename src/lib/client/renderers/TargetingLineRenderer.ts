@@ -108,7 +108,7 @@ export class TargetingLineRenderer {
       const wrappedScreenY = centerY + (wrappedTargetY - shipY);
       
       // Only draw if the wrapped target would be visible on screen
-      if (this.isPositionVisible(wrappedScreenX, wrappedScreenY)) {
+      if (this.isPositionVisible(wrappedScreenX, wrappedScreenY, centerX * 2, centerY * 2)) {
         const startScreenX = centerX + (targetingLine.startX - shipX);
         const startScreenY = centerY + (targetingLine.startY - shipY);
         
@@ -118,13 +118,13 @@ export class TargetingLineRenderer {
     });
   }
   
-  private isPositionVisible(screenX: number, screenY: number): boolean {
+  private isPositionVisible(screenX: number, screenY: number, canvasW: number, canvasH: number): boolean {
     const margin = 50; // Small margin to account for indicator size
     return (
       screenX > -margin && 
-      screenX < this.ctx.canvas.width + margin && 
+      screenX < canvasW + margin && 
       screenY > -margin && 
-      screenY < this.ctx.canvas.height + margin
+      screenY < canvasH + margin
     );
   }
 }

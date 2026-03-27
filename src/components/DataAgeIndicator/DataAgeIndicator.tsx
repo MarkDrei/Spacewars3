@@ -5,9 +5,10 @@ import './DataAgeIndicator.css';
 
 interface DataAgeIndicatorProps {
   lastUpdateTime: number | null;
+  className?: string;
 }
 
-const DataAgeIndicator: React.FC<DataAgeIndicatorProps> = ({ lastUpdateTime }) => {
+const DataAgeIndicator: React.FC<DataAgeIndicatorProps> = ({ lastUpdateTime, className }) => {
   const [elapsedTime, setElapsedTime] = useState<number>(0);
 
   useEffect(() => {
@@ -44,7 +45,7 @@ const DataAgeIndicator: React.FC<DataAgeIndicatorProps> = ({ lastUpdateTime }) =
   }
 
   return (
-    <div className="data-age-indicator">
+    <div className={`data-age-indicator${className ? ` ${className}` : ''}`}>
       <div className={`age-badge ${getAgeClass(elapsedTime)}`}>
         <span className="age-label">Data age:</span>
         <span className="age-value">{formatElapsedTime(elapsedTime)}</span>

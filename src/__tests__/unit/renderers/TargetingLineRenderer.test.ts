@@ -145,18 +145,18 @@ describe('TargetingLineRenderer', () => {
 
   describe('visibility check', () => {
     test('should detect visible positions correctly', () => {
-      const isVisible = callPrivateMethod<boolean>(renderer, 'isPositionVisible', 100, 100);
+      const isVisible = callPrivateMethod<boolean>(renderer, 'isPositionVisible', 100, 100, 800, 800);
       expect(isVisible).toBe(true);
     });
 
     test('should detect invisible positions correctly', () => {
-      const isVisible = callPrivateMethod<boolean>(renderer, 'isPositionVisible', -100, -100);
+      const isVisible = callPrivateMethod<boolean>(renderer, 'isPositionVisible', -100, -100, 800, 800);
       expect(isVisible).toBe(false);
     });
 
     test('should include margin in visibility check', () => {
       // Position just outside canvas but within margin should be visible
-      const isVisible = callPrivateMethod<boolean>(renderer, 'isPositionVisible', -25, -25);
+      const isVisible = callPrivateMethod<boolean>(renderer, 'isPositionVisible', -25, -25, 800, 800);
       expect(isVisible).toBe(true);
     });
   });

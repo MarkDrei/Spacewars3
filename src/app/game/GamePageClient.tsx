@@ -543,9 +543,7 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
 
           {/* Bottom-right: Data age debug output */}
           {debugDrawingsEnabled && (
-            <div className="hud-panel panel-bottom-right">
-              <DataAgeIndicator lastUpdateTime={lastUpdateTime} />
-            </div>
+            <DataAgeIndicator lastUpdateTime={lastUpdateTime} className="panel-bottom-right" />
           )}
 
           {/* Top-right: teleport panel */}
