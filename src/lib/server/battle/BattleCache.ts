@@ -619,6 +619,18 @@ export class BattleCache extends Cache {
     });
   }
 
+  /**
+   * Get the most recent attackee IDs for a given attacker.
+   * Includes both completed and active battles.
+   * Used for attack restriction validation.
+   */
+  async getRecentAttackees(attackerId: number, limit: number): Promise<number[]> {
+    const ctx = createLockContext();
+    return await ctx.useLockWithAcquire(DATABASE_LOCK_BATTLES, async (databaseContext) => {
+      return await battleRepo.getRecentAttackeesFromDb(databaseContext, attackerId, limit);
+    });
+  }
+
   // ========================================
   // Database Operations
   // ========================================

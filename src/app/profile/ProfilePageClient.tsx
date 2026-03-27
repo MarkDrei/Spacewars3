@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import AuthenticatedLayout from '@/components/Layout/AuthenticatedLayout';
 import { ServerAuthState } from '@/lib/server/serverSession';
 import { useAuth } from '@/lib/client/hooks/useAuth';
+import { userStatsService, UserStatsResponse } from '@/lib/client/services/userStatsService';
 import './ProfilePage.css';
 
 interface ProfilePageClientProps {
@@ -29,6 +30,7 @@ const ProfilePageClient: React.FC<ProfilePageClientProps> = ({ auth }) => {
   const [battles, setBattles] = useState<BattleHistoryItem[]>([]);
   const [isLoadingBattles, setIsLoadingBattles] = useState(true);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [liveStats, setLiveStats] = useState<UserStatsResponse | null>(null);
   
   // Handle logout
   const handleLogout = async () => {
@@ -37,7 +39,7 @@ const ProfilePageClient: React.FC<ProfilePageClientProps> = ({ auth }) => {
     router.push('/'); // Redirect to login page
   };
   
-  // Fetch battle history on component mount
+  // Fetch battle history and user stats on component mount
   useEffect(() => {
     const fetchBattles = async () => {
       try {
@@ -52,21 +54,28 @@ const ProfilePageClient: React.FC<ProfilePageClientProps> = ({ auth }) => {
         setIsLoadingBattles(false);
       }
     };
+
+    const fetchStats = async () => {
+      const result = await userStatsService.getUserStats();
+      if (!('error' in result)) {
+        setLiveStats(result);
+      }
+    };
     
     fetchBattles();
+    fetchStats();
   }, []);
   
-  // Dummy user data - in a real app, this would come from state management or API
+  // User data combining auth info with live stats
   const userStats = {
     username: auth.username,
-    level: 12,
-    totalScore: 15420,
+    level: liveStats?.level ?? '...',
+    score: liveStats?.score ?? 0,
+    xp: liveStats?.xp ?? 0,
     gamesPlayed: 47,
     shipwrecksCollected: 156,
     escapePodsRescued: 23,
     totalDistance: 892.5,
-    averageScore: 328,
-    bestScore: 1250,
     playtime: '24h 35m'
   };
 
@@ -83,7 +92,7 @@ const ProfilePageClient: React.FC<ProfilePageClientProps> = ({ auth }) => {
           <div className="player-info">
             <h2>{userStats.username}</h2>
             <p className="level">Level {userStats.level}</p>
-            <p className="total-score">Total Score: {userStats.totalScore.toLocaleString()}</p>
+            <p className="total-score">Score: {userStats.score.toLocaleString()}</p>
           </div>
         </div>
 
@@ -109,13 +118,13 @@ const ProfilePageClient: React.FC<ProfilePageClientProps> = ({ auth }) => {
           </div>
           
           <div className="stat-card">
-            <h3>Average Score</h3>
-            <p className="stat-value">{userStats.averageScore}</p>
+            <h3>Score</h3>
+            <p className="stat-value">{userStats.score.toLocaleString()}</p>
           </div>
           
           <div className="stat-card">
-            <h3>Best Score</h3>
-            <p className="stat-value">{userStats.bestScore}</p>
+            <h3>XP</h3>
+            <p className="stat-value">{userStats.xp.toLocaleString()}</p>
           </div>
         </div>
 

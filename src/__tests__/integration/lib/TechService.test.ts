@@ -162,8 +162,8 @@ describe('TechService - Unit Tests', () => {
                     ] as BuildQueueItem[],
                     buildStartSec: now - 200, // Started 200 seconds ago (pulse_laser takes 120s)
                     techCounts: { pulse_laser: 2 } as TechCounts,
-                    xp: 0,
-                    addXp: vi.fn().mockReturnValue(undefined) // No level up
+                    score: 0,
+                    addScore: vi.fn() // Score awarded (not XP)
                 } as unknown as User;
                 mockGetUserByIdWithLock.mockResolvedValue(mockUser);
                 const context = createLockContext();
@@ -180,8 +180,8 @@ describe('TechService - Unit Tests', () => {
                 expect(mockUser.buildQueue).toHaveLength(0); // Removed from queue
                 expect(mockCreateMessage).toHaveBeenCalledWith(expect.anything(), 1, expect.stringContaining('Pulse Laser'));
                 expect(mockUpdateUserInCache).toHaveBeenCalled();
-                // Verify XP was awarded (pulse_laser costs 150 iron, so 150/100 = 1 XP)
-                expect(mockUser.addXp).toHaveBeenCalledWith(1);
+                // Verify score was awarded (pulse_laser costs 150 iron, so 150/100 = 1 score)
+                expect(mockUser.addScore).toHaveBeenCalledWith(1);
             });
         });
     });
