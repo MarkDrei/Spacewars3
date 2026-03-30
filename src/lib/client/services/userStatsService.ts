@@ -11,6 +11,7 @@ export interface UserStatsResponse {
   xp: number;
   level: number;
   xpForNextLevel: number;
+  score?: number;
   timeMultiplier: number;
   teleportCharges: number;
   teleportMaxCharges: number;

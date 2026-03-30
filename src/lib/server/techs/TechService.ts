@@ -207,7 +207,7 @@ export class TechService {
             // Check completion with multiplier
             if (now >= calculatedCompletionTime) {
                 // Build complete!
-                const levelUp = this.applyCompletedBuild(user, currentBuild);
+                this.applyCompletedBuild(user, currentBuild);
                 completedItems.push(currentBuild);
 
                 // Remove from queue
@@ -218,15 +218,6 @@ export class TechService {
                 try {
                     const ctx = createLockContext();
                     await this.messageCacheInstance.createMessage(ctx, userId, `Build complete: ${spec.name}`);
-                    
-                    // Send level-up notification if applicable
-                    if (levelUp) {
-                        await this.messageCacheInstance.createMessage(
-                            ctx,
-                            userId,
-                            `P: 🎉 Level Up! You reached level ${levelUp.newLevel}! (+${levelUp.xpReward} XP from build)`
-                        );
-                    }
                 } catch (error) {
                     console.error(`Failed to send build completion notification to user ${userId}:`, error);
                 }
@@ -251,7 +242,7 @@ export class TechService {
         return { completed: completedItems };
     }
 
-    private applyCompletedBuild(user: User, build: BuildQueueItem): { leveledUp: boolean; oldLevel: number; newLevel: number; xpReward: number } | undefined {
+    private applyCompletedBuild(user: User, build: BuildQueueItem): void {
         const itemKey = build.itemKey;
 
         // Update tech counts
@@ -270,18 +261,12 @@ export class TechService {
             // Note: Real max values would be calculated from tech counts * base stats
         }
 
-        // Award XP based on iron cost
+        // Award score based on iron cost (builds no longer award XP)
         const spec = TechFactory.getTechSpec(build.itemKey, build.itemType);
-        if (!spec) return undefined;
+        if (!spec) return;
 
-        const xpReward = Math.floor(spec.baseCost / 100);
-        const levelUp = user.addXp(xpReward);
-
-        if (levelUp) {
-            return { ...levelUp, xpReward };
-        }
-
-        return undefined;
+        const scoreReward = Math.floor(spec.baseCost / 100);
+        user.addScore(scoreReward);
     }
 
     /**

@@ -139,9 +139,10 @@ describe('Research XP Rewards System', () => {
       const result = user.updateStats(now);
       
       // Iron Harvesting level 2 costs 100 iron (base cost for first upgrade)
-      const expectedXp = Math.floor(100 / 25); // 4 XP
-      expect(user.xp).toBe(expectedXp);
-      expect(result.levelUp).toBeUndefined(); // Not enough XP to level up yet
+      const expectedScore = Math.floor(100 / 25); // 4 score
+      expect(user.score).toBe(expectedScore);
+      expect(user.xp).toBe(0); // XP is NOT awarded from research
+      expect(result.researchCompleted).toBeDefined();
     });
 
     it('updateStats_researchCompletesAndLevelsUp_returnsLevelUpInfo', () => {
@@ -176,14 +177,11 @@ describe('Research XP Rewards System', () => {
       const now = user.last_updated + 10;
       const result = user.updateStats(now);
       
-      // Should award 4 XP (100 / 25) and level up
-      expect(user.xp).toBe(1000);
-      expect(result.levelUp).toBeDefined();
-      expect(result.levelUp?.leveledUp).toBe(true);
-      expect(result.levelUp?.oldLevel).toBe(1);
-      expect(result.levelUp?.newLevel).toBe(2);
-      expect(result.levelUp?.xpReward).toBe(4);
-      expect(result.levelUp?.source).toBe('research');
+      // Research awards score (not XP), so no level up
+      expect(user.xp).toBe(996); // XP unchanged
+      expect(user.score).toBe(4); // Score awarded: 100/25 = 4
+      expect(result.researchCompleted).toBeDefined();
+      expect(result.researchCompleted?.scoreReward).toBe(4);
     });
 
     it('updateStats_noResearchCompletion_returnsEmptyObject', () => {
@@ -214,8 +212,9 @@ describe('Research XP Rewards System', () => {
       const now = user.last_updated + 10;
       const result = user.updateStats(now);
       
-      expect(result.levelUp).toBeUndefined();
+      expect(result.researchCompleted).toBeUndefined();
       expect(user.xp).toBe(0);
+      expect(user.score).toBe(0);
     });
 
     it('updateStats_researchCompletesButNoLevelUp_noLevelUpInfo', () => {
@@ -250,9 +249,10 @@ describe('Research XP Rewards System', () => {
       const now = user.last_updated + 10;
       const result = user.updateStats(now);
       
-      // ShipSpeed level 2 costs 500 iron, so 20 XP awarded
-      expect(user.xp).toBe(20);
-      expect(result.levelUp).toBeUndefined(); // Not enough to level up
+      // ShipSpeed level 2 costs 500 iron, so 20 score awarded (not XP)
+      expect(user.score).toBe(20);
+      expect(user.xp).toBe(0); // XP is NOT awarded from research
+      expect(result.researchCompleted).toBeDefined();
     });
 
     it('updateStats_researchCompletes_returnsResearchCompletedInfo', () => {
@@ -291,6 +291,7 @@ describe('Research XP Rewards System', () => {
       expect(result.researchCompleted?.type).toBe(ResearchType.ShipSpeed);
       expect(result.researchCompleted?.completedLevel).toBe(1);
       expect(result.researchCompleted?.researchName).toBe('Ship Speed');
+      expect(result.researchCompleted?.scoreReward).toBe(20);
     });
 
     it('updateStats_noResearchCompletion_researchCompletedIsUndefined', () => {
@@ -359,11 +360,12 @@ describe('Research XP Rewards System', () => {
       // Calculate expected cost for level 6
       const research = AllResearches[ResearchType.IronHarvesting];
       const cost = getResearchUpgradeCost(research, 6);
-      const expectedXp = Math.floor(cost / 25);
+      const expectedScore = Math.floor(cost / 25);
       
-      expect(user.xp).toBe(expectedXp);
+      expect(user.score).toBe(expectedScore);
+      expect(user.xp).toBe(0); // XP is NOT awarded from research
       expect(cost).toBe(1600); // 100 * 2^4
-      expect(expectedXp).toBe(64);
+      expect(expectedScore).toBe(64);
     });
 
     it('updateStats_ironHarvestingCompletionDuringInterval_awardsCorrectXP', () => {
@@ -399,28 +401,29 @@ describe('Research XP Rewards System', () => {
       const now = user.last_updated + 20;
       user.updateStats(now);
       
-      // Should still award XP for the completed research (level 2 costs 100)
-      const expectedXp = Math.floor(100 / 25); // 4 XP
-      expect(user.xp).toBe(expectedXp);
+      // Should award score for the completed research (level 2 costs 100)
+      const expectedScore = Math.floor(100 / 25); // 4 score
+      expect(user.score).toBe(expectedScore);
+      expect(user.xp).toBe(0); // XP is NOT awarded from research
     });
   });
 
-  describe('XP Reward Formula', () => {
-    it('xpReward_formula_correctForDifferentResearches', () => {
+  describe('Score Reward Formula', () => {
+    it('scoreReward_formula_correctForDifferentResearches', () => {
       const testCases = [
-        { type: ResearchType.IronHarvesting, level: 2, expectedCost: 100, expectedXp: 4 },
-        { type: ResearchType.ShipSpeed, level: 2, expectedCost: 500, expectedXp: 20 },
-        { type: ResearchType.ProjectileDamage, level: 3, expectedCost: 2000, expectedXp: 80 },
-        { type: ResearchType.HullStrength, level: 4, expectedCost: 7260, expectedXp: 290 },
+        { type: ResearchType.IronHarvesting, level: 2, expectedCost: 100, expectedScore: 4 },
+        { type: ResearchType.ShipSpeed, level: 2, expectedCost: 500, expectedScore: 20 },
+        { type: ResearchType.ProjectileDamage, level: 3, expectedCost: 2000, expectedScore: 80 },
+        { type: ResearchType.HullStrength, level: 4, expectedCost: 7260, expectedScore: 290 },
       ];
 
-      testCases.forEach(({ type, level, expectedCost, expectedXp }) => {
+      testCases.forEach(({ type, level, expectedCost, expectedScore }) => {
         const research = AllResearches[type];
         const cost = getResearchUpgradeCost(research, level);
-        const xp = Math.floor(cost / 25);
+        const score = Math.floor(cost / 25);
 
         expect(cost).toBeCloseTo(expectedCost, 1); // Use toBeCloseTo for floating point
-        expect(xp).toBe(expectedXp);
+        expect(score).toBe(expectedScore);
       });
     });
   });
@@ -465,12 +468,14 @@ describe('Research XP Rewards System', () => {
       expect(user.techTree.ironHarvesting).toBe(2);
       expect(user.techTree.activeResearch).toBeUndefined();
       
-      // Verify XP awarded (level 2 costs 100, so 4 XP)
-      expect(user.xp).toBe(999); // 995 + 4
+      // Verify score awarded (level 2 costs 100, so 4 score)
+      expect(user.score).toBe(4); // 4 score awarded
+      expect(user.xp).toBe(995); // XP unchanged
       
-      // Verify level up
-      expect(user.getLevel()).toBe(1); // Still level 1 (999 < 1000)
-      expect(result.levelUp).toBeUndefined(); // Didn't quite level up
+      // Verify NO level up (score doesn't trigger level ups)
+      expect(user.getLevel()).toBe(1); // Still level 1 (995 XP < 1000)
+      expect(result.researchCompleted).toBeDefined();
+      expect(result.researchCompleted?.scoreReward).toBe(4);
     });
 
     it('fullFlow_multipleResearchCompletions_awardsCorrectXP', () => {
@@ -506,7 +511,8 @@ describe('Research XP Rewards System', () => {
       let now = user.last_updated + 10;
       user.updateStats(now);
       
-      expect(user.xp).toBe(20); // 500 / 25
+      expect(user.score).toBe(20); // 500 / 25 score
+      expect(user.xp).toBe(0); // XP NOT awarded from research
       
       // Second research - Afterburner starts at level 0
       user.last_updated = now;
@@ -518,8 +524,9 @@ describe('Research XP Rewards System', () => {
       now = user.last_updated + 10;
       user.updateStats(now);
       
-      // Afterburner level 1 costs 5000, so 200 XP awarded
-      expect(user.xp).toBe(220); // 20 + 200
+      // Afterburner level 1 costs 5000, so 200 score awarded
+      expect(user.score).toBe(220); // 20 + 200
+      expect(user.xp).toBe(0); // XP still unchanged
     });
   });
 });

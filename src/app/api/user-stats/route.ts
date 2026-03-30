@@ -46,25 +46,14 @@ async function processUserStats(user: User, userWorldCache: UserCache, userCtx: 
   // Update cache with new data (using unsafe methods because we have proper locks)
   userWorldCache.updateUserInCache(userCtx, user);
   
-  // Send level-up notification if research caused level increase
-  if (updateResult.levelUp) {
-    const messageCache = MessageCache.getInstance();
-    const ctx = createLockContext(); // Create fresh context for message sending
-    await messageCache.createMessage(
-      ctx,
-      user.id,
-      `P: 🎉 Level Up! You reached level ${updateResult.levelUp!.newLevel}! (+${updateResult.levelUp!.xpReward} XP from research completion)`
-    );
-  }
-
-  // Send research completion notification
+  // Send research completion notification (score awarded, not XP)
   if (updateResult.researchCompleted) {
     const messageCache = MessageCache.getInstance();
     const ctx = createLockContext();
     await messageCache.createMessage(
       ctx,
       user.id,
-      `🔬 Research Complete: ${updateResult.researchCompleted.researchName} reached level ${updateResult.researchCompleted.completedLevel}!`
+      `🔬 Research Complete: ${updateResult.researchCompleted.researchName} reached level ${updateResult.researchCompleted.completedLevel}! (+${updateResult.researchCompleted.scoreReward} Score)`
     );
   }
   
@@ -76,6 +65,7 @@ async function processUserStats(user: User, userWorldCache: UserCache, userCtx: 
     xp: user.xp,
     level: user.getLevel(),
     xpForNextLevel: user.getXpForNextLevel(),
+    score: user.score,
     timeMultiplier: TimeMultiplierService.getInstance().getMultiplier(),
     teleportCharges: user.teleportCharges,
     teleportMaxCharges: getResearchEffectFromTree(user.techTree, ResearchType.Teleport),

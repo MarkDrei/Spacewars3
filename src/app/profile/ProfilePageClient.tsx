@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import AuthenticatedLayout from '@/components/Layout/AuthenticatedLayout';
 import { ServerAuthState } from '@/lib/server/serverSession';
 import { useAuth } from '@/lib/client/hooks/useAuth';
+import { userStatsService, UserStatsResponse } from '@/lib/client/services/userStatsService';
 import './ProfilePage.css';
 
 interface ProfilePageClientProps {
@@ -29,6 +30,7 @@ const ProfilePageClient: React.FC<ProfilePageClientProps> = ({ auth }) => {
   const [battles, setBattles] = useState<BattleHistoryItem[]>([]);
   const [isLoadingBattles, setIsLoadingBattles] = useState(true);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [liveStats, setLiveStats] = useState<UserStatsResponse | null>(null);
   
   // Handle logout
   const handleLogout = async () => {
@@ -37,7 +39,7 @@ const ProfilePageClient: React.FC<ProfilePageClientProps> = ({ auth }) => {
     router.push('/'); // Redirect to login page
   };
   
-  // Fetch battle history on component mount
+  // Fetch battle history and user stats on component mount
   useEffect(() => {
     const fetchBattles = async () => {
       try {
@@ -52,8 +54,16 @@ const ProfilePageClient: React.FC<ProfilePageClientProps> = ({ auth }) => {
         setIsLoadingBattles(false);
       }
     };
+
+    const fetchStats = async () => {
+      const result = await userStatsService.getUserStats();
+      if (!('error' in result)) {
+        setLiveStats(result);
+      }
+    };
     
     fetchBattles();
+    fetchStats();
   }, []);
 
   return (
@@ -70,13 +80,14 @@ const ProfilePageClient: React.FC<ProfilePageClientProps> = ({ auth }) => {
               {isLoggingOut ? 'Logging out...' : 'Logout'}
             </button>
           </div>
-
           <div className="profile-header">
             <div className="avatar">
               <span className="avatar-text">{auth.username.charAt(0)}</span>
             </div>
             <div className="player-info">
               <h2>{auth.username}</h2>
+              <p className="level">Level {liveStats?.level ?? '...'}</p>
+              <p className="total-score">Score: {(liveStats?.score ?? 0).toLocaleString()} · XP: {(liveStats?.xp ?? 0).toLocaleString()}</p>
             </div>
           </div>
 

@@ -79,14 +79,6 @@
   margin-top: 2rem;
 }
 
-.defense-value-cell {
-  text-align: center;
-  font-weight: 600;
-  color: var(--primary-green);
-  width: var(--min-width-value-cell);
-  min-width: var(--min-width-value-cell);
-}
-
 /* Tech Counts Table - extends shared data-table styles */
 .tech-counts-table-container {
   margin-top: 2rem;
@@ -101,14 +93,6 @@
   text-align: center;
   background-color: #2a2a2a;
   border-bottom: 1px solid #333;
-}
-
-.tech-count-cell {
-  text-align: center;
-  font-weight: 600;
-  color: var(--primary-green);
-  width: var(--min-width-value-cell);
-  min-width: var(--min-width-value-cell);
 }
 
 /* Responsive Design */
@@ -139,18 +123,8 @@
     margin-top: 1.5rem;
   }
 
-  .defense-value-cell {
-    width: var(--min-width-value-cell-mobile);
-    min-width: var(--min-width-value-cell-mobile);
-  }
-
   .tech-counts-table-container {
     margin-top: 1.5rem;
-  }
-  
-  .tech-count-cell {
-    width: var(--min-width-value-cell-mobile);
-    min-width: var(--min-width-value-cell-mobile);
   }
 }
 

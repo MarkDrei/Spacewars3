@@ -17,6 +17,7 @@ interface UserRow {
   password_hash: string;
   iron: number;
   xp: number;
+  score?: number;
   last_updated: number;
   tech_tree: string;
   ship_id?: number;
@@ -101,7 +102,7 @@ function userFromRow(row: UserRow, saveCallback: SaveUserCallback): User {
   const teleportCharges = row.teleport_charges ?? 0;
   const teleportLastRegen = row.teleport_last_regen ?? 0;
 
-  return User.create(
+  const user = User.create(
     row.id,
     row.username,
     row.password_hash,
@@ -123,6 +124,11 @@ function userFromRow(row: UserRow, saveCallback: SaveUserCallback): User {
     teleportLastRegen,
     row.ship_id
   );
+
+  // Set score from DB row (defaults to 0 if column not present, e.g. before migration)
+  user.score = row.score ?? 0;
+
+  return user;
 }
 
 // Direct database access functions (used internally by cache manager)
@@ -255,8 +261,9 @@ export function saveUserToDb(db: DatabaseConnection): SaveUserCallback {
         build_queue = $22,
         build_start_sec = $23,
         teleport_charges = $24,
-        teleport_last_regen = $25
-      WHERE id = $26`,
+        teleport_last_regen = $25,
+        score = $26
+      WHERE id = $27`,
       [
         user.iron,
         user.xp,
@@ -283,6 +290,7 @@ export function saveUserToDb(db: DatabaseConnection): SaveUserCallback {
         user.buildStartSec,
         user.teleportCharges,
         user.teleportLastRegen,
+        user.score,
         user.id
       ]
     );
