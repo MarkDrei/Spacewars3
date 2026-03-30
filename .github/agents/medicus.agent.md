@@ -48,7 +48,7 @@ You receive:
 
 - A specific task to review from the High Commander
 - A file with learnings to consider "doc/learnings.md" (for knowledge sharing between agents).
-- Path to the development plan file (`doc/development-plan.md`)
+- Path to the development plan file: `${plan_file_path}`
 - The Knight's implementation summary
 - The original user request for context
 
@@ -61,7 +61,7 @@ You receive:
 
 ### Step 1: Read Development Plan
 
-- Read the complete `doc/development-plan.md` file
+- Read the complete `${plan_file_path}` file
 - Understand the Vision, Goals, and overall context
 - Locate the specific task that was implemented
 - Review the Knight's completion status and implementation summary
@@ -167,7 +167,7 @@ Examine test files for:
 
 #### If issues can be fixed by Knight:
 
-Update `doc/development-plan.md`:
+Update `${plan_file_path}`:
 
 - Add review section to current task:
   ```markdown

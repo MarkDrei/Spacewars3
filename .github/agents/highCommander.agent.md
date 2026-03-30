@@ -38,7 +38,8 @@ You communicate with the user and delegate the actual work to the other agents u
 
 ### Step 0: Verify the starting conditions
 
-- Make sure you have access to the development plan file at `doc/development-plan.md`
+- Obtain the plan filename from the user or previous agent (e.g., `doc/development-plan-[task-name].md`)
+- Verify the plan file exists
 - Set up the environment to run tests, the postgreSQL database, and any necessary services need to be available
 - Execute all tests, especially `npm run ci` / `npm run ci:local`, to ensure the current codebase is stable before making changes
 - For a major amount of test fails, report this an abort.
@@ -46,7 +47,7 @@ You communicate with the user and delegate the actual work to the other agents u
 
 ## Step 1: Receive Input
 
-You are triggered AFTER human review of Cartographer's plan. This is in "doc/development-plan.md".
+You are triggered AFTER human review of Cartographer's plan.
 You receive:
 
 - Path to the development plan file (created by Cartographer, reviewed by human)
@@ -64,7 +65,7 @@ This phase must be performed as the agent "Navigator" defined in ".github/agents
 
 IMPORTANT:
 - Read and apply the entire .agent.md spec (tools, constraints, quality standards).
-- Development plan file: "doc/development-plan.md"
+- Development plan file: "${plan_file_path}"
 - Maybe: Human review feedback or request: "${user_request}"
 - Finalize the plan by incorporating all feedback.
 - Commit the finalized plan to git.
@@ -75,7 +76,7 @@ Navigator resolves all open questions and commits the finalized plan.
 
 ## Step 3: Read and Parse the Finalized Plan
 
-Read the finalized development plan.
+Read the finalized development plan from "${plan_file_path}".
 Parse it to extract individual tasks/steps that need to be implemented.
 Store the list of tasks as ${task_list}.
 
@@ -95,7 +96,7 @@ This phase must be performed as the agent "Knight" defined in ".github/agents/kn
 IMPORTANT:
 - Read and apply the entire .agent.md spec (tools, constraints, quality standards).
 - Implement the following task: "${current_task}"
-- Full development plan context: Read from "doc/development-plan.md"
+- Full development plan file: "${plan_file_path}"
 - Original user request for context: "${user_request}"
 - Use TypeScript best practices and Next.js 15 conventions.
 - Return a brief confirmation when implementation is complete.
@@ -115,7 +116,7 @@ This phase must be performed as the agent "Medicus" defined in ".github/agents/m
 IMPORTANT:
 - Read and apply the entire .agent.md spec (tools, constraints, quality standards).
 - Review the implementation of this task: "${current_task}"
-- Full development plan: Read from "doc/development-plan.md"
+- Full development plan file: "${plan_file_path}"
 - Implementation summary: "${implementation_summary}"
 - Original user request: "${user_request}"
 - Provide a comprehensive code review report.
@@ -165,11 +166,11 @@ If Medicus's verdict is "APPROVED" or "TASK INJECTED":
 
 When all tasks have been approved by Medicus:
 
-- Present a summary of all completed tasks to the user
-- Confirm the entire development request is complete
 - Move the development plan file to `doc/completed-plans/` with a timestamped filename + short description
   - Example: `2024-01-15_implement-user-service.md`
 - Commit and push the changes
+- Present a summary of all completed tasks to the user
+- Confirm the entire development request is complete
 
 # Communication Guidelines
 

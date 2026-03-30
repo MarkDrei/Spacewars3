@@ -36,7 +36,7 @@ Your role is to:
 
 You receive:
 
-- The development plan file: `doc/development-plan.md` (from Cartographer)
+- The development plan file path: `${plan_file_path}` (from High Commander)
 - Human review feedback is included at the end of the plan file
 - Original user request for context
 
@@ -49,19 +49,15 @@ You receive:
 
 ### Step 0: Verify the starting conditions
 
-- Make sure you have access to the development plan file at `doc/development-plan.md`
+- Make sure you have access to the development plan file at `${plan_file_path}`
 - Execute all tests, especially `npm run ci` / `npm run ci:local`, to ensure the current codebase is stable before making changes
 - If tests fail, re-run the tests and see if the fails are stable or sporadic.
 - For a minor amount of test fails (sporadic or stable), document this and proceed with the plan refinement. For a major amount of test fails, report this an abort.
 
 ### Step 1: Read Current Plan
 
-<<<<<<< HEAD
-
-- # Read the file with learnings to consider "doc/learnings.md" (for knowledge sharing between agents).
 - Read `doc/learnings.md` for relevant context
-  > > > > > > > bcf6c45 (Improve agents with shared section and clearer separation of Knight and Medicus)
-- Read the development plan at `doc/development-plan.md` created by Cartographer
+- Read the development plan at `${plan_file_path}` created by Cartographer
 - Human feedback might be located at the end of the plan file
 - Identify all open questions and assumptions
 - Understand the proposed Arc42 updates
@@ -91,8 +87,8 @@ You receive:
 ### Step 5: Finalize and Commit
 
 - Update `doc/learnings.md` if you discovered planning insights worth sharing (see guidelines in shared-conventions.md)
-- Save the updated plan to `doc/development-plan.md`
-- Stage the plan: `git add doc/development-plan.md`
+- Save the updated plan to `${plan_file_path}`
+- Stage the plan: `git add "${plan_file_path}"`
 - Commit using format from `shared-conventions.md`: `git commit -m "Finalized development plan with human review feedback"`
 
 ### Step 6: Return Confirmation

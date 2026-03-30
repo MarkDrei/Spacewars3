@@ -63,9 +63,13 @@ The plan should reflect:
 - A hierarchical breakdown: Vision → Goals → Tasks
 - Proposed Arc42 documentation updates (see Arc42 guidelines in shared-conventions.md)
 
-**IMMEDIATELY save the draft plan to `doc/development-plan.md`.**
+**Generate a plan filename based on the task** (format: `doc/development-plan-[task-descriptive-name].md`).
+
+**IMMEDIATELY save the draft plan to the generated filename.**
 
 Document any decisions you made during planning in the "Agent Decisions" section of the file.
+
+**Return the generated filename** to the user so they can reference it in subsequent steps.
 
 If there are still ambiguities or decisions that require human input:
 
@@ -76,12 +80,12 @@ If there are still ambiguities or decisions that require human input:
 
 On user input after the draft is saved:
 
-- Changes requested → update the saved file in `doc/development-plan.md` and present revisions.
+- Changes requested → update the saved plan file and present revisions.
 - Questions asked → clarify, or use askQuestions for additional follow-ups.
 - Alternatives wanted → loop back to **Discovery** with new subagent.
 - Approval/no further questions → confirm the plan is ready for Navigator to process.
 
-The plan in `doc/development-plan.md` should:
+The plan file should:
 
 - Be clear enough for Knight agent to execute (after Navigator finalizes it).
 - Include critical file paths and module references.
