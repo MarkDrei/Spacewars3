@@ -48,6 +48,7 @@ interface UseUserStatsReturn {
   xp: number;
   level: number;
   xpForNextLevel: number;
+  score: number;
   timeMultiplier: number;
   bonuses: BonusData;
 }
@@ -60,7 +61,7 @@ export const useUserStats = (pollInterval: number = 5000): UseUserStatsReturn =>
     maxCapacity: 5000 // Default to base capacity
   });
   const [displayIronAmount, setDisplayIronAmount] = useState<number>(0);
-  const [xpData, setXpData] = useState({ xp: 0, level: 1, xpForNextLevel: 1000 });
+  const [xpData, setXpData] = useState({ xp: 0, level: 1, xpForNextLevel: 1000, score: 0 });
   const [currentTimeMultiplier, setCurrentTimeMultiplier] = useState<number>(1);
   const [bonusData, setBonusData] = useState<BonusData>(DEFAULT_BONUS_DATA);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -112,7 +113,8 @@ export const useUserStats = (pollInterval: number = 5000): UseUserStatsReturn =>
       setXpData({
         xp: result.xp,
         level: result.level,
-        xpForNextLevel: result.xpForNextLevel
+        xpForNextLevel: result.xpForNextLevel,
+        score: result.score ?? 0
       });
       setBonusData({
         levelMultiplier: result.levelMultiplier ?? 1.0,
@@ -217,6 +219,7 @@ export const useUserStats = (pollInterval: number = 5000): UseUserStatsReturn =>
     xp: xpData.xp,
     level: xpData.level,
     xpForNextLevel: xpData.xpForNextLevel,
+    score: xpData.score,
     timeMultiplier: currentTimeMultiplier,
     bonuses: bonusData,
   };

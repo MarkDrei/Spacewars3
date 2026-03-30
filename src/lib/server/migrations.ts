@@ -173,6 +173,16 @@ export const migrations: Migration[] = [
       'ALTER TABLE users DROP COLUMN IF EXISTS teleport_charges',
       'ALTER TABLE users DROP COLUMN IF EXISTS teleport_last_regen'
     ]
+  },
+  {
+    version: 13,
+    name: 'add_score_column',
+    up: [
+      'ALTER TABLE users ADD COLUMN IF NOT EXISTS score INTEGER NOT NULL DEFAULT 0'
+    ],
+    down: [
+      'ALTER TABLE users DROP COLUMN IF EXISTS score'
+    ]
   }
 ];
 
@@ -296,6 +306,8 @@ export async function applyTechMigrations(db: DatabaseConnection): Promise<void>
   await applyBridgeMigration(db);
   // Apply teleport charges migration
   await applyTeleportChargesMigration(db);
+  // Apply score column migration
+  await applyScoreMigration(db);
 }
 
 /**
@@ -617,5 +629,36 @@ export async function applyTeleportChargesMigration(db: DatabaseConnection): Pro
     console.log('✅ Teleport charges migration completed');
   } catch (error) {
     console.error('❌ Error applying teleport charges migration:', error);
+  }
+}
+
+/**
+ * Apply score column migration to the database
+ */
+export async function applyScoreMigration(db: DatabaseConnection): Promise<void> {
+  console.log('🔄 Checking for score column migration...');
+
+  try {
+    const exists = await columnExists(db, 'users', 'score');
+    if (exists) {
+      console.log('✅ Score column already exists');
+      return;
+    }
+
+    console.log('🚀 Adding score column...');
+
+    const scoreMigration = migrations.find(m => m.name === 'add_score_column');
+    if (!scoreMigration) {
+      console.error('❌ Score migration not found');
+      return;
+    }
+
+    for (const statement of scoreMigration.up) {
+      await runMigrationStatement(db, statement);
+    }
+
+    console.log('✅ Score migration completed');
+  } catch (error) {
+    console.error('❌ Error applying score migration:', error);
   }
 }

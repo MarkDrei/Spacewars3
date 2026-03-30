@@ -30,6 +30,34 @@ import { DEFAULT_WORLD_WIDTH, DEFAULT_WORLD_HEIGHT } from '@shared/worldConstant
 import { sendMessageToUser } from '../messages/MessageCache';
 
 /**
+ * Calculate XP awarded to the winner of a battle based on level difference.
+ * Formula:
+ * - baseXp = winnerLevel * 200
+ * - If loserLevel > winnerLevel: xp = baseXp * (1.3 ^ levelDiff)
+ * - If loserLevel < winnerLevel: xp = baseXp * (0.7 ^ abs(levelDiff))
+ * - If same level: xp = baseXp
+ *
+ * @param winnerLevel The level of the battle winner
+ * @param loserLevel The level of the battle loser
+ * @returns XP to award (floored to integer)
+ */
+export function calculateBattleXp(winnerLevel: number, loserLevel: number): number {
+  const baseXp = winnerLevel * 200;
+  const levelDiff = loserLevel - winnerLevel;
+
+  let xp: number;
+  if (levelDiff > 0) {
+    xp = baseXp * Math.pow(1.3, levelDiff);
+  } else if (levelDiff < 0) {
+    xp = baseXp * Math.pow(0.7, Math.abs(levelDiff));
+  } else {
+    xp = baseXp;
+  }
+
+  return Math.floor(xp);
+}
+
+/**
  * Maximum distance to initiate battle (same as collection distance)
  */
 const BATTLE_RANGE = 100;
@@ -218,6 +246,15 @@ export async function initiateBattle<THeld extends IronLocks>(
     throw new ApiError(400, 'Both users must have ships to battle');
   }
 
+  // Validation: Check if target is one of the attacker's last 3 victims
+  const battleCache = getBattleCache();
+  if (battleCache) {
+    const recentVictims = await battleCache.getRecentAttackees(attacker.id, 3);
+    if (recentVictims.includes(attackee.id)) {
+      throw new ApiError(400, 'You have attacked this player recently. Choose a different target.');
+    }
+  }
+
   console.log(`⚔️ initiateBattle: Getting ship positions...`);
   // Validation: Check distance
   const attackerPos = await getShipPosition(contextUser, attacker.ship_id);
@@ -270,7 +307,6 @@ export async function initiateBattle<THeld extends IronLocks>(
 
   console.log(`⚔️ initiateBattle: Creating battle in database...`);
   // Create battle in database with initial cooldowns
-  const battleCache = getBattleCache();
   const battle = await battleCache!.createBattle(
     contextBattle,
     contextUser,
@@ -483,9 +519,24 @@ export async function resolveBattle(
   );
 
   let ironResult: IronTransferResult = { amount: 0, winnerName: '', loserName: '' };
+  let xpAwarded = 0;
+  let levelUpResult: { leveledUp: boolean; oldLevel: number; newLevel: number } | undefined;
+
   await context.useLockWithAcquire(USER_LOCK, async (userContext) => {
     // transfer iron from loser to winner before clearing other state
     ironResult = await transferIronOnBattle(userContext, winnerId, loserId);
+
+    // Award XP to winner based on level difference
+    const userWorldCache = UserCache.getInstance2();
+    const winner = userWorldCache.getUserByIdFromCache(userContext, winnerId);
+    const loser = userWorldCache.getUserByIdFromCache(userContext, loserId);
+    if (winner && loser) {
+      const winnerLevel = winner.getLevel();
+      const loserLevel = loser.getLevel();
+      xpAwarded = calculateBattleXp(winnerLevel, loserLevel);
+      levelUpResult = winner.addXp(xpAwarded);
+      await userWorldCache.updateUserInCache(userContext, winner);
+    }
 
     // Clear battle state for both users
     await updateUserBattleState(userContext, battle.attackerId, false, null);
@@ -516,13 +567,22 @@ export async function resolveBattle(
     }
   });
 
-  // send victory/defeat messages to users (include iron transfer and opponent name)
+  // send victory/defeat messages to users (include iron transfer, XP, and opponent name)
   try {
     await sendMessageToUser(
       context,
       winnerId,
-      `P: 🎉 **Victory!** You won the battle! You gained ${ironResult.amount} iron from ${ironResult.loserName}.`
+      `P: 🎉 **Victory!** You won the battle! You gained ${ironResult.amount} iron and ${xpAwarded} XP from ${ironResult.loserName}.`
     );
+
+    // Send level-up notification if winner leveled up
+    if (levelUpResult?.leveledUp) {
+      await sendMessageToUser(
+        context,
+        winnerId,
+        `P: 🎉 Level Up! You reached level ${levelUpResult.newLevel}!`
+      );
+    }
 
     await sendMessageToUser(
       context,

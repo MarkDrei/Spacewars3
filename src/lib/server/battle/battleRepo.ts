@@ -255,7 +255,29 @@ export async function getBattlesForUserFromDb<THeld extends IronLocks>(
 // ========================================
 
 /**
- * Deserialize battle from database row
+ * Get recent attackee IDs for a given attacker from database.
+ * Includes both completed and active battles (no battle_end_time filter).
+ * Used for attack restriction validation (prevent repeated attacks).
+ * NOTE: Caller must hold DATABASE_LOCK_BATTLES (level 13)
+ */
+export async function getRecentAttackeesFromDb<THeld extends IronLocks>(
+  _context: HasLock13Context<THeld>,
+  attackerId: number,
+  limit: number
+): Promise<number[]> {
+  const db = await getDatabase();
+
+  const result = await db.query(`
+    SELECT attackee_id FROM battles
+    WHERE attacker_id = $1
+    ORDER BY battle_start_time DESC
+    LIMIT $2
+  `, [attackerId, limit]);
+
+  return result.rows.map((row: { attackee_id: number }) => row.attackee_id);
+}
+
+/**
  * Helper function for converting DB rows to Battle objects
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

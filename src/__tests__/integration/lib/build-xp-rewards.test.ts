@@ -10,7 +10,7 @@ import { BuildQueueItem } from '@/lib/server/techs/TechFactory';
 import { MessageCache } from '@/lib/server/messages/MessageCache';
 import { withTransaction } from '../../helpers/transactionHelper';
 
-describe('TechService - Build Completion XP Rewards', () => {
+describe('TechService - Build Completion Score Rewards', () => {
   let techService: TechService;
   let mockCreateMessage: ReturnType<typeof vi.fn>;
 
@@ -51,18 +51,18 @@ describe('TechService - Build Completion XP Rewards', () => {
     UserCache.resetInstance();
   });
 
-  // Helper to initialize test user with specific XP level
-  async function initTestUser(userId: number, initialXp: number = 0) {
+  // Helper to initialize test user
+  async function initTestUser(userId: number) {
     const db = await getDatabase();
     const now = Math.floor(Date.now() / 1000);
     const hashedPassword = '$2b$10$N9qo8uLOickgx2ZMRZoMye';
     await db.query(`
       INSERT INTO users (
-        id, username, password_hash, last_updated, iron, xp,
+        id, username, password_hash, last_updated, iron, xp, score,
         tech_tree, pulse_laser, auto_turret, ship_hull, kinetic_armor, energy_shield,
         build_queue, build_start_sec
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
-    `, [userId, `testuser_${userId}`, hashedPassword, now, 10000, initialXp, '{}', 1, 0, 1, 0, 5, '[]', null]);
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+    `, [userId, `testuser_${userId}`, hashedPassword, now, 10000, 0, 0, '{}', 1, 0, 1, 0, 5, '[]', null]);
   }
 
   // Helper to update build queue
@@ -79,7 +79,17 @@ describe('TechService - Build Completion XP Rewards', () => {
     });
   }
 
-  // Helper to get user XP
+  // Helper to get user score
+  async function getUserScore(userId: number): Promise<number> {
+    const context = createLockContext();
+    const cache = UserCache.getInstance2();
+    return await context.useLockWithAcquire(USER_LOCK, async (userContext) => {
+      const user = await cache.getUserByIdWithLock(userContext, userId);
+      return user?.score ?? 0;
+    });
+  }
+
+  // Helper to get user XP (should be 0 for builds)
   async function getUserXp(userId: number): Promise<number> {
     const context = createLockContext();
     const cache = UserCache.getInstance2();
@@ -89,11 +99,11 @@ describe('TechService - Build Completion XP Rewards', () => {
     });
   }
 
-  test('processCompletedBuilds_autoTurretCompleted_awards1XP', async () => {
+  test('processCompletedBuilds_autoTurretCompleted_awards1Score', async () => {
     await withTransaction(async () => {
-      // Setup: Auto Turret costs 100 iron -> 100/100 = 1 XP
+      // Setup: Auto Turret costs 100 iron -> 100/100 = 1 score
       const testUserId = 9101;
-      await initTestUser(testUserId, 0);
+      await initTestUser(testUserId);
 
       // Arrange - Add completed auto_turret (buildDurationMinutes: 1)
       const now = Math.floor(Date.now() / 1000);
@@ -111,17 +121,19 @@ describe('TechService - Build Completion XP Rewards', () => {
         await techService.processCompletedBuilds(testUserId, userContext);
       });
 
-      // Assert - User received 1 XP
+      // Assert - User received 1 score (NOT XP)
+      const finalScore = await getUserScore(testUserId);
+      expect(finalScore).toBe(1);
       const finalXp = await getUserXp(testUserId);
-      expect(finalXp).toBe(1);
+      expect(finalXp).toBe(0); // XP unchanged
     });
   });
 
-  test('processCompletedBuilds_pulseLaserCompleted_awards1XP', async () => {
+  test('processCompletedBuilds_pulseLaserCompleted_awards1Score', async () => {
     await withTransaction(async () => {
-      // Setup: Pulse Laser costs 150 iron -> 150/100 = 1 XP (Math.floor)
+      // Setup: Pulse Laser costs 150 iron -> 150/100 = 1 score (Math.floor)
       const testUserId = 9102;
-      await initTestUser(testUserId, 0);
+      await initTestUser(testUserId);
 
       const now = Math.floor(Date.now() / 1000);
       const startSec = now - 180; // Started 3 min ago
@@ -138,17 +150,17 @@ describe('TechService - Build Completion XP Rewards', () => {
         await techService.processCompletedBuilds(testUserId, userContext);
       });
 
-      // Assert - 150/100 = 1.5 -> Math.floor = 1 XP
-      const finalXp = await getUserXp(testUserId);
-      expect(finalXp).toBe(1);
+      // Assert - 150/100 = 1.5 -> Math.floor = 1 score
+      const finalScore = await getUserScore(testUserId);
+      expect(finalScore).toBe(1);
     });
   });
 
-  test('processCompletedBuilds_gaussRifleCompleted_awards5XP', async () => {
+  test('processCompletedBuilds_gaussRifleCompleted_awards5Score', async () => {
     await withTransaction(async () => {
-      // Setup: Gauss Rifle costs 500 iron -> 500/100 = 5 XP
+      // Setup: Gauss Rifle costs 500 iron -> 500/100 = 5 score
       const testUserId = 9103;
-      await initTestUser(testUserId, 0);
+      await initTestUser(testUserId);
 
       const now = Math.floor(Date.now() / 1000);
       const startSec = now - 600; // Started 10 min ago
@@ -165,17 +177,17 @@ describe('TechService - Build Completion XP Rewards', () => {
         await techService.processCompletedBuilds(testUserId, userContext);
       });
 
-      // Assert - 500/100 = 5 XP
-      const finalXp = await getUserXp(testUserId);
-      expect(finalXp).toBe(5);
+      // Assert - 500/100 = 5 score
+      const finalScore = await getUserScore(testUserId);
+      expect(finalScore).toBe(5);
     });
   });
 
-  test('processCompletedBuilds_rocketLauncherCompleted_awards35XP', async () => {
+  test('processCompletedBuilds_rocketLauncherCompleted_awards35Score', async () => {
     await withTransaction(async () => {
-      // Setup: Rocket Launcher costs 3500 iron -> 3500/100 = 35 XP
+      // Setup: Rocket Launcher costs 3500 iron -> 3500/100 = 35 score
       const testUserId = 9104;
-      await initTestUser(testUserId, 0);
+      await initTestUser(testUserId);
 
       const now = Math.floor(Date.now() / 1000);
       const startSec = now - 3600; // Started 1 hour ago
@@ -192,17 +204,17 @@ describe('TechService - Build Completion XP Rewards', () => {
         await techService.processCompletedBuilds(testUserId, userContext);
       });
 
-      // Assert - 3500/100 = 35 XP
-      const finalXp = await getUserXp(testUserId);
-      expect(finalXp).toBe(35);
+      // Assert - 3500/100 = 35 score
+      const finalScore = await getUserScore(testUserId);
+      expect(finalScore).toBe(35);
     });
   });
 
-  test('processCompletedBuilds_defenseItemCompleted_awardsXP', async () => {
+  test('processCompletedBuilds_defenseItemCompleted_awardsScore', async () => {
     await withTransaction(async () => {
-      // Setup: Kinetic Armor costs 200 iron -> 200/100 = 2 XP
+      // Setup: Kinetic Armor costs 200 iron -> 200/100 = 2 score
       const testUserId = 9105;
-      await initTestUser(testUserId, 0);
+      await initTestUser(testUserId);
 
       const now = Math.floor(Date.now() / 1000);
       const startSec = now - 600;
@@ -219,18 +231,18 @@ describe('TechService - Build Completion XP Rewards', () => {
         await techService.processCompletedBuilds(testUserId, userContext);
       });
 
-      // Assert - 200/100 = 2 XP
-      const finalXp = await getUserXp(testUserId);
-      expect(finalXp).toBe(2);
+      // Assert - 200/100 = 2 score
+      const finalScore = await getUserScore(testUserId);
+      expect(finalScore).toBe(2);
     });
   });
 
-  test('processCompletedBuilds_multipleBuilds_accumulatesXP', async () => {
+  test('processCompletedBuilds_multipleBuilds_accumulatesScore', async () => {
     await withTransaction(async () => {
       // Setup: Multiple items completed
-      // Auto Turret (100 iron = 1 XP) + Pulse Laser (150 iron = 1 XP) = 2 XP total
+      // Auto Turret (100 iron = 1 score) + Pulse Laser (150 iron = 1 score) = 2 score total
       const testUserId = 9106;
-      await initTestUser(testUserId, 0);
+      await initTestUser(testUserId);
 
       const now = Math.floor(Date.now() / 1000);
       const startSec = now - 600; // All completed
@@ -248,54 +260,17 @@ describe('TechService - Build Completion XP Rewards', () => {
         await techService.processCompletedBuilds(testUserId, userContext);
       });
 
-      // Assert - 1 + 1 = 2 XP
-      const finalXp = await getUserXp(testUserId);
-      expect(finalXp).toBe(2);
+      // Assert - 1 + 1 = 2 score
+      const finalScore = await getUserScore(testUserId);
+      expect(finalScore).toBe(2);
     });
   });
 
-  test('processCompletedBuilds_buildCausesLevelUp_sendsLevelUpNotification', async () => {
+  test('processCompletedBuilds_buildCompleted_noLevelUpNotification', async () => {
     await withTransaction(async () => {
-      // Setup: User has 995 XP (level 1), building Auto Turret (1 XP) will reach 996 XP (still level 1)
-      // Let's give user 999 XP, so +1 XP will reach 1000 XP = level 2
+      // Builds no longer award XP so they never cause level-ups
       const testUserId = 9107;
-      await initTestUser(testUserId, 999);
-
-      const now = Math.floor(Date.now() / 1000);
-      const startSec = now - 120;
-
-      const buildQueue: BuildQueueItem[] = [
-        { itemKey: 'auto_turret', itemType: 'weapon', completionTime: 0 }
-      ];
-
-      await updateBuildQueue(testUserId, buildQueue, startSec);
-
-      // Act
-      const context = createLockContext();
-      await context.useLockWithAcquire(USER_LOCK, async (userContext) => {
-        await techService.processCompletedBuilds(testUserId, userContext);
-      });
-
-      // Assert - Level up notification was sent
-      expect(mockCreateMessage).toHaveBeenCalledTimes(2); // Build complete + Level up
-      
-      // Check for level-up notification
-      const calls = mockCreateMessage.mock.calls;
-      const levelUpCall = calls.find(call => call[2].includes('Level Up'));
-      expect(levelUpCall).toBeDefined();
-      expect(levelUpCall![2]).toContain('Level Up');
-      expect(levelUpCall![2]).toContain('level 2');
-      expect(levelUpCall![2]).toContain('+1 XP');
-      expect(levelUpCall![2]).toContain('P:'); // Positive message prefix
-      expect(levelUpCall![2]).toContain('🎉'); // Celebration emoji
-    });
-  });
-
-  test('processCompletedBuilds_buildDoesNotCauseLevelUp_noLevelUpNotification', async () => {
-    await withTransaction(async () => {
-      // Setup: User has 500 XP, building Auto Turret (1 XP) won't cause level up
-      const testUserId = 9108;
-      await initTestUser(testUserId, 500);
+      await initTestUser(testUserId);
 
       const now = Math.floor(Date.now() / 1000);
       const startSec = now - 120;
@@ -322,53 +297,15 @@ describe('TechService - Build Completion XP Rewards', () => {
     });
   });
 
-  test('processCompletedBuilds_largeBuildCausesMultipleLevelUps_sendsCorrectLevelUpNotification', async () => {
-    await withTransaction(async () => {
-      // Setup: User has 0 XP (level 1)
-      // Rocket Launcher gives 35 XP, which should reach level 2 (requires 1000 XP)
-      // Actually, 35 XP won't cause level up from 0. Let's use a different scenario.
-      // User has 3970 XP (just below level 3 at 4000 XP)
-      // Build Rocket Launcher (35 XP) -> 4005 XP = Level 3
-      const testUserId = 9109;
-      await initTestUser(testUserId, 3970);
-
-      const now = Math.floor(Date.now() / 1000);
-      const startSec = now - 3600;
-
-      const buildQueue: BuildQueueItem[] = [
-        { itemKey: 'rocket_launcher', itemType: 'weapon', completionTime: 0 }
-      ];
-
-      await updateBuildQueue(testUserId, buildQueue, startSec);
-
-      // Act
-      const context = createLockContext();
-      await context.useLockWithAcquire(USER_LOCK, async (userContext) => {
-        await techService.processCompletedBuilds(testUserId, userContext);
-      });
-
-      // Assert - Level up from 2 to 3
-      const calls = mockCreateMessage.mock.calls;
-      const levelUpCall = calls.find(call => call[2].includes('Level Up'));
-      expect(levelUpCall).toBeDefined();
-      expect(levelUpCall![2]).toContain('level 3');
-      expect(levelUpCall![2]).toContain('+35 XP');
-
-      // Verify final XP
-      const finalXp = await getUserXp(testUserId);
-      expect(finalXp).toBe(4005);
-    });
-  });
-
-  test('processCompletedBuilds_xpPersistsAcrossMultipleCalls', async () => {
+  test('processCompletedBuilds_scorePersistsAcrossMultipleCalls', async () => {
     await withTransaction(async () => {
       // Setup: User builds multiple items sequentially
       const testUserId = 9110;
-      await initTestUser(testUserId, 0);
+      await initTestUser(testUserId);
 
       const now = Math.floor(Date.now() / 1000);
 
-      // First build: Auto Turret (1 XP)
+      // First build: Auto Turret (1 score)
       const buildQueue1: BuildQueueItem[] = [
         { itemKey: 'auto_turret', itemType: 'weapon', completionTime: 0 }
       ];
@@ -379,11 +316,11 @@ describe('TechService - Build Completion XP Rewards', () => {
         await techService.processCompletedBuilds(testUserId, userContext);
       });
 
-      // Check XP after first build
-      let currentXp = await getUserXp(testUserId);
-      expect(currentXp).toBe(1);
+      // Check score after first build
+      let currentScore = await getUserScore(testUserId);
+      expect(currentScore).toBe(1);
 
-      // Second build: Pulse Laser (1 XP)
+      // Second build: Pulse Laser (1 score)
       const buildQueue2: BuildQueueItem[] = [
         { itemKey: 'pulse_laser', itemType: 'weapon', completionTime: 0 }
       ];
@@ -394,9 +331,9 @@ describe('TechService - Build Completion XP Rewards', () => {
         await techService.processCompletedBuilds(testUserId, userContext);
       });
 
-      // Check XP after second build
-      currentXp = await getUserXp(testUserId);
-      expect(currentXp).toBe(2);
+      // Check score after second build
+      currentScore = await getUserScore(testUserId);
+      expect(currentScore).toBe(2);
     });
   });
 });

@@ -474,8 +474,9 @@ export class UserCache extends Cache {
         build_queue = $22,
         build_start_sec = $23,
         teleport_charges = $24,
-        teleport_last_regen = $25
-      WHERE id = $26`,
+        teleport_last_regen = $25,
+        score = $26
+      WHERE id = $27`,
       [
         user.iron,
         user.xp,
@@ -502,6 +503,7 @@ export class UserCache extends Cache {
         user.buildStartSec,
         user.teleportCharges,
         user.teleportLastRegen,
+        user.score,
         user.id
       ]
     );

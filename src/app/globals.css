@@ -179,6 +179,17 @@ code {
   border-right: 1px solid rgba(255, 255, 255, 0.05);
 }
 
+/* Value cell: right column in stat/tech/defense tables */
+.value-cell {
+  text-align: center;
+  font-weight: 600;
+  color: var(--primary-green);
+  width: var(--min-width-value-cell);
+  min-width: var(--min-width-value-cell);
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
 .description-cell {
   max-width: 250px;
   word-wrap: break-word;
@@ -202,6 +213,11 @@ code {
   .data-cell {
     padding: 0.75rem 0.5rem;
     font-size: 0.85rem;
+  }
+
+  .value-cell {
+    width: var(--min-width-value-cell-mobile);
+    min-width: var(--min-width-value-cell-mobile);
   }
 
   .description-cell {

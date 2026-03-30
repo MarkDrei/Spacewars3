@@ -16,6 +16,7 @@ class User {
   password_hash: string;
   iron: number;
   xp: number;
+  score: number = 0;
   last_updated: number;
   techTree: TechTree;
   ship_id?: number; // Optional ship ID for linking to player's ship
@@ -307,12 +308,21 @@ class User {
   }
 
   /**
-   * Update user stats based on elapsed time.
+   * Add score to the user (economic progression metric).
+   * Unlike addXp, this does not trigger level-ups.
+   * @param amount Amount of score to add (must be positive; non-positive amounts are ignored)
+   */
+  addScore(amount: number): void {
+    if (amount <= 0) return;
+    this.score += amount;
+  }
+
+  /**
    * @param now Current timestamp in seconds
    * @param bonuses Pre-computed user bonuses (optional). When provided, bonused iron rate and
    *   capacity are used. When omitted, falls back to direct tech-tree lookups (backward-compat).
    */
-  updateStats(now: number, bonuses?: UserBonuses): { levelUp?: { leveledUp: boolean; oldLevel: number; newLevel: number; xpReward: number; source: 'research' }; researchCompleted?: { type: ResearchType; completedLevel: number; researchName: string } } {
+  updateStats(now: number, bonuses?: UserBonuses): { researchCompleted?: { type: ResearchType; completedLevel: number; researchName: string; scoreReward: number } } {
     const elapsed = now - this.last_updated;
     if (elapsed <= 0) return {};
 
@@ -370,33 +380,27 @@ class User {
     // Update teleport charges (regeneration)
     this.updateTeleportCharges(now);
 
-    // Check if research completed and award XP
-    let levelUpInfo: { leveledUp: boolean; oldLevel: number; newLevel: number; xpReward: number; source: 'research' } | undefined;
-    let researchCompletedInfo: { type: ResearchType; completedLevel: number; researchName: string } | undefined;
+    // Check if research completed and award score
+    let researchCompletedInfo: { type: ResearchType; completedLevel: number; researchName: string; scoreReward: number } | undefined;
     if (researchResult?.completed) {
       // Invalidate cached bonuses because research-derived values have changed.
-      // (If addXp() also causes a level-up, it will call invalidateBonuses() again — that is harmless.)
       this.bonusCache.invalidateBonuses(this.id);
 
       const research = AllResearches[researchResult.type];
       // Get the cost of the level that was just completed (completedLevel + 1)
       const cost = getResearchUpgradeCost(research, researchResult.completedLevel + 1);
-      const xpReward = Math.floor(cost / 25);
-      const levelUp = this.addXp(xpReward);
+      const scoreReward = Math.floor(cost / 25);
+      this.addScore(scoreReward);
 
       researchCompletedInfo = {
         type: researchResult.type,
         completedLevel: researchResult.completedLevel,
         researchName: research.name,
+        scoreReward,
       };
-
-      if (levelUp) {
-        levelUpInfo = { ...levelUp, xpReward, source: 'research' as const };
-      }
     }
 
-    const result: { levelUp?: typeof levelUpInfo; researchCompleted?: typeof researchCompletedInfo } = {};
-    if (levelUpInfo) result.levelUp = levelUpInfo;
+    const result: { researchCompleted?: typeof researchCompletedInfo } = {};
     if (researchCompletedInfo) result.researchCompleted = researchCompletedInfo;
     return result;
   }

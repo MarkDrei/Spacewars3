@@ -44,6 +44,9 @@ CREATE TABLE IF NOT EXISTS users (
   -- Teleport charges
   teleport_charges DOUBLE PRECISION NOT NULL DEFAULT 0.0,
   teleport_last_regen INTEGER NOT NULL DEFAULT 0,
+
+  -- Score (economic progression metric, awarded from research and builds)
+  score INTEGER NOT NULL DEFAULT 0,
   
   FOREIGN KEY (ship_id) REFERENCES space_objects (id)
 )`;
@@ -167,4 +170,4 @@ export const MIGRATE_ADD_TELEPORT_CHARGES = [
 ];
 
 // Optional: Version management for migrations
-export const SCHEMA_VERSION = 12;
+export const SCHEMA_VERSION = 13;

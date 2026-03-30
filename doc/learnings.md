@@ -310,3 +310,36 @@ When passing `totalReloadFactor`, the function uses `baseCooldown / totalReloadF
 7. **updateStats() receives UserBonuses as optional parameter** — keeps the method synchronous while allowing bonus-aware callers to pass pre-computed values. Tests that don't supply bonuses fall back to legacy per-stat research lookups (backward-compatible).
 
 **Architectural implication**: When adding a new derived/computed value that is needed on every request but can always be reconstructed from existing cached data, prefer this "derived cache" pattern over either (a) recomputing on every request or (b) persisting to the database.
+
+---
+
+### Learning: User constructor parameter order is stable — don't add new params in the middle
+
+**Discovered by**: Knight
+**Context**: Tasks 1.1–1.7 — adding `score` field to User
+
+**Details**: The `User` constructor has 22 positional parameters. Many test files call `new User(...)` or `User.create(...)` with positional arguments. Adding a new parameter in the middle (e.g., between `ship_id` and `bonusCache`) breaks all those call sites silently (TypeScript won't catch `bonusCache` being passed to a `score: number` parameter).
+
+**Pattern to use**: Add new optional fields as TypeScript class field initializations (`score: number = 0`) instead of constructor parameters. Then in `userFromRow()`, set the field directly: `user.score = row.score ?? 0`. This avoids any breaking changes to the constructor or `User.create()` signatures.
+
+**Corollary**: Never add a constructor parameter before the dependency-injection parameters (`bonusCache` and `timeMultiplierService`) at positions 21-22.
+
+---
+
+### Learning: Research no longer awards XP — only score
+
+**Discovered by**: Knight
+**Context**: Task 1.4 — converting research XP to score
+
+**Details**: After this change, `updateStats()` return type no longer includes `levelUp`. Research completion now only increments `user.score` (not `user.xp`). The `researchCompleted` field in the return type was updated to include `scoreReward: number`. Tests should check `user.score` (not `user.xp`) for research completion rewards.
+
+**Corollary**: Builds also now award score via `user.addScore()` (Task 1.5). The only source of XP is now winning a battle (Task 2.2).
+
+---
+
+### Learning: BattleCache.getRecentAttackees — query includes active battles
+
+**Discovered by**: Knight  
+**Context**: Tasks 3.1–3.3 — attack restriction
+
+**Details**: `getRecentAttackeesFromDb()` uses `ORDER BY battle_start_time DESC` without a `battle_end_time IS NOT NULL` filter. This intentionally includes active (in-progress) battles to handle edge cases where a battle is ongoing. The `inBattle` flag prevents concurrent battles, but including active battles in the recent-victims list provides defense-in-depth.
