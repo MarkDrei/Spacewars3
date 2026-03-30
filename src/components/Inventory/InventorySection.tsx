@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { InventoryGrid as InventoryGridType, InventoryItemData, SlotCoordinate, DEFAULT_INVENTORY_SLOTS, getInventoryRows, INVENTORY_COLS } from '@/shared/inventoryShared';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { InventoryGrid as InventoryGridType, InventoryItemData, SlotCoordinate, DEFAULT_INVENTORY_SLOTS, getInventoryRows, INVENTORY_COLS, SortStatKey, SortDirection, sortGrid } from '@/shared/inventoryShared';
 import InventoryGridComponent, { ExternalDropSource } from './InventoryGrid';
 import ItemDetailsPanel from './ItemDetailsPanel';
+import SortControls from './SortControls';
 
 const makeEmptyGrid = (maxSlots: number): InventoryGridType =>
   Array.from({ length: getInventoryRows(maxSlots) }, () =>
@@ -28,6 +29,8 @@ const InventorySection: React.FC<InventorySectionProps> = ({ refreshTrigger, onC
   const [selectedSlot, setSelectedSlot] = useState<SlotCoordinate | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<SortStatKey | null>(null);
+  const [sortDir, setSortDir] = useState<SortDirection>('desc');
 
   const showStatus = (msg: string) => {
     setStatusMessage(msg);
@@ -167,9 +170,26 @@ const InventorySection: React.FC<InventorySectionProps> = ({ refreshTrigger, onC
   const selectedItem: InventoryItemData | null =
     selectedSlot !== null ? (grid[selectedSlot.row]?.[selectedSlot.col] ?? null) : null;
 
+  const displayGrid = useMemo(
+    () => (sortBy !== null ? sortGrid(grid, INVENTORY_COLS, sortBy, sortDir) : grid),
+    [grid, sortBy, sortDir],
+  );
+
+  const handleSortChange = useCallback((by: SortStatKey | null, dir: SortDirection) => {
+    setSortBy(by);
+    setSortDir(dir);
+  }, []);
+
   return (
     <section className="inventory-section">
-      <h2 className="inventory-heading">Inventory</h2>
+      <div className="section-heading-row">
+        <h2 className="inventory-heading">Inventory</h2>
+        <SortControls
+          sortBy={sortBy}
+          sortDir={sortDir}
+          onSortChange={handleSortChange}
+        />
+      </div>
 
       {statusMessage && (
         <div className="inventory-status-message">{statusMessage}</div>
@@ -181,7 +201,7 @@ const InventorySection: React.FC<InventorySectionProps> = ({ refreshTrigger, onC
       {!isLoading && !error && (
         <div className="inventory-layout">
           <InventoryGridComponent
-            grid={grid}
+            grid={displayGrid}
             selectedSlot={selectedSlot}
             onSelectSlot={handleSelectSlot}
             onMoveItem={handleMoveItem}

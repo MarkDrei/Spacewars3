@@ -328,6 +328,81 @@
   border-left: 4px solid #4fc3f7;
 }
 
+/* Row that holds the section heading and sort controls side by side */
+.section-heading-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.section-heading-row .inventory-heading,
+.section-heading-row .bridge-heading {
+  margin-bottom: 0;
+}
+
+/* ============================================================
+   Sort Controls
+   ============================================================ */
+
+.sort-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.sort-controls-label {
+  font-size: 0.8rem;
+  color: #8a8a9a;
+  white-space: nowrap;
+}
+
+.sort-controls-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.sort-btn {
+  background-color: #1a1a2e;
+  color: #b0bec5;
+  border: 1px solid #2a2a3e;
+  border-radius: 4px;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background-color 0.15s;
+  white-space: nowrap;
+}
+
+.sort-btn:hover {
+  border-color: #546e7a;
+  color: #e0e0e0;
+  background-color: #22223a;
+}
+
+.sort-btn--active {
+  background-color: #162032;
+  font-weight: bold;
+}
+
+.sort-btn--clear {
+  border-color: #4a4a5a;
+  color: #78909c;
+}
+
+.sort-btn--clear:hover {
+  border-color: #ef5350;
+  color: #ef5350;
+  background-color: #2a1a1a;
+}
+
+.sort-btn-dir {
+  font-size: 0.85em;
+}
+
 .inventory-heading {
   font-size: 1.4rem;
   color: #4fc3f7;

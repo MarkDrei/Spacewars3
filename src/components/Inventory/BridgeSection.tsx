@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { BridgeGrid, InventoryItemData, SlotCoordinate, BRIDGE_COLS, getBridgeRows, CommanderStatKey, COMMANDER_STAT_LABELS } from '@/shared/inventoryShared';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { BridgeGrid, InventoryItemData, SlotCoordinate, BRIDGE_COLS, getBridgeRows, CommanderStatKey, COMMANDER_STAT_LABELS, SortStatKey, SortDirection, sortGrid } from '@/shared/inventoryShared';
 import InventoryGridComponent, { ExternalDropSource } from './InventoryGrid';
 import ItemDetailsPanel from './ItemDetailsPanel';
+import SortControls from './SortControls';
 
 const makeEmptyBridgeGrid = (maxSlots: number): BridgeGrid => {
   if (maxSlots === 0) return [];
@@ -31,6 +32,8 @@ const BridgeSection: React.FC<BridgeSectionProps> = ({ refreshTrigger, onCrossTr
   const [selectedSlot, setSelectedSlot] = useState<SlotCoordinate | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<SortStatKey | null>(null);
+  const [sortDir, setSortDir] = useState<SortDirection>('desc');
 
   const showStatus = (msg: string) => {
     setStatusMessage(msg);
@@ -169,6 +172,16 @@ const BridgeSection: React.FC<BridgeSectionProps> = ({ refreshTrigger, onCrossTr
   const selectedItem: InventoryItemData | null =
     selectedSlot !== null ? (grid[selectedSlot.row]?.[selectedSlot.col] ?? null) : null;
 
+  const displayGrid = useMemo(() => {
+    const base = grid.length > 0 ? grid : makeEmptyBridgeGrid(maxBridgeSlots);
+    return sortBy !== null ? sortGrid(base, BRIDGE_COLS, sortBy, sortDir) : base;
+  }, [grid, maxBridgeSlots, sortBy, sortDir]);
+
+  const handleSortChange = useCallback((by: SortStatKey | null, dir: SortDirection) => {
+    setSortBy(by);
+    setSortDir(dir);
+  }, []);
+
   // If the player hasn't researched bridge slots yet, show a locked message
   if (!isLoading && !error && maxBridgeSlots === 0) {
     return (
@@ -183,7 +196,15 @@ const BridgeSection: React.FC<BridgeSectionProps> = ({ refreshTrigger, onCrossTr
 
   return (
     <section className="bridge-section">
-      <h2 className="bridge-heading">Bridge</h2>
+      <div className="section-heading-row">
+        <h2 className="bridge-heading">Bridge</h2>
+        <SortControls
+          sortBy={sortBy}
+          sortDir={sortDir}
+          onSortChange={handleSortChange}
+          accentColor="#ce93d8"
+        />
+      </div>
       <p className="bridge-intro">
         Assign commanders to bridge positions. Drag items from Inventory to assign, or drag them back.
       </p>
@@ -198,7 +219,7 @@ const BridgeSection: React.FC<BridgeSectionProps> = ({ refreshTrigger, onCrossTr
       {!isLoading && !error && (
         <div className="inventory-layout">
           <InventoryGridComponent
-            grid={grid.length > 0 ? grid : makeEmptyBridgeGrid(maxBridgeSlots)}
+            grid={displayGrid}
             selectedSlot={selectedSlot}
             onSelectSlot={handleSelectSlot}
             onMoveItem={handleMoveItem}

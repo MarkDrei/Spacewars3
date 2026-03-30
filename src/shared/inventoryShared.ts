@@ -70,3 +70,53 @@ export function getBridgeRows(maxSlots: number): number {
 
 /** rows×4 grid reusing the same InventorySlot type */
 export type BridgeGrid = InventorySlot[][];
+
+// ---------------------------------------------------------------------------
+// Sorting helpers
+// ---------------------------------------------------------------------------
+
+export type SortStatKey = CommanderStatKey | 'total';
+export type SortDirection = 'asc' | 'desc';
+
+/** Returns the sum of all stat bonus values for a commander item. */
+export function getStatTotal(item: InventoryItemData): number {
+  return item.statBonuses.reduce((sum, b) => sum + b.value, 0);
+}
+
+/** Returns the value of a specific stat for a commander item (0 if absent). */
+export function getStatValue(item: InventoryItemData, stat: CommanderStatKey): number {
+  return item.statBonuses.find((b) => b.stat === stat)?.value ?? 0;
+}
+
+/**
+ * Returns a visually-sorted copy of the given grid.
+ * Non-null items are sorted by the given stat (or total), with empty slots
+ * pushed to the end. The grid dimensions are preserved.
+ */
+export function sortGrid(
+  grid: InventorySlot[][],
+  cols: number,
+  sortBy: SortStatKey,
+  direction: SortDirection,
+): InventorySlot[][] {
+  const items = grid.flat().filter((s): s is InventoryItemData => s !== null);
+
+  items.sort((a, b) => {
+    const aVal = sortBy === 'total' ? getStatTotal(a) : getStatValue(a, sortBy);
+    const bVal = sortBy === 'total' ? getStatTotal(b) : getStatValue(b, sortBy);
+    return direction === 'asc' ? aVal - bVal : bVal - aVal;
+  });
+
+  const rows = grid.length;
+  const result: InventorySlot[][] = Array.from({ length: rows }, () =>
+    Array.from({ length: cols }, () => null),
+  );
+
+  let idx = 0;
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      result[r][c] = idx < items.length ? items[idx++] : null;
+    }
+  }
+  return result;
+}
