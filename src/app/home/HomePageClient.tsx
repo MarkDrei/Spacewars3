@@ -68,7 +68,7 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
   const { techCounts, weapons, defenses, isLoading: techLoading, error: techError } = useTechCounts();
   const { defenseValues, isLoading: defenseLoading, error: defenseError } = useDefenseValues();
   const { battleStatus, isLoading: battleLoading } = useBattleStatus();
-  const { xp, level, xpForNextLevel, isLoading: xpLoading, bonuses } = useUserStats(5000);
+  const { xp, level, xpForNextLevel, score, isLoading: xpLoading, bonuses } = useUserStats(5000);
 
   // Handler for refreshing messages
   const handleRefreshMessages = async () => {
@@ -398,33 +398,23 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
               </thead>
               <tbody>
                 <tr className="data-row">
+                  <td className="data-cell">Score</td>
+                  <td className="data-cell value-cell">{xpLoading ? '...' : formatNumber(score)}</td>
+                </tr>
+                <tr className="data-row">
                   <td className="data-cell">Level</td>
-                  <td className="data-cell">
-                    <span className="stat-value">{xpLoading ? '...' : level}</span>
-                  </td>
+                  <td className="data-cell value-cell">{xpLoading ? '...' : level}</td>
                 </tr>
                 <tr className="data-row">
                   <td className="data-cell">Experience</td>
-                  <td className="data-cell">
-                    <span className="stat-value">
-                      {xpLoading ? '...' : `${formatNumber(xp)} / ${formatNumber(xpForNextLevel)}`}
-                    </span>
-                  </td>
-                </tr>
-                <tr className="data-row">
-                  <td className="data-cell">Progress to Next Level</td>
-                  <td className="data-cell">
-                    <span className="stat-value">
-                      {xpLoading ? '...' : `${Math.floor((xp / xpForNextLevel) * 100)}%`}
-                    </span>
+                  <td className="data-cell value-cell">
+                    {xpLoading ? '...' : `${formatNumber(xp)} / ${formatNumber(xpForNextLevel)}`}
                   </td>
                 </tr>
                 <tr className="data-row">
                   <td className="data-cell">Level Bonus</td>
-                  <td className="data-cell">
-                    <span className="stat-value">
-                      {xpLoading ? '...' : `+${formatNumber((bonuses.levelMultiplier - 1) * 100)}%`}
-                    </span>
+                  <td className="data-cell value-cell">
+                    {xpLoading ? '...' : `+${formatNumber((bonuses.levelMultiplier - 1) * 100)}%`}
                   </td>
                 </tr>
               </tbody>
@@ -445,34 +435,26 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
                 </tr>
                 <tr className="data-row">
                   <td className="data-cell">Iron Recharge Rate</td>
-                  <td className="data-cell">
-                    <span className="stat-value">
-                      {xpLoading ? '...' : `${formatNumber(bonuses.ironRechargeRate)} /s`}
-                    </span>
+                  <td className="data-cell value-cell">
+                    {xpLoading ? '...' : `${formatNumber(bonuses.ironRechargeRate)} /s`}
                   </td>
                 </tr>
                 <tr className="data-row">
                   <td className="data-cell">Iron Storage</td>
-                  <td className="data-cell">
-                    <span className="stat-value">
-                      {xpLoading ? '...' : formatNumber(bonuses.ironStorageCapacity)}
-                    </span>
+                  <td className="data-cell value-cell">
+                    {xpLoading ? '...' : formatNumber(bonuses.ironStorageCapacity)}
                   </td>
                 </tr>
                 <tr className="data-row">
                   <td className="data-cell">Max Ship Speed (Theoretical)</td>
-                  <td className="data-cell">
-                    <span className="stat-value">
-                      {xpLoading ? '...' : formatNumber(bonuses.maxShipSpeed)}
-                    </span>
+                  <td className="data-cell value-cell">
+                    {xpLoading ? '...' : formatNumber(bonuses.maxShipSpeed)}
                   </td>
                 </tr>
                 <tr className="data-row">
                   <td className="data-cell">Max Ship Speed (Current)</td>
-                  <td className="data-cell">
-                    <span className="stat-value">
-                      {xpLoading ? '...' : formatNumber(bonuses.currentMaxShipSpeed)}
-                    </span>
+                  <td className="data-cell value-cell">
+                    {xpLoading ? '...' : formatNumber(bonuses.currentMaxShipSpeed)}
                   </td>
                 </tr>
                 <tr>
@@ -480,63 +462,45 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
                 </tr>
                 <tr className="data-row">
                   <td className="data-cell">Hull Repair</td>
-                  <td className="data-cell">
-                    <span className="stat-value">{xpLoading ? '...' : formatNumber(bonuses.hullRepairSpeed)}</span>
-                  </td>
+                  <td className="data-cell value-cell">{xpLoading ? '...' : formatNumber(bonuses.hullRepairSpeed)}</td>
                 </tr>
                 <tr className="data-row">
                   <td className="data-cell">Armor Repair</td>
-                  <td className="data-cell">
-                    <span className="stat-value">{xpLoading ? '...' : formatNumber(bonuses.armorRepairSpeed)}</span>
-                  </td>
+                  <td className="data-cell value-cell">{xpLoading ? '...' : formatNumber(bonuses.armorRepairSpeed)}</td>
                 </tr>
                 <tr className="data-row">
                   <td className="data-cell">Shield Recharge</td>
-                  <td className="data-cell">
-                    <span className="stat-value">{xpLoading ? '...' : formatNumber(bonuses.shieldRechargeRate)}</span>
-                  </td>
+                  <td className="data-cell value-cell">{xpLoading ? '...' : formatNumber(bonuses.shieldRechargeRate)}</td>
                 </tr>
                 <tr>
                   <td colSpan={2} className="category-header">Projectile Weapons</td>
                 </tr>
                 <tr className="data-row">
                   <td className="data-cell">Damage</td>
-                  <td className="data-cell">
-                    <span className="stat-value">{xpLoading ? '...' : `+${formatNumber((bonuses.projectileWeaponDamageFactor - 1) * 100)}%`}</span>
-                  </td>
+                  <td className="data-cell value-cell">{xpLoading ? '...' : `+${formatNumber((bonuses.projectileWeaponDamageFactor - 1) * 100)}%`}</td>
                 </tr>
                 <tr className="data-row">
                   <td className="data-cell">Reload Speed</td>
-                  <td className="data-cell">
-                    <span className="stat-value">{xpLoading ? '...' : `+${formatNumber((bonuses.projectileWeaponReloadFactor - 1) * 100)}%`}</span>
-                  </td>
+                  <td className="data-cell value-cell">{xpLoading ? '...' : `+${formatNumber((bonuses.projectileWeaponReloadFactor - 1) * 100)}%`}</td>
                 </tr>
                 <tr className="data-row">
                   <td className="data-cell">Accuracy</td>
-                  <td className="data-cell">
-                    <span className="stat-value">{xpLoading ? '...' : `+${formatNumber((bonuses.projectileWeaponAccuracyFactor - 1) * 100)}%`}</span>
-                  </td>
+                  <td className="data-cell value-cell">{xpLoading ? '...' : `+${formatNumber((bonuses.projectileWeaponAccuracyFactor - 1) * 100)}%`}</td>
                 </tr>
                 <tr>
                   <td colSpan={2} className="category-header">Energy Weapons</td>
                 </tr>
                 <tr className="data-row">
                   <td className="data-cell">Damage</td>
-                  <td className="data-cell">
-                    <span className="stat-value">{xpLoading ? '...' : `+${formatNumber((bonuses.energyWeaponDamageFactor - 1) * 100)}%`}</span>
-                  </td>
+                  <td className="data-cell value-cell">{xpLoading ? '...' : `+${formatNumber((bonuses.energyWeaponDamageFactor - 1) * 100)}%`}</td>
                 </tr>
                 <tr className="data-row">
                   <td className="data-cell">Reload Speed</td>
-                  <td className="data-cell">
-                    <span className="stat-value">{xpLoading ? '...' : `+${formatNumber((bonuses.energyWeaponReloadFactor - 1) * 100)}%`}</span>
-                  </td>
+                  <td className="data-cell value-cell">{xpLoading ? '...' : `+${formatNumber((bonuses.energyWeaponReloadFactor - 1) * 100)}%`}</td>
                 </tr>
                 <tr className="data-row">
                   <td className="data-cell">Accuracy</td>
-                  <td className="data-cell">
-                    <span className="stat-value">{xpLoading ? '...' : `+${formatNumber((bonuses.energyWeaponAccuracyFactor - 1) * 100)}%`}</span>
-                  </td>
+                  <td className="data-cell value-cell">{xpLoading ? '...' : `+${formatNumber((bonuses.energyWeaponAccuracyFactor - 1) * 100)}%`}</td>
                 </tr>
               </tbody>
             </table>
@@ -568,28 +532,28 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
                     {(displayDefenseValues.hull.max > 0) && (
                       <tr className="data-row">
                         <td className="data-cell">{displayDefenseValues.hull.name}</td>
-                        <td className="data-cell defense-value-cell" style={{ color: getDefenseColor(displayDefenseValues.hull.current, displayDefenseValues.hull.max) }}>
+                        <td className="data-cell value-cell" style={{ color: getDefenseColor(displayDefenseValues.hull.current, displayDefenseValues.hull.max) }}>
                           {formatNumber(displayDefenseValues.hull.current)}
                         </td>
-                        <td className="data-cell defense-value-cell">{formatNumber(displayDefenseValues.hull.max)}</td>
+                        <td className="data-cell value-cell">{formatNumber(displayDefenseValues.hull.max)}</td>
                       </tr>
                     )}
                     {(displayDefenseValues.armor.max > 0) && (
                       <tr className="data-row">
                         <td className="data-cell">{displayDefenseValues.armor.name}</td>
-                        <td className="data-cell defense-value-cell" style={{ color: getDefenseColor(displayDefenseValues.armor.current, displayDefenseValues.armor.max) }}>
+                        <td className="data-cell value-cell" style={{ color: getDefenseColor(displayDefenseValues.armor.current, displayDefenseValues.armor.max) }}>
                           {formatNumber(displayDefenseValues.armor.current)}
                         </td>
-                        <td className="data-cell defense-value-cell">{formatNumber(displayDefenseValues.armor.max)}</td>
+                        <td className="data-cell value-cell">{formatNumber(displayDefenseValues.armor.max)}</td>
                       </tr>
                     )}
                     {(displayDefenseValues.shield.max > 0) && (
                       <tr className="data-row">
                         <td className="data-cell">{displayDefenseValues.shield.name}</td>
-                        <td className="data-cell defense-value-cell" style={{ color: getDefenseColor(displayDefenseValues.shield.current, displayDefenseValues.shield.max) }}>
+                        <td className="data-cell value-cell" style={{ color: getDefenseColor(displayDefenseValues.shield.current, displayDefenseValues.shield.max) }}>
                           {formatNumber(displayDefenseValues.shield.current)}
                         </td>
-                        <td className="data-cell defense-value-cell">{formatNumber(displayDefenseValues.shield.max)}</td>
+                        <td className="data-cell value-cell">{formatNumber(displayDefenseValues.shield.max)}</td>
                       </tr>
                     )}
                     {(displayDefenseValues.hull.max === 0 && displayDefenseValues.armor.max === 0 && displayDefenseValues.shield.max === 0) && (
@@ -643,25 +607,25 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
                         {techCounts.ship_hull > 0 && (
                           <tr className="data-row">
                             <td className="data-cell">{defenses.ship_hull?.name || 'Ship Hull'}</td>
-                            <td className="data-cell tech-count-cell">{techCounts.ship_hull}</td>
+                            <td className="data-cell value-cell">{techCounts.ship_hull}</td>
                           </tr>
                         )}
                         {techCounts.kinetic_armor > 0 && (
                           <tr className="data-row">
                             <td className="data-cell">{defenses.kinetic_armor?.name || 'Kinetic Armor'}</td>
-                            <td className="data-cell tech-count-cell">{techCounts.kinetic_armor}</td>
+                            <td className="data-cell value-cell">{techCounts.kinetic_armor}</td>
                           </tr>
                         )}
                         {techCounts.energy_shield > 0 && (
                           <tr className="data-row">
                             <td className="data-cell">{defenses.energy_shield?.name || 'Energy Shield'}</td>
-                            <td className="data-cell tech-count-cell">{techCounts.energy_shield}</td>
+                            <td className="data-cell value-cell">{techCounts.energy_shield}</td>
                           </tr>
                         )}
                         {techCounts.missile_jammer > 0 && (
                           <tr className="data-row">
                             <td className="data-cell">{defenses.missile_jammer?.name || 'Missile Jammer'}</td>
-                            <td className="data-cell tech-count-cell">{techCounts.missile_jammer}</td>
+                            <td className="data-cell value-cell">{techCounts.missile_jammer}</td>
                           </tr>
                         )}
                       </>
@@ -676,37 +640,37 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
                         {techCounts.pulse_laser > 0 && (
                           <tr className="data-row">
                             <td className="data-cell">{weapons.pulse_laser?.name || 'Pulse Laser'}</td>
-                            <td className="data-cell tech-count-cell">{techCounts.pulse_laser}</td>
+                            <td className="data-cell value-cell">{techCounts.pulse_laser}</td>
                           </tr>
                         )}
                         {techCounts.auto_turret > 0 && (
                           <tr className="data-row">
                             <td className="data-cell">{weapons.auto_turret?.name || 'Auto Turret'}</td>
-                            <td className="data-cell tech-count-cell">{techCounts.auto_turret}</td>
+                            <td className="data-cell value-cell">{techCounts.auto_turret}</td>
                           </tr>
                         )}
                         {techCounts.plasma_lance > 0 && (
                           <tr className="data-row">
                             <td className="data-cell">{weapons.plasma_lance?.name || 'Plasma Lance'}</td>
-                            <td className="data-cell tech-count-cell">{techCounts.plasma_lance}</td>
+                            <td className="data-cell value-cell">{techCounts.plasma_lance}</td>
                           </tr>
                         )}
                         {techCounts.gauss_rifle > 0 && (
                           <tr className="data-row">
                             <td className="data-cell">{weapons.gauss_rifle?.name || 'Gauss Rifle'}</td>
-                            <td className="data-cell tech-count-cell">{techCounts.gauss_rifle}</td>
+                            <td className="data-cell value-cell">{techCounts.gauss_rifle}</td>
                           </tr>
                         )}
                         {techCounts.photon_torpedo > 0 && (
                           <tr className="data-row">
                             <td className="data-cell">{weapons.photon_torpedo?.name || 'Photon Torpedo'}</td>
-                            <td className="data-cell tech-count-cell">{techCounts.photon_torpedo}</td>
+                            <td className="data-cell value-cell">{techCounts.photon_torpedo}</td>
                           </tr>
                         )}
                         {techCounts.rocket_launcher > 0 && (
                           <tr className="data-row">
                             <td className="data-cell">{weapons.rocket_launcher?.name || 'Rocket Launcher'}</td>
-                            <td className="data-cell tech-count-cell">{techCounts.rocket_launcher}</td>
+                            <td className="data-cell value-cell">{techCounts.rocket_launcher}</td>
                           </tr>
                         )}
                       </>
