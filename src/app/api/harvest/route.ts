@@ -13,6 +13,7 @@ import { createLockContext, LockContext, LocksAtMostAndHas4, LocksAtMostAndHas6 
 import { Commander } from '@/lib/server/inventory/Commander';
 import { InventoryService, InventoryFullError } from '@/lib/server/inventory/InventoryService';
 import { getResearchEffectFromTree, ResearchType } from '@/lib/server/techs/techtree';
+import { StatisticsCache } from '@/lib/server/statistics/StatisticsCache';
 
 export async function POST(request: NextRequest) {
   try {
@@ -185,6 +186,19 @@ async function performCollectionLogic(
     sendMessageToUser(worldContext, user.id, notificationMessage).catch((error: Error) => {
       console.error('❌ Failed to send collection notification:', error);
     });
+  }
+
+  // Emit statistics event (fire-and-forget)
+  if (targetObject.type === 'asteroid' || targetObject.type === 'shipwreck' || targetObject.type === 'escape_pod') {
+    try {
+      const statisticsCache = StatisticsCache.getInstance();
+      statisticsCache.recordEvent(user.id, 'item_collected', {
+        objectType: targetObject.type,
+        ironAwarded: ironReward,
+      });
+    } catch (statsErr) {
+      console.error('⚠️ Failed to emit collection statistics event:', statsErr);
+    }
   }
 
   return {

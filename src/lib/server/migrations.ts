@@ -183,6 +183,25 @@ export const migrations: Migration[] = [
     down: [
       'ALTER TABLE users DROP COLUMN IF EXISTS score'
     ]
+  },
+  {
+    version: 14,
+    name: 'add_user_events_table',
+    up: [
+      `CREATE TABLE IF NOT EXISTS user_events (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL,
+        event_type TEXT NOT NULL,
+        event_data JSONB NOT NULL DEFAULT '{}'::jsonb,
+        created_at BIGINT NOT NULL,
+        FOREIGN KEY (user_id) REFERENCES users (id)
+      )`,
+      'CREATE INDEX IF NOT EXISTS idx_user_events_user_id ON user_events (user_id)',
+      'CREATE INDEX IF NOT EXISTS idx_user_events_type ON user_events (event_type)'
+    ],
+    down: [
+      'DROP TABLE IF EXISTS user_events'
+    ]
   }
 ];
 
@@ -660,5 +679,36 @@ export async function applyScoreMigration(db: DatabaseConnection): Promise<void>
     console.log('✅ Score migration completed');
   } catch (error) {
     console.error('❌ Error applying score migration:', error);
+  }
+}
+
+/**
+ * Apply user_events table migration to the database
+ */
+export async function applyUserEventsMigration(db: DatabaseConnection): Promise<void> {
+  console.log('🔄 Checking for user_events table migration...');
+
+  try {
+    const exists = await tableExists(db, 'user_events');
+    if (exists) {
+      console.log('✅ user_events table already exists');
+      return;
+    }
+
+    console.log('🚀 Creating user_events table...');
+
+    const migration = migrations.find(m => m.name === 'add_user_events_table');
+    if (!migration) {
+      console.error('❌ user_events migration not found');
+      return;
+    }
+
+    for (const statement of migration.up) {
+      await runMigrationStatement(db, statement);
+    }
+
+    console.log('✅ user_events table migration completed');
+  } catch (error) {
+    console.error('❌ Error applying user_events migration:', error);
   }
 }

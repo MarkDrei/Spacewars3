@@ -8,6 +8,7 @@ import { USER_LOCK } from '@/lib/server/typedLocks';
 import { User } from '@/lib/server/user/user';
 import { createLockContext, LockContext, LocksAtMostAndHas4 } from '@markdrei/ironguard-typescript-locks';
 import { UserBonusCache } from '@/lib/server/bonus/UserBonusCache';
+import { StatisticsCache } from '@/lib/server/statistics/StatisticsCache';
 
 export async function POST(request: NextRequest) {
   try {
@@ -82,6 +83,18 @@ async function performResearchTrigger(
   
   // Update cache with new data (using unsafe methods because we have proper locks)
   userWorldCache.updateUserInCache(userCtx, user);
+  
+  // Emit statistics event (fire-and-forget)
+  try {
+    const statisticsCache = StatisticsCache.getInstance();
+    statisticsCache.recordEvent(user.id, 'research_spent', {
+      researchType,
+      level: currentLevel + 1,
+      ironCost: cost,
+    });
+  } catch (statsErr) {
+    console.error('⚠️ Failed to emit research statistics event:', statsErr);
+  }
   
   return NextResponse.json({ success: true });
 }

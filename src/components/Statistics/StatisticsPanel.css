@@ -1,0 +1,135 @@
+/* Statistics Panel - matches dark space theme from ProfilePage.css */
+
+.statistics-panel {
+  background: #1e1e1e;
+  border: 1px solid #2d2d2d;
+  border-radius: 8px;
+  padding: 20px;
+  margin-top: 24px;
+}
+
+.statistics-panel h3 {
+  color: var(--primary-green, #66bb6a);
+  font-size: 1.1rem;
+  margin: 0 0 4px 0;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.stats-global-info {
+  color: #888;
+  font-size: 0.82rem;
+  margin: 0 0 16px 0;
+}
+
+.stats-loading,
+.stats-error {
+  color: #888;
+  font-size: 0.9rem;
+  padding: 12px 0;
+  text-align: center;
+}
+
+.stats-error {
+  color: #ef5350;
+}
+
+/* Column headers */
+.stats-header-row {
+  display: grid;
+  grid-template-columns: 1fr 110px 110px;
+  gap: 8px;
+  padding: 6px 8px;
+  border-bottom: 1px solid #2d2d2d;
+  margin-bottom: 8px;
+}
+
+.stats-col-label {
+  color: #666;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.stats-col-you,
+.stats-col-avg {
+  color: #666;
+  font-size: 0.75rem;
+  text-align: right;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* Category sections */
+.stats-category {
+  margin-bottom: 20px;
+}
+
+.stats-category:last-child {
+  margin-bottom: 0;
+}
+
+.stats-category-title {
+  color: #aaa;
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin: 12px 0 6px 0;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+/* Individual stat rows */
+.stat-row {
+  display: grid;
+  grid-template-columns: 1fr 110px 110px;
+  gap: 8px;
+  padding: 5px 8px;
+  border-radius: 4px;
+  transition: background 0.15s ease;
+}
+
+.stat-row:hover {
+  background: #252525;
+}
+
+.stat-row-label {
+  color: #ccc;
+  font-size: 0.85rem;
+}
+
+.stat-row-user {
+  color: #e0e0e0;
+  font-size: 0.85rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.stat-row-avg {
+  color: #777;
+  font-size: 0.85rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.top5-badge {
+  margin-left: 4px;
+  font-size: 0.75rem;
+}
+
+/* Responsive: stack columns on narrow screens */
+@media (max-width: 480px) {
+  .stats-header-row,
+  .stat-row {
+    grid-template-columns: 1fr 80px 80px;
+    gap: 4px;
+  }
+
+  .stat-row-label {
+    font-size: 0.8rem;
+  }
+
+  .stat-row-user,
+  .stat-row-avg {
+    font-size: 0.8rem;
+  }
+}

@@ -343,3 +343,32 @@ When passing `totalReloadFactor`, the function uses `baseCooldown / totalReloadF
 **Context**: Tasks 3.1–3.3 — attack restriction
 
 **Details**: `getRecentAttackeesFromDb()` uses `ORDER BY battle_start_time DESC` without a `battle_end_time IS NOT NULL` filter. This intentionally includes active (in-progress) battles to handle edge cases where a battle is ongoing. The `inBattle` flag prevents concurrent battles, but including active battles in the recent-victims list provides defense-in-depth.
+
+## Statistics Cache / Lock-14 Singleton Pattern
+
+**Discovered by**: Knight  
+**Context**: Implementing the User Statistics System (StatisticsCache)
+
+**Pattern for caches with high-numbered locks (> 4)**:
+
+The `Cache` base class `shutdown()` takes `LockContext<LocksAtMostAndHas4>`, which cannot hold LOCK_14. To work around this, override `shutdown()` without parameters (same as BattleCache), and acquire the necessary lock internally:
+
+```typescript
+public async shutdown(): Promise<void> {
+  this.stopBackgroundPersistence();
+  const ctx = createLockContext();
+  await ctx.useLockWithAcquire(HIGH_LOCK, async (lockCtx) => {
+    await this.flushBufferInternal(lockCtx);
+  });
+}
+
+// Satisfy abstract base class requirement (no-op)
+protected async flushAllToDatabase(_context: LockContext<LocksAtMostAndHas4>): Promise<void> {}
+```
+
+**Test server helpers must be updated** when adding a new cache singleton. In `testServer.ts`, add:
+- A `shutdownXCache()` function
+- Call it in `initializeIntegrationTestServer()` and `shutdownIntegrationTestServer()`
+- Call `XCache.resetInstance()` in both functions
+
+**Fire-and-forget event recording**: `recordEvent` acquires STATISTICS_LOCK internally and catches all exceptions. This allows callers to call it without await from any lock context without deadlock risk (since LOCK_14 is at the bottom of the hierarchy).

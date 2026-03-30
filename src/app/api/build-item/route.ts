@@ -6,6 +6,7 @@ import { TechService } from '@/lib/server/techs/TechService';
 import { TechFactory } from '@/lib/server/techs/TechFactory';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 import { USER_LOCK } from '@/lib/server/typedLocks';
+import { StatisticsCache } from '@/lib/server/statistics/StatisticsCache';
 
 /**
  * POST /api/build-item
@@ -66,6 +67,19 @@ export async function POST(request: NextRequest) {
 
       // Calculate estimated completion time
       const estimatedCompletion = await techService.getEstimatedCompletionTime(session.userId!, userContext);
+
+      // Emit statistics event (fire-and-forget)
+      try {
+        const statisticsCache = StatisticsCache.getInstance();
+        statisticsCache.recordEvent(session.userId!, 'tech_spent', {
+          itemKey,
+          itemType,
+          ironCost: spec.baseCost * count,
+          count,
+        });
+      } catch (statsErr) {
+        console.error('⚠️ Failed to emit tech statistics event:', statsErr);
+      }
 
       return { estimatedCompletion };
     });
