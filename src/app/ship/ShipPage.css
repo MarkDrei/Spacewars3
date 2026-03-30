@@ -403,6 +403,39 @@
   font-size: 0.85em;
 }
 
+.sort-save-btn {
+  background-color: #1a2e1a;
+  color: #81c784;
+  border: 1px solid #81c784;
+  border-radius: 4px;
+  padding: 0.2rem 0.65rem;
+  font-size: 0.75rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.sort-save-btn:hover:not(:disabled) {
+  background-color: #223a22;
+  color: #a5d6a7;
+}
+
+.sort-save-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.sort-save-btn--bridge {
+  background-color: #2a1f30;
+  color: #ce93d8;
+  border-color: #ce93d8;
+}
+
+.sort-save-btn--bridge:hover:not(:disabled) {
+  background-color: #311a3a;
+  color: #e1bee7;
+}
+
 .inventory-heading {
   font-size: 1.4rem;
   color: #4fc3f7;

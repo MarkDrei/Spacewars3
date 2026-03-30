@@ -27,9 +27,9 @@ const SORT_BUTTON_LABELS: Record<CommanderStatKey | 'total', string> = {
   projectileWeaponDamage: 'Proj. Dmg',
   projectileWeaponReloadRate: 'Proj. Reload',
   projectileWeaponAccuracy: 'Proj. Acc.',
-  energyWeaponDamage: 'Nrg. Dmg',
-  energyWeaponReloadRate: 'Nrg. Reload',
-  energyWeaponAccuracy: 'Nrg. Acc.',
+  energyWeaponDamage: 'Enrg. Dmg',
+  energyWeaponReloadRate: 'Enrg. Reload',
+  energyWeaponAccuracy: 'Enrg. Acc.',
   total: 'Total',
 };
 

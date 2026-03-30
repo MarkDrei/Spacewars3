@@ -27,6 +27,8 @@ interface InventoryGridProps {
   onDragStartExternal?: (source: ExternalDropSource) => void;
   /** Notifies parent that dragging has ended (either drop or cancel). */
   onDragEndExternal?: () => void;
+  /** When true, all drag-and-drop (both within-grid and cross-grid) is disabled. */
+  sortingActive?: boolean;
 }
 
 const InventoryGridComponent: React.FC<InventoryGridProps> = ({
@@ -40,6 +42,7 @@ const InventoryGridComponent: React.FC<InventoryGridProps> = ({
   onExternalDrop,
   onDragStartExternal,
   onDragEndExternal,
+  sortingActive = false,
 }) => {
   const cols = colsProp ?? INVENTORY_COLS;
   const rows = Math.ceil(maxSlots / cols);
@@ -57,6 +60,10 @@ const InventoryGridComponent: React.FC<InventoryGridProps> = ({
     dragSource?.row === row && dragSource?.col === col;
 
   const handleDragStart = (e: React.DragEvent, row: number, col: number) => {
+    if (sortingActive) {
+      e.preventDefault();
+      return;
+    }
     const slot: InventorySlot = grid[row][col];
     if (slot === null) {
       e.preventDefault();
@@ -70,6 +77,7 @@ const InventoryGridComponent: React.FC<InventoryGridProps> = ({
   };
 
   const handleDragOver = (e: React.DragEvent, row: number, col: number) => {
+    if (sortingActive) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
     setDragOver({ row, col });
@@ -80,6 +88,7 @@ const InventoryGridComponent: React.FC<InventoryGridProps> = ({
   };
 
   const handleDrop = (e: React.DragEvent, row: number, col: number) => {
+    if (sortingActive) return;
     e.preventDefault();
     setDragOver(null);
     let sourceGridKey = gridKey;
@@ -141,7 +150,7 @@ const InventoryGridComponent: React.FC<InventoryGridProps> = ({
               key={`${row}-${col}`}
               className={getSlotClassName(row, col)}
               onClick={() => handleClick(row, col)}
-              draggable={item !== null}
+              draggable={item !== null && !sortingActive}
               onDragStart={(e) => handleDragStart(e, row, col)}
               onDragOver={(e) => handleDragOver(e, row, col)}
               onDragLeave={handleDragLeave}

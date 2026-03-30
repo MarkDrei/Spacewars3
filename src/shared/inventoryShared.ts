@@ -89,6 +89,22 @@ export function getStatValue(item: InventoryItemData, stat: CommanderStatKey): n
 }
 
 /**
+ * Finds the coordinates of the given item instance (by reference) within a grid.
+ * Returns null if the item is not found.
+ */
+export function findItemSlot(
+  grid: InventorySlot[][],
+  item: InventoryItemData,
+): SlotCoordinate | null {
+  for (let r = 0; r < grid.length; r++) {
+    for (let c = 0; c < grid[r].length; c++) {
+      if (grid[r][c] === item) return { row: r, col: c };
+    }
+  }
+  return null;
+}
+
+/**
  * Returns a visually-sorted copy of the given grid.
  * Non-null items are sorted by the given stat (or total), with empty slots
  * pushed to the end. The grid dimensions are preserved.
