@@ -1,0 +1,154 @@
+/* Leaderboard panel — dark space theme matching StatisticsPanel.css */
+
+.leaderboard-panel {
+  background: #1e1e1e;
+  border: 1px solid #2d2d2d;
+  border-radius: 8px;
+  padding: 20px;
+  margin-top: 24px;
+}
+
+/* ── Section headings ──────────────────────────────────────────────────────── */
+
+.leaderboard-section h3,
+.best-in-section h3 {
+  color: var(--primary-green, #66bb6a);
+  font-size: 1.1rem;
+  margin: 0 0 12px 0;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.best-in-section {
+  margin-top: 28px;
+}
+
+/* ── Status messages ───────────────────────────────────────────────────────── */
+
+.leaderboard-loading,
+.leaderboard-error,
+.leaderboard-empty {
+  color: #888;
+  font-size: 0.9rem;
+  padding: 12px 0;
+  text-align: center;
+}
+
+.leaderboard-error {
+  color: #ef5350;
+}
+
+/* ── Leaderboard rows ──────────────────────────────────────────────────────── */
+
+.leaderboard-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.leaderboard-row {
+  display: grid;
+  grid-template-columns: 44px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border-radius: 6px;
+  background: #252525;
+  font-size: 0.9rem;
+  color: #ccc;
+}
+
+/* Gold / silver / bronze medal rows */
+.leaderboard-row--rank1 {
+  background: #3a2e00;
+  border: 1px solid #c8961a;
+  color: #f0c040;
+}
+
+.leaderboard-row--rank2 {
+  background: #252830;
+  border: 1px solid #8a9ab8;
+  color: #b8c8e0;
+}
+
+.leaderboard-row--rank3 {
+  background: #2a1e10;
+  border: 1px solid #9b6438;
+  color: #d4956a;
+}
+
+/* Trophy rows (4 & 5) */
+.leaderboard-row--trophy {
+  background: #252020;
+  border: 1px solid #6a3a3a;
+  color: #c88888;
+}
+
+/* Highlight current user */
+.leaderboard-row--me {
+  outline: 1px solid var(--primary-green, #66bb6a);
+  outline-offset: -1px;
+}
+
+.leaderboard-rank {
+  font-size: 1.3rem;
+  text-align: center;
+  line-height: 1;
+}
+
+.leaderboard-username {
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.leaderboard-you {
+  color: var(--primary-green, #66bb6a);
+  font-size: 0.8em;
+  margin-left: 4px;
+}
+
+.leaderboard-score {
+  font-variant-numeric: tabular-nums;
+  color: #aaa;
+  font-size: 0.85rem;
+  text-align: right;
+}
+
+/* ── Best-in rows ──────────────────────────────────────────────────────────── */
+
+.best-in-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.best-in-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 5px 8px;
+  border-radius: 4px;
+  font-size: 0.85rem;
+}
+
+.best-in-row:nth-child(odd) {
+  background: #232323;
+}
+
+.best-in-label {
+  color: #999;
+}
+
+.best-in-winner {
+  color: var(--primary-green, #66bb6a);
+  font-weight: 500;
+  text-align: right;
+}
+
+.best-in-none {
+  color: #555;
+  font-weight: normal;
+}

@@ -8,6 +8,7 @@ import { useAuth } from '@/lib/client/hooks/useAuth';
 import { userStatsService, UserStatsResponse } from '@/lib/client/services/userStatsService';
 import './ProfilePage.css';
 import StatisticsPanel from '@/components/Statistics/StatisticsPanel';
+import Leaderboard from '@/components/Statistics/Leaderboard';
 
 interface ProfilePageClientProps {
   auth: ServerAuthState;
@@ -94,6 +95,9 @@ const ProfilePageClient: React.FC<ProfilePageClientProps> = ({ auth }) => {
 
           {/* Statistics Panel */}
           <StatisticsPanel />
+
+          {/* Leaderboard & Best In Categories */}
+          <Leaderboard />
 
           {/* Battle History Section */}
           <div className="battle-history">
