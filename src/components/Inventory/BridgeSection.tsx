@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { BridgeGrid, InventoryItemData, SlotCoordinate, BRIDGE_COLS, getBridgeRows, CommanderStatKey, COMMANDER_STAT_LABELS } from '@/shared/inventoryShared';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { BridgeGrid, InventoryItemData, SlotCoordinate, BRIDGE_COLS, getBridgeRows, CommanderStatKey, COMMANDER_STAT_LABELS, SortStatKey, SortDirection, sortGrid, findItemSlot } from '@/shared/inventoryShared';
 import InventoryGridComponent, { ExternalDropSource } from './InventoryGrid';
 import ItemDetailsPanel from './ItemDetailsPanel';
+import SortControls from './SortControls';
 
 const makeEmptyBridgeGrid = (maxSlots: number): BridgeGrid => {
   if (maxSlots === 0) return [];
@@ -20,9 +21,11 @@ interface BridgeSectionProps {
   /** Propagate drag start/end events so a parent can show global drop zones. */
   onDragStart?: (source: ExternalDropSource) => void;
   onDragEnd?: () => void;
+  /** Bump this value to clear the active sort (e.g. before an auto-assign drop lands here). */
+  clearSortTrigger?: number;
 }
 
-const BridgeSection: React.FC<BridgeSectionProps> = ({ refreshTrigger, onCrossTransferDone, onDragStart, onDragEnd }) => {
+const BridgeSection: React.FC<BridgeSectionProps> = ({ refreshTrigger, onCrossTransferDone, onDragStart, onDragEnd, clearSortTrigger }) => {
   const [maxBridgeSlots, setMaxBridgeSlots] = useState<number>(0);
   const [grid, setGrid] = useState<BridgeGrid>([]);
   const [bonuses, setBonuses] = useState<Partial<Record<CommanderStatKey, number>>>({});
@@ -30,7 +33,10 @@ const BridgeSection: React.FC<BridgeSectionProps> = ({ refreshTrigger, onCrossTr
   const [error, setError] = useState<string | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<SlotCoordinate | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<SortStatKey | null>(null);
+  const [sortDir, setSortDir] = useState<SortDirection>('desc');
 
   const showStatus = (msg: string) => {
     setStatusMessage(msg);
@@ -68,16 +74,48 @@ const BridgeSection: React.FC<BridgeSectionProps> = ({ refreshTrigger, onCrossTr
     }
   }, [refreshTrigger, fetchBridge]);
 
-  const handleSelectSlot = (slot: SlotCoordinate) => {
-    const item = grid[slot.row]?.[slot.col];
-    if (item === null || item === undefined) {
-      setSelectedSlot(null);
-      return;
+  // Clear sort when the parent requests it (e.g. before an auto-assign drop lands here)
+  useEffect(() => {
+    if (clearSortTrigger !== undefined && clearSortTrigger > 0) {
+      setSortBy(null);
     }
-    setSelectedSlot(
-      selectedSlot?.row === slot.row && selectedSlot?.col === slot.col ? null : slot
-    );
+  }, [clearSortTrigger]);
+
+  const baseGrid = useMemo(
+    () => (grid.length > 0 ? grid : makeEmptyBridgeGrid(maxBridgeSlots)),
+    [grid, maxBridgeSlots],
+  );
+
+  const displayGrid = useMemo(() => {
+    return sortBy !== null ? sortGrid(baseGrid, BRIDGE_COLS, sortBy, sortDir) : baseGrid;
+  }, [baseGrid, sortBy, sortDir]);
+
+  // When sorting, translate click coordinates from display space → original grid space.
+  const handleSelectSlot = (displaySlot: SlotCoordinate) => {
+    if (sortBy !== null) {
+      const item = displayGrid[displaySlot.row]?.[displaySlot.col];
+      if (!item) { setSelectedSlot(null); return; }
+      const orig = findItemSlot(baseGrid, item);
+      if (!orig) { setSelectedSlot(null); return; }
+      setSelectedSlot(
+        selectedSlot?.row === orig.row && selectedSlot?.col === orig.col ? null : orig
+      );
+    } else {
+      const item = baseGrid[displaySlot.row]?.[displaySlot.col];
+      if (item === null || item === undefined) { setSelectedSlot(null); return; }
+      setSelectedSlot(
+        selectedSlot?.row === displaySlot.row && selectedSlot?.col === displaySlot.col ? null : displaySlot
+      );
+    }
   };
+
+  // Pass selectedSlot to the grid in display coordinates so the right slot is highlighted.
+  const displaySelectedSlot = useMemo<SlotCoordinate | null>(() => {
+    if (sortBy === null || selectedSlot === null) return selectedSlot;
+    const item = baseGrid[selectedSlot.row]?.[selectedSlot.col];
+    if (!item) return null;
+    return findItemSlot(displayGrid, item);
+  }, [sortBy, selectedSlot, baseGrid, displayGrid]);
 
   /** Move an item within the bridge. */
   const handleMoveItem = async (from: SlotCoordinate, to: SlotCoordinate) => {
@@ -166,8 +204,45 @@ const BridgeSection: React.FC<BridgeSectionProps> = ({ refreshTrigger, onCrossTr
     }
   };
 
+  /** Save the current sorted order to the backend, then clear sorting. */
+  const handleSaveOrder = async () => {
+    setIsSaving(true);
+    try {
+      const response = await fetch('/api/bridge/reorder', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ grid: displayGrid }),
+      });
+      if (response.ok) {
+        setGrid(displayGrid);
+        setSortBy(null);
+        setSelectedSlot(null);
+        showStatus('✅ Order saved');
+      } else {
+        const data = await response.json();
+        showStatus(`❌ Save failed: ${data.error || 'Unknown error'}`);
+      }
+    } catch {
+      showStatus('❌ Save failed. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const selectedItem: InventoryItemData | null =
-    selectedSlot !== null ? (grid[selectedSlot.row]?.[selectedSlot.col] ?? null) : null;
+    selectedSlot !== null ? (baseGrid[selectedSlot.row]?.[selectedSlot.col] ?? null) : null;
+
+  const handleSortChange = useCallback((by: SortStatKey | null, dir: SortDirection) => {
+    setSortBy(by);
+    setSortDir(dir);
+    setSelectedSlot(null);
+  }, []);
+
+  const resolveOriginalCoord = useCallback((displaySlot: SlotCoordinate): SlotCoordinate | null => {
+    const item = displayGrid[displaySlot.row]?.[displaySlot.col];
+    if (!item) return null;
+    return findItemSlot(baseGrid, item);
+  }, [displayGrid, baseGrid]);
 
   // If the player hasn't researched bridge slots yet, show a locked message
   if (!isLoading && !error && maxBridgeSlots === 0) {
@@ -183,7 +258,26 @@ const BridgeSection: React.FC<BridgeSectionProps> = ({ refreshTrigger, onCrossTr
 
   return (
     <section className="bridge-section">
-      <h2 className="bridge-heading">Bridge</h2>
+      <div className="section-heading-row">
+        <h2 className="bridge-heading">Bridge</h2>
+        <SortControls
+          sortBy={sortBy}
+          sortDir={sortDir}
+          onSortChange={handleSortChange}
+          accentColor="#ce93d8"
+        />
+        {sortBy !== null && (
+          <button
+            type="button"
+            className="sort-save-btn sort-save-btn--bridge"
+            onClick={handleSaveOrder}
+            disabled={isSaving}
+            title="Save the current sorted order and re-enable drag & drop"
+          >
+            {isSaving ? 'Saving…' : '💾 Save order'}
+          </button>
+        )}
+      </div>
       <p className="bridge-intro">
         Assign commanders to bridge positions. Drag items from Inventory to assign, or drag them back.
       </p>
@@ -198,8 +292,8 @@ const BridgeSection: React.FC<BridgeSectionProps> = ({ refreshTrigger, onCrossTr
       {!isLoading && !error && (
         <div className="inventory-layout">
           <InventoryGridComponent
-            grid={grid.length > 0 ? grid : makeEmptyBridgeGrid(maxBridgeSlots)}
-            selectedSlot={selectedSlot}
+            grid={displayGrid}
+            selectedSlot={displaySelectedSlot}
             onSelectSlot={handleSelectSlot}
             onMoveItem={handleMoveItem}
             maxSlots={maxBridgeSlots}
@@ -208,6 +302,8 @@ const BridgeSection: React.FC<BridgeSectionProps> = ({ refreshTrigger, onCrossTr
             onExternalDrop={handleExternalDrop}
             onDragStartExternal={onDragStart}
             onDragEndExternal={onDragEnd}
+            sortingActive={sortBy !== null}
+            resolveOriginalCoord={sortBy !== null ? resolveOriginalCoord : undefined}
           />
           {selectedItem !== null && selectedSlot !== null ? (
             <ItemDetailsPanel
@@ -218,7 +314,7 @@ const BridgeSection: React.FC<BridgeSectionProps> = ({ refreshTrigger, onCrossTr
             />
           ) : (
             <div className="inventory-no-selection">
-              <p>Drag a commander here from Inventory, or click an assigned commander to see details.</p>
+              <p>{sortBy !== null ? 'Click a commander to see details. You can drag commanders out, but cannot drop new ones in while sorting is active.' : 'Drag a commander here from Inventory, or click an assigned commander to see details.'}</p>
             </div>
           )}
         </div>

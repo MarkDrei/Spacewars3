@@ -27,6 +27,14 @@ interface InventoryGridProps {
   onDragStartExternal?: (source: ExternalDropSource) => void;
   /** Notifies parent that dragging has ended (either drop or cancel). */
   onDragEndExternal?: () => void;
+  /** When true, dropping items INTO this grid is disabled (items can still be dragged OUT). */
+  sortingActive?: boolean;
+  /**
+   * When sortingActive is true, translates a display-space slot coordinate to the
+   * original (server-stored) coordinate. If omitted when sortingActive is true,
+   * display coords are used as-is.
+   */
+  resolveOriginalCoord?: (displaySlot: SlotCoordinate) => SlotCoordinate | null;
 }
 
 const InventoryGridComponent: React.FC<InventoryGridProps> = ({
@@ -40,6 +48,8 @@ const InventoryGridComponent: React.FC<InventoryGridProps> = ({
   onExternalDrop,
   onDragStartExternal,
   onDragEndExternal,
+  sortingActive = false,
+  resolveOriginalCoord,
 }) => {
   const cols = colsProp ?? INVENTORY_COLS;
   const rows = Math.ceil(maxSlots / cols);
@@ -62,14 +72,25 @@ const InventoryGridComponent: React.FC<InventoryGridProps> = ({
       e.preventDefault();
       return;
     }
-    const source = { gridKey, row, col };
-    setDragSource({ row, col });
+    // When sorting is active, translate display coords to original coords so server
+    // operations target the correct persisted slot.
+    let sourceRow = row;
+    let sourceCol = col;
+    if (sortingActive && resolveOriginalCoord) {
+      const orig = resolveOriginalCoord({ row, col });
+      if (!orig) { e.preventDefault(); return; }
+      sourceRow = orig.row;
+      sourceCol = orig.col;
+    }
+    const source = { gridKey, row: sourceRow, col: sourceCol };
+    setDragSource({ row, col }); // display coords for visual highlight
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', JSON.stringify(source));
     onDragStartExternal?.(source);
   };
 
   const handleDragOver = (e: React.DragEvent, row: number, col: number) => {
+    if (sortingActive) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
     setDragOver({ row, col });
@@ -80,6 +101,7 @@ const InventoryGridComponent: React.FC<InventoryGridProps> = ({
   };
 
   const handleDrop = (e: React.DragEvent, row: number, col: number) => {
+    if (sortingActive) return;
     e.preventDefault();
     setDragOver(null);
     let sourceGridKey = gridKey;

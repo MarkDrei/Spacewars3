@@ -21,6 +21,9 @@ const ShipPageClient: React.FC<ShipPageClientProps> = () => {
   // Cross-refresh triggers: bump to force the other section to re-fetch
   const [invRefreshKey, setInvRefreshKey] = useState(0);
   const [bridgeRefreshKey, setBridgeRefreshKey] = useState(0);
+  // clearSort triggers: bump to clear active sort in each section before an auto-assign drop
+  const [invClearSortTrigger, setInvClearSortTrigger] = useState(0);
+  const [bridgeClearSortTrigger, setBridgeClearSortTrigger] = useState(0);
   // drag-tracking used to display a global "auto drop" zone on mobile
   const [dragSource, setDragSource] = useState<{
     gridKey: string;
@@ -128,6 +131,7 @@ const ShipPageClient: React.FC<ShipPageClientProps> = () => {
             onCrossTransferDone={() => setBridgeRefreshKey((k) => k + 1)}
             onDragStart={(src) => setDragSource(src)}
             onDragEnd={() => setDragSource(null)}
+            clearSortTrigger={invClearSortTrigger}
           />
 
           <BridgeSection
@@ -135,6 +139,7 @@ const ShipPageClient: React.FC<ShipPageClientProps> = () => {
             onCrossTransferDone={() => setInvRefreshKey((k) => k + 1)}
             onDragStart={(src) => setDragSource(src)}
             onDragEnd={() => setDragSource(null)}
+            clearSortTrigger={bridgeClearSortTrigger}
           />
 
           {dragSource && (
@@ -153,6 +158,12 @@ const ShipPageClient: React.FC<ShipPageClientProps> = () => {
                 // figure out which direction we need to transfer
                 const direction =
                   dragSource.gridKey === 'inventory' ? 'inventoryToBridge' : 'bridgeToInventory';
+                // Clear sort in the target section before the drop lands there
+                if (direction === 'inventoryToBridge') {
+                  setBridgeClearSortTrigger((k) => k + 1);
+                } else {
+                  setInvClearSortTrigger((k) => k + 1);
+                }
                 try {
                   const response = await fetch('/api/bridge/transfer/auto', {
                     method: 'POST',

@@ -527,6 +527,36 @@ export class InventoryService {
   }
 
   // ---------------------------------------------------------------------------
+  // Reordering
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Replace the entire inventory grid with the provided layout.
+   * All items in newGrid must already exist in the current inventory;
+   * this just persists a reordering. No items are created or destroyed.
+   */
+  async reorderInventory(userId: number, newGrid: InventoryGrid, maxSlots: number): Promise<void> {
+    const ctx = createLockContext();
+    await ctx.useLockWithAcquire(USER_INVENTORY_LOCK, async (lockCtx) => {
+      const sized = ensureGridSize(newGrid, maxSlots);
+      await this.repo.saveInventory(lockCtx, userId, sized);
+    });
+  }
+
+  /**
+   * Replace the entire bridge grid with the provided layout.
+   * All items in newGrid must already exist in the current bridge;
+   * this just persists a reordering. No items are created or destroyed.
+   */
+  async reorderBridge(userId: number, newGrid: BridgeGrid, maxBridgeSlots: number): Promise<void> {
+    const ctx = createLockContext();
+    await ctx.useLockWithAcquire(USER_INVENTORY_LOCK, async (lockCtx) => {
+      const sized = ensureBridgeGridSize(newGrid, maxBridgeSlots);
+      await this.repo.saveBridge(lockCtx, userId, sized);
+    });
+  }
+
+  // ---------------------------------------------------------------------------
   // Private helpers – Inventory
   // ---------------------------------------------------------------------------
 

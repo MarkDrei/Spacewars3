@@ -82,14 +82,38 @@
 .starbase-panel {
   background-color: #1e1e1e;
   border-radius: 8px;
-  padding: 1.5rem;
+  padding: 1rem 0.75rem;
   border-left: 4px solid #4488ff;
+}
+
+.starbase-panel--sell {
+  border-left-color: #4488ff;
+}
+
+.starbase-panel--buy {
+  border-left-color: #66bb6a;
+}
+
+.starbase-panel-heading-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.starbase-panel-heading-row .starbase-panel-heading {
+  margin-bottom: 0;
 }
 
 .starbase-panel-heading {
   font-size: 1.3rem;
   color: #4488ff;
   margin: 0 0 1rem 0;
+}
+
+.starbase-panel--buy .starbase-panel-heading {
+  color: #66bb6a;
 }
 
 .starbase-empty {
