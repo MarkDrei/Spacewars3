@@ -16,7 +16,7 @@ import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 
 async function setUserIronAndEvictCache(userId: number, iron: number): Promise<void> {
   const db = await getDatabase();
-  await db.query('UPDATE users SET iron = $1 WHERE id = $2', [iron, userId]);
+  await db.query('UPDATE users SET iron = $1, last_updated = EXTRACT(EPOCH FROM NOW())::int WHERE id = $2', [iron, userId]);
   // Evict from UserCache so the route loads fresh iron from DB
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (UserCache.getInstance2() as any).users.delete(userId);
