@@ -384,3 +384,35 @@ _All open questions resolved._
 - DB flush interval: **60 seconds** (less critical than game-state caches)
 - Loser iron tracking: **Zero** (loser's event has `ironTransferred: 0`, only winner tracks the transfer amount)
 - CSS approach: **Dedicated `StatisticsPanel.css`** (component-level separation)
+
+---
+
+## Implementation Status
+
+**Status**: ✅ COMPLETED  
+**Implementation Summary**: Implemented the full user statistics system including event logging infrastructure, event emission from battle/harvest/research/build actions, statistics API, and profile page UI.  
+**Files Modified/Created**:
+
+- `src/lib/server/statistics/statisticsTypes.ts` — Created: event types, aggregates, helper functions
+- `src/lib/server/statistics/statisticsRepo.ts` — Created: DB operations with LOCK_14
+- `src/lib/server/statistics/StatisticsCache.ts` — Created: in-memory cache with background persistence
+- `src/lib/server/typedLocks.ts` — Added STATISTICS_LOCK = LOCK_14
+- `src/lib/server/schema.ts` — Added user_events table, incremented SCHEMA_VERSION to 14
+- `src/lib/server/migrations.ts` — Added migration version 14, applyUserEventsMigration()
+- `src/lib/server/main.ts` — Added StatisticsCache initialization
+- `src/lib/server/battle/battleService.ts` — Emit battle_completed events at end of resolveBattle
+- `src/app/api/harvest/route.ts` — Emit item_collected events after collection
+- `src/app/api/trigger-research/route.ts` — Emit research_spent events after research
+- `src/app/api/build-item/route.ts` — Emit tech_spent events after build queue addition
+- `src/app/api/statistics/route.ts` — Created: GET /api/statistics endpoint
+- `src/components/Statistics/StatisticsPanel.tsx` — Created: profile page stats component
+- `src/components/Statistics/StatisticsPanel.css` — Created: dark space theme styles
+- `src/app/profile/ProfilePageClient.tsx` — Added StatisticsPanel below battle history
+- `src/__tests__/helpers/testServer.ts` — Added StatisticsCache shutdown/reset in test helpers
+- `src/__tests__/unit/statistics/StatisticsCache.test.ts` — Created: 8 unit tests
+- `src/__tests__/unit/statistics/statisticsTypes.test.ts` — Created: 7 unit tests
+- `src/__tests__/integration/statistics/statistics.test.ts` — Created: 4 integration tests
+
+**Deviations from Plan**: None significant. The `shutdown()` override follows the same pattern as BattleCache.  
+**Arc42 Updates**: None required (no new architectural layer, just addition within existing cache system)  
+**Test Results**: ✅ All 1392 tests passing, no linting errors, build succeeds

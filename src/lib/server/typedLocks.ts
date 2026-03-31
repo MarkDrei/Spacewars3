@@ -13,6 +13,7 @@ import {
   LOCK_11,
   LOCK_12,
   LOCK_13,
+  LOCK_14,
 } from '@markdrei/ironguard-typescript-locks';
 
 // Overview of the used lock levels and why we have them like that
@@ -29,5 +30,6 @@ export const DATABASE_LOCK_USERS = LOCK_10;
 export const DATABASE_LOCK_SPACE_OBJECTS = LOCK_11;
 export const DATABASE_LOCK_MESSAGES = LOCK_12;
 export const DATABASE_LOCK_BATTLES = LOCK_13;
+export const STATISTICS_LOCK = LOCK_14;
 
 

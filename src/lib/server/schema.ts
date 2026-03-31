@@ -105,12 +105,26 @@ CREATE TABLE IF NOT EXISTS inventories (
   FOREIGN KEY (user_id) REFERENCES users (id)
 )`;
 
+export const CREATE_USER_EVENTS_TABLE = `
+CREATE TABLE IF NOT EXISTS user_events (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL,
+  event_type TEXT NOT NULL,
+  event_data JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at BIGINT NOT NULL,
+  FOREIGN KEY (user_id) REFERENCES users (id)
+);
+CREATE INDEX IF NOT EXISTS idx_user_events_user_id ON user_events (user_id);
+CREATE INDEX IF NOT EXISTS idx_user_events_type ON user_events (event_type);
+`;
+
 export const CREATE_TABLES = [
   CREATE_SPACE_OBJECTS_TABLE,
   CREATE_USERS_TABLE,
   CREATE_MESSAGES_TABLE,
   CREATE_BATTLES_TABLE,
-  CREATE_INVENTORIES_TABLE
+  CREATE_INVENTORIES_TABLE,
+  CREATE_USER_EVENTS_TABLE
 ];
 
 // Migration to rename column (PostgreSQL syntax)
@@ -169,5 +183,24 @@ export const MIGRATE_ADD_TELEPORT_CHARGES = [
   'ALTER TABLE users ADD COLUMN IF NOT EXISTS teleport_last_regen INTEGER NOT NULL DEFAULT 0'
 ];
 
+// Migration to add score column
+export const MIGRATE_ADD_SCORE = [
+  'ALTER TABLE users ADD COLUMN IF NOT EXISTS score INTEGER NOT NULL DEFAULT 0'
+];
+
+// Migration to add user_events table for statistics tracking
+export const MIGRATE_ADD_USER_EVENTS = [
+  `CREATE TABLE IF NOT EXISTS user_events (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    event_type TEXT NOT NULL,
+    event_data JSONB NOT NULL DEFAULT '{}'::jsonb,
+    created_at BIGINT NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES users (id)
+  )`,
+  'CREATE INDEX IF NOT EXISTS idx_user_events_user_id ON user_events (user_id)',
+  'CREATE INDEX IF NOT EXISTS idx_user_events_type ON user_events (event_type)'
+];
+
 // Optional: Version management for migrations
-export const SCHEMA_VERSION = 13;
+export const SCHEMA_VERSION = 14;

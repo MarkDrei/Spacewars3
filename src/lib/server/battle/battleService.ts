@@ -28,6 +28,7 @@ import { WORLD_LOCK, USER_LOCK } from '../typedLocks';
 import { WorldCache } from '../world/worldCache';
 import { DEFAULT_WORLD_WIDTH, DEFAULT_WORLD_HEIGHT } from '@shared/worldConstants';
 import { sendMessageToUser } from '../messages/MessageCache';
+import { StatisticsCache } from '../statistics/StatisticsCache';
 
 /**
  * Calculate XP awarded to the winner of a battle based on level difference.
@@ -592,5 +593,37 @@ export async function resolveBattle(
   } catch (msgErr) {
     // logging only; don't abort resolution if message sending fails
     console.error('⚠️ Failed to send battle outcome messages:', msgErr);
+  }
+
+  // Emit statistics events (fire-and-forget)
+  try {
+    const statisticsCache = StatisticsCache.getInstance();
+    const durationSec = battle.battleEndTime
+      ? Math.round((battle.battleEndTime - battle.battleStartTime) / 1000)
+      : 0;
+    // Winner event
+    statisticsCache.recordEvent(winnerId, 'battle_completed', {
+      battleId: battle.id,
+      opponentId: loserId,
+      won: true,
+      damageDealt: battle.attackerId === winnerId ? (battle.attackerTotalDamage ?? 0) : (battle.attackeeTotalDamage ?? 0),
+      damageReceived: battle.attackerId === winnerId ? (battle.attackeeTotalDamage ?? 0) : (battle.attackerTotalDamage ?? 0),
+      ironTransferred: ironResult.amount,
+      xpAwarded,
+      durationSec,
+    });
+    // Loser event
+    statisticsCache.recordEvent(loserId, 'battle_completed', {
+      battleId: battle.id,
+      opponentId: winnerId,
+      won: false,
+      damageDealt: battle.attackerId === loserId ? (battle.attackerTotalDamage ?? 0) : (battle.attackeeTotalDamage ?? 0),
+      damageReceived: battle.attackerId === loserId ? (battle.attackeeTotalDamage ?? 0) : (battle.attackerTotalDamage ?? 0),
+      ironTransferred: 0,
+      xpAwarded: 0,
+      durationSec,
+    });
+  } catch (statsErr) {
+    console.error('⚠️ Failed to emit battle statistics events:', statsErr);
   }
 }

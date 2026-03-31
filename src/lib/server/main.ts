@@ -10,6 +10,7 @@ import { MessageCache } from "./messages/MessageCache";
 import { WorldCache } from "./world/worldCache";
 import { UserBonusCache } from "./bonus/UserBonusCache";
 import { InventoryService } from "./inventory/InventoryService";
+import { StatisticsCache } from "./statistics/StatisticsCache";
 
 export async function initializeServer() {
 
@@ -67,6 +68,15 @@ export async function initializeServer() {
             messageCache
         });
         console.log('🌱🪴 Application startup - ✅ BattleCache initialized');
+
+        // Initialize StatisticsCache
+        console.log('🌱🪴 Application startup - 📊 Initializing StatisticsCache...');
+        await StatisticsCache.initialize(db, (userId) => {
+            const userCache = UserCache.getInstance2();
+            const user = userCache.getUserByIdFromCache(ctx15, userId);
+            return user?.username;
+        });
+        console.log('🌱🪴 Application startup - ✅ StatisticsCache initialized');
 
         console.log('🌱🪴 Application startup complete');
 

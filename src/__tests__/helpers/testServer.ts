@@ -4,6 +4,7 @@ import { UserCache } from '@/lib/server/user/userCache';
 import { WorldCache } from '@/lib/server/world/worldCache';
 import { MessageCache } from '@/lib/server/messages/MessageCache';
 import { UserBonusCache } from '@/lib/server/bonus/UserBonusCache';
+import { StatisticsCache } from '@/lib/server/statistics/StatisticsCache';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 import { DATABASE_LOCK_MESSAGES } from '@/lib/server/typedLocks';
 
@@ -45,6 +46,15 @@ async function shutdownBattleCache(): Promise<void> {
   }
 }
 
+async function shutdownStatisticsCache(): Promise<void> {
+  try {
+    const cache = StatisticsCache.getInstance();
+    await cache.shutdown();
+  } catch {
+    // Ignore if cache was never initialized
+  }
+}
+
 /**
  * Initialize integration test server.
  * 
@@ -62,10 +72,12 @@ export async function initializeIntegrationTestServer(): Promise<void> {
   // Shutdown caches to ensure all pending async operations complete
   // 
   // Shutdown order is critical (reverse dependency order):
-  // 1. BattleCache (depends on User/World/Message)
-  // 2. MessageCache (no dependencies on other caches)
-  // 3. UserCache (depends on World/Message) 
-  // 4. WorldCache (used by UserCache)
+  // 1. StatisticsCache (no dependencies on other caches)
+  // 2. BattleCache (depends on User/World/Message)
+  // 3. MessageCache (no dependencies on other caches)
+  // 4. UserCache (depends on World/Message) 
+  // 5. WorldCache (used by UserCache)
+  await shutdownStatisticsCache();
   await shutdownBattleCache();
   await shutdownMessageCache();
   await shutdownUserWorldCache(); // Must be before WorldCache!
@@ -74,6 +86,7 @@ export async function initializeIntegrationTestServer(): Promise<void> {
   // Reset all in-memory cache instances
   // Note: Must be done AFTER shutdown completes to avoid interfering with ongoing operations
   // UserCache.resetInstance() also calls WorldCache.resetInstance() internally
+  StatisticsCache.resetInstance();
   BattleCache.resetInstance();
   const ctx = createLockContext();
   MessageCache.resetInstance(ctx);
@@ -90,7 +103,8 @@ export async function initializeIntegrationTestServer(): Promise<void> {
  */
 export async function shutdownIntegrationTestServer(): Promise<void> {
   // Shutdown in reverse dependency order:
-  // Battle → Message → User → World
+  // Statistics → Battle → Message → User → World
+  await shutdownStatisticsCache();
   await shutdownBattleCache();
   await shutdownMessageCache();
   await shutdownUserWorldCache(); // Must be before WorldCache!
@@ -98,6 +112,7 @@ export async function shutdownIntegrationTestServer(): Promise<void> {
   
   // Reset instances after shutdown completes
   // UserCache.resetInstance() also resets WorldCache internally
+  StatisticsCache.resetInstance();
   BattleCache.resetInstance();
   const ctx = createLockContext();
   MessageCache.resetInstance(ctx);
