@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { CommanderStatKey, COMMANDER_STAT_LABELS, SortStatKey, SortDirection } from '@/shared/inventoryShared';
+import './SortControls.css';
 
 interface SortControlsProps {
   sortBy: SortStatKey | null;

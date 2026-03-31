@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import AuthenticatedLayout from '@/components/Layout/AuthenticatedLayout';
 import { ServerAuthState } from '@/lib/server/serverSession';
-import { CommanderData, InventoryGrid, InventoryItemData, DEFAULT_INVENTORY_SLOTS } from '@/shared/inventoryShared';
+import { CommanderData, InventoryGrid, InventoryItemData, DEFAULT_INVENTORY_SLOTS, SortStatKey, SortDirection, sortGrid } from '@/shared/inventoryShared';
 import { commanderSellPrice, commanderBuyPrice } from '@/shared/starbasePrice';
 import CommanderCard from '@/components/Starbase/CommanderCard';
+import SortControls from '@/components/Inventory/SortControls';
 import './StarbasePage.css';
 
 interface StarbasePageClientProps {
@@ -22,6 +23,14 @@ const StarbasePageClient: React.FC<StarbasePageClientProps> = (_props) => {
   const [message, setMessage] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
   const [isBusy, setIsBusy] = useState(false);
+
+  // Sort state for sell (inventory) panel
+  const [sellSortBy, setSellSortBy] = useState<SortStatKey | null>(null);
+  const [sellSortDir, setSellSortDir] = useState<SortDirection>('desc');
+
+  // Sort state for buy (shop) panel
+  const [buySortBy, setBuySortBy] = useState<SortStatKey | null>(null);
+  const [buySortDir, setBuySortDir] = useState<SortDirection>('desc');
 
   const showMessage = useCallback((msg: string) => {
     setMessage(msg);
@@ -114,6 +123,26 @@ const StarbasePageClient: React.FC<StarbasePageClientProps> = (_props) => {
 
   const inventoryFull = inventoryCommanders.length >= maxInventorySlots;
 
+  // Derive sorted lists for display. The sell list is flat (not a grid), so we
+  // wrap into a 1-row grid for sortGrid, then flatten back out.
+  const sortedInventoryCommanders = useMemo(() => {
+    if (!sellSortBy) return inventoryCommanders;
+    const singleRow = [inventoryCommanders.map((e) => e.commander)];
+    const sorted = sortGrid(singleRow, inventoryCommanders.length, sellSortBy, sellSortDir);
+    return sorted[0]
+      .filter((c): c is CommanderData => c !== null)
+      .map((c) => inventoryCommanders.find((e) => e.commander === c)!);
+  }, [inventoryCommanders, sellSortBy, sellSortDir]);
+
+  const sortedShopCommanders = useMemo(() => {
+    if (!buySortBy) return shopCommanders.map((c, i) => ({ commander: c, index: i }));
+    const singleRow = [shopCommanders as (CommanderData | null)[]];
+    const sorted = sortGrid(singleRow, shopCommanders.length, buySortBy, buySortDir);
+    return sorted[0]
+      .filter((c): c is CommanderData => c !== null)
+      .map((c) => ({ commander: c, index: shopCommanders.indexOf(c) }));
+  }, [shopCommanders, buySortBy, buySortDir]);
+
   return (
     <AuthenticatedLayout>
       <div className="starbase-page">
@@ -140,13 +169,21 @@ const StarbasePageClient: React.FC<StarbasePageClientProps> = (_props) => {
           ) : (
             <div className="starbase-panels">
               {/* Sell Panel */}
-              <div className="starbase-panel">
-                <h2 className="starbase-panel-heading">Sell Commanders</h2>
+              <div className="starbase-panel starbase-panel--sell">
+                <div className="starbase-panel-heading-row">
+                  <h2 className="starbase-panel-heading">Sell Commanders</h2>
+                  <SortControls
+                    sortBy={sellSortBy}
+                    sortDir={sellSortDir}
+                    onSortChange={(by, dir) => { setSellSortBy(by); setSellSortDir(dir); }}
+                    accentColor="#4488ff"
+                  />
+                </div>
                 {inventoryCommanders.length === 0 ? (
                   <p className="starbase-empty">No commanders in inventory.</p>
                 ) : (
                   <div className="starbase-card-list">
-                    {inventoryCommanders.map(({ commander, row, col }) => (
+                    {sortedInventoryCommanders.map(({ commander, row, col }) => (
                       <CommanderCard
                         key={`${row}-${col}`}
                         commander={commander}
@@ -161,10 +198,18 @@ const StarbasePageClient: React.FC<StarbasePageClientProps> = (_props) => {
               </div>
 
               {/* Buy Panel */}
-              <div className="starbase-panel">
-                <h2 className="starbase-panel-heading">Buy Commanders</h2>
+              <div className="starbase-panel starbase-panel--buy">
+                <div className="starbase-panel-heading-row">
+                  <h2 className="starbase-panel-heading">Buy Commanders</h2>
+                  <SortControls
+                    sortBy={buySortBy}
+                    sortDir={buySortDir}
+                    onSortChange={(by, dir) => { setBuySortBy(by); setBuySortDir(dir); }}
+                    accentColor="#66bb6a"
+                  />
+                </div>
                 <div className="starbase-card-list">
-                  {shopCommanders.map((commander, index) => {
+                  {sortedShopCommanders.map(({ commander, index }) => {
                     const price = commanderBuyPrice(commander);
                     return (
                       <CommanderCard
