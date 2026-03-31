@@ -238,6 +238,12 @@ const BridgeSection: React.FC<BridgeSectionProps> = ({ refreshTrigger, onCrossTr
     setSelectedSlot(null);
   }, []);
 
+  const resolveOriginalCoord = useCallback((displaySlot: SlotCoordinate): SlotCoordinate | null => {
+    const item = displayGrid[displaySlot.row]?.[displaySlot.col];
+    if (!item) return null;
+    return findItemSlot(baseGrid, item);
+  }, [displayGrid, baseGrid]);
+
   // If the player hasn't researched bridge slots yet, show a locked message
   if (!isLoading && !error && maxBridgeSlots === 0) {
     return (
@@ -297,6 +303,7 @@ const BridgeSection: React.FC<BridgeSectionProps> = ({ refreshTrigger, onCrossTr
             onDragStartExternal={onDragStart}
             onDragEndExternal={onDragEnd}
             sortingActive={sortBy !== null}
+            resolveOriginalCoord={sortBy !== null ? resolveOriginalCoord : undefined}
           />
           {selectedItem !== null && selectedSlot !== null ? (
             <ItemDetailsPanel
@@ -307,7 +314,7 @@ const BridgeSection: React.FC<BridgeSectionProps> = ({ refreshTrigger, onCrossTr
             />
           ) : (
             <div className="inventory-no-selection">
-              <p>{sortBy !== null ? 'Click a commander to see details. Drag & drop is disabled while sorting.' : 'Drag a commander here from Inventory, or click an assigned commander to see details.'}</p>
+              <p>{sortBy !== null ? 'Click a commander to see details. You can drag commanders out, but cannot drop new ones in while sorting is active.' : 'Drag a commander here from Inventory, or click an assigned commander to see details.'}</p>
             </div>
           )}
         </div>

@@ -232,6 +232,12 @@ const InventorySection: React.FC<InventorySectionProps> = ({ refreshTrigger, onC
     setSelectedSlot(null);
   }, []);
 
+  const resolveOriginalCoord = useCallback((displaySlot: SlotCoordinate): SlotCoordinate | null => {
+    const item = displayGrid[displaySlot.row]?.[displaySlot.col];
+    if (!item) return null;
+    return findItemSlot(grid, item);
+  }, [displayGrid, grid]);
+
   return (
     <section className="inventory-section">
       <div className="section-heading-row">
@@ -274,6 +280,7 @@ const InventorySection: React.FC<InventorySectionProps> = ({ refreshTrigger, onC
             onDragStartExternal={onDragStart}
             onDragEndExternal={onDragEnd}
             sortingActive={sortBy !== null}
+            resolveOriginalCoord={sortBy !== null ? resolveOriginalCoord : undefined}
           />
           {selectedItem !== null && selectedSlot !== null ? (
             <ItemDetailsPanel
@@ -284,7 +291,7 @@ const InventorySection: React.FC<InventorySectionProps> = ({ refreshTrigger, onC
             />
           ) : (
             <div className="inventory-no-selection">
-              <p>{sortBy !== null ? 'Click an item to see details. Drag & drop is disabled while sorting.' : 'Click an item to see its details.'}</p>
+              <p>{sortBy !== null ? 'Click an item to see details. You can drag items out, but cannot drop new items in while sorting is active.' : 'Click an item to see its details.'}</p>
             </div>
           )}
         </div>
