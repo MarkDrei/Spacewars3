@@ -293,31 +293,32 @@ export class StatisticsCache extends Cache {
     const allUsers = Array.from(this.userAggregates.entries());
     const totalPlayers = allUsers.length;
 
-    // Compute averages
+    // Compute totals (sums across all players)
+    const totals = createEmptyUserStats();
+    for (const [, stats] of allUsers) {
+      totals.battlesWon += stats.battlesWon;
+      totals.battlesLost += stats.battlesLost;
+      totals.totalDamageDealt += stats.totalDamageDealt;
+      totals.totalDamageReceived += stats.totalDamageReceived;
+      totals.totalIronTransferred += stats.totalIronTransferred;
+      totals.totalXpAwarded += stats.totalXpAwarded;
+      totals.totalBattleDurationSec += stats.totalBattleDurationSec;
+      totals.asteroidsCollected += stats.asteroidsCollected;
+      totals.shipwrecksCollected += stats.shipwrecksCollected;
+      totals.escapePodsCollected += stats.escapePodsCollected;
+      totals.totalIronFromCollection += stats.totalIronFromCollection;
+      totals.totalIronSpentOnResearch += stats.totalIronSpentOnResearch;
+      totals.researchCount += stats.researchCount;
+      totals.totalIronSpentOnBuilds += stats.totalIronSpentOnBuilds;
+      totals.totalBuildsCompleted += stats.totalBuildsCompleted;
+    }
+
+    // Compute averages (totals divided by player count)
     const averages = createEmptyUserStats();
     if (totalPlayers > 0) {
-      for (const [, stats] of allUsers) {
-        averages.battlesWon += stats.battlesWon;
-        averages.battlesLost += stats.battlesLost;
-        averages.totalDamageDealt += stats.totalDamageDealt;
-        averages.totalDamageReceived += stats.totalDamageReceived;
-        averages.totalIronTransferred += stats.totalIronTransferred;
-        averages.totalXpAwarded += stats.totalXpAwarded;
-        averages.totalBattleDurationSec += stats.totalBattleDurationSec;
-        averages.asteroidsCollected += stats.asteroidsCollected;
-        averages.shipwrecksCollected += stats.shipwrecksCollected;
-        averages.escapePodsCollected += stats.escapePodsCollected;
-        averages.totalIronFromCollection += stats.totalIronFromCollection;
-        averages.totalIronSpentOnResearch += stats.totalIronSpentOnResearch;
-        averages.researchCount += stats.researchCount;
-        averages.totalIronSpentOnBuilds += stats.totalIronSpentOnBuilds;
-        averages.totalBuildsCompleted += stats.totalBuildsCompleted;
-      }
-
-      // Divide by total players to get per-player average
-      const keys = Object.keys(averages) as Array<keyof UserStatAggregates>;
+      const keys = Object.keys(totals) as Array<keyof UserStatAggregates>;
       for (const key of keys) {
-        averages[key] = averages[key] / totalPlayers;
+        averages[key] = totals[key] / totalPlayers;
       }
     }
 
@@ -335,6 +336,7 @@ export class StatisticsCache extends Cache {
 
     return {
       totalPlayers,
+      totals,
       averages,
       top5: {
         battlesWon: makeTop5((s) => s.battlesWon),

@@ -31,6 +31,7 @@ interface StatisticsResponse {
   user: UserStatAggregates;
   global: {
     totalPlayers: number;
+    totals: UserStatAggregates;
     averages: UserStatAggregates;
     top5: {
       battlesWon: TopEntry[];
@@ -43,24 +44,31 @@ interface StatisticsResponse {
   currentUserId: number;
 }
 
+const RANK_MEDALS: Record<number, string> = { 1: '🥇', 2: '🥈', 3: '🥉', 4: '🏆', 5: '🏆' };
+
 interface StatRowProps {
   label: string;
   userValue: number | string;
   avgValue: number | string;
-  isInTop5: boolean;
-  formatValue?: (v: number) => string;
+  totalValue: number | string;
+  rank: number | null;
 }
 
-function StatRow({ label, userValue, avgValue, isInTop5 }: StatRowProps) {
+function StatRow({ label, userValue, avgValue, totalValue, rank }: StatRowProps) {
   return (
     <div className="stat-row">
       <span className="stat-row-label">{label}</span>
       <span className="stat-row-user">
         {typeof userValue === 'number' ? Math.round(userValue).toLocaleString() : userValue}
-        {isInTop5 && <span className="top5-badge" title="Top 5">🏆</span>}
+        {rank !== null && (
+          <span className="top5-badge" title={`Rank #${rank}`}>{RANK_MEDALS[rank]}</span>
+        )}
       </span>
       <span className="stat-row-avg">
         {typeof avgValue === 'number' ? Math.round(avgValue).toLocaleString() : avgValue}
+      </span>
+      <span className="stat-row-total">
+        {typeof totalValue === 'number' ? Math.round(totalValue).toLocaleString() : totalValue}
       </span>
     </div>
   );
@@ -111,8 +119,10 @@ const StatisticsPanel: React.FC = () => {
 
   const { user, global, currentUserId } = stats;
 
-  const isInTop5 = (topList: TopEntry[]): boolean =>
-    topList.some((entry) => entry.userId === currentUserId);
+  const getRank = (topList: TopEntry[]): number | null => {
+    const idx = topList.findIndex((entry) => entry.userId === currentUserId);
+    return idx === -1 ? null : idx + 1;
+  };
 
   return (
     <div className="statistics-panel">
@@ -125,6 +135,7 @@ const StatisticsPanel: React.FC = () => {
         <span className="stats-col-label">Stat</span>
         <span className="stats-col-you">You</span>
         <span className="stats-col-avg">Avg/Player</span>
+        <span className="stats-col-total">Total</span>
       </div>
 
       {/* ── Combat ── */}
@@ -134,37 +145,43 @@ const StatisticsPanel: React.FC = () => {
           label="Battles Won"
           userValue={user.battlesWon}
           avgValue={global.averages.battlesWon}
-          isInTop5={isInTop5(global.top5.battlesWon)}
+          totalValue={global.totals.battlesWon}
+          rank={getRank(global.top5.battlesWon)}
         />
         <StatRow
           label="Battles Lost"
           userValue={user.battlesLost}
           avgValue={global.averages.battlesLost}
-          isInTop5={false}
+          totalValue={global.totals.battlesLost}
+          rank={null}
         />
         <StatRow
           label="Total Damage Dealt"
           userValue={user.totalDamageDealt}
           avgValue={global.averages.totalDamageDealt}
-          isInTop5={isInTop5(global.top5.totalDamageDealt)}
+          totalValue={global.totals.totalDamageDealt}
+          rank={getRank(global.top5.totalDamageDealt)}
         />
         <StatRow
           label="Total Damage Received"
           userValue={user.totalDamageReceived}
           avgValue={global.averages.totalDamageReceived}
-          isInTop5={false}
+          totalValue={global.totals.totalDamageReceived}
+          rank={null}
         />
         <StatRow
           label="Iron Transferred (Won)"
           userValue={user.totalIronTransferred}
           avgValue={global.averages.totalIronTransferred}
-          isInTop5={isInTop5(global.top5.totalIronTransferred)}
+          totalValue={global.totals.totalIronTransferred}
+          rank={getRank(global.top5.totalIronTransferred)}
         />
         <StatRow
           label="XP Awarded from Battles"
           userValue={user.totalXpAwarded}
           avgValue={global.averages.totalXpAwarded}
-          isInTop5={false}
+          totalValue={global.totals.totalXpAwarded}
+          rank={null}
         />
       </div>
 
@@ -175,25 +192,29 @@ const StatisticsPanel: React.FC = () => {
           label="Asteroids Collected"
           userValue={user.asteroidsCollected}
           avgValue={global.averages.asteroidsCollected}
-          isInTop5={false}
+          totalValue={global.totals.asteroidsCollected}
+          rank={null}
         />
         <StatRow
           label="Shipwrecks Collected"
           userValue={user.shipwrecksCollected}
           avgValue={global.averages.shipwrecksCollected}
-          isInTop5={false}
+          totalValue={global.totals.shipwrecksCollected}
+          rank={null}
         />
         <StatRow
           label="Escape Pods Collected"
           userValue={user.escapePodsCollected}
           avgValue={global.averages.escapePodsCollected}
-          isInTop5={false}
+          totalValue={global.totals.escapePodsCollected}
+          rank={null}
         />
         <StatRow
           label="Iron from Collection"
           userValue={user.totalIronFromCollection}
           avgValue={global.averages.totalIronFromCollection}
-          isInTop5={isInTop5(global.top5.totalIronFromCollection)}
+          totalValue={global.totals.totalIronFromCollection}
+          rank={getRank(global.top5.totalIronFromCollection)}
         />
       </div>
 
@@ -204,25 +225,29 @@ const StatisticsPanel: React.FC = () => {
           label="Iron Spent on Research"
           userValue={user.totalIronSpentOnResearch}
           avgValue={global.averages.totalIronSpentOnResearch}
-          isInTop5={isInTop5(global.top5.totalIronSpentOnResearch)}
+          totalValue={global.totals.totalIronSpentOnResearch}
+          rank={getRank(global.top5.totalIronSpentOnResearch)}
         />
         <StatRow
           label="Research Count"
           userValue={user.researchCount}
           avgValue={global.averages.researchCount}
-          isInTop5={false}
+          totalValue={global.totals.researchCount}
+          rank={null}
         />
         <StatRow
           label="Iron Spent on Builds"
           userValue={user.totalIronSpentOnBuilds}
           avgValue={global.averages.totalIronSpentOnBuilds}
-          isInTop5={false}
+          totalValue={global.totals.totalIronSpentOnBuilds}
+          rank={null}
         />
         <StatRow
           label="Items Built"
           userValue={user.totalBuildsCompleted}
           avgValue={global.averages.totalBuildsCompleted}
-          isInTop5={false}
+          totalValue={global.totals.totalBuildsCompleted}
+          rank={null}
         />
       </div>
     </div>

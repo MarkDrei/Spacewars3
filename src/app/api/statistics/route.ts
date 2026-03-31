@@ -28,6 +28,7 @@ export async function GET(request: NextRequest) {
         user,
         global: {
           totalPlayers: global.totalPlayers,
+          totals: global.totals,
           averages: global.averages,
           top5: global.top5,
         },

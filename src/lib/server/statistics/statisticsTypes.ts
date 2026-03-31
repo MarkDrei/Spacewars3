@@ -91,6 +91,7 @@ export interface TopEntry {
 
 export interface GlobalStatAggregates {
   totalPlayers: number;
+  totals: UserStatAggregates;
   averages: UserStatAggregates;
   top5: {
     battlesWon: TopEntry[];

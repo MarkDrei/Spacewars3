@@ -92,6 +92,9 @@ const ProfilePageClient: React.FC<ProfilePageClientProps> = ({ auth }) => {
             </div>
           </div>
 
+          {/* Statistics Panel */}
+          <StatisticsPanel />
+
           {/* Battle History Section */}
           <div className="battle-history">
             <h3>Battle History</h3>
@@ -142,8 +145,6 @@ const ProfilePageClient: React.FC<ProfilePageClientProps> = ({ auth }) => {
             )}
           </div>
 
-          {/* Statistics Panel */}
-          <StatisticsPanel />
         </div>
       </div>
     </AuthenticatedLayout>

@@ -37,7 +37,7 @@
 /* Column headers */
 .stats-header-row {
   display: grid;
-  grid-template-columns: 1fr 110px 110px;
+  grid-template-columns: 1fr 90px 90px 90px;
   gap: 8px;
   padding: 6px 8px;
   border-bottom: 1px solid #2d2d2d;
@@ -52,7 +52,8 @@
 }
 
 .stats-col-you,
-.stats-col-avg {
+.stats-col-avg,
+.stats-col-total {
   color: #666;
   font-size: 0.75rem;
   text-align: right;
@@ -81,7 +82,7 @@
 /* Individual stat rows */
 .stat-row {
   display: grid;
-  grid-template-columns: 1fr 110px 110px;
+  grid-template-columns: 1fr 90px 90px 90px;
   gap: 8px;
   padding: 5px 8px;
   border-radius: 4px;
@@ -111,6 +112,13 @@
   font-variant-numeric: tabular-nums;
 }
 
+.stat-row-total {
+  color: #555;
+  font-size: 0.85rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
 .top5-badge {
   margin-left: 4px;
   font-size: 0.75rem;
@@ -120,7 +128,7 @@
 @media (max-width: 480px) {
   .stats-header-row,
   .stat-row {
-    grid-template-columns: 1fr 80px 80px;
+    grid-template-columns: 1fr 60px 60px 60px;
     gap: 4px;
   }
 
@@ -129,7 +137,8 @@
   }
 
   .stat-row-user,
-  .stat-row-avg {
+  .stat-row-avg,
+  .stat-row-total {
     font-size: 0.8rem;
   }
 }
