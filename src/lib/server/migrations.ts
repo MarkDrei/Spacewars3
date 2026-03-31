@@ -327,6 +327,8 @@ export async function applyTechMigrations(db: DatabaseConnection): Promise<void>
   await applyTeleportChargesMigration(db);
   // Apply score column migration
   await applyScoreMigration(db);
+  // Apply user_events table migration
+  await applyUserEventsMigration(db);
 }
 
 /**
