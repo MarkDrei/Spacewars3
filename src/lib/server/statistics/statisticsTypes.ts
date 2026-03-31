@@ -94,11 +94,23 @@ export interface GlobalStatAggregates {
   totals: UserStatAggregates;
   averages: UserStatAggregates;
   top5: {
+    // Combat
     battlesWon: TopEntry[];
+    battlesLost: TopEntry[];
     totalDamageDealt: TopEntry[];
+    totalDamageReceived: TopEntry[];
     totalIronTransferred: TopEntry[];
+    totalXpAwarded: TopEntry[];
+    // Collection
+    asteroidsCollected: TopEntry[];
+    shipwrecksCollected: TopEntry[];
+    escapePodsCollected: TopEntry[];
     totalIronFromCollection: TopEntry[];
+    // Economy
     totalIronSpentOnResearch: TopEntry[];
+    researchCount: TopEntry[];
+    totalIronSpentOnBuilds: TopEntry[];
+    totalBuildsCompleted: TopEntry[];
   };
 }
 

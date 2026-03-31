@@ -153,7 +153,7 @@ const StatisticsPanel: React.FC = () => {
           userValue={user.battlesLost}
           avgValue={global.averages.battlesLost}
           totalValue={global.totals.battlesLost}
-          rank={null}
+          rank={getRank(global.top5.battlesLost)}
         />
         <StatRow
           label="Total Damage Dealt"
@@ -167,7 +167,7 @@ const StatisticsPanel: React.FC = () => {
           userValue={user.totalDamageReceived}
           avgValue={global.averages.totalDamageReceived}
           totalValue={global.totals.totalDamageReceived}
-          rank={null}
+          rank={getRank(global.top5.totalDamageReceived)}
         />
         <StatRow
           label="Iron Transferred (Won)"
@@ -181,7 +181,7 @@ const StatisticsPanel: React.FC = () => {
           userValue={user.totalXpAwarded}
           avgValue={global.averages.totalXpAwarded}
           totalValue={global.totals.totalXpAwarded}
-          rank={null}
+          rank={getRank(global.top5.totalXpAwarded)}
         />
       </div>
 
@@ -193,21 +193,21 @@ const StatisticsPanel: React.FC = () => {
           userValue={user.asteroidsCollected}
           avgValue={global.averages.asteroidsCollected}
           totalValue={global.totals.asteroidsCollected}
-          rank={null}
+          rank={getRank(global.top5.asteroidsCollected)}
         />
         <StatRow
           label="Shipwrecks Collected"
           userValue={user.shipwrecksCollected}
           avgValue={global.averages.shipwrecksCollected}
           totalValue={global.totals.shipwrecksCollected}
-          rank={null}
+          rank={getRank(global.top5.shipwrecksCollected)}
         />
         <StatRow
           label="Escape Pods Collected"
           userValue={user.escapePodsCollected}
           avgValue={global.averages.escapePodsCollected}
           totalValue={global.totals.escapePodsCollected}
-          rank={null}
+          rank={getRank(global.top5.escapePodsCollected)}
         />
         <StatRow
           label="Iron from Collection"
@@ -233,21 +233,21 @@ const StatisticsPanel: React.FC = () => {
           userValue={user.researchCount}
           avgValue={global.averages.researchCount}
           totalValue={global.totals.researchCount}
-          rank={null}
+          rank={getRank(global.top5.researchCount)}
         />
         <StatRow
           label="Iron Spent on Builds"
           userValue={user.totalIronSpentOnBuilds}
           avgValue={global.averages.totalIronSpentOnBuilds}
           totalValue={global.totals.totalIronSpentOnBuilds}
-          rank={null}
+          rank={getRank(global.top5.totalIronSpentOnBuilds)}
         />
         <StatRow
           label="Items Built"
           userValue={user.totalBuildsCompleted}
           avgValue={global.averages.totalBuildsCompleted}
           totalValue={global.totals.totalBuildsCompleted}
-          rank={null}
+          rank={getRank(global.top5.totalBuildsCompleted)}
         />
       </div>
     </div>

@@ -339,11 +339,23 @@ export class StatisticsCache extends Cache {
       totals,
       averages,
       top5: {
+        // Combat
         battlesWon: makeTop5((s) => s.battlesWon),
+        battlesLost: makeTop5((s) => s.battlesLost),
         totalDamageDealt: makeTop5((s) => s.totalDamageDealt),
+        totalDamageReceived: makeTop5((s) => s.totalDamageReceived),
         totalIronTransferred: makeTop5((s) => s.totalIronTransferred),
+        totalXpAwarded: makeTop5((s) => s.totalXpAwarded),
+        // Collection
+        asteroidsCollected: makeTop5((s) => s.asteroidsCollected),
+        shipwrecksCollected: makeTop5((s) => s.shipwrecksCollected),
+        escapePodsCollected: makeTop5((s) => s.escapePodsCollected),
         totalIronFromCollection: makeTop5((s) => s.totalIronFromCollection),
+        // Economy
         totalIronSpentOnResearch: makeTop5((s) => s.totalIronSpentOnResearch),
+        researchCount: makeTop5((s) => s.researchCount),
+        totalIronSpentOnBuilds: makeTop5((s) => s.totalIronSpentOnBuilds),
+        totalBuildsCompleted: makeTop5((s) => s.totalBuildsCompleted),
       },
     };
   }
