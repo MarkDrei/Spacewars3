@@ -1,8 +1,41 @@
 import React from 'react';
-import { render, fireEvent } from '@testing-library/react';
+import { render, fireEvent, waitFor, act } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import InventoryGridComponent from '@/components/Inventory/InventoryGrid';
 import { InventoryItemData } from '@/shared/inventoryShared';
+
+class MockResizeObserver {
+  private callback: ResizeObserverCallback;
+
+  static instances: MockResizeObserver[] = [];
+
+  constructor(callback: ResizeObserverCallback) {
+    this.callback = callback;
+    MockResizeObserver.instances.push(this);
+  }
+
+  observe() {}
+
+  unobserve() {}
+
+  disconnect() {}
+
+  trigger(width: number) {
+    this.callback(
+      [
+        {
+          contentRect: { width } as DOMRectReadOnly,
+        } as ResizeObserverEntry,
+      ],
+      this as unknown as ResizeObserver,
+    );
+  }
+}
+
+function installResizeObserverMock() {
+  MockResizeObserver.instances = [];
+  vi.stubGlobal('ResizeObserver', MockResizeObserver);
+}
 
 describe('InventoryGridComponent drag callbacks', () => {
   const sampleItem: InventoryItemData = {
@@ -51,6 +84,73 @@ describe('InventoryGridComponent drag callbacks', () => {
 
     fireEvent.dragEnd(slot);
     expect(onDragEnd).toHaveBeenCalled();
+  });
+});
+
+describe('InventoryGridComponent responsive layout', () => {
+  const responsiveGrid = Array.from({ length: 2 }, (_, row) =>
+    Array.from({ length: 8 }, (_, col) => ({
+      itemType: 'commander' as const,
+      name: `Commander ${row}-${col}`,
+      imageId: col,
+      statBonuses: [],
+    })),
+  );
+
+  it('containerTooNarrowForEight_usesFourColumns', async () => {
+    installResizeObserverMock();
+
+    const { container } = render(
+      <InventoryGridComponent
+        grid={responsiveGrid}
+        selectedSlot={null}
+        onSelectSlot={() => {}}
+        onMoveItem={() => {}}
+        maxSlots={16}
+        gridKey="inventory"
+        fallbackCols={4}
+      />,
+    );
+
+    const observer = MockResizeObserver.instances[0];
+    act(() => {
+      observer.trigger(700);
+    });
+
+    await waitFor(() => {
+      const grid = container.querySelector('.inv-grid');
+      expect(grid).not.toBeNull();
+      expect(grid?.getAttribute('data-display-cols')).toBe('4');
+      expect(grid?.getAttribute('data-slot-size')).toBe('130.00');
+    });
+  });
+
+  it('containerTooNarrowForFour_shrinksSlotsToAvailableWidth', async () => {
+    installResizeObserverMock();
+
+    const { container } = render(
+      <InventoryGridComponent
+        grid={responsiveGrid}
+        selectedSlot={null}
+        onSelectSlot={() => {}}
+        onMoveItem={() => {}}
+        maxSlots={16}
+        gridKey="inventory"
+        fallbackCols={4}
+      />,
+    );
+
+    const observer = MockResizeObserver.instances[0];
+    act(() => {
+      observer.trigger(360);
+    });
+
+    await waitFor(() => {
+      const grid = container.querySelector('.inv-grid');
+      expect(grid).not.toBeNull();
+      expect(grid?.getAttribute('data-display-cols')).toBe('4');
+      expect(Number(grid?.getAttribute('data-slot-size'))).toBeCloseTo(87.75, 2);
+    });
   });
 });
 

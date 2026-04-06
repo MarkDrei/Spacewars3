@@ -3,11 +3,13 @@
   background-color: #121212;
   color: white;
   padding: 2rem 1rem;
+  overflow-x: hidden;
 }
 
 .ship-container {
   max-width: 1200px;
   margin: 0 auto;
+  min-width: 0;
 }
 
 .ship-selection-message {
@@ -203,6 +205,7 @@
   background-color: #1e1e1e;
   border-radius: 8px;
   border-left: 4px solid #ce93d8;
+  min-width: 0;
 }
 
 .bridge-section--locked {
@@ -254,11 +257,6 @@
   animation: fadeIn 0.3s ease-in;
 }
 
-/* Bridge uses a 4-column grid; override .inv-grid inside bridge section */
-.bridge-section .inv-grid {
-  grid-template-columns: repeat(4, 130px);
-}
-
 .bridge-section .inv-slot--selected {
   border-color: #ce93d8 !important;
   background-color: #2a1f30 !important;
@@ -276,12 +274,6 @@
 
 .bridge-section .item-details-type {
   color: #ce93d8;
-}
-
-@media (max-width: 700px) {
-  .bridge-section .inv-grid {
-    grid-template-columns: repeat(4, 105px);
-  }
 }
 
 /* ============================================================
@@ -326,6 +318,7 @@
   background-color: #1e1e1e;
   border-radius: 8px;
   border-left: 4px solid #4fc3f7;
+  min-width: 0;
 }
 
 /* Row that holds the section heading and sort controls side by side */
@@ -414,20 +407,28 @@
   gap: 1.5rem;
   align-items: flex-start;
   flex-wrap: wrap;
+  min-width: 0;
+  width: 100%;
 }
 
-/* 8-column grid, rows grow dynamically with research */
+.inv-grid-wrap {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: 100%;
+}
+
 .inv-grid {
   display: grid;
-  grid-template-columns: repeat(8, 130px);
-  grid-auto-rows: 130px;
+  grid-template-columns: repeat(var(--inv-display-cols, 8), var(--inv-slot-size, 130px));
+  grid-auto-rows: var(--inv-slot-size, 130px);
   gap: 3px;
-  flex-shrink: 0;
+  max-width: 100%;
+  width: fit-content;
 }
 
 .inv-slot {
-  width: 130px;
-  height: 130px;
+  width: var(--inv-slot-size, 130px);
+  height: var(--inv-slot-size, 130px);
   background-color: #1a1a2e;
   border: 1px solid #2a2a3e;
   border-radius: 4px;
@@ -570,14 +571,9 @@
 }
 
 @media (max-width: 700px) {
-  .inv-grid {
-    grid-template-columns: repeat(8, 105px);
-    grid-auto-rows: 105px;
-  }
-
-  .inv-slot {
-    width: 105px;
-    height: 105px;
+  .inventory-section,
+  .bridge-section {
+    padding: 1rem;
   }
 }
 
