@@ -1,7 +1,5 @@
 // User stats service for fetching iron and other user data
-const API_BASE = process.env.NODE_ENV === 'production' 
-  ? 'https://spacewars3.onrender.com/api' 
-  : '/api';
+const API_BASE = '/api';
 
 export interface UserStatsResponse {
   iron: number;
