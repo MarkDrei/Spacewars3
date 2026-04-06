@@ -1,7 +1,5 @@
 // Authentication service for API calls
-const API_BASE = process.env.NODE_ENV === 'production' 
-  ? 'https://spacewars3.onrender.com/api' 
-  : '/api';
+const API_BASE = '/api';
 
 export interface AuthResponse {
   success?: boolean;
