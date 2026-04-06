@@ -1,5 +1,7 @@
 # Development Plan: User Statistics System
 
+dummy line
+
 ## Vision
 
 As a player, I want to see detailed statistics about my gameplay (battles fought, damage dealt/received, items collected, iron spent on research/techs) on my Profile page, alongside server-wide averages and top-5 highlights, so I can track my progress and compare against other players.
