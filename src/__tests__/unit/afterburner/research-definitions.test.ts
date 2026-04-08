@@ -166,3 +166,31 @@ describe('ResearchType enum', () => {
     expect(ResearchType.AfterburnerCooldown).toBe('afterburnerCooldown');
   });
 });
+
+describe('Legacy tech tree backward compatibility', () => {
+  test('legacyTechTree_oldAfterburnerField_handledGracefully', () => {
+    // Simulate a legacy DB record that has old 'afterburner' field but no 'afterburnerCooldown'
+    const legacyJson = JSON.stringify({ afterburner: 5, shipSpeed: 3, ironHarvesting: 2 });
+    const parsed = JSON.parse(legacyJson);
+    const initialTree = createInitialTechTree();
+    const merged = { ...initialTree, ...parsed };
+
+    // afterburnerCooldown should get default from initialTree (1)
+    expect(merged.afterburnerCooldown).toBe(1);
+    // afterburnerDuration should get default from initialTree (0)
+    expect(merged.afterburnerDuration).toBe(0);
+    // The old afterburner field is harmless extra data
+    expect((merged as Record<string, unknown>).afterburner).toBe(5);
+  });
+
+  test('legacyTechTree_missingAfterburnerDuration_getsDefault', () => {
+    const legacyJson = JSON.stringify({ shipSpeed: 2 });
+    const parsed = JSON.parse(legacyJson);
+    const initialTree = createInitialTechTree();
+    const merged = { ...initialTree, ...parsed };
+
+    expect(merged.afterburnerDuration).toBe(0);
+    expect(merged.afterburnerCooldown).toBe(1);
+    expect(merged.afterburnerSpeedIncrease).toBe(1);
+  });
+});
