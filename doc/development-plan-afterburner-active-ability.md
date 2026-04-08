@@ -202,6 +202,14 @@ Note: No pre-activation speed is stored. When the afterburner expires, the ship 
 
 - `src/lib/server/afterburner/afterburnerTypes.ts` — new file
 
+**Status**: ✅ COMPLETED
+**Implementation Summary**: Created `AfterburnerState` interface with userId, activatedAtMs, durationMs, cooldownMs, and boostedSpeed fields. Raw values stored; timeMultiplier applied at query time.
+**Files Modified/Created**:
+- `src/lib/server/afterburner/afterburnerTypes.ts` — Created AfterburnerState interface
+**Deviations from Plan**: None
+**Arc42 Updates**: None required
+**Test Results**: ✅ Types verified via compilation and downstream tests
+
 #### Task 2.2: Create AfterburnerService
 
 **Action**: Create a service class that manages afterburner state. Singleton pattern matching existing codebase conventions (globalThis-based, resetInstance for tests).
@@ -231,6 +239,14 @@ Then compare against raw durationMs/cooldownMs.
 
 - `src/lib/server/afterburner/AfterburnerService.ts` — new file
 
+**Status**: ✅ COMPLETED
+**Implementation Summary**: Created AfterburnerService singleton (globalThis-based, matching TimeMultiplierService pattern) with Map-based per-user state, all specified methods including time-multiplier-aware checks for active/cooldown/expiration.
+**Files Modified/Created**:
+- `src/lib/server/afterburner/AfterburnerService.ts` — Created singleton service with activate, getState, isActive, isOnCooldown, canActivate, getBoostRemainingMs, getCooldownRemainingMs, checkAndExpire, clearState, getActiveUserIds, resetInstance
+**Deviations from Plan**: None
+**Arc42 Updates**: None required
+**Test Results**: ✅ All 23 tests passing, 100% line/function coverage, no linting errors
+
 #### Task 2.3: Write unit tests for AfterburnerService
 
 **Action**: Test all AfterburnerService methods:
@@ -253,6 +269,14 @@ Then compare against raw durationMs/cooldownMs.
 **Files**:
 
 - `src/__tests__/unit/afterburner/AfterburnerService.test.ts` — new file
+
+**Status**: ✅ COMPLETED
+**Implementation Summary**: Created 23 unit tests covering all specified scenarios plus additional edge cases (getBoostRemainingMs, getCooldownRemainingMs, getActiveUserIds, singleton behavior, cleanup-on-expire). Uses vi.useFakeTimers() and vi.advanceTimersByTime() for deterministic time control.
+**Files Modified/Created**:
+- `src/__tests__/unit/afterburner/AfterburnerService.test.ts` — 23 unit tests for AfterburnerService
+**Deviations from Plan**: Added 9 extra tests beyond the 14 specified (remaining ms helpers, getActiveUserIds, singleton, checkAndExpire with no state, canActivate cleanup verification) for more thorough coverage
+**Arc42 Updates**: None required
+**Test Results**: ✅ 23 tests passing, 100% line/function coverage, 86.66% branch coverage, no linting errors
 
 ---
 
