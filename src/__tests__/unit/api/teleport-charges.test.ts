@@ -3,7 +3,7 @@ import { User } from '@/lib/server/user/user';
 import { createInitialTechTree } from '@/lib/server/techs/techtree';
 import { TimeMultiplierService } from '@/lib/server/timeMultiplier';
 import { TechCounts } from '@/lib/server/techs/TechFactory';
-import { calculateTeleportChargeCost } from '@/app/api/teleport/route';
+import { calculateTeleportChargeCost } from '@/lib/server/teleport/teleportCharges';
 
 /**
  * Create a minimal TechCounts for unit tests
