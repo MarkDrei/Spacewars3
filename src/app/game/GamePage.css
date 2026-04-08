@@ -353,3 +353,70 @@
     margin-bottom: 70px;
   }
 }
+
+/* ── Afterburner panel ── */
+.panel-afterburner {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  margin-top: 200px; /* below teleport panel */
+  min-width: 200px;
+}
+
+.afterburner-content {
+  margin-top: 4px;
+}
+
+.afterburner-button {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid rgba(76, 175, 80, 0.3);
+  border-radius: 6px;
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 600;
+  text-align: center;
+}
+
+.afterburner-available {
+  background: rgba(255, 140, 0, 0.3);
+  color: #ffaa00;
+  border-color: rgba(255, 140, 0, 0.5);
+}
+
+.afterburner-available:hover:not(:disabled) {
+  background: rgba(255, 140, 0, 0.5);
+}
+
+.afterburner-available:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+.afterburner-active {
+  background: rgba(255, 200, 0, 0.3);
+  color: #ffdd00;
+  border-color: rgba(255, 200, 0, 0.5);
+  cursor: default;
+  animation: afterburner-pulse 1s ease-in-out infinite;
+}
+
+@keyframes afterburner-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.afterburner-cooldown {
+  background: rgba(100, 100, 100, 0.3);
+  color: #888;
+  border-color: rgba(100, 100, 100, 0.3);
+  cursor: not-allowed;
+}
+
+.afterburner-locked {
+  background: rgba(60, 60, 60, 0.3);
+  color: #666;
+  border-color: rgba(60, 60, 60, 0.3);
+  cursor: not-allowed;
+}

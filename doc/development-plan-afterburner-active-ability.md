@@ -450,6 +450,16 @@ This allows the client to display afterburner state without a separate API call.
 **Files**:
 
 - `src/lib/client/services/afterburnerService.ts` — new file
+- `src/lib/client/services/shipStatsService.ts` — add afterburner status to ShipStatsResponse
+
+**Status**: ✅ COMPLETED
+**Implementation Summary**: Created afterburner client service with `activateAfterburner()` function, `AfterburnerActivateResponse` and `AfterburnerStatus` interfaces. Updated `ShipStatsResponse` to include optional `afterburner` field.
+**Files Modified/Created**:
+- `src/lib/client/services/afterburnerService.ts` — Created with activateAfterburner(), AfterburnerActivateResponse, AfterburnerStatus types
+- `src/lib/client/services/shipStatsService.ts` — Added `afterburner?: AfterburnerStatus` to ShipStatsResponse
+**Deviations from Plan**: None
+**Arc42 Updates**: None required
+**Test Results**: ✅ All tests passing, no type errors
 
 #### Task 4.2: Add afterburner UI to GamePageClient
 
@@ -469,6 +479,16 @@ State management:
 **Files**:
 
 - `src/app/game/GamePageClient.tsx` — add afterburner button and state
+- `src/app/game/GamePage.css` — add afterburner panel styles
+
+**Status**: ✅ COMPLETED
+**Implementation Summary**: Added afterburner panel to GamePageClient with all four button states, periodic status polling during active/cooldown, activation handler with immediate refresh, collapsible panel with localStorage persistence, and full CSS styling with pulse animation.
+**Files Modified/Created**:
+- `src/app/game/GamePageClient.tsx` — Added afterburner imports, state variables, localStorage load/save, fetchMaxSpeed afterburner integration, periodic polling effect, handleActivateAfterburner handler, afterburner panel JSX with all states
+- `src/app/game/GamePage.css` — Added .panel-afterburner positioning, .afterburner-button base, .afterburner-available/.active/.cooldown/.locked variants, @keyframes afterburner-pulse animation
+**Deviations from Plan**: None
+**Arc42 Updates**: None required
+**Test Results**: ✅ All tests passing, build succeeds
 
 #### Task 4.3: Write UI tests for afterburner button
 
@@ -476,7 +496,15 @@ State management:
 
 **Files**:
 
-- `src/__tests__/ui/afterburner-button.test.tsx` — new file
+- `src/__tests__/ui/components/afterburner-button.test.tsx` — new file
+
+**Status**: ✅ COMPLETED
+**Implementation Summary**: Created 9 UI tests covering all afterburner button states: not researched (locked), can activate, active with timer, cooldown with timer, no status (hidden), heading display, collapse/expand, activation click calls service, and cooldown time formatting.
+**Files Modified/Created**:
+- `src/__tests__/ui/components/afterburner-button.test.tsx` — 9 UI tests for afterburner button states
+**Deviations from Plan**: Test file placed in `src/__tests__/ui/components/` (not `src/__tests__/ui/`) to match existing test organization pattern (alongside teleport-controls.test.tsx)
+**Arc42 Updates**: None required
+**Test Results**: ✅ 9 tests passing, no linting errors
 
 ---
 
