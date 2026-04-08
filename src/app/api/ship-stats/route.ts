@@ -89,6 +89,12 @@ async function getShipStats(
     regenRates
   );
 
+  // Determine afterburner status
+  const afterburnerCooldownEndMs = playerShip.afterburner_cooldown_end_ms ?? null;
+  const isAfterburnerActive = afterburnerCooldownEndMs != null && afterburnerCooldownEndMs > currentTime;
+  const cooldownRemainingMs = isAfterburnerActive ? afterburnerCooldownEndMs - currentTime : 0;
+  const durationLevel = user.techTree.afterburnerDuration ?? 0;
+
   const responseData = {
     x: playerShip.x,
     y: playerShip.y,
@@ -96,7 +102,13 @@ async function getShipStats(
     angle: playerShip.angle,
     maxSpeed: maxSpeed,
     last_position_update_ms: playerShip.last_position_update_ms,
-    defenseValues
+    defenseValues,
+    afterburner: {
+      isActive: isAfterburnerActive,
+      cooldownRemainingMs: cooldownRemainingMs,
+      canActivate: !isAfterburnerActive && durationLevel >= 1,
+      researchLevel: durationLevel,
+    },
   };
 
   return NextResponse.json(responseData);

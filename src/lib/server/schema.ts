@@ -60,7 +60,10 @@ CREATE TABLE IF NOT EXISTS space_objects (
   speed DOUBLE PRECISION NOT NULL DEFAULT 0.0,
   angle DOUBLE PRECISION NOT NULL DEFAULT 0.0,
   last_position_update_ms DOUBLE PRECISION NOT NULL,
-  picture_id INTEGER NOT NULL DEFAULT 1
+  picture_id INTEGER NOT NULL DEFAULT 1,
+  afterburner_boosted_speed DOUBLE PRECISION DEFAULT NULL,
+  afterburner_cooldown_end_ms DOUBLE PRECISION DEFAULT NULL,
+  afterburner_old_max_speed DOUBLE PRECISION DEFAULT NULL
 )`;
 
 export const CREATE_MESSAGES_TABLE = `
@@ -202,5 +205,12 @@ export const MIGRATE_ADD_USER_EVENTS = [
   'CREATE INDEX IF NOT EXISTS idx_user_events_type ON user_events (event_type)'
 ];
 
+// Migration to add afterburner state columns to space_objects table
+export const MIGRATE_ADD_AFTERBURNER_STATE = [
+  'ALTER TABLE space_objects ADD COLUMN IF NOT EXISTS afterburner_boosted_speed DOUBLE PRECISION DEFAULT NULL',
+  'ALTER TABLE space_objects ADD COLUMN IF NOT EXISTS afterburner_cooldown_end_ms DOUBLE PRECISION DEFAULT NULL',
+  'ALTER TABLE space_objects ADD COLUMN IF NOT EXISTS afterburner_old_max_speed DOUBLE PRECISION DEFAULT NULL',
+];
+
 // Optional: Version management for migrations
-export const SCHEMA_VERSION = 14;
+export const SCHEMA_VERSION = 15;

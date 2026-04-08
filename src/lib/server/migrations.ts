@@ -3,7 +3,7 @@
 // ---
 
 import { DatabaseConnection } from './database';
-import { MIGRATE_ADD_PICTURE_ID, MIGRATE_ADD_TELEPORT_CHARGES } from './schema';
+import { MIGRATE_ADD_PICTURE_ID, MIGRATE_ADD_TELEPORT_CHARGES, MIGRATE_ADD_AFTERBURNER_STATE } from './schema';
 
 export interface Migration {
   version: number;
@@ -329,6 +329,8 @@ export async function applyTechMigrations(db: DatabaseConnection): Promise<void>
   await applyScoreMigration(db);
   // Apply user_events table migration
   await applyUserEventsMigration(db);
+  // Apply afterburner state columns migration
+  await applyAfterburnerStateMigration(db);
 }
 
 /**
@@ -712,5 +714,30 @@ export async function applyUserEventsMigration(db: DatabaseConnection): Promise<
     console.log('✅ user_events table migration completed');
   } catch (error) {
     console.error('❌ Error applying user_events migration:', error);
+  }
+}
+
+/**
+ * Apply afterburner state columns migration to space_objects table
+ */
+export async function applyAfterburnerStateMigration(db: DatabaseConnection): Promise<void> {
+  console.log('🔄 Checking for afterburner state columns migration...');
+
+  try {
+    const exists = await columnExists(db, 'space_objects', 'afterburner_cooldown_end_ms');
+    if (exists) {
+      console.log('✅ Afterburner state columns already exist');
+      return;
+    }
+
+    console.log('🚀 Adding afterburner state columns to space_objects...');
+
+    for (const statement of MIGRATE_ADD_AFTERBURNER_STATE) {
+      await runMigrationStatement(db, statement);
+    }
+
+    console.log('✅ Afterburner state migration completed');
+  } catch (error) {
+    console.error('❌ Error applying afterburner state migration:', error);
   }
 }

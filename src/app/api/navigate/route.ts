@@ -89,7 +89,13 @@ async function performNavigationLogic(
   if (speed !== undefined) {
     // Use current max ship speed (affected by damage, modifiers, etc.)
     const bonuses = await UserBonusCache.getInstance().getBonuses(userCtx, user.id);
-    const maxSpeed = user.getCurrentMaxShipSpeed(bonuses);
+    let maxSpeed = user.getCurrentMaxShipSpeed(bonuses);
+    
+    // Allow higher speed when afterburner is active
+    if (playerShip.afterburner_boosted_speed != null && playerShip.afterburner_cooldown_end_ms != null
+        && playerShip.afterburner_cooldown_end_ms > currentTime) {
+      maxSpeed = playerShip.afterburner_boosted_speed;
+    }
     
     // Validate speed
     if (speed < 0 || speed > maxSpeed) {

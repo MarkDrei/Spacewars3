@@ -22,6 +22,9 @@ export async function loadWorldFromDb(db: DatabaseConnection, saveCallback: Save
       so.angle,
       so.last_position_update_ms,
       so.picture_id,
+      so.afterburner_boosted_speed,
+      so.afterburner_cooldown_end_ms,
+      so.afterburner_old_max_speed,
       u.username,
       u.id as user_id,
       u.in_battle
@@ -45,6 +48,10 @@ export async function loadWorldFromDb(db: DatabaseConnection, saveCallback: Save
       angle: row.angle,
       last_position_update_ms: row.last_position_update_ms,
       picture_id: row.picture_id || 1, // Default to 1 if not set
+      // Afterburner state (null means inactive)
+      afterburner_boosted_speed: row.afterburner_boosted_speed ?? null,
+      afterburner_cooldown_end_ms: row.afterburner_cooldown_end_ms ?? null,
+      afterburner_old_max_speed: row.afterburner_old_max_speed ?? null,
       // Only include username and userId for player ships
       ...(row.type === 'player_ship' && row.username ? { 
         username: row.username,
@@ -70,8 +77,12 @@ export function saveWorldToDb(db: DatabaseConnection): SaveWorldCallback {
   return async (world: World) => {
     const updatePromises = world.spaceObjects.map(obj => 
       db.query(
-        'UPDATE space_objects SET x = $1, y = $2, speed = $3, angle = $4, last_position_update_ms = $5 WHERE id = $6',
-        [obj.x, obj.y, obj.speed, obj.angle, obj.last_position_update_ms, obj.id]
+        `UPDATE space_objects SET x = $1, y = $2, speed = $3, angle = $4, last_position_update_ms = $5,
+         afterburner_boosted_speed = $6, afterburner_cooldown_end_ms = $7, afterburner_old_max_speed = $8
+         WHERE id = $9`,
+        [obj.x, obj.y, obj.speed, obj.angle, obj.last_position_update_ms,
+         obj.afterburner_boosted_speed ?? null, obj.afterburner_cooldown_end_ms ?? null, obj.afterburner_old_max_speed ?? null,
+         obj.id]
       )
     );
 

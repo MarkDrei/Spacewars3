@@ -19,6 +19,10 @@ export interface SpaceObject {
   last_position_update_ms: number;
   picture_id: number;
   username?: string; // Optional: only present for player_ship type
+  // Afterburner state (only present for player_ship when afterburner is active)
+  afterburner_boosted_speed?: number | null;
+  afterburner_cooldown_end_ms?: number | null;
+  afterburner_old_max_speed?: number | null;
 }
 
 export interface WorldData {
@@ -48,19 +52,86 @@ class World {
   }
 
   /**
-   * Updates all space object positions based on elapsed time since last update
+   * Updates all space object positions based on elapsed time since last update.
+   * Handles afterburner cooldown expiration with split physics calculation:
+   * 1. Move all objects to the cooldown end time
+   * 2. Restore ship speed at the cooldown end point
+   * 3. Continue movement from cooldown end to current time
    * 
    * Needs write lock level 6 because it modifies object positions
    */
   updatePhysics<THeld extends IronLocks>(_context: HasLock6Context<THeld>, currentTime: number): void {
     const timeMultiplier = TimeMultiplierService.getInstance().getMultiplier();
+
+    // Find ships with afterburner cooldowns expiring during this update window
+    const expiringShips = this.spaceObjects.filter(obj =>
+      obj.type === 'player_ship' &&
+      obj.afterburner_cooldown_end_ms != null &&
+      obj.afterburner_cooldown_end_ms <= currentTime &&
+      obj.afterburner_cooldown_end_ms > obj.last_position_update_ms
+    );
+
+    if (expiringShips.length === 0) {
+      // No afterburner expirations: standard physics update
+      this.spaceObjects = updateAllObjectPositions(
+        this.spaceObjects,
+        currentTime,
+        this.worldSize,
+        undefined,
+        timeMultiplier
+      );
+      // Clear any already-expired afterburner state (cooldown_end_ms <= last_position_update_ms)
+      for (const obj of this.spaceObjects) {
+        if (obj.afterburner_cooldown_end_ms != null && obj.afterburner_cooldown_end_ms <= obj.last_position_update_ms) {
+          this.clearAfterburnerState(obj);
+        }
+      }
+      return;
+    }
+
+    // Sort expiring ships by cooldown end time (earliest first)
+    expiringShips.sort((a, b) => (a.afterburner_cooldown_end_ms ?? 0) - (b.afterburner_cooldown_end_ms ?? 0));
+
+    // Process each cooldown expiration point
+    for (const ship of expiringShips) {
+      const cooldownEndMs = ship.afterburner_cooldown_end_ms!;
+      
+      // Step 1: Update all objects to the cooldown end time
+      this.spaceObjects = updateAllObjectPositions(
+        this.spaceObjects,
+        cooldownEndMs,
+        this.worldSize,
+        undefined,
+        timeMultiplier
+      );
+
+      // Step 2: Restore speed - use old max speed unless current speed is lower
+      const oldMaxSpeed = ship.afterburner_old_max_speed ?? 0;
+      if (ship.speed > oldMaxSpeed) {
+        ship.speed = oldMaxSpeed;
+      }
+
+      // Step 3: Clear afterburner state
+      this.clearAfterburnerState(ship);
+    }
+
+    // Step 4: Continue physics to current time
     this.spaceObjects = updateAllObjectPositions(
       this.spaceObjects,
       currentTime,
       this.worldSize,
-      undefined, // factor - use default (50)
+      undefined,
       timeMultiplier
     );
+  }
+
+  /**
+   * Clear afterburner state fields from a space object
+   */
+  private clearAfterburnerState(obj: SpaceObject): void {
+    obj.afterburner_boosted_speed = null;
+    obj.afterburner_cooldown_end_ms = null;
+    obj.afterburner_old_max_speed = null;
   }
 
   /**

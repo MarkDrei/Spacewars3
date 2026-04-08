@@ -13,6 +13,10 @@ export interface SpaceObject {
   picture_id: number;
   username?: string; // Optional: only present for player_ship type
   userId?: number; // Optional: only present for player_ship type
+  // Afterburner state (only present for player_ship when afterburner is active)
+  afterburner_boosted_speed?: number | null;
+  afterburner_cooldown_end_ms?: number | null;
+  afterburner_old_max_speed?: number | null;
 }
 
 export interface WorldData {

@@ -8,6 +8,7 @@ import { initGame, Game } from '@/lib/client/game/Game';
 import { useWorldData } from '@/lib/client/hooks/useWorldData';
 import { navigateShip } from '@/lib/client/services/navigationService';
 import { teleportShip } from '@/lib/client/services/teleportService';
+import { triggerAfterburner } from '@/lib/client/services/afterburnerService';
 import { getShipStats } from '@/lib/client/services/shipStatsService';
 import { userStatsService } from '@/lib/client/services/userStatsService';
 import { ServerAuthState } from '@/lib/server/serverSession';
@@ -43,6 +44,13 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
   const [zoom, setZoom] = useState(DEFAULT_ZOOM);
   const [isNavigationCollapsed, setIsNavigationCollapsed] = useState(false);
   const [isTeleportCollapsed, setIsTeleportCollapsed] = useState(false);
+  const [isAfterburnerCollapsed, setIsAfterburnerCollapsed] = useState(false);
+  // Afterburner state
+  const [afterburnerActive, setAfterburnerActive] = useState(false);
+  const [afterburnerCooldownMs, setAfterburnerCooldownMs] = useState(0);
+  const [afterburnerCanActivate, setAfterburnerCanActivate] = useState(false);
+  const [afterburnerResearchLevel, setAfterburnerResearchLevel] = useState(0);
+  const [isActivatingAfterburner, setIsActivatingAfterburner] = useState(false);
   // Auth is guaranteed by server, so pass true and use auth.shipId
   const { worldData, isLoading, error, refetch, lastUpdateTime } = useWorldData(3000);
 
@@ -68,6 +76,7 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
     try {
       const savedNavigationCollapsed = localStorage.getItem('game-ui-navigation-collapsed');
       const savedTeleportCollapsed = localStorage.getItem('game-ui-teleport-collapsed');
+      const savedAfterburnerCollapsed = localStorage.getItem('game-ui-afterburner-collapsed');
       const savedDebugEnabled = localStorage.getItem('game-ui-debug-enabled');
       const savedZoom = localStorage.getItem('game-ui-zoom');
       
@@ -76,6 +85,9 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
       }
       if (savedTeleportCollapsed !== null) {
         setIsTeleportCollapsed(JSON.parse(savedTeleportCollapsed));
+      }
+      if (savedAfterburnerCollapsed !== null) {
+        setIsAfterburnerCollapsed(JSON.parse(savedAfterburnerCollapsed));
       }
       if (savedDebugEnabled !== null) {
         setDebugDrawingsEnabled(JSON.parse(savedDebugEnabled));
@@ -105,6 +117,15 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
       console.warn('Failed to save teleport collapse preference:', err);
     }
   }, [isTeleportCollapsed]);
+
+  // Save afterburner collapse preference to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('game-ui-afterburner-collapsed', JSON.stringify(isAfterburnerCollapsed));
+    } catch (err) {
+      console.warn('Failed to save afterburner collapse preference:', err);
+    }
+  }, [isAfterburnerCollapsed]);
 
   // Save debug flag to localStorage
   useEffect(() => {
@@ -152,20 +173,26 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
     }
   }, []);
 
-  // Fetch max speed for the slider
+  // Fetch max speed and afterburner status
   useEffect(() => {
-    const fetchMaxSpeed = async () => {
+    const fetchShipData = async () => {
       try {
         const stats = await getShipStats();
         if (stats && !('error' in stats)) {
           setMaxSpeed(stats.maxSpeed);
+          if (stats.afterburner) {
+            setAfterburnerActive(stats.afterburner.isActive);
+            setAfterburnerCooldownMs(stats.afterburner.cooldownRemainingMs);
+            setAfterburnerCanActivate(stats.afterburner.canActivate);
+            setAfterburnerResearchLevel(stats.afterburner.researchLevel);
+          }
         }
       } catch (err) {
-        // ignore – keep default maxSpeed
-        console.warn('Failed to fetch max speed:', err);
+        // ignore – keep default values
+        console.warn('Failed to fetch ship data:', err);
       }
     };
-    fetchMaxSpeed();
+    fetchShipData();
   }, []);
 
   const handleDebugToggle = (enabled: boolean) => {
@@ -402,6 +429,44 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
     }
   }, [teleportMaxCharges, teleportRechargeTimeSec, timeMultiplier]);
 
+  // Afterburner cooldown countdown
+  useEffect(() => {
+    if (afterburnerActive && afterburnerCooldownMs > 0) {
+      const interval = setInterval(() => {
+        setAfterburnerCooldownMs(prev => {
+          const remaining = prev - 1000;
+          if (remaining <= 0) {
+            setAfterburnerActive(false);
+            setAfterburnerCanActivate(afterburnerResearchLevel >= 1);
+            return 0;
+          }
+          return remaining;
+        });
+      }, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [afterburnerActive, afterburnerCooldownMs, afterburnerResearchLevel]);
+
+  const handleActivateAfterburner = async () => {
+    if (isActivatingAfterburner || afterburnerActive) return;
+
+    setIsActivatingAfterburner(true);
+    try {
+      const result = await triggerAfterburner();
+      setAfterburnerActive(true);
+      setAfterburnerCooldownMs(result.afterburner.durationSeconds * 1000);
+      setAfterburnerCanActivate(false);
+      setSpeedInput(result.ship.speed.toFixed(1));
+      if (refetch) {
+        refetch();
+      }
+    } catch (error) {
+      console.error('❌ [CLIENT] Afterburner activation failed:', error);
+    } finally {
+      setIsActivatingAfterburner(false);
+    }
+  };
+
   const formatTimeRemaining = (seconds: number) => {
     if (!isFinite(seconds) || seconds <= 0) return '0s';
     const h = Math.floor(seconds / 3600);
@@ -570,6 +635,42 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
           {/* Bottom-right: Data age debug output */}
           {debugDrawingsEnabled && (
             <DataAgeIndicator lastUpdateTime={lastUpdateTime} className="panel-bottom-right" />
+          )}
+
+          {/* Afterburner panel - shown when research level >= 1 */}
+          {afterburnerResearchLevel >= 1 && (
+            <div className="hud-panel panel-mid-left">
+              <div className="panel-heading-row">
+                <p className="panel-heading">afterburner</p>
+                <button
+                  className="collapse-button"
+                  onClick={() => setIsAfterburnerCollapsed(!isAfterburnerCollapsed)}
+                  title={isAfterburnerCollapsed ? 'Expand' : 'Collapse'}
+                >
+                  {isAfterburnerCollapsed ? '▶' : '▼'}
+                </button>
+              </div>
+              {!isAfterburnerCollapsed && (
+                <div className="afterburner-controls">
+                  {afterburnerActive ? (
+                    <button
+                      className="control-button afterburner-button afterburner-active"
+                      disabled
+                    >
+                      🔥 Active ({Math.ceil(afterburnerCooldownMs / 1000)}s)
+                    </button>
+                  ) : (
+                    <button
+                      className="control-button afterburner-button afterburner-ready"
+                      onClick={handleActivateAfterburner}
+                      disabled={isActivatingAfterburner || !afterburnerCanActivate}
+                    >
+                      {isActivatingAfterburner ? '...' : '🔥 Activate Afterburner'}
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
           )}
 
           {/* Top-right: teleport panel */}
