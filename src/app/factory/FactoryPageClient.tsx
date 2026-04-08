@@ -223,52 +223,36 @@ const FactoryPageClient: React.FC<FactoryPageClientProps> = ({ auth }) => {
             <div className="no-build-queue-message">No items in build queue</div>
           ) : (
             <>
-              {viewMode === 'table' ? (
-                <div className="data-table-container" style={{ maxHeight: '300px', overflowY: 'auto' }}>
-                  <table className="data-table">
-                    <thead>
-                      <tr>
-                        <th>Item</th>
-                        <th>Type</th>
-                        <th>Time Remaining</th>
+              <div className="data-table-container" style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Item</th>
+                      <th>Type</th>
+                      <th>Time Remaining</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {buildQueue.map((item, index) => (
+                      <tr key={`${item.itemKey}-${index}`} className="data-row">
+                        <td className="data-cell">
+                          <span className="stat-value">
+                            {item.itemType === 'weapon' ? weapons[item.itemKey]?.name : defenses[item.itemKey]?.name || item.itemKey}
+                          </span>
+                        </td>
+                        <td className="data-cell">
+                          {item.itemType}
+                        </td>
+                        <td className="data-cell">
+                          <span className="research-countdown">
+                            {factoryService.formatCountdown(item.remainingSeconds)}
+                          </span>
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {buildQueue.map((item, index) => (
-                        <tr key={`${item.itemKey}-${index}`} className="data-row">
-                          <td className="data-cell">
-                            <span className="stat-value">
-                              {item.itemType === 'weapon' ? weapons[item.itemKey]?.name : defenses[item.itemKey]?.name || item.itemKey}
-                            </span>
-                          </td>
-                          <td className="data-cell">
-                            {item.itemType}
-                          </td>
-                          <td className="data-cell">
-                            <span className="research-countdown">
-                              {factoryService.formatCountdown(item.remainingSeconds)}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <div className="build-queue-cards" style={{ maxHeight: '300px', overflowY: 'auto' }}>
-                  {buildQueue.map((item, index) => (
-                    <div key={`${item.itemKey}-${index}`} className="queue-card">
-                      <div className="queue-card-item">
-                        {item.itemType === 'weapon' ? weapons[item.itemKey]?.name : defenses[item.itemKey]?.name || item.itemKey}
-                      </div>
-                      <div className="queue-card-type">{item.itemType}</div>
-                      <div className="queue-card-time">
-                        {factoryService.formatCountdown(item.remainingSeconds)}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+                    ))}
+                  </tbody>
+                </table>
+              </div>
 
               {/* Cheat Mode Button - Only for test users 'a' and 'q' */}
               {(auth.username === 'a' || auth.username === 'q') && (
