@@ -59,11 +59,13 @@ export async function POST(request: NextRequest) {
       const estimatedCompletion = await techService.getEstimatedCompletionTime(session.userId!, userContext);
 
       // Emit statistics event (fire-and-forget)
+      // Only the first item is charged immediately; subsequent items are charged at build start.
       try {
         const statisticsCache = StatisticsCache.getInstance();
-        statisticsCache.recordEvent(session.userId!, 'tech_queued', {
+        statisticsCache.recordEvent(session.userId!, 'tech_spent', {
           itemKey,
           itemType,
+          ironCost: spec.baseCost, // Only one item is charged immediately
           count,
         });
       } catch (statsErr) {
