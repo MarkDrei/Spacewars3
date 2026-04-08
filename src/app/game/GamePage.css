@@ -32,9 +32,9 @@
   position: absolute;
   background: rgba(5, 5, 20, 0.8);
   border: 1px solid rgba(76, 175, 80, 0.25);
-  border-radius: 10px;
+  border-radius: 8px;
   backdrop-filter: blur(10px);
-  padding: 10px 12px;
+  padding: 6px 8px;
   z-index: 10;
   color: #e0e0e0;
   font-size: 0.82rem;
@@ -42,18 +42,18 @@
 
 /* Top-left: combat + debug toggles */
 .panel-top-left {
-  top: 12px;
-  left: 12px;
+  top: 8px;
+  left: 8px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  min-width: 140px;
+  gap: 4px;
+  min-width: 120px;
 }
 
-/* Top-right: data age indicator */
+/* Top-right: abilities panel */
 .panel-top-right {
-  top: 12px;
-  right: 12px;
+  top: 8px;
+  right: 8px;
 }
 
 .panel-top-right .data-age-indicator {
@@ -62,16 +62,16 @@
 
 /* Bottom-left: navigation controls */
 .panel-bottom-left {
-  bottom: 20px;
-  left: 20px;
-  min-width: 240px;
+  bottom: 12px;
+  left: 12px;
+  min-width: 220px;
 }
 
-/* Bottom-right: teleport controls */
+/* Bottom-right: data age / debug output */
 .panel-bottom-right {
-  bottom: 20px;
-  right: 20px;
-  min-width: 220px;
+  bottom: 12px;
+  right: 12px;
+  min-width: 200px;
 }
 
 /* ── Panel section heading ── */
@@ -80,7 +80,7 @@
   font-size: 0.7rem;
   letter-spacing: 1.5px;
   text-transform: uppercase;
-  margin: 0 0 8px 0;
+  margin: 0 0 4px 0;
   font-weight: 600;
 }
 
@@ -88,8 +88,8 @@
 .control-row {
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin-bottom: 6px;
+  gap: 4px;
+  margin-bottom: 4px;
   flex-wrap: wrap;
 }
 
@@ -109,9 +109,9 @@
   color: #e0e0e0;
   border: 1px solid rgba(76, 175, 80, 0.3);
   border-radius: 4px;
-  padding: 4px 6px;
+  padding: 3px 5px;
   font-size: 0.82rem;
-  width: 70px;
+  width: 65px;
   text-align: center;
 }
 
@@ -140,8 +140,8 @@
 .speed-slider-row {
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin-bottom: 6px;
+  gap: 4px;
+  margin-bottom: 4px;
 }
 
 .speed-slider-row label {
@@ -221,7 +221,7 @@
 
 /* ── Buttons inside panels ── */
 .control-button {
-  padding: 4px 10px;
+  padding: 3px 8px;
   font-size: 0.75rem;
   border-radius: 4px;
 }
@@ -285,9 +285,9 @@
 .teleport-header {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   flex-wrap: wrap;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
 }
 
 .teleport-charges-badge {
@@ -326,8 +326,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 8px;
+  gap: 6px;
+  margin-bottom: 4px;
 }
 
 .collapse-button {
@@ -354,25 +354,19 @@
   }
 }
 
-/* ── Afterburner panel ── */
-.panel-afterburner {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  margin-top: 200px; /* below teleport panel */
-  min-width: 200px;
-}
-
-.afterburner-content {
-  margin-top: 4px;
+/* ── Afterburner section (inside abilities panel) ── */
+.afterburner-section {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(76, 175, 80, 0.15);
 }
 
 .afterburner-button {
   width: 100%;
-  padding: 8px 12px;
+  padding: 5px 8px;
   border: 1px solid rgba(76, 175, 80, 0.3);
-  border-radius: 6px;
-  font-size: 0.82rem;
+  border-radius: 4px;
+  font-size: 0.78rem;
   cursor: pointer;
   transition: all 0.2s ease;
   font-weight: 600;
@@ -414,9 +408,3 @@
   cursor: not-allowed;
 }
 
-.afterburner-locked {
-  background: rgba(60, 60, 60, 0.3);
-  color: #666;
-  border-color: rgba(60, 60, 60, 0.3);
-  cursor: not-allowed;
-}

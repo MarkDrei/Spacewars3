@@ -109,7 +109,7 @@ describe('GamePageClient afterburner controls', () => {
     vi.mocked(userStatsService.getUserStats).mockResolvedValue(makeUserStats());
   });
 
-  it('afterburnerPanel_notResearched_showsLockedButton', async () => {
+  it('afterburnerButton_notResearched_isInvisible', async () => {
     const afterburner: AfterburnerStatus = {
       isActive: false,
       boostRemainingMs: 0,
@@ -123,14 +123,15 @@ describe('GamePageClient afterburner controls', () => {
     render(<GamePageClient auth={defaultAuth} />);
 
     await waitFor(() => {
-      expect(screen.getByText('Afterburner (Not Researched)')).toBeDefined();
+      expect(getShipStats).toHaveBeenCalled();
     });
 
-    const button = screen.getByText('Afterburner (Not Researched)');
-    expect(button).toHaveProperty('disabled', true);
+    // When not researched (level 0), the afterburner button should be invisible
+    expect(screen.queryByText(/Afterburner/)).toBeNull();
+    expect(screen.queryByText(/🔥/)).toBeNull();
   });
 
-  it('afterburnerPanel_canActivate_showsActivateButton', async () => {
+  it('afterburnerButton_canActivate_showsActivateButton', async () => {
     const afterburner: AfterburnerStatus = {
       isActive: false,
       boostRemainingMs: 0,
@@ -144,10 +145,10 @@ describe('GamePageClient afterburner controls', () => {
     render(<GamePageClient auth={defaultAuth} />);
 
     await waitFor(() => {
-      expect(screen.getByText('🔥 Activate Afterburner')).toBeDefined();
+      expect(screen.getByText('🔥 Afterburner')).toBeDefined();
     });
 
-    const button = screen.getByText('🔥 Activate Afterburner');
+    const button = screen.getByText('🔥 Afterburner');
     expect(button).toHaveProperty('disabled', false);
   });
 
@@ -207,7 +208,7 @@ describe('GamePageClient afterburner controls', () => {
     expect(screen.queryByText(/Afterburner \(Not Researched\)/)).toBeNull();
   });
 
-  it('afterburnerPanel_hasHeading_showsAfterburnerHeading', async () => {
+  it('abilitiesPanel_hasHeading_showsAbilitiesHeading', async () => {
     const afterburner: AfterburnerStatus = {
       isActive: false,
       boostRemainingMs: 0,
@@ -221,11 +222,11 @@ describe('GamePageClient afterburner controls', () => {
     render(<GamePageClient auth={defaultAuth} />);
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: /afterburner/i })).toBeDefined();
+      expect(screen.getByRole('heading', { name: /abilities/i })).toBeDefined();
     });
   });
 
-  it('afterburnerPanel_collapsed_hidesContent', async () => {
+  it('abilitiesPanel_collapsed_hidesAfterburnerButton', async () => {
     const afterburner: AfterburnerStatus = {
       isActive: false,
       boostRemainingMs: 0,
@@ -239,11 +240,11 @@ describe('GamePageClient afterburner controls', () => {
     render(<GamePageClient auth={defaultAuth} />);
 
     await waitFor(() => {
-      expect(screen.getByText('🔥 Activate Afterburner')).toBeDefined();
+      expect(screen.getByText('🔥 Afterburner')).toBeDefined();
     });
 
-    // Find the collapse button in the afterburner panel
-    const heading = screen.getByRole('heading', { name: /afterburner/i });
+    // Find the collapse button in the abilities panel
+    const heading = screen.getByRole('heading', { name: /abilities/i });
     const panelHeadingRow = heading.parentElement!;
     const collapseButton = panelHeadingRow.querySelector('.collapse-button') as HTMLElement;
     expect(collapseButton).toBeTruthy();
@@ -251,12 +252,12 @@ describe('GamePageClient afterburner controls', () => {
     fireEvent.click(collapseButton);
 
     // Button text should no longer be visible
-    expect(screen.queryByText('🔥 Activate Afterburner')).toBeNull();
+    expect(screen.queryByText('🔥 Afterburner')).toBeNull();
     // But heading should still be visible
-    expect(screen.getByRole('heading', { name: /afterburner/i })).toBeDefined();
+    expect(screen.getByRole('heading', { name: /abilities/i })).toBeDefined();
   });
 
-  it('afterburnerPanel_activateClick_callsService', async () => {
+  it('afterburnerButton_activateClick_callsService', async () => {
     const afterburnerBefore: AfterburnerStatus = {
       isActive: false,
       boostRemainingMs: 0,
@@ -290,10 +291,10 @@ describe('GamePageClient afterburner controls', () => {
     render(<GamePageClient auth={defaultAuth} />);
 
     await waitFor(() => {
-      expect(screen.getByText('🔥 Activate Afterburner')).toBeDefined();
+      expect(screen.getByText('🔥 Afterburner')).toBeDefined();
     });
 
-    const button = screen.getByText('🔥 Activate Afterburner');
+    const button = screen.getByText('🔥 Afterburner');
     fireEvent.click(button);
 
     await waitFor(() => {
