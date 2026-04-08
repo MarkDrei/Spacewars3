@@ -144,7 +144,6 @@ export class UserBonusCache {
     const ironCapacity = getResearchEffectFromTree(tree, ResearchType.IronCapacity);
     const ironHarvesting = getResearchEffectFromTree(tree, ResearchType.IronHarvesting);
     const shipSpeedEffect = getResearchEffectFromTree(tree, ResearchType.ShipSpeed);
-    const afterburnerEffect = getResearchEffectFromTree(tree, ResearchType.Afterburner);
 
     const projDamageMod = getWeaponDamageModifierFromTree(tree, PROJECTILE_WEAPON_KEY);
     const projReloadMod = getWeaponReloadTimeModifierFromTree(tree, PROJECTILE_WEAPON_KEY);
@@ -167,7 +166,7 @@ export class UserBonusCache {
       shieldRechargeRate: BASE_REGEN_RATE * levelMultiplier,
 
       maxShipSpeed:
-        shipSpeedEffect * (1 + afterburnerEffect / 100) * levelMultiplier * commanderMultipliers.shipSpeed,
+        shipSpeedEffect * levelMultiplier * commanderMultipliers.shipSpeed,
 
       projectileWeaponDamageFactor:
         projDamageMod * levelMultiplier * commanderMultipliers.projectileWeaponDamage,

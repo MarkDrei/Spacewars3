@@ -35,6 +35,7 @@ const researchTypeToKey: Record<ResearchType, keyof TechTree> = {
   // Ship
   afterburnerSpeedIncrease: 'afterburnerSpeedIncrease',
   afterburnerDuration: 'afterburnerDuration',
+  afterburnerCooldown: 'afterburnerCooldown',
   teleport: 'teleport',
   teleportRechargeSpeed: 'teleportRechargeSpeed',
   ironCapacity: 'ironCapacity',
@@ -111,8 +112,9 @@ const researchHierarchy: ResearchCategory[] = [
       {
         type: 'shipSpeed' as ResearchType,
         children: [
-          { type: 'afterburnerSpeedIncrease' as ResearchType },
           { type: 'afterburnerDuration' as ResearchType },
+          { type: 'afterburnerCooldown' as ResearchType },
+          { type: 'afterburnerSpeedIncrease' as ResearchType },
           { type: 'teleport' as ResearchType,
             children: [
               { type: 'teleportRechargeSpeed' as ResearchType }
@@ -284,6 +286,7 @@ const ResearchPageClient: React.FC<ResearchPageClientProps> = () => {
       shieldRechargeRate: 'ShieldRechargeRate',
       afterburnerSpeedIncrease: 'AfterburnerSpeed',
       afterburnerDuration: 'AfterburnerDuration',
+      afterburnerCooldown: 'AfterburnerCooldown',
       // use the more descriptive 'Teleportation' images that were recently
       // added; the old 'Teleport' filenames remain in the repo but are no
       // longer referenced by the code.

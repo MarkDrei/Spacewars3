@@ -157,6 +157,23 @@ The afterburner speed boost will be applied dynamically when afterburner is acti
 
 - `src/__tests__/unit/` — new or extended test file for afterburner research definitions
 
+**Status**: ✅ COMPLETED
+**Implementation Summary**: Refactored research definitions to replace the passive Afterburner research with three active-ability researches (AfterburnerDuration, AfterburnerCooldown, AfterburnerSpeedIncrease). Added AfterburnerCooldown enum value, updated AllResearches definitions, TechTree interface, all related functions, client-side code, Research Page display, and UserBonusCache. The deprecated Afterburner research is kept for backward compatibility but always returns level 0.
+**Files Modified/Created**:
+- `src/shared/src/types/gameTypes.ts` — Added `AfterburnerCooldown` to ResearchType enum
+- `src/lib/server/techs/techtree.ts` — Updated AllResearches (AfterburnerDuration level 0, AfterburnerCooldown added, AfterburnerSpeedIncrease +25/level), TechTree interface (added afterburnerCooldown), createInitialTechTree, getResearchLevelFromTree (Afterburner returns 0), updateTechTree (added AfterburnerCooldown case), IMPLEMENTED_RESEARCHES (added Duration/Cooldown/SpeedIncrease)
+- `src/lib/client/services/researchService.ts` — Added afterburnerCooldown to TechTree, simplified calculateMaxSpeed to remove passive afterburner bonus
+- `src/app/research/ResearchPageClient.tsx` — Added afterburnerCooldown to researchTypeToKey, research hierarchy, and icon mapping
+- `src/lib/server/bonus/UserBonusCache.ts` — Removed passive afterburner effect from maxShipSpeed calculation
+- `src/lib/server/bonus/userBonusTypes.ts` — Updated maxShipSpeed JSDoc comment
+- `public/assets/images/research/AfterburnerCooldown.png` — Copied from AfterburnerDuration.png as placeholder
+- `src/__tests__/unit/afterburner/research-definitions.test.ts` — Created 25 unit tests covering all research definition changes
+- `src/__tests__/integration/lib/techtree.test.ts` — Updated existing tests for deprecated Afterburner (now returns 0)
+- `src/__tests__/ui/components/researchPageClient.test.tsx` — Added afterburnerCooldown field to fake TechTree
+**Deviations from Plan**: Kept the deprecated Afterburner entry in AllResearches and TechTree interface (with @deprecated JSDoc) for backward compatibility with existing DB records, rather than removing it entirely. The getResearchLevelFromTree always returns 0 for it.
+**Arc42 Updates**: None required
+**Test Results**: ✅ All 1444 tests passing, no linting errors, build succeeds
+
 ---
 
 ### Goal 2: Afterburner State Management (In-Memory)

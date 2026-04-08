@@ -4,7 +4,9 @@ import { formatNumber } from '@/shared/numberFormat';
 interface TechTree {
   ironHarvesting: number;
   shipSpeed: number;
+  /** @deprecated Kept for backward compatibility. Use afterburnerDuration, afterburnerCooldown, afterburnerSpeedIncrease instead. */
   afterburner: number;
+  afterburnerCooldown: number;
   // Projectile Weapons
   projectileDamage: number;
   projectileReloadRate: number;
@@ -179,9 +181,7 @@ class ResearchService {
    * Calculate max ship speed from tech tree data
    */
   calculateMaxSpeed(researches: Record<ResearchType, ResearchDef>): number {
-    const baseSpeed = researches.shipSpeed.currentEffect;
-    const afterburnerBonus = researches.Afterburner.currentEffect;
-    return baseSpeed * (1 + afterburnerBonus / 100);
+    return researches.shipSpeed.currentEffect;
   }
 }
 
