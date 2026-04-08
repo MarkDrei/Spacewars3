@@ -8,6 +8,7 @@ import { User } from '@/lib/server/user/user';
 import { World } from '@/lib/server/world/world';
 import { createLockContext, LockContext, LocksAtMostAndHas4, LocksAtMostAndHas6 } from '@markdrei/ironguard-typescript-locks';
 import { WorldCache } from '@/lib/server/world/worldCache';
+import { calculateTeleportChargeCost } from '@/lib/server/teleport/teleportCharges';
 
 export async function POST(request: NextRequest) {
   try {
@@ -89,6 +90,9 @@ async function performTeleportLogic(
     throw new ApiError(404, 'Player ship not found');
   }
 
+  // Calculate charge cost based on jump distance
+  const chargeCost = calculateTeleportChargeCost(playerShip.x, playerShip.y, x, y);
+
   // Teleport ship to new position
   playerShip.x = x;
   playerShip.y = y;
@@ -98,8 +102,8 @@ async function performTeleportLogic(
     playerShip.speed = 0;
   }
 
-  // Deduct one teleport charge
-  user.teleportCharges -= 1;
+  // Deduct charge proportional to jump distance
+  user.teleportCharges -= chargeCost;
 
   // Update last position update timestamp
   playerShip.last_position_update_ms = currentTime;

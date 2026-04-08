@@ -239,4 +239,29 @@ describe('Teleport API', () => {
       expect(data.remainingCharges).toBeCloseTo(0.5, 5);
     });
   });
+
+  test('teleport_shortDistance_deductsFractionalCharge', async () => {
+    await withTransaction(async () => {
+      const { sessionCookie, username } = await createAuthenticatedSessionWithUser('teleport_shortdist');
+
+      // Grant 1 full charge
+      await grantTeleportCharges(username, 1);
+
+      // Ship starts at (2500, 2500). Teleport exactly 500 units east → cost = 0.25 charges.
+      const request = createRequest(
+        'http://localhost:3000/api/teleport',
+        'POST',
+        { x: 3000, y: 2500, preserveVelocity: false },
+        sessionCookie
+      );
+
+      const response = await teleportPOST(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(data.success).toBe(true);
+      // Remaining: 1 - 0.25 = 0.75
+      expect(data.remainingCharges).toBeCloseTo(0.75, 5);
+    });
+  });
 });

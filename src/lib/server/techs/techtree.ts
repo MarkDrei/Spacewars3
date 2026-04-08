@@ -296,7 +296,7 @@ export const AllResearches: Record<ResearchType, Research> = {
     baseValue: 1,
     upgradeCostIncrease: 1.3,
     baseValueIncrease: { type: 'constant', value: 1 },
-    description: 'Unlocks teleport and adds one charge per level.',
+    description: 'Unlocks teleport and adds one charge per level. Charge cost scales with jump distance.',
     treeKey: 'teleport',
     unit: 'charges',
   },

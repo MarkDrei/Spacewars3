@@ -7,8 +7,8 @@ export const STARBASES: StarbaseObject[] = [
   {
     id: STARBASE_ID_OFFSET + 1,
     type: 'starbase',
-    x: 2500,
-    y: 2500,
+    x: 4000,
+    y: 4000,
     speed: 0,
     angle: 0,
     last_position_update_ms: 0,
