@@ -323,6 +323,14 @@ Then compare against raw durationMs/cooldownMs.
 
 - `src/app/api/afterburner/route.ts` — new file
 
+**Status**: ✅ COMPLETED
+**Implementation Summary**: Created POST `/api/afterburner` route following the teleport route pattern with USER_LOCK → WORLD_LOCK acquisition, session auth, research validation, speed computation from tech tree, and in-world ship speed modification.
+**Files Modified/Created**:
+- `src/app/api/afterburner/route.ts` — Created afterburner activation endpoint
+**Deviations from Plan**: None
+**Arc42 Updates**: None required
+**Test Results**: ✅ All tests passing
+
 #### Task 3.2: Integrate afterburner expiration into world physics update
 
 **Action**: When `world.updatePhysics()` is called, check all players with active afterburners via `AfterburnerService`. For each expired afterburner:
@@ -337,8 +345,17 @@ This requires the world update to have access to AfterburnerService. The cleanes
 
 **Files**:
 
-- `src/lib/server/world/world.ts` — add afterburner expiration check in or around `updatePhysics()`
-- Alternatively, the expiration check can be in the WorldCache layer that calls `updatePhysics()`
+- `src/lib/server/afterburner/afterburnerExpiration.ts` — new helper function
+- `src/app/api/ship-stats/route.ts` — calls expiration check (has both USER_LOCK and WORLD_LOCK)
+
+**Status**: ✅ COMPLETED
+**Implementation Summary**: Created `checkAndExpireAfterburner()` helper in `afterburnerExpiration.ts` that checks if a user's boost has expired and caps ship speed at normal maxSpeed. Integrated into ship-stats route which has both required locks (USER_LOCK for bonuses, WORLD_LOCK for world updates).
+**Files Modified/Created**:
+- `src/lib/server/afterburner/afterburnerExpiration.ts` — Created expiration helper function
+- `src/app/api/ship-stats/route.ts` — Added expiration check and world persistence on expiry
+**Deviations from Plan**: Instead of adding expiration to WorldCache.getWorldFromCache (which only holds WORLD_LOCK and cannot access UserBonusCache), created a standalone helper function called from ship-stats route (which holds both locks). This is cleaner because getting user bonuses requires USER_LOCK.
+**Arc42 Updates**: None required
+**Test Results**: ✅ All tests passing
 
 #### Task 3.3: Extend ship-stats API with afterburner status
 
@@ -363,6 +380,14 @@ This allows the client to display afterburner state without a separate API call.
 
 - `src/app/api/ship-stats/route.ts` — add afterburner status to response
 
+**Status**: ✅ COMPLETED
+**Implementation Summary**: Extended ship-stats response with `afterburner` object containing isActive, boostRemainingMs, cooldownRemainingMs, canActivate, durationResearchLevel, and boostedSpeed fields.
+**Files Modified/Created**:
+- `src/app/api/ship-stats/route.ts` — Added afterburner status to response JSON, added AfterburnerService/TimeMultiplierService imports
+**Deviations from Plan**: None
+**Arc42 Updates**: None required
+**Test Results**: ✅ All tests passing
+
 #### Task 3.4: Write unit tests for afterburner API
 
 **Action**: Tests for the API route:
@@ -378,6 +403,14 @@ This allows the client to display afterburner state without a separate API call.
 
 - `src/__tests__/unit/api/afterburner-api.test.ts` — new file
 
+**Status**: ✅ COMPLETED
+**Implementation Summary**: Created unit test for afterburner API auth check. Only the no-auth test is possible as a pure unit test (no DB/cache setup); the other scenarios listed in the plan require full server initialization and are covered by integration tests in Task 3.5.
+**Files Modified/Created**:
+- `src/__tests__/unit/api/afterburner-api.test.ts` — Created unit test for 401 auth check
+**Deviations from Plan**: Only 1 unit test (auth check) instead of 6 proposed. The remaining 5 scenarios (research validation, already active, on cooldown, success cases) require initialized caches/world and are better suited as integration tests. This follows the established pattern from teleport-api unit test which also only tests auth.
+**Arc42 Updates**: None required
+**Test Results**: ✅ 1 unit test passing
+
 #### Task 3.5: Write integration tests for afterburner flow
 
 **Action**: End-to-end integration tests:
@@ -389,7 +422,15 @@ This allows the client to display afterburner state without a separate API call.
 
 **Files**:
 
-- `src/__tests__/integration/afterburner.test.ts` — new file
+- `src/__tests__/integration/api/afterburner-api.test.ts` — new file
+
+**Status**: ✅ COMPLETED
+**Implementation Summary**: Created comprehensive integration test suite with 7 tests covering all planned scenarios plus additional cases: activation success, active-while-active rejection, cooldown rejection, expiration with speed restoration, ship-stats afterburner status display, and time multiplier effects.
+**Files Modified/Created**:
+- `src/__tests__/integration/api/afterburner-api.test.ts` — Created 7 integration tests
+**Deviations from Plan**: File placed in `src/__tests__/integration/api/` (not `src/__tests__/integration/`) to match the existing test organization pattern. Added 3 extra tests beyond the 4 planned: `afterburner_withDurationResearch_activatesSuccessfully`, `afterburner_activateWhileActive_returns400`, and `afterburner_shipStatsShowsAfterburnerStatus`.
+**Arc42 Updates**: None required
+**Test Results**: ✅ 7 integration tests passing
 
 ---
 
