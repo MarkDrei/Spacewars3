@@ -276,6 +276,7 @@ const InventorySection: React.FC<InventorySectionProps> = ({ refreshTrigger, onC
             onMoveItem={handleMoveItem}
             maxSlots={maxSlots}
             gridKey="inventory"
+            fallbackCols={4}
             onExternalDrop={handleExternalDrop}
             onDragStartExternal={onDragStart}
             onDragEndExternal={onDragEnd}

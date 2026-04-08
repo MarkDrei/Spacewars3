@@ -1,8 +1,11 @@
 'use client';
 
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { InventoryGrid as InventoryGridType, InventorySlot, SlotCoordinate, INVENTORY_COLS, DEFAULT_INVENTORY_SLOTS } from '@/shared/inventoryShared';
+
+const GRID_GAP_PX = 3;
+const MAX_SLOT_SIZE_PX = 130;
 
 export interface ExternalDropSource {
   gridKey: string;
@@ -35,6 +38,8 @@ interface InventoryGridProps {
    * display coords are used as-is.
    */
   resolveOriginalCoord?: (displaySlot: SlotCoordinate) => SlotCoordinate | null;
+  /** Preferred fallback column count when the full grid width does not fit. */
+  fallbackCols?: number;
 }
 
 const InventoryGridComponent: React.FC<InventoryGridProps> = ({
@@ -50,12 +55,79 @@ const InventoryGridComponent: React.FC<InventoryGridProps> = ({
   onDragEndExternal,
   sortingActive = false,
   resolveOriginalCoord,
+  fallbackCols: fallbackColsProp,
 }) => {
   const cols = colsProp ?? INVENTORY_COLS;
-  const rows = Math.ceil(maxSlots / cols);
+  const fallbackCols = Math.max(1, Math.min(fallbackColsProp ?? cols, cols));
   const [dragSource, setDragSource] = useState<SlotCoordinate | null>(null);
   const [dragOver, setDragOver] = useState<SlotCoordinate | null>(null);
+  const [containerWidth, setContainerWidth] = useState<number | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const dragImageRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const node = containerRef.current;
+    if (!node) {
+      return undefined;
+    }
+
+    const measure = () => {
+      setContainerWidth(node.clientWidth);
+    };
+
+    measure();
+
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', measure);
+      return () => window.removeEventListener('resize', measure);
+    }
+
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (entry) {
+        setContainerWidth(entry.contentRect.width);
+      }
+    });
+
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+
+  let displayCols = cols;
+  let slotSize = MAX_SLOT_SIZE_PX;
+
+  if (containerWidth !== null && containerWidth > 0) {
+    const fullGridWidth = cols * MAX_SLOT_SIZE_PX + (cols - 1) * GRID_GAP_PX;
+    const fallbackGridWidth =
+      fallbackCols * MAX_SLOT_SIZE_PX + (fallbackCols - 1) * GRID_GAP_PX;
+
+    if (containerWidth < fullGridWidth) {
+      displayCols = fallbackCols;
+
+      if (containerWidth < fallbackGridWidth) {
+        slotSize = Math.max(
+          0,
+          (containerWidth - (displayCols - 1) * GRID_GAP_PX) / displayCols,
+        );
+      }
+    }
+  }
+
+  const slotStyle = {
+    '--inv-display-cols': String(displayCols),
+    '--inv-slot-size': `${slotSize}px`,
+  } as React.CSSProperties;
+
+  const slots = Array.from({ length: maxSlots }, (_, index) => {
+    const row = Math.floor(index / cols);
+    const col = index % cols;
+
+    return {
+      row,
+      col,
+      item: grid[row]?.[col] ?? null,
+    };
+  });
 
   const isSelected = (row: number, col: number) =>
     selectedSlot?.row === row && selectedSlot?.col === col;
@@ -154,50 +226,68 @@ const InventoryGridComponent: React.FC<InventoryGridProps> = ({
   };
 
   return (
-    <div className="inv-grid" ref={dragImageRef}>
-      {Array.from({ length: rows }, (_, row) =>
-        Array.from({ length: cols }, (_, col) => {
-          const item = grid[row]?.[col] ?? null;
-          return (
-            <div
-              key={`${row}-${col}`}
-              className={getSlotClassName(row, col)}
-              onClick={() => handleClick(row, col)}
-              draggable={item !== null}
-              onDragStart={(e) => handleDragStart(e, row, col)}
-              onDragOver={(e) => handleDragOver(e, row, col)}
-              onDragLeave={handleDragLeave}
-              onDrop={(e) => handleDrop(e, row, col)}
-              onDragEnd={handleDragEnd}
-              title={item ? (item.itemType === 'commander' ? item.name : item.itemType) : ''}
-            >
-              {item !== null ? (
-                <Image
-                  src={
-                    item.itemType === 'commander'
-                      ? `/assets/images/inventory/commander${item.imageId}.png`
-                      : `/assets/images/inventory/${item.itemType}.png`
-                  }
-                  alt={item.itemType === 'commander' ? item.name : item.itemType}
-                  width={120}
-                  height={120}
-                  style={{ objectFit: 'contain', pointerEvents: 'none' }}
-                  unoptimized
-                />
-              ) : (
-                <Image
-                  src="/assets/images/inventory/empty.png"
-                  alt="Empty slot"
-                  width={120}
-                  height={120}
-                  style={{ objectFit: 'contain', pointerEvents: 'none', opacity: 0.2 }}
-                  unoptimized
-                />
-              )}
-            </div>
-          );
-        })
-      )}
+    <div className="inv-grid-wrap" ref={containerRef}>
+      <div
+        className="inv-grid"
+        ref={dragImageRef}
+        style={slotStyle}
+        data-display-cols={displayCols}
+        data-slot-size={slotSize.toFixed(2)}
+      >
+        {slots.map(({ row, col, item }) => (
+          <div
+            key={`${row}-${col}`}
+            className={getSlotClassName(row, col)}
+            onClick={() => handleClick(row, col)}
+            draggable={item !== null}
+            onDragStart={(e) => handleDragStart(e, row, col)}
+            onDragOver={(e) => handleDragOver(e, row, col)}
+            onDragLeave={handleDragLeave}
+            onDrop={(e) => handleDrop(e, row, col)}
+            onDragEnd={handleDragEnd}
+            title={item ? (item.itemType === 'commander' ? item.name : item.itemType) : ''}
+          >
+            {item !== null ? (
+              <Image
+                src={
+                  item.itemType === 'commander'
+                    ? `/assets/images/inventory/commander${item.imageId}.png`
+                    : `/assets/images/inventory/${item.itemType}.png`
+                }
+                alt={item.itemType === 'commander' ? item.name : item.itemType}
+                width={120}
+                height={120}
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  maxWidth: '120px',
+                  maxHeight: '120px',
+                  objectFit: 'contain',
+                  pointerEvents: 'none',
+                }}
+                unoptimized
+              />
+            ) : (
+              <Image
+                src="/assets/images/inventory/empty.png"
+                alt="Empty slot"
+                width={120}
+                height={120}
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  maxWidth: '120px',
+                  maxHeight: '120px',
+                  objectFit: 'contain',
+                  pointerEvents: 'none',
+                  opacity: 0.2,
+                }}
+                unoptimized
+              />
+            )}
+          </div>
+        ))}
+      </div>
     </div>
   );
 };
