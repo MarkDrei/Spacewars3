@@ -149,7 +149,9 @@ const FactoryPageClient: React.FC<FactoryPageClientProps> = ({ auth }) => {
 
   const renderBuildControls = (key: string, itemType: 'weapon' | 'defense', baseCost: number) => {
     const count = getBuildCount(key);
-    const canAfford = factoryService.canAfford(baseCost * count, ironAmount);
+    // Only check affordability for one item: iron is charged per build start, not per queued item.
+    // The first item is charged immediately; subsequent items are charged when each build starts.
+    const canAfford = factoryService.canAfford(baseCost, ironAmount);
     return (
       <div className="build-controls">
         <button

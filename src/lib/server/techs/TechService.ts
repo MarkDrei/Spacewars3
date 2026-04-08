@@ -119,7 +119,10 @@ export class TechService {
     }
 
     /**
-     * Add an item to the build queue
+     * Add an item to the build queue.
+     * Iron is only deducted for the first item (which starts building immediately).
+     * Subsequent items are queued without charging iron; they are charged by
+     * processCompletedBuilds when they actually start.
      */
     async addTechItemToBuildQueue(
         userId: number,
@@ -135,14 +138,16 @@ export class TechService {
         const spec = TechFactory.getTechSpec(itemKey, itemType);
         if (!spec) return { success: false, error: 'Invalid tech item' };
 
-        // Check cost
-        if (user.iron < spec.baseCost) {
-            return { success: false, error: 'Insufficient iron' };
-        }
-
-        // Deduct cost using centralized method
-        if (!user.subtractIron(spec.baseCost)) {
-            return { success: false, error: 'Insufficient iron' };
+        // Only charge iron for the first item in the queue (it starts building immediately).
+        // Subsequent items are free to queue; iron is charged when each build starts.
+        const isFirstItem = user.buildQueue.length === 0;
+        if (isFirstItem) {
+            if (user.iron < spec.baseCost) {
+                return { success: false, error: 'Insufficient iron' };
+            }
+            if (!user.subtractIron(spec.baseCost)) {
+                return { success: false, error: 'Insufficient iron' };
+            }
         }
 
         // Add to queue
@@ -224,8 +229,27 @@ export class TechService {
 
                 // Setup next build if any
                 if (user.buildQueue.length > 0) {
-                    // Next build starts at the calculated completion time of this build
-                    user.buildStartSec = calculatedCompletionTime;
+                    const nextBuild = user.buildQueue[0];
+                    const nextSpec = TechFactory.getTechSpec(nextBuild.itemKey, nextBuild.itemType);
+
+                    if (!nextSpec || user.iron < nextSpec.baseCost) {
+                        // Not enough iron to start the next item — abort the entire remaining queue
+                        const abortedCount = user.buildQueue.length;
+                        const itemName = nextSpec ? nextSpec.name : nextBuild.itemKey;
+                        user.buildQueue = [];
+                        user.buildStartSec = null;
+                        try {
+                            const ctx = createLockContext();
+                            await this.messageCacheInstance.createMessage(ctx, userId,
+                                `Build queue aborted: insufficient iron to start ${itemName}. ${abortedCount} item(s) removed from queue.`);
+                        } catch (error) {
+                            console.error(`Failed to send queue abort notification to user ${userId}:`, error);
+                        }
+                    } else {
+                        // Deduct iron for the next item and start it
+                        user.subtractIron(nextSpec.baseCost);
+                        user.buildStartSec = calculatedCompletionTime;
+                    }
                 } else {
                     user.buildStartSec = null;
                 }
