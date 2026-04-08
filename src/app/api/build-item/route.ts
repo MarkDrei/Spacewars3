@@ -30,8 +30,8 @@ export async function POST(request: NextRequest) {
       throw new ApiError(400, 'Invalid item type. Must be "weapon" or "defense"');
     }
 
-    if (!Number.isInteger(count) || count < 1 || count > 100) {
-      throw new ApiError(400, 'Count must be an integer between 1 and 100');
+    if (!Number.isInteger(count) || count < 1) {
+      throw new ApiError(400, 'Count must be a positive integer');
     }
 
     // Validate item exists in catalog
@@ -44,19 +44,9 @@ export async function POST(request: NextRequest) {
     const techService = TechService.getInstance();
 
     const result = await context.useLockWithAcquire(USER_LOCK, async (userContext) => {
-      // Check if user has enough iron for all items
-      const userIron = await techService.getIron(session.userId!, userContext);
-
-      if (userIron === null) {
-        throw new ApiError(404, 'User not found');
-      }
-
-      const totalCost = spec.baseCost * count;
-      if (userIron < totalCost) {
-        throw new ApiError(400, `Insufficient iron. Required: ${totalCost} (${count}x${spec.baseCost}), Available: ${userIron}`);
-      }
-
-      // Add items to build queue one by one within the same lock
+      // Add items to build queue one by one within the same lock.
+      // Iron is only charged for the first item (if queue was empty); subsequent
+      // items are charged by processCompletedBuilds when they actually start.
       for (let i = 0; i < count; i++) {
         const addResult = await techService.addTechItemToBuildQueue(session.userId!, itemKey, itemType, userContext);
 
@@ -69,12 +59,13 @@ export async function POST(request: NextRequest) {
       const estimatedCompletion = await techService.getEstimatedCompletionTime(session.userId!, userContext);
 
       // Emit statistics event (fire-and-forget)
+      // Only the first item is charged immediately; subsequent items are charged at build start.
       try {
         const statisticsCache = StatisticsCache.getInstance();
         statisticsCache.recordEvent(session.userId!, 'tech_spent', {
           itemKey,
           itemType,
-          ironCost: spec.baseCost * count,
+          ironCost: spec.baseCost, // Only one item is charged immediately
           count,
         });
       } catch (statsErr) {
@@ -84,14 +75,13 @@ export async function POST(request: NextRequest) {
       return { estimatedCompletion };
     });
 
-    console.log(`✅ Started building ${count}x ${itemType}/${itemKey} for user ${session.userId}. Cost: ${spec.baseCost * count} iron`);
+    console.log(`✅ Queued ${count}x ${itemType}/${itemKey} for user ${session.userId}`);
 
     return NextResponse.json({
       success: true,
       itemKey,
       itemType,
       count,
-      cost: spec.baseCost * count,
       buildDurationMinutes: spec.buildDurationMinutes,
       estimatedCompletion: result.estimatedCompletion,
       message: count === 1 ? `Started building ${spec.name}` : `Started building ${count}x ${spec.name}`

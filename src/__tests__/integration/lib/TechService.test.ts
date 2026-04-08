@@ -88,7 +88,7 @@ describe('TechService - Unit Tests', () => {
     });
 
     describe('addTechItemToBuildQueue', () => {
-        test('addTechItemToBuildQueue_validWeapon_addsToQueue', async () => {
+        test('addTechItemToBuildQueue_emptyQueue_deductsIronAndAddsToQueue', async () => {
             await withTransaction(async () => {
                 // Arrange
                 const mockUser = {
@@ -116,6 +116,36 @@ describe('TechService - Unit Tests', () => {
                 expect(mockUser.buildQueue).toHaveLength(1);
                 expect(mockUser.buildQueue[0].itemKey).toBe('pulse_laser');
                 expect(mockUser.buildStartSec).toBeGreaterThan(0);
+                expect(mockUser.iron).toBe(1000 - 150); // pulse_laser costs 150
+                expect(mockUpdateUserInCache).toHaveBeenCalled();
+            });
+        });
+
+        test('addTechItemToBuildQueue_queueNotEmpty_addsWithoutChargingIron', async () => {
+            await withTransaction(async () => {
+                // Arrange: queue already has one item building
+                const mockSubtractIron = vi.fn().mockReturnValue(true);
+                const mockUser = {
+                    iron: 50, // Not enough for another pulse_laser (150) if checked
+                    buildQueue: [
+                        { itemKey: 'pulse_laser', itemType: 'weapon', completionTime: 0 }
+                    ] as BuildQueueItem[],
+                    buildStartSec: Math.floor(Date.now() / 1000),
+                    subtractIron: mockSubtractIron
+                } as unknown as User;
+                mockGetUserByIdWithLock.mockResolvedValue(mockUser);
+                const context = createLockContext();
+
+                // Act
+                const result = await context.useLockWithAcquire(USER_LOCK, async (userContext) => {
+                    return await techService.addTechItemToBuildQueue(1, 'pulse_laser', 'weapon', userContext);
+                });
+
+                // Assert: item added even though iron is insufficient, because iron is charged at build start
+                expect(result.success).toBe(true);
+                expect(mockUser.buildQueue).toHaveLength(2);
+                expect(mockUser.iron).toBe(50); // Iron unchanged — not charged for queued item
+                expect(mockSubtractIron).not.toHaveBeenCalled(); // No deduction for queued item
                 expect(mockUpdateUserInCache).toHaveBeenCalled();
             });
         });
@@ -157,13 +187,15 @@ describe('TechService - Unit Tests', () => {
                 // Arrange
                 const now = Math.floor(Date.now() / 1000);
                 const mockUser = {
+                    iron: 0,
                     buildQueue: [
                         { itemKey: 'pulse_laser', itemType: 'weapon', completionTime: 0 }
                     ] as BuildQueueItem[],
                     buildStartSec: now - 200, // Started 200 seconds ago (pulse_laser takes 120s)
                     techCounts: { pulse_laser: 2 } as TechCounts,
                     score: 0,
-                    addScore: vi.fn() // Score awarded (not XP)
+                    addScore: vi.fn(), // Score awarded (not XP)
+                    subtractIron: vi.fn().mockReturnValue(true)
                 } as unknown as User;
                 mockGetUserByIdWithLock.mockResolvedValue(mockUser);
                 const context = createLockContext();
@@ -182,6 +214,83 @@ describe('TechService - Unit Tests', () => {
                 expect(mockUpdateUserInCache).toHaveBeenCalled();
                 // Verify score was awarded (pulse_laser costs 150 iron, so 150/100 = 1 score)
                 expect(mockUser.addScore).toHaveBeenCalledWith(1);
+            });
+        });
+
+        test('processCompletedBuilds_nextItemAffordable_deductsIronAndStartsNext', async () => {
+            await withTransaction(async () => {
+                // Arrange: two items in queue, first is done
+                const now = Math.floor(Date.now() / 1000);
+                const mockUser = {
+                    iron: 500,
+                    buildQueue: [
+                        { itemKey: 'pulse_laser', itemType: 'weapon', completionTime: 0 },
+                        { itemKey: 'pulse_laser', itemType: 'weapon', completionTime: 0 }
+                    ] as BuildQueueItem[],
+                    buildStartSec: now - 200,
+                    techCounts: { pulse_laser: 0 } as TechCounts,
+                    addScore: vi.fn(),
+                    subtractIron: function(this: { iron: number }, amount: number): boolean {
+                        if (this.iron >= amount) { this.iron -= amount; return true; }
+                        return false;
+                    }
+                } as unknown as User;
+                mockGetUserByIdWithLock.mockResolvedValue(mockUser);
+                const context = createLockContext();
+
+                // Act
+                await context.useLockWithAcquire(USER_LOCK, async (userContext) => {
+                    return await techService.processCompletedBuilds(1, userContext);
+                });
+
+                // Assert: second item is still in queue (started building) and iron was deducted
+                expect(mockUser.buildQueue).toHaveLength(1); // First item removed, second remains
+                expect(mockUser.buildQueue[0].itemKey).toBe('pulse_laser');
+                expect(mockUser.iron).toBe(500 - 150); // Iron deducted for second item
+                expect(mockUser.buildStartSec).toBeGreaterThan(0); // Next build started
+            });
+        });
+
+        test('processCompletedBuilds_nextItemUnaffordable_abortsQueueAndSendsMessage', async () => {
+            await withTransaction(async () => {
+                // Arrange: two items in queue, first is done, but user can't afford second
+                const now = Math.floor(Date.now() / 1000);
+                const mockUser = {
+                    iron: 10, // Not enough for pulse_laser (150)
+                    buildQueue: [
+                        { itemKey: 'pulse_laser', itemType: 'weapon', completionTime: 0 },
+                        { itemKey: 'pulse_laser', itemType: 'weapon', completionTime: 0 }
+                    ] as BuildQueueItem[],
+                    buildStartSec: now - 200,
+                    techCounts: { pulse_laser: 0 } as TechCounts,
+                    addScore: vi.fn(),
+                    subtractIron: function(this: { iron: number }, amount: number): boolean {
+                        if (this.iron >= amount) { this.iron -= amount; return true; }
+                        return false;
+                    }
+                } as unknown as User;
+                mockGetUserByIdWithLock.mockResolvedValue(mockUser);
+                const context = createLockContext();
+
+                // Act
+                await context.useLockWithAcquire(USER_LOCK, async (userContext) => {
+                    return await techService.processCompletedBuilds(1, userContext);
+                });
+
+                // Assert: queue is aborted and abort message sent
+                expect(mockUser.buildQueue).toHaveLength(0); // Entire queue cleared
+                expect(mockUser.buildStartSec).toBeNull();
+                expect(mockUser.iron).toBe(10); // Iron NOT deducted
+                // Completion message for the first item + abort message for the remaining queue
+                expect(mockCreateMessage).toHaveBeenCalledTimes(2);
+                expect(mockCreateMessage).toHaveBeenCalledWith(
+                    expect.anything(), 1,
+                    expect.stringContaining('Pulse Laser')
+                );
+                expect(mockCreateMessage).toHaveBeenCalledWith(
+                    expect.anything(), 1,
+                    expect.stringContaining('aborted')
+                );
             });
         });
     });
