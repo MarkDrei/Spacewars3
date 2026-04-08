@@ -9,6 +9,21 @@ import { World } from '@/lib/server/world/world';
 import { createLockContext, LockContext, LocksAtMostAndHas4, LocksAtMostAndHas6 } from '@markdrei/ironguard-typescript-locks';
 import { WorldCache } from '@/lib/server/world/worldCache';
 
+/** Distance threshold in world units above which a full charge is consumed. */
+const FULL_CHARGE_DISTANCE = 2000;
+
+/**
+ * Calculate the teleport charge cost based on travel distance.
+ * Jumps beyond FULL_CHARGE_DISTANCE cost exactly 1 charge.
+ * Shorter jumps cost proportionally less.
+ */
+export function calculateTeleportChargeCost(fromX: number, fromY: number, toX: number, toY: number): number {
+  const dx = toX - fromX;
+  const dy = toY - fromY;
+  const distance = Math.sqrt(dx * dx + dy * dy);
+  return Math.min(1, distance / FULL_CHARGE_DISTANCE);
+}
+
 export async function POST(request: NextRequest) {
   try {
     const session = await getIronSession<SessionData>(request, NextResponse.json({}), sessionOptions);
@@ -89,6 +104,9 @@ async function performTeleportLogic(
     throw new ApiError(404, 'Player ship not found');
   }
 
+  // Calculate charge cost based on jump distance
+  const chargeCost = calculateTeleportChargeCost(playerShip.x, playerShip.y, x, y);
+
   // Teleport ship to new position
   playerShip.x = x;
   playerShip.y = y;
@@ -98,8 +116,8 @@ async function performTeleportLogic(
     playerShip.speed = 0;
   }
 
-  // Deduct one teleport charge
-  user.teleportCharges -= 1;
+  // Deduct charge proportional to jump distance
+  user.teleportCharges -= chargeCost;
 
   // Update last position update timestamp
   playerShip.last_position_update_ms = currentTime;

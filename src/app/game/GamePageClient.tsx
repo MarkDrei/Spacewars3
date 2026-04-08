@@ -589,7 +589,7 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
                 <>
                   <div className="teleport-header">
                     <span className="teleport-charges-badge">
-                      {formatNumber(Math.floor(teleportCharges))} / {formatNumber(teleportMaxCharges)}
+                      {formatNumber(teleportCharges)} / {formatNumber(teleportMaxCharges)}
                     </span>
                     {teleportCharges < teleportMaxCharges && teleportRechargeTimeSec > 0 && (
                       <span className="teleport-timer">

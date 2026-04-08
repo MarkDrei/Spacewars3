@@ -3,6 +3,7 @@ import { User } from '@/lib/server/user/user';
 import { createInitialTechTree } from '@/lib/server/techs/techtree';
 import { TimeMultiplierService } from '@/lib/server/timeMultiplier';
 import { TechCounts } from '@/lib/server/techs/TechFactory';
+import { calculateTeleportChargeCost } from '@/app/api/teleport/route';
 
 /**
  * Create a minimal TechCounts for unit tests
@@ -200,5 +201,38 @@ describe('updateTeleportCharges', () => {
     user.updateTeleportCharges(now);
 
     expect(user.teleportCharges).toBeCloseTo(0.5, 5);
+  });
+});
+
+describe('calculateTeleportChargeCost', () => {
+  test('calculateTeleportChargeCost_zeroDistance_returnsZero', () => {
+    expect(calculateTeleportChargeCost(1000, 1000, 1000, 1000)).toBe(0);
+  });
+
+  test('calculateTeleportChargeCost_500Units_returnsQuarterCharge', () => {
+    // Horizontal jump of exactly 500 units → 500 / 2000 = 0.25
+    expect(calculateTeleportChargeCost(0, 0, 500, 0)).toBeCloseTo(0.25, 10);
+  });
+
+  test('calculateTeleportChargeCost_exactThreshold_returnsOne', () => {
+    // Horizontal jump of exactly 2000 units → 2000 / 2000 = 1.0
+    expect(calculateTeleportChargeCost(0, 0, 2000, 0)).toBeCloseTo(1.0, 10);
+  });
+
+  test('calculateTeleportChargeCost_longDistance_capsAtOne', () => {
+    // Jump of 4000 units → capped at 1.0
+    expect(calculateTeleportChargeCost(0, 0, 4000, 0)).toBe(1.0);
+  });
+
+  test('calculateTeleportChargeCost_diagonalDistance_usesEuclidean', () => {
+    // 3-4-5 triangle: dx=300, dy=400 → distance=500 → cost=0.25
+    expect(calculateTeleportChargeCost(0, 0, 300, 400)).toBeCloseTo(0.25, 10);
+  });
+
+  test('calculateTeleportChargeCost_arbitraryShortDistance_isProportional', () => {
+    // Any distance < 2000 should scale linearly
+    const dist = 1000;
+    const cost = calculateTeleportChargeCost(0, 0, dist, 0);
+    expect(cost).toBeCloseTo(dist / 2000, 10);
   });
 });
