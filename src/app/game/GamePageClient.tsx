@@ -46,7 +46,7 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
   const [isTeleportCollapsed, setIsTeleportCollapsed] = useState(false);
   const [afterburnerStatus, setAfterburnerStatus] = useState<AfterburnerStatus | null>(null);
   const [isActivatingAfterburner, setIsActivatingAfterburner] = useState(false);
-  // isAfterburnerCollapsed removed: afterburner button is now inside the teleport panel
+  const [isAfterburnerCollapsed, setIsAfterburnerCollapsed] = useState(false);
   // Auth is guaranteed by server, so pass true and use auth.shipId
   const { worldData, isLoading, error, refetch, lastUpdateTime } = useWorldData(3000);
 
@@ -74,6 +74,7 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
       const savedTeleportCollapsed = localStorage.getItem('game-ui-teleport-collapsed');
       const savedDebugEnabled = localStorage.getItem('game-ui-debug-enabled');
       const savedZoom = localStorage.getItem('game-ui-zoom');
+      const savedAfterburnerCollapsed = localStorage.getItem('game-ui-afterburner-collapsed');
       if (savedNavigationCollapsed !== null) {
         setIsNavigationCollapsed(JSON.parse(savedNavigationCollapsed));
       }
@@ -85,6 +86,9 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
       }
       if (savedZoom !== null) {
         setZoom(JSON.parse(savedZoom));
+      }
+      if (savedAfterburnerCollapsed !== null) {
+        setIsAfterburnerCollapsed(JSON.parse(savedAfterburnerCollapsed));
       }
     } catch (err) {
       console.warn('Failed to load UI preferences from localStorage:', err);
@@ -126,6 +130,15 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
       console.warn('Failed to save zoom preference:', err);
     }
   }, [zoom]);
+
+  // Save afterburner collapse preference to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('game-ui-afterburner-collapsed', JSON.stringify(isAfterburnerCollapsed));
+    } catch (err) {
+      console.warn('Failed to save afterburner collapse preference:', err);
+    }
+  }, [isAfterburnerCollapsed]);
 
   // Resize canvas buffer to match physical pixel count: reads rendered CSS dimensions,
   // multiplies by devicePixelRatio to get the buffer size, and re-runs when isLoading
@@ -554,11 +567,12 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
             {!isNavigationCollapsed && (
               <>
                 <div className="speed-slider-row">
-                  <label>speed</label>
+                  <label htmlFor="speed-slider">speed</label>
                   <input
+                    id="speed-slider"
                     type="range"
                     min={0}
-                    max={maxSpeed}
+                    max={afterburnerStatus?.isActive && afterburnerStatus.boostedSpeed > 0 ? afterburnerStatus.boostedSpeed : maxSpeed}
                     step={0.1}
                     value={parseFloat(speedInput) || 0}
                     onChange={(e) => setSpeedInput(e.target.value)}
@@ -616,11 +630,11 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
             <DataAgeIndicator lastUpdateTime={lastUpdateTime} className="panel-bottom-right" />
           )}
 
-          {/* Top-right: abilities panel (teleport + afterburner) */}
-          {(teleportMaxCharges > 0 || (afterburnerStatus && afterburnerStatus.durationResearchLevel >= 1)) && (
+          {/* Top-right: teleport panel */}
+          {teleportMaxCharges > 0 && (
             <div className="hud-panel panel-top-right">
               <div className="panel-heading-row">
-                <h4 className="panel-heading">abilities</h4>
+                <h4 className="panel-heading">teleport</h4>
                 <button
                   className="collapse-button"
                   onClick={() => setIsTeleportCollapsed(!isTeleportCollapsed)}
@@ -631,69 +645,78 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
               </div>
               {!isTeleportCollapsed && (
                 <>
-                  {/* Teleport section */}
-                  {teleportMaxCharges > 0 && (
-                    <>
-                      <div className="teleport-header">
-                        <span className="teleport-charges-badge">
-                          {formatNumber(teleportCharges)} / {formatNumber(teleportMaxCharges)}
-                        </span>
-                        {teleportCharges < teleportMaxCharges && teleportRechargeTimeSec > 0 && (
-                          <span className="teleport-timer">
-                            next in: {formatTimeRemaining(
-                              (Math.ceil(teleportCharges) === Math.floor(teleportCharges) ? 1 : Math.ceil(teleportCharges) - teleportCharges) * teleportRechargeTimeSec / Math.max(1, timeMultiplier)
-                            )}
-                          </span>
+                  <div className="teleport-header">
+                    <span className="teleport-charges-badge">
+                      {formatNumber(teleportCharges)} / {formatNumber(teleportMaxCharges)}
+                    </span>
+                    {teleportCharges < teleportMaxCharges && teleportRechargeTimeSec > 0 && (
+                      <span className="teleport-timer">
+                        next in: {formatTimeRemaining(
+                          (Math.ceil(teleportCharges) === Math.floor(teleportCharges) ? 1 : Math.ceil(teleportCharges) - teleportCharges) * teleportRechargeTimeSec / Math.max(1, timeMultiplier)
                         )}
-                        <label className="debug-toggle-label">
-                          click mode
-                          <div className="toggle-switch">
-                            <input
-                              type="checkbox"
-                              checked={teleportClickMode}
-                              onChange={(e) => setTeleportClickMode(e.target.checked)}
-                              disabled={Math.floor(teleportCharges) < 1}
-                              className="toggle-input"
-                            />
-                            <span className="toggle-slider"></span>
-                          </div>
-                        </label>
+                      </span>
+                    )}
+                    <label className="debug-toggle-label">
+                      click mode
+                      <div className="toggle-switch">
+                        <input
+                          type="checkbox"
+                          checked={teleportClickMode}
+                          onChange={(e) => setTeleportClickMode(e.target.checked)}
+                          disabled={Math.floor(teleportCharges) < 1}
+                          className="toggle-input"
+                        />
+                        <span className="toggle-slider"></span>
                       </div>
-                      <div className="control-row">
-                        <label htmlFor="teleport-x">x</label>
-                        <input id="teleport-x" type="number" value={teleportX} onChange={(e) => setTeleportX(e.target.value)} min="0" max="5000" step="1" />
-                        <label htmlFor="teleport-y">y</label>
-                        <input id="teleport-y" type="number" value={teleportY} onChange={(e) => setTeleportY(e.target.value)} min="0" max="5000" step="1" />
-                        <button onClick={handleTeleport} disabled={isTeleporting || Math.floor(teleportCharges) < 1} className="control-button btn-primary">
-                          {isTeleporting ? '...' : 'teleport'}
-                        </button>
-                      </div>
-                    </>
-                  )}
-
-                  {/* Afterburner section — invisible when not researched */}
-                  {afterburnerStatus && afterburnerStatus.durationResearchLevel >= 1 && (
-                    <div className="afterburner-section">
-                      {afterburnerStatus.canActivate ? (
-                        <button
-                          onClick={handleActivateAfterburner}
-                          disabled={isActivatingAfterburner}
-                          className="afterburner-button afterburner-available"
-                        >
-                          {isActivatingAfterburner ? '...' : '🔥 Afterburner'}
-                        </button>
-                      ) : afterburnerStatus.isActive ? (
-                        <button className="afterburner-button afterburner-active" disabled>
-                          ⚡ Active ({formatTimeRemaining(afterburnerStatus.boostRemainingMs / 1000)})
-                        </button>
-                      ) : (
-                        <button className="afterburner-button afterburner-cooldown" disabled>
-                          Cooldown ({formatTimeRemaining(afterburnerStatus.cooldownRemainingMs / 1000)})
-                        </button>
-                      )}
-                    </div>
-                  )}
+                    </label>
+                  </div>
+                  <div className="control-row">
+                    <label htmlFor="teleport-x">x</label>
+                    <input id="teleport-x" type="number" value={teleportX} onChange={(e) => setTeleportX(e.target.value)} min="0" max="5000" step="1" />
+                    <label htmlFor="teleport-y">y</label>
+                    <input id="teleport-y" type="number" value={teleportY} onChange={(e) => setTeleportY(e.target.value)} min="0" max="5000" step="1" />
+                    <button onClick={handleTeleport} disabled={isTeleporting || Math.floor(teleportCharges) < 1} className="control-button btn-primary">
+                      {isTeleporting ? '...' : 'teleport'}
+                    </button>
+                  </div>
                 </>
+              )}
+            </div>
+          )}
+
+          {/* Bottom-left: afterburner panel — invisible when not researched */}
+          {afterburnerStatus && afterburnerStatus.durationResearchLevel >= 1 && (
+            <div className="hud-panel panel-afterburner">
+              <div className="panel-heading-row">
+                <h4 className="panel-heading">afterburner</h4>
+                <button
+                  className="collapse-button"
+                  onClick={() => setIsAfterburnerCollapsed(!isAfterburnerCollapsed)}
+                  title={isAfterburnerCollapsed ? 'Expand' : 'Collapse'}
+                >
+                  {isAfterburnerCollapsed ? '▶' : '▼'}
+                </button>
+              </div>
+              {!isAfterburnerCollapsed && (
+                <div className="afterburner-content">
+                  {afterburnerStatus.canActivate ? (
+                    <button
+                      onClick={handleActivateAfterburner}
+                      disabled={isActivatingAfterburner}
+                      className="afterburner-button afterburner-available"
+                    >
+                      {isActivatingAfterburner ? '...' : '🔥 Afterburner'}
+                    </button>
+                  ) : afterburnerStatus.isActive ? (
+                    <button className="afterburner-button afterburner-active" disabled>
+                      ⚡ Active ({formatTimeRemaining(afterburnerStatus.boostRemainingMs / 1000)})
+                    </button>
+                  ) : (
+                    <button className="afterburner-button afterburner-cooldown" disabled>
+                      Cooldown ({formatTimeRemaining(afterburnerStatus.cooldownRemainingMs / 1000)})
+                    </button>
+                  )}
+                </div>
               )}
             </div>
           )}

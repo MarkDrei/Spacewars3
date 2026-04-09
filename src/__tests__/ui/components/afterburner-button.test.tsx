@@ -208,7 +208,7 @@ describe('GamePageClient afterburner controls', () => {
     expect(screen.queryByText(/Afterburner \(Not Researched\)/)).toBeNull();
   });
 
-  it('abilitiesPanel_hasHeading_showsAbilitiesHeading', async () => {
+  it('afterburnerPanel_hasHeading_showsAfterburnerHeading', async () => {
     const afterburner: AfterburnerStatus = {
       isActive: false,
       boostRemainingMs: 0,
@@ -222,11 +222,11 @@ describe('GamePageClient afterburner controls', () => {
     render(<GamePageClient auth={defaultAuth} />);
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: /abilities/i })).toBeDefined();
+      expect(screen.getByRole('heading', { name: /afterburner/i })).toBeDefined();
     });
   });
 
-  it('abilitiesPanel_collapsed_hidesAfterburnerButton', async () => {
+  it('afterburnerPanel_collapsed_hidesAfterburnerButton', async () => {
     const afterburner: AfterburnerStatus = {
       isActive: false,
       boostRemainingMs: 0,
@@ -243,8 +243,8 @@ describe('GamePageClient afterburner controls', () => {
       expect(screen.getByText('🔥 Afterburner')).toBeDefined();
     });
 
-    // Find the collapse button in the abilities panel
-    const heading = screen.getByRole('heading', { name: /abilities/i });
+    // Find the collapse button in the afterburner panel
+    const heading = screen.getByRole('heading', { name: /afterburner/i });
     const panelHeadingRow = heading.parentElement!;
     const collapseButton = panelHeadingRow.querySelector('.collapse-button') as HTMLElement;
     expect(collapseButton).toBeTruthy();
@@ -254,7 +254,7 @@ describe('GamePageClient afterburner controls', () => {
     // Button text should no longer be visible
     expect(screen.queryByText('🔥 Afterburner')).toBeNull();
     // But heading should still be visible
-    expect(screen.getByRole('heading', { name: /abilities/i })).toBeDefined();
+    expect(screen.getByRole('heading', { name: /afterburner/i })).toBeDefined();
   });
 
   it('afterburnerButton_activateClick_callsService', async () => {
@@ -318,5 +318,49 @@ describe('GamePageClient afterburner controls', () => {
     await waitFor(() => {
       expect(screen.getByText(/Cooldown \(2m 30s\)/)).toBeDefined();
     });
+  });
+
+  it('speedSlider_afterburnerActive_usesBoostedSpeedAsMax', async () => {
+    const afterburner: AfterburnerStatus = {
+      isActive: true,
+      boostRemainingMs: 20000,
+      cooldownRemainingMs: 0,
+      canActivate: false,
+      durationResearchLevel: 1,
+      boostedSpeed: 50, // boosted max is 50 while normal maxSpeed is 25
+    };
+    vi.mocked(getShipStats).mockResolvedValue(makeShipStats(afterburner));
+
+    render(<GamePageClient auth={defaultAuth} />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Active/)).toBeDefined();
+    });
+
+    // The speed slider should use boostedSpeed (50) as max, not normal maxSpeed (25)
+    const speedSlider = screen.getByRole('slider', { name: /speed/i });
+    expect(speedSlider).toHaveAttribute('max', '50');
+  });
+
+  it('speedSlider_afterburnerNotActive_usesNormalMaxSpeed', async () => {
+    const afterburner: AfterburnerStatus = {
+      isActive: false,
+      boostRemainingMs: 0,
+      cooldownRemainingMs: 0,
+      canActivate: true,
+      durationResearchLevel: 1,
+      boostedSpeed: 0,
+    };
+    vi.mocked(getShipStats).mockResolvedValue(makeShipStats(afterburner));
+
+    render(<GamePageClient auth={defaultAuth} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('🔥 Afterburner')).toBeDefined();
+    });
+
+    // The speed slider should use normal maxSpeed (25) when afterburner is not active
+    const speedSlider = screen.getByRole('slider', { name: /speed/i });
+    expect(speedSlider).toHaveAttribute('max', '25');
   });
 });
