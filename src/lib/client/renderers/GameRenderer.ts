@@ -49,6 +49,15 @@ export class GameRenderer {
     }
 
     /**
+     * Inform the radar renderer how many CSS pixels at the bottom are covered by UI.
+     * The renderer converts this to world-scale units internally.
+     */
+    setSafeAreaBottom(cssPixels: number): void {
+        const worldScale = this.getWorldScale();
+        this.radarRenderer.setSafeAreaBottom(cssPixels / worldScale);
+    }
+
+    /**
      * Returns the current world-scale: CSS pixels per world unit.
      * Computed as (cssHeight / BASE_VIEWPORT_WORLD_H) / zoom.
      */

@@ -82,6 +82,11 @@ const AdminPage: React.FC = () => {
   const [customSpawnQuantity, setCustomSpawnQuantity] = useState<number>(1);
   const spawnMessageTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Table collapse state
+  const [usersTableOpen, setUsersTableOpen] = useState(false);
+  const [objectsTableOpen, setObjectsTableOpen] = useState(false);
+  const [battlesTableOpen, setBattlesTableOpen] = useState(false);
+
   // Fetch admin data
   const fetchAdminData = async () => {
     try {
@@ -397,18 +402,18 @@ const AdminPage: React.FC = () => {
               10x for 5 min
             </button>
             <button
-              onClick={() => handlePresetClick(10, 15)}
+              onClick={() => handlePresetClick(100, 5)}
               className="multiplier-preset-btn"
               disabled={isLoadingMultiplier}
             >
-              10x for 15 min
+              100x for 5 min
             </button>
             <button
-              onClick={() => handlePresetClick(50, 5)}
+              onClick={() => handlePresetClick(1000, 5)}
               className="multiplier-preset-btn"
               disabled={isLoadingMultiplier}
             >
-              50x for 5 min
+              1000x for 5 min
             </button>
           </div>
 
@@ -564,11 +569,10 @@ const AdminPage: React.FC = () => {
               </select>
             </label>
             <label>
-              Quantity (1-50):
+              Quantity:
               <input
                 type="number"
                 min="1"
-                max="50"
                 step="1"
                 value={customSpawnQuantity}
                 onChange={(e) => setCustomSpawnQuantity(Number(e.target.value))}
@@ -635,8 +639,11 @@ const AdminPage: React.FC = () => {
 
         {/* Users Table */}
         <div className="data-section">
-          <h2>👥 Users Table</h2>
-          <div className="data-table-container">
+          <button className="section-toggle" onClick={() => setUsersTableOpen((v) => !v)}>
+            <span>👥 Users Table</span>
+            <span className={`toggle-arrow ${usersTableOpen ? 'open' : ''}`}>▶</span>
+          </button>
+          {usersTableOpen && <div className="data-table-container" style={{ overflowX: 'auto' }}>
             <table className="data-table admin-table">
               <thead>
                 <tr>
@@ -721,13 +728,16 @@ const AdminPage: React.FC = () => {
                 ))}
               </tbody>
             </table>
-          </div>
+          </div>}
         </div>
 
         {/* Space Objects Table */}
         <div className="data-section">
-          <h2>🌌 Space Objects Table</h2>
-          <div className="data-table-container">
+          <button className="section-toggle" onClick={() => setObjectsTableOpen((v) => !v)}>
+            <span>🌌 Space Objects Table</span>
+            <span className={`toggle-arrow ${objectsTableOpen ? 'open' : ''}`}>▶</span>
+          </button>
+          {objectsTableOpen && <div className="data-table-container" style={{ overflowX: 'auto' }}>
             <table className="data-table admin-table">
               <thead>
                 <tr>
@@ -760,13 +770,16 @@ const AdminPage: React.FC = () => {
                 ))}
               </tbody>
             </table>
-          </div>
+          </div>}
         </div>
 
         {/* Battles Table */}
         <div className="data-section">
-          <h2>⚔️ Battles Table</h2>
-          <div className="data-table-container">
+          <button className="section-toggle" onClick={() => setBattlesTableOpen((v) => !v)}>
+            <span>⚔️ Battles Table</span>
+            <span className={`toggle-arrow ${battlesTableOpen ? 'open' : ''}`}>▶</span>
+          </button>
+          {battlesTableOpen && <div className="data-table-container" style={{ overflowX: 'auto' }}>
             <table className="data-table admin-table">
               <thead>
                 <tr>
@@ -839,7 +852,7 @@ const AdminPage: React.FC = () => {
                 ))}
               </tbody>
             </table>
-          </div>
+          </div>}
         </div>
       </div>
     </AuthenticatedLayout>

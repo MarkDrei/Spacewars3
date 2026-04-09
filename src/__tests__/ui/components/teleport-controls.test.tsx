@@ -108,7 +108,7 @@ describe('GamePageClient teleport controls', () => {
     render(<GamePageClient auth={defaultAuth} />);
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: /^teleport$/i })).toBeDefined();
+      expect(screen.getByTitle('Teleport')).toBeDefined();
     });
   });
 
@@ -120,11 +120,18 @@ describe('GamePageClient teleport controls', () => {
     render(<GamePageClient auth={defaultAuth} />);
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: /^teleport$/i })).toBeDefined();
+      expect(screen.getByTitle('Teleport')).toBeDefined();
     });
 
-    const teleportButton = screen.getByRole('button', { name: /^teleport$/i });
-    expect(teleportButton).toHaveProperty('disabled', true);
+    // Click to expand the teleport panel
+    const teleportIcon = screen.getByTitle('Teleport');
+    teleportIcon.click();
+
+    // The teleport button in the panel should be disabled
+    await waitFor(() => {
+      const teleportButton = screen.getByRole('button', { name: /^teleport$/i });
+      expect(teleportButton).toHaveProperty('disabled', true);
+    });
   });
 
   it('teleportControls_withCharges_teleportButtonEnabled', async () => {
@@ -135,11 +142,18 @@ describe('GamePageClient teleport controls', () => {
     render(<GamePageClient auth={defaultAuth} />);
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: /^teleport$/i })).toBeDefined();
+      expect(screen.getByTitle('Teleport')).toBeDefined();
     });
 
-    const teleportButton = screen.getByRole('button', { name: /^teleport$/i });
-    expect(teleportButton).toHaveProperty('disabled', false);
+    // Click to expand the teleport panel
+    const teleportIcon = screen.getByTitle('Teleport');
+    teleportIcon.click();
+
+    // The teleport button in the panel should be enabled
+    await waitFor(() => {
+      const teleportButton = screen.getByRole('button', { name: /^teleport$/i });
+      expect(teleportButton).toHaveProperty('disabled', false);
+    });
   });
 
   it('teleportControls_rechargeTimer_showsCorrectTime', async () => {
@@ -150,8 +164,16 @@ describe('GamePageClient teleport controls', () => {
     render(<GamePageClient auth={defaultAuth} />);
 
     await waitFor(() => {
-      // 0.5 charges remaining * 7200 seconds = 3600 seconds = 1h 0m
-      expect(screen.getByText(/Next in: 1h 0m/i)).toBeDefined();
+      expect(screen.getByTitle('Teleport')).toBeDefined();
+    });
+
+    // Click to expand the teleport panel
+    const teleportIcon = screen.getByTitle('Teleport');
+    teleportIcon.click();
+
+    // 0.5 charges remaining * 7200 seconds = 3600 seconds = 1h 0m
+    await waitFor(() => {
+      expect(screen.getByText(/next: 1h 0m/i)).toBeDefined();
     });
   });
 });

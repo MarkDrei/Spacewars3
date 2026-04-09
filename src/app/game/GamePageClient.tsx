@@ -26,6 +26,8 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
   const gameInstanceRef = useRef<Game | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const canvasContainerRef = useRef<HTMLDivElement>(null);
+  const controlBarRef = useRef<HTMLDivElement>(null);
+  const iconBarRef = useRef<HTMLDivElement>(null);
   const [debugDrawingsEnabled, setDebugDrawingsEnabled] = useState(false);
   const [angleInput, setAngleInput] = useState<string>('0');
   const [speedInput, setSpeedInput] = useState<string>('0');
@@ -42,11 +44,13 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
   const [teleportRechargeTimeSec, setTeleportRechargeTimeSec] = useState(0);
   const [timeMultiplier, setTimeMultiplier] = useState(1);
   const [zoom, setZoom] = useState(DEFAULT_ZOOM);
-  const [isNavigationCollapsed, setIsNavigationCollapsed] = useState(false);
-  const [isTeleportCollapsed, setIsTeleportCollapsed] = useState(false);
+  const [navOpen, setNavOpen] = useState(false);
+  const [teleportOpen, setTeleportOpen] = useState(false);
+  const [afterburnerOpen, setAfterburnerOpen] = useState(false);
   const [afterburnerStatus, setAfterburnerStatus] = useState<AfterburnerStatus | null>(null);
+  const [announcement, setAnnouncement] = useState<{ text: string; key: number } | null>(null);
+  const announcementTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isActivatingAfterburner, setIsActivatingAfterburner] = useState(false);
-  const [isAfterburnerCollapsed, setIsAfterburnerCollapsed] = useState(false);
   // Auth is guaranteed by server, so pass true and use auth.shipId
   const { worldData, isLoading, error, refetch, lastUpdateTime } = useWorldData(3000);
 
@@ -67,51 +71,21 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
     };
   }, []);
 
-  // Load panel collapse preferences from localStorage on mount
+  // Load UI preferences from localStorage on mount
   useEffect(() => {
     try {
-      const savedNavigationCollapsed = localStorage.getItem('game-ui-navigation-collapsed');
-      const savedTeleportCollapsed = localStorage.getItem('game-ui-teleport-collapsed');
       const savedDebugEnabled = localStorage.getItem('game-ui-debug-enabled');
       const savedZoom = localStorage.getItem('game-ui-zoom');
-      const savedAfterburnerCollapsed = localStorage.getItem('game-ui-afterburner-collapsed');
-      if (savedNavigationCollapsed !== null) {
-        setIsNavigationCollapsed(JSON.parse(savedNavigationCollapsed));
-      }
-      if (savedTeleportCollapsed !== null) {
-        setIsTeleportCollapsed(JSON.parse(savedTeleportCollapsed));
-      }
       if (savedDebugEnabled !== null) {
         setDebugDrawingsEnabled(JSON.parse(savedDebugEnabled));
       }
       if (savedZoom !== null) {
         setZoom(JSON.parse(savedZoom));
       }
-      if (savedAfterburnerCollapsed !== null) {
-        setIsAfterburnerCollapsed(JSON.parse(savedAfterburnerCollapsed));
-      }
     } catch (err) {
       console.warn('Failed to load UI preferences from localStorage:', err);
     }
   }, []);
-
-  // Save navigation collapse preference to localStorage
-  useEffect(() => {
-    try {
-      localStorage.setItem('game-ui-navigation-collapsed', JSON.stringify(isNavigationCollapsed));
-    } catch (err) {
-      console.warn('Failed to save navigation collapse preference:', err);
-    }
-  }, [isNavigationCollapsed]);
-
-  // Save teleport collapse preference to localStorage
-  useEffect(() => {
-    try {
-      localStorage.setItem('game-ui-teleport-collapsed', JSON.stringify(isTeleportCollapsed));
-    } catch (err) {
-      console.warn('Failed to save teleport collapse preference:', err);
-    }
-  }, [isTeleportCollapsed]);
 
   // Save debug flag to localStorage
   useEffect(() => {
@@ -130,15 +104,6 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
       console.warn('Failed to save zoom preference:', err);
     }
   }, [zoom]);
-
-  // Save afterburner collapse preference to localStorage
-  useEffect(() => {
-    try {
-      localStorage.setItem('game-ui-afterburner-collapsed', JSON.stringify(isAfterburnerCollapsed));
-    } catch (err) {
-      console.warn('Failed to save afterburner collapse preference:', err);
-    }
-  }, [isAfterburnerCollapsed]);
 
   // Resize canvas buffer to match physical pixel count: reads rendered CSS dimensions,
   // multiplies by devicePixelRatio to get the buffer size, and re-runs when isLoading
@@ -160,6 +125,33 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
     observer.observe(container);
     return () => observer.disconnect();
   }, [isLoading]);
+
+  // Keep the game renderer informed of the control bar height so the
+  // radar can draw coordinates above the UI overlay.
+  useEffect(() => {
+    const controlBar = controlBarRef.current;
+    if (!controlBar) return;
+
+    const update = () => {
+      if (gameInstanceRef.current) {
+        const controlBarHeight = controlBar.getBoundingClientRect().height;
+        const iconBarHeight = iconBarRef.current?.getBoundingClientRect().height ?? 0;
+        // Icon bar is now transparent over canvas; only the opaque control panel
+        // needs to be kept clear of coordinate labels.
+        const panelHeight = Math.max(0, controlBarHeight - iconBarHeight);
+        gameInstanceRef.current.setSafeAreaBottom(panelHeight);
+      }
+    };
+
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(controlBar);
+    window.addEventListener('resize', update);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', update);
+    };
+  });
 
   // Sync debugDrawingsEnabled state with game instance
   useEffect(() => {
@@ -192,6 +184,12 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
     if (gameInstanceRef.current) {
       gameInstanceRef.current.setDebugDrawingsEnabled(enabled);
     }
+  };
+
+  const announce = (text: string) => {
+    if (announcementTimerRef.current) clearTimeout(announcementTimerRef.current);
+    setAnnouncement({ text, key: Date.now() });
+    announcementTimerRef.current = setTimeout(() => setAnnouncement(null), 2500);
   };
 
   // Memoize the redirect callback to avoid recreating it on every render
@@ -524,139 +522,165 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
             id="gameCanvas"
           ></canvas>
 
-          {/* Top-left: combat + debug toggles */}
-          <div className="hud-panel panel-top-left">
-            <label className="debug-toggle-label">
-              attack
-              <div className="toggle-switch">
-                <input
-                  type="checkbox"
-                  checked={attackClickMode}
-                  onChange={(e) => setAttackClickMode(e.target.checked)}
-                  className="toggle-input"
-                />
-                <span className="toggle-slider"></span>
-              </div>
-            </label>
-            <label className="debug-toggle-label">
-              debug
-              <div className="toggle-switch">
-                <input
-                  type="checkbox"
-                  checked={debugDrawingsEnabled}
-                  onChange={(e) => handleDebugToggle(e.target.checked)}
-                  className="toggle-input"
-                />
-                <span className="toggle-slider"></span>
-              </div>
-            </label>
-          </div>
-
-          {/* Bottom-left: navigation panel */}
-          <div className="hud-panel panel-bottom-left">
-            <div className="panel-heading-row">
-              <p className="panel-heading">navigation</p>
-              <button
-                className="collapse-button"
-                onClick={() => setIsNavigationCollapsed(!isNavigationCollapsed)}
-                title={isNavigationCollapsed ? 'Expand' : 'Collapse'}
-              >
-                {isNavigationCollapsed ? '▶' : '▼'}
-              </button>
-            </div>
-            {!isNavigationCollapsed && (
-              <>
-                <div className="speed-slider-row">
-                  <label htmlFor="speed-slider">speed</label>
-                  <input
-                    id="speed-slider"
-                    type="range"
-                    min={0}
-                    max={afterburnerStatus?.isActive && afterburnerStatus.boostedSpeed > 0 ? afterburnerStatus.boostedSpeed : maxSpeed}
-                    step={0.1}
-                    value={parseFloat(speedInput) || 0}
-                    onChange={(e) => setSpeedInput(e.target.value)}
-                    onPointerUp={handleSetSpeed}
-                    disabled={isSettingSpeed}
-                    className="speed-slider"
-                  />
-                  <span className="speed-value">{parseFloat(speedInput).toFixed(1)}</span>
-                </div>
-                <div className="control-row">
-                  <label htmlFor="angle-input">angle °</label>
-                  <div className="input-container">
-                    <input
-                      id="angle-input"
-                      type="number"
-                      value={angleInput}
-                      onChange={(e) => setAngleInput(e.target.value)}
-                      onKeyPress={handleAngleKeyPress}
-                      disabled={isSettingAngle}
-                      className={isSettingAngle ? 'loading' : ''}
-                      min="0"
-                      max="360"
-                      step="0.1"
-                    />
-                    {isSettingAngle && <div className="input-loading-indicator"></div>}
-                  </div>
-                  <button
-                    onClick={handleSetAngle}
-                    disabled={isSettingAngle}
-                    className="control-button btn-primary"
-                  >
-                    {isSettingAngle ? '...' : 'set'}
-                  </button>
-                </div>
-                <div className="control-row">
-                  <label htmlFor="zoom-input">zoom</label>
-                  <input
-                    id="zoom-input"
-                    type="range"
-                    min={MIN_ZOOM}
-                    max={MAX_ZOOM}
-                    step={0.05}
-                    value={zoom}
-                    onChange={(e) => setZoom(parseFloat(e.target.value))}
-                    className="speed-slider"
-                  />
-                  <span className="speed-value">{zoom.toFixed(2)}×</span>
-                </div>
-              </>
-            )}
-          </div>
-
-          {/* Bottom-right: Data age debug output */}
+          {/* Data age indicator — top overlay, outside control bar */}
           {debugDrawingsEnabled && (
-            <DataAgeIndicator lastUpdateTime={lastUpdateTime} className="panel-bottom-right" />
+            <div className="data-age-overlay">
+              <DataAgeIndicator lastUpdateTime={lastUpdateTime} className="inline" />
+            </div>
           )}
 
-          {/* Top-right: teleport panel */}
-          {teleportMaxCharges > 0 && (
-            <div className="hud-panel panel-top-right">
-              <div className="panel-heading-row">
-                <h4 className="panel-heading">teleport</h4>
+          {/* Announcement overlay — fades out after display */}
+          {announcement && (
+            <div key={announcement.key} className="announcement-overlay">
+              {announcement.text}
+            </div>
+          )}
+
+          {/* Bottom Control Bar (Icon Bar + Expandable Panel) */}
+          <div className="control-bar" ref={controlBarRef}>
+            <div className="icon-bar" ref={iconBarRef}>
+              {/* Navigation button */}
+              <button
+                className={`icon-button ${navOpen ? 'active' : ''}`}
+                onClick={() => setNavOpen(!navOpen)}
+                title="Navigation (angle, speed, zoom)"
+              >
+                ⚙️
+              </button>
+
+              {/* Teleport button */}
+              {teleportMaxCharges > 0 && (
                 <button
-                  className="collapse-button"
-                  onClick={() => setIsTeleportCollapsed(!isTeleportCollapsed)}
-                  title={isTeleportCollapsed ? 'Expand' : 'Collapse'}
+                  className={`icon-button ${teleportOpen ? 'active' : ''}`}
+                  onClick={() => setTeleportOpen(!teleportOpen)}
+                  title="Teleport"
                 >
-                  {isTeleportCollapsed ? '▶' : '▼'}
+                  🌀
+                  {Math.floor(teleportCharges) > 0 && <span className="badge">{Math.floor(teleportCharges)}</span>}
                 </button>
-              </div>
-              {!isTeleportCollapsed && (
-                <>
-                  <div className="teleport-header">
-                    <span className="teleport-charges-badge">
-                      {formatNumber(teleportCharges)} / {formatNumber(teleportMaxCharges)}
-                    </span>
-                    {teleportCharges < teleportMaxCharges && teleportRechargeTimeSec > 0 && (
-                      <span className="teleport-timer">
-                        next in: {formatTimeRemaining(
-                          (Math.ceil(teleportCharges) === Math.floor(teleportCharges) ? 1 : Math.ceil(teleportCharges) - teleportCharges) * teleportRechargeTimeSec / Math.max(1, timeMultiplier)
-                        )}
-                      </span>
-                    )}
-                    <label className="debug-toggle-label">
+              )}
+
+              {/* Afterburner button */}
+              {afterburnerStatus && afterburnerStatus.durationResearchLevel >= 1 && (
+                <button
+                  className={`icon-button ${afterburnerOpen ? 'active' : ''} ${afterburnerStatus.canActivate ? 'ready' : afterburnerStatus.isActive ? 'active-indicator' : ''}`}
+                  onClick={() => setAfterburnerOpen(!afterburnerOpen)}
+                  title="Afterburner"
+                >
+                  🔥
+                </button>
+              )}
+
+              <div className="spacer"></div>
+
+              {/* Attack toggle */}
+              <button
+                className={`icon-button toggle-icon ${attackClickMode ? 'active' : ''}`}
+                onClick={() => {
+                  const next = !attackClickMode;
+                  setAttackClickMode(next);
+                  announce(next ? 'Attack mode: tap a ship to attack' : 'Attack mode off');
+                }}
+                title="Attack mode"
+              >
+                ⚔️
+              </button>
+
+              {/* Debug toggle */}
+              <button
+                className={`icon-button toggle-icon ${debugDrawingsEnabled ? 'active' : ''}`}
+                onClick={() => {
+                  const next = !debugDrawingsEnabled;
+                  handleDebugToggle(next);
+                  announce(next ? 'Debug drawings enabled' : 'Debug drawings off');
+                }}
+                title="Debug mode"
+              >
+                🐛
+              </button>
+            </div>
+
+            {/* Multi-section control panel — sections side by side */}
+            {(navOpen || (teleportOpen && teleportMaxCharges > 0) || (afterburnerOpen && afterburnerStatus && afterburnerStatus.durationResearchLevel >= 1)) && (
+              <div className="control-panel">
+
+                {/* Navigation section */}
+                {navOpen && (
+                  <div className="panel-section">
+                    <span className="section-label">nav</span>
+                    <div className="control-row">
+                      <label htmlFor="speed-slider">speed</label>
+                      <input
+                        id="speed-slider"
+                        type="range"
+                        min={0}
+                        max={afterburnerStatus?.isActive && afterburnerStatus.boostedSpeed > 0 ? afterburnerStatus.boostedSpeed : maxSpeed}
+                        step={0.1}
+                        value={parseFloat(speedInput) || 0}
+                        onChange={(e) => setSpeedInput(e.target.value)}
+                        onPointerUp={handleSetSpeed}
+                        disabled={isSettingSpeed}
+                        className="speed-slider"
+                      />
+                      <span className="speed-value">{parseFloat(speedInput).toFixed(1)}</span>
+                    </div>
+                    <div className="control-row">
+                      <label htmlFor="angle-input">angle °</label>
+                      <input
+                        id="angle-input"
+                        type="number"
+                        value={angleInput}
+                        onChange={(e) => setAngleInput(e.target.value)}
+                        onKeyPress={handleAngleKeyPress}
+                        disabled={isSettingAngle}
+                        className={isSettingAngle ? 'loading' : ''}
+                        min="0"
+                        max="360"
+                        step="0.1"
+                      />
+                      <button onClick={handleSetAngle} disabled={isSettingAngle} className="control-button btn-primary">
+                        {isSettingAngle ? '...' : 'set'}
+                      </button>
+                    </div>
+                    <div className="control-row">
+                      <label htmlFor="zoom-input">zoom</label>
+                      <input
+                        id="zoom-input"
+                        type="range"
+                        min={MIN_ZOOM}
+                        max={MAX_ZOOM}
+                        step={0.05}
+                        value={zoom}
+                        onChange={(e) => setZoom(parseFloat(e.target.value))}
+                        className="speed-slider"
+                      />
+                      <span className="speed-value">{zoom.toFixed(2)}×</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Teleport section */}
+                {teleportOpen && teleportMaxCharges > 0 && (
+                  <div className="panel-section">
+                    <span className="section-label">teleport</span>
+                    <div className="status-row">
+                      <span className="charges-badge">{formatNumber(teleportCharges)} / {formatNumber(teleportMaxCharges)}</span>
+                      {teleportCharges < teleportMaxCharges && teleportRechargeTimeSec > 0 && (
+                        <span className="timer">next: {formatTimeRemaining((Math.ceil(teleportCharges) === Math.floor(teleportCharges) ? 1 : Math.ceil(teleportCharges) - teleportCharges) * teleportRechargeTimeSec / Math.max(1, timeMultiplier))}</span>
+                      )}
+                    </div>
+                    <div className="control-row">
+                      <label htmlFor="teleport-x">x</label>
+                      <input id="teleport-x" type="number" value={teleportX} onChange={(e) => setTeleportX(e.target.value)} min="0" max="5000" step="1" />
+                      <label htmlFor="teleport-y">y</label>
+                      <input id="teleport-y" type="number" value={teleportY} onChange={(e) => setTeleportY(e.target.value)} min="0" max="5000" step="1" />
+                    </div>
+                    <div className="control-row">
+                      <button onClick={handleTeleport} disabled={isTeleporting || Math.floor(teleportCharges) < 1} className="control-button btn-primary btn-full">
+                        {isTeleporting ? '...' : 'teleport'}
+                      </button>
+                    </div>
+                    <label className="toggle-label">
                       click mode
                       <div className="toggle-switch">
                         <input
@@ -670,56 +694,36 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
                       </div>
                     </label>
                   </div>
-                  <div className="control-row">
-                    <label htmlFor="teleport-x">x</label>
-                    <input id="teleport-x" type="number" value={teleportX} onChange={(e) => setTeleportX(e.target.value)} min="0" max="5000" step="1" />
-                    <label htmlFor="teleport-y">y</label>
-                    <input id="teleport-y" type="number" value={teleportY} onChange={(e) => setTeleportY(e.target.value)} min="0" max="5000" step="1" />
-                    <button onClick={handleTeleport} disabled={isTeleporting || Math.floor(teleportCharges) < 1} className="control-button btn-primary">
-                      {isTeleporting ? '...' : 'teleport'}
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
-          )}
+                )}
 
-          {/* Bottom-left: afterburner panel — invisible when not researched */}
-          {afterburnerStatus && afterburnerStatus.durationResearchLevel >= 1 && (
-            <div className="hud-panel panel-afterburner">
-              <div className="panel-heading-row">
-                <h4 className="panel-heading">afterburner</h4>
-                <button
-                  className="collapse-button"
-                  onClick={() => setIsAfterburnerCollapsed(!isAfterburnerCollapsed)}
-                  title={isAfterburnerCollapsed ? 'Expand' : 'Collapse'}
-                >
-                  {isAfterburnerCollapsed ? '▶' : '▼'}
-                </button>
+                {/* Afterburner section */}
+                {afterburnerOpen && afterburnerStatus && afterburnerStatus.durationResearchLevel >= 1 && (
+                  <div className="panel-section">
+                    <span className="section-label">afterburner</span>
+                    {afterburnerStatus.canActivate ? (
+                      <button
+                        onClick={handleActivateAfterburner}
+                        disabled={isActivatingAfterburner}
+                        className="control-button btn-primary btn-full afterburner-available"
+                      >
+                        {isActivatingAfterburner ? '...' : '🔥 Activate'}
+                      </button>
+                    ) : afterburnerStatus.isActive ? (
+                      <div className="status-row">
+                        <span className="status-active">⚡ Active ({formatTimeRemaining(afterburnerStatus.boostRemainingMs / 1000)})</span>
+                      </div>
+                    ) : (
+                      <div className="status-row">
+                        <span className="status-cooldown">Cooldown ({formatTimeRemaining(afterburnerStatus.cooldownRemainingMs / 1000)})</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
               </div>
-              {!isAfterburnerCollapsed && (
-                <div className="afterburner-content">
-                  {afterburnerStatus.canActivate ? (
-                    <button
-                      onClick={handleActivateAfterburner}
-                      disabled={isActivatingAfterburner}
-                      className="afterburner-button afterburner-available"
-                    >
-                      {isActivatingAfterburner ? '...' : '🔥 Afterburner'}
-                    </button>
-                  ) : afterburnerStatus.isActive ? (
-                    <button className="afterburner-button afterburner-active" disabled>
-                      ⚡ Active ({formatTimeRemaining(afterburnerStatus.boostRemainingMs / 1000)})
-                    </button>
-                  ) : (
-                    <button className="afterburner-button afterburner-cooldown" disabled>
-                      Cooldown ({formatTimeRemaining(afterburnerStatus.cooldownRemainingMs / 1000)})
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
+            )}
+
+          </div>
         </div>
       </div>
     </AuthenticatedLayout>

@@ -27,74 +27,147 @@
   display: block;
 }
 
-/* ── Shared HUD panel base ── */
-.hud-panel {
+/* ── Bottom Control Bar (Icon Bar + Expandable Panel) ── */
+.control-bar {
   position: absolute;
-  background: rgba(5, 5, 20, 0.8);
-  border: 1px solid rgba(76, 175, 80, 0.25);
-  border-radius: 8px;
-  backdrop-filter: blur(10px);
-  padding: 6px 8px;
+  bottom: 0;
+  left: 0;
+  right: 0;
   z-index: 10;
-  color: #e0e0e0;
-  font-size: 0.82rem;
-}
-
-/* Top-left: combat + debug toggles */
-.panel-top-left {
-  top: 8px;
-  left: 8px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  min-width: 120px;
+  pointer-events: none; /* transparent — canvas clicks pass through */
 }
 
-/* Top-right: abilities panel */
-.panel-top-right {
-  top: 8px;
-  right: 8px;
+/* Icon bar: horizontal row of icon buttons */
+.icon-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  height: 64px;
+  flex-shrink: 0;
+  overflow-x: auto;
 }
 
-.panel-top-right .data-age-indicator {
-  margin: 0;
+.spacer {
+  flex: 1;
 }
 
-/* Bottom-left: navigation controls */
-.panel-bottom-left {
-  bottom: 12px;
-  left: 12px;
-  min-width: 220px;
+/* Icon buttons */
+.icon-button {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  border: 1px solid rgb(76, 175, 80);
+  background: rgb(20, 40, 20);
+  color: #e0e0e0;
+  font-size: 1.4rem;
+  border-radius: 6px;
+  pointer-events: auto; /* re-enable clicks on buttons */
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+  padding: 0;
 }
 
-/* Bottom-right: data age / debug output */
-.panel-bottom-right {
-  bottom: 12px;
-  right: 12px;
-  min-width: 200px;
+.icon-button:hover:not(:disabled) {
+  background: rgb(30, 55, 30);
+  border-color: rgb(76, 175, 80);
 }
 
-/* ── Panel section heading ── */
-.panel-heading {
-  color: var(--primary-green, #4caf50);
-  font-size: 0.7rem;
-  letter-spacing: 1.5px;
-  text-transform: uppercase;
-  margin: 0 0 4px 0;
+.icon-button.active {
+  background: rgb(50, 90, 50);
+  border-color: var(--primary-green, #4caf50);
+  box-shadow: 0 0 8px rgba(76, 175, 80, 0.6);
+}
+
+.icon-button.ready {
+  border-color: rgb(255, 140, 0);
+}
+
+.icon-button.active-indicator {
+  animation: icon-pulse 1s ease-in-out infinite;
+}
+
+.icon-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.icon-button.toggle-icon.active {
+  background: rgb(30, 50, 100);
+  border-color: rgb(100, 150, 255);
+  box-shadow: 0 0 8px rgba(100, 150, 255, 0.6);
+}
+
+.icon-button .badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background: rgb(76, 175, 80);
+  color: #000;
+  font-size: 0.65rem;
+  font-weight: bold;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--primary-green, #4caf50);
+}
+
+@keyframes icon-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+/* Expandable control panel: sections rendered side by side */
+.control-panel {
+  background: rgba(10, 10, 25, 0.95);
+  border-top: 1px solid rgba(76, 175, 80, 0.25);
+  backdrop-filter: blur(10px);
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  pointer-events: auto; /* opaque panel re-enables pointer events */
+}
+
+/* Individual panel section (nav / teleport / afterburner) */
+.panel-section {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border-right: 1px solid rgba(76, 175, 80, 0.1);
+}
+
+.panel-section:last-child {
+  border-right: none;
+}
+
+.section-label {
+  font-size: 0.65rem;
   font-weight: 600;
+  color: rgba(76, 175, 80, 0.7);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 2px;
 }
 
-/* ── Control rows inside panels ── */
+/* Control row: flexible row for sliders, inputs, buttons */
 .control-row {
   display: flex;
   align-items: center;
-  gap: 4px;
-  margin-bottom: 4px;
+  gap: 6px;
   flex-wrap: wrap;
-}
-
-.control-row:last-child {
-  margin-bottom: 0;
 }
 
 .control-row label {
@@ -102,6 +175,7 @@
   font-size: 0.72rem;
   margin: 0;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .control-row input[type="number"] {
@@ -109,9 +183,9 @@
   color: #e0e0e0;
   border: 1px solid rgba(76, 175, 80, 0.3);
   border-radius: 4px;
-  padding: 3px 5px;
-  font-size: 0.82rem;
-  width: 65px;
+  padding: 4px 6px;
+  font-size: 0.75rem;
+  width: 60px;
   text-align: center;
 }
 
@@ -126,32 +200,10 @@
   cursor: not-allowed;
 }
 
-.control-row input[type="number"].loading {
-  border-color: var(--primary-green);
-  animation: input-glow 2s ease-in-out infinite alternate;
-}
-
-@keyframes input-glow {
-  from { box-shadow: 0 0 4px rgba(76, 175, 80, 0.2); }
-  to   { box-shadow: 0 0 8px rgba(76, 175, 80, 0.4); }
-}
-
-/* ── Speed slider ── */
-.speed-slider-row {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  margin-bottom: 4px;
-}
-
-.speed-slider-row label {
-  color: #888;
-  font-size: 0.72rem;
-  white-space: nowrap;
-}
-
+/* Speed slider */
 .speed-slider {
   flex: 1;
+  min-width: 80px;
   -webkit-appearance: none;
   appearance: none;
   height: 4px;
@@ -159,14 +211,13 @@
   background: rgba(76, 175, 80, 0.3);
   outline: none;
   cursor: pointer;
-  min-width: 80px;
 }
 
 .speed-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
   background: var(--primary-green, #4caf50);
   cursor: pointer;
@@ -174,8 +225,8 @@
 }
 
 .speed-slider::-moz-range-thumb {
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
   background: var(--primary-green, #4caf50);
   cursor: pointer;
@@ -190,57 +241,106 @@
 
 .speed-value {
   color: #ccc;
-  font-size: 0.75rem;
-  min-width: 32px;
+  font-size: 0.72rem;
+  min-width: 35px;
   text-align: right;
+  flex-shrink: 0;
 }
 
-/* ── Loading spinner (inside inputs) ── */
-.input-container {
-  position: relative;
-  display: inline-block;
+/* Status row for badges and info */
+.status-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 0.75rem;
+  color: #aaa;
 }
 
-.input-loading-indicator {
-  position: absolute;
-  right: 6px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 10px;
-  height: 10px;
-  border: 2px solid var(--primary-green);
-  border-top-color: transparent;
-  border-radius: 50%;
-  animation: input-spinner 1s linear infinite;
-  pointer-events: none;
-}
-
-@keyframes input-spinner {
-  to { transform: translateY(-50%) rotate(360deg); }
-}
-
-/* ── Buttons inside panels ── */
-.control-button {
+.charges-badge {
+  background-color: rgba(76, 175, 80, 0.2);
+  color: #fff;
   padding: 3px 8px;
+  border-radius: 10px;
+  border: 1px solid rgba(76, 175, 80, 0.3);
+  font-weight: 600;
+}
+
+.timer {
+  color: #888;
+  font-size: 0.7rem;
+}
+
+.status-active {
+  color: #ffdd00;
+  font-weight: 600;
+}
+
+.status-cooldown {
+  color: #888;
+}
+
+/* Buttons */
+.control-button {
+  padding: 5px 10px;
   font-size: 0.75rem;
   border-radius: 4px;
+  background-color: rgba(76, 175, 80, 0.2);
+  color: #e0e0e0;
+  border: 1px solid rgba(76, 175, 80, 0.4);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
 }
 
-/* ── Toggle switch ── */
-.debug-toggle-label {
+.control-button:hover:not(:disabled) {
+  background-color: rgba(76, 175, 80, 0.3);
+}
+
+.control-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.control-button.btn-primary {
+  background-color: rgba(76, 175, 80, 0.3);
+  border-color: rgba(76, 175, 80, 0.5);
+}
+
+.control-button.btn-primary:hover:not(:disabled) {
+  background-color: rgba(76, 175, 80, 0.4);
+}
+
+.control-button.btn-full {
+  width: 100%;
+}
+
+.control-button.afterburner-available {
+  background: rgba(255, 140, 0, 0.3);
+  color: #ffaa00;
+  border-color: rgba(255, 140, 0, 0.5);
+}
+
+.control-button.afterburner-available:hover:not(:disabled) {
+  background: rgba(255, 140, 0, 0.4);
+}
+
+/* Toggle switch */
+.toggle-label {
   display: flex;
   align-items: center;
   gap: 8px;
   color: #aaa;
-  font-size: 0.78rem;
+  font-size: 0.75rem;
   cursor: pointer;
   user-select: none;
+  flex-wrap: wrap;
 }
 
 .toggle-switch {
   position: relative;
-  width: 34px;
-  height: 18px;
+  width: 30px;
+  height: 16px;
   flex-shrink: 0;
 }
 
@@ -255,7 +355,7 @@
   cursor: pointer;
   top: 0; left: 0; right: 0; bottom: 0;
   background-color: #333;
-  border-radius: 18px;
+  border-radius: 16px;
   transition: background-color 0.2s ease;
   border: 1px solid #555;
 }
@@ -263,8 +363,8 @@
 .toggle-slider:before {
   position: absolute;
   content: "";
-  height: 12px;
-  width: 12px;
+  height: 10px;
+  width: 10px;
   left: 2px;
   bottom: 2px;
   background-color: #fff;
@@ -278,137 +378,96 @@
 }
 
 .toggle-input:checked + .toggle-slider:before {
-  transform: translateX(16px);
+  transform: translateX(14px);
 }
 
-/* ── Teleport section ── */
-.teleport-header {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  flex-wrap: wrap;
-  margin-bottom: 4px;
-}
-
-.teleport-charges-badge {
-  background-color: rgba(76, 175, 80, 0.2);
-  color: #fff;
-  padding: 2px 8px;
-  border-radius: 10px;
-  font-size: 0.75rem;
-  border: 1px solid rgba(76, 175, 80, 0.3);
-}
-
-.teleport-timer {
-  color: #888;
-  font-size: 0.72rem;
-  background-color: rgba(255, 255, 255, 0.05);
-  padding: 2px 6px;
-  border-radius: 10px;
-}
-
-.btn-secondary {
-  background-color: #444;
-  color: #ccc;
-  border: 1px solid #555;
-  cursor: pointer;
-  border-radius: 4px;
-  padding: 4px 8px;
-  font-size: 0.75rem;
-}
-
-.btn-secondary:hover:not(:disabled) {
-  background-color: #555;
-}
-
-/* ── Collapsible panel heading ── */
-.panel-heading-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 6px;
-  margin-bottom: 4px;
-}
-
-.collapse-button {
-  background: none;
-  border: none;
-  color: var(--primary-green, #4caf50);
-  font-size: 0.7rem;
-  cursor: pointer;
-  padding: 0;
-  min-width: auto;
-  line-height: 1;
-  transition: transform 0.2s ease;
-}
-
-.collapse-button:hover {
-  opacity: 0.7;
-}
-
-/* Mobile: Adjust canvas and HUD panels to avoid navbar */
-@media (max-width: 1280px) {
-  /* Add bottom margin to canvas container to account for fixed navbar */
-  .canvas-container {
-    margin-bottom: 70px;
-  }
-}
-
-/* ── Afterburner panel (bottom-left, above navigation) ── */
-.panel-afterburner {
-  bottom: 12px;
-  left: 250px;
-  min-width: 160px;
-}
-
-.afterburner-content {
-  margin-top: 2px;
-}
-
-.afterburner-button {
-  width: 100%;
-  padding: 5px 8px;
-  border: 1px solid rgba(76, 175, 80, 0.3);
-  border-radius: 4px;
-  font-size: 0.78rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  font-weight: 600;
-  text-align: center;
-}
-
-.afterburner-available {
-  background: rgba(255, 140, 0, 0.3);
-  color: #ffaa00;
-  border-color: rgba(255, 140, 0, 0.5);
-}
-
-.afterburner-available:hover:not(:disabled) {
-  background: rgba(255, 140, 0, 0.5);
-}
-
-.afterburner-available:disabled {
-  opacity: 0.7;
-  cursor: wait;
-}
-
-.afterburner-active {
-  background: rgba(255, 200, 0, 0.3);
-  color: #ffdd00;
-  border-color: rgba(255, 200, 0, 0.5);
-  cursor: default;
-  animation: afterburner-pulse 1s ease-in-out infinite;
-}
-
-@keyframes afterburner-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.6; }
-}
-
-.afterburner-cooldown {
-  background: rgba(100, 100, 100, 0.3);
-  color: #888;
-  border-color: rgba(100, 100, 100, 0.3);
+.toggle-input:disabled + .toggle-slider {
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
+/* Data age indicator \u2014 absolute overlay at top of canvas, does not affect layout */
+.data-age-overlay {
+  position: absolute;
+  top: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 2px 10px;
+  font-size: 0.7rem;
+  color: #666;
+  background: rgba(5, 5, 20, 0.5);
+  border: 1px solid rgba(76, 175, 80, 0.1);
+  border-radius: 4px;
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: 10;
+}
+
+/* Announcement overlay — centered at 1/3 screen height, fades out */
+@keyframes announcement-fade {
+  0%   { opacity: 1; transform: translateX(-50%) translateY(0); }
+  70%  { opacity: 1; transform: translateX(-50%) translateY(0); }
+  100% { opacity: 0; transform: translateX(-50%) translateY(-8px); }
+}
+
+.announcement-overlay {
+  position: absolute;
+  top: 25%;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--primary-green, #4caf50);
+  text-shadow: 0 0 20px rgba(76, 175, 80, 0.8), 0 0 40px rgba(76, 175, 80, 0.5), 0 0 60px rgba(255, 255, 255, 0.2);
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: 20;
+  animation: announcement-fade 2.5s ease forwards;
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 768px) {
+  .icon-button {
+    width: 42px;
+    height: 42px;
+    font-size: 1.1rem;
+  }
+
+  .icon-bar {
+    gap: 4px;
+    padding: 6px 8px;
+    height: 56px;
+  }
+
+  .control-panel {
+    max-height: 150px;
+    padding: 6px 8px;
+    gap: 4px;
+  }
+
+  .control-row {
+    gap: 4px;
+  }
+
+  .control-row input[type="number"] {
+    width: 50px;
+    font-size: 0.7rem;
+    padding: 3px 4px;
+  }
+
+  .control-button {
+    padding: 4px 8px;
+    font-size: 0.7rem;
+  }
+
+  .toggle-label {
+    font-size: 0.7rem;
+  }
+}
+
+/* Prevent bottom navbar from covering control bar */
+@media (max-width: 1280px) {
+  .game-page {
+    margin-bottom: 70px;
+  }
+}

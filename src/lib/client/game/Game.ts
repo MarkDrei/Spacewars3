@@ -229,16 +229,22 @@ export class Game {
       }
 
       // Calculate interception angle using max speed for optimal interception
+      // When afterburner is active, use the boosted speed for better intercept trajectory
+      const effectiveMaxSpeed =
+        shipStats.afterburner?.isActive && shipStats.afterburner.boostedSpeed > 0
+          ? shipStats.afterburner.boostedSpeed
+          : shipStats.maxSpeed;
+
       const ship = this.world.getShip();
-      const interceptResult = InterceptCalculator.calculateInterceptAngle(ship, targetObject, World.WIDTH, shipStats.maxSpeed);
+      const interceptResult = InterceptCalculator.calculateInterceptAngle(ship, targetObject, World.WIDTH, effectiveMaxSpeed);
       
       if (!isNaN(interceptResult.angle)) {
         // Create interception lines for visualization using global coordinates
         this.createInterceptionLines(interceptResult.globalCoordinates, interceptResult.timeToIntercept);
         
-        // Then update via API with max speed
-        await interceptTarget(interceptResult.angle, shipStats.maxSpeed);
-        console.log('Ship interception updated via API with angle: ', interceptResult.angle, " and max speed: ", shipStats.maxSpeed);
+        // Then update via API with effective max speed
+        await interceptTarget(interceptResult.angle, effectiveMaxSpeed);
+        console.log('Ship interception updated via API with angle: ', interceptResult.angle, " and max speed: ", effectiveMaxSpeed);
 
         // Trigger world data refresh to get authoritative server state
         if (this.refetchWorldData) {
@@ -423,6 +429,14 @@ export class Game {
    */
   public setZoom(zoom: number): void {
     this.renderer.setZoom(zoom);
+  }
+
+  /**
+   * Inform the renderer how many CSS pixels at the bottom are covered by UI.
+   * The radar renderer will keep coordinates above this area.
+   */
+  public setSafeAreaBottom(cssPixels: number): void {
+    this.renderer.setSafeAreaBottom(cssPixels);
   }
 
   /**

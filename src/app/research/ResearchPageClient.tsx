@@ -6,6 +6,7 @@ import AuthenticatedLayout from '@/components/Layout/AuthenticatedLayout';
 import { researchService, TechTree, ResearchDef, ResearchType } from '@/lib/client/services/researchService';
 import { userStatsService } from '@/lib/client/services/userStatsService';
 import { globalEvents, EVENTS } from '@/lib/client/services/eventService';
+import { getTimeMultiplier } from '@/lib/client/timeMultiplier';
 import { ServerAuthState } from '@/lib/server/serverSession';
 import { AllResearches, getResearchUpgradeCost, getResearchEffect } from '@/lib/server/techs/techtree';
 import { formatNumber } from '@/shared/numberFormat';
@@ -396,12 +397,14 @@ const ResearchPageClient: React.FC<ResearchPageClientProps> = () => {
 
     intervalRef.current = setInterval(() => {
       setRemaining(prev => {
-        if (prev === null || prev <= 1) {
+        if (prev === null) return null;
+        const next = prev - getTimeMultiplier();
+        if (next <= 0) {
           // Research completed, refresh data
           fetchData();
           return null;
         }
-        return prev - 1;
+        return next;
       });
     }, 1000);
 

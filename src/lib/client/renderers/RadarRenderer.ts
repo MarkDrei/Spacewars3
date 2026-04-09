@@ -1,6 +1,13 @@
 import { Ship } from '../game/Ship';
 
 export class RadarRenderer {
+    /** Height in canvas (world-scaled) units to keep clear at the bottom (for UI overlays). */
+    private safeAreaBottom: number = 0;
+
+    setSafeAreaBottom(height: number): void {
+        this.safeAreaBottom = height;
+    }
+
     drawRadar(ctx: CanvasRenderingContext2D, centerX: number, centerY: number, ship: Ship): void {
         const maxRadius = Math.min(centerX, centerY);
 
@@ -24,10 +31,11 @@ export class RadarRenderer {
         
         if (useScreenEdges) {
             // Draw lines at screen edges
-            // Horizontal line at bottom of screen
+            // Horizontal line at bottom of screen (offset up by safeAreaBottom)
+            const bottomY = centerY * 2 - this.safeAreaBottom;
             ctx.beginPath();
-            ctx.moveTo(0, centerY * 2);
-            ctx.lineTo(centerX * 2, centerY * 2);
+            ctx.moveTo(0, bottomY);
+            ctx.lineTo(centerX * 2, bottomY);
             ctx.stroke();
             
             // Vertical line at left of screen
@@ -60,12 +68,13 @@ export class RadarRenderer {
         ctx.fillStyle = '#ff0000';
 
         if (useScreenEdges) {
+            const bottomY = centerY * 2 - this.safeAreaBottom;
             // Draw X coordinates along bottom edge (above the line)
             ctx.textAlign = 'center';
             for (let x = Math.floor((shipX - coordinateDistance) / 100) * 100; x <= Math.ceil((shipX + coordinateDistance) / 100) * 100; x += 100) {
                 const screenX = centerX + (x - shipX);
                 if (screenX >= 0 && screenX <= centerX * 2) { // Keep on screen
-                    ctx.fillText(x.toString(), screenX, centerY * 2 - 5);
+                    ctx.fillText(x.toString(), screenX, bottomY - 5);
                 }
             }
 
@@ -73,7 +82,7 @@ export class RadarRenderer {
             ctx.textAlign = 'left';
             for (let y = Math.floor((shipY - coordinateDistance) / 100) * 100; y <= Math.ceil((shipY + coordinateDistance) / 100) * 100; y += 100) {
                 const screenY = centerY + (y - shipY);
-                if (screenY >= 15 && screenY <= centerY * 2) { // Keep on screen
+                if (screenY >= 15 && screenY <= bottomY) { // Keep on screen, respect safe area
                     ctx.fillText(y.toString(), 5, screenY);
                 }
             }

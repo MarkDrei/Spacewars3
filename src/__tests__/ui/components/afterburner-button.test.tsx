@@ -145,11 +145,19 @@ describe('GamePageClient afterburner controls', () => {
     render(<GamePageClient auth={defaultAuth} />);
 
     await waitFor(() => {
-      expect(screen.getByText('🔥 Afterburner')).toBeDefined();
+      expect(screen.getByTitle('Afterburner')).toBeDefined();
     });
 
-    const button = screen.getByText('🔥 Afterburner');
-    expect(button).toHaveProperty('disabled', false);
+    const iconButton = screen.getByTitle('Afterburner');
+    expect(iconButton).toHaveProperty('disabled', false);
+    
+    // Click to expand the panel
+    fireEvent.click(iconButton);
+
+    // Now the activate button should be visible
+    await waitFor(() => {
+      expect(screen.getByText(/🔥 Activate/)).toBeDefined();
+    });
   });
 
   it('afterburnerPanel_isActive_showsActiveWithTimer', async () => {
@@ -166,11 +174,17 @@ describe('GamePageClient afterburner controls', () => {
     render(<GamePageClient auth={defaultAuth} />);
 
     await waitFor(() => {
-      expect(screen.getByText(/Active \(15s\)/)).toBeDefined();
+      const afterburnerIcon = screen.getByTitle('Afterburner');
+      expect(afterburnerIcon).toBeDefined();
     });
 
-    const button = screen.getByText(/Active \(15s\)/);
-    expect(button).toHaveProperty('disabled', true);
+    // Click to expand the afterburner panel
+    fireEvent.click(screen.getByTitle('Afterburner'));
+
+    // Now the active status should be visible
+    await waitFor(() => {
+      expect(screen.getByText(/Active \(15s\)/)).toBeDefined();
+    });
   });
 
   it('afterburnerPanel_onCooldown_showsCooldownWithTimer', async () => {
@@ -187,11 +201,17 @@ describe('GamePageClient afterburner controls', () => {
     render(<GamePageClient auth={defaultAuth} />);
 
     await waitFor(() => {
-      expect(screen.getByText(/Cooldown \(1h 0m\)/)).toBeDefined();
+      const afterburnerIcon = screen.getByTitle('Afterburner');
+      expect(afterburnerIcon).toBeDefined();
     });
 
-    const button = screen.getByText(/Cooldown \(1h 0m\)/);
-    expect(button).toHaveProperty('disabled', true);
+    // Click to expand the afterburner panel
+    fireEvent.click(screen.getByTitle('Afterburner'));
+
+    // Now the cooldown status should be visible
+    await waitFor(() => {
+      expect(screen.getByText(/Cooldown \(1h 0m\)/)).toBeDefined();
+    });
   });
 
   it('afterburnerPanel_noAfterburnerStatus_panelNotRendered', async () => {
@@ -208,7 +228,7 @@ describe('GamePageClient afterburner controls', () => {
     expect(screen.queryByText(/Afterburner \(Not Researched\)/)).toBeNull();
   });
 
-  it('afterburnerPanel_hasHeading_showsAfterburnerHeading', async () => {
+  it('afterburnerPanel_hasIconButton_showsAfterburnerIcon', async () => {
     const afterburner: AfterburnerStatus = {
       isActive: false,
       boostRemainingMs: 0,
@@ -222,11 +242,13 @@ describe('GamePageClient afterburner controls', () => {
     render(<GamePageClient auth={defaultAuth} />);
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: /afterburner/i })).toBeDefined();
+      const iconButton = screen.getByTitle('Afterburner');
+      expect(iconButton).toBeDefined();
+      expect(iconButton.textContent).toBe('🔥');
     });
   });
 
-  it('afterburnerPanel_collapsed_hidesAfterburnerButton', async () => {
+  it('afterburnerPanel_clickIcon_togglesVisibility', async () => {
     const afterburner: AfterburnerStatus = {
       isActive: false,
       boostRemainingMs: 0,
@@ -240,21 +262,29 @@ describe('GamePageClient afterburner controls', () => {
     render(<GamePageClient auth={defaultAuth} />);
 
     await waitFor(() => {
-      expect(screen.getByText('🔥 Afterburner')).toBeDefined();
+      expect(screen.getByTitle('Afterburner')).toBeDefined();
     });
 
-    // Find the collapse button in the afterburner panel
-    const heading = screen.getByRole('heading', { name: /afterburner/i });
-    const panelHeadingRow = heading.parentElement!;
-    const collapseButton = panelHeadingRow.querySelector('.collapse-button') as HTMLElement;
-    expect(collapseButton).toBeTruthy();
+    const iconButton = screen.getByTitle('Afterburner');
+    
+    // Initially, the activate button should not be visible
+    expect(screen.queryByText(/🔥 Activate/)).toBeNull();
 
-    fireEvent.click(collapseButton);
+    // Click to expand the panel
+    fireEvent.click(iconButton);
 
-    // Button text should no longer be visible
-    expect(screen.queryByText('🔥 Afterburner')).toBeNull();
-    // But heading should still be visible
-    expect(screen.getByRole('heading', { name: /afterburner/i })).toBeDefined();
+    // Now the activate button should be visible
+    await waitFor(() => {
+      expect(screen.getByText(/🔥 Activate/)).toBeDefined();
+    });
+
+    // Click again to collapse the panel
+    fireEvent.click(iconButton);
+
+    // The activate button should no longer be visible
+    await waitFor(() => {
+      expect(screen.queryByText(/🔥 Activate/)).toBeNull();
+    });
   });
 
   it('afterburnerButton_activateClick_callsService', async () => {
@@ -291,11 +321,19 @@ describe('GamePageClient afterburner controls', () => {
     render(<GamePageClient auth={defaultAuth} />);
 
     await waitFor(() => {
-      expect(screen.getByText('🔥 Afterburner')).toBeDefined();
+      expect(screen.getByTitle('Afterburner')).toBeDefined();
     });
 
-    const button = screen.getByText('🔥 Afterburner');
-    fireEvent.click(button);
+    // Click icon to expand the afterburner panel
+    fireEvent.click(screen.getByTitle('Afterburner'));
+
+    // Now look for the activate button
+    await waitFor(() => {
+      expect(screen.getByText(/🔥 Activate/)).toBeDefined();
+    });
+
+    const activateButton = screen.getByText(/🔥 Activate/);
+    fireEvent.click(activateButton);
 
     await waitFor(() => {
       expect(activateAfterburner).toHaveBeenCalledTimes(1);
@@ -316,6 +354,15 @@ describe('GamePageClient afterburner controls', () => {
     render(<GamePageClient auth={defaultAuth} />);
 
     await waitFor(() => {
+      const afterburnerIcon = screen.getByTitle('Afterburner');
+      expect(afterburnerIcon).toBeDefined();
+    });
+
+    // Click to expand the afterburner panel
+    fireEvent.click(screen.getByTitle('Afterburner'));
+
+    // Now the cooldown status should be visible
+    await waitFor(() => {
       expect(screen.getByText(/Cooldown \(2m 30s\)/)).toBeDefined();
     });
   });
@@ -334,8 +381,11 @@ describe('GamePageClient afterburner controls', () => {
     render(<GamePageClient auth={defaultAuth} />);
 
     await waitFor(() => {
-      expect(screen.getByText(/Active/)).toBeDefined();
+      expect(getShipStats).toHaveBeenCalled();
     });
+
+    // Click navigation icon to expand and access the speed slider
+    fireEvent.click(screen.getByTitle('Navigation (angle, speed, zoom)'));
 
     // The speed slider should use boostedSpeed (50) as max, not normal maxSpeed (25)
     const speedSlider = screen.getByRole('slider', { name: /speed/i });
@@ -356,8 +406,11 @@ describe('GamePageClient afterburner controls', () => {
     render(<GamePageClient auth={defaultAuth} />);
 
     await waitFor(() => {
-      expect(screen.getByText('🔥 Afterburner')).toBeDefined();
+      expect(getShipStats).toHaveBeenCalled();
     });
+
+    // Click navigation icon to expand and access the speed slider
+    fireEvent.click(screen.getByTitle('Navigation (angle, speed, zoom)'));
 
     // The speed slider should use normal maxSpeed (25) when afterburner is not active
     const speedSlider = screen.getByRole('slider', { name: /speed/i });

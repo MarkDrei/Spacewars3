@@ -213,8 +213,6 @@ Five cache managers handle different data domains. Four are persistent singleton
 - **Initialization:** Lazy per user; rebuilt on first `getBonuses()` call after invalidation
 - **Key Features:** Sub-microsecond reads; invalidated on level-up, research completion, and bridge changes; lost on server restart (rebuilt lazily); depends on UserCache + InventoryService for recalculation
 
-
-
 **UserCache** (`src/lib/server/user/userCache.ts`)
 
 - **Responsibility:** User data and username-to-ID mappings
@@ -669,6 +667,74 @@ graph TB
 
 ---
 
+### 8.5 Game Page Layout & Canvas Safe Area
+
+**Goal:** Full-screen canvas gameplay with a minimal, mobile-friendly control bar that never covers important canvas content.
+
+#### Layout Structure
+
+```
+┌──────────────────────────────────┐  ← React AuthenticatedLayout
+│  Top Navbar (Navigation links)   │  ← hidden on mobile (bottom bar instead)
+├──────────────────────────────────┤
+│                                  │
+│   canvas-container (flex: 1)     │  ← fills all remaining height
+│   #gameCanvas (absolute inset)   │  ← drawn at CSS w×h * devicePixelRatio
+│                                  │
+│  ┌── control-bar (absolute) ─┐   │
+│  │  icon-bar  (48px fixed)   │   │  ← always visible
+│  │  control-panel (0–200px)  │   │  ← expands when icon clicked
+│  └───────────────────────────┘   │
+└──────────────────────────────────┘
+  [Mobile bottom navbar ~70px]      ← outside game-page, added by browser/nav
+```
+
+**Key rules:**
+
+- `.game-page` uses `flex: column`, canvas container takes `flex: 1` (grows to fill).
+- `.control-bar` is `position: absolute; bottom: 0` inside the canvas container — it floats over the canvas, so the canvas _does not resize_ when the panel expands or collapses.
+- On mobile (≤1280px) the global navigation renders as a fixed bottom bar (~70px). The game page adds `margin-bottom: 70px` to stay clear of it.
+
+#### Canvas Resize Strategy
+
+The canvas buffer (`canvas.width` / `canvas.height`) is kept in sync with CSS rendered size via a `ResizeObserver` on the canvas container, multiplied by `devicePixelRatio` for HiDPI accuracy. Resizing only triggers when the container's physical size changes — not when the control panel opens/closes (since the canvas container size is unchanged).
+
+#### Safe Area for Canvas Drawings
+
+Certain drawings (crosshairs, coordinate labels) are rendered near the bottom of the canvas by `RadarRenderer`. They would be hidden under the control bar.
+
+**Solution — dynamic safe-area offset:**
+
+1. A second `ResizeObserver` watches `.control-bar`.
+2. On every size change (panel expand/collapse) **and** on `window resize` (mobile navbar appearance), `GamePageClient` computes:
+   ```
+   safeAreaBottom = controlBar.height + max(0, window.innerHeight − controlBar.bottom)
+   ```
+   The second term captures space below the control bar (i.e. the mobile navbar) that is outside the game-page element.
+3. This value (in CSS pixels) is passed via `Game.setSafeAreaBottom()` → `GameRenderer.setSafeAreaBottom()`, which converts it to world-scale units:
+   ```
+   worldUnits = cssPixels / (devicePixelRatio × worldScale)
+   ```
+4. `RadarRenderer` stores `safeAreaBottom` in world units and subtracts it from the bottom-edge Y coordinate when drawing crosshair lines and coordinate labels.
+
+**Result:** Canvas is never resized for UI reasons; all rendering adapts in-place to the current control bar state and platform.
+
+#### Renderer Stack
+
+`GameRenderer` orchestrates all sub-renderers in order:
+
+| Renderer               | Draws                         | Safe-area aware |
+| ---------------------- | ----------------------------- | --------------- |
+| `BackgroundRenderer`   | Star field                    | No              |
+| `CollectiblesRenderer` | Asteroids, wrecks, pods       | No              |
+| `ShipRenderer`         | Player & NPC ships            | No              |
+| `StarbaseRenderer`     | Starbases                     | No              |
+| `RadarRenderer`        | Crosshairs, coordinate labels | **Yes**         |
+
+Only `RadarRenderer` needs the safe-area offset because it is the only renderer that intentionally draws at the canvas edges.
+
+---
+
 ## 9. Architecture Decisions
 
 ### 9.1 ADR-001: Separate Message Cache
@@ -746,7 +812,6 @@ graph TB
 - ⚠️ Stats without a `CommanderStatKey` (iron capacity, iron rate, defense regen) receive only level × research multiplier; no commander bonus
 
 ---
-
 
 ### 9.4 ADR-004: Transaction-Based Test Isolation
 

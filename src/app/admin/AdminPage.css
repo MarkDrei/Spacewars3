@@ -95,6 +95,39 @@
   padding-bottom: 0.5rem;
 }
 
+.section-toggle {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--primary-green);
+  color: var(--primary-green);
+  font-size: 1.5rem;
+  font-weight: bold;
+  padding: 0.5rem 0;
+  margin-bottom: 1rem;
+  cursor: pointer;
+  text-align: left;
+}
+
+.section-toggle:hover {
+  color: var(--primary-green-hover);
+  border-bottom-color: var(--primary-green-hover);
+}
+
+.toggle-arrow {
+  font-size: 0.9rem;
+  transition: transform 0.2s ease;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.toggle-arrow.open {
+  transform: rotate(90deg);
+}
+
 .admin-table {
   font-size: 0.9rem;
 }

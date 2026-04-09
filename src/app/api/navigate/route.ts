@@ -9,6 +9,8 @@ import { World } from '@/lib/server/world/world';
 import { createLockContext, LockContext, LocksAtMostAndHas4, LocksAtMostAndHas6 } from '@markdrei/ironguard-typescript-locks';
 import { WorldCache } from '@/lib/server/world/worldCache';
 import { UserBonusCache } from '@/lib/server/bonus/UserBonusCache';
+import { AfterburnerService } from '@/lib/server/afterburner/AfterburnerService';
+import { TimeMultiplierService } from '@/lib/server/timeMultiplier';
 
 export async function POST(request: NextRequest) {
   try {
@@ -90,10 +92,21 @@ async function performNavigationLogic(
     // Use current max ship speed (affected by damage, modifiers, etc.)
     const bonuses = await UserBonusCache.getInstance().getBonuses(userCtx, user.id);
     const maxSpeed = user.getCurrentMaxShipSpeed(bonuses);
-    
+
+    // If afterburner is active, allow speed up to the boosted speed
+    const afterburnerService = AfterburnerService.getInstance();
+    const timeMultiplier = TimeMultiplierService.getInstance().getMultiplier();
+    const afterburnerState = afterburnerService.getState(user.id);
+    const effectiveMaxSpeed =
+      afterburnerService.isActive(user.id, timeMultiplier) &&
+      afterburnerState &&
+      afterburnerState.boostedSpeed > maxSpeed
+        ? afterburnerState.boostedSpeed
+        : maxSpeed;
+
     // Validate speed
-    if (speed < 0 || speed > maxSpeed) {
-      throw new ApiError(400, `Speed must be between 0 and ${maxSpeed}`);
+    if (speed < 0 || speed > effectiveMaxSpeed) {
+      throw new ApiError(400, `Speed must be between 0 and ${effectiveMaxSpeed}`);
     }
     
     playerShip.speed = speed;
