@@ -372,3 +372,17 @@ protected async flushAllToDatabase(_context: LockContext<LocksAtMostAndHas4>): P
 - Call `XCache.resetInstance()` in both functions
 
 **Fire-and-forget event recording**: `recordEvent` acquires STATISTICS_LOCK internally and catches all exceptions. This allows callers to call it without await from any lock context without deadlock risk (since LOCK_14 is at the bottom of the hierarchy).
+
+## Physics updatePhysics() Clones SpaceObjects
+
+**Discovered by**: Knight
+**Context**: When implementing the afterburner API route (Goal 3), discovered that `world.updatePhysics()` replaces `this.spaceObjects` with a new array of cloned objects (via `updateAllObjectPositions` which uses `objects.map(obj => ({ ...obj, x, y, last_position_update_ms }))`).
+
+**Critical implication**: Any reference to a SpaceObject obtained BEFORE an `updatePhysics()` call becomes stale after the call — mutations to it won't be reflected in the world. Always obtain ship references AFTER the last `updatePhysics()` call. The teleport route correctly follows this pattern: `updatePhysics` first, then `getSpaceObjectsByType`.
+
+## Afterburner Expiration Requires Both Locks
+
+**Discovered by**: Knight
+**Context**: When implementing afterburner expiration (Task 3.2), discovered that `WorldCache.getWorldFromCache()` only holds WORLD_LOCK (LOCK_6), but computing user maxSpeed requires `UserBonusCache.getBonuses()` which needs USER_LOCK (LOCK_4).
+
+**Solution**: Afterburner expiration is checked in routes that hold both locks (ship-stats, afterburner activate) rather than in the WorldCache layer. This is a clean separation: WorldCache handles physics, but business logic involving user bonuses runs in API routes with proper lock context.

@@ -26,6 +26,9 @@ export const IMPLEMENTED_RESEARCHES: ReadonlySet<ResearchType> = new Set([
   ResearchType.BridgeSlots,
   ResearchType.Teleport,
   ResearchType.TeleportRechargeSpeed,
+  ResearchType.AfterburnerDuration,
+  ResearchType.AfterburnerCooldown,
+  ResearchType.AfterburnerSpeedIncrease,
 ]);
 
 /**
@@ -75,6 +78,7 @@ export const AllResearches: Record<ResearchType, Research> = {
     treeKey: 'shipSpeed',
     unit: 'units',
   },
+  /** @deprecated Replaced by AfterburnerDuration, AfterburnerCooldown, and AfterburnerSpeedIncrease. NOT in IMPLEMENTED_RESEARCHES. */
   [ResearchType.Afterburner]: {
     type: ResearchType.Afterburner,
     name: 'Afterburner',
@@ -266,10 +270,10 @@ export const AllResearches: Record<ResearchType, Research> = {
     name: 'Afterburner Speed',
     level: 1,
     baseUpgradeCost: 2000,
-    baseUpgradeDuration: 120,
+    baseUpgradeDuration: 45,
     baseValue: 50,
     upgradeCostIncrease: 2.0,
-    baseValueIncrease: { type: 'constant', value: 10 },
+    baseValueIncrease: { type: 'constant', value: 25 },
     description: 'Increases speed boost from afterburner.',
     treeKey: 'afterburnerSpeedIncrease',
     unit: '%',
@@ -277,14 +281,27 @@ export const AllResearches: Record<ResearchType, Research> = {
   [ResearchType.AfterburnerDuration]: {
     type: ResearchType.AfterburnerDuration,
     name: 'Afterburner Duration',
-    level: 1,
-    baseUpgradeCost: 1500,
-    baseUpgradeDuration: 90,
-    baseValue: 5,
+    level: 0,
+    baseUpgradeCost: 2000,
+    baseUpgradeDuration: 45,
+    baseValue: 30,
     upgradeCostIncrease: 1.9,
-    baseValueIncrease: { type: 'constant', value: 2 },
-    description: 'Increases duration of afterburner boost.',
+    baseValueIncrease: { type: 'constant', value: 10 },
+    description: 'Unlocks the afterburner and increases its active duration.',
     treeKey: 'afterburnerDuration',
+    unit: 'seconds',
+  },
+  [ResearchType.AfterburnerCooldown]: {
+    type: ResearchType.AfterburnerCooldown,
+    name: 'Afterburner Cooldown',
+    level: 1,
+    baseUpgradeCost: 2000,
+    baseUpgradeDuration: 45,
+    baseValue: 3600,
+    upgradeCostIncrease: 2.0,
+    baseValueIncrease: { type: 'factor', value: 0.9 },
+    description: 'Reduces the cooldown time between afterburner activations.',
+    treeKey: 'afterburnerCooldown',
     unit: 'seconds',
   },
   [ResearchType.Teleport]: {
@@ -447,7 +464,9 @@ const ENERGY_WEAPONS = ['pulse_laser', 'plasma_lance', 'photon_torpedo'] as cons
 export interface TechTree {
   ironHarvesting: number; // level
   shipSpeed: number;   // level
+  /** @deprecated Kept for backward compatibility with old DB records. Use afterburnerDuration, afterburnerCooldown, afterburnerSpeedIncrease instead. */
   afterburner: number;    // level
+  afterburnerCooldown: number; // level
   // Projectile Weapons
   projectileDamage: number;
   projectileReloadRate: number;
@@ -497,6 +516,7 @@ export function createInitialTechTree(): TechTree {
     ironHarvesting: AllResearches[ResearchType.IronHarvesting].level,
     shipSpeed: AllResearches[ResearchType.ShipSpeed].level,
     afterburner: AllResearches[ResearchType.Afterburner].level,
+    afterburnerCooldown: AllResearches[ResearchType.AfterburnerCooldown].level,
     // Projectile Weapons
     projectileDamage: AllResearches[ResearchType.ProjectileDamage].level,
     projectileReloadRate: AllResearches[ResearchType.ProjectileReloadRate].level,
@@ -539,7 +559,7 @@ function getResearchLevelFromTree(tree: TechTree, type: ResearchType): number {
     case ResearchType.ShipSpeed:
       return tree.shipSpeed;
     case ResearchType.Afterburner:
-      return tree.afterburner;
+      return 0; // deprecated — always returns 0
     // Projectile Weapons
     case ResearchType.ProjectileDamage:
       return tree.projectileDamage;
@@ -574,6 +594,8 @@ function getResearchLevelFromTree(tree: TechTree, type: ResearchType): number {
       return tree.afterburnerSpeedIncrease;
     case ResearchType.AfterburnerDuration:
       return tree.afterburnerDuration;
+    case ResearchType.AfterburnerCooldown:
+      return tree.afterburnerCooldown;
     case ResearchType.Teleport:
       return tree.teleport;
     case ResearchType.TeleportRechargeSpeed:
@@ -805,7 +827,7 @@ export function updateTechTree(tree: TechTree, timeSeconds: number): { completed
         tree.shipSpeed += 1;
         break;
       case ResearchType.Afterburner:
-        tree.afterburner += 1;
+        // deprecated — no-op
         break;
       // Projectile Weapons
       case ResearchType.ProjectileDamage:
@@ -855,6 +877,9 @@ export function updateTechTree(tree: TechTree, timeSeconds: number): { completed
         break;
       case ResearchType.AfterburnerDuration:
         tree.afterburnerDuration += 1;
+        break;
+      case ResearchType.AfterburnerCooldown:
+        tree.afterburnerCooldown += 1;
         break;
       case ResearchType.Teleport:
         tree.teleport += 1;

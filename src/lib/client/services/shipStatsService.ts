@@ -3,6 +3,7 @@
 // ---
 
 import { DefenseValues } from '@/shared/defenseValues';
+import { AfterburnerStatus } from './afterburnerService';
 
 export interface ShipStatsResponse {
   x: number;
@@ -12,6 +13,7 @@ export interface ShipStatsResponse {
   maxSpeed: number;
   last_position_update_ms: number;
   defenseValues: DefenseValues;
+  afterburner?: AfterburnerStatus;
 }
 
 export interface ShipStatsError {

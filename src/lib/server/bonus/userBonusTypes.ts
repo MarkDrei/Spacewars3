@@ -50,8 +50,8 @@ export interface UserBonuses {
   shieldRechargeRate: number;
 
   /**
-   * getResearchEffect(ShipSpeed) × (1 + afterburner/100) × levelMultiplier
-   *   × commanderMultipliers.shipSpeed
+   * getResearchEffect(ShipSpeed) × levelMultiplier × commanderMultipliers.shipSpeed
+   * Note: afterburner speed boost is applied dynamically at activation time, not here.
    */
   maxShipSpeed: number;
 

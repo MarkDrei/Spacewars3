@@ -9,6 +9,7 @@ import { useWorldData } from '@/lib/client/hooks/useWorldData';
 import { navigateShip } from '@/lib/client/services/navigationService';
 import { teleportShip } from '@/lib/client/services/teleportService';
 import { getShipStats } from '@/lib/client/services/shipStatsService';
+import { activateAfterburner, AfterburnerStatus } from '@/lib/client/services/afterburnerService';
 import { userStatsService } from '@/lib/client/services/userStatsService';
 import { ServerAuthState } from '@/lib/server/serverSession';
 import DataAgeIndicator from '@/components/DataAgeIndicator/DataAgeIndicator';
@@ -43,6 +44,9 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
   const [zoom, setZoom] = useState(DEFAULT_ZOOM);
   const [isNavigationCollapsed, setIsNavigationCollapsed] = useState(false);
   const [isTeleportCollapsed, setIsTeleportCollapsed] = useState(false);
+  const [afterburnerStatus, setAfterburnerStatus] = useState<AfterburnerStatus | null>(null);
+  const [isActivatingAfterburner, setIsActivatingAfterburner] = useState(false);
+  const [isAfterburnerCollapsed, setIsAfterburnerCollapsed] = useState(false);
   // Auth is guaranteed by server, so pass true and use auth.shipId
   const { worldData, isLoading, error, refetch, lastUpdateTime } = useWorldData(3000);
 
@@ -70,7 +74,7 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
       const savedTeleportCollapsed = localStorage.getItem('game-ui-teleport-collapsed');
       const savedDebugEnabled = localStorage.getItem('game-ui-debug-enabled');
       const savedZoom = localStorage.getItem('game-ui-zoom');
-      
+      const savedAfterburnerCollapsed = localStorage.getItem('game-ui-afterburner-collapsed');
       if (savedNavigationCollapsed !== null) {
         setIsNavigationCollapsed(JSON.parse(savedNavigationCollapsed));
       }
@@ -82,6 +86,9 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
       }
       if (savedZoom !== null) {
         setZoom(JSON.parse(savedZoom));
+      }
+      if (savedAfterburnerCollapsed !== null) {
+        setIsAfterburnerCollapsed(JSON.parse(savedAfterburnerCollapsed));
       }
     } catch (err) {
       console.warn('Failed to load UI preferences from localStorage:', err);
@@ -124,6 +131,15 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
     }
   }, [zoom]);
 
+  // Save afterburner collapse preference to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('game-ui-afterburner-collapsed', JSON.stringify(isAfterburnerCollapsed));
+    } catch (err) {
+      console.warn('Failed to save afterburner collapse preference:', err);
+    }
+  }, [isAfterburnerCollapsed]);
+
   // Resize canvas buffer to match physical pixel count: reads rendered CSS dimensions,
   // multiplies by devicePixelRatio to get the buffer size, and re-runs when isLoading
   // completes (ensuring the canvas is in the DOM). ResizeObserver handles subsequent
@@ -152,13 +168,16 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
     }
   }, []);
 
-  // Fetch max speed for the slider
+  // Fetch max speed for the slider and afterburner status
   useEffect(() => {
     const fetchMaxSpeed = async () => {
       try {
         const stats = await getShipStats();
         if (stats && !('error' in stats)) {
           setMaxSpeed(stats.maxSpeed);
+          if (stats.afterburner) {
+            setAfterburnerStatus(stats.afterburner);
+          }
         }
       } catch (err) {
         // ignore – keep default maxSpeed
@@ -412,6 +431,44 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
     return `${s}s`;
   };
 
+  // Periodic refresh of afterburner status from ship-stats during active/cooldown
+  useEffect(() => {
+    if (!afterburnerStatus?.isActive && !afterburnerStatus?.cooldownRemainingMs) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const stats = await getShipStats();
+        if (stats && !('error' in stats) && stats.afterburner) {
+          setAfterburnerStatus(stats.afterburner);
+          setMaxSpeed(stats.maxSpeed);
+        }
+      } catch { /* ignore polling errors */ }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [afterburnerStatus?.isActive, afterburnerStatus?.cooldownRemainingMs]);
+
+  const handleActivateAfterburner = async () => {
+    if (isActivatingAfterburner) return;
+    setIsActivatingAfterburner(true);
+    try {
+      await activateAfterburner();
+      // Immediately refresh status
+      const stats = await getShipStats();
+      if (stats && !('error' in stats)) {
+        setMaxSpeed(stats.maxSpeed);
+        if (stats.afterburner) {
+          setAfterburnerStatus(stats.afterburner);
+        }
+      }
+      if (refetch) refetch();
+    } catch (error) {
+      console.error('❌ [CLIENT] Afterburner activation failed:', error);
+    } finally {
+      setIsActivatingAfterburner(false);
+    }
+  };
+
   const handleTeleport = async () => {
     if (isTeleporting) return;
 
@@ -510,11 +567,12 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
             {!isNavigationCollapsed && (
               <>
                 <div className="speed-slider-row">
-                  <label>speed</label>
+                  <label htmlFor="speed-slider">speed</label>
                   <input
+                    id="speed-slider"
                     type="range"
                     min={0}
-                    max={maxSpeed}
+                    max={afterburnerStatus?.isActive && afterburnerStatus.boostedSpeed > 0 ? afterburnerStatus.boostedSpeed : maxSpeed}
                     step={0.1}
                     value={parseFloat(speedInput) || 0}
                     onChange={(e) => setSpeedInput(e.target.value)}
@@ -622,6 +680,43 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
                     </button>
                   </div>
                 </>
+              )}
+            </div>
+          )}
+
+          {/* Bottom-left: afterburner panel — invisible when not researched */}
+          {afterburnerStatus && afterburnerStatus.durationResearchLevel >= 1 && (
+            <div className="hud-panel panel-afterburner">
+              <div className="panel-heading-row">
+                <h4 className="panel-heading">afterburner</h4>
+                <button
+                  className="collapse-button"
+                  onClick={() => setIsAfterburnerCollapsed(!isAfterburnerCollapsed)}
+                  title={isAfterburnerCollapsed ? 'Expand' : 'Collapse'}
+                >
+                  {isAfterburnerCollapsed ? '▶' : '▼'}
+                </button>
+              </div>
+              {!isAfterburnerCollapsed && (
+                <div className="afterburner-content">
+                  {afterburnerStatus.canActivate ? (
+                    <button
+                      onClick={handleActivateAfterburner}
+                      disabled={isActivatingAfterburner}
+                      className="afterburner-button afterburner-available"
+                    >
+                      {isActivatingAfterburner ? '...' : '🔥 Afterburner'}
+                    </button>
+                  ) : afterburnerStatus.isActive ? (
+                    <button className="afterburner-button afterburner-active" disabled>
+                      ⚡ Active ({formatTimeRemaining(afterburnerStatus.boostRemainingMs / 1000)})
+                    </button>
+                  ) : (
+                    <button className="afterburner-button afterburner-cooldown" disabled>
+                      Cooldown ({formatTimeRemaining(afterburnerStatus.cooldownRemainingMs / 1000)})
+                    </button>
+                  )}
+                </div>
               )}
             </div>
           )}

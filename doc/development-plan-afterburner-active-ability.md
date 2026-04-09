@@ -157,6 +157,23 @@ The afterburner speed boost will be applied dynamically when afterburner is acti
 
 - `src/__tests__/unit/` — new or extended test file for afterburner research definitions
 
+**Status**: ✅ COMPLETED
+**Implementation Summary**: Refactored research definitions to replace the passive Afterburner research with three active-ability researches (AfterburnerDuration, AfterburnerCooldown, AfterburnerSpeedIncrease). Added AfterburnerCooldown enum value, updated AllResearches definitions, TechTree interface, all related functions, client-side code, Research Page display, and UserBonusCache. The deprecated Afterburner research is kept for backward compatibility but always returns level 0.
+**Files Modified/Created**:
+- `src/shared/src/types/gameTypes.ts` — Added `AfterburnerCooldown` to ResearchType enum
+- `src/lib/server/techs/techtree.ts` — Updated AllResearches (AfterburnerDuration level 0, AfterburnerCooldown added, AfterburnerSpeedIncrease +25/level), TechTree interface (added afterburnerCooldown), createInitialTechTree, getResearchLevelFromTree (Afterburner returns 0), updateTechTree (added AfterburnerCooldown case), IMPLEMENTED_RESEARCHES (added Duration/Cooldown/SpeedIncrease)
+- `src/lib/client/services/researchService.ts` — Added afterburnerCooldown to TechTree, simplified calculateMaxSpeed to remove passive afterburner bonus
+- `src/app/research/ResearchPageClient.tsx` — Added afterburnerCooldown to researchTypeToKey, research hierarchy, and icon mapping
+- `src/lib/server/bonus/UserBonusCache.ts` — Removed passive afterburner effect from maxShipSpeed calculation
+- `src/lib/server/bonus/userBonusTypes.ts` — Updated maxShipSpeed JSDoc comment
+- `public/assets/images/research/AfterburnerCooldown.png` — Copied from AfterburnerDuration.png as placeholder
+- `src/__tests__/unit/afterburner/research-definitions.test.ts` — Created 25 unit tests covering all research definition changes
+- `src/__tests__/integration/lib/techtree.test.ts` — Updated existing tests for deprecated Afterburner (now returns 0)
+- `src/__tests__/ui/components/researchPageClient.test.tsx` — Added afterburnerCooldown field to fake TechTree
+**Deviations from Plan**: Kept the deprecated Afterburner entry in AllResearches and TechTree interface (with @deprecated JSDoc) for backward compatibility with existing DB records, rather than removing it entirely. The getResearchLevelFromTree always returns 0 for it.
+**Arc42 Updates**: None required
+**Test Results**: ✅ All 1444 tests passing, no linting errors, build succeeds
+
 ---
 
 ### Goal 2: Afterburner State Management (In-Memory)
@@ -184,6 +201,14 @@ Note: No pre-activation speed is stored. When the afterburner expires, the ship 
 **Files**:
 
 - `src/lib/server/afterburner/afterburnerTypes.ts` — new file
+
+**Status**: ✅ COMPLETED
+**Implementation Summary**: Created `AfterburnerState` interface with userId, activatedAtMs, durationMs, cooldownMs, and boostedSpeed fields. Raw values stored; timeMultiplier applied at query time.
+**Files Modified/Created**:
+- `src/lib/server/afterburner/afterburnerTypes.ts` — Created AfterburnerState interface
+**Deviations from Plan**: None
+**Arc42 Updates**: None required
+**Test Results**: ✅ Types verified via compilation and downstream tests
 
 #### Task 2.2: Create AfterburnerService
 
@@ -214,6 +239,14 @@ Then compare against raw durationMs/cooldownMs.
 
 - `src/lib/server/afterburner/AfterburnerService.ts` — new file
 
+**Status**: ✅ COMPLETED
+**Implementation Summary**: Created AfterburnerService singleton (globalThis-based, matching TimeMultiplierService pattern) with Map-based per-user state, all specified methods including time-multiplier-aware checks for active/cooldown/expiration.
+**Files Modified/Created**:
+- `src/lib/server/afterburner/AfterburnerService.ts` — Created singleton service with activate, getState, isActive, isOnCooldown, canActivate, getBoostRemainingMs, getCooldownRemainingMs, checkAndExpire, clearState, getActiveUserIds, resetInstance
+**Deviations from Plan**: None
+**Arc42 Updates**: None required
+**Test Results**: ✅ All 23 tests passing, 100% line/function coverage, no linting errors
+
 #### Task 2.3: Write unit tests for AfterburnerService
 
 **Action**: Test all AfterburnerService methods:
@@ -236,6 +269,14 @@ Then compare against raw durationMs/cooldownMs.
 **Files**:
 
 - `src/__tests__/unit/afterburner/AfterburnerService.test.ts` — new file
+
+**Status**: ✅ COMPLETED
+**Implementation Summary**: Created 23 unit tests covering all specified scenarios plus additional edge cases (getBoostRemainingMs, getCooldownRemainingMs, getActiveUserIds, singleton behavior, cleanup-on-expire). Uses vi.useFakeTimers() and vi.advanceTimersByTime() for deterministic time control.
+**Files Modified/Created**:
+- `src/__tests__/unit/afterburner/AfterburnerService.test.ts` — 23 unit tests for AfterburnerService
+**Deviations from Plan**: Added 9 extra tests beyond the 14 specified (remaining ms helpers, getActiveUserIds, singleton, checkAndExpire with no state, canActivate cleanup verification) for more thorough coverage
+**Arc42 Updates**: None required
+**Test Results**: ✅ 23 tests passing, 100% line/function coverage, 86.66% branch coverage, no linting errors
 
 ---
 
@@ -282,6 +323,14 @@ Then compare against raw durationMs/cooldownMs.
 
 - `src/app/api/afterburner/route.ts` — new file
 
+**Status**: ✅ COMPLETED
+**Implementation Summary**: Created POST `/api/afterburner` route following the teleport route pattern with USER_LOCK → WORLD_LOCK acquisition, session auth, research validation, speed computation from tech tree, and in-world ship speed modification.
+**Files Modified/Created**:
+- `src/app/api/afterburner/route.ts` — Created afterburner activation endpoint
+**Deviations from Plan**: None
+**Arc42 Updates**: None required
+**Test Results**: ✅ All tests passing
+
 #### Task 3.2: Integrate afterburner expiration into world physics update
 
 **Action**: When `world.updatePhysics()` is called, check all players with active afterburners via `AfterburnerService`. For each expired afterburner:
@@ -296,8 +345,17 @@ This requires the world update to have access to AfterburnerService. The cleanes
 
 **Files**:
 
-- `src/lib/server/world/world.ts` — add afterburner expiration check in or around `updatePhysics()`
-- Alternatively, the expiration check can be in the WorldCache layer that calls `updatePhysics()`
+- `src/lib/server/afterburner/afterburnerExpiration.ts` — new helper function
+- `src/app/api/ship-stats/route.ts` — calls expiration check (has both USER_LOCK and WORLD_LOCK)
+
+**Status**: ✅ COMPLETED
+**Implementation Summary**: Created `checkAndExpireAfterburner()` helper in `afterburnerExpiration.ts` that checks if a user's boost has expired and caps ship speed at normal maxSpeed. Integrated into ship-stats route which has both required locks (USER_LOCK for bonuses, WORLD_LOCK for world updates).
+**Files Modified/Created**:
+- `src/lib/server/afterburner/afterburnerExpiration.ts` — Created expiration helper function
+- `src/app/api/ship-stats/route.ts` — Added expiration check and world persistence on expiry
+**Deviations from Plan**: Instead of adding expiration to WorldCache.getWorldFromCache (which only holds WORLD_LOCK and cannot access UserBonusCache), created a standalone helper function called from ship-stats route (which holds both locks). This is cleaner because getting user bonuses requires USER_LOCK.
+**Arc42 Updates**: None required
+**Test Results**: ✅ All tests passing
 
 #### Task 3.3: Extend ship-stats API with afterburner status
 
@@ -322,6 +380,14 @@ This allows the client to display afterburner state without a separate API call.
 
 - `src/app/api/ship-stats/route.ts` — add afterburner status to response
 
+**Status**: ✅ COMPLETED
+**Implementation Summary**: Extended ship-stats response with `afterburner` object containing isActive, boostRemainingMs, cooldownRemainingMs, canActivate, durationResearchLevel, and boostedSpeed fields.
+**Files Modified/Created**:
+- `src/app/api/ship-stats/route.ts` — Added afterburner status to response JSON, added AfterburnerService/TimeMultiplierService imports
+**Deviations from Plan**: None
+**Arc42 Updates**: None required
+**Test Results**: ✅ All tests passing
+
 #### Task 3.4: Write unit tests for afterburner API
 
 **Action**: Tests for the API route:
@@ -337,6 +403,14 @@ This allows the client to display afterburner state without a separate API call.
 
 - `src/__tests__/unit/api/afterburner-api.test.ts` — new file
 
+**Status**: ✅ COMPLETED
+**Implementation Summary**: Created unit test for afterburner API auth check. Only the no-auth test is possible as a pure unit test (no DB/cache setup); the other scenarios listed in the plan require full server initialization and are covered by integration tests in Task 3.5.
+**Files Modified/Created**:
+- `src/__tests__/unit/api/afterburner-api.test.ts` — Created unit test for 401 auth check
+**Deviations from Plan**: Only 1 unit test (auth check) instead of 6 proposed. The remaining 5 scenarios (research validation, already active, on cooldown, success cases) require initialized caches/world and are better suited as integration tests. This follows the established pattern from teleport-api unit test which also only tests auth.
+**Arc42 Updates**: None required
+**Test Results**: ✅ 1 unit test passing
+
 #### Task 3.5: Write integration tests for afterburner flow
 
 **Action**: End-to-end integration tests:
@@ -348,7 +422,15 @@ This allows the client to display afterburner state without a separate API call.
 
 **Files**:
 
-- `src/__tests__/integration/afterburner.test.ts` — new file
+- `src/__tests__/integration/api/afterburner-api.test.ts` — new file
+
+**Status**: ✅ COMPLETED
+**Implementation Summary**: Created comprehensive integration test suite with 7 tests covering all planned scenarios plus additional cases: activation success, active-while-active rejection, cooldown rejection, expiration with speed restoration, ship-stats afterburner status display, and time multiplier effects.
+**Files Modified/Created**:
+- `src/__tests__/integration/api/afterburner-api.test.ts` — Created 7 integration tests
+**Deviations from Plan**: File placed in `src/__tests__/integration/api/` (not `src/__tests__/integration/`) to match the existing test organization pattern. Added 3 extra tests beyond the 4 planned: `afterburner_withDurationResearch_activatesSuccessfully`, `afterburner_activateWhileActive_returns400`, and `afterburner_shipStatsShowsAfterburnerStatus`.
+**Arc42 Updates**: None required
+**Test Results**: ✅ 7 integration tests passing
 
 ---
 
@@ -368,6 +450,16 @@ This allows the client to display afterburner state without a separate API call.
 **Files**:
 
 - `src/lib/client/services/afterburnerService.ts` — new file
+- `src/lib/client/services/shipStatsService.ts` — add afterburner status to ShipStatsResponse
+
+**Status**: ✅ COMPLETED
+**Implementation Summary**: Created afterburner client service with `activateAfterburner()` function, `AfterburnerActivateResponse` and `AfterburnerStatus` interfaces. Updated `ShipStatsResponse` to include optional `afterburner` field.
+**Files Modified/Created**:
+- `src/lib/client/services/afterburnerService.ts` — Created with activateAfterburner(), AfterburnerActivateResponse, AfterburnerStatus types
+- `src/lib/client/services/shipStatsService.ts` — Added `afterburner?: AfterburnerStatus` to ShipStatsResponse
+**Deviations from Plan**: None
+**Arc42 Updates**: None required
+**Test Results**: ✅ All tests passing, no type errors
 
 #### Task 4.2: Add afterburner UI to GamePageClient
 
@@ -387,6 +479,16 @@ State management:
 **Files**:
 
 - `src/app/game/GamePageClient.tsx` — add afterburner button and state
+- `src/app/game/GamePage.css` — add afterburner panel styles
+
+**Status**: ✅ COMPLETED
+**Implementation Summary**: Added afterburner panel to GamePageClient with all four button states, periodic status polling during active/cooldown, activation handler with immediate refresh, collapsible panel with localStorage persistence, and full CSS styling with pulse animation.
+**Files Modified/Created**:
+- `src/app/game/GamePageClient.tsx` — Added afterburner imports, state variables, localStorage load/save, fetchMaxSpeed afterburner integration, periodic polling effect, handleActivateAfterburner handler, afterburner panel JSX with all states
+- `src/app/game/GamePage.css` — Added .panel-afterburner positioning, .afterburner-button base, .afterburner-available/.active/.cooldown/.locked variants, @keyframes afterburner-pulse animation
+**Deviations from Plan**: None
+**Arc42 Updates**: None required
+**Test Results**: ✅ All tests passing, build succeeds
 
 #### Task 4.3: Write UI tests for afterburner button
 
@@ -394,7 +496,15 @@ State management:
 
 **Files**:
 
-- `src/__tests__/ui/afterburner-button.test.tsx` — new file
+- `src/__tests__/ui/components/afterburner-button.test.tsx` — new file
+
+**Status**: ✅ COMPLETED
+**Implementation Summary**: Created 9 UI tests covering all afterburner button states: not researched (locked), can activate, active with timer, cooldown with timer, no status (hidden), heading display, collapse/expand, activation click calls service, and cooldown time formatting.
+**Files Modified/Created**:
+- `src/__tests__/ui/components/afterburner-button.test.tsx` — 9 UI tests for afterburner button states
+**Deviations from Plan**: Test file placed in `src/__tests__/ui/components/` (not `src/__tests__/ui/`) to match existing test organization pattern (alongside teleport-controls.test.tsx)
+**Arc42 Updates**: None required
+**Test Results**: ✅ 9 tests passing, no linting errors
 
 ---
 

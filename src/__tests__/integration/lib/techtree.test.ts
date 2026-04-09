@@ -151,7 +151,8 @@ describe('getResearchUpgradeDurationFromTree', () => {
     tree.afterburner = 3;
     expect(getResearchUpgradeDurationFromTree(tree, ResearchType.IronHarvesting)).toBe(40);
     expect(getResearchUpgradeDurationFromTree(tree, ResearchType.ShipSpeed)).toBe(120);
-    expect(getResearchUpgradeDurationFromTree(tree, ResearchType.Afterburner)).toBe(270);
+    // Afterburner is deprecated; getResearchLevelFromTree always returns 0, so duration is base
+    expect(getResearchUpgradeDurationFromTree(tree, ResearchType.Afterburner)).toBe(120);
   });
 });
 
@@ -170,7 +171,8 @@ describe('getResearchEffectFromTree', () => {
     tree.afterburner = 2;
     expect(getResearchEffectFromTree(tree, ResearchType.IronHarvesting)).toBeCloseTo(1.21);
     expect(getResearchEffectFromTree(tree, ResearchType.ShipSpeed)).toBeCloseTo(40);
-    expect(getResearchEffectFromTree(tree, ResearchType.Afterburner)).toBeCloseTo(120);
+    // Afterburner is deprecated; getResearchLevelFromTree always returns 0
+    expect(getResearchEffectFromTree(tree, ResearchType.Afterburner)).toBeCloseTo(0);
   });
 });
 

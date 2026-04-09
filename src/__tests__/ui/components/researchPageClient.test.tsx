@@ -36,6 +36,7 @@ const makeFakeTechTree = (overrides: Partial<TechTree> = {}) => ({
   ironHarvesting: 0,
   shipSpeed: 1,
   afterburner: 0,
+  afterburnerCooldown: 1,
   projectileDamage: 0,
   projectileReloadRate: 0,
   projectileAccuracy: 0,

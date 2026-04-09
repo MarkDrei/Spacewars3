@@ -10,6 +10,9 @@ import { TechService } from '@/lib/server/techs/TechService';
 import { createLockContext, LockContext, LocksAtMostAndHas6 } from '@markdrei/ironguard-typescript-locks';
 import { WorldCache } from '@/lib/server/world/worldCache';
 import { UserBonusCache } from '@/lib/server/bonus/UserBonusCache';
+import { AfterburnerService } from '@/lib/server/afterburner/AfterburnerService';
+import { checkAndExpireAfterburner } from '@/lib/server/afterburner/afterburnerExpiration';
+import { TimeMultiplierService } from '@/lib/server/timeMultiplier';
 
 export async function GET(request: NextRequest) {
   try {
@@ -70,6 +73,14 @@ async function getShipStats(
   // Use current max ship speed (affected by damage, modifiers, etc.)
   const maxSpeed = user.getCurrentMaxShipSpeed(bonuses);
 
+  // Check and expire afterburner if boost has ended — cap speed at normal maxSpeed
+  const afterburnerService = AfterburnerService.getInstance();
+  const timeMultiplier = TimeMultiplierService.getInstance().getMultiplier();
+  const afterburnerExpired = checkAndExpireAfterburner(user.id, playerShip, maxSpeed, timeMultiplier);
+  if (afterburnerExpired) {
+    await WorldCache.getInstance().updateWorldUnsafe(worldContext, world);
+  }
+
   // Calculate defense values using actual current values from database
   const currentValues = {
     hull: user.hullCurrent,
@@ -89,6 +100,16 @@ async function getShipStats(
     regenRates
   );
 
+  // Build afterburner status for the client
+  const afterburnerStatus = {
+    isActive: afterburnerService.isActive(user.id, timeMultiplier),
+    boostRemainingMs: afterburnerService.getBoostRemainingMs(user.id, timeMultiplier),
+    cooldownRemainingMs: afterburnerService.getCooldownRemainingMs(user.id, timeMultiplier),
+    canActivate: afterburnerService.canActivate(user.id, timeMultiplier),
+    durationResearchLevel: user.techTree.afterburnerDuration,
+    boostedSpeed: afterburnerService.getState(user.id)?.boostedSpeed ?? 0,
+  };
+
   const responseData = {
     x: playerShip.x,
     y: playerShip.y,
@@ -96,7 +117,8 @@ async function getShipStats(
     angle: playerShip.angle,
     maxSpeed: maxSpeed,
     last_position_update_ms: playerShip.last_position_update_ms,
-    defenseValues
+    defenseValues,
+    afterburner: afterburnerStatus,
   };
 
   return NextResponse.json(responseData);
