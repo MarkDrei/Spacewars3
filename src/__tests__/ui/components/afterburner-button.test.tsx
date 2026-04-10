@@ -1,7 +1,7 @@
 // UI tests for GamePageClient afterburner button controls
 import React from 'react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
 
 // ─────────── Module mocks ───────────────────────────────────────────────────
 vi.mock('@/components/Layout/AuthenticatedLayout', () => ({
@@ -415,5 +415,53 @@ describe('GamePageClient afterburner controls', () => {
     // The speed slider should use normal maxSpeed (25) when afterburner is not active
     const speedSlider = screen.getByRole('slider', { name: /speed/i });
     expect(speedSlider).toHaveAttribute('max', '25');
+  });
+
+  it('speedInput_afterburnerExpiresDuringPolling_updatesToServerCappedSpeed', async () => {
+    vi.useFakeTimers();
+
+    const activeAfterburner: AfterburnerStatus = {
+      isActive: true,
+      boostRemainingMs: 5000,
+      cooldownRemainingMs: 0,
+      canActivate: false,
+      durationResearchLevel: 1,
+      boostedSpeed: 50,
+    };
+    const expiredAfterburner: AfterburnerStatus = {
+      isActive: false,
+      boostRemainingMs: 0,
+      cooldownRemainingMs: 3600000,
+      canActivate: false,
+      durationResearchLevel: 1,
+      boostedSpeed: 0,
+    };
+
+    // First call returns active afterburner at boosted speed (50),
+    // subsequent calls return expired afterburner with speed capped at normal maxSpeed (25).
+    vi.mocked(getShipStats)
+      .mockResolvedValueOnce({ ...makeShipStats(activeAfterburner), speed: 50 })
+      .mockResolvedValue({ ...makeShipStats(expiredAfterburner), speed: 25 });
+
+    render(<GamePageClient auth={defaultAuth} />);
+
+    // Flush initial async effects (initial getShipStats call + React state updates)
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    // Advance past the 1-second polling interval to trigger the second getShipStats call
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1100);
+    });
+
+    // Click navigation icon to expand and access the speed slider
+    fireEvent.click(screen.getByTitle('Navigation (angle, speed, zoom)'));
+
+    // The speed input should now show the server-capped speed (25), not the boosted speed (50)
+    const speedSlider = screen.getByRole('slider', { name: /speed/i });
+    expect(speedSlider).toHaveAttribute('value', '25');
+
+    vi.useRealTimers();
   });
 });

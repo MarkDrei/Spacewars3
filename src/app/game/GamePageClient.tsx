@@ -433,12 +433,19 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
   useEffect(() => {
     if (!afterburnerStatus?.isActive && !afterburnerStatus?.cooldownRemainingMs) return;
 
+    const wasActive = afterburnerStatus?.isActive ?? false;
+
     const interval = setInterval(async () => {
       try {
         const stats = await getShipStats();
         if (stats && !('error' in stats) && stats.afterburner) {
           setAfterburnerStatus(stats.afterburner);
           setMaxSpeed(stats.maxSpeed);
+          // When afterburner just expired, snap the displayed speed to the
+          // server-capped value so the UI reflects the reduced speed immediately.
+          if (wasActive && !stats.afterburner.isActive) {
+            setSpeedInput(stats.speed.toFixed(1));
+          }
         }
       } catch { /* ignore polling errors */ }
     }, 1000);
