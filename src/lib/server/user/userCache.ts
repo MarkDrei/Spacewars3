@@ -277,8 +277,27 @@ export class UserCache extends Cache {
       // capacity, and defense regen are used.  getBonuses() is a cache-hit for users that
       // have been seen recently; it only computes on first access or after invalidation.
       const bonuses = await UserBonusCache.getInstance().getBonuses(context, user.id);
-      user.updateStats(Math.floor(Date.now() / 1000), bonuses);
+      const updateResult = user.updateStats(Math.floor(Date.now() / 1000), bonuses);
       await this.updateUserInCache(context, user);
+
+      // Send research completion notification
+      if (updateResult?.researchCompleted) {
+        const { researchName, completedLevel, scoreReward } = updateResult.researchCompleted;
+        const messageCache = await this.getMessageCache();
+        if (messageCache) {
+          try {
+            const msgCtx = createLockContext();
+            await messageCache.createMessage(
+              msgCtx,
+              user.id,
+              `🔬 Research Complete: ${researchName} reached level ${completedLevel}! (+${scoreReward} Score)`
+            );
+          } catch (error) {
+            console.error(`Failed to send research completion notification for user ${user.id}:`, error);
+          }
+        }
+      }
+
       return user;
     }
     return null;
@@ -330,8 +349,27 @@ export class UserCache extends Cache {
       // Fetch (or compute) bonuses before calling updateStats so that bonused iron rate,
       // capacity, and defense regen are used.
       const bonuses = await UserBonusCache.getInstance().getBonuses(context, user.id);
-      user.updateStats(Math.floor(Date.now() / 1000), bonuses);
+      const updateResult = user.updateStats(Math.floor(Date.now() / 1000), bonuses);
       await this.updateUserInCache(context, user);
+
+      // Send research completion notification
+      if (updateResult?.researchCompleted) {
+        const { researchName, completedLevel, scoreReward } = updateResult.researchCompleted;
+        const messageCache = await this.getMessageCache();
+        if (messageCache) {
+          try {
+            const msgCtx = createLockContext();
+            await messageCache.createMessage(
+              msgCtx,
+              user.id,
+              `🔬 Research Complete: ${researchName} reached level ${completedLevel}! (+${scoreReward} Score)`
+            );
+          } catch (error) {
+            console.error(`Failed to send research completion notification for user ${user.id}:`, error);
+          }
+        }
+      }
+
       return user;
     }
 
