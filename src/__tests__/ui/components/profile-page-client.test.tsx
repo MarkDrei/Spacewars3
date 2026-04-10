@@ -101,6 +101,8 @@ describe('ProfilePageClient change password dialog', () => {
 
   it('changePassword_validSubmission_postsFormAndShowsSuccess', async () => {
     render(<ProfilePageClient auth={{ userId: 1, username: 'captain' }} />);
+    await screen.findByText('No battles yet. Start your first battle!');
+    vi.mocked(global.fetch).mockClear();
 
     fireEvent.click(screen.getByRole('button', { name: 'Change Password' }));
 
@@ -129,6 +131,8 @@ describe('ProfilePageClient change password dialog', () => {
 
   it('changePassword_mismatchedPasswords_showsValidationErrorWithoutRequest', async () => {
     render(<ProfilePageClient auth={{ userId: 1, username: 'captain' }} />);
+    await screen.findByText('No battles yet. Start your first battle!');
+    vi.mocked(global.fetch).mockClear();
 
     fireEvent.click(screen.getByRole('button', { name: 'Change Password' }));
 
@@ -138,7 +142,6 @@ describe('ProfilePageClient change password dialog', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save Password' }));
 
     expect(await screen.findByText('New passwords do not match')).toBeInTheDocument();
-    expect(global.fetch).toHaveBeenCalledTimes(1);
-    expect(global.fetch).not.toHaveBeenCalledWith('/api/change-password', expect.anything());
+    expect(global.fetch).not.toHaveBeenCalled();
   });
 });

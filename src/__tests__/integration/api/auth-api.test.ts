@@ -111,7 +111,7 @@ describe('Auth API', () => {
     await withTransaction(async () => {
       const oldPassword = 'testpass123';
       const newPassword = 'mypassword';
-      const { sessionCookie, username } = await createAuthenticatedSessionWithUser('changepassword');
+      const { sessionCookie, username } = await createAuthenticatedSessionWithUser('change_password');
 
       const changePasswordRequest = createRequest(
         'http://localhost:3000/api/change-password',
