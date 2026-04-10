@@ -320,7 +320,8 @@ export class MessageCache extends Cache {
     asteroidsCollected: number,
     shipwrecksCollected: number,
     escapePodsCollected: number,
-    totalIronCollected: number
+    totalIronCollected: number,
+    buildCompletions: Map<string, number>
   } | null {
     // Check if this is a summary message
     if (!summaryText.includes('📊') || !summaryText.includes('Message Summary')) {
@@ -339,7 +340,8 @@ export class MessageCache extends Cache {
       asteroidsCollected: 0,
       shipwrecksCollected: 0,
       escapePodsCollected: 0,
-      totalIronCollected: 0
+      totalIronCollected: 0,
+      buildCompletions: new Map<string, number>()
     };
 
     // Parse battles: "⚔️ **Battles:** X victory(ies), Y defeat(s)"
@@ -392,6 +394,21 @@ export class MessageCache extends Cache {
       stats.totalIronCollected = parseInt(ironMatch[1]);
     }
 
+    // Parse builds completed: "🏭 **Builds Completed:** X Item Name(s), Y Other Item(s)"
+    const buildsMatch = summaryText.match(/🏭 \*\*Builds Completed:\*\* (.+)/);
+    if (buildsMatch) {
+      const buildsText = buildsMatch[1].split('\n')[0];
+      const buildEntries = buildsText.split(', ');
+      for (const entry of buildEntries) {
+        const entryMatch = entry.match(/^(\d+) (.+?)\(s\)$/);
+        if (entryMatch) {
+          const count = parseInt(entryMatch[1]);
+          const name = entryMatch[2].trimEnd();
+          stats.buildCompletions.set(name, count);
+        }
+      }
+    }
+
     return stats;
   }
 
@@ -437,6 +454,7 @@ export class MessageCache extends Cache {
         shipwrecksCollected: 0,
         escapePodsCollected: 0,
         totalIronCollected: 0,
+        buildCompletions: new Map<string, number>(),
         unknownMessages: [] as { text: string, timestamp: number }[]
       };
 
@@ -461,6 +479,9 @@ export class MessageCache extends Cache {
           stats.shipwrecksCollected += previousStats.shipwrecksCollected;
           stats.escapePodsCollected += previousStats.escapePodsCollected;
           stats.totalIronCollected += previousStats.totalIronCollected;
+          for (const [name, count] of previousStats.buildCompletions) {
+            stats.buildCompletions.set(name, (stats.buildCompletions.get(name) ?? 0) + count);
+          }
           previousSummaryCount++;
           
           // Mark the old summary as read (will be removed from cache)
@@ -562,6 +583,14 @@ export class MessageCache extends Cache {
         else if (text.includes('Defeat!') || text.startsWith('A:') && text.includes('lost the battle')) {
           stats.defeats++;
         }
+        // Parse build complete: "Build complete: <Item Name>"
+        else if (text.startsWith('Build complete:')) {
+          const buildMatch = text.match(/^Build complete:\s+(.+)$/);
+          if (buildMatch) {
+            const itemName = buildMatch[1].trim();
+            stats.buildCompletions.set(itemName, (stats.buildCompletions.get(itemName) ?? 0) + 1);
+          }
+        }
         // Unknown message - preserve it
         else {
           stats.unknownMessages.push({ text, timestamp: msg.created_at });
@@ -639,7 +668,15 @@ export class MessageCache extends Cache {
           summaryParts.push(`💎 **Iron Collected:** ${stats.totalIronCollected}`);
         }
       }
-  
+
+      if (stats.buildCompletions.size > 0) {
+        const buildParts: string[] = [];
+        for (const [name, count] of stats.buildCompletions) {
+          buildParts.push(`${count} ${name}(s)`);
+        }
+        summaryParts.push(`🏭 **Builds Completed:** ${buildParts.join(', ')}`);
+      }
+
       const summary = summaryParts.join('\n');
   
       // Create summary as new message (using internal method that doesn't acquire lock)
