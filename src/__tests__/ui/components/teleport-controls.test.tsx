@@ -127,10 +127,10 @@ describe('GamePageClient teleport controls', () => {
     const teleportIcon = screen.getByTitle('Teleport');
     teleportIcon.click();
 
-    // The teleport button in the panel should be disabled
+    // The "enter coordinates" button in the panel should be disabled when no charges
     await waitFor(() => {
-      const teleportButton = screen.getByRole('button', { name: /^teleport$/i });
-      expect(teleportButton).toHaveProperty('disabled', true);
+      const enterCoordsButton = screen.getByRole('button', { name: /^enter coordinates$/i });
+      expect(enterCoordsButton).toHaveProperty('disabled', true);
     });
   });
 
@@ -149,10 +149,10 @@ describe('GamePageClient teleport controls', () => {
     const teleportIcon = screen.getByTitle('Teleport');
     teleportIcon.click();
 
-    // The teleport button in the panel should be enabled
+    // The "enter coordinates" button in the panel should be enabled when there are charges
     await waitFor(() => {
-      const teleportButton = screen.getByRole('button', { name: /^teleport$/i });
-      expect(teleportButton).toHaveProperty('disabled', false);
+      const enterCoordsButton = screen.getByRole('button', { name: /^enter coordinates$/i });
+      expect(enterCoordsButton).toHaveProperty('disabled', false);
     });
   });
 

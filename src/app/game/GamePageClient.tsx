@@ -40,6 +40,7 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
   const [teleportY, setTeleportY] = useState<string>('0');
   const [isTeleporting, setIsTeleporting] = useState(false);
   const [teleportClickMode, setTeleportClickMode] = useState(false);
+  const [showTeleportCoordModal, setShowTeleportCoordModal] = useState(false);
   const [attackClickMode, setAttackClickMode] = useState(false);
   const [teleportRechargeTimeSec, setTeleportRechargeTimeSec] = useState(0);
   const [timeMultiplier, setTimeMultiplier] = useState(1);
@@ -405,6 +406,16 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
     }
   }, [zoom]);
 
+  // Close teleport coord modal on Escape key
+  useEffect(() => {
+    if (!showTeleportCoordModal) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowTeleportCoordModal(false);
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [showTeleportCoordModal]);
+
   // Optimistic update for teleport charges
   useEffect(() => {
     if (teleportMaxCharges > 0 && teleportRechargeTimeSec > 0) {
@@ -482,6 +493,7 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
     try {
       const result = await teleportShip({ x, y, preserveVelocity: false });
       setTeleportCharges(result.remainingCharges);
+      setShowTeleportCoordModal(false);
       if (refetch) {
         refetch();
       }
@@ -534,6 +546,66 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
             <div key={announcement.key} className="announcement-overlay">
               {announcement.text}
             </div>
+          )}
+
+          {/* Teleport coordinate modal */}
+          {showTeleportCoordModal && (
+            <>
+              <div
+                className="teleport-coord-backdrop"
+                onClick={() => setShowTeleportCoordModal(false)}
+                aria-hidden="true"
+              />
+              <div
+                className="teleport-coord-modal"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="teleport-coord-modal-title"
+              >
+                <div id="teleport-coord-modal-title" className="teleport-coord-modal-title">teleport to coordinates</div>
+                <div className="teleport-coord-modal-row">
+                  <label htmlFor="modal-teleport-x" className="teleport-coord-modal-label">x</label>
+                  <input
+                    id="modal-teleport-x"
+                    type="number"
+                    value={teleportX}
+                    onChange={(e) => setTeleportX(e.target.value)}
+                    min="0"
+                    max="5000"
+                    step="1"
+                    className="teleport-coord-modal-input"
+                  />
+                </div>
+                <div className="teleport-coord-modal-row">
+                  <label htmlFor="modal-teleport-y" className="teleport-coord-modal-label">y</label>
+                  <input
+                    id="modal-teleport-y"
+                    type="number"
+                    value={teleportY}
+                    onChange={(e) => setTeleportY(e.target.value)}
+                    min="0"
+                    max="5000"
+                    step="1"
+                    className="teleport-coord-modal-input"
+                  />
+                </div>
+                <div className="teleport-coord-modal-actions">
+                  <button
+                    onClick={handleTeleport}
+                    disabled={isTeleporting || Math.floor(teleportCharges) < 1}
+                    className="teleport-coord-modal-btn teleport-coord-modal-btn-primary"
+                  >
+                    {isTeleporting ? '...' : 'teleport'}
+                  </button>
+                  <button
+                    onClick={() => setShowTeleportCoordModal(false)}
+                    className="teleport-coord-modal-btn teleport-coord-modal-btn-cancel"
+                  >
+                    cancel
+                  </button>
+                </div>
+              </div>
+            </>
           )}
 
           {/* Bottom Control Bar (Icon Bar + Expandable Panel) */}
@@ -670,14 +742,12 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
                       )}
                     </div>
                     <div className="control-row">
-                      <label htmlFor="teleport-x">x</label>
-                      <input id="teleport-x" type="number" value={teleportX} onChange={(e) => setTeleportX(e.target.value)} min="0" max="5000" step="1" />
-                      <label htmlFor="teleport-y">y</label>
-                      <input id="teleport-y" type="number" value={teleportY} onChange={(e) => setTeleportY(e.target.value)} min="0" max="5000" step="1" />
-                    </div>
-                    <div className="control-row">
-                      <button onClick={handleTeleport} disabled={isTeleporting || Math.floor(teleportCharges) < 1} className="control-button btn-primary btn-full">
-                        {isTeleporting ? '...' : 'teleport'}
+                      <button
+                        onClick={() => setShowTeleportCoordModal(true)}
+                        disabled={Math.floor(teleportCharges) < 1}
+                        className="control-button btn-primary btn-full"
+                      >
+                        enter coordinates
                       </button>
                     </div>
                     <label className="toggle-label">
