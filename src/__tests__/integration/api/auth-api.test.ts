@@ -3,9 +3,10 @@ import { describe, expect, test, beforeEach, afterEach } from 'vitest';
 // Import API routes directly (for now we'll use the real database)
 import { POST as registerPOST } from '@/app/api/register/route';
 import { POST as loginPOST } from '@/app/api/login/route';
+import { POST as changePasswordPOST } from '@/app/api/change-password/route';
 
 // Import shared test helpers
-import { createRequest, randomUsername } from '../../helpers/apiTestHelpers';
+import { createAuthenticatedSessionWithUser, createRequest, randomUsername } from '../../helpers/apiTestHelpers';
 import { initializeIntegrationTestServer, shutdownIntegrationTestServer } from '../../helpers/testServer';
 import { withTransaction } from '../../helpers/transactionHelper';
 
@@ -103,6 +104,50 @@ describe('Auth API', () => {
 
       expect(response.status).toBe(400);
       expect(data.error).toBe('Invalid credentials');
+    });
+  });
+
+  test('changePassword_validRequest_updatesStoredPassword', async () => {
+    await withTransaction(async () => {
+      const oldPassword = 'testpass123';
+      const newPassword = 'mypassword';
+      const { sessionCookie, username } = await createAuthenticatedSessionWithUser('changepassword');
+
+      const changePasswordRequest = createRequest(
+        'http://localhost:3000/api/change-password',
+        'POST',
+        {
+          currentPassword: oldPassword,
+          newPassword,
+          confirmPassword: newPassword,
+        },
+        sessionCookie!
+      );
+      const changePasswordResponse = await changePasswordPOST(changePasswordRequest);
+      const changePasswordData = await changePasswordResponse.json();
+
+      expect(changePasswordResponse.status).toBe(200);
+      expect(changePasswordData.success).toBe(true);
+
+      const oldPasswordLoginRequest = createRequest('http://localhost:3000/api/login', 'POST', {
+        username,
+        password: oldPassword,
+      });
+      const oldPasswordLoginResponse = await loginPOST(oldPasswordLoginRequest);
+      const oldPasswordLoginData = await oldPasswordLoginResponse.json();
+
+      expect(oldPasswordLoginResponse.status).toBe(400);
+      expect(oldPasswordLoginData.error).toBe('Invalid credentials');
+
+      const newPasswordLoginRequest = createRequest('http://localhost:3000/api/login', 'POST', {
+        username,
+        password: newPassword,
+      });
+      const newPasswordLoginResponse = await loginPOST(newPasswordLoginRequest);
+      const newPasswordLoginData = await newPasswordLoginResponse.json();
+
+      expect(newPasswordLoginResponse.status).toBe(200);
+      expect(newPasswordLoginData.success).toBe(true);
     });
   });
 });
