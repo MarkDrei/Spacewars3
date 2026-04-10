@@ -433,12 +433,23 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
   useEffect(() => {
     if (!afterburnerStatus?.isActive && !afterburnerStatus?.cooldownRemainingMs) return;
 
+    // Capture the active state when this effect runs.
+    // Because afterburnerStatus?.isActive is a dependency, this effect is recreated
+    // whenever isActive changes — so wasActive always reflects the state at the
+    // start of the current polling period, not a stale value from a prior period.
+    const wasActive = afterburnerStatus?.isActive ?? false;
+
     const interval = setInterval(async () => {
       try {
         const stats = await getShipStats();
         if (stats && !('error' in stats) && stats.afterburner) {
           setAfterburnerStatus(stats.afterburner);
           setMaxSpeed(stats.maxSpeed);
+          // When afterburner just expired, snap the displayed speed to the
+          // server-capped value so the UI reflects the reduced speed immediately.
+          if (wasActive && !stats.afterburner.isActive) {
+            setSpeedInput(stats.speed.toFixed(1));
+          }
         }
       } catch { /* ignore polling errors */ }
     }, 1000);
