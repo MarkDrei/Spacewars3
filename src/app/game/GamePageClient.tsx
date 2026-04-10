@@ -433,6 +433,10 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
   useEffect(() => {
     if (!afterburnerStatus?.isActive && !afterburnerStatus?.cooldownRemainingMs) return;
 
+    // Capture the active state when this effect runs.
+    // Because afterburnerStatus?.isActive is a dependency, this effect is recreated
+    // whenever isActive changes — so wasActive always reflects the state at the
+    // start of the current polling period, not a stale value from a prior period.
     const wasActive = afterburnerStatus?.isActive ?? false;
 
     const interval = setInterval(async () => {
