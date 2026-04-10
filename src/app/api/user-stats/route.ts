@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getIronSession } from 'iron-session';
 import { UserCache } from '@/lib/server/user/userCache';
-import { MessageCache } from '@/lib/server/messages/MessageCache';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth, ApiError } from '@/lib/server/errors';
 import { USER_LOCK } from '@/lib/server/typedLocks';
@@ -41,21 +40,10 @@ async function processUserStats(user: User, userWorldCache: UserCache, userCtx: 
   const now = Math.floor(Date.now() / 1000);
   // Fetch bonuses (cache hit — already computed by getUserByIdWithLock)
   const bonuses = await UserBonusCache.getInstance().getBonuses(userCtx, user.id);
-  const updateResult = user.updateStats(now, bonuses);
+  user.updateStats(now, bonuses);
   
   // Update cache with new data (using unsafe methods because we have proper locks)
   userWorldCache.updateUserInCache(userCtx, user);
-  
-  // Send research completion notification (score awarded, not XP)
-  if (updateResult.researchCompleted) {
-    const messageCache = MessageCache.getInstance();
-    const ctx = createLockContext();
-    await messageCache.createMessage(
-      ctx,
-      user.id,
-      `🔬 Research Complete: ${updateResult.researchCompleted.researchName} reached level ${updateResult.researchCompleted.completedLevel}! (+${updateResult.researchCompleted.scoreReward} Score)`
-    );
-  }
   
   const responseData = { 
     iron: user.iron, 
