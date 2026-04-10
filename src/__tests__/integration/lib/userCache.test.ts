@@ -14,6 +14,8 @@ import type { MessageCache } from '@/lib/server/messages/MessageCache';
 import { getDatabase } from '@/lib/server/database';
 import { withTransaction } from '../../helpers/transactionHelper';
 import { ResearchType } from '@/lib/server/techs/techtree';
+import { UserBonusCache } from '@/lib/server/bonus/UserBonusCache';
+import { InventoryService } from '@/lib/server/inventory/InventoryService';
 
 const createWorldCacheStub = (): WorldCache => ({
   getWorldFromCache: vi.fn(() => {
@@ -179,8 +181,11 @@ describe('Research Completion Notifications', () => {
 
   beforeEach(async () => {
     UserCache.resetInstance();
+    UserBonusCache.resetInstance();
     mockCreateMessage = vi.fn(async () => 1);
     await initializeCacheWithMockMessages(mockCreateMessage);
+    UserBonusCache.configureDependencies({ userCache: UserCache.getInstance2(), inventoryService: new InventoryService() });
+    UserBonusCache.getInstance();
   });
 
   afterEach(async () => {
@@ -190,6 +195,7 @@ describe('Research Completion Notifications', () => {
     } catch {
       // Ignore cleanup errors
     }
+    UserBonusCache.resetInstance();
     UserCache.resetInstance();
   });
 
