@@ -109,6 +109,11 @@ describe('GamePageClient afterburner controls', () => {
     vi.mocked(userStatsService.getUserStats).mockResolvedValue(makeUserStats());
   });
 
+  afterEach(() => {
+    // Ensure fake timers are cleaned up even if a test fails
+    vi.useRealTimers();
+  });
+
   it('afterburnerButton_notResearched_isInvisible', async () => {
     const afterburner: AfterburnerStatus = {
       isActive: false,
@@ -461,7 +466,5 @@ describe('GamePageClient afterburner controls', () => {
     // The speed input should now show the server-capped speed (25), not the boosted speed (50)
     const speedSlider = screen.getByRole('slider', { name: /speed/i });
     expect(speedSlider).toHaveAttribute('value', '25');
-
-    vi.useRealTimers();
   });
 });
