@@ -319,8 +319,10 @@ export class Game {
       }
 
       // Frontend level-range check: only allow attacks within ±3 levels
-      const targetLevel = targetObject.getLevel() ?? 1;
-      if (!isAttackAllowed(this.playerLevel, targetLevel)) {
+      const targetLevel = targetObject.getLevel();
+      if (targetLevel === undefined) {
+        console.warn(`⚔️ Target ship has no level data (userId ${userId}); skipping level check`);
+      } else if (!isAttackAllowed(this.playerLevel, targetLevel)) {
         console.log(`⚔️ Attack blocked: level difference too large (player ${this.playerLevel} vs target ${targetLevel})`);
         return;
       }

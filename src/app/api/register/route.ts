@@ -10,6 +10,7 @@ import { WorldCache } from '@/lib/server/world/worldCache';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 import { USER_LOCK, WORLD_LOCK } from '@/lib/server/typedLocks';
 import { DEFAULT_SHIP_START_X, DEFAULT_SHIP_START_Y, DEFAULT_SHIP_START_SPEED, DEFAULT_SHIP_START_ANGLE } from '@/lib/server/constants';
+import { calculateLevelFromXp } from '@shared/utils/levelUtils';
 
 export async function POST(request: NextRequest) {
   try {
@@ -54,7 +55,7 @@ export async function POST(request: NextRequest) {
               picture_id: 1, // Default ship picture
               username: user.username,
               userId: user.id,
-              level: 1, // New users start at level 1
+              level: calculateLevelFromXp(user.xp),
             };
             world.spaceObjects.push(newShip);
             console.log(`🚀 Added ship ${user.ship_id} for user ${user.username} to world cache`);

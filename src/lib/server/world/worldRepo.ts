@@ -52,8 +52,8 @@ export async function loadWorldFromDb(db: DatabaseConnection, saveCallback: Save
       angle: row.angle,
       last_position_update_ms: row.last_position_update_ms,
       picture_id: row.picture_id || 1, // Default to 1 if not set
-      // Only include username, userId, and level for player ships
-      ...(row.type === 'player_ship' && row.username ? { 
+      // Only include username, userId, and level for player ships with a valid user record
+      ...(row.type === 'player_ship' && row.username && row.user_id != null ? { 
         username: row.username,
         userId: row.user_id,
         level: calculateLevelFromXp(row.xp ?? 0),

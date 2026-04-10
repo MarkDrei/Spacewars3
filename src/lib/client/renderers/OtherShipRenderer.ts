@@ -144,6 +144,7 @@ export class OtherShipRenderer extends SpaceObjectRendererBase {
             ctx.rotate(-spaceObject.angle * (Math.PI / 180));
             
             // Determine name colour based on level difference
+            // Fall back to level 1 if the WorldCache snapshot predates level tracking
             const otherLevel = spaceObject.level ?? 1;
             const nameColor = getShipNameColor(this.playerLevel, otherLevel);
             
