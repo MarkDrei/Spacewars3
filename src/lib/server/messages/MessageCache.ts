@@ -404,7 +404,7 @@ export class MessageCache extends Cache {
         if (entryMatch) {
           const count = parseInt(entryMatch[1]);
           const name = entryMatch[2].trimEnd();
-          stats.buildCompletions.set(name, count);
+          stats.buildCompletions.set(name, (stats.buildCompletions.get(name) ?? 0) + count);
         }
       }
     }
