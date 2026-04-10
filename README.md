@@ -198,6 +198,35 @@ npm run test
 
 **Note**: Copy `.env.example` to `.env` for local development outside devcontainer.
 
+### Email Configuration (Optional)
+
+Email is used for registration verification. If not configured, the game works without email — accounts are created immediately without verification.
+
+| Variable            | Description                                    | Default             |
+| ------------------- | ---------------------------------------------- | ------------------- |
+| `EMAIL_ENABLED`     | Enable email sending                           | `false`             |
+| `SMTP_HOST`         | SMTP server hostname                           | —                   |
+| `SMTP_PORT`         | SMTP server port                               | `587`               |
+| `SMTP_SECURE`       | Use direct TLS (port 465)                      | `false`             |
+| `SMTP_USER`         | SMTP username / email address                  | —                   |
+| `SMTP_PASS`         | SMTP password or app-specific password         | —                   |
+| `SMTP_FROM`         | "From" address for outgoing emails             | Same as `SMTP_USER` |
+| `NEXT_PUBLIC_BASE_URL` | Base URL for verification links (e.g. `https://yourapp.com`) | Auto-detected from request |
+
+**Gmail Example:**
+
+1. Enable 2-Factor Authentication on your Google account.
+2. Generate an App Password at <https://myaccount.google.com/apppasswords>.
+3. Set the following environment variables:
+   ```
+   EMAIL_ENABLED=true
+   SMTP_HOST=smtp.gmail.com
+   SMTP_PORT=587
+   SMTP_USER=you@gmail.com
+   SMTP_PASS=<app-password>
+   NEXT_PUBLIC_BASE_URL=https://yourapp.com
+   ```
+
 ### Testing
 
 - **Test Structure**: Tests located in `src/__tests__/`

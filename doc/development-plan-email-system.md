@@ -354,3 +354,90 @@ No other new dependencies needed — `crypto` is built into Node.js.
 5. **Chose 24h for email verification token**: Standard security practice. Users may not check email immediately, so a longer window reduces friction.
 
 6. **Password reset is out of scope**: The problem statement asks to "implement the user email possibility", which is satisfied by storing and verifying an email address. Password reset can be added in a follow-up plan as a separate feature.
+
+---
+
+## Implementation Status
+
+**Status**: ✅ COMPLETED
+
+**Implementation Summary**: Full optional email support implemented — users can provide an email at registration; when email is configured (EMAIL_ENABLED=true), a verification token is generated and a verification email is sent fire-and-forget. The verify-email endpoint atomically consumes the token and marks the user as verified. When email is disabled (default), registration behaves exactly as before.
+
+**Files Modified/Created**:
+- `src/lib/server/email/emailConfig.ts` — New: SMTP env var reader with isEmailEnabled() helper
+- `src/lib/server/email/emailService.ts` — New: nodemailer wrapper with fire-and-forget sendEmail()
+- `src/lib/server/email/emailTemplates.ts` — New: HTML verification email template
+- `src/lib/server/schema.ts` — Added email columns to CREATE_USERS_TABLE; added MIGRATE_ADD_EMAIL; bumped SCHEMA_VERSION to 15
+- `src/lib/server/migrations.ts` — Added applyEmailColumnsMigration() and wired it into applyAllMigrations()
+- `src/lib/server/user/user.ts` — Added email: string|null and emailVerified: boolean fields
+- `src/lib/server/user/userRepo.ts` — Updated UserRow interface, userFromRow, createUser, createUserWithoutShip, createUserWithShip, saveUserToDb; added setEmailVerificationToken, consumeEmailVerificationToken, getUserByEmail
+- `src/app/api/register/route.ts` — Updated: email validation, uniqueness check, token generation, fire-and-forget send
+- `src/app/api/verify-email/route.ts` — New: GET endpoint that consumes token and redirects
+- `src/components/LoginPageComponent.tsx` — Updated: email field in sign-up, success message, query param banners, verifiedParam/errorParam props
+- `src/app/login/page.tsx` — Converted to server component wrapper that reads searchParams and passes to LoginPageComponent
+- `src/lib/client/services/authService.ts` — Added RegisterCredentials interface with optional email; updated register()
+- `src/lib/client/hooks/useAuth.ts` — Updated register() to accept optional email
+- `docker-compose.yml` — Added SMTP env var placeholders
+- `render.yaml` — Added SMTP env var placeholders
+- `README.md` — Added Email Configuration section
+- `src/__tests__/unit/email/emailConfig.test.ts` — New: unit tests for config parsing
+- `src/__tests__/unit/email/emailService.test.ts` — New: unit tests for service (nodemailer mocked)
+- `src/__tests__/unit/email/emailTemplates.test.ts` — New: unit tests for template generation
+- `src/__tests__/integration/api/email-tokens.test.ts` — New: integration tests for token helpers
+- `src/__tests__/integration/api/register-email-flow.test.ts` — New: integration tests for register+verify flow
+
+**Deviations from Plan**:
+- `src/app/login/page.tsx` was converted from a client component (with duplicated logic) to a thin server component wrapper that delegates to LoginPageComponent. This is a better design: avoids duplicating all the form logic and avoids the useSearchParams/Suspense issue in Next.js 15.
+- `LoginPageComponent` props changed to accept `verifiedParam` and `errorParam` directly (from server-side props) instead of reading useSearchParams internally. This is more testable and avoids the Suspense boundary requirement.
+
+**Arc42 Updates**: None required (infra/config changes are self-documenting via README and env var names)
+
+**Test Results**: ✅ 1526 tests passing, no linting errors, no typecheck errors, build succeeds
+
+---
+
+**Review Status**: ⚠️ NEEDS REVISION
+**Reviewer**: Medicus
+
+**Issues Found**:
+
+1. **Dead UI code — `successMessage` never rendered (Plan requirement not met)**
+   In `src/components/LoginPageComponent.tsx` lines 78–81:
+   ```javascript
+   if (result.emailSent) {
+     setSuccessMessage('Account created! Check your email to verify your address.');
+   }
+   router.push('/game');
+   ```
+   `setSuccessMessage` schedules a React state update (async), but `router.push('/game')` is called immediately after — the component navigates away before the state update is applied and re-rendered. The message is **never visible**. Users who provide an email and receive a verification email are never told to check it.
+   The plan explicitly requires: *"Show success message after registration if emailSent: true"*. This requirement is not met.
+
+2. **Race condition produces misleading error message (Minor)**
+   The email uniqueness pre-check (`getUserByEmail` → throw 400 "Email already in use") is a TOCTOU pattern. In the extremely rare case of two concurrent registrations with the same email, both pass the pre-check, one INSERT succeeds, and the second triggers the `idx_users_email` unique constraint violation. `handleApiError` catches `'duplicate key value violates unique constraint'` and returns `{ error: 'Username taken', status: 400 }` — a misleading message. The DB constraint prevents duplicate data (safe), but the error is confusing.
+
+**Required Changes**:
+
+1. **Fix `successMessage` visibility** in `LoginPageComponent.tsx`:
+   When `emailSent` is true, do **not** call `router.push('/game')` immediately. The user is already authenticated (session cookie is set), so they can still access the game — but they need to see the message first.
+   Recommended fix:
+   ```javascript
+   if (result.success) {
+     if (result.emailSent) {
+       setSuccessMessage('Account created! Check your email to verify your address.');
+       // Do NOT navigate — let the user read the message.
+       // They are already logged in; the game link will work when they choose to proceed.
+     } else {
+       router.push('/game');
+     }
+   }
+   ```
+   Then ensure the form area shows a "Go to game" button or auto-navigates after a brief delay (a `setTimeout` of 3–5 seconds is acceptable).
+
+2. **Fix misleading error on email constraint race** in `handleApiError` in `src/lib/server/errors.ts` (or catch it in the register route):
+   Add a specific check for the email index violation before the generic duplicate-key handler:
+   ```javascript
+   if (error.message.includes('idx_users_email') || error.message.includes('email')) {
+     return NextResponse.json({ error: 'Email already in use' }, { status: 400 });
+   }
+   ```
+   Alternatively, catch the DB error inside the `createUserWithShip` call in the register route and re-throw a typed `ApiError(400, 'Email already in use')`.

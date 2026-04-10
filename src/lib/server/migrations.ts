@@ -3,7 +3,7 @@
 // ---
 
 import { DatabaseConnection } from './database';
-import { MIGRATE_ADD_PICTURE_ID, MIGRATE_ADD_TELEPORT_CHARGES } from './schema';
+import { MIGRATE_ADD_PICTURE_ID, MIGRATE_ADD_TELEPORT_CHARGES, MIGRATE_ADD_EMAIL } from './schema';
 
 export interface Migration {
   version: number;
@@ -329,6 +329,8 @@ export async function applyTechMigrations(db: DatabaseConnection): Promise<void>
   await applyScoreMigration(db);
   // Apply user_events table migration
   await applyUserEventsMigration(db);
+  // Apply email columns migration
+  await applyEmailColumnsMigration(db);
 }
 
 /**
@@ -712,5 +714,30 @@ export async function applyUserEventsMigration(db: DatabaseConnection): Promise<
     console.log('✅ user_events table migration completed');
   } catch (error) {
     console.error('❌ Error applying user_events migration:', error);
+  }
+}
+
+/**
+ * Apply email columns migration to the users table
+ */
+export async function applyEmailColumnsMigration(db: DatabaseConnection): Promise<void> {
+  console.log('🔄 Checking for email columns migration...');
+
+  try {
+    const exists = await columnExists(db, 'users', 'email');
+    if (exists) {
+      console.log('✅ Email columns already exist');
+      return;
+    }
+
+    console.log('🚀 Adding email columns...');
+
+    for (const statement of MIGRATE_ADD_EMAIL) {
+      await runMigrationStatement(db, statement);
+    }
+
+    console.log('✅ Email columns migration completed');
+  } catch (error) {
+    console.error('❌ Error applying email columns migration:', error);
   }
 }

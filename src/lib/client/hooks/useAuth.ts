@@ -57,14 +57,15 @@ export const useAuth = () => {
     }
   };
 
-  const register = async (username: string, password: string): Promise<{ success: boolean; error?: string }> => {
+  const register = async (username: string, password: string, email?: string): Promise<{ success: boolean; error?: string; emailSent?: boolean }> => {
     try {
-      const result = await authService.register({ username, password });
+      const credentials = email && email.trim() ? { username, password, email: email.trim() } : { username, password };
+      const result = await authService.register(credentials);
       
       if (result.success) {
         // Re-check auth status to get the shipId
         await checkAuthStatus();
-        return { success: true };
+        return { success: true, emailSent: result.emailSent };
       } else {
         return { success: false, error: result.error || 'Registration failed' };
       }

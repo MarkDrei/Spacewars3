@@ -22,6 +22,10 @@ class User {
   ship_id?: number; // Optional ship ID for linking to player's ship
   techCounts: TechCounts; // Tech counts for weapons and defense
 
+  // Email address (optional)
+  email: string | null = null;
+  emailVerified: boolean = false;
+
   // Defense current values (persisted)
   hullCurrent: number;
   armorCurrent: number;

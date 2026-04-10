@@ -47,6 +47,12 @@ CREATE TABLE IF NOT EXISTS users (
 
   -- Score (economic progression metric, awarded from research and builds)
   score INTEGER NOT NULL DEFAULT 0,
+
+  -- Email address and verification state (optional)
+  email TEXT DEFAULT NULL,
+  email_verified BOOLEAN NOT NULL DEFAULT FALSE,
+  email_verification_token TEXT DEFAULT NULL,
+  email_verification_expires BIGINT DEFAULT NULL,
   
   FOREIGN KEY (ship_id) REFERENCES space_objects (id)
 )`;
@@ -202,5 +208,14 @@ export const MIGRATE_ADD_USER_EVENTS = [
   'CREATE INDEX IF NOT EXISTS idx_user_events_type ON user_events (event_type)'
 ];
 
+// Migration to add email columns (PostgreSQL syntax)
+export const MIGRATE_ADD_EMAIL = [
+  'ALTER TABLE users ADD COLUMN IF NOT EXISTS email TEXT DEFAULT NULL',
+  'ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN NOT NULL DEFAULT FALSE',
+  'ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verification_token TEXT DEFAULT NULL',
+  'ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verification_expires BIGINT DEFAULT NULL',
+  'CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users (email) WHERE email IS NOT NULL'
+];
+
 // Optional: Version management for migrations
-export const SCHEMA_VERSION = 14;
+export const SCHEMA_VERSION = 15;

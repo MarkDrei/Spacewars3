@@ -7,10 +7,19 @@ import '../app/login/LoginPage.css';
 
 export interface LoginPageComponentProps {
   onLogin?: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  onRegister?: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  onRegister?: (username: string, password: string, email?: string) => Promise<{ success: boolean; error?: string; emailSent?: boolean }>;
+  /** Passed from the page's searchParams when email has been verified */
+  verifiedParam?: string | null;
+  /** Passed from the page's searchParams when token was invalid */
+  errorParam?: string | null;
 }
 
-export const LoginPageComponent: React.FC<LoginPageComponentProps> = ({ onLogin: propOnLogin, onRegister: propOnRegister }) => {
+export const LoginPageComponent: React.FC<LoginPageComponentProps> = ({
+  onLogin: propOnLogin,
+  onRegister: propOnRegister,
+  verifiedParam,
+  errorParam,
+}) => {
   const router = useRouter();
   const { login: hookLogin, register: hookRegister } = useAuth();
   
@@ -23,8 +32,10 @@ export const LoginPageComponent: React.FC<LoginPageComponentProps> = ({ onLogin:
     username: '',
     password: '',
     confirmPassword: '',
+    email: '',
   });
   const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -58,16 +69,28 @@ export const LoginPageComponent: React.FC<LoginPageComponentProps> = ({ onLogin:
 
     setIsLoading(true);
     setError('');
+    setSuccessMessage('');
 
     try {
-      const result = isSignUp 
-        ? await register(formData.username, formData.password)
-        : await login(formData.username, formData.password);
-
-      if (result.success) {
-        router.push('/game');
+      if (isSignUp) {
+        const result = await register(formData.username, formData.password, formData.email || undefined);
+        if (result.success) {
+          if (result.emailSent) {
+            setSuccessMessage('Account created! Check your email to verify your address. Redirecting…');
+            setTimeout(() => router.push('/game'), 3000);
+          } else {
+            router.push('/game');
+          }
+        } else {
+          setError(result.error || 'Registration failed');
+        }
       } else {
-        setError(result.error || 'Authentication failed');
+        const result = await login(formData.username, formData.password);
+        if (result.success) {
+          router.push('/game');
+        } else {
+          setError(result.error || 'Authentication failed');
+        }
       }
     } catch {
       setError('An unexpected error occurred');
@@ -82,9 +105,18 @@ export const LoginPageComponent: React.FC<LoginPageComponentProps> = ({ onLogin:
       username: '',
       password: '',
       confirmPassword: '',
+      email: '',
     });
     setError('');
+    setSuccessMessage('');
   };
+
+  // Determine banner message from query params (shown on login page after redirect)
+  const queryBanner = verifiedParam === 'true'
+    ? 'Email verified! You can now sign in.'
+    : errorParam === 'invalid-token'
+    ? 'Email verification link is invalid or has expired.'
+    : null;
 
   return (
     <div className="login-page">
@@ -111,6 +143,12 @@ export const LoginPageComponent: React.FC<LoginPageComponentProps> = ({ onLogin:
           </div>
 
           <form onSubmit={handleSubmit} className="auth-form">
+            {queryBanner && (
+              <div className={errorParam ? 'error-message' : 'success-message'}>
+                {queryBanner}
+              </div>
+            )}
+            {successMessage && <div className="success-message">{successMessage}</div>}
             {error && <div className="error-message">{error}</div>}
             
             <div className="form-group">
@@ -150,6 +188,22 @@ export const LoginPageComponent: React.FC<LoginPageComponentProps> = ({ onLogin:
                   onChange={handleInputChange}
                   placeholder="Confirm your password"
                   required
+                />
+              </div>
+            )}
+
+            {isSignUp && (
+              <div className="form-group">
+                <label htmlFor="email">
+                  Email <span style={{ fontWeight: 'normal', color: '#607a99' }}>(optional)</span>
+                </label>
+                <input
+                  type="email"
+                  id="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  placeholder="Email (optional — for account notifications)"
                 />
               </div>
             )}
