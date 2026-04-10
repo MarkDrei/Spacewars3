@@ -52,6 +52,7 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
   const [announcement, setAnnouncement] = useState<{ text: string; key: number } | null>(null);
   const announcementTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isActivatingAfterburner, setIsActivatingAfterburner] = useState(false);
+  const [playerLevel, setPlayerLevel] = useState(1);
   // Auth is guaranteed by server, so pass true and use auth.shipId
   const { worldData, isLoading, error, refetch, lastUpdateTime } = useWorldData(3000);
 
@@ -377,6 +378,7 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
       setTeleportMaxCharges(stats.teleportMaxCharges);
       setTeleportRechargeTimeSec(stats.teleportRechargeTimeSec);
       setTimeMultiplier(stats.timeMultiplier);
+      setPlayerLevel(stats.level);
     }
   }, []);
 
@@ -398,6 +400,13 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
       gameInstanceRef.current.setAttackClickMode(attackClickMode);
     }
   }, [attackClickMode]);
+
+  // Sync playerLevel with game instance
+  useEffect(() => {
+    if (gameInstanceRef.current) {
+      gameInstanceRef.current.setPlayerLevel(playerLevel);
+    }
+  }, [playerLevel]);
 
   // Sync zoom with game instance
   useEffect(() => {

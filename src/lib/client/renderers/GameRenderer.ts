@@ -151,7 +151,7 @@ export class GameRenderer {
         this.tooltipRenderer.drawTooltip(spaceObjects, ship, worldScale);
     }
 
-    drawWorld(ship: Ship, targetingLine: TargetingLine | null = null): void {
+    drawWorld(ship: Ship, targetingLine: TargetingLine | null = null, playerLevel: number = 1): void {
         this.drawBackground();
 
         const dpr = (typeof window !== 'undefined' && window.devicePixelRatio) || 1;
@@ -179,7 +179,7 @@ export class GameRenderer {
         this.radarRenderer.drawRadar(this.ctx, centerX, centerY, ship);
 
         this.collectiblesRenderer.drawSpaceObjects(
-            ship, spaceObjects, this.world.getWidth(), this.world.getHeight(), viewportInfo
+            ship, spaceObjects, this.world.getWidth(), this.world.getHeight(), viewportInfo, playerLevel
         );
 
         if (targetingLine) {

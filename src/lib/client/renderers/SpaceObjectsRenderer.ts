@@ -29,25 +29,25 @@ export class SpaceObjectsRenderer {
     /**
      * Draw collectible objects
      */
-    drawSpaceObjects(ship: Ship, collectibles: SpaceObject[], worldWidth: number, worldHeight: number, viewportInfo: ViewportInfo): void {
+    drawSpaceObjects(ship: Ship, collectibles: SpaceObject[], worldWidth: number, worldHeight: number, viewportInfo: ViewportInfo, playerLevel: number = 1): void {
         // Draw the main collectibles first
-        this.drawMainObjects(ship, collectibles, viewportInfo);
+        this.drawMainObjects(ship, collectibles, viewportInfo, playerLevel);
         
         // Now draw the wrapped collectibles
-        this.drawWrappedObjects(ship, collectibles, worldWidth, worldHeight, viewportInfo);
+        this.drawWrappedObjects(ship, collectibles, worldWidth, worldHeight, viewportInfo, playerLevel);
     }
     
     /**
      * Draw the main collectible objects
      */
-    private drawMainObjects(ship: Ship, collectibles: SpaceObject[], viewportInfo: ViewportInfo): void {
+    private drawMainObjects(ship: Ship, collectibles: SpaceObject[], viewportInfo: ViewportInfo, playerLevel: number): void {
         const centerX = viewportInfo.centerX;
         const centerY = viewportInfo.centerY;
         const shipX = ship.getX();
         const shipY = ship.getY();
         
         collectibles.forEach(collectible => {
-            this.renderObject(collectible, centerX, centerY, shipX, shipY);
+            this.renderObject(collectible, centerX, centerY, shipX, shipY, 0, 0, playerLevel);
         });
     }
     
@@ -61,7 +61,8 @@ export class SpaceObjectsRenderer {
         shipX: number, 
         shipY: number,
         offsetX: number = 0,
-        offsetY: number = 0
+        offsetY: number = 0,
+        playerLevel: number = 1
     ): void {
         if (collectible.type === 'shipwreck') {
             this.shipwreckRenderer.drawShipwreck(
@@ -97,7 +98,8 @@ export class SpaceObjectsRenderer {
                 screenY + offsetY,
                 shipX,
                 shipY,
-                collectible
+                collectible,
+                playerLevel
             );
         } else if (collectible.type === 'starbase') {
             this.starbaseRenderer.drawStarbase(
@@ -135,7 +137,7 @@ export class SpaceObjectsRenderer {
     /**
      * Draw wrapped collectible objects
      */
-    private drawWrappedObjects(ship: Ship, collectibles: SpaceObject[], worldWidth: number, worldHeight: number, viewportInfo: ViewportInfo): void {
+    private drawWrappedObjects(ship: Ship, collectibles: SpaceObject[], worldWidth: number, worldHeight: number, viewportInfo: ViewportInfo, playerLevel: number): void {
         const centerX = viewportInfo.centerX;
         const centerY = viewportInfo.centerY;
         const shipX = ship.getX();
@@ -173,7 +175,7 @@ export class SpaceObjectsRenderer {
                 
                 // Only draw if it would be visible on screen
                 if (this.isPositionVisible(wrappedX, wrappedY, visibleLeft, visibleRight, visibleTop, visibleBottom)) {
-                    this.renderObject(collectible, centerX, centerY, shipX, shipY, offset.x, offset.y);
+                    this.renderObject(collectible, centerX, centerY, shipX, shipY, offset.x, offset.y, playerLevel);
                 }
             });
         });

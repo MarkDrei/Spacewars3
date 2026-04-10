@@ -11,6 +11,7 @@ import { initiateBattle } from '@/lib/server/battle/battleService';
 import { UserCache } from '@/lib/server/user/userCache';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 import { BATTLE_LOCK, USER_LOCK } from '@/lib/server/typedLocks';
+import { isAttackAllowed } from '@shared/utils/levelUtils';
 
 // Force dynamic rendering for this route
 export const dynamic = 'force-dynamic';
@@ -60,6 +61,13 @@ export async function POST(request: NextRequest) {
         }
     
         console.log(`⚔️ Attack API: Both users loaded, initiating battle...`);
+        
+        // Level range check: only allow attacks within ±3 levels
+        const attackerLevel = attacker.getLevel();
+        const targetLevel = target.getLevel();
+        if (!isAttackAllowed(attackerLevel, targetLevel)) {
+          throw new ApiError(400, `Level difference too large: attacker level ${attackerLevel}, target level ${targetLevel}. Only ±3 levels allowed.`);
+        }
         
         // Initiate the battle - this will handle its own locking internally
         const battle = await initiateBattle(battleContext, userContext, attacker, target);

@@ -6,12 +6,18 @@ import { DatabaseConnection } from '../database';
 import { World, SpaceObject, SaveWorldCallback } from './world';
 import { DEFAULT_WORLD_BOUNDS } from '@shared/worldConstants';
 import { normalizePosition } from '@shared/physics';
+import { calculateLevelFromXp } from '@shared/utils/levelUtils';
 
 /**
  * Load world data from database (used internally by cache manager)
+ *
+ * Option B: Level information for player ships is fetched from the users table on
+ * WorldCache initialisation and kept in the in-memory SpaceObject. This avoids
+ * extra per-request DB look-ups while ensuring the level is available for rendering
+ * and attack-range checks without a separate API call.
  */
 export async function loadWorldFromDb(db: DatabaseConnection, saveCallback: SaveWorldCallback): Promise<World> {
-  // Join with users table to get usernames for player ships
+  // Join with users table to get usernames and XP for player ships
   const query = `
     SELECT
       so.id,
@@ -24,7 +30,8 @@ export async function loadWorldFromDb(db: DatabaseConnection, saveCallback: Save
       so.picture_id,
       u.username,
       u.id as user_id,
-      u.in_battle
+      u.in_battle,
+      u.xp
     FROM space_objects so
     LEFT JOIN users u ON so.type = 'player_ship' AND so.id = u.ship_id
   `;
@@ -45,10 +52,11 @@ export async function loadWorldFromDb(db: DatabaseConnection, saveCallback: Save
       angle: row.angle,
       last_position_update_ms: row.last_position_update_ms,
       picture_id: row.picture_id || 1, // Default to 1 if not set
-      // Only include username and userId for player ships
+      // Only include username, userId, and level for player ships
       ...(row.type === 'player_ship' && row.username ? { 
         username: row.username,
-        userId: row.user_id 
+        userId: row.user_id,
+        level: calculateLevelFromXp(row.xp ?? 0),
       } : {})
     };
   });

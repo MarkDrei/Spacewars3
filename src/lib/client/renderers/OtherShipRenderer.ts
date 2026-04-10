@@ -1,5 +1,6 @@
 import { SpaceObject } from '@shared/types';
 import { SpaceObjectRendererBase } from './SpaceObjectRendererBase';
+import { getShipNameColor } from '@shared/utils/levelUtils';
 
 /**
  * Renderer for other player ships (not the current player's ship)
@@ -8,6 +9,7 @@ import { SpaceObjectRendererBase } from './SpaceObjectRendererBase';
 export class OtherShipRenderer extends SpaceObjectRendererBase {
     private shipImages: Map<number, HTMLImageElement> = new Map();
     private imageLoadedStatus: Map<number, boolean> = new Map();
+    private playerLevel: number = 1;
 
     constructor() {
         super();
@@ -73,10 +75,12 @@ export class OtherShipRenderer extends SpaceObjectRendererBase {
         centerY: number, 
         viewportX: number, 
         viewportY: number, 
-        ship: SpaceObject
+        ship: SpaceObject,
+        playerLevel: number = 1
     ): void {
         // Store current ship being rendered so getObjectImage can access picture_id
         this.currentShip = ship;
+        this.playerLevel = playerLevel;
         // Use the base class method to handle positioning and wrapping
         this.drawSpaceObject(ctx, centerX, centerY, viewportX, viewportY, ship);
         this.currentShip = null;
@@ -139,9 +143,13 @@ export class OtherShipRenderer extends SpaceObjectRendererBase {
             // Reset rotation to draw text horizontally (counter-rotate the ship's angle)
             ctx.rotate(-spaceObject.angle * (Math.PI / 180));
             
+            // Determine name colour based on level difference
+            const otherLevel = spaceObject.level ?? 1;
+            const nameColor = getShipNameColor(this.playerLevel, otherLevel);
+            
             // Set text properties
             ctx.font = '12px Arial';
-            ctx.fillStyle = '#ffffff';
+            ctx.fillStyle = nameColor;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'top';
             
@@ -161,8 +169,8 @@ export class OtherShipRenderer extends SpaceObjectRendererBase {
                 textHeight + padding * 2
             );
             
-            // Draw the username text
-            ctx.fillStyle = '#ffffff';
+            // Draw the username text with level-based colour
+            ctx.fillStyle = nameColor;
             ctx.fillText(spaceObject.username, 0, yOffset);
             
             ctx.restore();

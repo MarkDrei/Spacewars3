@@ -52,7 +52,9 @@ export async function POST(request: NextRequest) {
               angle: DEFAULT_SHIP_START_ANGLE,
               last_position_update_ms: Date.now(),
               picture_id: 1, // Default ship picture
-              username: user.username
+              username: user.username,
+              userId: user.id,
+              level: 1, // New users start at level 1
             };
             world.spaceObjects.push(newShip);
             console.log(`🚀 Added ship ${user.ship_id} for user ${user.username} to world cache`);
