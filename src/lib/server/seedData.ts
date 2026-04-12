@@ -5,6 +5,7 @@ export interface SeedUser {
   username: string;
   password: string; // Plain text, will be hashed
   iron: number;
+  xp?: number; // Optional – defaults to 0 (level 1) when omitted
   tech_tree: Record<string, number>;
   ship: {
     x: number;
@@ -95,6 +96,7 @@ export const DEFAULT_USERS: SeedUser[] = [
     username: 'dummy',
     password: 'dummy',
     iron: 0,
+    xp: 0, // Level 1
     tech_tree: { 
       ironHarvesting: 1, 
       shipSpeed: 1, 
@@ -160,6 +162,7 @@ export const DEFAULT_USERS: SeedUser[] = [
     username: 'dummy2',
     password: 'dummy',
     iron: 0,
+    xp: 1000, // Level 2
     tech_tree: { 
       ironHarvesting: 1, 
       shipSpeed: 1, 
@@ -225,6 +228,7 @@ export const DEFAULT_USERS: SeedUser[] = [
     username: 'dummy3',
     password: 'dummy',
     iron: 0,
+    xp: 4000, // Level 3
     tech_tree: { 
       ironHarvesting: 1, 
       shipSpeed: 1, 
@@ -290,6 +294,7 @@ export const DEFAULT_USERS: SeedUser[] = [
     username: 'dummy4',
     password: 'dummy',
     iron: 0,
+    xp: 10000, // Level 4
     tech_tree: { 
       ironHarvesting: 1, 
       shipSpeed: 1, 
@@ -330,6 +335,204 @@ export const DEFAULT_USERS: SeedUser[] = [
       speed: 0,
       angle: 0,
       picture_id: 5
+    },
+    tech_counts: {
+      // Weapons
+      pulse_laser: 1,
+      auto_turret: 2,
+      plasma_lance: 0,
+      gauss_rifle: 0,
+      photon_torpedo: 0,
+      rocket_launcher: 0,
+      // Defense - 7 of each (results in max of 700)
+      ship_hull: 7,
+      kinetic_armor: 7,
+      energy_shield: 7,
+      missile_jammer: 7
+    },
+    defense: {
+      hull_current: 350,  // Half of max (700 / 2)
+      armor_current: 350,
+      shield_current: 350
+    }
+  },
+  {
+    username: 'dummy5',
+    password: 'dummy',
+    iron: 0,
+    xp: 20000, // Level 5
+    tech_tree: { 
+      ironHarvesting: 1, 
+      shipSpeed: 1, 
+      afterburner: 0,
+      // Projectile Weapons
+      projectileDamage: 1,
+      projectileReloadRate: 1,
+      projectileAccuracy: 1,
+      projectileWeaponTier: 0,
+      // Energy Weapons
+      energyDamage: 1,
+      energyRechargeRate: 1,
+      energyAccuracy: 1,
+      energyWeaponTier: 0,
+      // Defense
+      hullStrength: 1,
+      repairSpeed: 1,
+      armorEffectiveness: 1,
+      shieldEffectiveness: 1,
+      shieldRechargeRate: 1,
+      // Ship
+      afterburnerSpeedIncrease: 1,
+      afterburnerDuration: 1,
+      teleport: 0,
+      ironCapacity: 1,
+      constructionSpeed: 1,
+      inventorySlots: 1,
+      // Spies
+      spyChance: 0,
+      spySpeed: 0,
+      spySabotageDamage: 0,
+      counterintelligence: 0,
+      stealIron: 0
+    },
+    ship: {
+      x: 2470,
+      y: 2560,
+      speed: 0,
+      angle: 0,
+      picture_id: 6
+    },
+    tech_counts: {
+      // Weapons
+      pulse_laser: 1,
+      auto_turret: 2,
+      plasma_lance: 0,
+      gauss_rifle: 0,
+      photon_torpedo: 0,
+      rocket_launcher: 0,
+      // Defense - 7 of each (results in max of 700)
+      ship_hull: 7,
+      kinetic_armor: 7,
+      energy_shield: 7,
+      missile_jammer: 7
+    },
+    defense: {
+      hull_current: 350,  // Half of max (700 / 2)
+      armor_current: 350,
+      shield_current: 350
+    }
+  },
+  {
+    username: 'dummy6',
+    password: 'dummy',
+    iron: 0,
+    xp: 35000, // Level 6
+    tech_tree: { 
+      ironHarvesting: 1, 
+      shipSpeed: 1, 
+      afterburner: 0,
+      // Projectile Weapons
+      projectileDamage: 1,
+      projectileReloadRate: 1,
+      projectileAccuracy: 1,
+      projectileWeaponTier: 0,
+      // Energy Weapons
+      energyDamage: 1,
+      energyRechargeRate: 1,
+      energyAccuracy: 1,
+      energyWeaponTier: 0,
+      // Defense
+      hullStrength: 1,
+      repairSpeed: 1,
+      armorEffectiveness: 1,
+      shieldEffectiveness: 1,
+      shieldRechargeRate: 1,
+      // Ship
+      afterburnerSpeedIncrease: 1,
+      afterburnerDuration: 1,
+      teleport: 0,
+      ironCapacity: 1,
+      constructionSpeed: 1,
+      inventorySlots: 1,
+      // Spies
+      spyChance: 0,
+      spySpeed: 0,
+      spySabotageDamage: 0,
+      counterintelligence: 0,
+      stealIron: 0
+    },
+    ship: {
+      x: 2560,
+      y: 2560,
+      speed: 0,
+      angle: 0,
+      picture_id: 7
+    },
+    tech_counts: {
+      // Weapons
+      pulse_laser: 1,
+      auto_turret: 2,
+      plasma_lance: 0,
+      gauss_rifle: 0,
+      photon_torpedo: 0,
+      rocket_launcher: 0,
+      // Defense - 7 of each (results in max of 700)
+      ship_hull: 7,
+      kinetic_armor: 7,
+      energy_shield: 7,
+      missile_jammer: 7
+    },
+    defense: {
+      hull_current: 350,  // Half of max (700 / 2)
+      armor_current: 350,
+      shield_current: 350
+    }
+  },
+  {
+    username: 'dummy7',
+    password: 'dummy',
+    iron: 0,
+    xp: 56000, // Level 7
+    tech_tree: { 
+      ironHarvesting: 1, 
+      shipSpeed: 1, 
+      afterburner: 0,
+      // Projectile Weapons
+      projectileDamage: 1,
+      projectileReloadRate: 1,
+      projectileAccuracy: 1,
+      projectileWeaponTier: 0,
+      // Energy Weapons
+      energyDamage: 1,
+      energyRechargeRate: 1,
+      energyAccuracy: 1,
+      energyWeaponTier: 0,
+      // Defense
+      hullStrength: 1,
+      repairSpeed: 1,
+      armorEffectiveness: 1,
+      shieldEffectiveness: 1,
+      shieldRechargeRate: 1,
+      // Ship
+      afterburnerSpeedIncrease: 1,
+      afterburnerDuration: 1,
+      teleport: 0,
+      ironCapacity: 1,
+      constructionSpeed: 1,
+      inventorySlots: 1,
+      // Spies
+      spyChance: 0,
+      spySpeed: 0,
+      spySabotageDamage: 0,
+      counterintelligence: 0,
+      stealIron: 0
+    },
+    ship: {
+      x: 2530,
+      y: 2470,
+      speed: 0,
+      angle: 0,
+      picture_id: 11
     },
     tech_counts: {
       // Weapons
@@ -429,6 +632,12 @@ export async function seedDatabase(db: DatabaseConnection, force = false): Promi
         JSON.stringify(user.tech_tree),
         shipId
       ];
+
+      // Add xp if provided (defaults to 0 in the database schema)
+      if (user.xp !== undefined) {
+        columns.push('xp');
+        values.push(user.xp);
+      }
       
       // Add tech_counts if provided
       if (user.tech_counts) {

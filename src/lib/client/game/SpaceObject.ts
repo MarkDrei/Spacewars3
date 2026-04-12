@@ -66,6 +66,10 @@ export abstract class SpaceObjectOld {
         return 'userId' in this.serverData ? (this.serverData as { userId: number }).userId : undefined;
     }
 
+    getLevel(): number | undefined {
+        return this.serverData.level;
+    }
+
     getLastPositionUpdateMs(): number {
         return this.serverData.last_position_update_ms;
     }

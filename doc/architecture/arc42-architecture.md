@@ -229,6 +229,27 @@ Five cache managers handle different data domains. Four are persistent singleton
 - **Initialization:** Explicit via `initializeWithWorld()` or `initializeFromDb()`
 - **Key Features:** Save callback for dirty marking; delegates to worldRepo for persistence
 
+**Level Information in WorldCache (Option B — Load on Initialisation)**
+
+Player-ship `SpaceObject` entries carry a `level` field that is calculated once when the
+WorldCache is loaded from the database (`loadWorldFromDb` in `worldRepo.ts`). The user's
+`xp` value is fetched via a JOIN with the `users` table and the level is derived using
+`calculateLevelFromXp()` from `@shared/utils/levelUtils`.
+
+*Rationale for Option B:* The level is a slowly-changing, non-critical value (changes
+only when a research completes). Loading it once at startup (and when a new ship is added
+to the world via registration) avoids per-request DB look-ups while still exposing accurate
+level information to all clients. The worst-case staleness is bounded by the next server
+restart or WorldCache re-initialisation.
+
+*Consequences:*
+- The `level` field on a `SpaceObject` may lag behind the true player level by up to one
+  research cycle (minutes to hours).
+- The server-side attack validation (`POST /api/attack`) uses the *UserCache* (which always
+  reflects the current level) as the authoritative source for the ±3-level range check.
+- The client renderer uses the `level` provided in the world snapshot for visual coloring
+  only; this small lag is acceptable for cosmetic purposes.
+
 **MessageCache** (`src/lib/server/messages/MessageCache.ts`)
 
 - **Responsibility:** User messages and notifications
@@ -843,6 +864,43 @@ Only `RadarRenderer` needs the safe-area offset because it is the only renderer 
 - ⚠️ Test mode has slightly different code path (synchronous vs async persistence)
 - ⚠️ Tests must use `withTransaction()` wrapper for proper isolation
 - ⚠️ Seeded test data must be visible within transaction (handled by database initialization)
+
+---
+
+### 9.7 ADR-007: Level-Based Attack Range and Ship Name Colouring
+
+**Context:** Players at wildly different levels fighting each other creates an unbalanced experience. A weaker player cannot win against a much stronger one, and a much stronger player gains nothing meaningful by attacking weaker opponents. Additionally, the client needs a quick visual cue about which nearby ships are attackable.
+
+**Decision:**
+
+1. **Attack range restricted to ±3 levels.** Only players whose level difference `|targetLevel - attackerLevel| ≤ 3` may initiate a battle.
+
+2. **Dual enforcement (defence in depth):**
+   - *Frontend*: `Game.handleAttack()` checks `isAttackAllowed()` before calling the API. This provides instant feedback without a server round-trip.
+   - *Server*: `POST /api/attack` re-validates the level constraint using the authoritative UserCache levels. The frontend check can be bypassed (e.g. via direct API calls), so the server guard is mandatory.
+
+3. **Ship name colour encodes threat level** (rendered by `OtherShipRenderer`):
+   | Level difference | Colour       | Meaning                            |
+   |------------------|--------------|------------------------------------|
+   | `< −3`           | Gray         | Too weak to attack (out of range)  |
+   | `−3`             | Green        | Weakest attackable opponent        |
+   | `0`              | White        | Same level                         |
+   | `+3`             | Red          | Strongest attackable opponent      |
+   | `> +3`           | Gray         | Too strong to attack (out of range)|
+   Intermediate values use smooth RGB interpolation between the anchor colours.
+
+4. **Level data in WorldCache loaded via Option B** (see Section 5.2.1). The `SpaceObject` entries for player ships include a `level` field computed from `xp` at WorldCache load time. This value is used for rendering only; the server-side attack guard always reads from UserCache.
+
+**Shared utility:** `calculateLevelFromXp`, `getShipNameColor`, and `isAttackAllowed` live in `src/shared/src/utils/levelUtils.ts` and are unit-tested in `src/__tests__/unit/shared/levelUtils.test.ts`.
+
+**Consequences:**
+
+- ✅ Balanced PvP — players only face opponents of similar strength
+- ✅ Instant visual feedback via colour-coded names
+- ✅ Server-side guard prevents circumvention
+- ✅ Shared utility avoids logic duplication between client, server, and tests
+- ⚠️ Rendered level may lag real level by up to one research cycle (cosmetic only)
+- ⚠️ The ±3 threshold is hardcoded — changing it requires updating `isAttackAllowed` and the UI legend
 
 ---
 

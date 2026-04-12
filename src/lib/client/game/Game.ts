@@ -12,6 +12,7 @@ import { calculateToroidalDistance } from '@shared/physics';
 import { STARBASE_DOCK_RANGE } from '@/shared/starbases';
 import { debugState } from '../debug/debugState';
 import { InterceptionLineRenderer } from '../renderers/InterceptionLineRenderer';
+import { isAttackAllowed } from '@shared/utils/levelUtils';
 
 export class Game {
   private world: World;
@@ -31,6 +32,7 @@ export class Game {
   private attackClickMode: boolean = false;
   private onTeleportClickCallback: ((x: number, y: number) => void) | null = null;
   private onStarbaseEntryCallback: ((starbaseId: number) => void) | null = null;
+  private playerLevel: number = 1;
 
   constructor(canvas: HTMLCanvasElement) {
     // Initialize the canvas context
@@ -318,6 +320,15 @@ export class Game {
         console.error(`❌ Invalid user ID: ${userId} (type: ${typeof userId})`);
         return;
       }
+
+      // Frontend level-range check: only allow attacks within ±3 levels
+      const targetLevel = targetObject.getLevel();
+      if (targetLevel === undefined) {
+        console.warn(`⚔️ Target ship has no level data (userId ${userId}); skipping level check`);
+      } else if (!isAttackAllowed(this.playerLevel, targetLevel)) {
+        console.log(`⚔️ Attack blocked: level difference too large (player ${this.playerLevel} vs target ${targetLevel})`);
+        return;
+      }
       
       const { attackPlayer } = await import('../services/attackService');
       const result = await attackPlayer(userId);
@@ -407,6 +418,13 @@ export class Game {
   }
 
   /**
+   * Set the current player's level (used for level-based name coloring and attack range checks)
+   */
+  public setPlayerLevel(level: number): void {
+    this.playerLevel = level;
+  }
+
+  /**
    * Set a callback to be called when canvas is clicked in teleport mode
    */
   public setTeleportClickCallback(callback: ((x: number, y: number) => void) | null): void {
@@ -492,7 +510,7 @@ export class Game {
     try {
       // Try the most likely method names
       if (typeof this.renderer.drawWorld === 'function') {
-        this.renderer.drawWorld(this.ship, this.getTargetingLine());
+        this.renderer.drawWorld(this.ship, this.getTargetingLine(), this.playerLevel);
         
         // Draw interception lines on top of the rendered world
         this.drawInterceptionLines();
