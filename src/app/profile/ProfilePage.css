@@ -17,6 +17,12 @@
   margin-bottom: 2rem;
 }
 
+.profile-top-bar-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
 .profile-header {
   display: flex;
   align-items: center;
@@ -189,6 +195,154 @@
   margin-top: 0.5rem;
 }
 
+.change-password-button,
+.dialog-primary-button,
+.dialog-secondary-button,
+.dialog-close-button {
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.change-password-button {
+  background-color: #1e1e1e;
+  color: white;
+  border: 1px solid var(--primary-green);
+  padding: 0.75rem 1.25rem;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.change-password-button:hover {
+  background-color: rgba(76, 175, 80, 0.1);
+  box-shadow: 0 4px 8px rgba(76, 175, 80, 0.2);
+}
+
+.dialog-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 1000;
+}
+
+.change-password-dialog {
+  width: min(100%, 440px);
+  padding: 1.5rem;
+  background: #1e1e1e;
+  border: 1px solid rgba(76, 175, 80, 0.5);
+  border-radius: 12px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+}
+
+.change-password-dialog-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.change-password-dialog-header h2 {
+  margin: 0;
+  color: var(--primary-green);
+}
+
+.dialog-close-button {
+  background: transparent;
+  color: white;
+  font-size: 1.5rem;
+  line-height: 1;
+  padding: 0.25rem 0.5rem;
+}
+
+.dialog-close-button:hover {
+  color: var(--primary-green);
+}
+
+.change-password-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.change-password-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.change-password-field span {
+  font-weight: 500;
+}
+
+.change-password-field input {
+  background: #2d2d2d;
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  padding: 0.75rem 0.9rem;
+}
+
+.change-password-field input:focus {
+  outline: none;
+  border-color: var(--primary-green);
+  box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
+}
+
+.change-password-message {
+  padding: 0.75rem 0.9rem;
+  border-radius: 6px;
+  font-size: 0.95rem;
+}
+
+.change-password-message.error {
+  background: rgba(244, 67, 54, 0.15);
+  color: #ff8a80;
+}
+
+.change-password-message.success {
+  background: rgba(76, 175, 80, 0.15);
+  color: #81c784;
+}
+
+.change-password-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+.dialog-secondary-button,
+.dialog-primary-button {
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  font-weight: 600;
+}
+
+.dialog-secondary-button {
+  background: #2d2d2d;
+  color: white;
+}
+
+.dialog-primary-button {
+  background: var(--primary-green);
+  color: white;
+}
+
+.dialog-secondary-button:hover,
+.dialog-primary-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.dialog-primary-button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
 @media (max-width: 768px) {
   .profile-page {
     padding: 1rem 0.5rem;
@@ -198,6 +352,12 @@
     flex-direction: column;
     align-items: flex-start;
     gap: 1rem;
+  }
+
+  .profile-top-bar-actions {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
   }
 
   .profile-header {
@@ -222,6 +382,10 @@
     flex-direction: column;
     gap: 0.5rem;
     align-items: flex-start;
+  }
+
+  .change-password-actions {
+    flex-direction: column-reverse;
   }
 }
 

@@ -33,12 +33,99 @@ const ProfilePageClient: React.FC<ProfilePageClientProps> = ({ auth }) => {
   const [isLoadingBattles, setIsLoadingBattles] = useState(true);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [liveStats, setLiveStats] = useState<UserStatsResponse | null>(null);
+  const [isChangePasswordDialogOpen, setIsChangePasswordDialogOpen] = useState(false);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [changePasswordError, setChangePasswordError] = useState('');
+  const [changePasswordSuccess, setChangePasswordSuccess] = useState('');
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  });
   
   // Handle logout
   const handleLogout = async () => {
     setIsLoggingOut(true);
     await logout();
     router.push('/'); // Redirect to login page
+  };
+
+  const resetChangePasswordForm = () => {
+    setPasswordForm({
+      currentPassword: '',
+      newPassword: '',
+      confirmPassword: '',
+    });
+    setChangePasswordError('');
+    setChangePasswordSuccess('');
+  };
+
+  const openChangePasswordDialog = () => {
+    resetChangePasswordForm();
+    setIsChangePasswordDialogOpen(true);
+  };
+
+  const closeChangePasswordDialog = () => {
+    setIsChangePasswordDialogOpen(false);
+    resetChangePasswordForm();
+  };
+
+  const handlePasswordInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = event.target;
+    setPasswordForm((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+
+    if (changePasswordError) {
+      setChangePasswordError('');
+    }
+  };
+
+  const handleChangePassword = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setChangePasswordError('');
+    setChangePasswordSuccess('');
+
+    if (!passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword) {
+      setChangePasswordError('Please fill in all password fields');
+      return;
+    }
+
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      setChangePasswordError('New passwords do not match');
+      return;
+    }
+
+    setIsChangingPassword(true);
+
+    try {
+      const response = await fetch('/api/change-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify(passwordForm),
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        setChangePasswordError(data.error || 'Failed to change password');
+        return;
+      }
+
+      setChangePasswordSuccess(data.message || 'Password changed successfully');
+      setPasswordForm({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: '',
+      });
+    } catch {
+      setChangePasswordError('Failed to change password');
+    } finally {
+      setIsChangingPassword(false);
+    }
   };
   
   // Fetch battle history and user stats on component mount
@@ -74,13 +161,22 @@ const ProfilePageClient: React.FC<ProfilePageClientProps> = ({ auth }) => {
         <div className="profile-container">
           <div className="profile-top-bar">
             <h1 className="page-heading">Player Profile</h1>
-            <button
-              className="logout-button"
-              onClick={handleLogout}
-              disabled={isLoggingOut}
-            >
-              {isLoggingOut ? 'Logging out...' : 'Logout'}
-            </button>
+            <div className="profile-top-bar-actions">
+              <button
+                className="change-password-button"
+                onClick={openChangePasswordDialog}
+                type="button"
+              >
+                Change Password
+              </button>
+              <button
+                className="logout-button"
+                onClick={handleLogout}
+                disabled={isLoggingOut}
+              >
+                {isLoggingOut ? 'Logging out...' : 'Logout'}
+              </button>
+            </div>
           </div>
           <div className="profile-header">
             <div className="avatar">
@@ -151,6 +247,77 @@ const ProfilePageClient: React.FC<ProfilePageClientProps> = ({ auth }) => {
 
         </div>
       </div>
+      {isChangePasswordDialogOpen && (
+        <div className="dialog-overlay" role="presentation">
+          <div
+            className="change-password-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="change-password-dialog-title"
+          >
+            <div className="change-password-dialog-header">
+              <h2 id="change-password-dialog-title">Change Password</h2>
+              <button
+                type="button"
+                className="dialog-close-button"
+                onClick={closeChangePasswordDialog}
+                aria-label="Close change password dialog"
+              >
+                ×
+              </button>
+            </div>
+            <form className="change-password-form" onSubmit={handleChangePassword}>
+              {changePasswordError && (
+                <div className="change-password-message error">{changePasswordError}</div>
+              )}
+              {changePasswordSuccess && (
+                <div className="change-password-message success">{changePasswordSuccess}</div>
+              )}
+              <label className="change-password-field">
+                <span>Current Password</span>
+                <input
+                  type="password"
+                  name="currentPassword"
+                  value={passwordForm.currentPassword}
+                  onChange={handlePasswordInputChange}
+                  autoComplete="current-password"
+                  required
+                />
+              </label>
+              <label className="change-password-field">
+                <span>New Password</span>
+                <input
+                  type="password"
+                  name="newPassword"
+                  value={passwordForm.newPassword}
+                  onChange={handlePasswordInputChange}
+                  autoComplete="new-password"
+                  required
+                />
+              </label>
+              <label className="change-password-field">
+                <span>Confirm New Password</span>
+                <input
+                  type="password"
+                  name="confirmPassword"
+                  value={passwordForm.confirmPassword}
+                  onChange={handlePasswordInputChange}
+                  autoComplete="new-password"
+                  required
+                />
+              </label>
+              <div className="change-password-actions">
+                <button type="button" className="dialog-secondary-button" onClick={closeChangePasswordDialog}>
+                  Cancel
+                </button>
+                <button type="submit" className="dialog-primary-button" disabled={isChangingPassword}>
+                  {isChangingPassword ? 'Saving...' : 'Save Password'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </AuthenticatedLayout>
   );
 };
