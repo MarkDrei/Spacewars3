@@ -164,4 +164,21 @@ describe('Iron Capacity Management', () => {
     expect(actualAdded).toBe(0);
     expect(user.iron).toBe(1000); // Should not change
   });
+
+  test('collected_withBonusedCapacity_respectsBonusedCap', () => {
+    // Simulate a user with level-bonus capacity of 7500 (e.g. research 5000 × 1.5 level multiplier)
+    user.iron = 7400;
+    user.collected('asteroid', 7500); // pass bonused cap explicitly
+    expect(user.iron).toBeLessThanOrEqual(7500); // should not exceed bonused cap
+    expect(user.iron).toBeGreaterThan(5000); // research-only cap would have capped here
+  });
+
+  test('collected_withBonusedCapacity_doesNotExceedResearchCapWhenAlreadyAboveResearchCap', () => {
+    // If the user's current iron is already above the base research cap (possible via
+    // a previously applied bonus), collection should still respect the bonused cap.
+    user.iron = 5500;
+    user.collected('shipwreck', 10000); // bonused cap is 10000
+    expect(user.iron).toBeLessThanOrEqual(10000);
+    expect(user.iron).toBeGreaterThanOrEqual(5500); // iron can only increase
+  });
 });

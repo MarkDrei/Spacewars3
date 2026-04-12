@@ -477,8 +477,9 @@ class User {
   /**
    * Handle collection of space objects
    * @param objectType Type of the collected object
+   * @param maxCapacity Optional bonused max capacity; defaults to getMaxIronCapacity() (research only)
    */
-  collected(objectType: 'asteroid' | 'shipwreck' | 'escape_pod'): void {
+  collected(objectType: 'asteroid' | 'shipwreck' | 'escape_pod', maxCapacity?: number): void {
     let ironReward = 0;
 
     switch (objectType) {
@@ -503,7 +504,7 @@ class User {
     }
 
     // Award the iron using centralized method with capacity enforcement
-    const actualAdded = this.addIron(ironReward);
+    const actualAdded = this.addIron(ironReward, maxCapacity);
 
     console.log(`User ${this.username} collected a ${objectType} and received ${actualAdded} iron (total: ${this.iron})`);
   }

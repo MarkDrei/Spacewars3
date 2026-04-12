@@ -26,6 +26,7 @@ export class Game {
   private interceptionLines: InterceptionLines | null = null;
   private onNavigationCallback?: () => void; // Callback for when navigation happens
   private onAttackSuccessCallback?: () => void; // Callback for when attack succeeds
+  private onHarvestCallback?: (result: { success: boolean; ironReward?: number; objectType?: string; error?: string }) => void; // Callback for harvest result
   private teleportClickMode: boolean = false;
   private attackClickMode: boolean = false;
   private onTeleportClickCallback: ((x: number, y: number) => void) | null = null;
@@ -287,7 +288,9 @@ export class Game {
         } else {
           console.log(`Successfully collected ${result.objectType}! No iron reward. Distance: ${result.distance} units`);
         }
-        
+
+        this.onHarvestCallback?.({ success: true, ironReward: result.ironReward, objectType: result.objectType });
+
         // Trigger world data refresh to get updated state from server
         if (this.refetchWorldData) {
           console.log(`🔄 Triggering world data refresh...`);
@@ -297,7 +300,7 @@ export class Game {
         }
       } else {
         console.error('Failed to collect object:', result.error);
-        // Could show user feedback here (e.g., toast notification)
+        this.onHarvestCallback?.({ success: false, error: result.error });
       }
     } catch (error) {
       console.error('Failed to handle collection:', error);
@@ -415,6 +418,13 @@ export class Game {
    */
   public setAttackSuccessCallback(callback: () => void): void {
     this.onAttackSuccessCallback = callback;
+  }
+
+  /**
+   * Set a callback function to trigger after a harvest attempt (success or failure)
+   */
+  public setHarvestCallback(callback: (result: { success: boolean; ironReward?: number; objectType?: string; error?: string }) => void): void {
+    this.onHarvestCallback = callback;
   }
 
   /**
