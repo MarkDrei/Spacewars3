@@ -14,6 +14,7 @@ import { Commander } from '@/lib/server/inventory/Commander';
 import { InventoryService, InventoryFullError } from '@/lib/server/inventory/InventoryService';
 import { getResearchEffectFromTree, ResearchType } from '@/lib/server/techs/techtree';
 import { StatisticsCache } from '@/lib/server/statistics/StatisticsCache';
+import { UserBonusCache } from '@/lib/server/bonus/UserBonusCache';
 
 export async function POST(request: NextRequest) {
   try {
@@ -158,9 +159,12 @@ async function performCollectionLogic(
   
   // Capture iron before collection
   const ironBefore = user.iron;
-  
-  // Collect the object
-  user.collected(targetObject.type);
+
+  // Get bonuses so the iron cap includes the user-level multiplier
+  const bonuses = await UserBonusCache.getInstance().getBonuses(userCtx, user.id);
+
+  // Collect the object using the bonused iron capacity
+  user.collected(targetObject.type, bonuses.ironStorageCapacity);
   await world.collected(worldContext, objectId);
   
   // Calculate iron reward
