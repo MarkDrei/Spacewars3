@@ -348,6 +348,8 @@ describe('User.updateStats with time multiplier', () => {
       user.updateDefenseValues(1010);
 
       expect(user.hullCurrent).toBeCloseTo(100 + BASE_REGEN_RATE * 15, 5);
+      expect(user.armorCurrent).toBe(1250);
+      expect(user.shieldCurrent).toBe(1250);
     });
   });
 });
