@@ -6,14 +6,15 @@ import { shouldRetryFetch, scheduleRetry, DEFAULT_RETRY_CONFIG } from './retryLo
 import { setupPolling, cancelPolling } from './pollingUtils';
 import { setTimeMultiplier, getTimeMultiplier } from '../../timeMultiplier';
 
+const DEFAULT_DEFENSE_REGEN_RATE = 0.1;
+
 interface BonusData {
   levelMultiplier: number;
   ironRechargeRate: number;
   ironStorageCapacity: number;
   maxShipSpeed: number;
   currentMaxShipSpeed: number;
-  hullRepairSpeed: number;
-  armorRepairSpeed: number;
+  repairRate: number;
   shieldRechargeRate: number;
   projectileWeaponDamageFactor: number;
   projectileWeaponReloadFactor: number;
@@ -29,9 +30,8 @@ const DEFAULT_BONUS_DATA: BonusData = {
   ironStorageCapacity: 5000,
   maxShipSpeed: 0,
   currentMaxShipSpeed: 0,
-  hullRepairSpeed: 1.0,
-  armorRepairSpeed: 1.0,
-  shieldRechargeRate: 1.0,
+  repairRate: DEFAULT_DEFENSE_REGEN_RATE,
+  shieldRechargeRate: DEFAULT_DEFENSE_REGEN_RATE,
   projectileWeaponDamageFactor: 1.0,
   projectileWeaponReloadFactor: 1.0,
   projectileWeaponAccuracyFactor: 1.0,
@@ -116,15 +116,15 @@ export const useUserStats = (pollInterval: number = 5000): UseUserStatsReturn =>
         xpForNextLevel: result.xpForNextLevel,
         score: result.score ?? 0
       });
+      const repairRate = result.repairRate ?? DEFAULT_DEFENSE_REGEN_RATE;
       setBonusData({
         levelMultiplier: result.levelMultiplier ?? 1.0,
         ironRechargeRate: result.ironPerSecond ?? 1.0,
         ironStorageCapacity: result.maxIronCapacity ?? 5000,
         maxShipSpeed: result.maxShipSpeed ?? 0,
         currentMaxShipSpeed: result.currentMaxShipSpeed ?? 0,
-        hullRepairSpeed: result.hullRepairSpeed ?? 1.0,
-        armorRepairSpeed: result.armorRepairSpeed ?? 1.0,
-        shieldRechargeRate: result.shieldRechargeRate ?? 1.0,
+        repairRate,
+        shieldRechargeRate: result.shieldRechargeRate ?? DEFAULT_DEFENSE_REGEN_RATE,
         projectileWeaponDamageFactor: result.projectileWeaponDamageFactor ?? 1.0,
         projectileWeaponReloadFactor: result.projectileWeaponReloadFactor ?? 1.0,
         projectileWeaponAccuracyFactor: result.projectileWeaponAccuracyFactor ?? 1.0,

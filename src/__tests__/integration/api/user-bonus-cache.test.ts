@@ -46,8 +46,7 @@ describe('UserBonusCache initialization', () => {
       expect(bonuses.levelMultiplier).toBe(1.0); // level 1 → 1.15^0 = 1.0
       expect(bonuses.ironRechargeRate).toBeGreaterThan(0);
       expect(bonuses.ironStorageCapacity).toBeGreaterThan(0);
-      expect(bonuses.hullRepairSpeed).toBeGreaterThan(0);
-      expect(bonuses.armorRepairSpeed).toBeGreaterThan(0);
+      expect(bonuses.repairRate).toBeGreaterThan(0);
       expect(bonuses.shieldRechargeRate).toBeGreaterThan(0);
       expect(bonuses.maxShipSpeed).toBeGreaterThan(0);
 

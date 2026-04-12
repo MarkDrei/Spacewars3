@@ -7,7 +7,7 @@ import { TechCounts, BuildQueueItem } from '../techs/TechFactory';
 import { TechService } from '../techs/TechService';
 import { TimeMultiplierService } from '../timeMultiplier';
 import { UserBonusCache } from '../bonus/UserBonusCache';
-import { UserBonuses } from '../bonus/userBonusTypes';
+import { BASE_REGEN_RATE, UserBonuses } from '../bonus/userBonusTypes';
 import { HasLock4Context, IronLocks } from '@markdrei/ironguard-typescript-locks';
 
 class User {
@@ -436,11 +436,12 @@ class User {
 
   /**
    * Update defense values based on elapsed time since last regeneration
-   * Regeneration rate: bonused repair speed per second (defaults to 1 point/sec if no bonuses)
+   * Shield recharge is always active. Hull/armor repair shares a single repair pool and is disabled
+   * during battle.
    * Capped at maximum values (cannot exceed)
    * @param now Current timestamp in seconds
    * @param bonuses Pre-computed user bonuses (optional). When provided, bonused regen rates and
-   *   level-multiplied max defense are used. When omitted, falls back to base rates (backward-compat).
+   *   level-multiplied max defense are used. When omitted, falls back to base rates.
    */
   updateDefenseValues(now: number, bonuses?: UserBonuses): void {
     const elapsed = now - this.defenseLastRegen;
@@ -456,18 +457,99 @@ class User {
     const maxArmor = maxStats.armor;
     const maxShield = maxStats.shield;
 
-    // Determine regen rates from bonuses or fall back to base rate (1.0/sec)
-    const hullRegen = bonuses?.hullRepairSpeed ?? 1;
-    const armorRegen = bonuses?.armorRepairSpeed ?? 1;
-    const shieldRegen = bonuses?.shieldRechargeRate ?? 1;
+    const shieldRechargeRate = this.resolveShieldRechargeRate(bonuses);
+    this.shieldCurrent = Math.min(this.shieldCurrent + shieldRechargeRate * gameElapsed, maxShield);
 
-    // Apply regeneration (bonused rate/second), clamped at max
-    this.hullCurrent = Math.min(this.hullCurrent + hullRegen * gameElapsed, maxHull);
-    this.armorCurrent = Math.min(this.armorCurrent + armorRegen * gameElapsed, maxArmor);
-    this.shieldCurrent = Math.min(this.shieldCurrent + shieldRegen * gameElapsed, maxShield);
+    if (!this.inBattle) {
+      const repairRate = this.resolveRepairRate(bonuses);
+      let remainingRepairTime = gameElapsed;
+
+      while (remainingRepairTime > 0) {
+        const hullDamaged = this.hullCurrent < maxHull;
+        const armorDamaged = this.armorCurrent < maxArmor;
+
+        if (!hullDamaged && !armorDamaged) {
+          break;
+        }
+
+        if (hullDamaged && armorDamaged) {
+          const splitRepairRate = repairRate / 2;
+          if (splitRepairRate <= 0) {
+            break;
+          }
+
+          const hullTimeToFull = (maxHull - this.hullCurrent) / splitRepairRate;
+          const armorTimeToFull = (maxArmor - this.armorCurrent) / splitRepairRate;
+          const step = Math.min(remainingRepairTime, hullTimeToFull, armorTimeToFull);
+
+          if (step <= 0) {
+            break;
+          }
+
+          this.hullCurrent = Math.min(this.hullCurrent + splitRepairRate * step, maxHull);
+          this.armorCurrent = Math.min(this.armorCurrent + splitRepairRate * step, maxArmor);
+          remainingRepairTime -= step;
+          continue;
+        }
+
+        if (hullDamaged) {
+          this.hullCurrent = Math.min(this.hullCurrent + repairRate * remainingRepairTime, maxHull);
+          break;
+        }
+
+        this.armorCurrent = Math.min(this.armorCurrent + repairRate * remainingRepairTime, maxArmor);
+        break;
+      }
+    }
 
     // Update last regeneration timestamp (remains in real time)
     this.defenseLastRegen = now;
+  }
+
+  getDefenseRegenRates(bonuses?: UserBonuses): { hull: number; armor: number; shield: number } {
+    const maxStats = TechService.calculateMaxDefense(this.techCounts, this.techTree, bonuses?.levelMultiplier);
+    return this.calculateDefenseRegenRates(maxStats, bonuses);
+  }
+
+  private calculateDefenseRegenRates(
+    maxStats: { hull: number; armor: number; shield: number },
+    bonuses?: UserBonuses
+  ): { hull: number; armor: number; shield: number } {
+    const repairRate = this.resolveRepairRate(bonuses);
+    const shieldRechargeRate = this.resolveShieldRechargeRate(bonuses);
+
+    if (this.inBattle) {
+      return { hull: 0, armor: 0, shield: shieldRechargeRate };
+    }
+
+    const hullDamaged = this.hullCurrent < maxStats.hull;
+    const armorDamaged = this.armorCurrent < maxStats.armor;
+
+    if (hullDamaged && armorDamaged) {
+      return {
+        hull: repairRate / 2,
+        armor: repairRate / 2,
+        shield: shieldRechargeRate,
+      };
+    }
+
+    if (hullDamaged) {
+      return { hull: repairRate, armor: 0, shield: shieldRechargeRate };
+    }
+
+    if (armorDamaged) {
+      return { hull: 0, armor: repairRate, shield: shieldRechargeRate };
+    }
+
+    return { hull: 0, armor: 0, shield: shieldRechargeRate };
+  }
+
+  private resolveRepairRate(bonuses?: UserBonuses): number {
+    return bonuses?.repairRate ?? BASE_REGEN_RATE;
+  }
+
+  private resolveShieldRechargeRate(bonuses?: UserBonuses): number {
+    return bonuses?.shieldRechargeRate ?? BASE_REGEN_RATE;
   }
 
   async save(): Promise<void> {

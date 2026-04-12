@@ -15,12 +15,11 @@ export interface UserStatsResponse {
   teleportMaxCharges: number;
   teleportRechargeTimeSec: number;
   teleportRechargeSpeed: number;
-  // Bonus system fields (optional for backward compatibility)
+  // Bonus system fields
   levelMultiplier?: number;
   maxShipSpeed?: number;
   currentMaxShipSpeed?: number;
-  hullRepairSpeed?: number;
-  armorRepairSpeed?: number;
+  repairRate?: number;
   shieldRechargeRate?: number;
   projectileWeaponDamageFactor?: number;
   projectileWeaponReloadFactor?: number;

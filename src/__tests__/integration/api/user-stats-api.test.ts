@@ -58,8 +58,7 @@ describe('User stats API', () => {
       // Bonus system fields
       expect(data).toHaveProperty('levelMultiplier');
       expect(data).toHaveProperty('maxShipSpeed');
-      expect(data).toHaveProperty('hullRepairSpeed');
-      expect(data).toHaveProperty('armorRepairSpeed');
+      expect(data).toHaveProperty('repairRate');
       expect(data).toHaveProperty('shieldRechargeRate');
       expect(data).toHaveProperty('projectileWeaponDamageFactor');
       expect(data).toHaveProperty('projectileWeaponReloadFactor');
@@ -70,8 +69,7 @@ describe('User stats API', () => {
       // New user at level 1 → level bonus is 0%
       expect(data.levelMultiplier).toBe(1.0);
       expect(data.maxShipSpeed).toBeGreaterThan(0);
-      expect(data.hullRepairSpeed).toBeGreaterThan(0);
-      expect(data.armorRepairSpeed).toBeGreaterThan(0);
+      expect(data.repairRate).toBeGreaterThan(0);
       expect(data.shieldRechargeRate).toBeGreaterThan(0);
     });
   });
