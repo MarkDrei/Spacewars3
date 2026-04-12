@@ -12,6 +12,7 @@ interface BonusData {
   ironStorageCapacity: number;
   maxShipSpeed: number;
   currentMaxShipSpeed: number;
+  repairRate: number;
   hullRepairSpeed: number;
   armorRepairSpeed: number;
   shieldRechargeRate: number;
@@ -29,9 +30,10 @@ const DEFAULT_BONUS_DATA: BonusData = {
   ironStorageCapacity: 5000,
   maxShipSpeed: 0,
   currentMaxShipSpeed: 0,
-  hullRepairSpeed: 1.0,
-  armorRepairSpeed: 1.0,
-  shieldRechargeRate: 1.0,
+  repairRate: 0.1,
+  hullRepairSpeed: 0.1,
+  armorRepairSpeed: 0.1,
+  shieldRechargeRate: 0.1,
   projectileWeaponDamageFactor: 1.0,
   projectileWeaponReloadFactor: 1.0,
   projectileWeaponAccuracyFactor: 1.0,
@@ -122,9 +124,10 @@ export const useUserStats = (pollInterval: number = 5000): UseUserStatsReturn =>
         ironStorageCapacity: result.maxIronCapacity ?? 5000,
         maxShipSpeed: result.maxShipSpeed ?? 0,
         currentMaxShipSpeed: result.currentMaxShipSpeed ?? 0,
-        hullRepairSpeed: result.hullRepairSpeed ?? 1.0,
-        armorRepairSpeed: result.armorRepairSpeed ?? 1.0,
-        shieldRechargeRate: result.shieldRechargeRate ?? 1.0,
+        repairRate: result.repairRate ?? result.hullRepairSpeed ?? 0.1,
+        hullRepairSpeed: result.hullRepairSpeed ?? result.repairRate ?? 0.1,
+        armorRepairSpeed: result.armorRepairSpeed ?? result.repairRate ?? 0.1,
+        shieldRechargeRate: result.shieldRechargeRate ?? 0.1,
         projectileWeaponDamageFactor: result.projectileWeaponDamageFactor ?? 1.0,
         projectileWeaponReloadFactor: result.projectileWeaponReloadFactor ?? 1.0,
         projectileWeaponAccuracyFactor: result.projectileWeaponAccuracyFactor ?? 1.0,

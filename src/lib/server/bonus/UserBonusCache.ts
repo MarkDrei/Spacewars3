@@ -154,6 +154,7 @@ export class UserBonusCache {
     const energyAccuracyMod = getWeaponAccuracyModifierFromTree(tree, ENERGY_WEAPON_KEY);
 
     // 7. Combine: finalValue = researchEffect × levelMultiplier × commanderMultiplier (where applicable).
+    const repairRate = BASE_REGEN_RATE * levelMultiplier;
     const bonuses: UserBonuses = {
       levelMultiplier,
       commanderMultipliers,
@@ -161,8 +162,9 @@ export class UserBonusCache {
       ironStorageCapacity: ironCapacity * levelMultiplier,
       ironRechargeRate: ironHarvesting * levelMultiplier,
 
-      hullRepairSpeed: BASE_REGEN_RATE * levelMultiplier,
-      armorRepairSpeed: BASE_REGEN_RATE * levelMultiplier,
+      repairRate,
+      hullRepairSpeed: repairRate,
+      armorRepairSpeed: repairRate,
       shieldRechargeRate: BASE_REGEN_RATE * levelMultiplier,
 
       maxShipSpeed:

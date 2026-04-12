@@ -94,6 +94,7 @@ function makeLevel1Bonuses(user: User): UserBonuses {
     commanderMultipliers: {} as UserBonuses['commanderMultipliers'],
     ironRechargeRate: ironHarvesting,
     ironStorageCapacity: ironCapacity,
+    repairRate: BASE_REGEN_RATE,
     hullRepairSpeed: BASE_REGEN_RATE,
     armorRepairSpeed: BASE_REGEN_RATE,
     shieldRechargeRate: BASE_REGEN_RATE,
@@ -288,27 +289,57 @@ describe('Task 5.3.2 — updateDefenseValues() with bonuses', () => {
 
   const techCounts = { ...DEFAULT_TECH_COUNTS, ship_hull: 2, kinetic_armor: 2, energy_shield: 2 };
 
-  test('updateDefenseValues_noBonuses_regenRate1PerSec', () => {
+  test('updateDefenseValues_noBonuses_distributesBaseRepairAndShieldRecharge', () => {
     const user = makeUser({ hullCurrent: 0, armorCurrent: 0, shieldCurrent: 0, defenseLastRegen: 1000 });
     user.techCounts = { ...techCounts };
     user.updateDefenseValues(1010); // 10s elapsed, no bonuses
-    // Base regen = 1/sec, so 10 each
-    expect(user.hullCurrent).toBeCloseTo(10, 5);
-    expect(user.armorCurrent).toBeCloseTo(10, 5);
-    expect(user.shieldCurrent).toBeCloseTo(10, 5);
+    // Base repair = 0.1/sec split equally between hull and armor while both are damaged.
+    expect(user.hullCurrent).toBeCloseTo(0.5, 5);
+    expect(user.armorCurrent).toBeCloseTo(0.5, 5);
+    expect(user.shieldCurrent).toBeCloseTo(1, 5);
   });
 
-  test('updateDefenseValues_withBonuses_usesHullRepairSpeed', () => {
+  test('updateDefenseValues_withBonuses_splitsRepairRateAcrossHullAndArmor', () => {
     const user = makeUser({ hullCurrent: 0, armorCurrent: 0, shieldCurrent: 0, defenseLastRegen: 1000 });
     user.techCounts = { ...techCounts };
     const bonuses = makeLevel1Bonuses(user);
+    bonuses.repairRate = 2.0;
     bonuses.hullRepairSpeed = 2.5;
     bonuses.armorRepairSpeed = 1.0;
     bonuses.shieldRechargeRate = 3.0;
     user.updateDefenseValues(1010, bonuses); // 10s elapsed
-    expect(user.hullCurrent).toBeCloseTo(25, 4);   // 2.5 × 10
-    expect(user.armorCurrent).toBeCloseTo(10, 4);  // 1.0 × 10
+    expect(user.hullCurrent).toBeCloseTo(10, 4);   // (2.0 / 2) × 10
+    expect(user.armorCurrent).toBeCloseTo(10, 4);  // (2.0 / 2) × 10
     expect(user.shieldCurrent).toBeCloseTo(30, 4); // 3.0 × 10
+  });
+
+  test('updateDefenseValues_withBonuses_repairGoesToRemainingDamagedDefense', () => {
+    const user = makeUser({ hullCurrent: 149, armorCurrent: 100, shieldCurrent: 0, defenseLastRegen: 1000 });
+    user.techCounts = { ...DEFAULT_TECH_COUNTS, ship_hull: 1, kinetic_armor: 1, energy_shield: 1 };
+    const bonuses = makeLevel1Bonuses(user);
+    bonuses.repairRate = 2.0;
+    bonuses.shieldRechargeRate = 0.5;
+
+    user.updateDefenseValues(1010, bonuses);
+
+    expect(user.hullCurrent).toBe(150);
+    expect(user.armorCurrent).toBeCloseTo(119, 4);
+    expect(user.shieldCurrent).toBeCloseTo(5, 4);
+  });
+
+  test('updateDefenseValues_inBattle_onlyShieldRechargeRemainsActive', () => {
+    const user = makeUser({ hullCurrent: 0, armorCurrent: 0, shieldCurrent: 0, defenseLastRegen: 1000 });
+    user.techCounts = { ...techCounts };
+    user.inBattle = true;
+    const bonuses = makeLevel1Bonuses(user);
+    bonuses.repairRate = 2.0;
+    bonuses.shieldRechargeRate = 3.0;
+
+    user.updateDefenseValues(1010, bonuses);
+
+    expect(user.hullCurrent).toBe(0);
+    expect(user.armorCurrent).toBe(0);
+    expect(user.shieldCurrent).toBeCloseTo(30, 4);
   });
 
   test('updateDefenseValues_withLevel2Bonuses_maxDefenseScaledByLevelMultiplier', () => {
@@ -319,6 +350,7 @@ describe('Task 5.3.2 — updateDefenseValues() with bonuses', () => {
     user.techCounts = { ...DEFAULT_TECH_COUNTS, ship_hull: 1, kinetic_armor: 1, energy_shield: 1 };
     const bonuses = makeLevel1Bonuses(user);
     bonuses.levelMultiplier = 1.15;
+    bonuses.repairRate = 100;
     bonuses.hullRepairSpeed = 100; // high regen to hit max quickly
     bonuses.armorRepairSpeed = 100;
     bonuses.shieldRechargeRate = 100;

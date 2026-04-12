@@ -317,9 +317,10 @@ describe('useUserStats', () => {
       teleportRechargeSpeed: 0,
       levelMultiplier: 1.15,
       maxShipSpeed: 28.75,
-      hullRepairSpeed: 1.15,
-      armorRepairSpeed: 1.15,
-      shieldRechargeRate: 1.15,
+      repairRate: 0.115,
+      hullRepairSpeed: 0.115,
+      armorRepairSpeed: 0.115,
+      shieldRechargeRate: 0.115,
       projectileWeaponDamageFactor: 1.15,
       projectileWeaponReloadFactor: 1.28,
       projectileWeaponAccuracyFactor: 1.15,
@@ -338,9 +339,10 @@ describe('useUserStats', () => {
     expect(result.current.bonuses.ironRechargeRate).toBe(1.15);
     expect(result.current.bonuses.ironStorageCapacity).toBe(5750);
     expect(result.current.bonuses.maxShipSpeed).toBe(28.75);
-    expect(result.current.bonuses.hullRepairSpeed).toBe(1.15);
-    expect(result.current.bonuses.armorRepairSpeed).toBe(1.15);
-    expect(result.current.bonuses.shieldRechargeRate).toBe(1.15);
+    expect(result.current.bonuses.repairRate).toBe(0.115);
+    expect(result.current.bonuses.hullRepairSpeed).toBe(0.115);
+    expect(result.current.bonuses.armorRepairSpeed).toBe(0.115);
+    expect(result.current.bonuses.shieldRechargeRate).toBe(0.115);
     expect(result.current.bonuses.projectileWeaponDamageFactor).toBe(1.15);
     expect(result.current.bonuses.projectileWeaponReloadFactor).toBe(1.28);
     expect(result.current.bonuses.energyWeaponDamageFactor).toBe(1.15);
@@ -374,7 +376,8 @@ describe('useUserStats', () => {
     expect(result.current.bonuses.levelMultiplier).toBe(1.0);
     expect(result.current.bonuses.projectileWeaponDamageFactor).toBe(1.0);
     expect(result.current.bonuses.energyWeaponDamageFactor).toBe(1.0);
-    expect(result.current.bonuses.hullRepairSpeed).toBe(1.0);
+    expect(result.current.bonuses.repairRate).toBe(0.1);
+    expect(result.current.bonuses.hullRepairSpeed).toBe(0.1);
     // iron fields default to values from the ironPerSecond / maxIronCapacity
     expect(result.current.bonuses.ironRechargeRate).toBe(1);
     expect(result.current.bonuses.ironStorageCapacity).toBe(5000);

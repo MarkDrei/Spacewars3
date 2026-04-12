@@ -63,6 +63,7 @@ async function processUserStats(user: User, userWorldCache: UserCache, userCtx: 
     levelMultiplier: bonuses.levelMultiplier,
     maxShipSpeed: bonuses.maxShipSpeed,  // theoretical max from research + bonuses
     currentMaxShipSpeed: user.getCurrentMaxShipSpeed(bonuses),  // current actual max (affected by damage, etc.)
+    repairRate: bonuses.repairRate,
     hullRepairSpeed: bonuses.hullRepairSpeed,
     armorRepairSpeed: bonuses.armorRepairSpeed,
     shieldRechargeRate: bonuses.shieldRechargeRate,

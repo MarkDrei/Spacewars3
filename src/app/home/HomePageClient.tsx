@@ -461,12 +461,8 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
                   <td colSpan={2} className="category-header">Defense Regen (/s)</td>
                 </tr>
                 <tr className="data-row">
-                  <td className="data-cell">Hull Repair</td>
-                  <td className="data-cell value-cell">{xpLoading ? '...' : formatNumber(bonuses.hullRepairSpeed)}</td>
-                </tr>
-                <tr className="data-row">
-                  <td className="data-cell">Armor Repair</td>
-                  <td className="data-cell value-cell">{xpLoading ? '...' : formatNumber(bonuses.armorRepairSpeed)}</td>
+                  <td className="data-cell">Repair (Hull + Armor)</td>
+                  <td className="data-cell value-cell">{xpLoading ? '...' : formatNumber(bonuses.repairRate)}</td>
                 </tr>
                 <tr className="data-row">
                   <td className="data-cell">Shield Recharge</td>

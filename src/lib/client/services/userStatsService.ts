@@ -19,6 +19,7 @@ export interface UserStatsResponse {
   levelMultiplier?: number;
   maxShipSpeed?: number;
   currentMaxShipSpeed?: number;
+  repairRate?: number;
   hullRepairSpeed?: number;
   armorRepairSpeed?: number;
   shieldRechargeRate?: number;

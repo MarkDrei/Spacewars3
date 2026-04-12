@@ -87,11 +87,7 @@ async function getShipStats(
     armor: user.armorCurrent,
     shield: user.shieldCurrent
   };
-  const regenRates = {
-    hull: bonuses.hullRepairSpeed,
-    armor: bonuses.armorRepairSpeed,
-    shield: bonuses.shieldRechargeRate
-  };
+  const regenRates = user.getDefenseRegenRates(bonuses);
   const defenseValues = TechService.getDefenseStats(
     user.techCounts,
     user.techTree,

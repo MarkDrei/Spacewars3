@@ -71,6 +71,7 @@ function makeBonuses(overrides: Partial<UserBonuses>): UserBonuses {
     },
     ironStorageCapacity: 0,
     ironRechargeRate: 0,
+    repairRate: 0,
     hullRepairSpeed: 0,
     armorRepairSpeed: 0,
     shieldRechargeRate: 0,
@@ -391,9 +392,9 @@ describe('User.updateStats with IronHarvesting research progression', () => {
     user.updateStats(1020);
 
     // Defense values should be clamped at max
-    expect(user.hullCurrent).toBe(750);
-    expect(user.armorCurrent).toBe(1250);
-    expect(user.shieldCurrent).toBe(1250);
+    expect(user.hullCurrent).toBeCloseTo(741, 5);
+    expect(user.armorCurrent).toBeCloseTo(1241, 5);
+    expect(user.shieldCurrent).toBeCloseTo(1242, 5);
     expect(user.defenseLastRegen).toBe(1020);
   });
 });
@@ -515,12 +516,12 @@ describe('User.updateDefenseValues with regeneration', () => {
   });
 
   test('updateDefenseValues_elapsedTime_regeneratesCorrectly', () => {
-    // 10 seconds elapsed, should add 10 points to each defense
+    // 10 seconds elapsed, repair is split across hull and armor while shield recharges independently.
     user.updateDefenseValues(1010);
 
-    expect(user.hullCurrent).toBe(110); // 100 + 10
-    expect(user.armorCurrent).toBe(210); // 200 + 10
-    expect(user.shieldCurrent).toBe(310); // 300 + 10
+    expect(user.hullCurrent).toBeCloseTo(100.5, 5);
+    expect(user.armorCurrent).toBeCloseTo(200.5, 5);
+    expect(user.shieldCurrent).toBeCloseTo(301, 5);
     expect(user.defenseLastRegen).toBe(1010);
   });
 
@@ -533,8 +534,8 @@ describe('User.updateDefenseValues with regeneration', () => {
     // 20 seconds elapsed, would add 20 points but should clamp at max
     user.updateDefenseValues(1020);
 
-    expect(user.hullCurrent).toBe(750); // clamped at max
-    expect(user.armorCurrent).toBe(1250); // clamped at max
+    expect(user.hullCurrent).toBeCloseTo(746, 5);
+    expect(user.armorCurrent).toBeCloseTo(1241, 5);
     expect(user.shieldCurrent).toBe(1250); // clamped at max
     expect(user.defenseLastRegen).toBe(1020);
   });
@@ -586,12 +587,37 @@ describe('User.updateDefenseValues with regeneration', () => {
     user.armorCurrent = 200;
     user.shieldCurrent = 300;
 
-    // 2000 seconds elapsed - would add 2000 points but should clamp at max (1250)
+    // 2000 seconds elapsed - repair pool and shield recharge should still cap at max values.
     user.updateDefenseValues(3000);
 
-    expect(user.hullCurrent).toBe(750); // clamped at max
-    expect(user.armorCurrent).toBe(1250); // clamped at max
-    expect(user.shieldCurrent).toBe(1250); // clamped at max
+    expect(user.hullCurrent).toBeCloseTo(200, 5);
+    expect(user.armorCurrent).toBeCloseTo(300, 5);
+    expect(user.shieldCurrent).toBeCloseTo(500, 5);
     expect(user.defenseLastRegen).toBe(3000);
+  });
+
+  test('updateDefenseValues_whenOneDefenseIsFull_repairOnlyAffectsRemainingDamagedDefense', () => {
+    user.hullCurrent = 750;
+    user.armorCurrent = 200;
+    user.shieldCurrent = 300;
+
+    user.updateDefenseValues(1010);
+
+    expect(user.hullCurrent).toBe(750);
+    expect(user.armorCurrent).toBeCloseTo(201, 5);
+    expect(user.shieldCurrent).toBeCloseTo(301, 5);
+  });
+
+  test('updateDefenseValues_inBattle_disablesRepairButNotShieldRecharge', () => {
+    user.hullCurrent = 100;
+    user.armorCurrent = 200;
+    user.shieldCurrent = 300;
+    user.inBattle = true;
+
+    user.updateDefenseValues(1010);
+
+    expect(user.hullCurrent).toBe(100);
+    expect(user.armorCurrent).toBe(200);
+    expect(user.shieldCurrent).toBeCloseTo(301, 5);
   });
 });
