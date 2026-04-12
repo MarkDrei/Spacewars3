@@ -118,15 +118,16 @@ export const useUserStats = (pollInterval: number = 5000): UseUserStatsReturn =>
         xpForNextLevel: result.xpForNextLevel,
         score: result.score ?? 0
       });
+      const repairRate = result.repairRate ?? result.hullRepairSpeed ?? result.armorRepairSpeed ?? 0.1;
       setBonusData({
         levelMultiplier: result.levelMultiplier ?? 1.0,
         ironRechargeRate: result.ironPerSecond ?? 1.0,
         ironStorageCapacity: result.maxIronCapacity ?? 5000,
         maxShipSpeed: result.maxShipSpeed ?? 0,
         currentMaxShipSpeed: result.currentMaxShipSpeed ?? 0,
-        repairRate: result.repairRate ?? result.hullRepairSpeed ?? 0.1,
-        hullRepairSpeed: result.hullRepairSpeed ?? result.repairRate ?? 0.1,
-        armorRepairSpeed: result.armorRepairSpeed ?? result.repairRate ?? 0.1,
+        repairRate,
+        hullRepairSpeed: result.hullRepairSpeed ?? repairRate,
+        armorRepairSpeed: result.armorRepairSpeed ?? repairRate,
         shieldRechargeRate: result.shieldRechargeRate ?? 0.1,
         projectileWeaponDamageFactor: result.projectileWeaponDamageFactor ?? 1.0,
         projectileWeaponReloadFactor: result.projectileWeaponReloadFactor ?? 1.0,

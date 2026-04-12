@@ -515,6 +515,7 @@ class User {
     maxStats: { hull: number; armor: number; shield: number },
     bonuses?: UserBonuses
   ): { hull: number; armor: number; shield: number } {
+    // `hullRepairSpeed` is retained as a compatibility alias while callers migrate to `repairRate`.
     const repairRate = bonuses?.repairRate ?? bonuses?.hullRepairSpeed ?? BASE_REGEN_RATE;
     const shieldRechargeRate = bonuses?.shieldRechargeRate ?? BASE_REGEN_RATE;
 

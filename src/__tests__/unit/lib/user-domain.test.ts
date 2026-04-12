@@ -587,7 +587,8 @@ describe('User.updateDefenseValues with regeneration', () => {
     user.armorCurrent = 200;
     user.shieldCurrent = 300;
 
-    // 2000 seconds elapsed - repair pool and shield recharge should still cap at max values.
+    // 2000 seconds elapsed - the 0.1/s repair pool is still far from filling hull/armor,
+    // while shield recharge advances independently.
     user.updateDefenseValues(3000);
 
     expect(user.hullCurrent).toBeCloseTo(200, 5);
