@@ -441,7 +441,7 @@ class User {
    * Capped at maximum values (cannot exceed)
    * @param now Current timestamp in seconds
    * @param bonuses Pre-computed user bonuses (optional). When provided, bonused regen rates and
-   *   level-multiplied max defense are used. When omitted, falls back to base rates (backward-compat).
+   *   level-multiplied max defense are used. When omitted, falls back to base rates.
    */
   updateDefenseValues(now: number, bonuses?: UserBonuses): void {
     const elapsed = now - this.defenseLastRegen;
@@ -545,8 +545,7 @@ class User {
   }
 
   private resolveRepairRate(bonuses?: UserBonuses): number {
-    // `hullRepairSpeed` is retained as a compatibility alias while callers migrate to `repairRate`.
-    return bonuses?.repairRate ?? bonuses?.hullRepairSpeed ?? BASE_REGEN_RATE;
+    return bonuses?.repairRate ?? BASE_REGEN_RATE;
   }
 
   private resolveShieldRechargeRate(bonuses?: UserBonuses): number {

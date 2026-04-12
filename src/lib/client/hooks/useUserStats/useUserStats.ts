@@ -15,8 +15,6 @@ interface BonusData {
   maxShipSpeed: number;
   currentMaxShipSpeed: number;
   repairRate: number;
-  hullRepairSpeed: number;
-  armorRepairSpeed: number;
   shieldRechargeRate: number;
   projectileWeaponDamageFactor: number;
   projectileWeaponReloadFactor: number;
@@ -33,8 +31,6 @@ const DEFAULT_BONUS_DATA: BonusData = {
   maxShipSpeed: 0,
   currentMaxShipSpeed: 0,
   repairRate: DEFAULT_DEFENSE_REGEN_RATE,
-  hullRepairSpeed: DEFAULT_DEFENSE_REGEN_RATE,
-  armorRepairSpeed: DEFAULT_DEFENSE_REGEN_RATE,
   shieldRechargeRate: DEFAULT_DEFENSE_REGEN_RATE,
   projectileWeaponDamageFactor: 1.0,
   projectileWeaponReloadFactor: 1.0,
@@ -120,7 +116,7 @@ export const useUserStats = (pollInterval: number = 5000): UseUserStatsReturn =>
         xpForNextLevel: result.xpForNextLevel,
         score: result.score ?? 0
       });
-      const repairRate = result.repairRate ?? result.hullRepairSpeed ?? result.armorRepairSpeed ?? DEFAULT_DEFENSE_REGEN_RATE;
+      const repairRate = result.repairRate ?? DEFAULT_DEFENSE_REGEN_RATE;
       setBonusData({
         levelMultiplier: result.levelMultiplier ?? 1.0,
         ironRechargeRate: result.ironPerSecond ?? 1.0,
@@ -128,8 +124,6 @@ export const useUserStats = (pollInterval: number = 5000): UseUserStatsReturn =>
         maxShipSpeed: result.maxShipSpeed ?? 0,
         currentMaxShipSpeed: result.currentMaxShipSpeed ?? 0,
         repairRate,
-        hullRepairSpeed: result.hullRepairSpeed ?? repairRate,
-        armorRepairSpeed: result.armorRepairSpeed ?? repairRate,
         shieldRechargeRate: result.shieldRechargeRate ?? DEFAULT_DEFENSE_REGEN_RATE,
         projectileWeaponDamageFactor: result.projectileWeaponDamageFactor ?? 1.0,
         projectileWeaponReloadFactor: result.projectileWeaponReloadFactor ?? 1.0,

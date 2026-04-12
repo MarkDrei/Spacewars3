@@ -163,8 +163,6 @@ export class UserBonusCache {
       ironRechargeRate: ironHarvesting * levelMultiplier,
 
       repairRate,
-      hullRepairSpeed: repairRate,
-      armorRepairSpeed: repairRate,
       shieldRechargeRate: BASE_REGEN_RATE * levelMultiplier,
 
       maxShipSpeed:

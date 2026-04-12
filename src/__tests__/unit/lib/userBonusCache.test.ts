@@ -518,18 +518,7 @@ describe('UserBonusCache defense regen', () => {
     expect(bonuses.repairRate).toBeCloseTo(BASE_REGEN_RATE * 1.15, 6);
   });
 
-  test('armorRepairSpeed_sameAsRepairRate', async () => {
-    const user = makeUser(1000);
-    const { userCacheMock, inventoryServiceMock } = makeMocks(user, emptyBridge());
-    UserBonusCache.configureDependencies({ userCache: userCacheMock, inventoryService: inventoryServiceMock });
-    const cache = UserBonusCache.getInstance();
-
-    const bonuses = await withLock4(ctx => cache.getBonuses(ctx, 1));
-    expect(bonuses.hullRepairSpeed).toBeCloseTo(bonuses.repairRate, 10);
-    expect(bonuses.armorRepairSpeed).toBeCloseTo(bonuses.repairRate, 10);
-  });
-
-  test('shieldRechargeRate_sameAsRepairRate', async () => {
+  test('shieldRechargeRate_sameAsRepairRateAtSameLevel', async () => {
     const user = makeUser(1000);
     const { userCacheMock, inventoryServiceMock } = makeMocks(user, emptyBridge());
     UserBonusCache.configureDependencies({ userCache: userCacheMock, inventoryService: inventoryServiceMock });

@@ -318,8 +318,6 @@ describe('useUserStats', () => {
       levelMultiplier: 1.15,
       maxShipSpeed: 28.75,
       repairRate: 0.115,
-      hullRepairSpeed: 0.115,
-      armorRepairSpeed: 0.115,
       shieldRechargeRate: 0.115,
       projectileWeaponDamageFactor: 1.15,
       projectileWeaponReloadFactor: 1.28,
@@ -340,8 +338,6 @@ describe('useUserStats', () => {
     expect(result.current.bonuses.ironStorageCapacity).toBe(5750);
     expect(result.current.bonuses.maxShipSpeed).toBe(28.75);
     expect(result.current.bonuses.repairRate).toBe(0.115);
-    expect(result.current.bonuses.hullRepairSpeed).toBe(0.115);
-    expect(result.current.bonuses.armorRepairSpeed).toBe(0.115);
     expect(result.current.bonuses.shieldRechargeRate).toBe(0.115);
     expect(result.current.bonuses.projectileWeaponDamageFactor).toBe(1.15);
     expect(result.current.bonuses.projectileWeaponReloadFactor).toBe(1.28);
@@ -377,7 +373,6 @@ describe('useUserStats', () => {
     expect(result.current.bonuses.projectileWeaponDamageFactor).toBe(1.0);
     expect(result.current.bonuses.energyWeaponDamageFactor).toBe(1.0);
     expect(result.current.bonuses.repairRate).toBe(0.1);
-    expect(result.current.bonuses.hullRepairSpeed).toBe(0.1);
     // iron fields default to values from the ironPerSecond / maxIronCapacity
     expect(result.current.bonuses.ironRechargeRate).toBe(1);
     expect(result.current.bonuses.ironStorageCapacity).toBe(5000);

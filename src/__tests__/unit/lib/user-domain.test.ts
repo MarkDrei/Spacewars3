@@ -72,8 +72,6 @@ function makeBonuses(overrides: Partial<UserBonuses>): UserBonuses {
     ironStorageCapacity: 0,
     ironRechargeRate: 0,
     repairRate: 0,
-    hullRepairSpeed: 0,
-    armorRepairSpeed: 0,
     shieldRechargeRate: 0,
     maxShipSpeed: 0,
     projectileWeaponDamageFactor: 0,

@@ -43,18 +43,6 @@ export interface UserBonuses {
   /** BASE_REGEN_RATE × levelMultiplier (no research involved) */
   repairRate: number;
 
-  /**
-   * Compatibility alias for the total repair rate.
-   * Hull and armor share this single repair pool at runtime.
-   */
-  hullRepairSpeed: number;
-
-  /**
-   * Compatibility alias for the total repair rate.
-   * Hull and armor share this single repair pool at runtime.
-   */
-  armorRepairSpeed: number;
-
   /** BASE_REGEN_RATE × levelMultiplier (no research involved) */
   shieldRechargeRate: number;
 

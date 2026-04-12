@@ -95,8 +95,6 @@ function makeLevel1Bonuses(user: User): UserBonuses {
     ironRechargeRate: ironHarvesting,
     ironStorageCapacity: ironCapacity,
     repairRate: BASE_REGEN_RATE,
-    hullRepairSpeed: BASE_REGEN_RATE,
-    armorRepairSpeed: BASE_REGEN_RATE,
     shieldRechargeRate: BASE_REGEN_RATE,
     maxShipSpeed: 25,
     projectileWeaponDamageFactor: 1.0,
@@ -349,8 +347,6 @@ describe('Task 5.3.2 — updateDefenseValues() with bonuses', () => {
     const bonuses = makeLevel1Bonuses(user);
     bonuses.levelMultiplier = 1.15;
     bonuses.repairRate = 100;
-    bonuses.hullRepairSpeed = 100; // high regen to hit max quickly
-    bonuses.armorRepairSpeed = 100;
     bonuses.shieldRechargeRate = 100;
     user.updateDefenseValues(1010, bonuses); // 10s at 100/sec → hits max
     const expectedMaxHull = Math.round(150 * (100 / 100) * 1.15); // 150 * 1.15 = 172.5 → 173 (rounded)
