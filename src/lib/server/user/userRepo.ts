@@ -373,3 +373,58 @@ export async function getUserByEmail(
   if (result.rows.length === 0) return null;
   return result.rows[0] as { id: number; username: string };
 }
+
+// --- Password reset token helpers ---
+
+/**
+ * Stores a password reset token for the given user.
+ */
+export async function setPasswordResetToken(
+  db: DatabaseConnection,
+  userId: number,
+  token: string,
+  expiresAt: number
+): Promise<void> {
+  await db.query(
+    'UPDATE users SET password_reset_token = $1, password_reset_expires = $2 WHERE id = $3',
+    [token, expiresAt, userId]
+  );
+}
+
+/**
+ * Atomically validates and consumes a password reset token.
+ * Returns the userId if the token is valid and not expired, otherwise null.
+ * Clears the token on consumption so it cannot be reused.
+ */
+export async function consumePasswordResetToken(
+  db: DatabaseConnection,
+  token: string
+): Promise<number | null> {
+  const nowMs = Date.now();
+  const result = await db.query(
+    `UPDATE users
+     SET password_reset_token = NULL,
+         password_reset_expires = NULL
+     WHERE password_reset_token = $1
+       AND password_reset_expires > $2
+     RETURNING id`,
+    [token, nowMs]
+  );
+  if (result.rows.length === 0) return null;
+  return (result.rows[0] as { id: number }).id;
+}
+
+/**
+ * Updates a user's password hash directly in the database.
+ * Does not touch the cache — callers must update cached users separately.
+ */
+export async function updateUserPassword(
+  db: DatabaseConnection,
+  userId: number,
+  newPasswordHash: string
+): Promise<void> {
+  await db.query(
+    'UPDATE users SET password_hash = $1 WHERE id = $2',
+    [newPasswordHash, userId]
+  );
+}

@@ -178,5 +178,92 @@ describe('LoginPageComponent — query-param banners', () => {
     );
     expect(screen.getByText(/invalid or has expired/i)).toBeDefined();
   });
+
+  it('resetParam_true_showsPasswordResetBanner', () => {
+    render(
+      <LoginPageComponent
+        onLogin={async () => ({ success: false })}
+        onRegister={async () => ({ success: false })}
+        resetParam="true"
+      />,
+    );
+    expect(screen.getByText(/password updated/i)).toBeDefined();
+  });
+});
+
+describe('LoginPageComponent — forgot-password flow', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('forgotPassword_linkVisible_onSignInTab', () => {
+    render(
+      <LoginPageComponent
+        onLogin={async () => ({ success: false })}
+        onRegister={async () => ({ success: false })}
+      />,
+    );
+    expect(screen.getByRole('button', { name: /forgot password/i })).toBeDefined();
+  });
+
+  it('forgotPassword_linkNotVisible_onSignUpTab', () => {
+    render(
+      <LoginPageComponent
+        onLogin={async () => ({ success: false })}
+        onRegister={async () => ({ success: false })}
+      />,
+    );
+    // Switch to Sign Up
+    fireEvent.click(screen.getAllByText('Sign Up')[0]);
+    expect(screen.queryByRole('button', { name: /forgot password/i })).toBeNull();
+  });
+
+  it('forgotPassword_clickShowsResetForm', () => {
+    render(
+      <LoginPageComponent
+        onLogin={async () => ({ success: false })}
+        onRegister={async () => ({ success: false })}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: /forgot password/i }));
+    expect(screen.getByLabelText(/email address/i)).toBeDefined();
+    expect(screen.getByRole('button', { name: /send reset link/i })).toBeDefined();
+  });
+
+  it('forgotPassword_submitCallsHandler', async () => {
+    const onForgotPassword = vi.fn().mockResolvedValue({ success: true });
+    render(
+      <LoginPageComponent
+        onLogin={async () => ({ success: false })}
+        onRegister={async () => ({ success: false })}
+        onForgotPassword={onForgotPassword}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: /forgot password/i }));
+    fireEvent.change(screen.getByLabelText(/email address/i), {
+      target: { value: 'user@example.com' },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /send reset link/i }));
+    });
+    expect(onForgotPassword).toHaveBeenCalledWith('user@example.com');
+    expect(screen.getByText(/if that email is registered/i)).toBeDefined();
+  });
+
+  it('forgotPassword_backToSignIn_restoresLoginForm', () => {
+    render(
+      <LoginPageComponent
+        onLogin={async () => ({ success: false })}
+        onRegister={async () => ({ success: false })}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: /forgot password/i }));
+    fireEvent.click(screen.getByRole('button', { name: /back to sign in/i }));
+    // Login form should be restored
+    expect(screen.getByLabelText(/^username/i)).toBeDefined();
+    // Both the tab and submit button say "Sign In" — verify by checking the auth-form submit
+    const signInButtons = screen.getAllByRole('button', { name: /^sign in$/i });
+    expect(signInButtons.length).toBeGreaterThanOrEqual(1);
+  });
 });
 

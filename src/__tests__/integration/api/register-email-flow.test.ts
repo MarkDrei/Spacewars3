@@ -159,6 +159,54 @@ describe('Register with email flow', () => {
     });
   });
 
+  test('register with mixed-case email stores it lowercased', async () => {
+    await withTransaction(async () => {
+      const username = randomUsername('mixedcase');
+      const email = `Mixed.Case_${Date.now()}@Example.COM`;
+      const request = createRequest('http://localhost:3000/api/register', 'POST', {
+        username,
+        password: 'testpass',
+        email,
+      });
+      const response = await registerPOST(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(data.success).toBe(true);
+
+      const db = await getDatabase();
+      const result = await db.query('SELECT email FROM users WHERE username = $1', [username]);
+      expect(result.rows[0].email).toBe(email.toLowerCase());
+    });
+  });
+
+  test('duplicate-email check is case-insensitive after normalization', async () => {
+    await withTransaction(async () => {
+      const base = `Dup_${Date.now()}@Example.com`;
+
+      // First registration (mixed-case → stored lowercase)
+      const request1 = createRequest('http://localhost:3000/api/register', 'POST', {
+        username: randomUsername('ci1'),
+        password: 'testpass',
+        email: base,
+      });
+      const res1 = await registerPOST(request1);
+      expect(res1.status).toBe(200);
+
+      // Second registration with lowercase variant of same address
+      const request2 = createRequest('http://localhost:3000/api/register', 'POST', {
+        username: randomUsername('ci2'),
+        password: 'testpass',
+        email: base.toLowerCase(),
+      });
+      const res2 = await registerPOST(request2);
+      const data2 = await res2.json();
+
+      expect(res2.status).toBe(400);
+      expect(data2.error).toContain('Email already in use');
+    });
+  });
+
   test('register with email but email disabled does not send email', async () => {
     await withTransaction(async () => {
       delete process.env.EMAIL_ENABLED;

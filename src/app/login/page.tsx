@@ -12,8 +12,9 @@ const LoginPage: React.FC<LoginPageProps> = async ({ searchParams }) => {
     : {};
   const verified = typeof params.verified === 'string' ? params.verified : null;
   const error = typeof params.error === 'string' ? params.error : null;
+  const reset = typeof params.reset === 'string' ? params.reset : null;
 
-  return <LoginPageComponent verifiedParam={verified} errorParam={error} />;
+  return <LoginPageComponent verifiedParam={verified} errorParam={error} resetParam={reset} />;
 };
 
 export default LoginPage;

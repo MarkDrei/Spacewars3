@@ -79,6 +79,15 @@
   text-align: center;
 }
 
+.success-message {
+  background-color: #2e7d32;
+  color: white;
+  padding: 0.75rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  text-align: center;
+}
+
 .form-group {
   display: flex;
   flex-direction: column;

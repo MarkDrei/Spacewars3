@@ -3,7 +3,7 @@
 // ---
 
 import { DatabaseConnection } from './database';
-import { MIGRATE_ADD_PICTURE_ID, MIGRATE_ADD_TELEPORT_CHARGES, MIGRATE_ADD_EMAIL } from './schema';
+import { MIGRATE_ADD_PICTURE_ID, MIGRATE_ADD_TELEPORT_CHARGES, MIGRATE_ADD_EMAIL, MIGRATE_ADD_PASSWORD_RESET } from './schema';
 
 export interface Migration {
   version: number;
@@ -202,6 +202,17 @@ export const migrations: Migration[] = [
     down: [
       'DROP TABLE IF EXISTS user_events'
     ]
+  },
+  {
+    version: 15,
+    name: 'add_password_reset_columns',
+    up: [
+      ...MIGRATE_ADD_PASSWORD_RESET
+    ],
+    down: [
+      'ALTER TABLE users DROP COLUMN IF EXISTS password_reset_token',
+      'ALTER TABLE users DROP COLUMN IF EXISTS password_reset_expires'
+    ]
   }
 ];
 
@@ -331,6 +342,8 @@ export async function applyTechMigrations(db: DatabaseConnection): Promise<void>
   await applyUserEventsMigration(db);
   // Apply email columns migration
   await applyEmailColumnsMigration(db);
+  // Apply password reset columns migration
+  await applyPasswordResetMigration(db);
 }
 
 /**
@@ -739,5 +752,30 @@ export async function applyEmailColumnsMigration(db: DatabaseConnection): Promis
     console.log('✅ Email columns migration completed');
   } catch (error) {
     console.error('❌ Error applying email columns migration:', error);
+  }
+}
+
+/**
+ * Apply password reset token columns migration to the users table
+ */
+export async function applyPasswordResetMigration(db: DatabaseConnection): Promise<void> {
+  console.log('🔄 Checking for password reset columns migration...');
+
+  try {
+    const exists = await columnExists(db, 'users', 'password_reset_token');
+    if (exists) {
+      console.log('✅ Password reset columns already exist');
+      return;
+    }
+
+    console.log('🚀 Adding password reset columns...');
+
+    for (const statement of MIGRATE_ADD_PASSWORD_RESET) {
+      await runMigrationStatement(db, statement);
+    }
+
+    console.log('✅ Password reset columns migration completed');
+  } catch (error) {
+    console.error('❌ Error applying password reset migration:', error);
   }
 }

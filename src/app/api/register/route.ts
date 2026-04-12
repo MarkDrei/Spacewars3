@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
     validateRequired(password, 'password');
 
     // Validate optional email
-    const normalizedEmail: string | null = email && typeof email === 'string' ? email.trim() : null;
+    const normalizedEmail: string | null = email && typeof email === 'string' ? email.trim().toLowerCase() : null;
     if (normalizedEmail !== null) {
       if (!EMAIL_REGEX.test(normalizedEmail)) {
         throw new ApiError(400, 'Invalid email address format');

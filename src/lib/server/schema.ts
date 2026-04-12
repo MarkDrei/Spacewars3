@@ -53,6 +53,10 @@ CREATE TABLE IF NOT EXISTS users (
   email_verified BOOLEAN NOT NULL DEFAULT FALSE,
   email_verification_token TEXT DEFAULT NULL,
   email_verification_expires BIGINT DEFAULT NULL,
+
+  -- Password reset (optional, expiry-based single-use)
+  password_reset_token TEXT DEFAULT NULL,
+  password_reset_expires BIGINT DEFAULT NULL,
   
   FOREIGN KEY (ship_id) REFERENCES space_objects (id)
 )`;
@@ -127,6 +131,8 @@ CREATE INDEX IF NOT EXISTS idx_user_events_type ON user_events (event_type);
 export const CREATE_TABLES = [
   CREATE_SPACE_OBJECTS_TABLE,
   CREATE_USERS_TABLE,
+  // Partial unique index on email — cannot be inline in CREATE TABLE for conditional indexes
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users (email) WHERE email IS NOT NULL`,
   CREATE_MESSAGES_TABLE,
   CREATE_BATTLES_TABLE,
   CREATE_INVENTORIES_TABLE,
@@ -217,5 +223,11 @@ export const MIGRATE_ADD_EMAIL = [
   'CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users (email) WHERE email IS NOT NULL'
 ];
 
+// Migration to add password reset token columns
+export const MIGRATE_ADD_PASSWORD_RESET = [
+  'ALTER TABLE users ADD COLUMN IF NOT EXISTS password_reset_token TEXT DEFAULT NULL',
+  'ALTER TABLE users ADD COLUMN IF NOT EXISTS password_reset_expires BIGINT DEFAULT NULL'
+];
+
 // Optional: Version management for migrations
-export const SCHEMA_VERSION = 15;
+export const SCHEMA_VERSION = 16;
