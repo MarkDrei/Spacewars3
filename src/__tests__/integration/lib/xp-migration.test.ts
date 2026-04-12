@@ -125,15 +125,14 @@ describe('XP System Migration', () => {
     const db = await getDatabase();
     await applyXpSystemMigration(db);
 
-    // Act - check that existing users have xp = 0
+    // Act - check that user 'a' (seeded without explicit xp) has xp = 0 (the column default)
     const result = await db.query(`
       SELECT id, username, xp 
       FROM users 
-      WHERE id IN (1, 2, 3)
-      ORDER BY id
+      WHERE username = 'a'
     `);
 
-    // Assert - all seed users should have XP = 0
+    // Assert - user 'a' is seeded without explicit xp, so it receives the default value of 0
     expect(result.rows.length).toBeGreaterThan(0);
     result.rows.forEach(row => {
       expect(row.xp).toBe(0);

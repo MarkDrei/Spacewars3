@@ -60,6 +60,9 @@ describe('Picture ID', () => {
       expect(userPictureIds['dummy2']).toBe(3);
       expect(userPictureIds['dummy3']).toBe(4);
       expect(userPictureIds['dummy4']).toBe(5);
+      expect(userPictureIds['dummy5']).toBe(6);
+      expect(userPictureIds['dummy6']).toBe(7);
+      expect(userPictureIds['dummy7']).toBe(11);
     });
   });
 
@@ -100,12 +103,12 @@ describe('Picture ID', () => {
         ORDER BY u.username
       `);
       
-      expect(result.rows.length).toBe(4);
+      expect(result.rows.length).toBe(7);
       
       // Verify all locations are unique
       const locations = result.rows.map((row: { x: number; y: number }) => `${row.x},${row.y}`);
       const uniqueLocations = new Set(locations);
-      expect(uniqueLocations.size).toBe(4);
+      expect(uniqueLocations.size).toBe(7);
       
       // Verify expected locations from seed data
       const locationMap = result.rows.reduce((acc: Record<string, { x: number; y: number }>, row: { username: string; x: number; y: number }) => {
@@ -117,6 +120,9 @@ describe('Picture ID', () => {
       expect(locationMap['dummy2']).toEqual({ x: 2470, y: 2530 });
       expect(locationMap['dummy3']).toEqual({ x: 2560, y: 2530 });
       expect(locationMap['dummy4']).toEqual({ x: 2500, y: 2560 });
+      expect(locationMap['dummy5']).toEqual({ x: 2470, y: 2560 });
+      expect(locationMap['dummy6']).toEqual({ x: 2560, y: 2560 });
+      expect(locationMap['dummy7']).toEqual({ x: 2530, y: 2470 });
     });
   });
 
@@ -219,11 +225,11 @@ describe('Picture ID', () => {
         SELECT COUNT(*) as count FROM users WHERE username NOT LIKE 'testuser%'
       `);
       
-      // Should have 5 users: a, dummy, dummy2, dummy3, dummy4
-      expect(parseInt(userResult.rows[0].count)).toBe(5);
+      // Should have 8 users: a, dummy, dummy2, dummy3, dummy4, dummy5, dummy6, dummy7
+      expect(parseInt(userResult.rows[0].count)).toBe(8);
       
       // Verify it matches the DEFAULT_USERS array length
-      expect(DEFAULT_USERS.length).toBe(5);
+      expect(DEFAULT_USERS.length).toBe(8);
     });
   });
 });
