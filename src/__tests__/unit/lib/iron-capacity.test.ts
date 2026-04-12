@@ -173,7 +173,7 @@ describe('Iron Capacity Management', () => {
     expect(user.iron).toBeGreaterThan(5000); // research-only cap would have capped here
   });
 
-  test('collected_withBonusedCapacity_doesNotExceedResearchCapWhenAlreadyAboveResearchCap', () => {
+  test('collected_withBonusedCapacity_respectsCapWhenIronAlreadyAboveBaseResearch', () => {
     // If the user's current iron is already above the base research cap (possible via
     // a previously applied bonus), collection should still respect the bonused cap.
     user.iron = 5500;

@@ -203,14 +203,19 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
     if (result.success) {
       if (result.ironReward && result.ironReward > 0) {
         const label = result.objectType ? result.objectType.replace('_', ' ') : 'object';
-        announce(`+${result.ironReward} iron from ${label}`);
+        if (announcementTimerRef.current) clearTimeout(announcementTimerRef.current);
+        setAnnouncement({ text: `+${result.ironReward} iron from ${label}`, key: Date.now() });
+        announcementTimerRef.current = setTimeout(() => setAnnouncement(null), 2500);
       } else {
-        announce('Collected!');
+        if (announcementTimerRef.current) clearTimeout(announcementTimerRef.current);
+        setAnnouncement({ text: 'Collected!', key: Date.now() });
+        announcementTimerRef.current = setTimeout(() => setAnnouncement(null), 2500);
       }
     } else {
-      announce(result.error ?? 'Collection failed', 'orange');
+      if (announcementTimerRef.current) clearTimeout(announcementTimerRef.current);
+      setAnnouncement({ text: result.error ?? 'Collection failed', key: Date.now(), variant: 'orange' });
+      announcementTimerRef.current = setTimeout(() => setAnnouncement(null), 2500);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Memoize starbase entry callback - called from Game when player enters a starbase
