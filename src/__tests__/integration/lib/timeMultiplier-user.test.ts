@@ -2,6 +2,7 @@ import { describe, expect, test, beforeEach, afterEach } from 'vitest';
 import { User, SaveUserCallback } from '@/lib/server/user/user';
 import { ResearchType, triggerResearch, createInitialTechTree } from '@/lib/server/techs/techtree';
 import { TimeMultiplierService } from '@/lib/server/timeMultiplier';
+import { BASE_REGEN_RATE } from '@/lib/server/bonus/userBonusTypes';
 
 describe('User.updateStats with time multiplier', () => {
   let user: User;
@@ -183,10 +184,11 @@ describe('User.updateStats with time multiplier', () => {
       // Update defense values after 5 seconds real time
       user.updateDefenseValues(1005);
 
-      // 5s real time * 10x = 50s game time = 50 points regenerated
-      expect(user.hullCurrent).toBe(150);
-      expect(user.armorCurrent).toBe(150);
-      expect(user.shieldCurrent).toBe(150);
+      // 5s real time * 10x = 50s game time.
+      // Hull + armor share the 0.1/s repair pool, shield recharges independently at 0.1/s.
+      expect(user.hullCurrent).toBeCloseTo(100 + (BASE_REGEN_RATE / 2) * 50, 5);
+      expect(user.armorCurrent).toBeCloseTo(100 + (BASE_REGEN_RATE / 2) * 50, 5);
+      expect(user.shieldCurrent).toBeCloseTo(100 + BASE_REGEN_RATE * 50, 5);
       expect(user.defenseLastRegen).toBe(1005); // Real timestamp updated
     });
 
@@ -203,10 +205,10 @@ describe('User.updateStats with time multiplier', () => {
       // Update after 5 seconds
       user.updateDefenseValues(1005);
 
-      // 5s regeneration
-      expect(user.hullCurrent).toBe(105);
-      expect(user.armorCurrent).toBe(105);
-      expect(user.shieldCurrent).toBe(105);
+      // 5s game time at the base 0.1/s rates
+      expect(user.hullCurrent).toBeCloseTo(100 + (BASE_REGEN_RATE / 2) * 5, 5);
+      expect(user.armorCurrent).toBeCloseTo(100 + (BASE_REGEN_RATE / 2) * 5, 5);
+      expect(user.shieldCurrent).toBeCloseTo(100 + BASE_REGEN_RATE * 5, 5);
     });
 
     test('updateDefenseValues_withMultiplier10_capsAtMaximum', () => {
@@ -223,10 +225,10 @@ describe('User.updateStats with time multiplier', () => {
       // Update after 5 seconds real time = 50s game time
       user.updateDefenseValues(1005);
 
-      // Should cap at max, not exceed
-      expect(user.hullCurrent).toBe(750);
-      expect(user.armorCurrent).toBe(1250);
-      expect(user.shieldCurrent).toBe(1250);
+      // Shared repair is still split while both hull and armor remain damaged.
+      expect(user.hullCurrent).toBeCloseTo(700 + (BASE_REGEN_RATE / 2) * 50, 5);
+      expect(user.armorCurrent).toBeCloseTo(1200 + (BASE_REGEN_RATE / 2) * 50, 5);
+      expect(user.shieldCurrent).toBeCloseTo(1200 + BASE_REGEN_RATE * 50, 5);
     });
 
     test('updateDefenseValues_multiplierExpired_usesNormalRate', () => {
@@ -251,9 +253,9 @@ describe('User.updateStats with time multiplier', () => {
 
       // Update defenses - should use normal rate
       user.updateDefenseValues(1005);
-      expect(user.hullCurrent).toBe(105);
-      expect(user.armorCurrent).toBe(105);
-      expect(user.shieldCurrent).toBe(105);
+      expect(user.hullCurrent).toBeCloseTo(100 + (BASE_REGEN_RATE / 2) * 5, 5);
+      expect(user.armorCurrent).toBeCloseTo(100 + (BASE_REGEN_RATE / 2) * 5, 5);
+      expect(user.shieldCurrent).toBeCloseTo(100 + BASE_REGEN_RATE * 5, 5);
     });
   });
 
@@ -280,10 +282,10 @@ describe('User.updateStats with time multiplier', () => {
       // Research completed
       expect(user.techTree.ironHarvesting).toBe(2);
 
-      // Defenses: 1.5s real time * 10x = 15 points regenerated
-      expect(user.hullCurrent).toBe(115);
-      expect(user.armorCurrent).toBe(115);
-      expect(user.shieldCurrent).toBe(115);
+      // Defenses: 1.5s real time * 10x = 15s game time
+      expect(user.hullCurrent).toBeCloseTo(100 + (BASE_REGEN_RATE / 2) * 15, 5);
+      expect(user.armorCurrent).toBeCloseTo(100 + (BASE_REGEN_RATE / 2) * 15, 5);
+      expect(user.shieldCurrent).toBeCloseTo(100 + BASE_REGEN_RATE * 15, 5);
     });
   });
 
@@ -336,6 +338,8 @@ describe('User.updateStats with time multiplier', () => {
     test('updateDefenseValues_withFractionalMultiplier_worksCorrectly', () => {
       // Edge case: multiplier of 1.5
       user.hullCurrent = 100;
+      user.armorCurrent = 1250;
+      user.shieldCurrent = 1250;
       user.defenseLastRegen = 1000;
 
       timeMultiplier.setMultiplier(1.5, 5);
@@ -343,7 +347,7 @@ describe('User.updateStats with time multiplier', () => {
       // 10 seconds real time * 1.5 = 15s game time
       user.updateDefenseValues(1010);
 
-      expect(user.hullCurrent).toBe(115);
+      expect(user.hullCurrent).toBeCloseTo(100 + BASE_REGEN_RATE * 15, 5);
     });
   });
 });
