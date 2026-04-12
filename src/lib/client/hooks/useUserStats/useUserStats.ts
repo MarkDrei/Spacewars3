@@ -6,6 +6,8 @@ import { shouldRetryFetch, scheduleRetry, DEFAULT_RETRY_CONFIG } from './retryLo
 import { setupPolling, cancelPolling } from './pollingUtils';
 import { setTimeMultiplier, getTimeMultiplier } from '../../timeMultiplier';
 
+const DEFAULT_DEFENSE_REGEN_RATE = 0.1;
+
 interface BonusData {
   levelMultiplier: number;
   ironRechargeRate: number;
@@ -30,10 +32,10 @@ const DEFAULT_BONUS_DATA: BonusData = {
   ironStorageCapacity: 5000,
   maxShipSpeed: 0,
   currentMaxShipSpeed: 0,
-  repairRate: 0.1,
-  hullRepairSpeed: 0.1,
-  armorRepairSpeed: 0.1,
-  shieldRechargeRate: 0.1,
+  repairRate: DEFAULT_DEFENSE_REGEN_RATE,
+  hullRepairSpeed: DEFAULT_DEFENSE_REGEN_RATE,
+  armorRepairSpeed: DEFAULT_DEFENSE_REGEN_RATE,
+  shieldRechargeRate: DEFAULT_DEFENSE_REGEN_RATE,
   projectileWeaponDamageFactor: 1.0,
   projectileWeaponReloadFactor: 1.0,
   projectileWeaponAccuracyFactor: 1.0,
@@ -118,7 +120,7 @@ export const useUserStats = (pollInterval: number = 5000): UseUserStatsReturn =>
         xpForNextLevel: result.xpForNextLevel,
         score: result.score ?? 0
       });
-      const repairRate = result.repairRate ?? result.hullRepairSpeed ?? result.armorRepairSpeed ?? 0.1;
+      const repairRate = result.repairRate ?? result.hullRepairSpeed ?? result.armorRepairSpeed ?? DEFAULT_DEFENSE_REGEN_RATE;
       setBonusData({
         levelMultiplier: result.levelMultiplier ?? 1.0,
         ironRechargeRate: result.ironPerSecond ?? 1.0,
@@ -128,7 +130,7 @@ export const useUserStats = (pollInterval: number = 5000): UseUserStatsReturn =>
         repairRate,
         hullRepairSpeed: result.hullRepairSpeed ?? repairRate,
         armorRepairSpeed: result.armorRepairSpeed ?? repairRate,
-        shieldRechargeRate: result.shieldRechargeRate ?? 0.1,
+        shieldRechargeRate: result.shieldRechargeRate ?? DEFAULT_DEFENSE_REGEN_RATE,
         projectileWeaponDamageFactor: result.projectileWeaponDamageFactor ?? 1.0,
         projectileWeaponReloadFactor: result.projectileWeaponReloadFactor ?? 1.0,
         projectileWeaponAccuracyFactor: result.projectileWeaponAccuracyFactor ?? 1.0,

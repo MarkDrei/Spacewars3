@@ -457,11 +457,11 @@ class User {
     const maxArmor = maxStats.armor;
     const maxShield = maxStats.shield;
 
-    const shieldRechargeRate = bonuses?.shieldRechargeRate ?? BASE_REGEN_RATE;
+    const shieldRechargeRate = this.resolveShieldRechargeRate(bonuses);
     this.shieldCurrent = Math.min(this.shieldCurrent + shieldRechargeRate * gameElapsed, maxShield);
 
     if (!this.inBattle) {
-      const repairRate = bonuses?.repairRate ?? bonuses?.hullRepairSpeed ?? BASE_REGEN_RATE;
+      const repairRate = this.resolveRepairRate(bonuses);
       let remainingRepairTime = gameElapsed;
 
       while (remainingRepairTime > 0) {
@@ -515,9 +515,8 @@ class User {
     maxStats: { hull: number; armor: number; shield: number },
     bonuses?: UserBonuses
   ): { hull: number; armor: number; shield: number } {
-    // `hullRepairSpeed` is retained as a compatibility alias while callers migrate to `repairRate`.
-    const repairRate = bonuses?.repairRate ?? bonuses?.hullRepairSpeed ?? BASE_REGEN_RATE;
-    const shieldRechargeRate = bonuses?.shieldRechargeRate ?? BASE_REGEN_RATE;
+    const repairRate = this.resolveRepairRate(bonuses);
+    const shieldRechargeRate = this.resolveShieldRechargeRate(bonuses);
 
     if (this.inBattle) {
       return { hull: 0, armor: 0, shield: shieldRechargeRate };
@@ -543,6 +542,15 @@ class User {
     }
 
     return { hull: 0, armor: 0, shield: shieldRechargeRate };
+  }
+
+  private resolveRepairRate(bonuses?: UserBonuses): number {
+    // `hullRepairSpeed` is retained as a compatibility alias while callers migrate to `repairRate`.
+    return bonuses?.repairRate ?? bonuses?.hullRepairSpeed ?? BASE_REGEN_RATE;
+  }
+
+  private resolveShieldRechargeRate(bonuses?: UserBonuses): number {
+    return bonuses?.shieldRechargeRate ?? BASE_REGEN_RATE;
   }
 
   async save(): Promise<void> {
