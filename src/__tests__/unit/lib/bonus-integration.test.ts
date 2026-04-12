@@ -304,8 +304,6 @@ describe('Task 5.3.2 — updateDefenseValues() with bonuses', () => {
     user.techCounts = { ...techCounts };
     const bonuses = makeLevel1Bonuses(user);
     bonuses.repairRate = 2.0;
-    bonuses.hullRepairSpeed = 2.5;
-    bonuses.armorRepairSpeed = 1.0;
     bonuses.shieldRechargeRate = 3.0;
     user.updateDefenseValues(1010, bonuses); // 10s elapsed
     expect(user.hullCurrent).toBeCloseTo(10, 4);   // (2.0 / 2) × 10
