@@ -124,7 +124,7 @@ The application will be available at `http://localhost:3000`.
 
 ### GitHub Codespaces
 
-This project is fully configured for GitHub Codespaces development:
+This project is configured for GitHub Codespaces development:
 
 1. Click "Code" → "Codespaces" → "Create codespace on main"
 2. Wait for the container to build (automatically installs dependencies)
@@ -202,15 +202,15 @@ npm run test
 
 Email is used for registration verification. If not configured, the game works without email — accounts are created immediately without verification.
 
-| Variable            | Description                                    | Default             |
-| ------------------- | ---------------------------------------------- | ------------------- |
-| `EMAIL_ENABLED`     | Enable email sending                           | `false`             |
-| `SMTP_HOST`         | SMTP server hostname                           | —                   |
-| `SMTP_PORT`         | SMTP server port                               | `587`               |
-| `SMTP_SECURE`       | Use direct TLS (port 465)                      | `false`             |
-| `SMTP_USER`         | SMTP username / email address                  | —                   |
-| `SMTP_PASS`         | SMTP password or app-specific password         | —                   |
-| `SMTP_FROM`         | "From" address for outgoing emails             | Same as `SMTP_USER` |
+| Variable               | Description                                                  | Default                    |
+| ---------------------- | ------------------------------------------------------------ | -------------------------- |
+| `EMAIL_ENABLED`        | Enable email sending                                         | `false`                    |
+| `SMTP_HOST`            | SMTP server hostname                                         | —                          |
+| `SMTP_PORT`            | SMTP server port                                             | `587`                      |
+| `SMTP_SECURE`          | Use direct TLS (port 465)                                    | `false`                    |
+| `SMTP_USER`            | SMTP username / email address                                | —                          |
+| `SMTP_PASS`            | SMTP password or app-specific password                       | —                          |
+| `SMTP_FROM`            | "From" address for outgoing emails                           | Same as `SMTP_USER`        |
 | `NEXT_PUBLIC_BASE_URL` | Base URL for verification links (e.g. `https://yourapp.com`) | Auto-detected from request |
 
 **Gmail Example:**
