@@ -78,6 +78,17 @@ const LoginPage: React.FC = () => {
 
   return (
     <div className="login-page">
+      <div className="alpha-banner">
+        <div className="alpha-banner-content">
+          <h2>🚀 Welcome to the Alpha Journey!</h2>
+          <p>
+            We&apos;re thrilled to have you here! You&apos;re exploring Spacewars: Ironstrike while it&apos;s still being developed. That means amazing discoveries await, but also that things might hiccup, features could shift, and your progress might occasionally need a fresh start.
+          </p>
+          <p>
+            Found a bug? Have an idea? Love something? We&apos;d love to hear from you! Drop us a line at <a href="mailto:spacewars@ironstrike.de">spacewars@ironstrike.de</a>
+          </p>
+        </div>
+      </div>
       <div className="login-container">
         <h1>Spacewars: Ironstrike</h1>
         <p>Welcome to the space exploration game.</p>
