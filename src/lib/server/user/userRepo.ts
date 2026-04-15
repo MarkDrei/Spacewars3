@@ -47,6 +47,9 @@ interface UserRow {
   // Teleport charges
   teleport_charges?: number;
   teleport_last_regen?: number;
+  // Email
+  email?: string | null;
+  email_verified?: boolean;
 }
 
 function userFromRow(row: UserRow, saveCallback: SaveUserCallback): User {
@@ -128,6 +131,10 @@ function userFromRow(row: UserRow, saveCallback: SaveUserCallback): User {
   // Set score from DB row (defaults to 0 if column not present, e.g. before migration)
   user.score = row.score ?? 0;
 
+  // Set email fields from DB row
+  user.email = row.email ?? null;
+  user.emailVerified = row.email_verified ?? false;
+
   return user;
 }
 
@@ -144,15 +151,15 @@ export async function getUserByUsernameFromDb(db: DatabaseConnection, username: 
   return userFromRow(result.rows[0] as UserRow, saveCallback);
 }
 
-export function createUser(db: DatabaseConnection, username: string, password_hash: string, saveCallback: SaveUserCallback): Promise<User> {
-  return createUserWithShip(db, username, password_hash, saveCallback, true);
+export function createUser(db: DatabaseConnection, username: string, password_hash: string, saveCallback: SaveUserCallback, email?: string | null): Promise<User> {
+  return createUserWithShip(db, username, password_hash, saveCallback, true, email);
 }
 
-export function createUserWithoutShip(db: DatabaseConnection, username: string, password_hash: string, saveCallback: SaveUserCallback): Promise<User> {
-  return createUserWithShip(db, username, password_hash, saveCallback, false);
+export function createUserWithoutShip(db: DatabaseConnection, username: string, password_hash: string, saveCallback: SaveUserCallback, email?: string | null): Promise<User> {
+  return createUserWithShip(db, username, password_hash, saveCallback, false, email);
 }
 
-async function createUserWithShip(db: DatabaseConnection, username: string, password_hash: string, saveCallback: SaveUserCallback, createShip: boolean): Promise<User> {
+async function createUserWithShip(db: DatabaseConnection, username: string, password_hash: string, saveCallback: SaveUserCallback, createShip: boolean, email: string | null = null): Promise<User> {
   const now = Math.floor(Date.now() / 1000);
   const techTree = createInitialTechTree();
 
@@ -170,8 +177,8 @@ async function createUserWithShip(db: DatabaseConnection, username: string, pass
 
     // Then create the user with the ship_id (with default defense values)
     const userResult = await db.query(
-      'INSERT INTO users (username, password_hash, iron, last_updated, tech_tree, ship_id, hull_current, armor_current, shield_current, defense_last_regen, build_queue, build_start_sec) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id',
-      [username, password_hash, 0.0, now, JSON.stringify(techTree), shipId, 250.0, 250.0, 250.0, now, JSON.stringify([]), null]
+      'INSERT INTO users (username, password_hash, iron, last_updated, tech_tree, ship_id, hull_current, armor_current, shield_current, defense_last_regen, build_queue, build_start_sec, email) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING id',
+      [username, password_hash, 0.0, now, JSON.stringify(techTree), shipId, 250.0, 250.0, 250.0, now, JSON.stringify([]), null, email ?? null]
     );
 
     const userId = userResult.rows[0].id;
@@ -195,6 +202,7 @@ async function createUserWithShip(db: DatabaseConnection, username: string, pass
     const initialMaxStats = TechService.calculateMaxDefense(defaultTechCounts, techTree);
 
     const user = User.create(userId, username, password_hash, 0.0, 0, now, techTree, saveCallback, defaultTechCounts, initialMaxStats.hull, initialMaxStats.armor, initialMaxStats.shield, now, false, null, [], null, 0, 0, shipId);
+    user.email = email ?? null;
 
     // Send welcome message to new user
     const ctx = createLockContext();
@@ -204,8 +212,8 @@ async function createUserWithShip(db: DatabaseConnection, username: string, pass
   } else {
     // Create user without ship (for testing, with default defense values)
     const userResult = await db.query(
-      'INSERT INTO users (username, password_hash, iron, last_updated, tech_tree, hull_current, armor_current, shield_current, defense_last_regen, build_queue, build_start_sec) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id',
-      [username, password_hash, 0.0, now, JSON.stringify(techTree), 250.0, 250.0, 250.0, now, JSON.stringify([]), null]
+      'INSERT INTO users (username, password_hash, iron, last_updated, tech_tree, hull_current, armor_current, shield_current, defense_last_regen, build_queue, build_start_sec, email) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id',
+      [username, password_hash, 0.0, now, JSON.stringify(techTree), 250.0, 250.0, 250.0, now, JSON.stringify([]), null, email ?? null]
     );
 
     const id = userResult.rows[0].id;
@@ -228,6 +236,7 @@ async function createUserWithShip(db: DatabaseConnection, username: string, pass
     const initialMaxStats = TechService.calculateMaxDefense(defaultTechCounts, techTree);
 
     const user = User.create(id, username, password_hash, 0.0, 0, now, techTree, saveCallback, defaultTechCounts, initialMaxStats.hull, initialMaxStats.armor, initialMaxStats.shield, now, false, null, [], null, 0, 0);
+    user.email = email ?? null;
 
     return user;
   }
@@ -262,8 +271,10 @@ export function saveUserToDb(db: DatabaseConnection): SaveUserCallback {
         build_start_sec = $23,
         teleport_charges = $24,
         teleport_last_regen = $25,
-        score = $26
-      WHERE id = $27`,
+        score = $26,
+        email = $27,
+        email_verified = $28
+      WHERE id = $29`,
       [
         user.iron,
         user.xp,
@@ -291,6 +302,8 @@ export function saveUserToDb(db: DatabaseConnection): SaveUserCallback {
         user.teleportCharges,
         user.teleportLastRegen,
         user.score,
+        user.email,
+        user.emailVerified,
         user.id
       ]
     );
@@ -299,3 +312,119 @@ export function saveUserToDb(db: DatabaseConnection): SaveUserCallback {
 
 // Add 'export' at the top to make this file a module
 export { };
+
+// --- Email verification token helpers ---
+
+/**
+ * Stores an email verification token for the given user.
+ * @param db Database connection
+ * @param userId User ID
+ * @param token Verification token (hex string)
+ * @param expiresAt Expiry timestamp in milliseconds
+ */
+export async function setEmailVerificationToken(
+  db: DatabaseConnection,
+  userId: number,
+  token: string,
+  expiresAt: number
+): Promise<void> {
+  await db.query(
+    'UPDATE users SET email_verification_token = $1, email_verification_expires = $2 WHERE id = $3',
+    [token, expiresAt, userId]
+  );
+}
+
+/**
+ * Atomically validates and consumes an email verification token.
+ * Returns the userId if the token is valid and not expired, otherwise null.
+ * Clears the token columns on consumption.
+ */
+export async function consumeEmailVerificationToken(
+  db: DatabaseConnection,
+  token: string
+): Promise<number | null> {
+  const nowMs = Date.now();
+  const result = await db.query(
+    `UPDATE users
+     SET email_verification_token = NULL,
+         email_verification_expires = NULL,
+         email_verified = TRUE
+     WHERE email_verification_token = $1
+       AND email_verification_expires > $2
+     RETURNING id`,
+    [token, nowMs]
+  );
+  if (result.rows.length === 0) return null;
+  return (result.rows[0] as { id: number }).id;
+}
+
+/**
+ * Looks up a user row by email address.
+ * Returns null if no user has that email.
+ */
+export async function getUserByEmail(
+  db: DatabaseConnection,
+  email: string
+): Promise<{ id: number; username: string } | null> {
+  const result = await db.query(
+    'SELECT id, username FROM users WHERE email = $1',
+    [email]
+  );
+  if (result.rows.length === 0) return null;
+  return result.rows[0] as { id: number; username: string };
+}
+
+// --- Password reset token helpers ---
+
+/**
+ * Stores a password reset token for the given user.
+ */
+export async function setPasswordResetToken(
+  db: DatabaseConnection,
+  userId: number,
+  token: string,
+  expiresAt: number
+): Promise<void> {
+  await db.query(
+    'UPDATE users SET password_reset_token = $1, password_reset_expires = $2 WHERE id = $3',
+    [token, expiresAt, userId]
+  );
+}
+
+/**
+ * Atomically validates and consumes a password reset token.
+ * Returns the userId if the token is valid and not expired, otherwise null.
+ * Clears the token on consumption so it cannot be reused.
+ */
+export async function consumePasswordResetToken(
+  db: DatabaseConnection,
+  token: string
+): Promise<number | null> {
+  const nowMs = Date.now();
+  const result = await db.query(
+    `UPDATE users
+     SET password_reset_token = NULL,
+         password_reset_expires = NULL
+     WHERE password_reset_token = $1
+       AND password_reset_expires > $2
+     RETURNING id`,
+    [token, nowMs]
+  );
+  if (result.rows.length === 0) return null;
+  return (result.rows[0] as { id: number }).id;
+}
+
+/**
+ * Updates a user's password hash directly in the database.
+ * Does not touch the cache — callers must update cached users separately.
+ */
+export async function updateUserPassword(
+  db: DatabaseConnection,
+  userId: number,
+  newPasswordHash: string
+): Promise<void> {
+  await db.query(
+    'UPDATE users SET password_hash = $1 WHERE id = $2',
+    [newPasswordHash, userId]
+  );
+}

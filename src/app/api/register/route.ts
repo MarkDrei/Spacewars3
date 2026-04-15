@@ -1,31 +1,53 @@
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcrypt';
+import { randomBytes } from 'crypto';
 import { getIronSession } from 'iron-session';
 import { getDatabase } from '@/lib/server/database';
-import { createUser, saveUserToDb } from '@/lib/server/user/userRepo';
+import { createUser, saveUserToDb, getUserByEmail, setEmailVerificationToken } from '@/lib/server/user/userRepo';
 import { sessionOptions, SessionData } from '@/lib/server/session';
-import { handleApiError, validateRequired } from '@/lib/server/errors';
+import { handleApiError, validateRequired, ApiError } from '@/lib/server/errors';
 import { UserCache } from '@/lib/server/user/userCache';
 import { WorldCache } from '@/lib/server/world/worldCache';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 import { USER_LOCK, WORLD_LOCK } from '@/lib/server/typedLocks';
 import { DEFAULT_SHIP_START_X, DEFAULT_SHIP_START_Y, DEFAULT_SHIP_START_SPEED, DEFAULT_SHIP_START_ANGLE } from '@/lib/server/constants';
+import { isEmailEnabled } from '@/lib/server/email/emailConfig';
+import { sendEmail } from '@/lib/server/email/emailService';
+import { buildVerificationEmail } from '@/lib/server/email/emailTemplates';
 import { calculateLevelFromXp } from '@shared/utils/levelUtils';
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { username, password } = body;
+    const { username, password, email } = body;
     
     validateRequired(username, 'username');
     validateRequired(password, 'password');
+
+    // Validate optional email
+    const normalizedEmail: string | null = email && typeof email === 'string' ? email.trim().toLowerCase() : null;
+    if (normalizedEmail !== null) {
+      if (!EMAIL_REGEX.test(normalizedEmail)) {
+        throw new ApiError(400, 'Invalid email address format');
+      }
+    }
     
     const db = await getDatabase();
+
+    // Check email uniqueness before creating user
+    if (normalizedEmail !== null) {
+      const existing = await getUserByEmail(db, normalizedEmail);
+      if (existing) {
+        throw new ApiError(400, 'Email already in use');
+      }
+    }
     
     // Hash password with automatic salt generation
     const hash = await bcrypt.hash(password, 10);
     
-    const user = await createUser(db, username, hash, saveUserToDb(db));
+    const user = await createUser(db, username, hash, saveUserToDb(db), normalizedEmail);
     
     // Add user and ship to cache immediately after creation
     const ctx = createLockContext();
@@ -63,9 +85,33 @@ export async function POST(request: NextRequest) {
         });
       }
     });
+
+    // Send verification email if email was provided and email is enabled
+    let emailSent = false;
+    if (normalizedEmail !== null && isEmailEnabled()) {
+      try {
+        const token = randomBytes(32).toString('hex');
+        const expiresAt = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
+        await setEmailVerificationToken(db, user.id, token, expiresAt);
+
+        // Build verification URL
+        const baseUrl =
+          process.env.NEXT_PUBLIC_BASE_URL ??
+          `${request.headers.get('x-forwarded-proto') ?? 'http'}://${request.headers.get('host') ?? 'localhost:3000'}`;
+        const verificationUrl = `${baseUrl}/api/verify-email?token=${token}`;
+
+        const { subject, html } = buildVerificationEmail(username, verificationUrl);
+        // Fire-and-forget — do not await, do not fail registration on error
+        void sendEmail(normalizedEmail, subject, html);
+        emailSent = true;
+      } catch (emailErr) {
+        console.error('❌ Error preparing verification email:', emailErr);
+        // Registration still succeeds
+      }
+    }
     
     // Create response
-    const response = NextResponse.json({ success: true });
+    const response = NextResponse.json({ success: true, emailSent });
     
     // Set session with the response object
     const session = await getIronSession<SessionData>(request, response, sessionOptions);

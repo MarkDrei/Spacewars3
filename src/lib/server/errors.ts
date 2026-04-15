@@ -24,8 +24,9 @@ export function handleApiError(error: unknown): NextResponse {
   if (error instanceof Error) {
     // Handle SQLite constraint errors
     if (error.message.includes('UNIQUE constraint failed')) {
+      const isEmailConstraint = error.message.toLowerCase().includes('email');
       return NextResponse.json(
-        { error: 'Username taken' },
+        { error: isEmailConstraint ? 'Email already in use' : 'Username taken' },
         { status: 400 }
       );
     }
@@ -33,8 +34,9 @@ export function handleApiError(error: unknown): NextResponse {
     // Handle PostgreSQL unique constraint errors (error code 23505)
     if (error.message.includes('duplicate key value violates unique constraint') || 
         error.message.includes('username') && error.message.includes('already exists')) {
+      const isEmailConstraint = error.message.toLowerCase().includes('email');
       return NextResponse.json(
-        { error: 'Username taken' },
+        { error: isEmailConstraint ? 'Email already in use' : 'Username taken' },
         { status: 400 }
       );
     }

@@ -41,6 +41,14 @@ services:
       - POSTGRES_DB=${POSTGRES_DB:-spacewars}
       - POSTGRES_USER=${POSTGRES_USER:-spacewars}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-spacewars}
+      # Email configuration (optional — leave EMAIL_ENABLED=false to disable)
+      - EMAIL_ENABLED=${EMAIL_ENABLED:-false}
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_SECURE=${SMTP_SECURE:-false}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASS=${SMTP_PASS:-}
+      - SMTP_FROM=${SMTP_FROM:-}
     command: npm run dev
     stdin_open: true
     tty: true
@@ -64,6 +72,14 @@ services:
       - POSTGRES_DB=${POSTGRES_DB:-spacewars}
       - POSTGRES_USER=${POSTGRES_USER:-spacewars}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-spacewars}
+      # Email configuration (optional — leave EMAIL_ENABLED=false to disable)
+      - EMAIL_ENABLED=${EMAIL_ENABLED:-false}
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_SECURE=${SMTP_SECURE:-false}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASS=${SMTP_PASS:-}
+      - SMTP_FROM=${SMTP_FROM:-}
     depends_on:
       db:
         condition: service_healthy
