@@ -100,7 +100,7 @@ One template function:
 
 - `buildVerificationEmail(username: string, verificationUrl: string): { subject: string; html: string }`
 
-Template should be simple, inline-styled HTML (no external CSS — email clients strip `<style>` tags). Include the game name "Spacewars: Ironcore" in the header. Include token expiration info in the body.
+Templates should be simple, inline-styled HTML (no external CSS — email clients strip `<style>` tags). Include the game name "Spacewars: Ironstrike" in the header. Include token expiration info in the body.
 
 #### Task 1.4: Update README with SMTP Configuration
 

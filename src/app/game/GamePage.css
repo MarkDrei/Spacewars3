@@ -37,6 +37,8 @@
   display: flex;
   flex-direction: column;
   pointer-events: none; /* transparent — canvas clicks pass through */
+  /* Push buttons above iOS home indicator and Android gesture bar */
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
 /* Icon bar: horizontal row of icon buttons */

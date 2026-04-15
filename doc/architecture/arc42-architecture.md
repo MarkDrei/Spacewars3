@@ -1,6 +1,6 @@
 # Architecture Documentation (arc42)
 
-**Spacewars Ironcore**
+**Spacewars Ironstrike**
 
 Version: 1.0  
 Date: October 24, 2025  
@@ -29,7 +29,7 @@ Status: Work in Progress
 
 ### 1.1 Requirements Overview
 
-Spacewars Ironcore is a 2D space exploration game built with Next.js 15, TypeScript, and React. Players navigate space, collect resources, upgrade their ships through a technology tree, and engage in battles.
+Spacewars Ironstrike is a 2D space exploration game built with Next.js 15, TypeScript, and React. Players navigate space, collect resources, upgrade their ships through a technology tree, and engage in battles.
 
 **Key Features:**
 
@@ -86,7 +86,7 @@ Spacewars Ironcore is a 2D space exploration game built with Next.js 15, TypeScr
 ```mermaid
 graph TB
     Browser["Browser<br/>(Player)"]
-    Server["Spacewars Ironcore Server<br/>(Next.js Application)"]
+    Server["Spacewars Ironstrike Server<br/>(Next.js Application)"]
     DB["PostgreSQL Database"]
 
     Browser -->|HTTP Requests| Server
@@ -236,16 +236,17 @@ WorldCache is loaded from the database (`loadWorldFromDb` in `worldRepo.ts`). Th
 `xp` value is fetched via a JOIN with the `users` table and the level is derived using
 `calculateLevelFromXp()` from `@shared/utils/levelUtils`.
 
-*Rationale for Option B:* The level is a slowly-changing, non-critical value (changes
+_Rationale for Option B:_ The level is a slowly-changing, non-critical value (changes
 only when a research completes). Loading it once at startup (and when a new ship is added
 to the world via registration) avoids per-request DB look-ups while still exposing accurate
 level information to all clients. The worst-case staleness is bounded by the next server
 restart or WorldCache re-initialisation.
 
-*Consequences:*
+_Consequences:_
+
 - The `level` field on a `SpaceObject` may lag behind the true player level by up to one
   research cycle (minutes to hours).
-- The server-side attack validation (`POST /api/attack`) uses the *UserCache* (which always
+- The server-side attack validation (`POST /api/attack`) uses the _UserCache_ (which always
   reflects the current level) as the authoritative source for the ±3-level range check.
 - The client renderer uses the `level` provided in the world snapshot for visual coloring
   only; this small lag is acceptable for cosmetic purposes.
@@ -876,17 +877,17 @@ Only `RadarRenderer` needs the safe-area offset because it is the only renderer 
 1. **Attack range restricted to ±3 levels.** Only players whose level difference `|targetLevel - attackerLevel| ≤ 3` may initiate a battle.
 
 2. **Dual enforcement (defence in depth):**
-   - *Frontend*: `Game.handleAttack()` checks `isAttackAllowed()` before calling the API. This provides instant feedback without a server round-trip.
-   - *Server*: `POST /api/attack` re-validates the level constraint using the authoritative UserCache levels. The frontend check can be bypassed (e.g. via direct API calls), so the server guard is mandatory.
+   - _Frontend_: `Game.handleAttack()` checks `isAttackAllowed()` before calling the API. This provides instant feedback without a server round-trip.
+   - _Server_: `POST /api/attack` re-validates the level constraint using the authoritative UserCache levels. The frontend check can be bypassed (e.g. via direct API calls), so the server guard is mandatory.
 
 3. **Ship name colour encodes threat level** (rendered by `OtherShipRenderer`):
-   | Level difference | Colour       | Meaning                            |
+   | Level difference | Colour | Meaning |
    |------------------|--------------|------------------------------------|
-   | `< −3`           | Gray         | Too weak to attack (out of range)  |
-   | `−3`             | Green        | Weakest attackable opponent        |
-   | `0`              | White        | Same level                         |
-   | `+3`             | Red          | Strongest attackable opponent      |
-   | `> +3`           | Gray         | Too strong to attack (out of range)|
+   | `< −3` | Gray | Too weak to attack (out of range) |
+   | `−3` | Green | Weakest attackable opponent |
+   | `0` | White | Same level |
+   | `+3` | Red | Strongest attackable opponent |
+   | `> +3` | Gray | Too strong to attack (out of range)|
    Intermediate values use smooth RGB interpolation between the anchor colours.
 
 4. **Level data in WorldCache loaded via Option B** (see Section 5.2.1). The `SpaceObject` entries for player ships include a `level` field computed from `xp` at WorldCache load time. This value is used for rendering only; the server-side attack guard always reads from UserCache.

@@ -3,10 +3,11 @@ import "./globals.css";
 
 export const viewport: Viewport = {
   themeColor: "#4caf50",
+  viewportFit: "cover",
 };
 
 export const metadata: Metadata = {
-  title: "Spacewars: Ironcore",
+  title: "Spacewars: Ironstrike",
   description: "A space exploration and resource management game",
   manifest: "/manifest.json",
   appleWebApp: {

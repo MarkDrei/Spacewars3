@@ -2,9 +2,45 @@
   min-height: 100vh;
   background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%);
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  padding: 1rem;
+  justify-content: flex-start;
+  padding: 0;
+}
+
+.alpha-banner {
+  width: 100%;
+  background-color: #ff9800;
+  border-bottom: 4px solid #e68900;
+  padding: 1.5rem 1rem;
+}
+
+.alpha-banner-content {
+  max-width: 600px;
+  margin: 0 auto;
+  color: #000;
+}
+
+.alpha-banner-content h2 {
+  margin: 0 0 0.75rem 0;
+  font-size: 1.5rem;
+  font-weight: bold;
+}
+
+.alpha-banner-content p {
+  margin: 0.5rem 0;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.alpha-banner-content a {
+  color: #000;
+  text-decoration: underline;
+  font-weight: 600;
+}
+
+.alpha-banner-content a:hover {
+  color: #333;
 }
 
 .login-container {
@@ -15,6 +51,7 @@
   width: 100%;
   max-width: 400px;
   box-shadow: 0 8px 32px rgba(76, 175, 80, 0.2);
+  margin-top: 2rem;
 }
 
 .login-container h1 {
