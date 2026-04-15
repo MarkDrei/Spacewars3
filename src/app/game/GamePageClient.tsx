@@ -61,7 +61,7 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
     document.body.style.overflow = 'hidden';
     const appEl = document.querySelector('.app') as HTMLElement | null;
     if (appEl) {
-      appEl.style.height = '100vh';
+      appEl.style.height = '100dvh';
       appEl.style.overflow = 'hidden';
     }
     return () => {
