@@ -7,7 +7,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "Spacewars: Ironcore",
+  title: "Spacewars: Ironstrike",
   description: "A space exploration and resource management game",
   manifest: "/manifest.json",
   appleWebApp: {

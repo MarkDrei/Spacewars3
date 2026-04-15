@@ -1,8 +1,8 @@
-# Spacewars: Ironcore
+# Spacewars: Ironstrike
 
-Venture into the unending stars of Spacewars: Ironcore, where every journey is a test of exploration and ingenuity. As you pilot your craft through an infinite, wraparound cosmos, the hunt for iron becomes your primary quest—salvaging wrecks and chasing elusive escape pods to gather this precious resource. Each grain of iron fuels your technological ambitions, powering advanced research, unlocking new abilities, and giving you the edge to innovate and thrive in the far reaches of space.
+Venture into the unending stars of Spacewars: Ironstrike, where every journey is a test of exploration and ingenuity. As you pilot your craft through an infinite, wraparound cosmos, the hunt for iron becomes your primary quest—salvaging wrecks and chasing elusive escape pods to gather this precious resource. Each grain of iron fuels your technological ambitions, powering advanced research, unlocking new abilities, and giving you the edge to innovate and thrive in the far reaches of space.
 
-But this universe is not yours alone. Rival explorers chart their own destinies across the same boundless sectors, driven by the same hunger for iron and progress. Engage in tactical combat, outmaneuver your opponents, and construct technologies that set you apart. With every upgrade, your ship evolves—a testament to your mastery of research and relentless pursuit of dominance. In Spacewars: Ironcore, exploration blends seamlessly with competition, forging a living world where visionaries rise, and only the boldest adventurers shape the future.
+But this universe is not yours alone. Rival explorers chart their own destinies across the same boundless sectors, driven by the same hunger for iron and progress. Engage in tactical combat, outmaneuver your opponents, and construct technologies that set you apart. With every upgrade, your ship evolves—a testament to your mastery of research and relentless pursuit of dominance. In Spacewars: Ironstrike, exploration blends seamlessly with competition, forging a living world where visionaries rise, and only the boldest adventurers shape the future.
 
 ## Overview
 
@@ -184,17 +184,17 @@ npm run test
 
 #### Environment Variables
 
-| Variable             | Description            | Default                                    |
-| -------------------- | ---------------------- | ------------------------------------------ |
-| `POSTGRES_HOST`      | PostgreSQL host        | `localhost` or `db` (devcontainer)         |
-| `POSTGRES_PORT`      | PostgreSQL port        | `5432`                                     |
-| `POSTGRES_DB`        | Database name          | `spacewars`                                |
-| `POSTGRES_USER`      | Database user          | `spacewars`                                |
-| `POSTGRES_PASSWORD`  | Database password      | `spacewars`                                |
-| `POSTGRES_TEST_HOST` | Test DB host           | `localhost`                                |
-| `POSTGRES_TEST_PORT` | Test DB port           | `5432`                                     |
-| `POSTGRES_TEST_DB`   | Test database name     | `spacewars_test`                           |
-| `SESSION_SECRET`     | Session encryption key | -                                          |
+| Variable             | Description            | Default                            |
+| -------------------- | ---------------------- | ---------------------------------- |
+| `POSTGRES_HOST`      | PostgreSQL host        | `localhost` or `db` (devcontainer) |
+| `POSTGRES_PORT`      | PostgreSQL port        | `5432`                             |
+| `POSTGRES_DB`        | Database name          | `spacewars`                        |
+| `POSTGRES_USER`      | Database user          | `spacewars`                        |
+| `POSTGRES_PASSWORD`  | Database password      | `spacewars`                        |
+| `POSTGRES_TEST_HOST` | Test DB host           | `localhost`                        |
+| `POSTGRES_TEST_PORT` | Test DB port           | `5432`                             |
+| `POSTGRES_TEST_DB`   | Test database name     | `spacewars_test`                   |
+| `SESSION_SECRET`     | Session encryption key | -                                  |
 
 **Note**: Copy `.env.example` to `.env` for local development outside devcontainer.
 

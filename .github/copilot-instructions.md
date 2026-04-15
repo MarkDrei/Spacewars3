@@ -1,4 +1,4 @@
-# Spacewars Ironcore
+# Spacewars Ironstrike
 
 - This project is a 2D space exploration game built with Next.js 15, TypeScript, and React.
 - The game uses HTML5 Canvas for rendering within a React application.

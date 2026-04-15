@@ -47,7 +47,7 @@ const Navigation: React.FC<NavigationProps> = ({ onLogout }) => {
     <nav className="navbar">
       <div className="navbar-container">
         <Link href="/home" className="navbar-brand" onClick={closeMenu}>
-          Spacewars: Ironcore
+          Spacewars: Ironstrike
         </Link>
         
         <div className="navbar-toggle" onClick={toggleMenu}>

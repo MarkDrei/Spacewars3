@@ -79,7 +79,7 @@ const LoginPage: React.FC = () => {
   return (
     <div className="login-page">
       <div className="login-container">
-        <h1>Spacewars: Ironcore</h1>
+        <h1>Spacewars: Ironstrike</h1>
         <p>Welcome to the space exploration game.</p>
         
         <div className="auth-form-container">
