@@ -49,9 +49,10 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
   const [teleportOpen, setTeleportOpen] = useState(false);
   const [afterburnerOpen, setAfterburnerOpen] = useState(false);
   const [afterburnerStatus, setAfterburnerStatus] = useState<AfterburnerStatus | null>(null);
-  const [announcement, setAnnouncement] = useState<{ text: string; key: number } | null>(null);
+  const [announcement, setAnnouncement] = useState<{ text: string; key: number; variant?: 'orange' } | null>(null);
   const announcementTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isActivatingAfterburner, setIsActivatingAfterburner] = useState(false);
+  const [playerLevel, setPlayerLevel] = useState(1);
   // Auth is guaranteed by server, so pass true and use auth.shipId
   const { worldData, isLoading, error, refetch, lastUpdateTime } = useWorldData(3000);
 
@@ -187,9 +188,9 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
     }
   };
 
-  const announce = (text: string) => {
+  const announce = (text: string, variant?: 'orange') => {
     if (announcementTimerRef.current) clearTimeout(announcementTimerRef.current);
-    setAnnouncement({ text, key: Date.now() });
+    setAnnouncement({ text, key: Date.now(), variant });
     announcementTimerRef.current = setTimeout(() => setAnnouncement(null), 2500);
   };
 
@@ -197,6 +198,26 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
   const handleAttackSuccess = useCallback(() => {
     router.push('/');
   }, [router]);
+
+  // Memoize harvest result callback - called from Game after a collect attempt
+  const handleHarvestResult = useCallback((result: { success: boolean; ironReward?: number; objectType?: string; error?: string }) => {
+    if (result.success) {
+      if (result.ironReward && result.ironReward > 0) {
+        const label = result.objectType ? result.objectType.replace('_', ' ') : 'object';
+        if (announcementTimerRef.current) clearTimeout(announcementTimerRef.current);
+        setAnnouncement({ text: `+${result.ironReward} iron from ${label}`, key: Date.now() });
+        announcementTimerRef.current = setTimeout(() => setAnnouncement(null), 2500);
+      } else {
+        if (announcementTimerRef.current) clearTimeout(announcementTimerRef.current);
+        setAnnouncement({ text: 'Collected!', key: Date.now() });
+        announcementTimerRef.current = setTimeout(() => setAnnouncement(null), 2500);
+      }
+    } else {
+      if (announcementTimerRef.current) clearTimeout(announcementTimerRef.current);
+      setAnnouncement({ text: result.error ?? 'Collection failed', key: Date.now(), variant: 'orange' });
+      announcementTimerRef.current = setTimeout(() => setAnnouncement(null), 2500);
+    }
+  }, []);
 
   // Memoize starbase entry callback - called from Game when player enters a starbase
   const handleStarbaseEntry = useCallback(() => {
@@ -279,12 +300,14 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
       gameInstanceRef.current.setNavigationCallback?.(updateInputFieldsFromShip);
       // Set the attack success callback to redirect to home page
       gameInstanceRef.current.setAttackSuccessCallback?.(handleAttackSuccess);
+      // Set the harvest result callback to display feedback on canvas
+      gameInstanceRef.current.setHarvestCallback?.(handleHarvestResult);
       // Set the teleport click callback for canvas click-to-teleport mode
       gameInstanceRef.current.setTeleportClickCallback?.(handleCanvasTeleport);
       // Set the starbase entry callback to redirect to starbase page
       gameInstanceRef.current.setStarbaseEntryCallback(handleStarbaseEntry);
     }
-  }, [worldData, auth.shipId, refetch, handleAttackSuccess, handleCanvasTeleport, handleStarbaseEntry]);
+  }, [worldData, auth.shipId, refetch, handleAttackSuccess, handleHarvestResult, handleCanvasTeleport, handleStarbaseEntry]);
 
   // Initialize input fields with current ship state only once when game starts
   useEffect(() => {
@@ -377,6 +400,7 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
       setTeleportMaxCharges(stats.teleportMaxCharges);
       setTeleportRechargeTimeSec(stats.teleportRechargeTimeSec);
       setTimeMultiplier(stats.timeMultiplier);
+      setPlayerLevel(stats.level);
     }
   }, []);
 
@@ -398,6 +422,13 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
       gameInstanceRef.current.setAttackClickMode(attackClickMode);
     }
   }, [attackClickMode]);
+
+  // Sync playerLevel with game instance
+  useEffect(() => {
+    if (gameInstanceRef.current) {
+      gameInstanceRef.current.setPlayerLevel(playerLevel);
+    }
+  }, [playerLevel]);
 
   // Sync zoom with game instance
   useEffect(() => {
@@ -554,7 +585,7 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
 
           {/* Announcement overlay — fades out after display */}
           {announcement && (
-            <div key={announcement.key} className="announcement-overlay">
+            <div key={announcement.key} className={`announcement-overlay${announcement.variant ? ` announcement-overlay--${announcement.variant}` : ''}`}>
               {announcement.text}
             </div>
           )}

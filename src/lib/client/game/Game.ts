@@ -12,6 +12,7 @@ import { calculateToroidalDistance } from '@shared/physics';
 import { STARBASE_DOCK_RANGE } from '@/shared/starbases';
 import { debugState } from '../debug/debugState';
 import { InterceptionLineRenderer } from '../renderers/InterceptionLineRenderer';
+import { isAttackAllowed } from '@shared/utils/levelUtils';
 
 export class Game {
   private world: World;
@@ -26,10 +27,12 @@ export class Game {
   private interceptionLines: InterceptionLines | null = null;
   private onNavigationCallback?: () => void; // Callback for when navigation happens
   private onAttackSuccessCallback?: () => void; // Callback for when attack succeeds
+  private onHarvestCallback?: (result: { success: boolean; ironReward?: number; objectType?: string; error?: string }) => void; // Callback for harvest result
   private teleportClickMode: boolean = false;
   private attackClickMode: boolean = false;
   private onTeleportClickCallback: ((x: number, y: number) => void) | null = null;
   private onStarbaseEntryCallback: ((starbaseId: number) => void) | null = null;
+  private playerLevel: number = 1;
 
   constructor(canvas: HTMLCanvasElement) {
     // Initialize the canvas context
@@ -287,7 +290,9 @@ export class Game {
         } else {
           console.log(`Successfully collected ${result.objectType}! No iron reward. Distance: ${result.distance} units`);
         }
-        
+
+        this.onHarvestCallback?.({ success: true, ironReward: result.ironReward, objectType: result.objectType });
+
         // Trigger world data refresh to get updated state from server
         if (this.refetchWorldData) {
           console.log(`🔄 Triggering world data refresh...`);
@@ -297,7 +302,7 @@ export class Game {
         }
       } else {
         console.error('Failed to collect object:', result.error);
-        // Could show user feedback here (e.g., toast notification)
+        this.onHarvestCallback?.({ success: false, error: result.error });
       }
     } catch (error) {
       console.error('Failed to handle collection:', error);
@@ -313,6 +318,15 @@ export class Game {
       
       if (typeof userId !== 'number' || isNaN(userId)) {
         console.error(`❌ Invalid user ID: ${userId} (type: ${typeof userId})`);
+        return;
+      }
+
+      // Frontend level-range check: only allow attacks within ±3 levels
+      const targetLevel = targetObject.getLevel();
+      if (targetLevel === undefined) {
+        console.warn(`⚔️ Target ship has no level data (userId ${userId}); skipping level check`);
+      } else if (!isAttackAllowed(this.playerLevel, targetLevel)) {
+        console.log(`⚔️ Attack blocked: level difference too large (player ${this.playerLevel} vs target ${targetLevel})`);
         return;
       }
       
@@ -404,6 +418,13 @@ export class Game {
   }
 
   /**
+   * Set the current player's level (used for level-based name coloring and attack range checks)
+   */
+  public setPlayerLevel(level: number): void {
+    this.playerLevel = level;
+  }
+
+  /**
    * Set a callback to be called when canvas is clicked in teleport mode
    */
   public setTeleportClickCallback(callback: ((x: number, y: number) => void) | null): void {
@@ -415,6 +436,13 @@ export class Game {
    */
   public setAttackSuccessCallback(callback: () => void): void {
     this.onAttackSuccessCallback = callback;
+  }
+
+  /**
+   * Set a callback function to trigger after a harvest attempt (success or failure)
+   */
+  public setHarvestCallback(callback: (result: { success: boolean; ironReward?: number; objectType?: string; error?: string }) => void): void {
+    this.onHarvestCallback = callback;
   }
 
   /**
@@ -482,7 +510,7 @@ export class Game {
     try {
       // Try the most likely method names
       if (typeof this.renderer.drawWorld === 'function') {
-        this.renderer.drawWorld(this.ship, this.getTargetingLine());
+        this.renderer.drawWorld(this.ship, this.getTargetingLine(), this.playerLevel);
         
         // Draw interception lines on top of the rendered world
         this.drawInterceptionLines();

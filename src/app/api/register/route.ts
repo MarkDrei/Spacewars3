@@ -14,6 +14,7 @@ import { DEFAULT_SHIP_START_X, DEFAULT_SHIP_START_Y, DEFAULT_SHIP_START_SPEED, D
 import { isEmailEnabled } from '@/lib/server/email/emailConfig';
 import { sendEmail } from '@/lib/server/email/emailService';
 import { buildVerificationEmail } from '@/lib/server/email/emailTemplates';
+import { calculateLevelFromXp } from '@shared/utils/levelUtils';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -74,7 +75,9 @@ export async function POST(request: NextRequest) {
               angle: DEFAULT_SHIP_START_ANGLE,
               last_position_update_ms: Date.now(),
               picture_id: 1, // Default ship picture
-              username: user.username
+              username: user.username,
+              userId: user.id,
+              level: calculateLevelFromXp(user.xp),
             };
             world.spaceObjects.push(newShip);
             console.log(`🚀 Added ship ${user.ship_id} for user ${user.username} to world cache`);

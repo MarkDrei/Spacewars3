@@ -8,8 +8,8 @@
 
 import type { CommanderStatKey } from '../inventory/Commander';
 
-/** Base regeneration rate per second for hull, armor, and shield (no research involved). */
-export const BASE_REGEN_RATE = 1.0;
+/** Base regeneration rate per second for repair and shield recharge (no research involved). */
+export const BASE_REGEN_RATE = 0.1;
 
 /**
  * Pre-computed per-user bonus values.
@@ -41,10 +41,7 @@ export interface UserBonuses {
   ironRechargeRate: number;
 
   /** BASE_REGEN_RATE × levelMultiplier (no research involved) */
-  hullRepairSpeed: number;
-
-  /** BASE_REGEN_RATE × levelMultiplier (no research involved) */
-  armorRepairSpeed: number;
+  repairRate: number;
 
   /** BASE_REGEN_RATE × levelMultiplier (no research involved) */
   shieldRechargeRate: number;

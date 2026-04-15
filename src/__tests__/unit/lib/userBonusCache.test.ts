@@ -498,44 +498,34 @@ describe('UserBonusCache iron economy', () => {
 // ---------------------------------------------------------------------------
 
 describe('UserBonusCache defense regen', () => {
-  test('hullRepairSpeed_level1_equalsBaseRegenRate', async () => {
+  test('repairRate_level1_equalsBaseRegenRate', async () => {
     const user = makeUser(0);
     const { userCacheMock, inventoryServiceMock } = makeMocks(user, emptyBridge());
     UserBonusCache.configureDependencies({ userCache: userCacheMock, inventoryService: inventoryServiceMock });
     const cache = UserBonusCache.getInstance();
 
     const bonuses = await withLock4(ctx => cache.getBonuses(ctx, 1));
-    expect(bonuses.hullRepairSpeed).toBeCloseTo(BASE_REGEN_RATE, 10);
+    expect(bonuses.repairRate).toBeCloseTo(BASE_REGEN_RATE, 10);
   });
 
-  test('hullRepairSpeed_level2_scaledByLevelMultiplier', async () => {
+  test('repairRate_level2_scaledByLevelMultiplier', async () => {
     const user = makeUser(1000);
     const { userCacheMock, inventoryServiceMock } = makeMocks(user, emptyBridge());
     UserBonusCache.configureDependencies({ userCache: userCacheMock, inventoryService: inventoryServiceMock });
     const cache = UserBonusCache.getInstance();
 
     const bonuses = await withLock4(ctx => cache.getBonuses(ctx, 1));
-    expect(bonuses.hullRepairSpeed).toBeCloseTo(BASE_REGEN_RATE * 1.15, 6);
+    expect(bonuses.repairRate).toBeCloseTo(BASE_REGEN_RATE * 1.15, 6);
   });
 
-  test('armorRepairSpeed_sameAsHullRepairSpeed', async () => {
+  test('shieldRechargeRate_sameAsRepairRateAtSameLevel', async () => {
     const user = makeUser(1000);
     const { userCacheMock, inventoryServiceMock } = makeMocks(user, emptyBridge());
     UserBonusCache.configureDependencies({ userCache: userCacheMock, inventoryService: inventoryServiceMock });
     const cache = UserBonusCache.getInstance();
 
     const bonuses = await withLock4(ctx => cache.getBonuses(ctx, 1));
-    expect(bonuses.armorRepairSpeed).toBeCloseTo(bonuses.hullRepairSpeed, 10);
-  });
-
-  test('shieldRechargeRate_sameAsHullRepairSpeed', async () => {
-    const user = makeUser(1000);
-    const { userCacheMock, inventoryServiceMock } = makeMocks(user, emptyBridge());
-    UserBonusCache.configureDependencies({ userCache: userCacheMock, inventoryService: inventoryServiceMock });
-    const cache = UserBonusCache.getInstance();
-
-    const bonuses = await withLock4(ctx => cache.getBonuses(ctx, 1));
-    expect(bonuses.shieldRechargeRate).toBeCloseTo(bonuses.hullRepairSpeed, 10);
+    expect(bonuses.shieldRechargeRate).toBeCloseTo(bonuses.repairRate, 10);
   });
 });
 
