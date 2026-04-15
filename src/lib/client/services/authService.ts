@@ -4,6 +4,7 @@ const API_BASE = '/api';
 export interface AuthResponse {
   success?: boolean;
   error?: string;
+  emailSent?: boolean;
 }
 
 export interface SessionResponse {
@@ -17,8 +18,14 @@ export interface LoginCredentials {
   password: string;
 }
 
+export interface RegisterCredentials {
+  username: string;
+  password: string;
+  email?: string;
+}
+
 export const authService = {
-  async register(credentials: LoginCredentials): Promise<AuthResponse> {
+  async register(credentials: RegisterCredentials): Promise<AuthResponse> {
     try {
       const response = await fetch(`${API_BASE}/register`, {
         method: 'POST',

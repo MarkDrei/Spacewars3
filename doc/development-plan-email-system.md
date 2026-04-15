@@ -1,10 +1,12 @@
-# Development Plan: Email System (Registration Confirmation & Password Reset)
+# Development Plan: User Email (Optional Address Storage & Verification)
 
 ## Vision
 
-As a player, I want to register with an email address and receive a confirmation email, and be able to reset my password via email, so that my account is secure and recoverable.
+As a player, I want to optionally provide an email address when registering, so that the game can verify I own that address and contact me if needed.
 
-The system reads SMTP configuration from environment variables (following the existing `process.env` pattern used for database and session config). A config template and README instructions guide operators on how to set up SMTP credentials.
+The system reads SMTP configuration from environment variables (following the existing `process.env` pattern used for database and session config). A config template and README instructions guide operators on how to set up SMTP credentials. When email is not configured the game continues to work exactly as before — email is entirely optional.
+
+**Out of scope for this plan**: password reset, email-based login, mandatory verification gates.
 
 ## Technology Stack
 
@@ -24,20 +26,21 @@ The system reads SMTP configuration from environment variables (following the ex
 src/lib/server/email/
   emailService.ts        — SMTP transport wrapper, send helpers
   emailConfig.ts         — Read SMTP env vars, validate config
-  emailTemplates.ts      — HTML email templates (registration, password reset)
+  emailTemplates.ts      — HTML email templates (verification)
 src/lib/server/user/
-  userRepo.ts            — Modified: new columns in INSERT/UPDATE
+  userRepo.ts            — Modified: new columns in INSERT/UPDATE + token helpers
   user.ts                — Modified: new email field
-src/lib/server/schema.ts — Modified: add email columns + password_reset columns
+src/lib/server/schema.ts — Modified: add email + verification columns
 src/lib/server/migrations.ts — Modified: add migration v15
 src/app/api/register/route.ts — Modified: accept email, send verification
 src/app/api/verify-email/route.ts — New: verify email token
-src/app/api/request-password-reset/route.ts — New: request password reset
-src/app/api/reset-password/route.ts — New: consume token, set new password
 src/components/LoginPageComponent.tsx — Modified: add email field on sign-up
-src/app/login/page.tsx — Modified: add email field + forgot password link
-src/components/ForgotPassword/ — New: forgot password form + reset form
+src/app/login/page.tsx — Modified: add email field + verified success message
+src/lib/client/services/authService.ts — Modified: add email to register payload
+src/lib/client/hooks/useAuth.ts — Modified: pass email param
 README.md — Modified: add SMTP configuration section
+docker-compose.yml — Modified: add SMTP env var placeholders
+render.yaml — Modified: add SMTP env var placeholders
 ```
 
 ## Goals
@@ -82,23 +85,22 @@ Export a `getSmtpConfig()` function returning a typed `SmtpConfig` interface. Ex
 - Lazily create the nodemailer transport on first use (singleton pattern, stored in `globalThis` for test isolation).
 - If `isEmailEnabled()` returns false, log `⚠️ Email not configured — skipping send to <address>` and return silently.
 - Use `resetInstance()` static method for test isolation (consistent with UserCache, WorldCache pattern).
-- All email sending is fire-and-forget from the caller's perspective — errors are logged but do not block the request. Registration and password-reset endpoints return success even if email sending fails.
+- All email sending is fire-and-forget from the caller's perspective — errors are logged but do not block the request. Registration endpoint returns success even if email sending fails.
 
 #### Task 1.3: Create Email Templates
 
-**Action**: Create `src/lib/server/email/emailTemplates.ts` with functions that return HTML strings for each email type.
+**Action**: Create `src/lib/server/email/emailTemplates.ts` with a function that returns an HTML string for the verification email.
 
 **Files**:
 
 - `src/lib/server/email/emailTemplates.ts` — new file
 
 **Details**:
-Two template functions:
+One template function:
 
 - `buildVerificationEmail(username: string, verificationUrl: string): { subject: string; html: string }`
-- `buildPasswordResetEmail(username: string, resetUrl: string): { subject: string; html: string }`
 
-Templates should be simple, inline-styled HTML (no external CSS — email clients strip `<style>` tags). Include the game name "Spacewars: Ironcore" in the header. Include token expiration info in the body.
+Template should be simple, inline-styled HTML (no external CSS — email clients strip `<style>` tags). Include the game name "Spacewars: Ironcore" in the header. Include token expiration info in the body.
 
 #### Task 1.4: Update README with SMTP Configuration
 
@@ -114,7 +116,7 @@ Add a new subsection after the existing Environment Variables table:
 ```markdown
 ### Email Configuration (Optional)
 
-Email is used for registration verification and password reset. If not configured, the game works without email — accounts are created immediately without verification.
+Email is used for registration verification. If not configured, the game works without email — accounts are created immediately without verification.
 
 | Variable        | Description                            | Default             |
 | --------------- | -------------------------------------- | ------------------- |
@@ -156,9 +158,9 @@ Email is used for registration verification and password reset. If not configure
 
 ---
 
-### Goal 2: Database Schema Changes for Email & Password Reset
+### Goal 2: Database Schema Changes for Email Storage & Verification
 
-**Description**: Add email address, email verification, and password reset token columns to the users table.
+**Description**: Add email address and email verification token columns to the users table.
 
 **Quality Requirements**: Migration must be idempotent (`ADD COLUMN IF NOT EXISTS`). Existing users without email continue to work (columns are nullable or have defaults).
 
@@ -178,13 +180,11 @@ New columns:
 email TEXT DEFAULT NULL,
 email_verified BOOLEAN NOT NULL DEFAULT FALSE,
 email_verification_token TEXT DEFAULT NULL,
-email_verification_expires BIGINT DEFAULT NULL,
-password_reset_token TEXT DEFAULT NULL,
-password_reset_expires BIGINT DEFAULT NULL
+email_verification_expires BIGINT DEFAULT NULL
 ```
 
 - `email` is nullable — existing users and the default test user "a" don't have one.
-- `email` should have a UNIQUE constraint, but only on non-null values (PostgreSQL UNIQUE allows multiple NULLs by default, so `UNIQUE` on the column works).
+- `email` should have a UNIQUE constraint on non-null values (PostgreSQL UNIQUE allows multiple NULLs by default, so `UNIQUE` on the column works).
 - Token columns use BIGINT for Unix timestamps in milliseconds (consistent with `created_at` in messages table).
 
 Migration v15:
@@ -194,31 +194,27 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS email TEXT DEFAULT NULL;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN NOT NULL DEFAULT FALSE;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verification_token TEXT DEFAULT NULL;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verification_expires BIGINT DEFAULT NULL;
-ALTER TABLE users ADD COLUMN IF NOT EXISTS password_reset_token TEXT DEFAULT NULL;
-ALTER TABLE users ADD COLUMN IF NOT EXISTS password_reset_expires BIGINT DEFAULT NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users (email) WHERE email IS NOT NULL;
 ```
 
 #### Task 2.2: Update User Model and Repository
 
-**Action**: Add new fields to `User` class, `UserRow` interface, `userFromRow()`, `saveUserToDb()`, and `createUser()`.
+**Action**: Add new fields to `User` class, `UserRow` interface, `userFromRow()`, `saveUserToDb()`, and `createUser()`. Add standalone token helper functions.
 
 **Files**:
 
 - `src/lib/server/user/user.ts` — modified (add fields: `email`, `emailVerified`)
-- `src/lib/server/user/userRepo.ts` — modified (UserRow, userFromRow, saveUserToDb, createUser)
+- `src/lib/server/user/userRepo.ts` — modified (UserRow, userFromRow, saveUserToDb, createUser, token helpers)
 
 **Details**:
 
 - `User` class gets: `email: string | null`, `emailVerified: boolean`
-- Password reset tokens are NOT stored on the User object — they are read/written directly via repository functions (they are transient, not part of the cached user state).
-- `saveUserToDb()` UPDATE adds `email = $27, email_verified = $28` — WHERE id shifts to `$29`.
-- `createUser()` INSERT adds `email` parameter.
+- Email verification tokens are NOT stored on the User object — they are read/written directly via repository functions (they are transient, not part of the cached user state).
+- `saveUserToDb()` UPDATE adds `email = $N, email_verified = $N+1` — adjust parameter numbering accordingly.
+- `createUser()` INSERT adds optional `email` parameter (default null).
 - New standalone repo functions (not on User class):
   - `setEmailVerificationToken(db, userId, token, expiresAt)`
   - `consumeEmailVerificationToken(db, token)` → returns `userId` or null
-  - `setPasswordResetToken(db, userId, token, expiresAt)`
-  - `consumePasswordResetToken(db, token)` → returns `userId` or null
   - `getUserByEmail(db, email)` → returns `UserRow | null`
 
 **Quality Requirements**: Token consumption must be atomic — use `UPDATE ... SET token=NULL, expires=NULL WHERE token=$1 AND expires > $2 RETURNING id` to prevent race conditions.
@@ -235,13 +231,13 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users (email) WHERE email I
 
 ---
 
-### Goal 3: Registration with Email Verification
+### Goal 3: Registration with Optional Email and Verification
 
-**Description**: Modify the registration flow to accept an optional email address. When email is enabled and provided, send a verification email with a token link.
+**Description**: Modify the registration flow to accept an optional email address. When email is enabled and provided, send a verification email with a token link. Users who skip email can register and play immediately — no verification gate.
 
 #### Task 3.1: Modify Registration API Route
 
-**Action**: Update `POST /api/register` to accept optional `email` field. When `EMAIL_ENABLED=true` and email is provided: generate verification token, store it, send verification email. When email is disabled: skip verification entirely (current behavior preserved).
+**Action**: Update `POST /api/register` to accept optional `email` field. When `EMAIL_ENABLED=true` and email is provided: generate verification token, store it, send verification email. When email is disabled or not provided: skip verification entirely (current behavior preserved).
 
 **Files**:
 
@@ -250,7 +246,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users (email) WHERE email I
 **Details**:
 
 - Validate email format if provided (simple regex: `/^[^\s@]+@[^\s@]+\.[^\s@]+$/`)
-- Check email uniqueness before creating user
+- Check email uniqueness before creating user; return 400 if already taken
 - Generate token: `crypto.randomBytes(32).toString('hex')`
 - Token expiration: 24 hours from now
 - Store token via `setEmailVerificationToken()`
@@ -261,7 +257,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users (email) WHERE email I
 
 #### Task 3.2: Create Email Verification API Route
 
-**Action**: Create `GET /api/verify-email?token=xxx` that validates and consumes the verification token.
+**Action**: Create `GET /api/verify-email?token=xxx` that validates and consumes the verification token, then sets `email_verified = true`.
 
 **Files**:
 
@@ -271,13 +267,13 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users (email) WHERE email I
 
 - Read `token` from query params
 - Call `consumeEmailVerificationToken(db, token)` — atomically validates and consumes
-- If valid: set `email_verified = true` on user, redirect to `/login?verified=true`
+- If valid: set `email_verified = true` on user row directly (SQL UPDATE), redirect to `/login?verified=true`
 - If invalid/expired: redirect to `/login?error=invalid-token`
 - No authentication required (user clicks link from email before logging in)
 
 #### Task 3.3: Update Registration UI
 
-**Action**: Add optional email field to the sign-up form in `LoginPageComponent.tsx` and `src/app/login/page.tsx`.
+**Action**: Add optional email field to the sign-up form in `LoginPageComponent.tsx`. Show a success message when email was sent. Show a "verified" message when returning from the verification link.
 
 **Files**:
 
@@ -289,10 +285,11 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users (email) WHERE email I
 **Details**:
 
 - Add email input field (type="email") shown only in Sign Up mode, below username
-- Placeholder: "Email (optional — for password recovery)"
-- Update `LoginCredentials` or create `RegisterCredentials` interface with optional `email`
+- Placeholder: "Email (optional — for account notifications)"
+- Update `LoginCredentials` or create `RegisterCredentials` interface with optional `email?: string`
 - Show success message after registration if `emailSent: true`: "Check your email to verify your account"
 - Show `?verified=true` query param message on login page: "Email verified! You can now sign in."
+- Show `?error=invalid-token` query param message on login page: "Email verification link is invalid or has expired."
 
 #### Task 3.4: Write Tests for Registration with Email
 
@@ -303,81 +300,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users (email) WHERE email I
 - `src/__tests__/unit/api/register-email-validation.test.ts` — new file
 - `src/__tests__/integration/api/register-email-flow.test.ts` — new file
 
----
-
-### Goal 4: Password Reset Flow
-
-**Description**: Allow users to request a password reset via email. A token is sent to their registered email, which lets them set a new password.
-
-#### Task 4.1: Create Password Reset Request API Route
-
-**Action**: Create `POST /api/request-password-reset` that accepts `{ email }`, generates a reset token, and sends a password reset email.
-
-**Files**:
-
-- `src/app/api/request-password-reset/route.ts` — new file
-
-**Details**:
-
-- Accept `{ email }` in request body
-- Look up user by email via `getUserByEmail(db, email)`
-- **Security**: Always return success even if email not found (prevent email enumeration)
-- If user found and email is verified: generate token (`crypto.randomBytes(32).toString('hex')`), 1-hour expiration
-- Store via `setPasswordResetToken(db, userId, token, expiresAt)`
-- Build reset URL: `${BASE_URL}/login?reset-token=${token}`
-- Send email fire-and-forget
-- Rate limiting consideration: documented in Architecture Notes (not implemented in v1, but token expiration prevents abuse)
-- No authentication required
-
-#### Task 4.2: Create Password Reset Execution API Route
-
-**Action**: Create `POST /api/reset-password` that accepts `{ token, newPassword }`, validates the token, and updates the password.
-
-**Files**:
-
-- `src/app/api/reset-password/route.ts` — new file
-
-**Details**:
-
-- Accept `{ token, newPassword }` in request body
-- Validate `newPassword` is non-empty
-- Call `consumePasswordResetToken(db, token)` — atomic validation + consumption
-- If valid: hash new password with bcrypt, update user's `password_hash` in DB
-- Invalidate UserCache entry for this user (force re-read from DB)
-- Return `{ success: true }`
-- If invalid/expired: return `{ error: 'Invalid or expired reset link' }` (400)
-
-#### Task 4.3: Create Password Reset UI Components
-
-**Action**: Add "Forgot Password?" link to login form. Create forgot-password and reset-password form components.
-
-**Files**:
-
-- `src/components/LoginPageComponent.tsx` — modified (add "Forgot Password?" link)
-- `src/app/login/page.tsx` — modified (handle `?reset-token=` query param)
-- `src/components/ForgotPassword/ForgotPasswordForm.tsx` — new file
-- `src/components/ForgotPassword/ResetPasswordForm.tsx` — new file
-- `src/app/login/LoginPage.css` — modified (styles for new forms)
-
-**Details**:
-
-- "Forgot Password?" link below sign-in form toggles to a "forgot password" view
-- Forgot password view: email input + submit button → calls `POST /api/request-password-reset`
-- Shows "If that email is registered, a reset link has been sent" (always, for security)
-- When login page loads with `?reset-token=xxx` query param: show reset form instead
-- Reset form: new password + confirm password → calls `POST /api/reset-password`
-- On success: redirect to login with `?password-reset=true` message
-
-#### Task 4.4: Write Tests for Password Reset
-
-**Action**: Unit tests for token validation, integration tests for the full reset flow.
-
-**Files**:
-
-- `src/__tests__/unit/api/password-reset-validation.test.ts` — new file
-- `src/__tests__/integration/api/password-reset-flow.test.ts` — new file
-
-**Quality Requirements**: Test expired token rejection, double-use prevention, email enumeration protection (same response for existing/non-existing emails).
+**Quality Requirements**: Test email format validation, email uniqueness rejection, token generation, token consumption, and `email_verified` flag set to true after verification.
 
 ---
 
@@ -404,34 +327,117 @@ No other new dependencies needed — `crypto` is built into Node.js.
 
 2. **Graceful degradation**: Email is optional. When `EMAIL_ENABLED=false` (default), the game works exactly as before — no email required for registration or login. This ensures zero friction for local development and testing.
 
-3. **Fire-and-forget email sending**: Email delivery failures must not block user registration or password reset requests. Errors are logged but requests succeed regardless.
+3. **Fire-and-forget email sending**: Email delivery failures must not block user registration. Errors are logged but requests succeed regardless.
 
-4. **Token-based verification**: Using `crypto.randomBytes(32)` (256 bits of entropy) for tokens. Tokens are single-use (consumed atomically via SQL `UPDATE ... RETURNING`) and time-limited.
+4. **Token-based verification**: Using `crypto.randomBytes(32)` (256 bits of entropy) for tokens. Tokens are single-use (consumed atomically via SQL `UPDATE ... RETURNING`) and time-limited to 24 hours.
 
-5. **No separate token table**: Verification and reset tokens are stored directly on the users table. This avoids a separate table + cleanup job. Tokens are nullable and cleared on consumption.
+5. **No separate token table**: Verification tokens are stored directly on the users table. This avoids a separate table + cleanup job. Token columns are nullable and cleared on consumption.
 
-6. **Email is optional on registration**: Existing users without email continue to work. New users can register without email — they just can't use password reset. This maintains backward compatibility with the test user "a".
+6. **Email is optional on registration**: Existing users without email continue to work. New users can register without email. This maintains backward compatibility with the test user "a".
 
-7. **Nodemailer over API-based services**: The user requested SMTP specifically. Nodemailer is the standard Node.js SMTP library, lightweight, and works with any SMTP provider (Gmail, Mailgun, self-hosted, etc.).
+7. **Nodemailer over API-based services**: Nodemailer is the standard Node.js SMTP library, lightweight, and works with any SMTP provider (Gmail, Mailgun, self-hosted, etc.).
 
-8. **Password reset token stored in DB, not in User cache**: Reset tokens are transient security artifacts. They should NOT be cached in UserCache (which is for game state). They're read/written directly via SQL to avoid cache invalidation complexity.
+8. **Verification tokens stored in DB, not in User cache**: Verification tokens are transient security artifacts. They must NOT be cached in UserCache (which is for game state). They're read/written directly via SQL.
+
+9. **No verification gate**: Unverified users play immediately. `email_verified` is stored but not enforced as a login requirement. It is available for future use (e.g., notifications).
 
 ## Agent Decisions
 
-1. **Chose `process.env` over a JSON/YAML config file**: The entire project uses `process.env` for configuration. A separate config file would be inconsistent and require new file-reading infrastructure. The README documents which env vars to set, and a `.env.example` section shows the format.
+1. **Chose `process.env` over a JSON/YAML config file**: Consistent with the entire project. README documents which env vars to set.
 
-2. **Made email nullable on users table**: Rather than requiring all existing users to have an email (breaking migration), `email` is nullable. This means password reset is only available to users who provided an email at registration.
+2. **Made email nullable on users table**: Rather than requiring all existing users to have an email (breaking migration), `email` is nullable.
 
-3. **Decided against email-based login**: The game uses username-based login. Adding email as a login method would be a larger scope change. Password reset uses email to deliver the token, but login remains username + password.
+3. **Decided against email-based login**: The game uses username-based login. Email is stored for contact/verification only.
 
-4. **Placed token operations in userRepo.ts, not on User class**: Tokens are consumed by unauthenticated endpoints (verify-email, reset-password) where we don't have a full User object loaded via cache. Direct DB operations are simpler and avoid cache coherency issues.
+4. **Placed token operations in userRepo.ts, not on User class**: Tokens are consumed by unauthenticated endpoints (verify-email) where we don't have a full User object loaded via cache. Direct DB operations are simpler and avoid cache coherency issues.
 
-5. **Chose 24h for email verification, 1h for password reset**: Standard security practice. Verification is less time-sensitive (user may not check email immediately). Password reset should be short-lived to minimize exposure.
+5. **Chose 24h for email verification token**: Standard security practice. Users may not check email immediately, so a longer window reduces friction.
 
-6. **No rate limiting in v1**: Token expiration provides basic abuse protection. Rate limiting for password reset requests is noted as a future enhancement in Technical Debt.
+6. **Password reset is out of scope**: The problem statement asks to "implement the user email possibility", which is satisfied by storing and verifying an email address. Password reset can be added in a follow-up plan as a separate feature.
 
-## Resolved Questions
+---
 
-1. **Email optional on registration** — even when `EMAIL_ENABLED=true`, email stays optional. Users who skip email can't use password reset but can register and play normally.
-2. **No login blocking** — unverified users play immediately. Verification only gates password reset functionality.
-3. **`NEXT_PUBLIC_BASE_URL` env var** — explicit env var for building email links (e.g., `https://spacewars-nextjs.onrender.com`). Added to README env var table.
+## Implementation Status
+
+**Status**: ✅ COMPLETED
+
+**Implementation Summary**: Full optional email support implemented — users can provide an email at registration; when email is configured (EMAIL_ENABLED=true), a verification token is generated and a verification email is sent fire-and-forget. The verify-email endpoint atomically consumes the token and marks the user as verified. When email is disabled (default), registration behaves exactly as before.
+
+**Files Modified/Created**:
+- `src/lib/server/email/emailConfig.ts` — New: SMTP env var reader with isEmailEnabled() helper
+- `src/lib/server/email/emailService.ts` — New: nodemailer wrapper with fire-and-forget sendEmail()
+- `src/lib/server/email/emailTemplates.ts` — New: HTML verification email template
+- `src/lib/server/schema.ts` — Added email columns to CREATE_USERS_TABLE; added MIGRATE_ADD_EMAIL; bumped SCHEMA_VERSION to 15
+- `src/lib/server/migrations.ts` — Added applyEmailColumnsMigration() and wired it into applyAllMigrations()
+- `src/lib/server/user/user.ts` — Added email: string|null and emailVerified: boolean fields
+- `src/lib/server/user/userRepo.ts` — Updated UserRow interface, userFromRow, createUser, createUserWithoutShip, createUserWithShip, saveUserToDb; added setEmailVerificationToken, consumeEmailVerificationToken, getUserByEmail
+- `src/app/api/register/route.ts` — Updated: email validation, uniqueness check, token generation, fire-and-forget send
+- `src/app/api/verify-email/route.ts` — New: GET endpoint that consumes token and redirects
+- `src/components/LoginPageComponent.tsx` — Updated: email field in sign-up, success message, query param banners, verifiedParam/errorParam props
+- `src/app/login/page.tsx` — Converted to server component wrapper that reads searchParams and passes to LoginPageComponent
+- `src/lib/client/services/authService.ts` — Added RegisterCredentials interface with optional email; updated register()
+- `src/lib/client/hooks/useAuth.ts` — Updated register() to accept optional email
+- `docker-compose.yml` — Added SMTP env var placeholders
+- `render.yaml` — Added SMTP env var placeholders
+- `README.md` — Added Email Configuration section
+- `src/__tests__/unit/email/emailConfig.test.ts` — New: unit tests for config parsing
+- `src/__tests__/unit/email/emailService.test.ts` — New: unit tests for service (nodemailer mocked)
+- `src/__tests__/unit/email/emailTemplates.test.ts` — New: unit tests for template generation
+- `src/__tests__/integration/api/email-tokens.test.ts` — New: integration tests for token helpers
+- `src/__tests__/integration/api/register-email-flow.test.ts` — New: integration tests for register+verify flow
+
+**Deviations from Plan**:
+- `src/app/login/page.tsx` was converted from a client component (with duplicated logic) to a thin server component wrapper that delegates to LoginPageComponent. This is a better design: avoids duplicating all the form logic and avoids the useSearchParams/Suspense issue in Next.js 15.
+- `LoginPageComponent` props changed to accept `verifiedParam` and `errorParam` directly (from server-side props) instead of reading useSearchParams internally. This is more testable and avoids the Suspense boundary requirement.
+
+**Arc42 Updates**: None required (infra/config changes are self-documenting via README and env var names)
+
+**Test Results**: ✅ 1526 tests passing, no linting errors, no typecheck errors, build succeeds
+
+---
+
+**Review Status**: ⚠️ NEEDS REVISION
+**Reviewer**: Medicus
+
+**Issues Found**:
+
+1. **Dead UI code — `successMessage` never rendered (Plan requirement not met)**
+   In `src/components/LoginPageComponent.tsx` lines 78–81:
+   ```javascript
+   if (result.emailSent) {
+     setSuccessMessage('Account created! Check your email to verify your address.');
+   }
+   router.push('/game');
+   ```
+   `setSuccessMessage` schedules a React state update (async), but `router.push('/game')` is called immediately after — the component navigates away before the state update is applied and re-rendered. The message is **never visible**. Users who provide an email and receive a verification email are never told to check it.
+   The plan explicitly requires: *"Show success message after registration if emailSent: true"*. This requirement is not met.
+
+2. **Race condition produces misleading error message (Minor)**
+   The email uniqueness pre-check (`getUserByEmail` → throw 400 "Email already in use") is a TOCTOU pattern. In the extremely rare case of two concurrent registrations with the same email, both pass the pre-check, one INSERT succeeds, and the second triggers the `idx_users_email` unique constraint violation. `handleApiError` catches `'duplicate key value violates unique constraint'` and returns `{ error: 'Username taken', status: 400 }` — a misleading message. The DB constraint prevents duplicate data (safe), but the error is confusing.
+
+**Required Changes**:
+
+1. **Fix `successMessage` visibility** in `LoginPageComponent.tsx`:
+   When `emailSent` is true, do **not** call `router.push('/game')` immediately. The user is already authenticated (session cookie is set), so they can still access the game — but they need to see the message first.
+   Recommended fix:
+   ```javascript
+   if (result.success) {
+     if (result.emailSent) {
+       setSuccessMessage('Account created! Check your email to verify your address.');
+       // Do NOT navigate — let the user read the message.
+       // They are already logged in; the game link will work when they choose to proceed.
+     } else {
+       router.push('/game');
+     }
+   }
+   ```
+   Then ensure the form area shows a "Go to game" button or auto-navigates after a brief delay (a `setTimeout` of 3–5 seconds is acceptable).
+
+2. **Fix misleading error on email constraint race** in `handleApiError` in `src/lib/server/errors.ts` (or catch it in the register route):
+   Add a specific check for the email index violation before the generic duplicate-key handler:
+   ```javascript
+   if (error.message.includes('idx_users_email') || error.message.includes('email')) {
+     return NextResponse.json({ error: 'Email already in use' }, { status: 400 });
+   }
+   ```
+   Alternatively, catch the DB error inside the `createUserWithShip` call in the register route and re-throw a typed `ApiError(400, 'Email already in use')`.

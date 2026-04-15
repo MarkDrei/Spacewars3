@@ -386,3 +386,35 @@ protected async flushAllToDatabase(_context: LockContext<LocksAtMostAndHas4>): P
 **Context**: When implementing afterburner expiration (Task 3.2), discovered that `WorldCache.getWorldFromCache()` only holds WORLD_LOCK (LOCK_6), but computing user maxSpeed requires `UserBonusCache.getBonuses()` which needs USER_LOCK (LOCK_4).
 
 **Solution**: Afterburner expiration is checked in routes that hold both locks (ship-stats, afterburner activate) rather than in the WorldCache layer. This is a clean separation: WorldCache handles physics, but business logic involving user bonuses runs in API routes with proper lock context.
+
+## Integration Test: bcrypt Mock Requires Precomputed Hashes
+
+**Discovered by**: Knight (email implementation)
+
+**Context**: Integration tests run with a bcrypt mock (`src/__tests__/helpers/bcryptMock.ts`) that only accepts a fixed list of precomputed passwords (e.g., 'testpass', 'mypassword', 'pass1', 'pass2', 'right', 'wrong'). Any test that calls `bcrypt.hash('somepassword', N)` will fail unless that password is in `PRECOMPUTED_HASHES`.
+
+**Pattern**: When writing integration tests that need to create users directly (via `createUserWithoutShip` or similar), use a password from the precomputed list such as `'testpass'` instead of an arbitrary value.
+
+## Next.js 15 Server Components and searchParams
+
+**Discovered by**: Knight (email implementation)
+
+**Context**: In Next.js 15, `searchParams` in page components is a `Promise<Record<string, string | string[] | undefined>>` and must be `await`ed. Additionally, using `useSearchParams()` in client components requires them to be wrapped in a `<Suspense>` boundary.
+
+**Pattern**: For pages that need query param values (e.g., `?verified=true`), convert the page to a server component that awaits `searchParams` and passes the values as props to the client component. This avoids the Suspense requirement entirely.
+
+```tsx
+// Server component (page.tsx)
+const LoginPage: React.FC<{ searchParams?: Promise<Record<...>> }> = async ({ searchParams }) => {
+  const params = searchParams ? await searchParams : {};
+  return <LoginPageComponent verifiedParam={params.verified ?? null} />;
+};
+```
+
+## Email / Nodemailer Pattern
+
+**Discovered by**: Knight (email implementation)
+
+**Context**: Nodemailer transport is stored as a globalThis singleton (key `__spacewars_email_transport__`) to survive Next.js hot-reload. Resetting it for test isolation requires explicitly setting `globalThis[key] = null` via a `resetEmailTransport()` export.
+
+**Pattern**: Always expose a `resetXxx()` function for any globalThis singleton to enable test isolation via `vi.resetModules()` + explicit null.
