@@ -2,6 +2,7 @@ import { beforeEach, afterEach, describe, expect, test, vi } from 'vitest';
 import { GET as worldGET } from '@/app/api/world/route';
 import { createRequest, createMockSessionCookie } from '../../helpers/apiTestHelpers';
 import { WorldCache } from '@/lib/server/world/worldCache';
+import { UserCache } from '@/lib/server/user/userCache';
 import { World } from '@/lib/server/world/world';
 import type { DatabaseConnection } from '@/lib/server/database';
 import { DEFAULT_WORLD_WIDTH, DEFAULT_WORLD_HEIGHT } from '@shared/worldConstants';
@@ -28,7 +29,7 @@ describe('World API', () => {
   });
 
   describe('authenticated requests', () => {
-    beforeEach(() => {
+    beforeEach(async () => {
       const db = createMockDb();
       const world = new World(
         { width: DEFAULT_WORLD_WIDTH, height: DEFAULT_WORLD_HEIGHT },
@@ -38,6 +39,9 @@ describe('World API', () => {
       );
       WorldCache.resetInstance();
       WorldCache.initializeWithWorld(world, db, { enableAutoPersistence: false });
+
+      // Initialize UserCache for world route (needs getUserByIdFromCache)
+      await UserCache.intialize2(db, { worldCache: WorldCache.getInstance() });
     });
 
     afterEach(async () => {
@@ -47,6 +51,7 @@ describe('World API', () => {
         // ignore if already torn down
       }
       WorldCache.resetInstance();
+      UserCache.resetInstance();
     });
 
     test('world_authenticated_returnsStarbasesInSpaceObjects', async () => {

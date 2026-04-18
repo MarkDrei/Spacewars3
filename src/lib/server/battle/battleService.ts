@@ -29,6 +29,8 @@ import { WorldCache } from '../world/worldCache';
 import { DEFAULT_WORLD_WIDTH, DEFAULT_WORLD_HEIGHT } from '@shared/worldConstants';
 import { sendMessageToUser } from '../messages/MessageCache';
 import { StatisticsCache } from '../statistics/StatisticsCache';
+import { NPCManager } from '../npc/NPCManager';
+import { calculateNpcIronReward } from '../npc/npcCombat';
 
 /**
  * Calculate XP awarded to the winner of a battle based on level difference.
@@ -629,5 +631,36 @@ export async function resolveBattle(
     });
   } catch (statsErr) {
     console.error('⚠️ Failed to emit battle statistics events:', statsErr);
+  }
+
+  // NPC defeat handling: if the loser is an NPC, mark it defeated and award bonus iron
+  try {
+    const npcManager = NPCManager.getInstance();
+    const npc = npcManager.getNpcByUserId(loserId);
+    if (npc) {
+      // Mark NPC as defeated
+      npcManager.markDefeated(npc.id);
+
+      // Award NPC iron reward to winner
+      const npcIronReward = calculateNpcIronReward(npc.level);
+      await context.useLockWithAcquire(USER_LOCK, async (userContext) => {
+        const userWorldCache = UserCache.getInstance2();
+        const winner = userWorldCache.getUserByIdFromCache(userContext, winnerId);
+        if (winner) {
+          winner.addIron(npcIronReward);
+          await userWorldCache.updateUserInCache(userContext, winner);
+          console.log(`🤖 NPC defeated: awarded ${npcIronReward} iron to ${winner.username}`);
+        }
+      });
+
+      // Send NPC defeat message
+      await sendMessageToUser(
+        context,
+        winnerId,
+        `P: 🤖 **NPC Defeated!** You destroyed an NPC L${npc.level} and earned ${npcIronReward} iron!`
+      );
+    }
+  } catch (npcErr) {
+    console.error('⚠️ Failed to handle NPC defeat:', npcErr);
   }
 }

@@ -4,16 +4,18 @@
 
 export interface SpaceObject {
   id: number;
-  type: 'player_ship' | 'asteroid' | 'shipwreck' | 'escape_pod' | 'starbase';
+  type: 'player_ship' | 'asteroid' | 'shipwreck' | 'escape_pod' | 'starbase' | 'npc_ship';
   x: number;
   y: number;
   speed: number;
   angle: number;
   last_position_update_ms: number;
   picture_id: number;
-  username?: string; // Optional: only present for player_ship type
+  username?: string; // Optional: only present for player_ship and npc_ship types
   userId?: number; // Optional: only present for player_ship type
-  level?: number; // Optional: only present for player_ship type
+  level?: number; // Optional: only present for player_ship and npc_ship types
+  orbitAngleDeg?: number; // Optional: only present for npc_ship type (for client interpolation)
+  angularVelocityDegPerSec?: number; // Optional: only present for npc_ship type (for client interpolation)
 }
 
 export interface WorldData {
@@ -50,6 +52,14 @@ export interface EscapePod extends SpaceObject {
 
 export interface StarbaseObject extends SpaceObject {
   type: 'starbase';
+}
+
+export interface NpcShipObject extends SpaceObject {
+  type: 'npc_ship';
+  username: string;
+  level: number;
+  orbitAngleDeg: number;
+  angularVelocityDegPerSec: number;
 }
 
 export interface Collectible extends SpaceObject {
