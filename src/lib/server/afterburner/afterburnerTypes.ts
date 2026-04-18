@@ -8,8 +8,28 @@
 
 export interface AfterburnerState {
   userId: number;
-  activatedAtMs: number; // Date.now() when activated
-  durationMs: number; // total duration in ms (from research, raw — NOT time-multiplied)
-  cooldownMs: number; // total cooldown in ms (from research, raw)
-  boostedSpeed: number; // the speed set during boost
+  updatedAtMs: number; // Date.now() when the current fuel snapshot was last persisted
+  fuelRatio: number; // 0..1 remaining fuel at updatedAtMs
+  isActive: boolean;
+  boostedSpeed: number; // the speed applied for the current/last boost session
+}
+
+export interface AfterburnerConfig {
+  timeMultiplier: number;
+  fuelCapacityMs: number;
+  cooldownMs: number;
+  boostedSpeed: number;
+}
+
+export interface AfterburnerStatusSnapshot {
+  isActive: boolean;
+  canActivate: boolean;
+  fuelRatio: number;
+  fuelRemainingMs: number;
+  fuelCapacityMs: number;
+  fuelPercent: number;
+  boostRemainingMs: number;
+  cooldownRemainingMs: number;
+  timeToActivationMs: number;
+  boostedSpeed: number;
 }

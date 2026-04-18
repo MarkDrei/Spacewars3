@@ -10,6 +10,7 @@ import { createLockContext, LockContext, LocksAtMostAndHas4, LocksAtMostAndHas6 
 import { WorldCache } from '@/lib/server/world/worldCache';
 import { AfterburnerService } from '@/lib/server/afterburner/AfterburnerService';
 import { TimeMultiplierService } from '@/lib/server/timeMultiplier';
+import { getResearchEffectFromTree, ResearchType } from '@/lib/server/techs/techtree';
 
 export async function POST(request: NextRequest) {
   try {
@@ -96,9 +97,15 @@ async function performNavigationLogic(
     // If afterburner is active, allow speed up to the boosted speed
     const afterburnerService = AfterburnerService.getInstance();
     const timeMultiplier = TimeMultiplierService.getInstance().getMultiplier();
+    const afterburnerConfig = {
+      timeMultiplier,
+      fuelCapacityMs: getResearchEffectFromTree(user.techTree, ResearchType.AfterburnerDuration) * 1000,
+      cooldownMs: getResearchEffectFromTree(user.techTree, ResearchType.AfterburnerCooldown) * 1000,
+      boostedSpeed: maxSpeed * (1 + getResearchEffectFromTree(user.techTree, ResearchType.AfterburnerSpeedIncrease) / 100),
+    };
     const afterburnerState = afterburnerService.getState(user.id);
     const effectiveMaxSpeed =
-      afterburnerService.isActive(user.id, timeMultiplier) &&
+      afterburnerService.isActive(user.id, afterburnerConfig) &&
       afterburnerState &&
       afterburnerState.boostedSpeed > maxSpeed
         ? afterburnerState.boostedSpeed

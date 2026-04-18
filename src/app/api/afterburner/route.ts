@@ -13,8 +13,15 @@ import { getResearchEffectFromTree, ResearchType } from '@/lib/server/techs/tech
 import { TimeMultiplierService } from '@/lib/server/timeMultiplier';
 import type { UserBonuses } from '@/lib/server/bonus/userBonusTypes';
 
+interface AfterburnerRequestBody {
+  action?: 'activate' | 'deactivate';
+}
+
 export async function POST(request: NextRequest) {
   try {
+    const body = (await request.json().catch(() => ({}))) as AfterburnerRequestBody;
+    const action = body.action === 'deactivate' ? 'deactivate' : 'activate';
+
     const session = await getIronSession<SessionData>(request, NextResponse.json({}), sessionOptions);
     requireAuth(session.userId);
 
@@ -33,7 +40,7 @@ export async function POST(request: NextRequest) {
 
         const bonuses = await userWorldCache.getBonusesByUserIdWithLock(userContext, user.id);
 
-        return await performAfterburnerActivation(worldContext, userContext, world, user, bonuses);
+        return await performAfterburnerAction(worldContext, userContext, world, user, bonuses, action);
       });
     });
   } catch (error) {
@@ -41,47 +48,53 @@ export async function POST(request: NextRequest) {
   }
 }
 
-/**
- * Perform the afterburner activation with proper lock context.
- * Requires WORLD_LOCK and USER_LOCK to be held.
- */
-async function performAfterburnerActivation(
+async function performAfterburnerAction(
   worldContext: LockContext<LocksAtMostAndHas6>,
   userCtx: LockContext<LocksAtMostAndHas4>,
   world: World,
   user: User,
   bonuses: UserBonuses,
+  action: 'activate' | 'deactivate',
 ): Promise<NextResponse> {
+  void userCtx;
+
   const worldCache = WorldCache.getInstance();
   const afterburnerService = AfterburnerService.getInstance();
   const timeMultiplier = TimeMultiplierService.getInstance().getMultiplier();
 
-  // Validate: must have researched AfterburnerDuration (level >= 1)
-  if (user.techTree.afterburnerDuration < 1) {
-    throw new ApiError(400, 'Afterburner not researched');
-  }
-
-  // Validate: not already active and not on cooldown
-  if (!afterburnerService.canActivate(user.id, timeMultiplier)) {
-    if (afterburnerService.isActive(user.id, timeMultiplier)) {
-      throw new ApiError(400, 'Afterburner already active');
-    }
-    throw new ApiError(400, 'Afterburner on cooldown');
-  }
-
-  // Compute boost parameters from research
   const durationMs = getResearchEffectFromTree(user.techTree, ResearchType.AfterburnerDuration) * 1000;
   const cooldownMs = getResearchEffectFromTree(user.techTree, ResearchType.AfterburnerCooldown) * 1000;
   const speedIncreasePercent = getResearchEffectFromTree(user.techTree, ResearchType.AfterburnerSpeedIncrease);
   const maxSpeed = bonuses.maxShipSpeed;
   const boostedSpeed = maxSpeed * (1 + speedIncreasePercent / 100);
+  const afterburnerConfig = {
+    timeMultiplier,
+    fuelCapacityMs: durationMs,
+    cooldownMs,
+    boostedSpeed,
+  };
+  const status = afterburnerService.getStatus(user.id, afterburnerConfig);
 
-  // Update physics before finding ship — updatePhysics replaces spaceObjects
-  // with new cloned objects, so ship references must be obtained after this call.
+  if (action === 'activate' && user.techTree.afterburnerDuration < 1) {
+    throw new ApiError(400, 'Afterburner not researched');
+  }
+
+  if (action === 'activate') {
+    if (status.isActive) {
+      throw new ApiError(400, 'Afterburner already active');
+    }
+    if (!status.canActivate) {
+      throw new ApiError(400, 'Afterburner requires at least 33% fuel');
+    }
+  }
+
+  if (action === 'deactivate' && !status.isActive) {
+    throw new ApiError(400, 'Afterburner not active');
+  }
+
   const currentTime = Date.now();
   world.updatePhysics(worldContext, currentTime);
 
-  // Find player's ship in the world (after physics update)
   const playerShips = world.getSpaceObjectsByType(worldContext, 'player_ship');
   const playerShip = playerShips.find((ship) => ship.id === user.ship_id);
 
@@ -89,23 +102,45 @@ async function performAfterburnerActivation(
     throw new ApiError(404, 'Player ship not found');
   }
 
-  // Apply boost
   const previousSpeed = playerShip.speed;
-  playerShip.speed = boostedSpeed;
-  playerShip.last_position_update_ms = currentTime;
 
-  // Persist world changes
+  if (action === 'activate') {
+    playerShip.speed = boostedSpeed;
+    playerShip.last_position_update_ms = currentTime;
+    await worldCache.updateWorldUnsafe(worldContext, world);
+
+    const nextStatus = afterburnerService.activate(user.id, afterburnerConfig);
+
+    return NextResponse.json({
+      success: true,
+      action: 'activated',
+      boostedSpeed,
+      previousSpeed,
+      durationMs,
+      cooldownMs,
+      maxSpeed,
+      fuelRemainingMs: nextStatus.fuelRemainingMs,
+      fuelCapacityMs: nextStatus.fuelCapacityMs,
+      fuelPercent: nextStatus.fuelPercent,
+    });
+  }
+
+  playerShip.speed = Math.min(playerShip.speed, maxSpeed);
+  playerShip.last_position_update_ms = currentTime;
   await worldCache.updateWorldUnsafe(worldContext, world);
 
-  // Activate afterburner state tracking
-  afterburnerService.activate(user.id, durationMs, cooldownMs, boostedSpeed);
+  const nextStatus = afterburnerService.deactivate(user.id, afterburnerConfig);
 
   return NextResponse.json({
     success: true,
-    boostedSpeed,
+    action: 'deactivated',
+    boostedSpeed: 0,
     previousSpeed,
     durationMs,
     cooldownMs,
     maxSpeed,
+    fuelRemainingMs: nextStatus?.fuelRemainingMs ?? 0,
+    fuelCapacityMs: nextStatus?.fuelCapacityMs ?? durationMs,
+    fuelPercent: nextStatus?.fuelPercent ?? 0,
   });
 }
