@@ -2,6 +2,7 @@ import { beforeEach, afterEach, describe, expect, test, vi } from 'vitest';
 import { GET as worldGET } from '@/app/api/world/route';
 import { createRequest, createMockSessionCookie } from '../../helpers/apiTestHelpers';
 import { WorldCache } from '@/lib/server/world/worldCache';
+import { UserCache } from '@/lib/server/user/userCache';
 import { World } from '@/lib/server/world/world';
 import type { DatabaseConnection } from '@/lib/server/database';
 import { DEFAULT_WORLD_WIDTH, DEFAULT_WORLD_HEIGHT } from '@shared/worldConstants';
@@ -28,7 +29,7 @@ describe('World API', () => {
   });
 
   describe('authenticated requests', () => {
-    beforeEach(() => {
+    beforeEach(async () => {
       const db = createMockDb();
       const world = new World(
         { width: DEFAULT_WORLD_WIDTH, height: DEFAULT_WORLD_HEIGHT },
@@ -36,8 +37,18 @@ describe('World API', () => {
         async () => {},
         db,
       );
-      WorldCache.resetInstance();
+      // Reset both caches first (UserCache.resetInstance also resets WorldCache)
+      UserCache.resetInstance();
+      
+      // Then initialize in order: WorldCache first, then UserCache
       WorldCache.initializeWithWorld(world, db, { enableAutoPersistence: false });
+      await UserCache.intialize2(db, {
+        worldCache: WorldCache.getInstance(),
+      }, {
+        persistenceIntervalMs: 30000,
+        enableAutoPersistence: false,
+        logStats: false,
+      });
     });
 
     afterEach(async () => {
@@ -46,7 +57,7 @@ describe('World API', () => {
       } catch {
         // ignore if already torn down
       }
-      WorldCache.resetInstance();
+      UserCache.resetInstance();
     });
 
     test('world_authenticated_returnsStarbasesInSpaceObjects', async () => {
@@ -60,6 +71,21 @@ describe('World API', () => {
       expect(data.spaceObjects).toEqual(
         expect.arrayContaining([expect.objectContaining({ type: 'starbase', id: 9001 })]),
       );
+    });
+
+    test('world_authenticated_returnsNpcsInSpaceObjects', async () => {
+      const sessionCookie = await createMockSessionCookie();
+      const request = createRequest('http://localhost:3000/api/world', 'GET', undefined, sessionCookie);
+
+      const response = await worldGET(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      // NPCs should be present as player_ship objects with "Pirate" usernames
+      const npcs = data.spaceObjects.filter(
+        (obj: { username?: string }) => obj.username && obj.username.startsWith('Pirate')
+      );
+      expect(npcs.length).toBe(4);
     });
   });
 });

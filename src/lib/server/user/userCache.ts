@@ -233,6 +233,19 @@ export class UserCache extends Cache {
     console.log(`👤 User ${user.id} cached in memory`);
   }
 
+  /**
+   * Remove a user from the cache entirely.
+   * Used for cleaning up temporary users (e.g., NPC users after battle).
+   * Does NOT delete from database - only removes from in-memory cache.
+   */
+  removeUserFromCache<THeld extends IronLocks>(_context: HasLock4Context<THeld>, userId: number): void {
+    const user = this.users.get(userId);
+    if (user) {
+      this.usernameToUserId.delete(user.username);
+    }
+    this.users.delete(userId);
+    this.dirtyUsers.delete(userId);
+  }
 
   /**
    * Update user data in the cache, marking as dirty (requires user lock context)
