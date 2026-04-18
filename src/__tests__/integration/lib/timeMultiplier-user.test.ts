@@ -168,6 +168,30 @@ describe('User.updateStats with time multiplier', () => {
       expect(user.techTree.ironHarvesting).toBe(2); // upgraded
       expect(user.techTree.activeResearch).toBeUndefined();
     });
+
+    test('updateStats_withArtificialIntelligence_progressesResearchFaster', () => {
+      user.techTree.artificialIntelligence = 1;
+      triggerResearch(user.techTree, ResearchType.ShipSpeed);
+
+      user.updateStats(1020);
+
+      expect(user.techTree.activeResearch).toBeDefined();
+      expect(user.techTree.activeResearch?.remainingDuration).toBeCloseTo(
+        30 - (20 * (1 / 0.9)),
+        5
+      );
+    });
+
+    test('updateStats_withArtificialIntelligence_researchCompletesSoonerAndSplitsIronCorrectly', () => {
+      user.techTree.artificialIntelligence = 1;
+      triggerResearch(user.techTree, ResearchType.IronHarvesting);
+
+      user.updateStats(1010);
+
+      expect(user.techTree.ironHarvesting).toBe(2);
+      expect(user.techTree.activeResearch).toBeUndefined();
+      expect(user.iron).toBeCloseTo(9 + 1.1, 5);
+    });
   });
 
   describe('Defense regeneration acceleration', () => {

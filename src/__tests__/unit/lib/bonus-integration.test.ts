@@ -97,6 +97,8 @@ function makeLevel1Bonuses(user: User): UserBonuses {
     repairRate: BASE_REGEN_RATE,
     shieldRechargeRate: BASE_REGEN_RATE,
     maxShipSpeed: 25,
+    constructionSpeedFactor: 1,
+    researchSpeedFactor: 1,
     projectileWeaponDamageFactor: 1.0,
     projectileWeaponReloadFactor: 1.0,
     projectileWeaponAccuracyFactor: 1.0,

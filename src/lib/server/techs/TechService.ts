@@ -6,6 +6,7 @@ import { DefenseValues } from '@/shared/defenseValues';
 import { MessageCache } from '../messages/MessageCache';
 import { TechTree, ResearchType, getResearchEffectFromTree } from './techtree';
 import { TimeMultiplierService } from '../timeMultiplier';
+import { UserBonusCache } from '../bonus/UserBonusCache';
 
 export class TechService {
     private static instance: TechService;
@@ -76,6 +77,8 @@ export class TechService {
 
         let cumulativeTime = user.buildStartSec;
         const multiplier = TimeMultiplierService.getInstance().getMultiplier();
+        const bonuses = await UserBonusCache.getInstance().getBonuses(context, userId);
+        const constructionSpeedFactor = bonuses.constructionSpeedFactor;
         
         const queueWithTimes = queue.map(item => {
             const spec = TechFactory.getTechSpec(item.itemKey, item.itemType);
@@ -84,7 +87,7 @@ export class TechService {
             }
 
             const buildTime = spec.buildDurationMinutes * 60;
-            const effectiveBuildTime = buildTime / multiplier;
+            const effectiveBuildTime = buildTime / multiplier / constructionSpeedFactor;
             const completionTime = cumulativeTime + effectiveBuildTime;
             cumulativeTime = completionTime; // Next item starts after this one
 
@@ -112,7 +115,9 @@ export class TechService {
             if (!spec) return null;
 
             const buildTime = spec.buildDurationMinutes * 60;
-            return user.buildStartSec + buildTime;
+            const bonuses = await UserBonusCache.getInstance().getBonuses(context, userId);
+            const multiplier = TimeMultiplierService.getInstance().getMultiplier();
+            return user.buildStartSec + (buildTime / multiplier / bonuses.constructionSpeedFactor);
         }
 
         return null;
@@ -181,6 +186,8 @@ export class TechService {
         const now = Math.floor(Date.now() / 1000);
         const completedItems: BuildQueueItem[] = [];
         let queueChanged = false;
+        const bonuses = await UserBonusCache.getInstance().getBonuses(context, userId);
+        const constructionSpeedFactor = bonuses.constructionSpeedFactor;
 
         // Process queue
         while (user.buildQueue.length > 0) {
@@ -206,7 +213,7 @@ export class TechService {
 
             const buildTime = spec.buildDurationMinutes * 60;
             const multiplier = TimeMultiplierService.getInstance().getMultiplier();
-            const effectiveBuildTime = buildTime / multiplier;
+            const effectiveBuildTime = buildTime / multiplier / constructionSpeedFactor;
             const calculatedCompletionTime = currentBuildStart! + effectiveBuildTime;
 
             // Check completion with multiplier

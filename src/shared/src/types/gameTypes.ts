@@ -113,6 +113,7 @@ export enum ResearchType {
   TeleportRechargeSpeed = 'teleportRechargeSpeed',
   IronCapacity = 'ironCapacity',
   ConstructionSpeed = 'constructionSpeed',
+  ArtificialIntelligence = 'artificialIntelligence',
   // Inventory
   InventorySlots = 'inventorySlots',
   // Bridge

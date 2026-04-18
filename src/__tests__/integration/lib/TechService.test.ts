@@ -2,6 +2,8 @@ import { describe, test, expect, beforeEach, vi, afterEach } from 'vitest';
 import { TechService } from '@/lib/server/techs/TechService';
 import { UserCache } from '@/lib/server/user/userCache';
 import { MessageCache } from '@/lib/server/messages/MessageCache';
+import { UserBonusCache } from '@/lib/server/bonus/UserBonusCache';
+import { InventoryService } from '@/lib/server/inventory/InventoryService';
 import { User } from '@/lib/server/user/user';
 import { TechCounts, BuildQueueItem } from '@/lib/server/techs/TechFactory';
 import { ResearchType, createInitialTechTree } from '@/lib/server/techs/techtree';
@@ -16,7 +18,9 @@ describe('TechService - Unit Tests', () => {
     let mockMessageCache: Partial<MessageCache>;
     let mockCreateMessage: ReturnType<typeof vi.fn>;
     let mockGetUserByIdWithLock: ReturnType<typeof vi.fn>;
+    let mockGetUserByIdFromCache: ReturnType<typeof vi.fn>;
     let mockUpdateUserInCache: ReturnType<typeof vi.fn>;
+    let mockGetBridgeWithContext: ReturnType<typeof vi.fn>;
 
     beforeEach(async () => {
         await initializeIntegrationTestServer();
@@ -24,11 +28,14 @@ describe('TechService - Unit Tests', () => {
         // Create mock functions
         mockCreateMessage = vi.fn().mockResolvedValue(1);
         mockGetUserByIdWithLock = vi.fn();
+        mockGetUserByIdFromCache = vi.fn();
         mockUpdateUserInCache = vi.fn().mockResolvedValue(undefined);
+        mockGetBridgeWithContext = vi.fn().mockResolvedValue([]);
 
         // Create mock caches
         mockUserCache = {
             getUserByIdWithLock: mockGetUserByIdWithLock as (context: unknown, userId: number) => Promise<User | null>,
+            getUserByIdFromCache: mockGetUserByIdFromCache as (context: unknown, userId: number) => User | null,
             updateUserInCache: mockUpdateUserInCache as (context: unknown, user: User) => Promise<void>
         };
 
@@ -40,6 +47,12 @@ describe('TechService - Unit Tests', () => {
         techService = TechService.getInstance();
         techService.setUserCacheForTesting(mockUserCache as UserCache);
         techService.setMessageCacheForTesting(mockMessageCache as MessageCache);
+        UserBonusCache.resetInstance();
+        UserBonusCache.configureDependencies({
+            userCache: mockUserCache as UserCache,
+            inventoryService: { getBridgeWithContext: mockGetBridgeWithContext } as unknown as InventoryService
+        });
+        UserBonusCache.getInstance();
     });
 
     afterEach(async () => {
@@ -56,6 +69,7 @@ describe('TechService - Unit Tests', () => {
                 } as TechCounts;
                 const mockUser = { techCounts } as User;
                 mockGetUserByIdWithLock.mockResolvedValue(mockUser);
+                mockGetUserByIdFromCache.mockReturnValue(mockUser);
 
                 const context = createLockContext();
 
@@ -74,6 +88,7 @@ describe('TechService - Unit Tests', () => {
             await withTransaction(async () => {
                 // Arrange
                 mockGetUserByIdWithLock.mockResolvedValue(null);
+                mockGetUserByIdFromCache.mockReturnValue(null);
                 const context = createLockContext();
 
                 // Act
@@ -104,6 +119,7 @@ describe('TechService - Unit Tests', () => {
                     }
                 } as unknown as User;
                 mockGetUserByIdWithLock.mockResolvedValue(mockUser);
+                mockGetUserByIdFromCache.mockReturnValue({ ...mockUser, id: 1, techTree: createInitialTechTree(), getLevel: () => 1 });
                 const context = createLockContext();
 
                 // Act
@@ -134,6 +150,7 @@ describe('TechService - Unit Tests', () => {
                     subtractIron: mockSubtractIron
                 } as unknown as User;
                 mockGetUserByIdWithLock.mockResolvedValue(mockUser);
+                mockGetUserByIdFromCache.mockReturnValue({ ...mockUser, id: 1, techTree: createInitialTechTree(), getLevel: () => 1 });
                 const context = createLockContext();
 
                 // Act
@@ -166,6 +183,7 @@ describe('TechService - Unit Tests', () => {
                     }
                 } as unknown as User;
                 mockGetUserByIdWithLock.mockResolvedValue(mockUser);
+                mockGetUserByIdFromCache.mockReturnValue({ ...mockUser, id: 1, techTree: createInitialTechTree(), getLevel: () => 1 });
                 const context = createLockContext();
 
                 // Act
@@ -198,6 +216,7 @@ describe('TechService - Unit Tests', () => {
                     subtractIron: vi.fn().mockReturnValue(true)
                 } as unknown as User;
                 mockGetUserByIdWithLock.mockResolvedValue(mockUser);
+                mockGetUserByIdFromCache.mockReturnValue({ ...mockUser, id: 1, techTree: createInitialTechTree(), getLevel: () => 1 });
                 const context = createLockContext();
 
                 // Act
@@ -236,6 +255,7 @@ describe('TechService - Unit Tests', () => {
                     }
                 } as unknown as User;
                 mockGetUserByIdWithLock.mockResolvedValue(mockUser);
+                mockGetUserByIdFromCache.mockReturnValue({ ...mockUser, id: 1, techTree: createInitialTechTree(), getLevel: () => 1 });
                 const context = createLockContext();
 
                 // Act
@@ -270,6 +290,7 @@ describe('TechService - Unit Tests', () => {
                     }
                 } as unknown as User;
                 mockGetUserByIdWithLock.mockResolvedValue(mockUser);
+                mockGetUserByIdFromCache.mockReturnValue({ ...mockUser, id: 1, techTree: createInitialTechTree(), getLevel: () => 1 });
                 const context = createLockContext();
 
                 // Act
@@ -305,6 +326,7 @@ describe('TechService - Unit Tests', () => {
                 } as TechCounts;
                 const mockUser = { techCounts } as User;
                 mockGetUserByIdWithLock.mockResolvedValue(mockUser);
+                mockGetUserByIdFromCache.mockReturnValue(mockUser);
                 const context = createLockContext();
 
                 // Act

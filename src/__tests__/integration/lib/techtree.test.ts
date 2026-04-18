@@ -123,6 +123,10 @@ describe('getResearchEffect', () => {
     // IronCapacity now has baseValue 5000 and doubles each level
     expect(getResearchEffect(AllResearches[ResearchType.IronCapacity], 1)).toBeCloseTo(5000);
     expect(getResearchEffect(AllResearches[ResearchType.IronCapacity], 2)).toBeCloseTo(10000);
+    expect(getResearchEffect(AllResearches[ResearchType.ConstructionSpeed], 0)).toBeCloseTo(0);
+    expect(getResearchEffect(AllResearches[ResearchType.ConstructionSpeed], 1)).toBeCloseTo(10);
+    expect(getResearchEffect(AllResearches[ResearchType.ArtificialIntelligence], 0)).toBeCloseTo(0);
+    expect(getResearchEffect(AllResearches[ResearchType.ArtificialIntelligence], 1)).toBeCloseTo(10);
     expect(getResearchEffect(AllResearches[ResearchType.Teleport], 0)).toBeCloseTo(0);
     expect(getResearchEffect(AllResearches[ResearchType.Teleport], 1)).toBeCloseTo(1);
   });
@@ -141,6 +145,7 @@ describe('getResearchUpgradeDurationFromTree', () => {
     const tree = createInitialTechTree();
     expect(getResearchUpgradeDurationFromTree(tree, ResearchType.IronHarvesting)).toBe(10);
     expect(getResearchUpgradeDurationFromTree(tree, ResearchType.ShipSpeed)).toBe(30);
+    expect(getResearchUpgradeDurationFromTree(tree, ResearchType.ArtificialIntelligence)).toBe(2400);
     expect(getResearchUpgradeDurationFromTree(tree, ResearchType.Afterburner)).toBe(120);
   });
 
@@ -230,6 +235,16 @@ describe('updateTechTree', () => {
     updateTechTree(tree, duration! + 10);
     expect(tree.activeResearch).toBeUndefined();
     expect(tree.ironHarvesting).toBe(2);
+  });
+
+  test('updateTechTree_artificialIntelligenceCompletes_increasesLevelAndUnsetsActiveResearch', () => {
+    const tree = createInitialTechTree();
+    triggerResearch(tree, ResearchType.ArtificialIntelligence);
+    const duration = tree.activeResearch?.remainingDuration;
+    expect(duration).toBeDefined();
+    updateTechTree(tree, duration!);
+    expect(tree.activeResearch).toBeUndefined();
+    expect(tree.artificialIntelligence).toBe(1);
   });
 });
 

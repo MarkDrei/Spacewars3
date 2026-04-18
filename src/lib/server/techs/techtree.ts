@@ -13,6 +13,8 @@ export const IMPLEMENTED_RESEARCHES: ReadonlySet<ResearchType> = new Set([
   ResearchType.IronHarvesting,
   ResearchType.ShipSpeed,
   ResearchType.IronCapacity,
+  ResearchType.ConstructionSpeed,
+  ResearchType.ArtificialIntelligence,
   ResearchType.HullStrength,
   ResearchType.ArmorEffectiveness,
   ResearchType.ShieldEffectiveness,
@@ -372,14 +374,27 @@ export const AllResearches: Record<ResearchType, Research> = {
   [ResearchType.ConstructionSpeed]: {
     type: ResearchType.ConstructionSpeed,
     name: 'Construction Speed',
-    level: 1,
-    baseUpgradeCost: 1400,
-    baseUpgradeDuration: 80,
+    level: 0,
+    baseUpgradeCost: 12000,
+    baseUpgradeDuration: 1800,
+    baseValue: 10,
+    upgradeCostIncrease: 1.9,
+    baseValueIncrease: { type: 'polynomial', value: 0.1 },
+    description: 'Reduces construction time in the tech factory.',
+    treeKey: 'constructionSpeed',
+    unit: '%',
+  },
+  [ResearchType.ArtificialIntelligence]: {
+    type: ResearchType.ArtificialIntelligence,
+    name: 'Artifical Intelligence',
+    level: 0,
+    baseUpgradeCost: 15000,
+    baseUpgradeDuration: 2400,
     baseValue: 10,
     upgradeCostIncrease: 2.0,
     baseValueIncrease: { type: 'polynomial', value: 0.1 },
-    description: 'Reduces construction time for buildings and ships.',
-    treeKey: 'constructionSpeed',
+    description: 'Reduces the time needed for researches.',
+    treeKey: 'artificialIntelligence',
     unit: '%',
   },
   // Spies
@@ -494,6 +509,7 @@ export interface TechTree {
   inventorySlots: number;
   bridgeSlots: number;
   constructionSpeed: number;
+  artificialIntelligence: number;
   // Spies
   spyChance: number;
   spySpeed: number;
@@ -542,6 +558,7 @@ export function createInitialTechTree(): TechTree {
     inventorySlots: AllResearches[ResearchType.InventorySlots].level,
     bridgeSlots: AllResearches[ResearchType.BridgeSlots].level,
     constructionSpeed: AllResearches[ResearchType.ConstructionSpeed].level,
+    artificialIntelligence: AllResearches[ResearchType.ArtificialIntelligence].level,
     // Spies
     spyChance: AllResearches[ResearchType.SpyChance].level,
     spySpeed: AllResearches[ResearchType.SpySpeed].level,
@@ -608,7 +625,9 @@ function getResearchLevelFromTree(tree: TechTree, type: ResearchType): number {
     case ResearchType.BridgeSlots:
       return tree.bridgeSlots;
     case ResearchType.ConstructionSpeed:
-      return tree.constructionSpeed;
+      return tree.constructionSpeed ?? AllResearches[ResearchType.ConstructionSpeed].level;
+    case ResearchType.ArtificialIntelligence:
+      return tree.artificialIntelligence ?? AllResearches[ResearchType.ArtificialIntelligence].level;
     // Spies
     case ResearchType.SpyChance:
       return tree.spyChance;
@@ -646,6 +665,15 @@ export function getResearchUpgradeDuration(research: Research, level: number): n
   const startLevel = AllResearches[research.type].level;
   if (level <= startLevel) return research.baseUpgradeDuration;
   return research.baseUpgradeDuration * Math.pow(research.upgradeCostIncrease, level - startLevel - 1);
+}
+
+/**
+ * Converts a percentage-based time reduction into a speed factor used for time calculations.
+ * Example: 10% reduction => factor 1 / 0.9 ≈ 1.111.
+ */
+export function getTimeSpeedFactorFromEffect(effectPercentage: number): number {
+  const inverseMultiplier = Math.max(0.1, 1 - (effectPercentage / 100));
+  return 1 / inverseMultiplier;
 }
 
 /**
@@ -899,6 +927,9 @@ export function updateTechTree(tree: TechTree, timeSeconds: number): { completed
         break;
       case ResearchType.ConstructionSpeed:
         tree.constructionSpeed += 1;
+        break;
+      case ResearchType.ArtificialIntelligence:
+        tree.artificialIntelligence += 1;
         break;
       // Spies
       case ResearchType.SpyChance:

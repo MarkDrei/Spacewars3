@@ -2,7 +2,7 @@
 // Domain logic for the User and its stats, including persistence callback.
 // ---
 
-import { TechTree, ResearchType, getResearchEffectFromTree, updateTechTree, AllResearches, getResearchUpgradeCost } from '../techs/techtree';
+import { TechTree, ResearchType, getResearchEffectFromTree, getTimeSpeedFactorFromEffect, updateTechTree, AllResearches, getResearchUpgradeCost } from '../techs/techtree';
 import { TechCounts, BuildQueueItem } from '../techs/TechFactory';
 import { TechService } from '../techs/TechService';
 import { TimeMultiplierService } from '../timeMultiplier';
@@ -332,6 +332,10 @@ class User {
 
     // Apply time multiplier to accelerate game progression
     const gameElapsed = elapsed * this.timeMultiplierService.getMultiplier();
+    const researchSpeedFactor = bonuses?.researchSpeedFactor
+      ?? (getTimeSpeedFactorFromEffect(getResearchEffectFromTree(this.techTree, ResearchType.ArtificialIntelligence))
+        * Math.pow(1.15, this.getLevel() - 1));
+    const researchElapsed = gameElapsed * researchSpeedFactor;
 
     // Determine the effective iron rate and max capacity from bonuses (if provided)
     // or from tech tree directly (backward-compat fallback).
@@ -346,22 +350,23 @@ class User {
       // No relevant research in progress, just award all time
       const ironRate = ironRateFromBonuses ?? getResearchEffectFromTree(techTree, ResearchType.IronHarvesting);
       ironToAdd += ironRate * gameElapsed;
-      researchResult = updateTechTree(techTree, gameElapsed);
+      researchResult = updateTechTree(techTree, researchElapsed);
     } else {
       const timeToComplete = active.remainingDuration;
-      if (gameElapsed < timeToComplete) {
+      const gameTimeToComplete = timeToComplete / researchSpeedFactor;
+      if (gameElapsed < gameTimeToComplete) {
         // Research does not complete in this interval
         const ironRate = ironRateFromBonuses ?? getResearchEffectFromTree(techTree, ResearchType.IronHarvesting);
         ironToAdd += ironRate * gameElapsed;
-        researchResult = updateTechTree(techTree, gameElapsed);
+        researchResult = updateTechTree(techTree, researchElapsed);
       } else {
         // Research completes during this interval
         // 1. Award up to research completion at old rate
         const ironRateBefore = ironRateFromBonuses ?? getResearchEffectFromTree(techTree, ResearchType.IronHarvesting);
-        ironToAdd += ironRateBefore * timeToComplete;
+        ironToAdd += ironRateBefore * gameTimeToComplete;
         researchResult = updateTechTree(techTree, timeToComplete);
         // 2. After research completes, award remaining time at new rate (if any)
-        const remaining = gameElapsed - timeToComplete;
+        const remaining = gameElapsed - gameTimeToComplete;
         if (remaining > 0) {
           // Bonuses are stale (computed before research completed).
           // Re-compute the new iron rate from the updated tech tree, scaled by the cached level multiplier.
@@ -369,8 +374,6 @@ class User {
             ? getResearchEffectFromTree(techTree, ResearchType.IronHarvesting) * bonuses.levelMultiplier
             : getResearchEffectFromTree(techTree, ResearchType.IronHarvesting);
           ironToAdd += ironRateAfter * remaining;
-          // Second updateTechTree call should not complete another research (no overwrites)
-          updateTechTree(techTree, remaining);
         }
       }
     }

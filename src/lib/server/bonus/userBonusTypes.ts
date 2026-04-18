@@ -52,6 +52,12 @@ export interface UserBonuses {
    */
   maxShipSpeed: number;
 
+  /** Construction speed factor after applying research and player-level bonuses. */
+  constructionSpeedFactor: number;
+
+  /** Research speed factor after applying research and player-level bonuses. */
+  researchSpeedFactor: number;
+
   // ─── Pre-computed weapon factors ─────────────────────────────────────────────
 
   /** researchDamageMod(projectile) × levelMultiplier × commanderMultipliers.projectileWeaponDamage */

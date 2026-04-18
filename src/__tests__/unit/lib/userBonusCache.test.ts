@@ -12,6 +12,7 @@ import { BASE_REGEN_RATE } from '@/lib/server/bonus/userBonusTypes';
 import {
   createInitialTechTree,
   getResearchEffectFromTree,
+  getTimeSpeedFactorFromEffect,
   getWeaponDamageModifierFromTree,
   getWeaponAccuracyModifierFromTree,
   getWeaponReloadTimeModifierFromTree,
@@ -596,6 +597,36 @@ describe('UserBonusCache maxShipSpeed', () => {
     const commanderMult = 1 + 1.0 / 100; // = 1.01
     const expected = baseSpeed * (1 + afterburner / 100) * commanderMult;
     expect(bonuses.maxShipSpeed).toBeCloseTo(expected, 6);
+  });
+});
+
+describe('UserBonusCache time speed factors', () => {
+  test('constructionSpeedFactor_level1_matchesConstructionResearchEffect', async () => {
+    const user = makeUser(0, { constructionSpeed: 1 });
+    const { userCacheMock, inventoryServiceMock } = makeMocks(user, emptyBridge());
+    UserBonusCache.configureDependencies({ userCache: userCacheMock, inventoryService: inventoryServiceMock });
+    const cache = UserBonusCache.getInstance();
+
+    const bonuses = await withLock4(ctx => cache.getBonuses(ctx, 1));
+    const expected = getTimeSpeedFactorFromEffect(
+      getResearchEffectFromTree(user.techTree, ResearchType.ConstructionSpeed)
+    );
+
+    expect(bonuses.constructionSpeedFactor).toBeCloseTo(expected, 6);
+  });
+
+  test('researchSpeedFactor_level2_scalesWithLevelMultiplier', async () => {
+    const user = makeUser(1000, { artificialIntelligence: 1 });
+    const { userCacheMock, inventoryServiceMock } = makeMocks(user, emptyBridge());
+    UserBonusCache.configureDependencies({ userCache: userCacheMock, inventoryService: inventoryServiceMock });
+    const cache = UserBonusCache.getInstance();
+
+    const bonuses = await withLock4(ctx => cache.getBonuses(ctx, 1));
+    const expected = getTimeSpeedFactorFromEffect(
+      getResearchEffectFromTree(user.techTree, ResearchType.ArtificialIntelligence)
+    ) * 1.15;
+
+    expect(bonuses.researchSpeedFactor).toBeCloseTo(expected, 6);
   });
 });
 
