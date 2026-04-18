@@ -3,7 +3,7 @@
 // NPC users are created lazily when attacked and cleaned up after battle resolution.
 // ---
 
-import { HasLock4Context, IronLocks, LockContext, LocksAtMostAndHas4 } from '@markdrei/ironguard-typescript-locks';
+import { LockContext, LocksAtMostAndHas4 } from '@markdrei/ironguard-typescript-locks';
 import { User } from '../user/user';
 import { UserCache } from '../user/userCache';
 import { WorldCache } from '../world/worldCache';
