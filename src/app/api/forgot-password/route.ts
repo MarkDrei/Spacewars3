@@ -48,9 +48,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       `${request.headers.get('x-forwarded-proto') ?? 'http'}://${request.headers.get('host') ?? 'localhost:3000'}`;
     const resetUrl = `${baseUrl}/reset-password?token=${token}`;
 
-    const { subject, html } = buildPasswordResetEmail(user.username, resetUrl);
+    const { subject, html, text } = buildPasswordResetEmail(user.username, resetUrl);
     // Fire-and-forget — email failure must never block this endpoint
-    void sendEmail(normalizedEmail, subject, html);
+    void sendEmail(normalizedEmail, subject, html, text);
 
     console.log(`🔑 Password reset token set for user ${user.username} (ID: ${user.id})`);
 

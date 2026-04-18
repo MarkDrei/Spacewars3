@@ -39,7 +39,7 @@ export function resetEmailTransport(): void {
  * Sends an email. Fire-and-forget safe — errors are logged but never thrown.
  * When email is disabled, logs a warning and returns immediately.
  */
-export async function sendEmail(to: string, subject: string, html: string): Promise<void> {
+export async function sendEmail(to: string, subject: string, html: string, text?: string): Promise<void> {
   if (!isEmailEnabled()) {
     console.warn(`⚠️ Email not configured — skipping send to ${to}`);
     return;
@@ -54,6 +54,7 @@ export async function sendEmail(to: string, subject: string, html: string): Prom
       to,
       subject,
       html,
+      ...(text ? { text } : {}),
     });
     console.log(`📧 Email sent to ${to}: ${subject}`);
   } catch (err) {

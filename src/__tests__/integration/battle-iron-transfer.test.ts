@@ -172,4 +172,84 @@ describe('Battle iron transfer', () => {
       });
     });
   });
+
+  it('winnerAboveBaseCapacityWithLevelBonus_transfersUpToBonusedCapacity', async () => {
+    await withTransaction(async () => {
+      let attackerId: number = 0;
+      let defenderId: number = 0;
+
+      await emptyCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
+        const att = await userCache.getUserByUsername(userCtx, 'a');
+        const def = await userCache.getUserByUsername(userCtx, 'dummy');
+        expect(att).not.toBeNull();
+        expect(def).not.toBeNull();
+
+        attackerId = att!.id;
+        defenderId = def!.id;
+
+        att!.addXp(1000); // level 2 => storage capacity bonus applies
+        att!.iron = 5600; // above base cap (5000), below bonused cap (5750)
+        def!.iron = 200;
+
+        await userCache.updateUserInCache(userCtx, att!);
+        await userCache.updateUserInCache(userCtx, def!);
+      });
+
+      const attackerStats: BattleStats = {
+        hull: { current: 100, max: 100 },
+        armor: { current: 50, max: 50 },
+        shield: { current: 25, max: 25 },
+      };
+      const defenderStats: BattleStats = {
+        hull: { current: 0, max: 100 },
+        armor: { current: 0, max: 50 },
+        shield: { current: 0, max: 25 },
+      };
+      const cooldowns: Record<string, number> = {};
+
+      let battleId: number;
+      await emptyCtx.useLockWithAcquire(BATTLE_LOCK, async (battleCtx) => {
+        await battleCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
+          const battle = await battleCache!.createBattle(
+            battleCtx,
+            userCtx,
+            attackerId,
+            defenderId,
+            attackerStats,
+            defenderStats,
+            cooldowns,
+            {}
+          );
+          battleId = battle.id;
+        });
+      });
+
+      await emptyCtx.useLockWithAcquire(BATTLE_LOCK, async (battleCtx) => {
+        await battleService.resolveBattle(battleCtx, battleId!, attackerId, defenderId);
+      });
+
+      await emptyCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
+        const winner = await userCache.getUserByIdWithLock(userCtx, attackerId);
+        const loser = await userCache.getUserByIdWithLock(userCtx, defenderId);
+
+        expect(winner).not.toBeNull();
+        expect(loser).not.toBeNull();
+
+        const winnerBonuses = await userCache.getBonusesByUserIdWithLock(userCtx, attackerId);
+
+        expect(winner!.iron).toBe(winnerBonuses.ironStorageCapacity);
+        expect(loser!.iron).toBe(50);
+      });
+
+      const msgCache = (await import('../../lib/server/messages/MessageCache')).MessageCache.getInstance();
+      const [winnerMsgs, loserMsgs] = await Promise.all([
+        msgCache.getMessagesForUser(emptyCtx, attackerId),
+        msgCache.getMessagesForUser(emptyCtx, defenderId)
+      ]);
+
+      expect(winnerMsgs.some(m => m.message.includes('gained 150 iron'))).toBe(true);
+      expect(loserMsgs.some(m => m.message.includes('lost 150 iron'))).toBe(true);
+      expect(winnerMsgs.some(m => m.message.includes('gained -'))).toBe(false);
+    });
+  });
 });
