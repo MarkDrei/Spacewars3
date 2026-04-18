@@ -418,3 +418,23 @@ const LoginPage: React.FC<{ searchParams?: Promise<Record<...>> }> = async ({ se
 **Context**: Nodemailer transport is stored as a globalThis singleton (key `__spacewars_email_transport__`) to survive Next.js hot-reload. Resetting it for test isolation requires explicitly setting `globalThis[key] = null` via a `resetEmailTransport()` export.
 
 **Pattern**: Always expose a `resetXxx()` function for any globalThis singleton to enable test isolation via `vi.resetModules()` + explicit null.
+
+## Player-Local NPC Pattern: Dynamic Injection Without Persistence
+
+**Discovered by**: Copilot (NPC implementation)
+**Context**: Implementing player-local NPCs that orbit the starbase
+
+**Pattern**: For game entities that are player-specific and ephemeral (not shared between players, don't persist across restarts):
+1. Compute them dynamically in the API response based on player state and current time
+2. Inject them into existing response arrays (e.g., `spaceObjects`) as the same type as existing entities (e.g., `player_ship`) for rendering reuse
+3. Use deterministic ID schemes (offsets) to avoid collision with DB-assigned IDs
+4. Use negative user IDs to distinguish from real users without schema changes
+
+**NPC ID scheme**: Space object IDs use `NPC_ID_OFFSET (8000) + playerUserId * 4 + npcIndex`. NPC user IDs use `-(playerUserId * 4 + npcIndex + 1)`. This allows resolving back to playerUserId and npcIndex from any NPC ID.
+
+**Lazy user creation for battle**: NPC User objects are only created when a player attacks an NPC. This avoids polluting UserCache with unused NPC users. After battle resolution, the NPC user is cleaned up from both UserCache and WorldCache.
+
+**Lock hierarchy for world route with user data**: When the world API needs to access UserCache (e.g., for player level), acquire USER_LOCK (level 4) first, then WORLD_LOCK (level 6) inside it. This follows the established lock hierarchy.
+
+**Critical**: `UserCache.resetInstance()` also calls `WorldCache.resetInstance()`. In tests, always call `UserCache.resetInstance()` FIRST, then initialize WorldCache, then UserCache. Never initialize WorldCache before calling `UserCache.resetInstance()`.
+
