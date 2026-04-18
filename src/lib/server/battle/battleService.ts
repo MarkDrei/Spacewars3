@@ -428,16 +428,20 @@ async function transferIronOnBattle(
   }
 
   const amountAvailable = loser.iron;
-  const capacityLeft = winner.getMaxIronCapacity() - winner.iron;
-  const transfer = Math.min(amountAvailable, capacityLeft);
-  if (transfer > 0) {
+  const winnerBonuses = await userWorldCache.getBonusesByUserIdWithLock(context, winnerId);
+  const maxCapacity = winnerBonuses.ironStorageCapacity;
+  const capacityLeft = Math.max(0, maxCapacity - winner.iron);
+  const requestedTransfer = Math.min(amountAvailable, capacityLeft);
+  if (requestedTransfer > 0) {
     // update users
-    winner.addIron(transfer);
-    loser.subtractIron(transfer);
+    const actualTransferred = winner.addIron(requestedTransfer, maxCapacity);
+    loser.subtractIron(actualTransferred);
     await userWorldCache.updateUserInCache(context, winner);
     await userWorldCache.updateUserInCache(context, loser);
+    return { amount: actualTransferred, winnerName: winner.username, loserName: loser.username };
   }
-  return { amount: transfer, winnerName: winner.username, loserName: loser.username };
+
+  return { amount: 0, winnerName: winner.username, loserName: loser.username };
 }
 
 async function computeEndStats(

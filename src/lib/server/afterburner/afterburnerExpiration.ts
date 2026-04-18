@@ -11,6 +11,7 @@
 
 import type { SpaceObject } from '@/lib/server/world/world';
 import { AfterburnerService } from './AfterburnerService';
+import type { AfterburnerConfig } from './afterburnerTypes';
 
 /**
  * Check whether the given user's afterburner boost has expired.
@@ -22,10 +23,10 @@ export function checkAndExpireAfterburner(
   userId: number,
   playerShip: SpaceObject,
   maxShipSpeed: number,
-  timeMultiplier: number,
+  config: AfterburnerConfig,
 ): boolean {
   const afterburnerService = AfterburnerService.getInstance();
-  const result = afterburnerService.checkAndExpire(userId, timeMultiplier);
+  const result = afterburnerService.checkAndExpire(userId, config);
   if (result?.expired) {
     // Cap speed at normal maxSpeed (preserves any manual speed reduction below max)
     playerShip.speed = Math.min(playerShip.speed, maxShipSpeed);

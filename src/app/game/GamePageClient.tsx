@@ -9,7 +9,7 @@ import { useWorldData } from '@/lib/client/hooks/useWorldData';
 import { navigateShip } from '@/lib/client/services/navigationService';
 import { teleportShip } from '@/lib/client/services/teleportService';
 import { getShipStats } from '@/lib/client/services/shipStatsService';
-import { activateAfterburner, AfterburnerStatus } from '@/lib/client/services/afterburnerService';
+import { activateAfterburner, deactivateAfterburner, AfterburnerStatus } from '@/lib/client/services/afterburnerService';
 import { userStatsService } from '@/lib/client/services/userStatsService';
 import { ServerAuthState } from '@/lib/server/serverSession';
 import DataAgeIndicator from '@/components/DataAgeIndicator/DataAgeIndicator';
@@ -51,7 +51,7 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
   const [afterburnerStatus, setAfterburnerStatus] = useState<AfterburnerStatus | null>(null);
   const [announcement, setAnnouncement] = useState<{ text: string; key: number; variant?: 'orange' } | null>(null);
   const announcementTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [isActivatingAfterburner, setIsActivatingAfterburner] = useState(false);
+  const [isUpdatingAfterburner, setIsUpdatingAfterburner] = useState(false);
   const [playerLevel, setPlayerLevel] = useState(1);
   // Auth is guaranteed by server, so pass true and use auth.shipId
   const { worldData, isLoading, error, refetch, lastUpdateTime } = useWorldData(3000);
@@ -471,9 +471,16 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
     return `${s}s`;
   };
 
-  // Periodic refresh of afterburner status from ship-stats during active/cooldown
+  const formatAfterburnerFuelPercent = (status: AfterburnerStatus) => {
+    return `${Math.max(0, Math.min(100, Math.round(status.fuelPercent)))}%`;
+  };
+
+  // Periodic refresh of afterburner status from ship-stats while fuel is changing.
   useEffect(() => {
-    if (!afterburnerStatus?.isActive && !afterburnerStatus?.cooldownRemainingMs) return;
+    if (!afterburnerStatus) return;
+
+    const needsPolling = afterburnerStatus.isActive || afterburnerStatus.fuelPercent < 100;
+    if (!needsPolling) return;
 
     // Capture the active state when this effect runs.
     // Because afterburnerStatus?.isActive is a dependency, this effect is recreated
@@ -487,8 +494,6 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
         if (stats && !('error' in stats) && stats.afterburner) {
           setAfterburnerStatus(stats.afterburner);
           setMaxSpeed(stats.maxSpeed);
-          // When afterburner just expired, snap the displayed speed to the
-          // server-capped value so the UI reflects the reduced speed immediately.
           if (wasActive && !stats.afterburner.isActive) {
             setSpeedInput(stats.speed.toFixed(1));
           }
@@ -497,13 +502,13 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [afterburnerStatus?.isActive, afterburnerStatus?.cooldownRemainingMs]);
+  }, [afterburnerStatus]);
 
   const handleActivateAfterburner = async () => {
-    if (isActivatingAfterburner) return;
-    setIsActivatingAfterburner(true);
+    if (isUpdatingAfterburner) return;
+    setIsUpdatingAfterburner(true);
     try {
-      await activateAfterburner();
+      const result = await activateAfterburner();
       // Immediately refresh status
       const stats = await getShipStats();
       if (stats && !('error' in stats)) {
@@ -511,12 +516,38 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
         if (stats.afterburner) {
           setAfterburnerStatus(stats.afterburner);
         }
+        setSpeedInput(stats.speed.toFixed(1));
       }
       if (refetch) refetch();
+      announce(`Afterburner engaged at ${Math.round(result.fuelPercent)}% fuel`);
     } catch (error) {
+      announce(error instanceof Error ? error.message : 'Afterburner activation failed', 'orange');
       console.error('❌ [CLIENT] Afterburner activation failed:', error);
     } finally {
-      setIsActivatingAfterburner(false);
+      setIsUpdatingAfterburner(false);
+    }
+  };
+
+  const handleDeactivateAfterburner = async () => {
+    if (isUpdatingAfterburner) return;
+    setIsUpdatingAfterburner(true);
+    try {
+      const result = await deactivateAfterburner();
+      const stats = await getShipStats();
+      if (stats && !('error' in stats)) {
+        setMaxSpeed(stats.maxSpeed);
+        if (stats.afterburner) {
+          setAfterburnerStatus(stats.afterburner);
+        }
+        setSpeedInput(stats.speed.toFixed(1));
+      }
+      if (refetch) refetch();
+      announce(`Afterburner disengaged with ${Math.round(result.fuelPercent)}% fuel remaining`);
+    } catch (error) {
+      announce(error instanceof Error ? error.message : 'Afterburner deactivation failed', 'orange');
+      console.error('❌ [CLIENT] Afterburner deactivation failed:', error);
+    } finally {
+      setIsUpdatingAfterburner(false);
     }
   };
 
@@ -812,21 +843,45 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
                 {afterburnerOpen && afterburnerStatus && afterburnerStatus.durationResearchLevel >= 1 && (
                   <div className="panel-section">
                     <span className="section-label">afterburner</span>
-                    {afterburnerStatus.canActivate ? (
+                    <div className="status-row">
+                      <span className="charges-badge">fuel {formatAfterburnerFuelPercent(afterburnerStatus)}</span>
+                      {afterburnerStatus.isActive ? (
+                        <span className="status-active">burn: {formatTimeRemaining(afterburnerStatus.boostRemainingMs / 1000)}</span>
+                      ) : afterburnerStatus.canActivate ? (
+                        afterburnerStatus.cooldownRemainingMs > 0 ? (
+                          <span className="timer">full in {formatTimeRemaining(afterburnerStatus.cooldownRemainingMs / 1000)}</span>
+                        ) : null
+                      ) : (
+                        <span className="status-cooldown">ready at {afterburnerStatus.activationThresholdPercent}% in {formatTimeRemaining(afterburnerStatus.timeToActivationMs / 1000)}</span>
+                      )}
+                    </div>
+                    {afterburnerStatus.isActive ? (
+                      <button
+                        onClick={handleDeactivateAfterburner}
+                        disabled={isUpdatingAfterburner}
+                        className="control-button btn-primary btn-full afterburner-available"
+                        style={{ ['--afterburner-fuel-fill' as string]: `${Math.max(0, Math.min(100, afterburnerStatus.fuelPercent))}` }}
+                      >
+                        <span className="afterburner-fuel-button__track" aria-hidden="true">
+                          <span className="afterburner-fuel-button__fill"></span>
+                        </span>
+                        <span className="afterburner-fuel-button__label">{isUpdatingAfterburner ? '...' : 'disengage'}</span>
+                      </button>
+                    ) : afterburnerStatus.canActivate ? (
                       <button
                         onClick={handleActivateAfterburner}
-                        disabled={isActivatingAfterburner}
+                        disabled={isUpdatingAfterburner}
                         className="control-button btn-primary btn-full afterburner-available"
+                        style={{ ['--afterburner-fuel-fill' as string]: `${Math.max(0, Math.min(100, afterburnerStatus.fuelPercent))}` }}
                       >
-                        {isActivatingAfterburner ? '...' : '🔥 Activate'}
+                        <span className="afterburner-fuel-button__track" aria-hidden="true">
+                          <span className="afterburner-fuel-button__fill"></span>
+                        </span>
+                        <span className="afterburner-fuel-button__label">{isUpdatingAfterburner ? '...' : 'engage'}</span>
                       </button>
-                    ) : afterburnerStatus.isActive ? (
-                      <div className="status-row">
-                        <span className="status-active">⚡ Active ({formatTimeRemaining(afterburnerStatus.boostRemainingMs / 1000)})</span>
-                      </div>
                     ) : (
                       <div className="status-row">
-                        <span className="status-cooldown">Cooldown ({formatTimeRemaining(afterburnerStatus.cooldownRemainingMs / 1000)})</span>
+                        <span className="status-cooldown">recharging</span>
                       </div>
                     )}
                   </div>

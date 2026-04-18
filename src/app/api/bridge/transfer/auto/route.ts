@@ -18,7 +18,6 @@ import { USER_LOCK } from '@/lib/server/typedLocks';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 import { getResearchEffectFromTree, ResearchType } from '@/lib/server/techs/techtree';
 import { handleApiError, requireAuth, ApiError } from '@/lib/server/errors';
-import { UserBonusCache } from '@/lib/server/bonus/UserBonusCache';
 
 const inventoryService = new InventoryService();
 
@@ -91,7 +90,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    UserBonusCache.getInstance().invalidateBonuses(session.userId!);
+    UserCache.getInstance2().invalidateBonuses(session.userId!);
     return NextResponse.json({ success: true, to: dest });
   } catch (error) {
     if (

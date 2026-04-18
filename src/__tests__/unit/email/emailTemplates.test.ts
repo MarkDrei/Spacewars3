@@ -8,8 +8,11 @@ describe('emailTemplates', () => {
     expect(result.subject).toContain('Verify');
     expect(result.html).toContain('testuser');
     expect(result.html).toContain('https://example.com/api/verify-email?token=abc123');
-    expect(result.html).toContain('Spacewars: Ironcore');
+    expect(result.html).toContain('Spacewars: Ironstrike');
     expect(result.html).toContain('24 hours');
+    expect(result.text).toContain('testuser');
+    expect(result.text).toContain('https://example.com/api/verify-email?token=abc123');
+    expect(result.text).toContain('Spacewars: Ironstrike');
   });
 
   it('escapes HTML in username to prevent injection', async () => {

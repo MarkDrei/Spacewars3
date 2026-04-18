@@ -8,7 +8,6 @@ import { InventoryService, InventorySlotEmptyError, InventorySlotInvalidError } 
 import { USER_LOCK } from '@/lib/server/typedLocks';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 import { commanderSellPrice } from '@/lib/server/starbase/commanderPrice';
-import { UserBonusCache } from '@/lib/server/bonus/UserBonusCache';
 import { getResearchEffectFromTree, ResearchType } from '@/lib/server/techs/techtree';
 
 export const dynamic = 'force-dynamic';
@@ -49,7 +48,7 @@ export async function POST(request: NextRequest) {
 
       const price = commanderSellPrice(item);
 
-      const bonuses = await UserBonusCache.getInstance().getBonuses(userContext, userId);
+      const bonuses = await userCache.getBonusesByUserIdWithLock(userContext, userId);
       user.updateStats(Math.floor(Date.now() / 1000), bonuses);
       user.addIron(price);
       await userCache.updateUserInCache(userContext, user);

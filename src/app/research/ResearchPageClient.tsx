@@ -278,6 +278,7 @@ const ResearchPageClient: React.FC<ResearchPageClientProps> = () => {
       energyRechargeRate: 'RechargeRate',
       energyAccuracy: 'EnergyAccuracy',
       hullStrength: 'HullStrength',
+      repairSpeed: 'HullRepairSpeed',
       inventoryCapacity: 'IronCapacity',
       ironCapacity: 'IronCapacity',
       inventorySlots: 'InventorySlots',

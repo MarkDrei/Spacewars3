@@ -90,8 +90,10 @@ describe('ResearchPageClient card view', () => {
     vi.mocked(researchService.formatDuration).mockImplementation((s: number) => `${s}`);
   });
 
-  it('uses dedicated images for inventory, bridge, and teleport researches', async () => {
+  it('uses dedicated images for repair, shield, inventory, bridge, and teleport researches', async () => {
     const techTree = makeFakeTechTree({
+      repairSpeed: 0,
+      shieldRechargeRate: 0,
       inventorySlots: 0,
       bridgeSlots: 0,
       teleport: 0,
@@ -100,6 +102,8 @@ describe('ResearchPageClient card view', () => {
     });
 
     const researches = {
+      [ResearchType.RepairSpeed]: makeFakeResearch(ResearchType.RepairSpeed),
+      [ResearchType.ShieldRechargeRate]: makeFakeResearch(ResearchType.ShieldRechargeRate),
       [ResearchType.InventorySlots]: makeFakeResearch(ResearchType.InventorySlots),
       [ResearchType.BridgeSlots]: makeFakeResearch(ResearchType.BridgeSlots),
       [ResearchType.Teleport]: makeFakeResearch(ResearchType.Teleport),
@@ -128,11 +132,17 @@ describe('ResearchPageClient card view', () => {
 
     // wait for cards to load
     await waitFor(() => {
+      expect(screen.getByText('repairSpeed')).toBeInTheDocument();
+      expect(screen.getByText('shieldRechargeRate')).toBeInTheDocument();
       expect(screen.getByText('inventorySlots')).toBeInTheDocument();
       expect(screen.getByText('bridgeSlots')).toBeInTheDocument();
     });
 
     // check each image src matches its dedicated filename
+    const repairImg = screen.getByAltText('repairSpeed icon') as HTMLImageElement;
+    expect(repairImg.src).toMatch(/HullRepairSpeed\.png/);
+    const shieldRechargeImg = screen.getByAltText('shieldRechargeRate icon') as HTMLImageElement;
+    expect(shieldRechargeImg.src).toMatch(/ShieldRechargeRate\.png/);
     const invImg = screen.getByAltText('inventorySlots icon') as HTMLImageElement;
     // Next.js wraps images behind an internal loader; the actual src will
     // include the original path url-encoded. We just need to ensure the

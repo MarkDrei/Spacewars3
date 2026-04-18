@@ -1,11 +1,12 @@
 // ---
-// HTML email templates for Spacewars: Ironcore
+// HTML email templates for Spacewars: Ironstrike
 // All styles must be inline — email clients strip <style> tags.
 // ---
 
 export interface EmailContent {
   subject: string;
   html: string;
+  text: string;
 }
 
 /**
@@ -16,7 +17,7 @@ export function buildVerificationEmail(
   username: string,
   verificationUrl: string
 ): EmailContent {
-  const subject = 'Verify your Spacewars: Ironcore email address';
+  const subject = 'Verify your Spacewars: Ironstrike email address';
 
   const html = `
 <!DOCTYPE html>
@@ -30,7 +31,7 @@ export function buildVerificationEmail(
           <!-- Header -->
           <tr>
             <td style="background-color:#0d1f3c;padding:24px 32px;border-bottom:2px solid #1e4080;">
-              <h1 style="margin:0;font-size:24px;color:#4a9eff;letter-spacing:1px;">⚔️ Spacewars: Ironcore</h1>
+              <h1 style="margin:0;font-size:24px;color:#4a9eff;letter-spacing:1px;">⚔️ Spacewars: Ironstrike</h1>
             </td>
           </tr>
           <!-- Body -->
@@ -65,7 +66,7 @@ export function buildVerificationEmail(
           <tr>
             <td style="background-color:#0d1629;padding:16px 32px;border-top:1px solid #1e3a5f;">
               <p style="margin:0;font-size:12px;color:#607a99;">
-                Spacewars: Ironcore — Space exploration game
+                Spacewars: Ironstrike — Space exploration game
               </p>
             </td>
           </tr>
@@ -77,7 +78,19 @@ export function buildVerificationEmail(
 </html>
   `.trim();
 
-  return { subject, html };
+  const text = `Spacewars: Ironstrike — Verify your email address
+
+Hello ${username},
+
+Click the link below to verify your email address. This link expires in 24 hours.
+
+${verificationUrl}
+
+If you did not create an account, you can safely ignore this email.
+
+-- Spacewars: Ironstrike`;
+
+  return { subject, html, text };
 }
 
 function escapeHtml(str: string): string {
@@ -97,7 +110,7 @@ export function buildPasswordResetEmail(
   username: string,
   resetUrl: string
 ): EmailContent {
-  const subject = 'Reset your Spacewars: Ironcore password';
+  const subject = 'Reset your Spacewars: Ironstrike password';
 
   const html = `
 <!DOCTYPE html>
@@ -111,7 +124,7 @@ export function buildPasswordResetEmail(
           <!-- Header -->
           <tr>
             <td style="background-color:#0d1f3c;padding:24px 32px;border-bottom:2px solid #1e4080;">
-              <h1 style="margin:0;font-size:24px;color:#4a9eff;letter-spacing:1px;">⚔️ Spacewars: Ironcore</h1>
+              <h1 style="margin:0;font-size:24px;color:#4a9eff;letter-spacing:1px;">⚔️ Spacewars: Ironstrike</h1>
             </td>
           </tr>
           <!-- Body -->
@@ -147,7 +160,7 @@ export function buildPasswordResetEmail(
           <tr>
             <td style="background-color:#0d1629;padding:16px 32px;border-top:1px solid #1e3a5f;">
               <p style="margin:0;font-size:12px;color:#607a99;">
-                Spacewars: Ironcore — Space exploration game
+                Spacewars: Ironstrike — Space exploration game
               </p>
             </td>
           </tr>
@@ -159,5 +172,7 @@ export function buildPasswordResetEmail(
 </html>
   `.trim();
 
-  return { subject, html };
+  const text = `Spacewars: Ironstrike — Reset your password\n\nHello ${username},\n\nWe received a request to reset your password. Use the link below to set a new password. This link expires in 1 hour.\n\n${resetUrl}\n\nIf you did not request a password reset, you can safely ignore this email. Your password will not change.\n\n-- Spacewars: Ironstrike`;
+
+  return { subject, html, text };
 }

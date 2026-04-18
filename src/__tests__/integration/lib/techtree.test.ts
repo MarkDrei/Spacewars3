@@ -115,8 +115,22 @@ describe('getResearchEffect', () => {
   test('getResearchEffect_newDefenseResearches_calculatesCorrectly', () => {
     expect(getResearchEffect(AllResearches[ResearchType.HullStrength], 1)).toBeCloseTo(100);
     expect(getResearchEffect(AllResearches[ResearchType.HullStrength], 2)).toBeCloseTo(107.02, 1);
-    expect(getResearchEffect(AllResearches[ResearchType.ShieldRechargeRate], 1)).toBeCloseTo(1);
-    expect(getResearchEffect(AllResearches[ResearchType.ShieldRechargeRate], 2)).toBeCloseTo(1.07, 2);
+    expect(getResearchEffect(AllResearches[ResearchType.RepairSpeed], 1)).toBeCloseTo(0.1, 10);
+    expect(getResearchEffect(AllResearches[ResearchType.RepairSpeed], 2)).toBeCloseTo(0.115, 10);
+    expect(getResearchEffect(AllResearches[ResearchType.ShieldRechargeRate], 1)).toBeCloseTo(0.1, 10);
+    expect(getResearchEffect(AllResearches[ResearchType.ShieldRechargeRate], 2)).toBeCloseTo(0.113, 10);
+  });
+
+  test('repairAndShieldRecharge_haveIdenticalCostAndDurationCurves', () => {
+    expect(AllResearches[ResearchType.RepairSpeed].baseUpgradeCost).toBe(
+      AllResearches[ResearchType.ShieldRechargeRate].baseUpgradeCost
+    );
+    expect(AllResearches[ResearchType.RepairSpeed].baseUpgradeDuration).toBe(
+      AllResearches[ResearchType.ShieldRechargeRate].baseUpgradeDuration
+    );
+    expect(AllResearches[ResearchType.RepairSpeed].upgradeCostIncrease).toBe(
+      AllResearches[ResearchType.ShieldRechargeRate].upgradeCostIncrease
+    );
   });
 
   test('getResearchEffect_newShipResearches_calculatesCorrectly', () => {

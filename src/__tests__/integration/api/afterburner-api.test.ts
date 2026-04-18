@@ -1,10 +1,8 @@
 import { describe, expect, test, beforeEach, afterEach } from 'vitest';
 
-// Import API routes
 import { POST as afterburnerPOST } from '@/app/api/afterburner/route';
 import { GET as shipStatsGET } from '@/app/api/ship-stats/route';
 
-// Import shared test helpers
 import { createRequest, createAuthenticatedSessionWithUser } from '../../helpers/apiTestHelpers';
 import { initializeIntegrationTestServer, shutdownIntegrationTestServer } from '../../helpers/testServer';
 import { withTransaction } from '../../helpers/transactionHelper';
@@ -14,10 +12,6 @@ import { UserCache } from '@/lib/server/user/userCache';
 import { USER_LOCK } from '@/lib/server/typedLocks';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 
-/**
- * Helper to grant afterburner research to a user by username.
- * Sets afterburnerDuration, afterburnerCooldown, and afterburnerSpeedIncrease levels.
- */
 async function grantAfterburnerResearch(
   username: string,
   durationLevel: number = 1,
@@ -52,13 +46,12 @@ describe('Afterburner API', () => {
 
   test('afterburner_durationResearchLevel0_cannotActivate', async () => {
     await withTransaction(async () => {
-      // Default user has afterburnerDuration=0 (not researched)
       const { sessionCookie } = await createAuthenticatedSessionWithUser('ab_noresearch');
 
       const request = createRequest(
         'http://localhost:3000/api/afterburner',
         'POST',
-        {},
+        { action: 'activate' },
         sessionCookie,
       );
 
@@ -73,14 +66,12 @@ describe('Afterburner API', () => {
   test('afterburner_withDurationResearch_activatesSuccessfully', async () => {
     await withTransaction(async () => {
       const { sessionCookie, username } = await createAuthenticatedSessionWithUser('ab_activate');
-
-      // Grant afterburner research
       await grantAfterburnerResearch(username, 1, 1, 1);
 
       const request = createRequest(
         'http://localhost:3000/api/afterburner',
         'POST',
-        {},
+        { action: 'activate' },
         sessionCookie,
       );
 
@@ -89,37 +80,32 @@ describe('Afterburner API', () => {
 
       expect(response.status).toBe(200);
       expect(data.success).toBe(true);
-      expect(data.boostedSpeed).toBeGreaterThan(0);
-      expect(data.previousSpeed).toBeDefined();
-      expect(data.durationMs).toBeGreaterThan(0);
-      expect(data.cooldownMs).toBeGreaterThan(0);
-      expect(data.maxSpeed).toBeGreaterThan(0);
-      // boostedSpeed should be > maxSpeed (speed boost applied)
+      expect(data.action).toBe('activated');
       expect(data.boostedSpeed).toBeGreaterThan(data.maxSpeed);
+      expect(data.fuelCapacityMs).toBeGreaterThan(0);
+      expect(data.fuelRemainingMs).toBe(data.fuelCapacityMs);
+      expect(data.fuelPercent).toBe(100);
     });
   });
 
   test('afterburner_activateWhileActive_returns400', async () => {
     await withTransaction(async () => {
       const { sessionCookie, username } = await createAuthenticatedSessionWithUser('ab_active');
-
       await grantAfterburnerResearch(username, 1, 1, 1);
 
-      // First activation should succeed
       const request1 = createRequest(
         'http://localhost:3000/api/afterburner',
         'POST',
-        {},
+        { action: 'activate' },
         sessionCookie,
       );
       const response1 = await afterburnerPOST(request1);
       expect(response1.status).toBe(200);
 
-      // Second activation should fail (still active)
       const request2 = createRequest(
         'http://localhost:3000/api/afterburner',
         'POST',
-        {},
+        { action: 'activate' },
         sessionCookie,
       );
       const response2 = await afterburnerPOST(request2);
@@ -130,55 +116,95 @@ describe('Afterburner API', () => {
     });
   });
 
-  test('afterburner_activateWhileOnCooldown_returns400', async () => {
+  test('afterburner_activateBelowFuelThreshold_returns400', async () => {
     await withTransaction(async () => {
-      const { sessionCookie, username } = await createAuthenticatedSessionWithUser('ab_cooldown');
-
+      const { sessionCookie, username } = await createAuthenticatedSessionWithUser('ab_threshold');
       await grantAfterburnerResearch(username, 1, 1, 1);
 
-      // Activate afterburner
-      const request1 = createRequest(
+      const activateRequest = createRequest(
         'http://localhost:3000/api/afterburner',
         'POST',
-        {},
+        { action: 'activate' },
         sessionCookie,
       );
-      const response1 = await afterburnerPOST(request1);
-      expect(response1.status).toBe(200);
+      const activateResponse = await afterburnerPOST(activateRequest);
+      expect(activateResponse.status).toBe(200);
 
-      // Manually advance past the boost duration by manipulating state
       const afterburnerService = AfterburnerService.getInstance();
       const userId = afterburnerService.getActiveUserIds()[0]!;
       const state = afterburnerService.getState(userId);
       expect(state).not.toBeNull();
+      Object.assign(state!, {
+        isActive: false,
+        fuelRatio: 0.2,
+        updatedAtMs: Date.now(),
+      });
 
-      // Set activatedAt to far in the past (past duration but within cooldown)
-      // Duration is 30s (30000ms), cooldown is 3600s (3600000ms)
-      // Setting activatedAt to 60 seconds ago — past boost, in cooldown
-      Object.assign(state!, { activatedAtMs: Date.now() - 60_000 });
+      const response = await afterburnerPOST(activateRequest);
+      const data = await response.json();
 
-      // Try to activate again — should fail with "on cooldown"
-      const request2 = createRequest(
+      expect(response.status).toBe(400);
+      expect(data.error).toBe('Afterburner requires at least 33% fuel');
+    });
+  });
+
+  test('afterburner_deactivate_preservesFuelAndCapsSpeed', async () => {
+    await withTransaction(async () => {
+      const { sessionCookie, username } = await createAuthenticatedSessionWithUser('ab_deactivate');
+      await grantAfterburnerResearch(username, 1, 1, 1);
+
+      const activateRequest = createRequest(
         'http://localhost:3000/api/afterburner',
         'POST',
-        {},
+        { action: 'activate' },
         sessionCookie,
       );
-      const response2 = await afterburnerPOST(request2);
-      const data2 = await response2.json();
+      const activateResponse = await afterburnerPOST(activateRequest);
+      const activateData = await activateResponse.json();
+      expect(activateResponse.status).toBe(200);
 
-      expect(response2.status).toBe(400);
-      expect(data2.error).toBe('Afterburner on cooldown');
+      const afterburnerService = AfterburnerService.getInstance();
+      const userId = afterburnerService.getActiveUserIds()[0]!;
+      const state = afterburnerService.getState(userId);
+      expect(state).not.toBeNull();
+      Object.assign(state!, {
+        updatedAtMs: Date.now() - activateData.durationMs / 2,
+      });
+
+      const deactivateRequest = createRequest(
+        'http://localhost:3000/api/afterburner',
+        'POST',
+        { action: 'deactivate' },
+        sessionCookie,
+      );
+      const deactivateResponse = await afterburnerPOST(deactivateRequest);
+      const deactivateData = await deactivateResponse.json();
+
+      expect(deactivateResponse.status).toBe(200);
+      expect(deactivateData.action).toBe('deactivated');
+      expect(deactivateData.fuelPercent).toBeCloseTo(50, 0);
+
+      const statsRequest = createRequest(
+        'http://localhost:3000/api/ship-stats',
+        'GET',
+        undefined,
+        sessionCookie,
+      );
+      const statsResponse = await shipStatsGET(statsRequest);
+      const stats = await statsResponse.json();
+
+      expect(stats.afterburner.isActive).toBe(false);
+      expect(stats.afterburner.canActivate).toBe(true);
+      expect(stats.speed).toBeLessThanOrEqual(stats.maxSpeed + 0.01);
+      expect(stats.afterburner.fuelPercent).toBeCloseTo(50, 0);
     });
   });
 
   test('afterburner_activateAndExpire_speedRestoredOnShipStats', async () => {
     await withTransaction(async () => {
       const { sessionCookie, username } = await createAuthenticatedSessionWithUser('ab_expire');
-
       await grantAfterburnerResearch(username, 1, 1, 1);
 
-      // Get initial ship stats to know maxSpeed
       const statsRequest1 = createRequest(
         'http://localhost:3000/api/ship-stats',
         'GET',
@@ -187,14 +213,12 @@ describe('Afterburner API', () => {
       );
       const statsResponse1 = await shipStatsGET(statsRequest1);
       const stats1 = await statsResponse1.json();
-      expect(statsResponse1.status).toBe(200);
       const normalMaxSpeed = stats1.maxSpeed;
 
-      // Activate afterburner
       const activateRequest = createRequest(
         'http://localhost:3000/api/afterburner',
         'POST',
-        {},
+        { action: 'activate' },
         sessionCookie,
       );
       const activateResponse = await afterburnerPOST(activateRequest);
@@ -202,7 +226,12 @@ describe('Afterburner API', () => {
       expect(activateResponse.status).toBe(200);
       expect(activateData.boostedSpeed).toBeGreaterThan(normalMaxSpeed);
 
-      // Verify ship speed is boosted via ship-stats
+      const afterburnerService = AfterburnerService.getInstance();
+      const userId = afterburnerService.getActiveUserIds()[0]!;
+      const state = afterburnerService.getState(userId);
+      expect(state).not.toBeNull();
+      Object.assign(state!, { updatedAtMs: Date.now() - activateData.durationMs - 1_000 });
+
       const statsRequest2 = createRequest(
         'http://localhost:3000/api/ship-stats',
         'GET',
@@ -211,31 +240,12 @@ describe('Afterburner API', () => {
       );
       const statsResponse2 = await shipStatsGET(statsRequest2);
       const stats2 = await statsResponse2.json();
-      expect(stats2.speed).toBeCloseTo(activateData.boostedSpeed, 1);
-      expect(stats2.afterburner.isActive).toBe(true);
 
-      // Simulate time passing: advance activation timestamp past boost duration
-      const afterburnerService = AfterburnerService.getInstance();
-      const userId = afterburnerService.getActiveUserIds()[0]!;
-      const state = afterburnerService.getState(userId);
-      expect(state).not.toBeNull();
-      // Move activatedAt far enough back that boost has expired
-      Object.assign(state!, { activatedAtMs: Date.now() - state!.durationMs - 1000 });
-
-      // Get ship-stats again — expiration should trigger speed capping
-      const statsRequest3 = createRequest(
-        'http://localhost:3000/api/ship-stats',
-        'GET',
-        undefined,
-        sessionCookie,
-      );
-      const statsResponse3 = await shipStatsGET(statsRequest3);
-      const stats3 = await statsResponse3.json();
-
-      // Speed should be capped at normalMaxSpeed (not boosted anymore)
-      expect(stats3.speed).toBeLessThanOrEqual(normalMaxSpeed + 0.01);
-      expect(stats3.afterburner.isActive).toBe(false);
-      expect(stats3.afterburner.cooldownRemainingMs).toBeGreaterThan(0);
+      expect(stats2.speed).toBeLessThanOrEqual(normalMaxSpeed + 0.01);
+      expect(stats2.afterburner.isActive).toBe(false);
+      expect(stats2.afterburner.canActivate).toBe(false);
+      expect(stats2.afterburner.cooldownRemainingMs).toBeGreaterThan(0);
+      expect(stats2.afterburner.fuelPercent).toBeLessThan(stats2.afterburner.activationThresholdPercent);
     });
   });
 
@@ -243,7 +253,6 @@ describe('Afterburner API', () => {
     await withTransaction(async () => {
       const { sessionCookie } = await createAuthenticatedSessionWithUser('ab_stats');
 
-      // Get ship-stats for a user with no afterburner research
       const request = createRequest(
         'http://localhost:3000/api/ship-stats',
         'GET',
@@ -256,44 +265,39 @@ describe('Afterburner API', () => {
       expect(response.status).toBe(200);
       expect(data.afterburner).toBeDefined();
       expect(data.afterburner.isActive).toBe(false);
-      expect(data.afterburner.canActivate).toBe(true); // No state → can activate
+      expect(data.afterburner.canActivate).toBe(false);
       expect(data.afterburner.durationResearchLevel).toBe(0);
       expect(data.afterburner.boostedSpeed).toBe(0);
       expect(data.afterburner.boostRemainingMs).toBe(0);
       expect(data.afterburner.cooldownRemainingMs).toBe(0);
+      expect(data.afterburner.fuelPercent).toBe(100);
     });
   });
 
   test('afterburner_withTimeMultiplier_durationExpiresEarlier', async () => {
     await withTransaction(async () => {
       const { sessionCookie, username } = await createAuthenticatedSessionWithUser('ab_timemult');
-
       await grantAfterburnerResearch(username, 1, 1, 1);
 
-      // Set time multiplier to 2x (everything happens twice as fast)
       TimeMultiplierService.getInstance().setMultiplier(2, 60);
 
-      // Activate afterburner
       const activateRequest = createRequest(
         'http://localhost:3000/api/afterburner',
         'POST',
-        {},
+        { action: 'activate' },
         sessionCookie,
       );
       const activateResponse = await afterburnerPOST(activateRequest);
+      const activateData = await activateResponse.json();
       expect(activateResponse.status).toBe(200);
 
-      // With 2x multiplier, advance half the raw duration → should be expired
       const afterburnerService = AfterburnerService.getInstance();
       const userId = afterburnerService.getActiveUserIds()[0]!;
       const state = afterburnerService.getState(userId);
       expect(state).not.toBeNull();
 
-      // Raw duration is 30000ms. With 2x multiplier, effective after 15001ms real time:
-      // effective = 15001 * 2 = 30002ms > 30000ms → expired
-      Object.assign(state!, { activatedAtMs: Date.now() - 15_001 });
+      Object.assign(state!, { updatedAtMs: Date.now() - activateData.durationMs / 2 - 1 });
 
-      // Ship-stats should show afterburner as expired (not active)
       const statsRequest = createRequest(
         'http://localhost:3000/api/ship-stats',
         'GET',

@@ -5,27 +5,27 @@
  * State is not persisted; it is lost on server restart (acceptable).
  *
  * Time multiplier integration:
- *   effectiveElapsedMs = (Date.now() - activatedAtMs) × timeMultiplier
- * Boost active when:  effectiveElapsedMs < durationMs
- * Cooldown active when: durationMs <= effectiveElapsedMs < durationMs + cooldownMs
- * Fully expired when: effectiveElapsedMs >= durationMs + cooldownMs
+ *   effectiveElapsedMs = (Date.now() - updatedAtMs) × timeMultiplier
+ * While active, fuel drains linearly over the configured full duration.
+ * While inactive, fuel recharges linearly over the configured cooldown.
+ * Activation requires at least 33% fuel.
  */
 
-import type { AfterburnerState } from './afterburnerTypes';
+import type { AfterburnerConfig, AfterburnerState, AfterburnerStatusSnapshot } from './afterburnerTypes';
 
-// Global singleton storage
 declare global {
   var afterburnerServiceInstance: AfterburnerService | undefined;
 }
 
 export class AfterburnerService {
+  static readonly MIN_ACTIVATION_RATIO = 1 / 3;
+
   private states: Map<number, AfterburnerState>;
 
   private constructor() {
     this.states = new Map();
   }
 
-  /** Get the singleton instance. */
   static getInstance(): AfterburnerService {
     if (!globalThis.afterburnerServiceInstance) {
       globalThis.afterburnerServiceInstance = new AfterburnerService();
@@ -33,116 +33,193 @@ export class AfterburnerService {
     return globalThis.afterburnerServiceInstance;
   }
 
-  /** Reset the singleton instance (for test isolation). */
   static resetInstance(): void {
     globalThis.afterburnerServiceInstance = undefined;
   }
 
-  /** Store afterburner state for a user. */
-  activate(
-    userId: number,
-    durationMs: number,
-    cooldownMs: number,
-    boostedSpeed: number,
-  ): void {
+  activate(userId: number, config: AfterburnerConfig): AfterburnerStatusSnapshot {
+    const status = this.getStatus(userId, config);
     this.states.set(userId, {
       userId,
-      activatedAtMs: Date.now(),
-      durationMs,
-      cooldownMs,
-      boostedSpeed,
+      updatedAtMs: Date.now(),
+      fuelRatio: status.fuelRatio,
+      isActive: true,
+      boostedSpeed: config.boostedSpeed,
     });
+
+    return this.getStatus(userId, config);
   }
 
-  /** Return the raw afterburner state for a user, or null if none exists. */
+  deactivate(userId: number, config: AfterburnerConfig): AfterburnerStatusSnapshot | null {
+    const status = this.getStatus(userId, config);
+    if (!status.isActive) {
+      return null;
+    }
+
+    const state = this.states.get(userId);
+    this.states.set(userId, {
+      userId,
+      updatedAtMs: Date.now(),
+      fuelRatio: status.fuelRatio,
+      isActive: false,
+      boostedSpeed: state?.boostedSpeed ?? config.boostedSpeed,
+    });
+
+    return this.getStatus(userId, config);
+  }
+
   getState(userId: number): AfterburnerState | null {
     return this.states.get(userId) ?? null;
   }
 
-  /** Check whether the user's boost is still active. */
-  isActive(userId: number, timeMultiplier: number): boolean {
-    const effective = this.effectiveElapsed(userId, timeMultiplier);
-    if (effective === null) return false;
-    const state = this.states.get(userId)!;
-    return effective < state.durationMs;
-  }
-
-  /** Check whether the user is in the cooldown window (after boost, before full expiry). */
-  isOnCooldown(userId: number, timeMultiplier: number): boolean {
-    const effective = this.effectiveElapsed(userId, timeMultiplier);
-    if (effective === null) return false;
-    const state = this.states.get(userId)!;
-    return effective >= state.durationMs && effective < state.durationMs + state.cooldownMs;
-  }
-
-  /**
-   * Return true if the user may activate the afterburner.
-   * True when no state exists or state is fully expired.
-   * If fully expired, cleans up the stale state entry.
-   */
-  canActivate(userId: number, timeMultiplier: number): boolean {
+  getStatus(userId: number, config: AfterburnerConfig): AfterburnerStatusSnapshot {
     const state = this.states.get(userId);
-    if (!state) return true;
-
-    const effective = this.effectiveElapsed(userId, timeMultiplier)!;
-    if (effective >= state.durationMs + state.cooldownMs) {
-      this.states.delete(userId);
-      return true;
+    if (!state) {
+      return this.buildSnapshot(
+        {
+          isActive: false,
+          fuelRatio: 1,
+          boostedSpeed: 0,
+        },
+        config,
+      );
     }
-    return false;
+
+    const projected = this.projectState(state, config);
+
+    if (!projected.isActive && projected.fuelRatio >= 1) {
+      this.states.delete(userId);
+    } else if (projected.isActive !== state.isActive || Math.abs(projected.fuelRatio - state.fuelRatio) > 1e-9) {
+      this.states.set(userId, {
+        ...state,
+        updatedAtMs: Date.now(),
+        fuelRatio: projected.fuelRatio,
+        isActive: projected.isActive,
+      });
+    }
+
+    return this.buildSnapshot(projected, config);
   }
 
-  /** Remaining boost time in ms (0 if not active). */
-  getBoostRemainingMs(userId: number, timeMultiplier: number): number {
-    const effective = this.effectiveElapsed(userId, timeMultiplier);
-    if (effective === null) return 0;
-    const state = this.states.get(userId)!;
-    if (effective >= state.durationMs) return 0;
-    return state.durationMs - effective;
+  isActive(userId: number, config: AfterburnerConfig): boolean {
+    return this.getStatus(userId, config).isActive;
   }
 
-  /** Remaining cooldown time in ms (0 if not on cooldown). */
-  getCooldownRemainingMs(userId: number, timeMultiplier: number): number {
-    const effective = this.effectiveElapsed(userId, timeMultiplier);
-    if (effective === null) return 0;
-    const state = this.states.get(userId)!;
-    if (effective < state.durationMs) return 0;
-    const totalMs = state.durationMs + state.cooldownMs;
-    if (effective >= totalMs) return 0;
-    return totalMs - effective;
+  isOnCooldown(userId: number, config: AfterburnerConfig): boolean {
+    const status = this.getStatus(userId, config);
+    return !status.isActive && status.cooldownRemainingMs > 0;
   }
 
-  /**
-   * Check if the boost has expired.
-   * Returns `{ expired: true }` if the boost just crossed the duration boundary.
-   * Returns `null` if still active or no state exists.
-   */
-  checkAndExpire(userId: number, timeMultiplier: number): { expired: boolean } | null {
-    const effective = this.effectiveElapsed(userId, timeMultiplier);
-    if (effective === null) return null;
-    const state = this.states.get(userId)!;
-    if (effective >= state.durationMs) {
+  canActivate(userId: number, config: AfterburnerConfig): boolean {
+    return this.getStatus(userId, config).canActivate;
+  }
+
+  getBoostRemainingMs(userId: number, config: AfterburnerConfig): number {
+    return this.getStatus(userId, config).boostRemainingMs;
+  }
+
+  getCooldownRemainingMs(userId: number, config: AfterburnerConfig): number {
+    return this.getStatus(userId, config).cooldownRemainingMs;
+  }
+
+  getTimeToActivationMs(userId: number, config: AfterburnerConfig): number {
+    return this.getStatus(userId, config).timeToActivationMs;
+  }
+
+  checkAndExpire(userId: number, config: AfterburnerConfig): { expired: boolean } | null {
+    const wasActive = this.states.get(userId)?.isActive ?? false;
+    const status = this.getStatus(userId, config);
+    if (wasActive && !status.isActive) {
       return { expired: true };
     }
     return null;
   }
 
-  /** Remove all afterburner state for a user. */
   clearState(userId: number): void {
     this.states.delete(userId);
   }
 
-  /** Return all user IDs that currently have afterburner state stored. */
   getActiveUserIds(): number[] {
     return Array.from(this.states.keys());
   }
 
-  // ── private helpers ──
+  private buildSnapshot(
+    projected: { isActive: boolean; fuelRatio: number; boostedSpeed: number },
+    config: AfterburnerConfig,
+  ): AfterburnerStatusSnapshot {
+    const fuelRatio = this.clampRatio(projected.fuelRatio);
+    const thresholdRatio = AfterburnerService.MIN_ACTIVATION_RATIO;
+    const fuelRemainingMs = fuelRatio * config.fuelCapacityMs;
+    const canActivate = !projected.isActive && fuelRatio + 1e-9 >= thresholdRatio;
+    const cooldownRemainingMs = projected.isActive ? 0 : Math.max(0, (1 - fuelRatio) * config.cooldownMs);
+    const timeToActivationMs = projected.isActive || canActivate
+      ? 0
+      : Math.max(0, (thresholdRatio - fuelRatio) * config.cooldownMs);
 
-  /** Compute effective elapsed ms, or null if no state exists for the user. */
-  private effectiveElapsed(userId: number, timeMultiplier: number): number | null {
-    const state = this.states.get(userId);
-    if (!state) return null;
-    return (Date.now() - state.activatedAtMs) * timeMultiplier;
+    return {
+      isActive: projected.isActive,
+      canActivate,
+      fuelRatio,
+      fuelRemainingMs,
+      fuelCapacityMs: config.fuelCapacityMs,
+      fuelPercent: fuelRatio * 100,
+      boostRemainingMs: projected.isActive ? fuelRemainingMs : 0,
+      cooldownRemainingMs,
+      timeToActivationMs,
+      boostedSpeed: projected.isActive ? projected.boostedSpeed : 0,
+    };
+  }
+
+  private projectState(
+    state: AfterburnerState,
+    config: AfterburnerConfig,
+  ): { isActive: boolean; fuelRatio: number; boostedSpeed: number } {
+    const effectiveElapsed = (Date.now() - state.updatedAtMs) * config.timeMultiplier;
+    const fuelRatio = this.clampRatio(state.fuelRatio);
+
+    if (effectiveElapsed <= 0) {
+      return {
+        isActive: state.isActive,
+        fuelRatio,
+        boostedSpeed: state.boostedSpeed,
+      };
+    }
+
+    if (state.isActive) {
+      const drainRatio = config.fuelCapacityMs > 0 ? effectiveElapsed / config.fuelCapacityMs : 1;
+      const remainingFuelRatio = fuelRatio - drainRatio;
+
+      if (remainingFuelRatio > 0) {
+        return {
+          isActive: true,
+          fuelRatio: remainingFuelRatio,
+          boostedSpeed: state.boostedSpeed,
+        };
+      }
+
+      const drainTimeToEmptyMs = fuelRatio * config.fuelCapacityMs;
+      const rechargeElapsedMs = Math.max(0, effectiveElapsed - drainTimeToEmptyMs);
+      const rechargeRatio = config.cooldownMs > 0 ? rechargeElapsedMs / config.cooldownMs : 1;
+
+      return {
+        isActive: false,
+        fuelRatio: rechargeRatio,
+        boostedSpeed: state.boostedSpeed,
+      };
+    }
+
+    const rechargeRatio = config.cooldownMs > 0 ? effectiveElapsed / config.cooldownMs : 1;
+    return {
+      isActive: false,
+      fuelRatio: fuelRatio + rechargeRatio,
+      boostedSpeed: state.boostedSpeed,
+    };
+  }
+
+  private clampRatio(value: number): number {
+    if (!Number.isFinite(value)) {
+      return 0;
+    }
+    return Math.min(1, Math.max(0, value));
   }
 }
