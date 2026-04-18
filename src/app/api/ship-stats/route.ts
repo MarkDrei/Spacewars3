@@ -9,10 +9,10 @@ import { World } from '@/lib/server/world/world';
 import { TechService } from '@/lib/server/techs/TechService';
 import { createLockContext, LockContext, LocksAtMostAndHas6 } from '@markdrei/ironguard-typescript-locks';
 import { WorldCache } from '@/lib/server/world/worldCache';
-import { UserBonusCache } from '@/lib/server/bonus/UserBonusCache';
 import { AfterburnerService } from '@/lib/server/afterburner/AfterburnerService';
 import { checkAndExpireAfterburner } from '@/lib/server/afterburner/afterburnerExpiration';
 import { TimeMultiplierService } from '@/lib/server/timeMultiplier';
+import type { UserBonuses } from '@/lib/server/bonus/userBonusTypes';
 
 export async function GET(request: NextRequest) {
   try {
@@ -36,8 +36,7 @@ export async function GET(request: NextRequest) {
           throw new ApiError(404, 'User not found');
         }
 
-        // Fetch bonuses (cache hit — already computed by getUserByIdWithLock)
-        const bonuses = await UserBonusCache.getInstance().getBonuses(userContext, user.id);
+        const bonuses = await userWorldCache.getBonusesByUserIdWithLock(userContext, user.id);
 
         // Continue with ship stats logic
         return await getShipStats(worldContext, world, user, bonuses);
@@ -52,7 +51,7 @@ async function getShipStats(
   worldContext: LockContext<LocksAtMostAndHas6>,
   world: World,
   user: User,
-  bonuses: Awaited<ReturnType<typeof UserBonusCache.prototype.getBonuses>>
+  bonuses: UserBonuses
 ): Promise<NextResponse> {
   // Update physics for all objects first
   const currentTime = Date.now();

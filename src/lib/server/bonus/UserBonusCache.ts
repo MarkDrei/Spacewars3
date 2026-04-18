@@ -21,7 +21,7 @@ import {
   getWeaponReloadTimeModifierFromTree,
   ResearchType,
 } from '../techs/techtree';
-import { BASE_REGEN_RATE, UserBonuses } from './userBonusTypes';
+import { UserBonuses } from './userBonusTypes';
 
 // Representative weapon keys used when querying per-weapon-category research.
 const PROJECTILE_WEAPON_KEY = 'auto_turret';
@@ -144,6 +144,8 @@ export class UserBonusCache {
     const ironCapacity = getResearchEffectFromTree(tree, ResearchType.IronCapacity);
     const ironHarvesting = getResearchEffectFromTree(tree, ResearchType.IronHarvesting);
     const shipSpeedEffect = getResearchEffectFromTree(tree, ResearchType.ShipSpeed);
+    const repairSpeedEffect = getResearchEffectFromTree(tree, ResearchType.RepairSpeed);
+    const shieldRechargeEffect = getResearchEffectFromTree(tree, ResearchType.ShieldRechargeRate);
 
     const projDamageMod = getWeaponDamageModifierFromTree(tree, PROJECTILE_WEAPON_KEY);
     const projReloadMod = getWeaponReloadTimeModifierFromTree(tree, PROJECTILE_WEAPON_KEY);
@@ -154,7 +156,7 @@ export class UserBonusCache {
     const energyAccuracyMod = getWeaponAccuracyModifierFromTree(tree, ENERGY_WEAPON_KEY);
 
     // 7. Combine: finalValue = researchEffect × levelMultiplier × commanderMultiplier (where applicable).
-    const repairRate = BASE_REGEN_RATE * levelMultiplier;
+    const repairRate = repairSpeedEffect * levelMultiplier;
     const bonuses: UserBonuses = {
       levelMultiplier,
       commanderMultipliers,
@@ -163,7 +165,7 @@ export class UserBonusCache {
       ironRechargeRate: ironHarvesting * levelMultiplier,
 
       repairRate,
-      shieldRechargeRate: BASE_REGEN_RATE * levelMultiplier,
+      shieldRechargeRate: shieldRechargeEffect * levelMultiplier,
 
       maxShipSpeed:
         shipSpeedEffect * levelMultiplier * commanderMultipliers.shipSpeed,

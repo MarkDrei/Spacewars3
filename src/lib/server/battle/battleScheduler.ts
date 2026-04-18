@@ -26,7 +26,6 @@ import { createLockContext, LockContext, LocksAtMostAndHas2, LocksAtMost3, Locks
 import { UserCache } from '../user/userCache';
 import type { User } from '../user/user';
 import { TimeMultiplierService } from '../timeMultiplier';
-import { UserBonusCache } from '../bonus/UserBonusCache';
 
 // ========================================
 // Constants
@@ -356,7 +355,7 @@ async function fireWeapon(
     
     // Fetch pre-computed bonus factors for the attacker.
     // These include research × level × commander multipliers for all weapon stats.
-    const attackerBonuses = await UserBonusCache.getInstance().getBonuses(userContext, attackerId);
+    const attackerBonuses = await userWorldCache.getBonusesByUserIdWithLock(userContext, attackerId);
     
     // Determine weapon category to select the right bonus factor.
     const isProjectile = weaponSpec.subtype === 'Projectile';

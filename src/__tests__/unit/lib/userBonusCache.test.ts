@@ -8,7 +8,6 @@ import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 import { createLockContext, LockContext, LocksAtMostAndHas4 } from '@markdrei/ironguard-typescript-locks';
 import { USER_LOCK } from '@/lib/server/typedLocks';
 import { UserBonusCache } from '@/lib/server/bonus/UserBonusCache';
-import { BASE_REGEN_RATE } from '@/lib/server/bonus/userBonusTypes';
 import {
   createInitialTechTree,
   getResearchEffectFromTree,
@@ -498,14 +497,15 @@ describe('UserBonusCache iron economy', () => {
 // ---------------------------------------------------------------------------
 
 describe('UserBonusCache defense regen', () => {
-  test('repairRate_level1_equalsBaseRegenRate', async () => {
+  test('repairRate_level1_equalsRepairSpeedResearchEffect', async () => {
     const user = makeUser(0);
     const { userCacheMock, inventoryServiceMock } = makeMocks(user, emptyBridge());
     UserBonusCache.configureDependencies({ userCache: userCacheMock, inventoryService: inventoryServiceMock });
     const cache = UserBonusCache.getInstance();
 
     const bonuses = await withLock4(ctx => cache.getBonuses(ctx, 1));
-    expect(bonuses.repairRate).toBeCloseTo(BASE_REGEN_RATE, 10);
+    const expected = getResearchEffectFromTree(user.techTree, ResearchType.RepairSpeed);
+    expect(bonuses.repairRate).toBeCloseTo(expected, 10);
   });
 
   test('repairRate_level2_scaledByLevelMultiplier', async () => {
@@ -515,17 +515,19 @@ describe('UserBonusCache defense regen', () => {
     const cache = UserBonusCache.getInstance();
 
     const bonuses = await withLock4(ctx => cache.getBonuses(ctx, 1));
-    expect(bonuses.repairRate).toBeCloseTo(BASE_REGEN_RATE * 1.15, 6);
+    const expected = getResearchEffectFromTree(user.techTree, ResearchType.RepairSpeed) * 1.15;
+    expect(bonuses.repairRate).toBeCloseTo(expected, 6);
   });
 
-  test('shieldRechargeRate_sameAsRepairRateAtSameLevel', async () => {
+  test('shieldRechargeRate_level2_scaledByShieldRechargeResearchAndLevelMultiplier', async () => {
     const user = makeUser(1000);
     const { userCacheMock, inventoryServiceMock } = makeMocks(user, emptyBridge());
     UserBonusCache.configureDependencies({ userCache: userCacheMock, inventoryService: inventoryServiceMock });
     const cache = UserBonusCache.getInstance();
 
     const bonuses = await withLock4(ctx => cache.getBonuses(ctx, 1));
-    expect(bonuses.shieldRechargeRate).toBeCloseTo(bonuses.repairRate, 10);
+    const expected = getResearchEffectFromTree(user.techTree, ResearchType.ShieldRechargeRate) * 1.15;
+    expect(bonuses.shieldRechargeRate).toBeCloseTo(expected, 10);
   });
 });
 

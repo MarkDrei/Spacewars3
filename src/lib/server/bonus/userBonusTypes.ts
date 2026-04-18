@@ -8,7 +8,7 @@
 
 import type { CommanderStatKey } from '../inventory/Commander';
 
-/** Base regeneration rate per second for repair and shield recharge (no research involved). */
+/** Base regeneration rate per second used only when bonus data is unavailable. */
 export const BASE_REGEN_RATE = 0.1;
 
 /**
@@ -40,10 +40,10 @@ export interface UserBonuses {
   /** getResearchEffect(IronHarvesting) × levelMultiplier */
   ironRechargeRate: number;
 
-  /** BASE_REGEN_RATE × levelMultiplier (no research involved) */
+  /** getResearchEffect(RepairSpeed) × levelMultiplier */
   repairRate: number;
 
-  /** BASE_REGEN_RATE × levelMultiplier (no research involved) */
+  /** getResearchEffect(ShieldRechargeRate) × levelMultiplier */
   shieldRechargeRate: number;
 
   /**

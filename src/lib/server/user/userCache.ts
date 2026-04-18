@@ -15,6 +15,7 @@ import { getUserByIdFromDb, getUserByUsernameFromDb } from './userRepo';
 import { WorldCache } from '../world/worldCache';
 import { Cache } from '../caches/Cache';
 import { UserBonusCache } from '../bonus/UserBonusCache';
+import type { UserBonuses } from '../bonus/userBonusTypes';
 
 type userCacheDependencies = {
   worldCache?: WorldCache;
@@ -301,6 +302,37 @@ export class UserCache extends Cache {
       return user;
     }
     return null;
+  }
+
+  /**
+   * Return pre-computed bonuses for a user while holding USER_LOCK.
+   * Loads the user into the cache first if needed, then delegates to the bonus cache.
+   */
+  async getBonusesByUserIdWithLock(
+    context: LockContext<LocksAtMostAndHas4>,
+    userId: number
+  ): Promise<UserBonuses> {
+    let user = this.getUserByIdFromCache(context, userId);
+
+    if (!user) {
+      user = await this.loadUserFromDb(context, userId);
+      if (!user) {
+        throw new Error(`User not found: ${userId}`);
+      }
+      this.setUserUnsafe(context, user);
+    }
+
+    return UserBonusCache.getInstance().getBonuses(context, userId);
+  }
+
+  /** Invalidate cached bonus values for a user. */
+  invalidateBonuses(userId: number): void {
+    UserBonusCache.getInstance().invalidateBonuses(userId);
+  }
+
+  /** Clear all cached bonus values. */
+  discardAllBonuses(): void {
+    UserBonusCache.getInstance().discardAllBonuses();
   }
 
   /**

@@ -8,7 +8,6 @@ import { User } from '@/lib/server/user/user';
 import { createLockContext, LockContext, LocksAtMostAndHas4 } from '@markdrei/ironguard-typescript-locks';
 import { TimeMultiplierService } from '@/lib/server/timeMultiplier';
 import { getResearchEffectFromTree, ResearchType } from '@/lib/server/techs/techtree';
-import { UserBonusCache } from '@/lib/server/bonus/UserBonusCache';
 
 export async function GET(request: NextRequest) {
   try {
@@ -38,8 +37,7 @@ export async function GET(request: NextRequest) {
 
 async function processUserStats(user: User, userWorldCache: UserCache, userCtx: LockContext<LocksAtMostAndHas4>): Promise<NextResponse> {
   const now = Math.floor(Date.now() / 1000);
-  // Fetch bonuses (cache hit — already computed by getUserByIdWithLock)
-  const bonuses = await UserBonusCache.getInstance().getBonuses(userCtx, user.id);
+  const bonuses = await userWorldCache.getBonusesByUserIdWithLock(userCtx, user.id);
   user.updateStats(now, bonuses);
   
   // Update cache with new data (using unsafe methods because we have proper locks)

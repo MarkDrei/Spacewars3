@@ -7,7 +7,6 @@ import { handleApiError, requireAuth, validateRequired, ApiError } from '@/lib/s
 import { USER_LOCK } from '@/lib/server/typedLocks';
 import { User } from '@/lib/server/user/user';
 import { createLockContext, LockContext, LocksAtMostAndHas4 } from '@markdrei/ironguard-typescript-locks';
-import { UserBonusCache } from '@/lib/server/bonus/UserBonusCache';
 import { StatisticsCache } from '@/lib/server/statistics/StatisticsCache';
 
 export async function POST(request: NextRequest) {
@@ -54,8 +53,7 @@ async function performResearchTrigger(
   userCtx: LockContext<LocksAtMostAndHas4>
 ): Promise<NextResponse> {
   const now = Math.floor(Date.now() / 1000);
-  // Fetch bonuses (cache hit — already computed by getUserByIdWithLock)
-  const bonuses = await UserBonusCache.getInstance().getBonuses(userCtx, user.id);
+  const bonuses = await userWorldCache.getBonusesByUserIdWithLock(userCtx, user.id);
   user.updateStats(now, bonuses);
   
   if (user.techTree.activeResearch) {

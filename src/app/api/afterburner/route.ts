@@ -8,10 +8,10 @@ import { User } from '@/lib/server/user/user';
 import { World } from '@/lib/server/world/world';
 import { createLockContext, LockContext, LocksAtMostAndHas4, LocksAtMostAndHas6 } from '@markdrei/ironguard-typescript-locks';
 import { WorldCache } from '@/lib/server/world/worldCache';
-import { UserBonusCache } from '@/lib/server/bonus/UserBonusCache';
 import { AfterburnerService } from '@/lib/server/afterburner/AfterburnerService';
 import { getResearchEffectFromTree, ResearchType } from '@/lib/server/techs/techtree';
 import { TimeMultiplierService } from '@/lib/server/timeMultiplier';
+import type { UserBonuses } from '@/lib/server/bonus/userBonusTypes';
 
 export async function POST(request: NextRequest) {
   try {
@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
           throw new ApiError(404, 'User not found');
         }
 
-        const bonuses = await UserBonusCache.getInstance().getBonuses(userContext, user.id);
+        const bonuses = await userWorldCache.getBonusesByUserIdWithLock(userContext, user.id);
 
         return await performAfterburnerActivation(worldContext, userContext, world, user, bonuses);
       });
@@ -50,7 +50,7 @@ async function performAfterburnerActivation(
   userCtx: LockContext<LocksAtMostAndHas4>,
   world: World,
   user: User,
-  bonuses: Awaited<ReturnType<typeof UserBonusCache.prototype.getBonuses>>,
+  bonuses: UserBonuses,
 ): Promise<NextResponse> {
   const worldCache = WorldCache.getInstance();
   const afterburnerService = AfterburnerService.getInstance();
