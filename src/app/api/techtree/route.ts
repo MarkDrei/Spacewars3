@@ -61,7 +61,16 @@ function processTechTree(user: User, researchSpeedFactor: number): NextResponse 
     };
   });
 
-  const techTree = user.techTree.activeResearch
+  const techTree = adjustActiveResearchDuration(user, researchSpeedFactor);
+  
+  return NextResponse.json({
+    techTree,
+    researches
+  });
+}
+
+function adjustActiveResearchDuration(user: User, researchSpeedFactor: number) {
+  return user.techTree.activeResearch
     ? {
         ...user.techTree,
         activeResearch: {
@@ -70,9 +79,4 @@ function processTechTree(user: User, researchSpeedFactor: number): NextResponse 
         },
       }
     : user.techTree;
-  
-  return NextResponse.json({
-    techTree,
-    researches
-  });
 }

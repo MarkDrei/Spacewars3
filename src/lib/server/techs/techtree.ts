@@ -386,7 +386,7 @@ export const AllResearches: Record<ResearchType, Research> = {
   },
   [ResearchType.ArtificialIntelligence]: {
     type: ResearchType.ArtificialIntelligence,
-    name: 'Artifical Intelligence',
+    name: 'Artificial Intelligence',
     level: 0,
     baseUpgradeCost: 15000,
     baseUpgradeDuration: 2400,
@@ -470,6 +470,7 @@ export const AllResearches: Record<ResearchType, Research> = {
  */
 const PROJECTILE_WEAPONS = ['auto_turret', 'gauss_rifle', 'rocket_launcher'] as const;
 const ENERGY_WEAPONS = ['pulse_laser', 'plasma_lance', 'photon_torpedo'] as const;
+const MIN_TIME_INVERSE_MULTIPLIER = 0.1;
 
 /**
  * Represents the tech tree, which hosts all researches for a user.
@@ -672,8 +673,16 @@ export function getResearchUpgradeDuration(research: Research, level: number): n
  * Example: 10% reduction => factor 1 / 0.9 ≈ 1.111.
  */
 export function getTimeSpeedFactorFromEffect(effectPercentage: number): number {
-  const inverseMultiplier = Math.max(0.1, 1 - (effectPercentage / 100));
+  const inverseMultiplier = Math.max(MIN_TIME_INVERSE_MULTIPLIER, 1 - (effectPercentage / 100));
   return 1 / inverseMultiplier;
+}
+
+export function getTimeSpeedFactorFromTree(
+  tree: TechTree,
+  type: ResearchType.ConstructionSpeed | ResearchType.ArtificialIntelligence,
+  levelMultiplier: number = 1
+): number {
+  return getTimeSpeedFactorFromEffect(getResearchEffectFromTree(tree, type)) * levelMultiplier;
 }
 
 /**

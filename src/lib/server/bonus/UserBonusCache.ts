@@ -16,7 +16,7 @@ import { InventoryService } from '../inventory/InventoryService';
 import { Commander, COMMANDER_STAT_KEYS, CommanderStatKey, CommanderData } from '../inventory/Commander';
 import {
   getResearchEffectFromTree,
-  getTimeSpeedFactorFromEffect,
+  getTimeSpeedFactorFromTree,
   getWeaponDamageModifierFromTree,
   getWeaponAccuracyModifierFromTree,
   getWeaponReloadTimeModifierFromTree,
@@ -145,8 +145,6 @@ export class UserBonusCache {
     const ironCapacity = getResearchEffectFromTree(tree, ResearchType.IronCapacity);
     const ironHarvesting = getResearchEffectFromTree(tree, ResearchType.IronHarvesting);
     const shipSpeedEffect = getResearchEffectFromTree(tree, ResearchType.ShipSpeed);
-    const constructionSpeedEffect = getResearchEffectFromTree(tree, ResearchType.ConstructionSpeed);
-    const researchSpeedEffect = getResearchEffectFromTree(tree, ResearchType.ArtificialIntelligence);
 
     const projDamageMod = getWeaponDamageModifierFromTree(tree, PROJECTILE_WEAPON_KEY);
     const projReloadMod = getWeaponReloadTimeModifierFromTree(tree, PROJECTILE_WEAPON_KEY);
@@ -171,9 +169,9 @@ export class UserBonusCache {
       maxShipSpeed:
         shipSpeedEffect * levelMultiplier * commanderMultipliers.shipSpeed,
       constructionSpeedFactor:
-        getTimeSpeedFactorFromEffect(constructionSpeedEffect) * levelMultiplier,
+        getTimeSpeedFactorFromTree(tree, ResearchType.ConstructionSpeed, levelMultiplier),
       researchSpeedFactor:
-        getTimeSpeedFactorFromEffect(researchSpeedEffect) * levelMultiplier,
+        getTimeSpeedFactorFromTree(tree, ResearchType.ArtificialIntelligence, levelMultiplier),
 
       projectileWeaponDamageFactor:
         projDamageMod * levelMultiplier * commanderMultipliers.projectileWeaponDamage,

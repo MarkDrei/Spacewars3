@@ -300,7 +300,6 @@ const ResearchPageClient: React.FC<ResearchPageClientProps> = () => {
       teleport: 'Teleportation',
       teleportRechargeSpeed: 'TeleportationRechargeSpeed',
       constructionSpeed: 'ConstructionSpeed',
-      artificialIntelligence: 'IronHarvesting',
       // Add more as available, fallback to IronHarvesting for now
     };
     return imageMap[type] || 'IronHarvesting';
