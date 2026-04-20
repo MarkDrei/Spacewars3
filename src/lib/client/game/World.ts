@@ -10,6 +10,7 @@ import { WorldData, Asteroid as SharedAsteroid, Shipwreck as SharedShipwreck, Es
 import { DEFAULT_WORLD_WIDTH, DEFAULT_WORLD_HEIGHT } from '@shared/worldConstants';
 import { normalizePosition } from '@shared/physics';
 import { WorldBounds } from '@shared/physics';
+import { NPC_ORBIT_RADIUS } from '@shared/npcOrbit';
 
 export class World {
 
@@ -165,6 +166,18 @@ export class World {
                 case 'starbase': {
                     const starbaseData = normalizedObject as SharedStarbase;
                     clientObject = new Starbase(starbaseData);
+                    break;
+                }
+
+                case 'npc_ship': {
+                    // Compute tangential linear speed from orbit data so the
+                    // intercept calculator can predict NPC movement as a
+                    // straight line (tangent) at actual orbital speed.
+                    if (normalizedObject.angularVelocityDegPerSec) {
+                        normalizedObject.speed =
+                            normalizedObject.angularVelocityDegPerSec * (Math.PI / 180) * NPC_ORBIT_RADIUS;
+                    }
+                    clientObject = new Ship(normalizedObject);
                     break;
                 }
                     

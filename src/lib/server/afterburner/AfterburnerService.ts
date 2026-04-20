@@ -39,15 +39,16 @@ export class AfterburnerService {
 
   activate(userId: number, config: AfterburnerConfig): AfterburnerStatusSnapshot {
     const status = this.getStatus(userId, config);
-    this.states.set(userId, {
+    const nextState = {
       userId,
       updatedAtMs: Date.now(),
       fuelRatio: status.fuelRatio,
       isActive: true,
       boostedSpeed: config.boostedSpeed,
-    });
+    };
+    this.states.set(userId, nextState);
 
-    return this.getStatus(userId, config);
+    return this.buildSnapshot(nextState, config);
   }
 
   deactivate(userId: number, config: AfterburnerConfig): AfterburnerStatusSnapshot | null {
@@ -57,15 +58,16 @@ export class AfterburnerService {
     }
 
     const state = this.states.get(userId);
-    this.states.set(userId, {
+    const nextState = {
       userId,
       updatedAtMs: Date.now(),
       fuelRatio: status.fuelRatio,
       isActive: false,
       boostedSpeed: state?.boostedSpeed ?? config.boostedSpeed,
-    });
+    };
+    this.states.set(userId, nextState);
 
-    return this.getStatus(userId, config);
+    return this.buildSnapshot(nextState, config);
   }
 
   getState(userId: number): AfterburnerState | null {

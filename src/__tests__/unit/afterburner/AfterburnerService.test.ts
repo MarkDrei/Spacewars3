@@ -38,6 +38,16 @@ describe('AfterburnerService', () => {
     expect(state!.boostedSpeed).toBe(DEFAULT_CONFIG.boostedSpeed);
   });
 
+  it('activate_returnsImmediateSnapshot_withFullFuel', () => {
+    const status = service.activate(USER_ID, DEFAULT_CONFIG);
+
+    expect(status.isActive).toBe(true);
+    expect(status.fuelRemainingMs).toBe(DEFAULT_CONFIG.fuelCapacityMs);
+    expect(status.fuelCapacityMs).toBe(DEFAULT_CONFIG.fuelCapacityMs);
+    expect(status.fuelPercent).toBe(100);
+    expect(status.boostRemainingMs).toBe(DEFAULT_CONFIG.fuelCapacityMs);
+  });
+
   it('isActive_withinFuelDuration_returnsTrue', () => {
     service.activate(USER_ID, DEFAULT_CONFIG);
 

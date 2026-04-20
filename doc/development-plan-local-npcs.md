@@ -21,6 +21,23 @@ As a player, I see up to 4 "Iron Horde Pirate" NPC ships circling my nearest sta
 
 #### Task 1.1: NPC data model & ID scheme
 
+**Status**: ✅ COMPLETED
+**Implementation Summary**: Created NPC type definitions, constants with ID scheme utilities, and NPCManager singleton with per-player NPC generation, orbital movement, midnight respawn, level refresh, defeat/battle tracking. Also migrated STARBASE_ID_OFFSET to 2B and added 'npc_ship' to shared SpaceObject type union.
+**Files Modified/Created**:
+- `src/lib/server/npc/npcTypes.ts` — NpcShip interface definition
+- `src/lib/server/npc/npcConstants.ts` — Constants (offsets, orbit params) and utility functions (npcUserId, isNpcId, parseNpcId)
+- `src/lib/server/npc/NPCManager.ts` — Singleton with getNpcsForPlayer, updateNpcPositions, markDefeated, setInBattle, getNpcById, positionForAngle
+- `src/shared/starbases.ts` — Changed STARBASE_ID_OFFSET from 9000 to 2_000_000_000
+- `src/shared/src/types/gameTypes.ts` — Added 'npc_ship' to SpaceObject.type union, added orbitAngleDeg and angularVelocityDegPerSec optional fields
+- `src/app/api/world/route.ts` — Inject per-player NPCs into world response (Task 1.3 combined)
+- `src/__tests__/unit/npc/NPCManager.test.ts` — 46 unit tests covering all NPC logic
+- `src/__tests__/unit/api/world-api.test.ts` — Updated to mock UserCache and use STARBASE_ID_OFFSET constant
+- `src/__tests__/unit/lib/Starbase.test.ts` — Updated to use STARBASE_ID_OFFSET constant
+- `src/__tests__/unit/lib/Game-starbase-callback.test.ts` — Updated to use STARBASE_ID_OFFSET constant
+**Deviations from Plan**: Tasks 1.1–1.5 and 1.3 were implemented together as a single cohesive unit since the NPCManager naturally contains all of this logic (generation, position update, midnight respawn, level refresh, defeat/battle flags). This avoids artificial separation of tightly coupled code.
+**Arc42 Updates**: None required (no new architectural layer — follows existing singleton pattern)
+**Test Results**: ✅ All 1633 tests passing across 151 files, no linting errors, build succeeds
+
 **Action**: Create an NPC type and an `NPCManager` singleton (globalThis-based, like other caches) that holds per-player NPC state in memory. No DB persistence for orbit state — NPCs are regenerated on server start. The explicit numeric ID scheme is shared between the in-memory space-object entry and the lazily-created users-table row.
 
 **Files**:
@@ -66,6 +83,9 @@ As a player, I see up to 4 "Iron Horde Pirate" NPC ships circling my nearest sta
 
 #### Task 1.3: Inject NPCs into world API response
 
+**Status**: ✅ COMPLETED (implemented as part of Task 1.1)
+**Implementation Summary**: NPCs are injected into world API response per-player. Each player only sees their own NPCs.
+
 **Action**: In the `/api/world` route, after the existing spaceObjects + starbases, append the player's NPC ships as entries with `type: 'npc_ship'`. Player level and userId are already available from UserCache / session.
 
 **Files**:
@@ -99,6 +119,16 @@ As a player, I see up to 4 "Iron Horde Pirate" NPC ships circling my nearest sta
 
 #### Task 2.1: Add `'npc_ship'` to client types and routing
 
+**Status**: ✅ COMPLETED
+**Implementation Summary**: Created NPCShipRenderer extending SpaceObjectRendererBase with NPC image loading (npc1-4.png), hostile red fallback triangle, and red name label. Added 'npc_ship' case to SpaceObjectsRenderer dispatch and NPCShipRenderer field.
+**Files Modified/Created**:
+- `src/lib/client/renderers/NPCShipRenderer.ts` — New renderer with image selection by picture_id, hostile red fallback, and name label
+- `src/lib/client/renderers/SpaceObjectsRenderer.ts` — Added NPCShipRenderer import, field, constructor init, and 'npc_ship' case in renderObject
+- `src/__tests__/unit/renderers/SpaceObjectsRenderer.test.ts` — Added mock for NPCShipRenderer and dispatch test for npc_ship type
+**Deviations from Plan**: Image selection uses picture_id directly (1-4 as set by server's npcIndex+1) rather than computing from level offset, since the server already provides the correct picture_id.
+**Arc42 Updates**: None required
+**Test Results**: ✅ All 1634 tests passing, no linting errors
+
 **Action**: Extend the client-side `SpaceObject` type. In `SpaceObjectsRenderer`, route `'npc_ship'` to a new `NPCShipRenderer`. The renderer:
 
 - Selects image `npc1.png` … `npc4.png` based on the NPC's level offset (level − playerBaseLevel ∈ 0…3).
@@ -111,6 +141,14 @@ As a player, I see up to 4 "Iron Horde Pirate" NPC ships circling my nearest sta
 
 #### Task 2.2: Client-side optimistic position interpolation
 
+**Status**: ✅ COMPLETED
+**Implementation Summary**: Implemented client-side orbit interpolation in NPCShipRenderer.drawNpcShip that advances the NPC's orbit angle based on elapsed time since server snapshot, computing interpolated x/y coordinates and tangent-to-orbit facing direction before delegating to the base renderer.
+**Files Modified/Created**:
+- `src/lib/client/renderers/NPCShipRenderer.ts` — Added interpolateOrbitPosition private method called before drawSpaceObject
+**Deviations from Plan**: No changes needed in World.ts — orbit metadata (orbitAngleDeg, angularVelocityDegPerSec, last_position_update_ms) flows through SpaceObject naturally.
+**Arc42 Updates**: None required
+**Test Results**: ✅ All 1634 tests passing, no linting errors
+
 **Action**: Between server polls, extrapolate NPC positions along their circular orbit. The server sends `orbitAngleDeg` and `angularVelocityDegPerSec` as extra fields on NPC space objects. The client uses the server timestamp plus elapsed local time to advance the angle, then derives x/y and facing direction.
 
 **Files**:
@@ -122,13 +160,15 @@ As a player, I see up to 4 "Iron Horde Pirate" NPC ships circling my nearest sta
 
 #### Task 2.3: NPC ship images
 
-**Action**: `npc1.png` already exists. `npc2.png`, `npc3.png`, `npc4.png` do not yet exist. Copy `npc1.png` as placeholder for each missing file so the renderer can load them. (Proper artwork can replace the placeholders later.)
-
-**Files**:
-
-- `public/assets/images/npc2.png` — copy of `npc1.png` (placeholder)
-- `public/assets/images/npc3.png` — copy of `npc1.png` (placeholder)
-- `public/assets/images/npc4.png` — copy of `npc1.png` (placeholder)
+**Status**: ✅ COMPLETED
+**Implementation Summary**: Copied npc1.png as placeholder for npc2.png, npc3.png, and npc4.png so the renderer can load all four NPC ship images.
+**Files Modified/Created**:
+- `public/assets/images/npc2.png` — copy of npc1.png (placeholder)
+- `public/assets/images/npc3.png` — copy of npc1.png (placeholder)
+- `public/assets/images/npc4.png` — copy of npc1.png (placeholder)
+**Deviations from Plan**: None
+**Arc42 Updates**: None required
+**Test Results**: ✅ All 1634 tests passing, no linting errors
 
 ---
 
@@ -154,59 +194,34 @@ Key principle: **NPC disappears from the world regardless of battle outcome** (p
 
 #### Task 3.1: NPC user upsert with randomised stats
 
-**Action**: Implement `upsertNpcUser(npc: NpcShip): Promise<void>` in `npcCombat.ts`. This is called both on first attack AND on midnight respawn (re-randomise stats).
-
-**Stat generation rules**:
-
-- **Tech counts** (columns `ship_hull`, `kinetic_armor`, `energy_shield`, weapons): each has a fixed base value (e.g. `100`). Apply per-tech random variance: `count = Math.round(base × uniform(0.6, 1.7))`. Each tech is rolled independently.
-- **Defense values** (`hull_current`, `armor_current`, `shield_current`): derive via the existing `TechService.calculateMaxDefense(user, bonuses)` path — do **not** hard-code the formula. This ensures NPC defense obeys the same mechanics as regular players.
-  - To do this: persist the tech-count columns, then call `UserBonusCache.getInstance().invalidateBonuses(npcUserId)` to force re-computation, then call `TechService.calculateMaxDefense(user, bonuses)` to get the maximums, then set `hull_current = hull_max`, `armor_current = armor_max`, `shield_current = shield_max` ("fully repaired").
-- **Weapon columns**: The NPC at relative level +0 gets 1 randomly selected weapon type; +1 gets 2 random types; +2 gets 3; +3 gets all 4. Each selected weapon type receives the same fixed count (with the same 0.6–1.7 variance). Unselected weapon types are set to 0.
-  - Knight must identify the exact weapon column names from `src/lib/server/schema.ts`.
-- **Username**: `iron_horde_{ownerId}_{npcIndex}` (not loginable; password = random bcrypt hash).
-- **ID**: computed as `NPC_USER_ID_OFFSET + ownerId * NPC_IDS_PER_USER + npcIndex`.
-
-**DB upsert**: Use `INSERT INTO users (id, username, ...) VALUES ($1, ...) ON CONFLICT (id) DO UPDATE SET username = EXCLUDED.username, ship_hull = EXCLUDED.ship_hull, ...` — this handles both first creation and respawn in one statement.
-
-**UserBonusCache initialisation**: After upsert, call `UserBonusCache.getInstance().invalidateBonuses(npcUserId)` to ensure bonuses are freshly computed when the battle system first accesses the NPC user. No need to pre-warm; it will be computed on first `getUserBonuses(npcUserId)` call.
-
-**UserCache injection**: After upsert, load the NPC's row into UserCache via `UserCache.getInstance().loadUser(npcUserId)` (add this helper method to UserCache if it does not exist), so the battle system finds the user in cache without a re-query.
-
-**Files**:
-
-- `src/lib/server/npc/npcCombat.ts` — `upsertNpcUser(npc, db): Promise<User>`
-- `src/lib/server/npc/NPCManager.ts` — set `npcUserCreated = true` after upsert
-- `src/lib/server/user/userCache.ts` — add `loadUser(userId): Promise<void>` if absent
+**Status**: ✅ COMPLETED
+**Implementation Summary**: Implemented `upsertNpcUser` in `npcCombat.ts` with randomised tech counts (defense base 100 with 0.6–1.7 variance, weapon selection by npcIndex), DB upsert via ON CONFLICT DO UPDATE, bonus cache invalidation, UserCache injection via `getUserByIdWithLock`, and temporary space object injection into WorldCache for battle system compatibility. Also implemented `calculateNpcIronReward` and `removeNpcSpaceObject` helpers.
+**Files Modified/Created**:
+- `src/lib/server/npc/npcCombat.ts` — Created: `upsertNpcUser`, `generateNpcTechCounts`, `calculateNpcIronReward`, `removeNpcSpaceObject`, `injectNpcSpaceObject`
+- `src/__tests__/unit/npc/npcCombat.test.ts` — 19 unit tests covering tech count generation and iron reward calculation
+**Deviations from Plan**: No `loadUser` method added to UserCache — instead reused existing `getUserByIdWithLock` which loads from DB into cache. Space object injection into WorldCache was added (not in original plan) to make battle system's `getShipPosition` work for NPCs. `npcUserCreated` flag is set inside `upsertNpcUser` directly instead of in NPCManager.
+**Arc42 Updates**: None required
+**Test Results**: ✅ All 1653 tests passing, no linting errors
 
 #### Task 3.2: Wire NPC attack into attack API
 
-**Action**: In `/api/attack/route.ts`, detect if the target space object ID falls in the NPC range (`>= NPC_USER_ID_OFFSET`). If so:
-
-1. Resolve the `NpcShip` from `NPCManager` using the target ID.
-2. Call `upsertNpcUser(npc)` (idempotent — safe to call if already created).
-3. Proceed with normal `battleService.initiateBattle(playerId, npcUserId)`.
-
-**Files**:
-
-- `src/app/api/attack/route.ts` — NPC detection branch
-- `src/lib/server/npc/npcConstants.ts` — export `isNpcId(id: number): boolean`
-
-**Quality Requirements**: Must respect existing lock ordering (BATTLE_LOCK → USER_LOCK).
+**Status**: ✅ COMPLETED
+**Implementation Summary**: Modified attack route to detect NPC targets via `isNpcId`, validate NPC state (not defeated, not in battle), upsert NPC user, mark NPC as in-battle, and skip level restriction check for NPCs. Rest of battle flow works normally since NPC is now a full user in cache with a space object.
+**Files Modified/Created**:
+- `src/app/api/attack/route.ts` — Added NPC detection branch with validation, upsert, and level-check skip
+**Deviations from Plan**: No changes needed to `npcConstants.ts` (already exported `isNpcId`). Recent victims check works naturally since NPC IDs are unique per player.
+**Arc42 Updates**: None required
+**Test Results**: ✅ All 1653 tests passing, no linting errors
 
 #### Task 3.3: NPC defeat handling — player wins OR loses
 
-**Action**: In battle resolution (`battleService.resolveBattle` or equivalent), after battle ends:
-
-- **If NPC is the loser** (player wins): award iron `5000 × 5^(NPC.level−1)` plus standard XP/score to the player.
-- **In both cases** (regardless of who wins): mark `defeated = true` with `defeatTime = now` in NPCManager → NPC disappears from world immediately.
-
-Additional: remove the NPC's temporary `ship_id` space object (if one was created) so it does not linger in the world.
-
-**Files**:
-
-- `src/lib/server/battle/battleService.ts` — `resolveBattle()` hook; check `isNpcId(loserId)` and `isNpcId(winnerId)` separately
-- `src/lib/server/npc/NPCManager.ts` — `markDefeated(npcId: number)`
-- `src/lib/server/npc/npcCombat.ts` — iron/XP award logic for NPC defeat
+**Status**: ✅ COMPLETED
+**Implementation Summary**: Modified `resolveBattle` in battleService.ts to handle NPC participants: NPC loser → award fixed iron reward to player (no loser-to-winner transfer); NPC winner → skip iron transfer entirely; skip teleportation when loser is NPC; mark NPC as defeated and remove space object from WorldCache; skip messages and statistics events for NPC participants.
+**Files Modified/Created**:
+- `src/lib/server/battle/battleService.ts` — Added NPC-aware iron handling, teleport skip, defeat marking, space object cleanup, message/stats filtering
+**Deviations from Plan**: Iron reward logic placed directly in resolveBattle rather than separate npcCombat function (simpler, avoids extra indirection). Statistics events also filtered for NPCs.
+**Arc42 Updates**: None required
+**Test Results**: ✅ All 1653 tests passing, no linting errors
 
 #### Task 3.4: Midnight respawn stats reset
 
@@ -219,12 +234,12 @@ Additional: remove the NPC's temporary `ship_id` space object (if one was create
 
 #### Task 3.5: NPC stops orbiting during battle
 
-**Action**: While `inBattle = true`, `updateNpcPositions` skips the NPC (already noted in Task 1.2 — make explicit with the `NpcShip.inBattle` flag set by `battleService` hooks).
-
-**Files**:
-
-- `src/lib/server/npc/npcTypes.ts` — add `inBattle: boolean`
-- `src/lib/server/npc/NPCManager.ts` — `setInBattle(npcId, value)` helper
+**Status**: ✅ COMPLETED
+**Implementation Summary**: Already implemented in Task 1.1 (NPCManager.updateNpcPositions skips NPCs with inBattle=true). Task 3.2 sets inBattle=true via NPCManager.setInBattle when attack starts; Task 3.3 clears it via setInBattle(false) then markDefeated when battle ends.
+**Files Modified/Created**: No additional files — logic wired through Tasks 3.2 and 3.3
+**Deviations from Plan**: None — inBattle flag and setInBattle helper already existed from Task 1.1
+**Arc42 Updates**: None required
+**Test Results**: ✅ All 1653 tests passing, no linting errors
 
 ---
 
