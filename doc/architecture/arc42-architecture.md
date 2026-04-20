@@ -29,6 +29,10 @@ Status: Work in Progress
 
 ### 1.1 Requirements Overview
 
+> **External requirements document:** detailed functional requirements, the full feature overview, and future balancing scenarios are maintained in
+> **[doc/functional-requirements.md](../functional-requirements.md)**.
+> The arc42 sections below summarise the most architecturally relevant aspects only.
+
 Spacewars Ironstrike is a 2D space exploration game built with Next.js 15, TypeScript, and React. Players navigate space, collect resources, upgrade their ships through a technology tree, and engage in battles.
 
 **Key Features:**
