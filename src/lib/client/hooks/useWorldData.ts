@@ -32,11 +32,18 @@ export const useWorldData = (pollInterval: number = 3000): UseWorldDataReturn =>
     if (!data) return data;
     
     const now = Date.now();
-    
+
+    // NPC ships use client-side orbit interpolation in their renderer and must NOT
+    // be processed by the physics engine. Advancing last_position_update_ms for NPCs
+    // would reset the elapsed-time window used by NPCShipRenderer, making them appear
+    // stationary between server polls.
+    const npcObjects = data.spaceObjects.filter(obj => obj.type === 'npc_ship');
+    const nonNpcObjects = data.spaceObjects.filter(obj => obj.type !== 'npc_ship');
+
     // Always use standard incremental physics for optimistic updates
     // The time correction is only applied when receiving fresh server data
     const updatedObjects = updateAllObjectPositions(
-      data.spaceObjects,
+      nonNpcObjects,
       now,
       data.worldSize,
       50,
@@ -45,7 +52,7 @@ export const useWorldData = (pollInterval: number = 3000): UseWorldDataReturn =>
     
     return {
       ...data,
-      spaceObjects: updatedObjects,
+      spaceObjects: [...updatedObjects, ...npcObjects],
     };
   }, []);
 
@@ -68,9 +75,13 @@ export const useWorldData = (pollInterval: number = 3000): UseWorldDataReturn =>
       }
       
       // Apply time correction to server data to account for network latency and clock drift
-      // This ensures the positions are accurate for the current moment
-      const correctedObjects = updateAllObjectPositionsWithTimeCorrection(
-        result.data.data.spaceObjects,
+      // This ensures the positions are accurate for the current moment.
+      // NPC ships are excluded — they use renderer-side orbit interpolation.
+      const allObjects = result.data.data.spaceObjects;
+      const npcObjects = allObjects.filter(obj => obj.type === 'npc_ship');
+      const nonNpcObjects = allObjects.filter(obj => obj.type !== 'npc_ship');
+      const correctedNonNpc = updateAllObjectPositionsWithTimeCorrection(
+        nonNpcObjects,
         Date.now(),
         result.data.responseReceivedAt,
         result.data.roundTripTime,
@@ -82,7 +93,7 @@ export const useWorldData = (pollInterval: number = 3000): UseWorldDataReturn =>
       // Extract timing information and merge with corrected world data
       const worldDataWithTiming: WorldDataState = {
         ...result.data.data,
-        spaceObjects: correctedObjects,
+        spaceObjects: [...correctedNonNpc, ...npcObjects],
         responseReceivedAt: result.data.responseReceivedAt,
         roundTripTime: result.data.roundTripTime
       };

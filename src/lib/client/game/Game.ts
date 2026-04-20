@@ -118,17 +118,12 @@ export class Game {
         
         // Check if it's a player ship or NPC ship (attack) or collectible object
         if (hoveredObject.getType() === 'player_ship' || hoveredObject.getType() === 'npc_ship') {
-          if (this.attackClickMode) {
-            if (distance <= 100) {
-              // Player ship is in attack range - initiate battle
-              this.handleAttack(hoveredObject);
-            } else {
-              // Player ship is too far - use interception to get closer
-              this.handleInterception(hoveredObject);
-            }
+          if (this.attackClickMode && distance <= 100) {
+            // In attack range - initiate battle
+            this.handleAttack(hoveredObject);
           } else {
-            // Attack mode is off, treat as empty space click
-            this.handleEmptySpaceClick(canvas, logicalX, logicalY);
+            // Not in attack range, or attack mode off - intercept toward ship/NPC
+            this.handleInterception(hoveredObject);
           }
         } else if (hoveredObject.getType() === 'starbase') {
           if (this.attackClickMode) {

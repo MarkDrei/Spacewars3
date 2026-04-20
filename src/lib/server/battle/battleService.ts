@@ -415,6 +415,32 @@ interface IronTransferResult {
   loserName: string;
 }
 
+async function destroyLoserIronOnNpcVictory(
+  context: LockContext<LocksAtMostAndHas4>,
+  winnerId: number,
+  loserId: number
+): Promise<IronTransferResult> {
+  const userWorldCache = UserCache.getInstance2();
+
+  const winner = userWorldCache.getUserByIdFromCache(context, winnerId);
+  const loser = await userWorldCache.getUserByIdWithLock(context, loserId);
+  if (!loser) {
+    throw new Error('Loser not found during NPC iron destruction');
+  }
+
+  const lostAmount = loser.iron;
+  if (lostAmount > 0) {
+    loser.subtractIron(lostAmount);
+    await userWorldCache.updateUserInCache(context, loser);
+  }
+
+  return {
+    amount: lostAmount,
+    winnerName: winner?.username ?? 'NPC',
+    loserName: loser.username,
+  };
+}
+
 async function transferIronOnBattle(
   context: LockContext<LocksAtMostAndHas4>,
   winnerId: number,
@@ -551,11 +577,8 @@ export async function resolveBattle(
         ironResult = { amount: added, winnerName: winner.username, loserName: loser?.username ?? 'NPC' };
       }
     } else if (winnerIsNpc) {
-      // NPC wins vs Player: skip iron transfer entirely (don't take player's iron)
-      const userWorldCache = UserCache.getInstance2();
-      const winner = userWorldCache.getUserByIdFromCache(userContext, winnerId);
-      const loser = userWorldCache.getUserByIdFromCache(userContext, loserId);
-      ironResult = { amount: 0, winnerName: winner?.username ?? 'NPC', loserName: loser?.username ?? '' };
+      // NPC wins vs Player: the player loses all iron and it is destroyed.
+      ironResult = await destroyLoserIronOnNpcVictory(userContext, winnerId, loserId);
     } else {
       // Normal PvP iron transfer
       ironResult = await transferIronOnBattle(userContext, winnerId, loserId);

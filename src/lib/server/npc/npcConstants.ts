@@ -16,17 +16,11 @@ export const NPC_IDS_PER_USER = 1_000;
 /** Number of NPCs spawned per player */
 export const NPC_COUNT = 4;
 
-/** Orbit radius around the starbase centre (in world units) */
-export const ORBIT_RADIUS = 750;
+// Re-export shared orbit geometry so server code has a single import location
+export { NPC_ORBIT_RADIUS as ORBIT_RADIUS, NPC_ORBIT_CENTER_X as STARBASE_X, NPC_ORBIT_CENTER_Y as STARBASE_Y } from '@shared/npcOrbit';
 
-/** Starbase centre X coordinate */
-export const STARBASE_X = 4000;
-
-/** Starbase centre Y coordinate */
-export const STARBASE_Y = 4000;
-
-/** Base angular velocity in degrees per second (full circle ≈ 12 min) */
-export const BASE_ANGULAR_VELOCITY_DEG_PER_SEC = 0.5;
+/** Base angular velocity in degrees per second (full circle ≈ 2.4 min) */
+export const BASE_ANGULAR_VELOCITY_DEG_PER_SEC = 2.5;
 
 /** Starting angles for the 4 NPCs (one per quadrant) */
 export const NPC_START_ANGLES = [0, 90, 180, 270] as const;

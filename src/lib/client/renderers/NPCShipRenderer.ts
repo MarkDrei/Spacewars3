@@ -1,6 +1,7 @@
 import { SpaceObject } from '@shared/types';
 import { SpaceObjectRendererBase } from './SpaceObjectRendererBase';
 import { getShipNameColor } from '@shared/utils/levelUtils';
+import { NPC_ORBIT_RADIUS, NPC_ORBIT_CENTER_X, NPC_ORBIT_CENTER_Y } from '@shared/npcOrbit';
 
 /** Hostile red color used for NPC fallback shape */
 const NPC_HOSTILE_COLOR = '#ff4444';
@@ -165,19 +166,9 @@ export class NPCShipRenderer extends SpaceObjectRendererBase {
         // Server adds deltaAngle to orbitAngleDeg, so client must also add
         const currentAngleDeg = npc.orbitAngleDeg + npc.angularVelocityDegPerSec * elapsedSec;
 
-        // Derive the orbit centre & radius from the server's snapshot so we
-        // don't hard-code the starbase position on the client.
-        // At the server snapshot: x = cx + r * cos(θ_server), y = cy + r * sin(θ_server)
-        // With θ_server = orbitAngleDeg, we can compute cx and cy if we know r,
-        // but the simplest reliable approach is to use the known constants.
-        // The orbit centre and radius are game constants that won't change.
-        const ORBIT_CENTER_X = 4000;
-        const ORBIT_CENTER_Y = 4000;
-        const ORBIT_RADIUS = 750;
-
         const rad = (currentAngleDeg * Math.PI) / 180;
-        npc.x = ORBIT_CENTER_X + ORBIT_RADIUS * Math.cos(rad);
-        npc.y = ORBIT_CENTER_Y + ORBIT_RADIUS * Math.sin(rad);
+        npc.x = NPC_ORBIT_CENTER_X + NPC_ORBIT_RADIUS * Math.cos(rad);
+        npc.y = NPC_ORBIT_CENTER_Y + NPC_ORBIT_RADIUS * Math.sin(rad);
 
         // Facing direction = tangent to the circle (counter-clockwise motion)
         npc.angle = currentAngleDeg + 90;
