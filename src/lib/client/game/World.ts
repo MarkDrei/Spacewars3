@@ -167,6 +167,10 @@ export class World {
                     clientObject = new Starbase(starbaseData);
                     break;
                 }
+
+                case 'npc_ship':
+                    clientObject = new Ship(normalizedObject);
+                    break;
                     
                 default:
                     console.warn('Unknown object type:', normalizedObject.type);

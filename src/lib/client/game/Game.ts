@@ -116,8 +116,8 @@ export class Game {
           { width: this.world.getWidth(), height: this.world.getHeight() }
         );
         
-        // Check if it's a player ship (attack) or collectible object
-        if (hoveredObject.getType() === 'player_ship') {
+        // Check if it's a player ship or NPC ship (attack) or collectible object
+        if (hoveredObject.getType() === 'player_ship' || hoveredObject.getType() === 'npc_ship') {
           if (this.attackClickMode) {
             if (distance <= 100) {
               // Player ship is in attack range - initiate battle
@@ -321,13 +321,16 @@ export class Game {
         return;
       }
 
-      // Frontend level-range check: only allow attacks within ±3 levels
+      // Frontend level-range check: only allow attacks within ±3 levels (skip for NPCs)
       const targetLevel = targetObject.getLevel();
-      if (targetLevel === undefined) {
-        console.warn(`⚔️ Target ship has no level data (userId ${userId}); skipping level check`);
-      } else if (!isAttackAllowed(this.playerLevel, targetLevel)) {
-        console.log(`⚔️ Attack blocked: level difference too large (player ${this.playerLevel} vs target ${targetLevel})`);
-        return;
+      const isNpc = objectType === 'npc_ship';
+      if (!isNpc) {
+        if (targetLevel === undefined) {
+          console.warn(`⚔️ Target ship has no level data (userId ${userId}); skipping level check`);
+        } else if (!isAttackAllowed(this.playerLevel, targetLevel)) {
+          console.log(`⚔️ Attack blocked: level difference too large (player ${this.playerLevel} vs target ${targetLevel})`);
+          return;
+        }
       }
       
       const { attackPlayer } = await import('../services/attackService');
