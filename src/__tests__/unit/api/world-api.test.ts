@@ -2,9 +2,12 @@ import { beforeEach, afterEach, describe, expect, test, vi } from 'vitest';
 import { GET as worldGET } from '@/app/api/world/route';
 import { createRequest, createMockSessionCookie } from '../../helpers/apiTestHelpers';
 import { WorldCache } from '@/lib/server/world/worldCache';
+import { UserCache } from '@/lib/server/user/userCache';
+import { NPCManager } from '@/lib/server/npc/NPCManager';
 import { World } from '@/lib/server/world/world';
 import type { DatabaseConnection } from '@/lib/server/database';
 import { DEFAULT_WORLD_WIDTH, DEFAULT_WORLD_HEIGHT } from '@shared/worldConstants';
+import { STARBASE_ID_OFFSET } from '@/shared/starbases';
 
 const createMockDb = () =>
   ({
@@ -15,6 +18,9 @@ const createMockDb = () =>
     }),
     end: vi.fn().mockResolvedValue(undefined),
   }) as unknown as DatabaseConnection;
+
+/** Minimal mock user with getLevel() */
+const mockUser = { getLevel: () => 1 };
 
 describe('World API', () => {
   test('world_notAuthenticated_returns401', async () => {
@@ -38,6 +44,12 @@ describe('World API', () => {
       );
       WorldCache.resetInstance();
       WorldCache.initializeWithWorld(world, db, { enableAutoPersistence: false });
+      NPCManager.resetInstance();
+
+      // Mock UserCache so the world route can resolve the player's level
+      vi.spyOn(UserCache, 'getInstance2').mockReturnValue({
+        getUserById: vi.fn().mockResolvedValue(mockUser),
+      } as unknown as UserCache);
     });
 
     afterEach(async () => {
@@ -47,6 +59,8 @@ describe('World API', () => {
         // ignore if already torn down
       }
       WorldCache.resetInstance();
+      NPCManager.resetInstance();
+      vi.restoreAllMocks();
     });
 
     test('world_authenticated_returnsStarbasesInSpaceObjects', async () => {
@@ -58,7 +72,7 @@ describe('World API', () => {
 
       expect(response.status).toBe(200);
       expect(data.spaceObjects).toEqual(
-        expect.arrayContaining([expect.objectContaining({ type: 'starbase', id: 9001 })]),
+        expect.arrayContaining([expect.objectContaining({ type: 'starbase', id: STARBASE_ID_OFFSET + 1 })]),
       );
     });
   });

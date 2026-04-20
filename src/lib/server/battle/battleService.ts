@@ -29,6 +29,9 @@ import { WorldCache } from '../world/worldCache';
 import { DEFAULT_WORLD_WIDTH, DEFAULT_WORLD_HEIGHT } from '@shared/worldConstants';
 import { sendMessageToUser } from '../messages/MessageCache';
 import { StatisticsCache } from '../statistics/StatisticsCache';
+import { isNpcId } from '../npc/npcConstants';
+import { NPCManager } from '../npc/NPCManager';
+import { calculateNpcIronReward, removeNpcSpaceObject } from '../npc/npcCombat';
 
 /**
  * Calculate XP awarded to the winner of a battle based on level difference.
@@ -527,20 +530,49 @@ export async function resolveBattle(
   let xpAwarded = 0;
   let levelUpResult: { leveledUp: boolean; oldLevel: number; newLevel: number } | undefined;
 
-  await context.useLockWithAcquire(USER_LOCK, async (userContext) => {
-    // transfer iron from loser to winner before clearing other state
-    ironResult = await transferIronOnBattle(userContext, winnerId, loserId);
+  const winnerIsNpc = isNpcId(winnerId);
+  const loserIsNpc = isNpcId(loserId);
+  const npcInvolved = winnerIsNpc || loserIsNpc;
 
-    // Award XP to winner based on level difference
-    const userWorldCache = UserCache.getInstance2();
-    const winner = userWorldCache.getUserByIdFromCache(userContext, winnerId);
-    const loser = userWorldCache.getUserByIdFromCache(userContext, loserId);
-    if (winner && loser) {
-      const winnerLevel = winner.getLevel();
-      const loserLevel = loser.getLevel();
-      xpAwarded = calculateBattleXp(winnerLevel, loserLevel);
-      levelUpResult = winner.addXp(xpAwarded);
-      await userWorldCache.updateUserInCache(userContext, winner);
+  await context.useLockWithAcquire(USER_LOCK, async (userContext) => {
+    // --- Iron transfer ---
+    if (loserIsNpc) {
+      // Player wins vs NPC: award fixed iron reward to player (not loser-to-winner transfer)
+      const npc = NPCManager.getInstance().getNpcById(loserId);
+      const npcLevel = npc?.level ?? 1;
+      const reward = calculateNpcIronReward(npcLevel);
+      const userWorldCache = UserCache.getInstance2();
+      const winner = await userWorldCache.getUserByIdWithLock(userContext, winnerId);
+      const loser = userWorldCache.getUserByIdFromCache(userContext, loserId);
+      if (winner) {
+        const winnerBonuses = await userWorldCache.getBonusesByUserIdWithLock(userContext, winnerId);
+        const added = winner.addIron(reward, winnerBonuses.ironStorageCapacity);
+        await userWorldCache.updateUserInCache(userContext, winner);
+        ironResult = { amount: added, winnerName: winner.username, loserName: loser?.username ?? 'NPC' };
+      }
+    } else if (winnerIsNpc) {
+      // NPC wins vs Player: skip iron transfer entirely (don't take player's iron)
+      const userWorldCache = UserCache.getInstance2();
+      const winner = userWorldCache.getUserByIdFromCache(userContext, winnerId);
+      const loser = userWorldCache.getUserByIdFromCache(userContext, loserId);
+      ironResult = { amount: 0, winnerName: winner?.username ?? 'NPC', loserName: loser?.username ?? '' };
+    } else {
+      // Normal PvP iron transfer
+      ironResult = await transferIronOnBattle(userContext, winnerId, loserId);
+    }
+
+    // --- XP award (skip if winner is NPC) ---
+    if (!winnerIsNpc) {
+      const userWorldCache = UserCache.getInstance2();
+      const winner = userWorldCache.getUserByIdFromCache(userContext, winnerId);
+      const loser = userWorldCache.getUserByIdFromCache(userContext, loserId);
+      if (winner && loser) {
+        const winnerLevel = winner.getLevel();
+        const loserLevel = loser.getLevel();
+        xpAwarded = calculateBattleXp(winnerLevel, loserLevel);
+        levelUpResult = winner.addXp(xpAwarded);
+        await userWorldCache.updateUserInCache(userContext, winner);
+      }
     }
 
     // Clear battle state for both users
@@ -550,83 +582,107 @@ export async function resolveBattle(
     // Note: Defense values are already updated in User objects during battle
     // No need to call updateUserDefense here
 
-    // Get ship IDs for teleportation
-    const winnerShipId = await getUserShipId(userContext, winnerId);
-    const loserShipId = await getUserShipId(userContext, loserId);
+    // --- Teleportation: skip if loser is NPC ---
+    if (!loserIsNpc) {
+      const winnerShipId = await getUserShipId(userContext, winnerId);
+      const loserShipId = await getUserShipId(userContext, loserId);
 
-    const winnerPos = await getShipPosition(userContext, winnerShipId);
+      const winnerPos = await getShipPosition(userContext, winnerShipId);
 
-    if (winnerPos) {
-      // Teleport loser to random position (minimum distance away)
-      const teleportPos = generateTeleportPosition(
-        winnerPos.x,
-        winnerPos.y,
-        MIN_TELEPORT_DISTANCE
-      );
+      if (winnerPos) {
+        // Teleport loser to random position (minimum distance away)
+        const teleportPos = generateTeleportPosition(
+          winnerPos.x,
+          winnerPos.y,
+          MIN_TELEPORT_DISTANCE
+        );
 
-      await teleportShip(userContext, loserShipId, teleportPos.x, teleportPos.y);
+        await teleportShip(userContext, loserShipId, teleportPos.x, teleportPos.y);
 
-      console.log(`⚔️ Battle ${battleId} ended: Winner ${winnerId}, Loser ${loserId} teleported to (${teleportPos.x.toFixed(0)}, ${teleportPos.y.toFixed(0)})`);
+        console.log(`⚔️ Battle ${battleId} ended: Winner ${winnerId}, Loser ${loserId} teleported to (${teleportPos.x.toFixed(0)}, ${teleportPos.y.toFixed(0)})`);
+      } else {
+        console.error(`⚠️ Could not get winner's ship position for battle ${battleId} resolution`);
+      }
     } else {
-      console.error(`⚠️ Could not get winner's ship position for battle ${battleId} resolution`);
+      console.log(`⚔️ Battle ${battleId} ended: Winner ${winnerId}, NPC Loser ${loserId} (no teleport)`);
+    }
+
+    // --- NPC cleanup: mark defeated, clear inBattle, remove space object ---
+    if (npcInvolved) {
+      const npcManager = NPCManager.getInstance();
+      const npcId = loserIsNpc ? loserId : winnerId;
+      npcManager.setInBattle(npcId, false);
+      npcManager.markDefeated(npcId);
+      await removeNpcSpaceObject(npcId, userContext);
+      console.log(`🏴‍☠️ NPC ${npcId} marked as defeated and removed from world`);
     }
   });
 
-  // send victory/defeat messages to users (include iron transfer, XP, and opponent name)
+  // send victory/defeat messages to users (skip NPCs — they don't receive messages)
   try {
-    await sendMessageToUser(
-      context,
-      winnerId,
-      `P: 🎉 **Victory!** You won the battle! You gained ${ironResult.amount} iron and ${xpAwarded} XP from ${ironResult.loserName}.`
-    );
-
-    // Send level-up notification if winner leveled up
-    if (levelUpResult?.leveledUp) {
+    if (!winnerIsNpc) {
+      const npcLabel = loserIsNpc ? 'an Iron Horde Pirate' : ironResult.loserName;
       await sendMessageToUser(
         context,
         winnerId,
-        `P: 🎉 Level Up! You reached level ${levelUpResult.newLevel}!`
+        `P: 🎉 **Victory!** You won the battle! You gained ${ironResult.amount} iron and ${xpAwarded} XP from ${npcLabel}.`
       );
+
+      // Send level-up notification if winner leveled up
+      if (levelUpResult?.leveledUp) {
+        await sendMessageToUser(
+          context,
+          winnerId,
+          `P: 🎉 Level Up! You reached level ${levelUpResult.newLevel}!`
+        );
+      }
     }
 
-    await sendMessageToUser(
-      context,
-      loserId,
-      `A: 💀 **Defeat!** You lost the battle and have been teleported away. You lost ${ironResult.amount} iron to ${ironResult.winnerName}.`
-    );
+    if (!loserIsNpc) {
+      const npcLabel = winnerIsNpc ? 'an Iron Horde Pirate' : ironResult.winnerName;
+      await sendMessageToUser(
+        context,
+        loserId,
+        `A: 💀 **Defeat!** You lost the battle against ${npcLabel}. You lost ${ironResult.amount} iron.`
+      );
+    }
   } catch (msgErr) {
     // logging only; don't abort resolution if message sending fails
     console.error('⚠️ Failed to send battle outcome messages:', msgErr);
   }
 
-  // Emit statistics events (fire-and-forget)
+  // Emit statistics events (fire-and-forget, skip for NPC participants)
   try {
     const statisticsCache = StatisticsCache.getInstance();
     const durationSec = battle.battleEndTime
       ? Math.round((battle.battleEndTime - battle.battleStartTime) / 1000)
       : 0;
-    // Winner event
-    statisticsCache.recordEvent(winnerId, 'battle_completed', {
-      battleId: battle.id,
-      opponentId: loserId,
-      won: true,
-      damageDealt: battle.attackerId === winnerId ? (battle.attackerTotalDamage ?? 0) : (battle.attackeeTotalDamage ?? 0),
-      damageReceived: battle.attackerId === winnerId ? (battle.attackeeTotalDamage ?? 0) : (battle.attackerTotalDamage ?? 0),
-      ironTransferred: ironResult.amount,
-      xpAwarded,
-      durationSec,
-    });
-    // Loser event
-    statisticsCache.recordEvent(loserId, 'battle_completed', {
-      battleId: battle.id,
-      opponentId: winnerId,
-      won: false,
-      damageDealt: battle.attackerId === loserId ? (battle.attackerTotalDamage ?? 0) : (battle.attackeeTotalDamage ?? 0),
-      damageReceived: battle.attackerId === loserId ? (battle.attackeeTotalDamage ?? 0) : (battle.attackerTotalDamage ?? 0),
-      ironTransferred: 0,
-      xpAwarded: 0,
-      durationSec,
-    });
+    // Winner event (skip if winner is NPC)
+    if (!winnerIsNpc) {
+      statisticsCache.recordEvent(winnerId, 'battle_completed', {
+        battleId: battle.id,
+        opponentId: loserId,
+        won: true,
+        damageDealt: battle.attackerId === winnerId ? (battle.attackerTotalDamage ?? 0) : (battle.attackeeTotalDamage ?? 0),
+        damageReceived: battle.attackerId === winnerId ? (battle.attackeeTotalDamage ?? 0) : (battle.attackerTotalDamage ?? 0),
+        ironTransferred: ironResult.amount,
+        xpAwarded,
+        durationSec,
+      });
+    }
+    // Loser event (skip if loser is NPC)
+    if (!loserIsNpc) {
+      statisticsCache.recordEvent(loserId, 'battle_completed', {
+        battleId: battle.id,
+        opponentId: winnerId,
+        won: false,
+        damageDealt: battle.attackerId === loserId ? (battle.attackerTotalDamage ?? 0) : (battle.attackeeTotalDamage ?? 0),
+        damageReceived: battle.attackerId === loserId ? (battle.attackeeTotalDamage ?? 0) : (battle.attackerTotalDamage ?? 0),
+        ironTransferred: 0,
+        xpAwarded: 0,
+        durationSec,
+      });
+    }
   } catch (statsErr) {
     console.error('⚠️ Failed to emit battle statistics events:', statsErr);
   }

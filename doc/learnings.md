@@ -418,3 +418,24 @@ const LoginPage: React.FC<{ searchParams?: Promise<Record<...>> }> = async ({ se
 **Context**: Nodemailer transport is stored as a globalThis singleton (key `__spacewars_email_transport__`) to survive Next.js hot-reload. Resetting it for test isolation requires explicitly setting `globalThis[key] = null` via a `resetEmailTransport()` export.
 
 **Pattern**: Always expose a `resetXxx()` function for any globalThis singleton to enable test isolation via `vi.resetModules()` + explicit null.
+
+## Date.now() Mock vs new Date() in Tests
+
+**Discovered by**: Knight (NPC implementation)
+
+**Context**: When using `vi.spyOn(Date, 'now').mockReturnValue(ms)` to freeze time in tests, `new Date()` is NOT affected — it still uses the real system clock. Only `Date.now()` is mocked.
+
+**Details**: If production code uses `new Date()` to get the current time, convert it to `new Date(Date.now())` so that test mocking via `vi.spyOn(Date, 'now')` works consistently. This was discovered when `getMidnightUtcMs()` in NPCManager used `new Date()` internally, causing midnight checks to use real time while `defeatTime` used mocked time.
+
+## ID Namespace Partitioning
+
+**Discovered by**: Knight (NPC implementation)
+
+**Context**: The codebase uses numeric ID ranges to distinguish object types without extra DB columns.
+
+**Details**:
+- Regular users / space objects: `1 … 999,999`
+- NPC user IDs: `1,000,000 … 1,999,999,999` (`NPC_USER_ID_OFFSET + ownerId * NPC_IDS_PER_USER + npcIndex`)
+- Starbase IDs: `2,000,000,000+` (`STARBASE_ID_OFFSET + index`)
+
+Helper functions `isNpcId()` and `parseNpcId()` in `src/lib/server/npc/npcConstants.ts` handle range checks and decomposition. The `STARBASE_ID_OFFSET` was migrated from `9000` to `2_000_000_000` to make the three namespaces non-overlapping.
