@@ -168,9 +168,18 @@ export class World {
                     break;
                 }
 
-                case 'npc_ship':
+                case 'npc_ship': {
+                    // Compute tangential linear speed from orbit data so the
+                    // intercept calculator can predict NPC movement as a
+                    // straight line (tangent) at actual orbital speed.
+                    const NPC_ORBIT_RADIUS = 750;
+                    if (normalizedObject.angularVelocityDegPerSec) {
+                        normalizedObject.speed =
+                            normalizedObject.angularVelocityDegPerSec * (Math.PI / 180) * NPC_ORBIT_RADIUS;
+                    }
                     clientObject = new Ship(normalizedObject);
                     break;
+                }
                     
                 default:
                     console.warn('Unknown object type:', normalizedObject.type);
