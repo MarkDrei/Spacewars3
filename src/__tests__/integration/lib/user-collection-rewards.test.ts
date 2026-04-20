@@ -98,13 +98,14 @@ describe('User Collection Rewards', () => {
   test('collected_multipleAsteroids_awardsVariousAmounts', () => {
     // Arrange
     const user = createTestUser(4, 'testuser4', 0);
+    const uncappedCapacity = 100_000;
 
     const rewards: number[] = [];
 
     // Act - collect 10 asteroids and track rewards
     for (let i = 0; i < 10; i++) {
       const ironBefore = user.iron;
-      user.collected('asteroid');
+      user.collected('asteroid', uncappedCapacity);
       const reward = user.iron - ironBefore;
       rewards.push(reward);
     }
@@ -123,13 +124,14 @@ describe('User Collection Rewards', () => {
   test('collected_multipleShipwrecks_awardsVariousAmounts', () => {
     // Arrange
     const user = createTestUser(5, 'testuser5', 0);
+    const uncappedCapacity = 100_000;
 
     const rewards: number[] = [];
 
     // Act - collect 5 shipwrecks and track rewards
     for (let i = 0; i < 3; i++) {
       const ironBefore = user.iron;
-      user.collected('shipwreck');
+      user.collected('shipwreck', uncappedCapacity);
       const reward = user.iron - ironBefore;
       rewards.push(reward);
     }
