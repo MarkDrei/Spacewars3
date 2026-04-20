@@ -54,7 +54,7 @@ c. Determine if the interesting throw (requireAuth / input validation / guard) h
 - File path
 - For every test: name, verdict (UNIT-SAFE / KEEP), one-line reason
 - List of placeholders or useless tests (expect(true).toBe(true), trivially duplicate tests)
-- List of missing tests that should be added (add to TechnicalDebt.md)
+- List of missing tests that should be added (add to doc/TechnicalDebt.md)
 - Whether a new mocking pattern needs to be documented in doc/test-mocking-patterns.md
 ```
 
@@ -88,9 +88,9 @@ Based on the sub-agent's report:
   exact duplicate of another test in the same file or in an already-existing unit file
 - Each removal reduces the test count baseline; note this in the annotation
 
-#### 3e. Add missing tests to TechnicalDebt.md
+#### 3e. Add missing tests to doc/TechnicalDebt.md
 
-- For each gap identified by the sub-agent, append an entry to `TechnicalDebt.md`
+- For each gap identified by the sub-agent, append an entry to `doc/TechnicalDebt.md`
   following the existing format
 
 ### Step 4 — Check/update mocking patterns
@@ -133,7 +133,7 @@ Return to Step 1 and pick the next unannotated file.
 | No placeholder tests       | `expect(true).toBe(true)` is always removed                                                                                               |
 | No behaviour loss          | Moving a test must preserve its assertion; if it cannot, leave it in integration                                                          |
 | Tests pass after each step | Run `npm test` after every migration step                                                                                                 |
-| Document removals          | Every removed test is either documented in TechnicalDebt.md (if something real was deleted) or silently dropped (if it was a placeholder) |
+| Document removals          | Every removed test is either documented in doc/TechnicalDebt.md (if something real was deleted) or silently dropped (if it was a placeholder) |
 
 ---
 
@@ -172,4 +172,4 @@ After the full run:
 - No `expect(true).toBe(true)` in any test
 - `npm run ci` passes
 - `doc/test-mocking-patterns.md` is up to date
-- `TechnicalDebt.md` documents all meaningful removed or missing tests
+- `doc/TechnicalDebt.md` documents all meaningful removed or missing tests

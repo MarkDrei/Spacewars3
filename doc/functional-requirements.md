@@ -1,454 +1,470 @@
 # Functional Requirements — Spacewars Ironstrike
 
-**Version:** 1.0  
-**Date:** April 20, 2026  
-**Status:** Work in Progress
+---
+
+## Scope & Purpose
+
+This document is the **authoritative feature overview** for _Spacewars Ironstrike_. It describes all user-facing features and the rules governing them.
+
+**Scope:** All pages and features, including the admin toolset. Technical architecture and infrastructure details are in the [arc42 architecture document](./architecture/arc42-architecture.md).
 
 ---
 
-## Purpose and Scope
+## Overview
 
-This document is the **authoritative feature overview** for *Spacewars Ironstrike*. It serves two purposes:
+Spacewars Ironstrike is a browser-based multi-player 2D space exploration game. Players navigate a spaceship through a toroidal world, manage resources, engage in combat, and develop their ship through research and manufacturing.
 
-1. **Requirements reference** — Describes all user-facing features and the rules governing them. Linked from the [arc42 architecture document](./architecture/arc42-architecture.md) as the external requirements document (see arc42 §1.2).
-2. **Balancing analysis base** — Future sections of this document will define user journeys (e.g. "energy weapon focus strategy"), calculate resource curves over time, and present generated charts showing how different play styles affect power progression. These scenarios allow systematic review of game balance.
+**Authentication**: Access to the game requires user registration and login via the [Authentication & Session Management](#cap01-authentication--session-management) system. Sessions persist across browser visits.
 
-**Scope:** All pages and features accessible to authenticated players, including the admin toolset. Hardware-level details (browser rendering, network protocols) are out of scope.
+**Player Dashboard**: Upon login, players view the [Game Hub & Player Status](#cap02-game-hub--player-status) dashboard, which displays character progression, defense statistics, and active battles.
+
+**Core Gameplay**: Players navigate the toroidal world through the [Exploration & Navigation](#cap03-exploration--navigation) system. The game world wraps at boundaries; navigation is controlled via click-to-move, speed/angle inputs, and teleportation when available.
+
+**Core Economy**: Iron is the primary game currency, acquired through:
+
+- **[Resource Gathering & Harvesting](#cap04-resource-gathering--harvesting)**: Passive iron generation over time, plus active collection from collectible objects (asteroids, shipwrecks, escape pods). Combat and trading with other players also yield iron.
+- **[Combat System](#cap05-combat-system)**: Direct player-vs-player combat generates iron rewards. Combat is level-based, restricting participation between similarly-leveled players.
+- **[Research & Technology Tree](#cap06-research--technology-tree)**: Iron is spent to research technologies that unlock new capabilities.
+- **[Factory & Manufacturing](#cap07-factory--manufacturing)**: Iron is spent to manufacture weapons and defensive systems.
+- **[Inventory Management](#cap08-inventory-management)**: Commanders are managed and assigned to bridge slots to provide ship stat bonuses.
+
+**Administration**: Authorized administrators access [Admin Tools](#cap09-admin-tools) to adjust time multipliers, spawn space objects, and view game statistics.
 
 ---
 
 ## Table of Contents
 
-1. [Functional Requirement Conventions](#1-functional-requirement-conventions)
-2. [Authentication & Account Management](#2-authentication--account-management)
-3. [Home — Game Hub](#3-home--game-hub)
-4. [Game Page — Space Navigation & Combat](#4-game-page--space-navigation--combat)
-5. [Research — Technology Tree](#5-research--technology-tree)
-6. [Factory — Build Weapons & Defense](#6-factory--build-weapons--defense)
-7. [Ship — Inventory & Bridge Management](#7-ship--inventory--bridge-management)
-8. [Starbase — Commander Economy](#8-starbase--commander-economy)
-9. [Profile — Statistics & History](#9-profile--statistics--history)
-10. [Admin Toolset](#10-admin-toolset)
-11. [Cross-Cutting Rules](#11-cross-cutting-rules)
-12. [Open Questions / TBD](#12-open-questions--tbd)
+- [Overview](#overview)
+- [Capabilities](#capabilities)
+  - [Cap01: Authentication & Session Management](#cap01-authentication--session-management)
+  - [Cap02: Game Hub & Player Status](#cap02-game-hub--player-status)
+  - [Cap03: Exploration & Navigation](#cap03-exploration--navigation)
+  - [Cap04: Resource Gathering & Harvesting](#cap04-resource-gathering--harvesting)
+  - [Cap05: Combat System](#cap05-combat-system)
+  - [Cap06: Research & Technology Tree](#cap06-research--technology-tree)
+    - [Cap06_Feat001: Research Mechanics](#cap06_feat001-research-mechanics)
+    - [Cap06_Feat002: Resource Sciences](#cap06_feat002-resource-sciences)
+    - [Cap06_Feat003: Mobility Sciences](#cap06_feat003-mobility-sciences)
+    - [Cap06_Feat004: Weapons Sciences](#cap06_feat004-weapons-sciences)
+    - [Cap06_Feat005: Defense Sciences](#cap06_feat005-defense-sciences)
+    - [Cap06_Feat006: Crew Sciences](#cap06_feat006-crew-sciences)
+  - [Cap07: Factory & Manufacturing](#cap07-factory--manufacturing)
+    - [Cap07_Feat001: Build Queue Management](#cap07_feat001-build-queue-management)
+    - [Cap07_Feat002: Projectile Weapons](#cap07_feat002-projectile-weapons)
+    - [Cap07_Feat003: Energy Weapons](#cap07_feat003-energy-weapons)
+    - [Cap07_Feat004: Defense Systems](#cap07_feat004-defense-systems)
+  - [Cap08: Inventory Management](#cap08-inventory-management)
+    - [Cap08_Feat001: Item Inventory](#cap08_feat001-item-inventory)
+    - [Cap08_Feat002: Bridge Crew](#cap08_feat002-bridge-crew)
+  - [Cap09: Admin Tools](#cap09-admin-tools)
+  - [Cap10: Notifications](#cap10-notifications)
+    - [Cap10_Feat001: Notification Sources](#cap10_feat001-notification-sources)
+    - [Cap10_Feat002: Notification Display](#cap10_feat002-notification-display)
+    - [Cap10_Feat003: Notification Management](#cap10_feat003-notification-management)
+    - [Cap10_Feat004: Notification Summarization](#cap10_feat004-notification-summarization)
+- [Document Format & Templates](#document-format--templates)
+
+## Capabilities
+
+_Capabilities are high-level functional areas that group related features. Each capability contains one or more features, which are cohesive groups of user-facing functionality._
+_ Each feature contains individual requirements that describe specific behaviors or constraints._
+
+### Cap01: Authentication & Session Management
+
+Account creation, login, password recovery, and secure session management with HTTP-only cookies.
+
+### Cap02: Game Hub & Player Status
+
+Central dashboard displaying player progression, defense values, and active battles.
+
+### Cap03: Exploration & Navigation
+
+Navigate the toroidal world, set course and speed, manage viewport zoom, and observe game objects.
+
+### Cap04: Resource Gathering & Harvesting
+
+Iron is collected both passively and actively. Passive income is generated over time. Active collection includes harvesting collectibles (asteroids, shipwrecks, escape pods) using interception algorithms, as well as winning iron in combat or through trading with other players.
+
+### Cap05: Combat System
+
+Attack other players, manage combat state, and track battle outcomes and rewards.
+
+### Cap06: Research & Technology Tree
+
+**Purpose**: Players invest iron to research and upgrade technologies, unlocking new capabilities and enhancing ship performance across all gameplay areas.
+
+#### Contained Features
+
+- [Cap06_Feat001](#cap06_feat001-research-mechanics): Research Mechanics
+- [Cap06_Feat002](#cap06_feat002-resource-sciences): Resource Sciences
+- [Cap06_Feat003](#cap06_feat003-mobility-sciences): Mobility Sciences
+- [Cap06_Feat004](#cap06_feat004-weapons-sciences): Weapons Sciences
+- [Cap06_Feat005](#cap06_feat005-defense-sciences): Defense Sciences
+- [Cap06_Feat006](#cap06_feat006-crew-sciences): Crew Sciences
 
 ---
 
-## 1. Functional Requirement Conventions
+#### Cap06_Feat001: Research Mechanics
 
-- Requirements use **SHALL** (mandatory) or **SHOULD** (recommended).
-- Each requirement has an ID: `FR-<PAGE>-<NNN>` (e.g. `FR-GAME-001`).
-- Referenced API endpoints are the server-side contracts; client behaviour must match.
-- Numeric limits without an explicit source annotation are derived from the current implementation and should be validated when game balancing is reviewed.
+Players trigger and monitor research progress via the Research page. Only one research can be active at a time; iron is spent immediately upon start.
 
----
-
-## 2. Authentication & Account Management
-
-### 2.1 Login / Registration (`/login`)
-
-| ID | Requirement |
-|----|-------------|
-| FR-AUTH-001 | The system SHALL display a combined Sign-In / Sign-Up / Forgot-Password form. |
-| FR-AUTH-002 | Sign-In requires username + password. On success the system SHALL redirect to the last visited protected page or `/game`. |
-| FR-AUTH-003 | Sign-Up requires username, password, and confirmed password. Email is optional. Passwords must match. |
-| FR-AUTH-004 | After successful registration the system SHALL redirect the user to the game page within 3 seconds. |
-| FR-AUTH-005 | Forgot-Password sends a reset-link to the registered email. The link contains a time-limited token. |
-| FR-AUTH-006 | A default test user (username `a`, password `a`) SHALL exist in all environments and does not require email verification. |
-| FR-AUTH-007 | Error messages SHALL be shown inline (red). Success messages SHALL be shown inline (green). |
-
-### 2.2 Reset Password (`/reset-password`)
-
-| ID | Requirement |
-|----|-------------|
-| FR-AUTH-010 | The reset form requires a new password and a confirmation; both must match. |
-| FR-AUTH-011 | An expired or invalid token SHALL show a descriptive error. |
-| FR-AUTH-012 | On success the system SHALL redirect to `/login` after 2 seconds. |
-
-### 2.3 Logout
-
-| ID | Requirement |
-|----|-------------|
-| FR-AUTH-020 | Logout SHALL clear the server session (iron-session cookie) and redirect to `/login`. |
-| FR-AUTH-021 | Any authenticated API call after logout SHALL return 401. |
+| ID                   | Requirement                                                                                                                                                                                                         |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Cap06_Feat001_Req001 | Player can view all available research technologies on the Research page, organized by category: Resource Sciences, Mobility Sciences, Weapons Sciences, Defense Sciences, and Crew Sciences (`GET /api/techtree`). |
+| Cap06_Feat001_Req002 | Each technology card displays: current level, next-level iron cost, research duration, and the effect at both the current and next level.                                                                           |
+| Cap06_Feat001_Req003 | Player can trigger a research upgrade (`POST /api/trigger-research`). Iron is deducted immediately upon trigger. If the player has insufficient iron, the request is rejected.                                      |
+| Cap06_Feat001_Req004 | Only one research may be active at a time. Attempting to start a second while one is active is rejected with an error. All other technology cards are disabled while a research is in progress.                     |
+| Cap06_Feat001_Req005 | The active research card displays a live countdown timer. When the countdown reaches zero, the research level increments by 1 and the slot becomes available for the next research.                                 |
+| Cap06_Feat001_Req006 | Research costs scale exponentially per level. Each technology defines its own base cost and cost-increase factor applied per level upgrade.                                                                         |
+| Cap06_Feat001_Req007 | Player can preview the next 20 levels of any technology via an info tooltip, showing the iron cost and effect value at each future level.                                                                           |
+| Cap06_Feat001_Req008 | Technologies starting at level 0 are "unlock gates": they must be researched to level 1 to activate the gated feature. Technologies starting at level 1 are already active at game start.                           |
+| Cap06_Feat001_Req009 | Completing a research awards XP equal to the iron cost of that upgrade divided by 25. A level-up notification is sent if a new player level is reached. See [Cap10: Notifications](#cap10-notifications).           |
 
 ---
 
-## 3. Home — Game Hub (`/home`)
+#### Cap06_Feat002: Resource Sciences
 
-The home page is the central hub shown after login. It summarises the player's current state and acts as a notification centre.
+Research technologies that increase iron income, storage capacity, and construction speed.
 
-### 3.1 Status Header
-
-| ID | Requirement |
-|----|-------------|
-| FR-HOME-001 | The system SHALL display the player's current level, score, total XP, and XP required for the next level. |
-| FR-HOME-002 | Active commander bonuses (summed from bridge slots) SHALL be shown. |
-
-### 3.2 Defense Values
-
-| ID | Requirement |
-|----|-------------|
-| FR-HOME-010 | The system SHALL display current and maximum values for Hull, Armor, and Shield as colour-coded health bars. |
-| FR-HOME-011 | Defense values SHALL regenerate at 1 point per second (outside battles). |
-| FR-HOME-012 | Maximum defense values equal 100 × the corresponding tech count. |
-| FR-HOME-013 | Defense values SHALL be polled from the server every 5 seconds. |
-
-### 3.3 Battle Status
-
-| ID | Requirement |
-|----|-------------|
-| FR-HOME-020 | While an active battle exists, the system SHALL display: opponent name, attacker/defender role, cumulative damage dealt and received. |
-| FR-HOME-021 | Per-weapon cooldown timers SHALL be shown with remaining time. |
-
-### 3.4 Messages / Notifications
-
-| ID | Requirement |
-|----|-------------|
-| FR-HOME-030 | Messages are colour-coded by prefix: `A:` = attack (red), `N:` = negative (red), `P:` = positive (green), no prefix = neutral. |
-| FR-HOME-031 | The system SHALL support bold text within messages using `**text**` markers. |
-| FR-HOME-032 | The player SHALL be able to Mark All as Read, Refresh, and request a Summary of older messages. |
-| FR-HOME-033 | Messages SHALL be sorted newest-first. |
+| ID                   | Requirement                                                                                                                                                                                                                                                                                     |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Cap06_Feat002_Req001 | **Iron Harvesting**: Increases passive iron income per second. Starts at level 1 (1.0 iron/sec). Each additional level multiplies the harvest rate by 1.1 (exponential growth). Base upgrade cost: 100 iron; cost doubles per level.                                                            |
+| Cap06_Feat002_Req002 | **Iron Capacity**: Increases maximum iron storage. Starts at level 1 (5,000 iron). Each additional level doubles capacity. Base upgrade cost: 800 iron; cost scales by factor 1.7 per level.                                                                                                    |
+| Cap06_Feat002_Req003 | **Construction Speed**: Reduces build time for factory items. Starts at level 1 (10% faster). Higher levels add progressively more reduction via polynomial growth. Base upgrade cost: 1,400 iron; cost doubles per level. See [Cap07: Factory & Manufacturing](#cap07-factory--manufacturing). |
 
 ---
 
-## 4. Game Page — Space Navigation & Combat (`/game`)
+#### Cap06_Feat003: Mobility Sciences
 
-The game page contains the primary real-time play loop. It renders a 5 000 × 5 000 unit toroidal world on an HTML5 Canvas.
+Research technologies that govern ship speed, afterburner activation, and teleportation.
 
-### 4.1 World & Rendering
-
-| ID | Requirement |
-|----|-------------|
-| FR-GAME-001 | The world is toroidal: objects and ships wrap to the opposite side when leaving the world boundary. |
-| FR-GAME-002 | The player's ship SHALL always be rendered at the centre of the viewport; the world scrolls around it. |
-| FR-GAME-003 | The player can zoom between `MIN_ZOOM` and `MAX_ZOOM` (3.0). The zoom preference SHALL persist across sessions via `localStorage`. |
-| FR-GAME-004 | World state SHALL be polled from the server every 3 seconds. Client-side position interpolation compensates for network latency. |
-| FR-GAME-005 | Rendered object types: player ship, other player ships (colour-coded by level difference), asteroids, shipwrecks, escape pods, starbases. |
-
-### 4.2 Navigation
-
-| ID | Requirement |
-|----|-------------|
-| FR-GAME-010 | Clicking empty space SHALL set the ship's heading angle toward the clicked point (POST `/api/navigate`). |
-| FR-GAME-011 | A speed slider (0 – max speed) SHALL allow the player to set current speed. Value is confirmed on pointer-up. |
-| FR-GAME-012 | An angle input (0 – 360°) with a "Set" button SHALL allow precise direction entry. |
-| FR-GAME-013 | A zoom slider SHALL update the viewport immediately; value is persisted to `localStorage`. |
-
-### 4.3 Resource Collection (Harvest)
-
-| ID | Requirement |
-|----|-------------|
-| FR-GAME-020 | Collectible object types: Asteroid, Shipwreck, Escape Pod. |
-| FR-GAME-021 | A player can harvest a collectible if the distance to it is ≤ 125 world units (POST `/api/harvest`). |
-| FR-GAME-022 | Clicking a collectible at distance > 125 units SHALL set the ship's course to an intercept trajectory (accounting for object velocity and ship speed). |
-| FR-GAME-023 | On successful harvest, the system SHALL display an announcement with the iron reward amount for 2.5 seconds. |
-| FR-GAME-024 | Collectibles respawn at server-determined locations after being harvested. |
-
-### 4.4 Combat
-
-| ID | Requirement |
-|----|-------------|
-| FR-GAME-030 | Attack mode is toggled via a dedicated button (⚔️); the game starts with attack mode OFF. |
-| FR-GAME-031 | A player may only attack another player whose level is within ±3 of their own. |
-| FR-GAME-032 | Attacks are only possible when the target is within 100 world units (POST `/api/attack`). |
-| FR-GAME-033 | Clicking a player at distance > 100 units in attack mode SHALL calculate and set an intercept course toward that player. |
-| FR-GAME-034 | A successful attack initiation SHALL redirect the attacker to the home page. |
-| FR-GAME-035 | Other players' ships are colour-coded by level difference to the local player. |
-
-### 4.5 Starbase Docking
-
-| ID | Requirement |
-|----|-------------|
-| FR-GAME-040 | Starbases are stationary. Their interaction radius is 350 world units. |
-| FR-GAME-041 | If the player is within 350 units and attack mode is ON, clicking a starbase SHALL redirect to `/starbase`. |
-| FR-GAME-042 | Clicking a starbase at distance > 350 units SHALL set an intercept course. |
-
-### 4.6 Teleportation
-
-| ID | Requirement |
-|----|-------------|
-| FR-GAME-050 | Teleport is available only if the player has researched the teleport technology. |
-| FR-GAME-051 | The player has a finite number of charges that recharge over time. Charge count and recharge countdown SHALL be displayed. |
-| FR-GAME-052 | The player may teleport by entering manual X / Y coordinates (0–5 000) via a modal. |
-| FR-GAME-053 | Click-to-teleport mode allows the player to tap any canvas point as the teleport destination. |
-| FR-GAME-054 | Each teleport consumes exactly 1 charge (POST `/api/teleport`). |
-
-### 4.7 Afterburner
-
-| ID | Requirement |
-|----|-------------|
-| FR-GAME-060 | Afterburner is available only when the corresponding research level ≥ 1. |
-| FR-GAME-061 | While active, the afterburner increases the ship's maximum speed to `boosted_speed` from the tech tree. |
-| FR-GAME-062 | The afterburner has a fuel gauge (0–100 %). It can only be activated above a minimum fuel threshold. |
-| FR-GAME-063 | After deactivation or fuel depletion a cooldown period begins before recharging starts. |
-| FR-GAME-064 | Fuel percentage, status (active/ready/recharging), and time estimates SHALL be displayed in the UI. |
-
-### 4.8 HUD & Feedback
-
-| ID | Requirement |
-|----|-------------|
-| FR-GAME-070 | A radar/crosshair overlay in the top-left corner SHALL show current coordinates and the 125-unit collection radius. |
-| FR-GAME-071 | Hovering over any space object SHALL display a tooltip showing type, distance, and relevant reward values. |
-| FR-GAME-072 | A debug mode (🐛) SHALL optionally render collision boundaries and interception lines. Preference persists in `localStorage`. |
-| FR-GAME-073 | Announcements (collection results, mode toggles, errors) SHALL appear on-canvas and auto-dismiss after 2.5 seconds. |
+| ID                   | Requirement                                                                                                                                                                                                                                                                                                                           |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Cap06_Feat003_Req001 | **Ship Speed**: Increases base ship travel speed. Starts at level 1 (25 speed units). Each additional level adds 5 units linearly. Base upgrade cost: 500 iron; cost doubles per level.                                                                                                                                               |
+| Cap06_Feat003_Req002 | **Afterburner Duration** (unlock gate, starts at level 0): Level 1 unlocks the afterburner and sets full-fuel burn duration to 30 seconds. Each additional level adds 10 seconds. The afterburner can only be activated when fuel is at ≥ 33%. Base upgrade cost: 2,000 iron; cost scales by factor 1.9 per level.                    |
+| Cap06_Feat003_Req003 | **Afterburner Cooldown**: Reduces afterburner fuel recharge time. Starts at level 1 (3,600 seconds). Each additional level multiplies recharge time by 0.9 (exponential decay). Base upgrade cost: 2,000 iron; cost doubles per level.                                                                                                |
+| Cap06_Feat003_Req004 | **Afterburner Speed**: Increases the speed bonus while the afterburner is active. Starts at level 1 (+50%). Each additional level adds 25 percentage-points linearly. Base upgrade cost: 2,000 iron; cost doubles per level.                                                                                                          |
+| Cap06_Feat003_Req005 | **Teleport** (unlock gate, starts at level 0): Level 1 unlocks teleportation and grants 1 charge. Each additional level grants +1 charge. Charge consumption scales with travel distance. Base upgrade cost: 10,000 iron; cost scales by factor 1.3 per level. See [Cap03: Exploration & Navigation](#cap03-exploration--navigation). |
+| Cap06_Feat003_Req006 | **Teleport Recharge Speed**: Reduces the time for a teleport charge to replenish. Starts at level 1 (86,400 seconds per charge). Each additional level multiplies recharge time by 0.9 (exponential decay). Base upgrade cost: 10,000 iron; cost scales by factor 1.3 per level.                                                      |
 
 ---
 
-## 5. Research — Technology Tree (`/research`)
+#### Cap06_Feat004: Weapons Sciences
 
-### 5.1 General
+Research technologies that improve damage output, accuracy, reload speed, and unlock higher weapon tiers for both projectile and energy weapons.
 
-| ID | Requirement |
-|----|-------------|
-| FR-RES-001 | The research page SHALL display all available technologies grouped into 5 categories: Projectile Weapons, Energy Weapons, Defense, Ship, Spies. |
-| FR-RES-002 | Each technology card/row SHALL show: name, description, current level, upgrade cost (iron), upgrade duration, current effect value and unit. |
-| FR-RES-003 | A tooltip (ℹ️) SHALL show a progression table for the next 20 levels (cost and effect per level). |
-| FR-RES-004 | The player SHALL be able to toggle between a Card view and a Table view. |
-| FR-RES-005 | The current iron amount SHALL be visible at the top of the page. |
-
-### 5.2 Starting Research
-
-| ID | Requirement |
-|----|-------------|
-| FR-RES-010 | Clicking "Upgrade" on a technology queues a research job (POST `/api/trigger-research`). |
-| FR-RES-011 | A progress bar SHALL be shown for any technology currently being researched. |
-| FR-RES-012 | Cost is deducted immediately on start; the level increases when research completes. |
-
-### 5.3 Technology Categories and Types
-
-**Projectile Weapons:** projectileDamage, reloadRate (projectile), accuracy (projectile), weaponTier (projectile)  
-**Energy Weapons:** energyDamage, rechargeRate, accuracy (energy), weaponTier (energy)  
-**Defense:** hullStrength, repairSpeed, armor, shield, shieldRechargeRate  
-**Ship:** shipSpeed, afterburner (duration, boost, fuel), teleport (charges, recharge), capacity, slots (inventory / bridge), ironHarvesting, constructionSpeed  
-**Spies:** spyChance, spySpeed, sabotage, counterintel, stealIron
+| ID                   | Requirement                                                                                                                                                                                                                                                                                                                                     |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Cap06_Feat004_Req001 | **Projectile Damage**: Increases the damage multiplier for all equipped projectile weapons. Starts at level 1 (50 base damage). Each additional level multiplies the effect by 1.15. Base upgrade cost: 1,000 iron; cost doubles per level.                                                                                                     |
+| Cap06_Feat004_Req002 | **Projectile Reload Rate**: Reduces reload time for projectile weapons. Starts at level 1 (10% faster). Each additional level adds 10 percentage-points linearly. Base upgrade cost: 800 iron; cost scales by factor 1.8 per level.                                                                                                             |
+| Cap06_Feat004_Req003 | **Projectile Accuracy**: Improves the hit probability of projectile weapons via polynomial growth. Starts at level 1 (70% base accuracy). Base upgrade cost: 1,200 iron; cost scales by factor 1.9 per level.                                                                                                                                   |
+| Cap06_Feat004_Req004 | **Projectile Weapon Tier** (unlock gate, starts at level 0): Unlocks and upgrades higher-tier projectile weapons (e.g., Gauss Rifle). Each tier level increases shield bypass: `1 − 0.95^level`. Base upgrade cost: 5,000 iron; cost scales by factor 2.5 per level. See [Cap07: Factory & Manufacturing](#cap07-factory--manufacturing).       |
+| Cap06_Feat004_Req005 | **Energy Damage**: Increases the damage multiplier for all equipped energy weapons. Starts at level 1 (60 base damage). Each additional level multiplies the effect by 1.15. Base upgrade cost: 1,100 iron; cost doubles per level.                                                                                                             |
+| Cap06_Feat004_Req006 | **Energy Recharge Rate**: Reduces recharge time for energy weapons between shots. Starts at level 1 (15% faster). Each additional level adds 15 percentage-points linearly. Base upgrade cost: 900 iron; cost scales by factor 1.8 per level.                                                                                                   |
+| Cap06_Feat004_Req007 | **Energy Accuracy**: Improves the hit probability of energy weapons via polynomial growth. Starts at level 1 (65% base accuracy). High accuracy multipliers also grant armor bypass for applicable energy weapons (e.g., Plasma Lance): `max(0, 1 − 1/accuracyMultiplier)`. Base upgrade cost: 1,300 iron; cost scales by factor 1.9 per level. |
+| Cap06_Feat004_Req008 | **Energy Weapon Tier** (unlock gate, starts at level 0): Unlocks and upgrades higher-tier energy weapons (e.g., Plasma Lance). Each tier level progressively increases armor bypass. Base upgrade cost: 5,500 iron; cost scales by factor 2.5 per level. See [Cap07: Factory & Manufacturing](#cap07-factory--manufacturing).                   |
 
 ---
 
-## 6. Factory — Build Weapons & Defense (`/factory`)
+#### Cap06_Feat005: Defense Sciences
 
-### 6.1 General
+Research technologies that improve the strength and recovery rates of hull, armor, and shield defense layers.
 
-| ID | Requirement |
-|----|-------------|
-| FR-FAC-001 | The factory page SHALL support building 6 weapon types and 4 defense types. |
-| FR-FAC-002 | The player SHALL see: image, name, subtype (Projectile/Energy), owned count, base cost (iron), build duration, stats (damage, accuracy, reload), advantages/disadvantages. |
-| FR-FAC-003 | The player SHALL be able to toggle between Card and Table views. |
-
-### 6.2 Build Queue
-
-| ID | Requirement |
-|----|-------------|
-| FR-FAC-010 | The system SHALL display the active build queue with item name, type, and time remaining. |
-| FR-FAC-011 | A player SHALL be able to build 1–N units of an item in one queuing action by adjusting the quantity with ± buttons (long-press for rapid increment/decrement). |
-| FR-FAC-012 | Sufficient iron is required; the Build button SHALL be disabled when iron is insufficient. |
-| FR-FAC-013 | Built items reduce iron immediately and are added to inventory on completion. |
-
-### 6.3 Weapon Types
-
-| Name | Subtype | Tier |
-|------|---------|------|
-| Pulse Laser | Energy | 1 — weak, high accuracy, good vs. armor |
-| Auto Turret | Projectile | 1 — cheap, fast reload |
-| Plasma Lance | Energy | 2 — medium damage |
-| Gauss Rifle | Projectile | 2 — medium, anti-armor |
-| Photon Torpedo | Energy | 3 — strong |
-| Rocket Launcher | Projectile | 3 — strong |
-
-### 6.4 Defense Types
-
-| Name | Type | Effect |
-|------|------|--------|
-| Ship Hull | Passive | Base hull points |
-| Kinetic Armor | Passive | Anti-projectile |
-| Energy Shield | Passive | Anti-energy |
-| Missile Jammer | Passive | Anti-missile |
-
-### 6.5 Cheat Mode (Developer)
-
-| ID | Requirement |
-|----|-------------|
-| FR-FAC-020 | Users `a` and `q` SHALL have access to an "⚡ Complete First Build" button that instantly completes the top queue item. |
+| ID                   | Requirement                                                                                                                                                                                                                                                                      |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Cap06_Feat005_Req001 | **Hull Strength**: Increases max hull HP per installed hull plate via polynomial growth. Starts at level 1 (100 base HP per plate). Base upgrade cost: 1,500 iron; cost scales by factor 2.2 per level.                                                                          |
+| Cap06_Feat005_Req002 | **Repair Speed**: Increases passive HP-per-second repair rate for hull, armor, and engine. Repair does not apply during active combat. Starts at level 1 (0.1 HP/sec). Each additional level multiplies the rate by 1.15. Base upgrade cost: 1,000 iron; cost doubles per level. |
+| Cap06_Feat005_Req003 | **Armor Effectiveness**: Increases max armor HP per installed armor plate via polynomial growth. Starts at level 1 (100 base HP per plate). Base upgrade cost: 1,800 iron; cost scales by factor 2.1 per level.                                                                  |
+| Cap06_Feat005_Req004 | **Shield Effectiveness**: Increases max shield HP per installed shield unit via polynomial growth. Starts at level 1 (100 base HP per unit). Base upgrade cost: 1,600 iron; cost scales by factor 2.1 per level.                                                                 |
+| Cap06_Feat005_Req005 | **Shield Recharge Rate**: Increases HP-per-second shield recovery. Shield recharge applies both passively and during active combat. Starts at level 1 (0.1 HP/sec). Each additional level multiplies the rate by 1.13. Base upgrade cost: 1,000 iron; cost doubles per level.    |
 
 ---
 
-## 7. Ship — Inventory & Bridge Management (`/ship`)
+#### Cap06_Feat006: Crew Sciences
 
-### 7.1 Inventory
+Research technologies that govern inventory capacity and bridge crew slots.
 
-| ID | Requirement |
-|----|-------------|
-| FR-SHIP-001 | The inventory is a grid of slots; maximum slots are determined by the `capacity` research level. |
-| FR-SHIP-002 | The inventory SHALL display each item with image, name, and stat bonuses. |
-| FR-SHIP-003 | Items can be sorted by any stat, ascending or descending. |
+| ID                   | Requirement                                                                                                                                                                                                                                                                                                                           |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Cap06_Feat006_Req001 | **Inventory Slots**: Increases the number of available inventory slots. Starts at level 1 (16 slots). Each additional level adds 8 slots linearly. Base upgrade cost: 5,000 iron; cost scales by factor 1.8 per level. See [Cap08_Feat001: Item Inventory](#cap08_feat001-item-inventory).                                            |
+| Cap06_Feat006_Req002 | **Bridge Slots** (unlock gate, starts at level 0): Level 1 unlocks bridge crew assignment with 4 bridge slots. Each additional level adds 4 more slots. Default is 0 bridge slots until researched. Base upgrade cost: 5,000 iron; cost scales by factor 1.8 per level. See [Cap08_Feat002: Bridge Crew](#cap08_feat002-bridge-crew). |
 
-### 7.2 Bridge
+### Cap07: Factory & Manufacturing
 
-| ID | Requirement |
-|----|-------------|
-| FR-SHIP-010 | The bridge displays active commanders; maximum bridge slots are determined by the `slots` research level. |
-| FR-SHIP-011 | Commanders on the bridge contribute their stat bonuses to the active ship stats (summed). |
-| FR-SHIP-012 | The active ship stat bonuses SHALL be shown on the bridge section. |
+**Purpose**: Players manufacture weapons and defensive systems over time using iron currency. Items are built sequentially in a persistent queue; research technologies unlock higher-tier weapons and reduce build times.
 
-### 7.3 Item Management
+#### Contained Features
 
-| ID | Requirement |
-|----|-------------|
-| FR-SHIP-020 | Players can move commanders between inventory and bridge by drag-and-drop (desktop) or a touch-compatible auto-drop zone (mobile). |
-| FR-SHIP-021 | Right-click (or long-press on mobile) SHALL open a context menu with item actions (details, remove). |
-| FR-SHIP-022 | Status messages for transfers SHALL auto-clear after 3 seconds. |
+- [Cap07_Feat001](#cap07_feat001-build-queue-management): Build Queue Management
+- [Cap07_Feat002](#cap07_feat002-projectile-weapons): Projectile Weapons
+- [Cap07_Feat003](#cap07_feat003-energy-weapons): Energy Weapons
+- [Cap07_Feat004](#cap07_feat004-defense-systems): Defense Systems
 
 ---
 
-## 8. Starbase — Commander Economy (`/starbase`)
+#### Cap07_Feat001: Build Queue Management
 
-### 8.1 Buying Commanders
+Players queue items for manufacturing and monitor build progress. Iron is deducted at queue start; items build sequentially until the queue empties or iron is depleted.
 
-| ID | Requirement |
-|----|-------------|
-| FR-SB-001 | The shop panel SHALL list available commanders with portrait, name, stat bonuses, and buy price. |
-| FR-SB-002 | Buying a commander deducts the listed iron price and adds the commander to inventory. |
-| FR-SB-003 | The Buy button SHALL be disabled when: iron is insufficient, or the inventory is full. |
-
-### 8.2 Selling Commanders
-
-| ID | Requirement |
-|----|-------------|
-| FR-SB-010 | The sell panel SHALL list owned commanders with portrait, name, stat bonuses, and sell price. |
-| FR-SB-011 | Selling a commander removes it from inventory and credits the listed iron price. |
-
-### 8.3 Commander Stats
-
-Commanders can carry bonuses for the following 10 stats (percentage-based):
-Projectile Damage, Projectile Reload Rate, Projectile Accuracy, Energy Damage, Energy Reload Rate, Energy Accuracy, Hull Strength, Shield, Armor, Speed.
-
-### 8.4 Sorting
-
-| ID | Requirement |
-|----|-------------|
-| FR-SB-020 | Both panels (sell/buy) SHALL support sorting by any commander stat or none, ascending or descending. |
+| ID                   | Requirement                                                                                                                                                                                                                   |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Cap07_Feat001_Req001 | Player can view all available weapons and defense systems via the Factory page (`GET /api/tech-catalog`), displaying specs: name, cost, build time, base stats, and any research requirements.                                |
+| Cap07_Feat001_Req002 | Player can queue one or more items for building (`POST /api/build-item`). If the queue is empty, iron is deducted immediately for the first item. If the queue has items, iron is deferred until that item becomes buildable. |
+| Cap07_Feat001_Req003 | Player can retrieve the current build status and queue via (`GET /api/build-status`), which also processes any completed builds, increments tech counts, and awards score.                                                    |
+| Cap07_Feat001_Req004 | Items build sequentially; only one item builds at a time. The second queued item does NOT start building until the first completes.                                                                                           |
+| Cap07_Feat001_Req005 | Build times are displayed in the queue as countdown timers. When a build completes, the next item (if any) begins immediately.                                                                                                |
+| Cap07_Feat001_Req006 | Build times scale with the time multiplier, which may be adjusted by administrators. Effective build time = base build time ÷ time multiplier.                                                                                |
+| Cap07_Feat001_Req007 | The Research technology [Construction Speed](#cap06_feat002-resource-sciences) reduces build times via polynomial growth. Research multiplier is applied: effective build time = base build time ÷ time multiplier.           |
+| Cap07_Feat001_Req008 | If iron is insufficient when an item should begin building, the entire remaining queue is aborted (cleared). A notification is sent stating the aborted item name and count of removed items.                                 |
+| Cap07_Feat001_Req009 | Completing a build awards score (not XP) equal to 1% of the item's iron cost: `⌊baseCost ÷ 100⌋`.                                                                                                                             |
+| Cap07_Feat001_Req010 | Player starts the game with default quantities of basic weapons and defense items: 5× Pulse Laser, 5× Auto Turret, 5× Ship Hull, 5× Kinetic Armor, 5× Energy Shield. All higher-tier weapons start at 0.                      |
 
 ---
 
-## 9. Profile — Statistics & History (`/profile`)
+#### Cap07_Feat002: Projectile Weapons
 
-### 9.1 Player Info
+Projectile weapons are specialized for armor penetration. Two are always available; two unlock via research tiers.
 
-| ID | Requirement |
-|----|-------------|
-| FR-PRO-001 | The profile SHALL display: avatar initial, username, current level, score, total XP. |
-| FR-PRO-002 | The player SHALL be able to change their password via a dialog requiring current password, new password, and confirmation. |
-
-### 9.2 Statistics
-
-| ID | Requirement |
-|----|-------------|
-| FR-PRO-010 | Statistics SHALL be grouped into 4 categories: Combat, Collection, Economy, XP/Progression. |
-| FR-PRO-011 | Each stat SHALL show the player's value alongside the global average. |
-| FR-PRO-012 | Top-5 global rankings in each category SHALL be highlighted with rank badges (🥇🥈🥉). |
-
-#### Tracked Stats
-
-**Combat:** Battles Won, Battles Lost, Damage Dealt, Damage Received, Iron Transferred from Battles  
-**Collection:** Asteroids Collected, Shipwrecks Collected, Escape Pods Collected, Iron from Collection  
-**Economy:** Iron Spent on Research, Iron Spent on Builds, Research Count, Builds Completed  
-**XP/Progression:** Total XP, Level
-
-### 9.3 Leaderboard
-
-| ID | Requirement |
-|----|-------------|
-| FR-PRO-020 | Global rankings SHALL be available by score and XP. |
-| FR-PRO-021 | Best-in-category rankings SHALL cover at least 14 categories combining all stat groups. |
-
-### 9.4 Battle History
-
-| ID | Requirement |
-|----|-------------|
-| FR-PRO-030 | The player's battles SHALL be listed chronologically (newest first). |
-| FR-PRO-031 | Each entry SHALL show: result (Victory/Defeat), role (Attacker/Defender), opponent username, damage dealt/received, duration, timestamp. |
+| ID                   | Requirement                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Cap07_Feat002_Req001 | **Auto Turret** (weak, always available): Cost 100 iron; build time 1 minute; base damage 10; accuracy 50%; reload 12 minutes. Deals 80% to shields, 20% to armor. Advantage: cheap, fast reload. Disadvantage: reduced vs. armor.                                                                                                                                                                                                       |
+| Cap07_Feat002_Req002 | **Gauss Rifle** (medium, ProjectileWeaponTier ≥ 1): Cost 500 iron; build time 5 minutes; base damage 40; accuracy 70%; reload 15 minutes. Deals 10% to shields, 90% to armor. Shield penetration scales with tier: `1 − 0.95^level`. At tier 10: ~40% shield bypass. Advantage: penetrates shields. Disadvantage: reduced vs. armor. See [Cap06_Feat004: Projectile Weapon Tier](#cap06_feat004-weapons-sciences).                       |
+| Cap07_Feat002_Req003 | **Rocket Launcher** (strong, ProjectileWeaponTier ≥ 1): Cost 3,500 iron; build time 20 minutes; base damage 200; accuracy 100% (always hits if target exists); reload 20 minutes. Deals 40% to shields, 60% to armor. Guided; not affected by enemy dodge/movement. Vuln. to [Missile Jammer](#cap07_feat004-defense-systems). Advantage: guaranteed hit (guided); high damage. Disadvantage: expensive; requires jammer countermeasure. |
+| Cap07_Feat002_Req004 | Research [Projectile Damage](#cap06_feat004-weapons-sciences) multiplies the base damage of all equipped projectile weapons by the research effect. Each projectile weapon applies the multiplier independently in combat.                                                                                                                                                                                                               |
+| Cap07_Feat002_Req005 | Research [Projectile Reload Rate](#cap06_feat004-weapons-sciences) reduces reload time for all projectile weapons. Reload time = base cooldown ÷ (1 + reloadRate/100).                                                                                                                                                                                                                                                                   |
+| Cap07_Feat002_Req006 | Research [Projectile Accuracy](#cap06_feat004-weapons-sciences) improves hit probability with polynomial growth. Accuracy multiplier = effect ÷ base_effect.                                                                                                                                                                                                                                                                             |
 
 ---
 
-## 10. Admin Toolset (`/admin`)
+#### Cap07_Feat003: Energy Weapons
 
-Access is restricted to users `a` and `q`.
+Energy weapons are specialized for shield penetration. Two are always available; two unlock via research tiers.
 
-### 10.1 Database Overview
-
-| ID | Requirement |
-|----|-------------|
-| FR-ADM-001 | The admin page SHALL display record counts and collapsible data tables for: Users, Space Objects, Battles. |
-
-### 10.2 Time Multiplier
-
-| ID | Requirement |
-|----|-------------|
-| FR-ADM-010 | The admin SHALL be able to set a global time multiplier (≥ 1×) for a specified duration (in minutes). |
-| FR-ADM-011 | Preset buttons SHALL exist for: 2× / 30 min, 5× / 15 min, 10× / 10 min. |
-| FR-ADM-012 | A reset button SHALL set the multiplier back to 1×. |
-| FR-ADM-013 | Current multiplier and remaining time (MM:SS) SHALL be displayed. |
-
-### 10.3 Space Object Spawning
-
-| ID | Requirement |
-|----|-------------|
-| FR-ADM-020 | The admin SHALL be able to spawn Asteroids, Shipwrecks, and Escape Pods individually or in bulk. |
-| FR-ADM-021 | Preset buttons: 1 and 10 of each type. A custom form allows 1–50 of any type. |
-| FR-ADM-022 | Spawn confirmation SHALL be shown for 5 seconds. |
+| ID                   | Requirement                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Cap07_Feat003_Req001 | **Pulse Laser** (weak, always available): Cost 150 iron; build time 2 minutes; base damage 7; accuracy 80%; reload 12 minutes. Deals 90% to shields, 10% to armor. Advantage: high accuracy; effective vs. shields. Disadvantage: reduced vs. armor; low base damage.                                                                                                                                                                                                                                         |
+| Cap07_Feat003_Req002 | **Plasma Lance** (medium, EnergyWeaponTier ≥ 1): Cost 500 iron; build time 5 minutes; base damage 30; accuracy 90%; reload 15 minutes. Deals 70% to shields, 30% to armor. Armor bypass occurs when accuracy multiplier > 1.0, calculated as: `max(0, 1 − 1/accuracyMultiplier)`. At 200% accuracy: 50% bypass; at 300% accuracy: ~67% bypass. Advantage: high accuracy; bypasses armor if boosted. Disadvantage: reduced vs. shields. See [Cap06_Feat004: Energy Accuracy](#cap06_feat004-weapons-sciences). |
+| Cap07_Feat003_Req003 | **Photon Torpedo** (strong, EnergyWeaponTier ≥ 1): Cost 2,000 iron; build time 10 minutes; base damage 200; accuracy 75%; reload 20 minutes. Deals 90% to shields, 10% to armor. Vulnerable to [Missile Jammer](#cap07_feat004-defense-systems). Advantage: heavy damage. Disadvantage: expensive; jammer vulnerable.                                                                                                                                                                                         |
+| Cap07_Feat003_Req004 | Research [Energy Damage](#cap06_feat004-weapons-sciences) multiplies the base damage of all equipped energy weapons by the research effect. Each energy weapon applies the multiplier independently in combat.                                                                                                                                                                                                                                                                                                |
+| Cap07_Feat003_Req005 | Research [Energy Recharge Rate](#cap06_feat004-weapons-sciences) reduces reload time for all energy weapons. Reload time = base cooldown ÷ (1 + rechargeRate/100).                                                                                                                                                                                                                                                                                                                                            |
+| Cap07_Feat003_Req006 | Research [Energy Accuracy](#cap06_feat004-weapons-sciences) improves hit probability and armor bypass with polynomial growth. Armor bypass is calculated from the accuracy multiplier.                                                                                                                                                                                                                                                                                                                        |
 
 ---
 
-## 11. Cross-Cutting Rules
+#### Cap07_Feat004: Defense Systems
 
-### 11.1 Iron Economy
+Players build defense layers (hull, armor, shield) and a specialized ECM jammer. All defense items are always available.
 
-| ID | Requirement |
-|----|-------------|
-| FR-ECON-001 | Iron is the sole currency; all costs (research, factory, starbase) are iron-denominated. |
-| FR-ECON-002 | Iron is gained from: harvesting space objects, winning/completing battles, selling commanders. |
-| FR-ECON-003 | Iron is deducted at the point of action (research start, build queue, buy commander). |
+| ID                   | Requirement                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Cap07_Feat004_Req001 | **Ship Hull** (structural defense): Cost 150 iron; build time 2 minutes; base HP 150 per unit. Increases max hull strength through research [Hull Strength](#cap06_feat005-defense-sciences) via polynomial growth. Advantage: foundational layer; protects entire ship. Disadvantage: most vulnerable layer.                                                                                                                                                                                                                                                 |
+| Cap07_Feat004_Req002 | **Kinetic Armor** (projectile resistance): Cost 200 iron; build time 2 minutes; base HP 250 per unit. Reduces projectile damage to 50% effectiveness (projectiles deal reduced damage to armor layer). Increases max armor strength through research [Armor Effectiveness](#cap06_feat005-defense-sciences) via polynomial growth. Advantage: effective vs. projectiles. Disadvantage: reduced effectiveness vs. energy.                                                                                                                                      |
+| Cap07_Feat004_Req003 | **Energy Shield** (energy resistance): Cost 200 iron; build time 2 minutes; base HP 250 per unit. Reduces energy weapons to 50% effectiveness (energy deals reduced damage to shield layer). Regenerates at rate controlled by research [Shield Recharge Rate](#cap06_feat005-defense-sciences); regeneration applies both passively and during combat. Increases max shield strength through research [Shield Effectiveness](#cap06_feat005-defense-sciences) via polynomial growth. Advantage: effective vs. energy. Disadvantage: reduced vs. projectiles. |
+| Cap07_Feat004_Req004 | **Missile Jammer** (ECM countermeasure): Cost 350 iron; build time 5 minutes; base effect 1 jammer per unit (special, not HP-based). Intercepts guided weapons (Rocket Launcher, Photon Torpedo, Guided Missiles). Locks onto guided projectiles and prevents them from hitting. Disadvantage: does not affect ballistic weapons (Auto Turret, Pulse Laser, Gauss Rifle, Plasma Lance).                                                                                                                                                                       |
+| Cap07_Feat004_Req005 | Defense values are calculated per unit: `max_defense = baseValue × techCount × researchMultiplier × levelMultiplier`. All three defense layers (hull, armor, shield) are independent and stack additively in shield/armor damage calculation.                                                                                                                                                                                                                                                                                                                 |
+| Cap07_Feat004_Req006 | Research [Repair Speed](#cap06_feat005-defense-sciences) increases passive repair rate (hull, armor, engine). Repair does not apply during active combat.                                                                                                                                                                                                                                                                                                                                                                                                     |
+| Cap07_Feat004_Req007 | The defense layer hierarchy: Shield absorbs energy damage (reduced by 50%); Armor absorbs projectile damage (reduced by 50%); Hull absorbs all remaining damage. Damage that penetrates a layer due to research effects (shield bypass, armor bypass) flows to the next layer.                                                                                                                                                                                                                                                                                |
 
-### 11.2 Authentication & Access Control
+### Cap08: Inventory Management
 
-| ID | Requirement |
-|----|-------------|
-| FR-SEC-001 | All pages except `/login` and `/reset-password` require authentication. Unauthenticated access SHALL redirect to `/login`. |
-| FR-SEC-002 | Session management uses HTTP-only iron-session cookies. |
+Manage items in the ship's inventory; assign compatible items to bridge slots to activate their stat bonuses and enhance ship capabilities. Currently, commanders are the only item type in inventory.
 
-### 11.3 Polling & Realtime Updates
+#### Contained Features
 
-| ID | Requirement |
-|----|-------------|
-| FR-RT-001 | World state (game page) is polled every 3 seconds. |
-| FR-RT-002 | Defense values (home page) are polled every 5 seconds. |
-| FR-RT-003 | Afterburner status is polled when active or below 100 % fuel. |
-
-### 11.4 Level & Progression
-
-| ID | Requirement |
-|----|-------------|
-| FR-PROG-001 | Player level is derived from total XP. |
-| FR-PROG-002 | XP is awarded for battles, collections, and research (specific amounts TBD in balancing). |
-| FR-PROG-003 | Combat is restricted to players within ±3 levels. |
+- [Cap08_Feat001](#cap08_feat001-item-inventory): Item Inventory
+- [Cap08_Feat002](#cap08_feat002-bridge-crew): Bridge Crew
 
 ---
 
-## 12. Open Questions / TBD
+#### Cap08_Feat001: Item Inventory
 
-These items require decisions before balancing scenarios can be computed:
+Players manage a grid-based inventory of items. Items can be inspected, reordered, sorted, and deleted. Selling items for iron is done at the Starbase; see [Cap03: Exploration & Navigation](#cap03-exploration--navigation).
 
-| # | Topic | Question |
-|---|-------|---------|
-| 1 | Defense regen | Is the 1/s regen rate subject to the time multiplier? |
-| 2 | Harvest iron amounts | What is the exact iron yield per object type and does it scale with level/research? |
-| 3 | Battle resolution | How is total battle damage calculated and over what time window? |
-| 4 | XP awards | Exact XP tables for collections, battles, research are not documented. |
-| 5 | Commander drop rates | How are commanders generated in the starbase shop (random stats? fixed pool?)? |
-| 6 | Spy system | Spy mechanics (sabotage, counterintelligence) are researched but UI is not yet visible. |
-| 7 | Afterburner threshold | What is the minimum fuel % required to activate afterburner? |
-| 8 | Level cap | Is there a maximum level? What is the XP curve? |
+| ID                   | Requirement                                                                                                                                                                                                                                                                                                 |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Cap08_Feat001_Req001 | Player can view their inventory as a grid (rows × 8 columns). Each occupied slot shows the item's portrait and brief stat summary.                                                                                                                                                                          |
+| Cap08_Feat001_Req002 | Player can select any occupied slot to view full item details: name, portrait, and all stat bonuses with their values.                                                                                                                                                                                      |
+| Cap08_Feat001_Req003 | The maximum number of inventory slots is determined by the InventorySlots research level. See [Cap06: Research & Technology Tree](#cap06-research--technology-tree).                                                                                                                                        |
+| Cap08_Feat001_Req004 | Player can move an item to a different slot within the inventory grid (`POST /api/inventory/move`).                                                                                                                                                                                                         |
+| Cap08_Feat001_Req005 | Player can sort the inventory by a chosen stat key or by total bonus value, in ascending or descending order. Empty slots are pushed to the end of the grid.                                                                                                                                                |
+| Cap08_Feat001_Req006 | Player can permanently delete an item from inventory (`DELETE /api/inventory`). Deletion requires no confirmation and awards no iron. To sell an item for iron, the player must visit the Starbase. See [Cap03: Exploration & Navigation](#cap03-exploration--navigation).                                  |
+| Cap08_Feat001_Req007 | Commander items display a name (three-part: first, middle initial, last) and a portrait image. Portrait gender is derived from the imageId.                                                                                                                                                                 |
+| Cap08_Feat001_Req008 | Commander items carry 1–3 stat bonuses. Each bonus targets one of seven stats: `shipSpeed`, `projectileWeaponDamage`, `projectileWeaponReloadRate`, `projectileWeaponAccuracy`, `energyWeaponDamage`, `energyWeaponReloadRate`, `energyWeaponAccuracy`. Bonus values range from 0.1 to 1.0 in steps of 0.1. |
 
 ---
 
-*Future additions to this document: user journey definitions, strategy paths (e.g. energy-weapon focus, fortress build, scout build), and auto-generated balance charts.*
+#### Cap08_Feat002: Bridge Crew
+
+Players assign inventory items to bridge slots to activate their stat bonuses. Bonuses from all assigned items stack multiplicatively and combine with the player's level and research multipliers.
+
+| ID                   | Requirement                                                                                                                                                                                                                              |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Cap08_Feat002_Req001 | Player can view their bridge crew grid and see which slots are occupied and which are empty.                                                                                                                                             |
+| Cap08_Feat002_Req002 | The maximum number of bridge slots is determined by the BridgeSlots research level. Default is 0 (no bridge capacity until researched). See [Cap06: Research & Technology Tree](#cap06-research--technology-tree).                       |
+| Cap08_Feat002_Req003 | Player can assign an item from inventory to a specific empty bridge slot (`POST /api/bridge/transfer`, direction `inventoryToBridge`). The item is removed from inventory and placed in the bridge slot.                                 |
+| Cap08_Feat002_Req004 | Player can auto-assign an item from inventory to the first available bridge slot (`POST /api/bridge/transfer/auto`).                                                                                                                     |
+| Cap08_Feat002_Req005 | Player can remove an item from a bridge slot; the item is returned to inventory (`POST /api/bridge/transfer`, direction `bridgeToInventory`).                                                                                            |
+| Cap08_Feat002_Req006 | Player can reorder items within the bridge grid by swapping two bridge slots (`POST /api/bridge/move`).                                                                                                                                  |
+| Cap08_Feat002_Req007 | Stat bonuses from all bridge crew items stack multiplicatively across all assigned items. The combined bonus is further multiplied by the player's level multiplier and applicable research multipliers.                                 |
+| Cap08_Feat002_Req008 | Bridge crew bonuses affect the following ship and combat stats: `shipSpeed`, `projectileWeaponDamage`, `projectileWeaponReloadRate`, `projectileWeaponAccuracy`, `energyWeaponDamage`, `energyWeaponReloadRate`, `energyWeaponAccuracy`. |
+
+### Cap09: Admin Tools
+
+(Authorization required) Manage game operations: adjust time multipliers, spawn space objects, view game statistics.
+
+### Cap10: Notifications
+
+**Purpose**: Players receive in-game notifications about game events. Notifications are displayed on the Home page and can be managed and summarized.
+
+> **Terminology note**: The system internally uses the term "messages" (API routes, database table, cache). The player-facing term is "Notifications". See [Arc42 Glossary](./architecture/arc42-architecture.md) for the legacy term mapping.
+
+#### Contained Features
+
+- [Cap10_Feat001](#cap10_feat001-notification-sources): Notification Sources
+- [Cap10_Feat002](#cap10_feat002-notification-display): Notification Display
+- [Cap10_Feat003](#cap10_feat003-notification-management): Notification Management
+- [Cap10_Feat004](#cap10_feat004-notification-summarization): Notification Summarization
+
+---
+
+#### Cap10_Feat001: Notification Sources
+
+Players receive notifications automatically when specific game events occur. Each event type produces a distinct notification.
+
+| ID                   | Requirement                                                                                                                                                                                                          |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Cap10_Feat001_Req001 | Player receives a welcome notification when their account is created.                                                                                                                                                |
+| Cap10_Feat001_Req002 | Player receives a notification when they successfully collect an asteroid or shipwreck, stating the object type and the amount of iron received.                                                                     |
+| Cap10_Feat001_Req003 | Player receives a notification when they collect an escape pod, naming the rescued commander and confirming the commander was added to inventory. See [Cap08: Inventory Management](#cap08-inventory-management).    |
+| Cap10_Feat001_Req004 | Player receives a notification after each combat round showing their weapon, number of shots fired, shots that hit, and total damage dealt.                                                                          |
+| Cap10_Feat001_Req005 | Player receives a notification after each combat round showing the enemy weapon, number of shots fired, shots that hit, and total damage received.                                                                   |
+| Cap10_Feat001_Req006 | Player receives a notification when all shots in a combat round miss (attacker and defender each receive their respective miss notification).                                                                        |
+| Cap10_Feat001_Req007 | Player receives a victory notification at battle end, stating iron gained, XP gained, and the opponent's name. See [Cap05: Combat System](#cap05-combat-system).                                                     |
+| Cap10_Feat001_Req008 | Player receives a defeat notification at battle end, stating they were teleported away.                                                                                                                              |
+| Cap10_Feat001_Req009 | Player receives a level-up notification when a battle victory causes them to reach a new level. See [Cap02: Game Hub & Player Status](#cap02-game-hub--player-status).                                               |
+| Cap10_Feat001_Req010 | Player receives a notification when a build queue item completes, naming the completed item. See [Cap07: Factory & Manufacturing](#cap07-factory--manufacturing).                                                    |
+| Cap10_Feat001_Req011 | Player receives a notification when a build queue is aborted due to insufficient iron, stating the item name and how many queued items were removed.                                                                 |
+| Cap10_Feat001_Req012 | Player receives a notification when a research item reaches a new level, stating the research name, new level reached, and score awarded. See [Cap06: Research & Technology Tree](#cap06-research--technology-tree). |
+
+---
+
+#### Cap10_Feat002: Notification Display
+
+Notifications are displayed on the Home page in a table. The display shows the most recent notifications first.
+
+| ID                   | Requirement                                                                                                                                                                                                                                                                                                                                                    |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Cap10_Feat002_Req001 | Notifications are displayed on the Home page as a chronological table, newest first.                                                                                                                                                                                                                                                                           |
+| Cap10_Feat002_Req002 | Each notification entry shows the time (HH:MM:SS) and date (Mon DD) it was created.                                                                                                                                                                                                                                                                            |
+| Cap10_Feat002_Req003 | Notifications are color-coded by type: positive events (collection successes, victories) display in green; negative events (incoming damage, defeats) display in red; neutral events (welcome, research, builds) use the default color. See [Arc42 Architecture](./architecture/arc42-architecture.md) for the prefix convention that drives color assignment. |
+| Cap10_Feat002_Req004 | The 10 most recent notifications are shown by default. Player can expand to view all notifications.                                                                                                                                                                                                                                                            |
+| Cap10_Feat002_Req005 | Notifications are pre-loaded on Home page render; player does not need to perform an action to see their current notifications.                                                                                                                                                                                                                                |
+| Cap10_Feat002_Req006 | Player can manually refresh to fetch the latest notifications via a refresh button (`GET /api/messages`).                                                                                                                                                                                                                                                      |
+
+---
+
+#### Cap10_Feat003: Notification Management
+
+Players can manage their notifications via read-state tracking.
+
+| ID                   | Requirement                                                                                                |
+| -------------------- | ---------------------------------------------------------------------------------------------------------- |
+| Cap10_Feat003_Req001 | Each notification has a read/unread state. Newly created notifications start as unread.                    |
+| Cap10_Feat003_Req002 | Player can mark all notifications as read at once via "Mark All as Read" (`POST /api/messages/mark-read`). |
+
+---
+
+#### Cap10_Feat004: Notification Summarization
+
+Players can collapse all summarizable current notifications into a single summary notification that aggregates key game statistics.
+
+| ID                   | Requirement                                                                                                                                                                       |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Cap10_Feat004_Req001 | Player can trigger summarization via a "Summarize" action (`POST /api/messages/summarize`). All summarizable current notifications are replaced by a single summary notification. |
+| Cap10_Feat004_Req002 | The summary includes battle outcome stats: total victories and total defeats.                                                                                                     |
+| Cap10_Feat004_Req003 | The summary includes damage stats: total damage dealt and total damage received across all recorded combat rounds.                                                                |
+| Cap10_Feat004_Req004 | The summary includes shot accuracy stats for both the player and the enemy: total shots fired, total hits, and calculated accuracy percentage.                                    |
+| Cap10_Feat004_Req005 | The summary includes collection stats: total asteroids collected, total shipwrecks collected, and total escape pods collected.                                                    |
+| Cap10_Feat004_Req006 | The summary includes total iron collected from all collection events.                                                                                                             |
+| Cap10_Feat004_Req007 | The summary includes build completion stats: for each completed item type, the item name and count are listed.                                                                    |
+| Cap10_Feat004_Req008 | Notifications that cannot be parsed into a known stat category are preserved as individual notifications with their original timestamps after summarization.                      |
+| Cap10_Feat004_Req009 | If a previous summary notification exists, its stats are accumulated into the new summary (cumulative totals across multiple summarization actions).                              |
+
+---
+
+## Document Format & Templates
+
+This document uses a three-tier hierarchy for organizing requirements:
+
+1. **Capabilities**: High-level functional areas (e.g., Authentication, Exploration)
+2. **Features**: Cohesive groups of user-facing functionality within a capability
+3. **Requirements**: Individual, testable requirements linked to features
+
+### ID Convention
+
+IDs follow a hierarchical pattern for readability:
+
+- **Capability**: `CapNN` (2 digits, e.g., `Cap01`)
+- **Feature**: `CapNN_FeatMMM` (3 digits for features, e.g., `Cap01_Feat001`)
+- **Requirement**: `CapNN_FeatMMM_ReqZZZ` (3 digits, e.g., `Cap01_Feat001_Req001`)
+- Requirements support deeper nesting for complex features (e.g., `Cap01_Feat001_Req001_SubReq001`)
+
+### Template: Capability
+
+A **Capability** is a major functional area that groups related features.
+
+```markdown
+### CapNN: [Capability Name]
+
+**Purpose**: [One sentence describing the overall purpose and scope]
+
+#### Contained Features
+
+- [CapNN_FeatMMM]: [Feature Name]
+- [CapNN_FeatMMM]: [Feature Name]
+```
+
+### Template: Feature
+
+A **Feature** is a cohesive group of user-facing functionality within a capability.
+
+```markdown
+#### [CapNN_FeatMMM: Feature Name](#capnn_featmmm-feature-name)
+
+[One-sentence description of what users can do with this feature. Link to related capabilities or features if relevant.]
+
+| ID                   | Requirement                                                                                        |
+| -------------------- | -------------------------------------------------------------------------------------------------- |
+| CapNN_FeatMMM_ReqZZZ | Requirement statement.                                                                             |
+| CapNN_FeatMMM_ReqZZZ | [Link references to other docs, APIs, or features]: e.g., See [Cap01_Feat002](#cap01_feat002-...). |
+```
+
+### Template: Requirement
+
+A **Requirement** is an individual, testable statement describing one aspect of a feature.
+
+**Guidelines**:
+
+- Each requirement should be independently testable
+- Link to relevant API endpoints, configuration keys, or other requirements within the document
+- Include numeric limits or conditions that bound the requirement
+- Reference related requirements using markdown links for heavy cross-linking
+
+**Example patterns**:
+
+```
+[Action] when [condition].
+Display [element] with [attributes].
+When [trigger], [system response].
+Constraint: [description]. Linked to: [CapNN_FeatMMM](#capnn_featmmm-...).
+```
+
+### Cross-Linking Strategy
+
+To maintain a tightly linked document:
+
+1. **Capability Links**: Link from feature descriptions to their parent capability heading
+2. **Feature Links**: Link between related features across capabilities (e.g., "See [Cap02_Feat002](#cap02_feat002-...)")
+3. **Requirement Links**: Link requirements to specific APIs (`POST /api/harvest`), research tech names, or other requirements
+4. **Back-References**: Use markdown anchors to enable bidirectional linking
+5. **Table of Contents**: Auto-generate from headings for easy navigation

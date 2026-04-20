@@ -127,41 +127,6 @@ Currently, marking a user as dirty for cache persistence requires explicit calls
 - src/lib/server/user/user.ts
 - src/lib/server/user/userCache.ts
 
-## Battle System - Cache Bypass Issue
-
-**Priority**: ~~High~~ **RESOLVED**  
-**Added**: 2025-10-11  
-**Resolved**: 2025-11-XX  
-**Component**: Battle System (battleScheduler.ts, battleService.ts)
-
-### Problem
-
-The battle system previously bypassed the cache layer and wrote directly to the database, creating cache consistency issues and violating architectural principles.
-
-### Solution Implemented
-
-The battle system has been refactored to use BattleCache as the single source of truth:
-
-1. **BattleCache** (`src/lib/server/battle/BattleCache.ts`):
-   - Manages all battle state in memory
-   - Single source of truth for ongoing battles
-   - Handles background persistence via battleRepo
-   - Proper lock hierarchy: BATTLE_LOCK (2) → DATABASE_LOCK_BATTLES (13)
-
-2. **BattleRepo** (`src/lib/server/battle/battleRepo.ts`):
-   - Pure database operations (no cache access, no business logic)
-   - Called ONLY by BattleCache for persistence
-   - Clean separation of concerns
-
-3. **BattleScheduler** (`src/lib/server/battle/battleScheduler.ts`):
-   - Uses BattleCache for all state access and updates
-   - Coordinates with UserCache and MessageCache via dependency injection
-   - No direct database writes
-
-**Status**: ✅ Refactored - single source of truth, proper cache architecture
-
----
-
 ## Defense Value Regeneration in Attack Route
 
 **Priority**: Low  
@@ -176,123 +141,17 @@ The attack route (`src/app/api/attack/route.ts`) was temporarily modified to cal
 - API routes should not perform world state updates
 - This creates duplicate logic and potential race conditions
 
-### Architecture Violation
+### Current State
 
-The world loop is designed to handle all periodic updates including:
-
-- Ship movement
-- Defense value regeneration
-- Resource regeneration
-- Other time-based mechanics
-
-API routes should only:
-
-- Validate requests
-- Initiate actions (like battles)
-- Return responses
-
-Mixing these concerns makes the system harder to maintain and reason about.
-
-### Temporary Fix Applied
-
-The defense value update was removed from the attack route. The world loop should handle defense regeneration before battles are initiated.
+No world loop exists in the codebase. Defense values (`updateDefenseValues()`) are only updated in specific API routes (`ship-stats`, `user-stats`, etc.) that happen to touch the user. Since the attack route does not call `updateDefenseValues()`, defense values at battle time can be stale if the player hasn't polled those routes recently.
 
 ### Proper Solution
 
-Ensure the world loop runs frequently enough to keep defense values up-to-date:
-
-1. Verify world loop interval is appropriate (currently runs every tick)
-2. Consider adding "ensure up-to-date" logic in battle initiation that triggers world loop if needed
-3. Document clearly that defense values are the responsibility of world loop, not API routes
+Either:
+1. Implement a **server-side world loop** (background process) that periodically calls `updateDefenseValues()` for all active users and persists via `updateUserInCache`, OR
+2. Call `updateDefenseValues()` inside `initiateBattle()` in `battleService.ts` for both attacker and defender — this is simpler and keeps timing deterministic (defense is up-to-date at the moment combat opens).
 
 ### Related Files
 
 - `src/app/api/attack/route.ts` - Attack API route
-- `src/lib/server/worldLoop.ts` - World update loop (if exists)
-- `src/lib/server/user.ts` - User class with `updateDefenseValues()` method
-
----
-
-## World Persistence - Missing Dirty State Tracking
-
-**Priority**: Medium  
-**Added**: 2025-11-19  
-**Component**: World Persistence (world.ts, userWorldCache.ts)
-
-### Problem
-
-The `saveCallback` passed to the `World` constructor is never triggered. The `World.save()` method exists but is not called in any methods that modify the world state (e.g., `collected()`, `updateSpaceObject()`, `updatePhysics()`). This means world modifications are not marked as dirty in the cache, preventing automatic persistence.
-
-### Architecture Violation
-
-The cache manager relies on dirty flags to know when to persist data:
-
-- World changes (e.g., object positions, additions/removals) should mark `worldDirty = true`
-- Background persistence checks this flag to decide whether to save
-- Without it, world state drifts out of sync with the database
-
-### Current Behavior
-
-- World loads with `worldDirty = false`
-- Modifications occur but don't set the flag
-- Persistence skips the world, leading to lost updates
-
-### Proposed Solution
-
-Modify `World` methods to call `await this.saveCallback(this);` after state changes:
-
-- `collected()`: After removing and spawning objects
-- `updateSpaceObject()`: After updating object properties (make async if needed)
-- `updatePhysics()`: If position changes require immediate persistence (consider batching for performance)
-
-This ensures the cache is notified of changes and can persist them.
-
-### Benefits
-
-- Automatic persistence of world changes
-- Prevents data loss from unpersisted modifications
-- Aligns with the callback pattern already in place
-
-### Effort Estimate
-
-- **Medium**: Requires updating World methods and ensuring async handling
-
-### Related Files
-
-- `src/lib/server/world/world.ts` - World class with save() method
-- `src/lib/server/world/worldCache.ts` - Cache manager with worldDirty flag
-
----
-
-## Resolved: Legacy `5 × speedMultiplier` Factor in Navigate Route
-
-**Resolved in**: Task 5.2.1 (Player Bonus System — Ship Speed via Bonuses)
-
-### Background
-
-The navigate route (`src/app/api/navigate/route.ts`) previously computed `maxSpeed` as:
-```typescript
-const speedMultiplier = getResearchEffectFromTree(user.techTree, ResearchType.ShipSpeed);
-const maxSpeed = 5 * speedMultiplier; // e.g., 5 * 25 = 125 at base
-```
-
-The ship-stats route computed `maxSpeed` as:
-```typescript
-const maxSpeed = baseSpeed * (1 + afterburnerBonus / 100); // e.g., 25 at base
-```
-
-These two routes used inconsistent formulas — the navigate route produced a max speed 5× higher than ship-stats.
-
-### Resolution
-
-Both routes now use `bonuses.maxShipSpeed` from `UserBonusCache`, which is:
-```
-getResearchEffect(ShipSpeed) × (1 + afterburner/100) × levelMultiplier × commanderMultiplier(shipSpeed)
-```
-
-At base level (level 1, no afterburner, no commander): `maxShipSpeed = 25`.
-
-The legacy `5 ×` factor has been **permanently removed**. This changes the navigate API's
-maximum allowed speed from ~125 (base) to ~25 (base). Any clients that set speeds between
-25 and 125 will now receive a 400 error. The ship-stats route was always the authoritative
-source for `maxSpeed` — the navigate route's `5 ×` was an undocumented legacy artifact.
+- `src/lib/server/user/user.ts` - User class with `updateDefenseValues()` method

@@ -929,7 +929,7 @@ Only `RadarRenderer` needs the safe-area offset because it is the only renderer 
 
 ## 11. Risks and Technical Debt
 
-See [TechnicalDebt.md](../../TechnicalDebt.md) for current issues.
+See [TechnicalDebt.md](../TechnicalDebt.md) for current issues.
 
 **Key Risks:**
 
@@ -949,3 +949,4 @@ See [TechnicalDebt.md](../../TechnicalDebt.md) for current issues.
 | **Commander**             | An inventory item that grants percentage-based bonuses to one to three ship stats                |
 | **Inventory**             | A player's 10×10 item grid stored as JSONB in the `inventories` table                            |
 | **Direct-Access Service** | A service that reads/writes the DB on every call with no in-memory cache (e.g. InventoryService) |
+| **Notifications**         | System alerts for game events (formerly called "Messages" — use "Notifications" in new documentation) |
