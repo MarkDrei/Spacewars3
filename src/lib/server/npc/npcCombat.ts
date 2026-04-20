@@ -27,16 +27,11 @@ const NPC_PASSWORD_HASH =
 /** All 6 weapon column keys in the DB / TechCounts. */
 const ALL_WEAPON_KEYS: (keyof TechCounts)[] = TechFactory.getWeaponKeys() as (keyof TechCounts)[];
 
-/** Defense base values (before random variance). */
-const DEFENSE_BASES: Record<string, number> = {
-  ship_hull: 100,
-  kinetic_armor: 100,
-  energy_shield: 100,
-  missile_jammer: 0,
-};
+/** Defense base values per level (before random variance). */
+const DEFENSE_BASE_PER_LEVEL = 10;
 
-/** Weapon base count before random variance. */
-const WEAPON_BASE_COUNT = 100;
+/** Weapon base count per level before random variance. */
+const WEAPON_BASE_PER_LEVEL = 5;
 
 // ---------------------------------------------------------------------------
 // Random helpers
@@ -65,13 +60,16 @@ function pickRandom<T>(arr: readonly T[], count: number): T[] {
 /**
  * Generate randomised tech counts for an NPC.
  *
- * - Defense values: base × uniform(0.6, 1.7) for hull/armor/shield; jammer stays 0.
+ * - Defense values: (DEFENSE_BASE_PER_LEVEL × level) × uniform(0.6, 1.7) for hull/armor/shield; jammer stays 0.
  * - Weapons: `numWeapons = min(npcIndex + 1, 6)` randomly chosen weapon types
- *   each receiving `WEAPON_BASE_COUNT × uniform(0.6, 1.7)`; others set to 0.
+ *   each receiving `(WEAPON_BASE_PER_LEVEL × level) × uniform(0.6, 1.7)`; others set to 0.
  */
-export function generateNpcTechCounts(npcIndex: number): TechCounts {
+export function generateNpcTechCounts(npcIndex: number, npcLevel: number = 1): TechCounts {
   const numWeapons = Math.min(npcIndex + 1, ALL_WEAPON_KEYS.length);
   const selectedWeapons = new Set(pickRandom(ALL_WEAPON_KEYS, numWeapons));
+
+  const defenseBase = DEFENSE_BASE_PER_LEVEL * npcLevel;
+  const weaponBase = WEAPON_BASE_PER_LEVEL * npcLevel;
 
   const techCounts: TechCounts = {
     pulse_laser: 0,
@@ -80,15 +78,15 @@ export function generateNpcTechCounts(npcIndex: number): TechCounts {
     gauss_rifle: 0,
     photon_torpedo: 0,
     rocket_launcher: 0,
-    ship_hull: applyVariance(DEFENSE_BASES.ship_hull),
-    kinetic_armor: applyVariance(DEFENSE_BASES.kinetic_armor),
-    energy_shield: applyVariance(DEFENSE_BASES.energy_shield),
-    missile_jammer: DEFENSE_BASES.missile_jammer, // stays 0
+    ship_hull: applyVariance(defenseBase),
+    kinetic_armor: applyVariance(defenseBase),
+    energy_shield: applyVariance(defenseBase),
+    missile_jammer: 0, // stays 0
   };
 
   for (const key of ALL_WEAPON_KEYS) {
     if (selectedWeapons.has(key)) {
-      techCounts[key] = applyVariance(WEAPON_BASE_COUNT);
+      techCounts[key] = applyVariance(weaponBase);
     }
   }
 
@@ -117,8 +115,8 @@ export async function upsertNpcUser(
   const username = `iron_horde_${npc.ownerId}_${npc.npcIndex}`;
   const now = Math.floor(Date.now() / 1000);
 
-  // 1. Generate randomised tech counts
-  const techCounts = generateNpcTechCounts(npc.npcIndex);
+  // 1. Generate randomised tech counts scaled to NPC level
+  const techCounts = generateNpcTechCounts(npc.npcIndex, npc.level);
 
   // 2. Create initial tech tree & compute max defense
   const techTree = createInitialTechTree();

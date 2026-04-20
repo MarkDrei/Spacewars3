@@ -1,7 +1,8 @@
 import { SpaceObject } from '@shared/types';
 import { SpaceObjectRendererBase } from './SpaceObjectRendererBase';
+import { getShipNameColor } from '@shared/utils/levelUtils';
 
-/** Hostile red color used for NPC fallback shape and name label */
+/** Hostile red color used for NPC fallback shape */
 const NPC_HOSTILE_COLOR = '#ff4444';
 
 /** Label font for NPC name display */
@@ -30,6 +31,7 @@ export class NPCShipRenderer extends SpaceObjectRendererBase {
     private npcImages: Map<number, HTMLImageElement> = new Map();
     private imageLoadedStatus: Map<number, boolean> = new Map();
     private currentNpc: SpaceObject | null = null;
+    private playerLevel: number = 1;
 
     constructor() {
         super();
@@ -53,8 +55,10 @@ export class NPCShipRenderer extends SpaceObjectRendererBase {
         viewportX: number,
         viewportY: number,
         npc: SpaceObject,
+        playerLevel: number = 1,
     ): void {
         this.currentNpc = npc;
+        this.playerLevel = playerLevel;
 
         // --- Client-side orbit interpolation ---
         this.interpolateOrbitPosition(npc);
@@ -98,7 +102,7 @@ export class NPCShipRenderer extends SpaceObjectRendererBase {
     }
 
     /**
-     * Draw the NPC name label below the ship with hostile red coloring.
+     * Draw the NPC name label below the ship with level-based coloring.
      */
     protected override drawPostEffects(ctx: CanvasRenderingContext2D, spaceObject: SpaceObject): void {
         if (!spaceObject.username) return;
@@ -107,6 +111,10 @@ export class NPCShipRenderer extends SpaceObjectRendererBase {
 
         // Counter-rotate so text is drawn horizontally
         ctx.rotate(-spaceObject.angle * (Math.PI / 180));
+
+        // Determine name color based on level difference (same as player ships)
+        const npcLevel = spaceObject.level ?? 1;
+        const nameColor = getShipNameColor(this.playerLevel, npcLevel);
 
         ctx.font = LABEL_FONT;
         ctx.textAlign = 'center';
@@ -124,8 +132,8 @@ export class NPCShipRenderer extends SpaceObjectRendererBase {
             LABEL_TEXT_HEIGHT + LABEL_PADDING * 2,
         );
 
-        // Draw the name text in hostile red
-        ctx.fillStyle = NPC_HOSTILE_COLOR;
+        // Draw the name text with level-based colour
+        ctx.fillStyle = nameColor;
         ctx.fillText(spaceObject.username, 0, LABEL_Y_OFFSET);
 
         ctx.restore();
@@ -141,7 +149,8 @@ export class NPCShipRenderer extends SpaceObjectRendererBase {
      * and `angularVelocityDegPerSec` (already multiplied by the time multiplier).
      * We extrapolate forward to get smooth motion between polls.
      *
-     * Clockwise orbit means the angle *decreases* over time.
+     * The server increases the angle over time (counter-clockwise in standard
+     * math coordinates), so the client must also add.
      */
     private interpolateOrbitPosition(npc: SpaceObject): void {
         if (
@@ -153,8 +162,8 @@ export class NPCShipRenderer extends SpaceObjectRendererBase {
         }
 
         const elapsedSec = (Date.now() - npc.last_position_update_ms) / 1000;
-        // Clockwise = decreasing angle
-        const currentAngleDeg = npc.orbitAngleDeg - npc.angularVelocityDegPerSec * elapsedSec;
+        // Server adds deltaAngle to orbitAngleDeg, so client must also add
+        const currentAngleDeg = npc.orbitAngleDeg + npc.angularVelocityDegPerSec * elapsedSec;
 
         // Derive the orbit centre & radius from the server's snapshot so we
         // don't hard-code the starbase position on the client.
@@ -170,8 +179,8 @@ export class NPCShipRenderer extends SpaceObjectRendererBase {
         npc.x = ORBIT_CENTER_X + ORBIT_RADIUS * Math.cos(rad);
         npc.y = ORBIT_CENTER_Y + ORBIT_RADIUS * Math.sin(rad);
 
-        // Facing direction = tangent to the circle (clockwise)
-        npc.angle = currentAngleDeg - 90;
+        // Facing direction = tangent to the circle (counter-clockwise motion)
+        npc.angle = currentAngleDeg + 90;
     }
 
     /**

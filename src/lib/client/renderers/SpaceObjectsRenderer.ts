@@ -120,7 +120,8 @@ export class SpaceObjectsRenderer {
                 screenY + offsetY,
                 shipX,
                 shipY,
-                collectible
+                collectible,
+                playerLevel
             );
         }
     }

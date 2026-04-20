@@ -140,7 +140,8 @@ describe('SpaceObjectsRenderer', () => {
                 expect.any(Number),
                 expect.any(Number),
                 expect.any(Number),
-                npcShip
+                npcShip,
+                expect.any(Number)
             );
         });
 

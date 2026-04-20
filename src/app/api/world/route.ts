@@ -24,7 +24,7 @@ function npcToSpaceObject(npc: NpcShip, timeMultiplier: number, nowMs: number): 
     x: pos.x,
     y: pos.y,
     speed: 0,
-    angle: npc.orbitAngleDeg - 90, // tangent direction (clockwise)
+    angle: npc.orbitAngleDeg + 90, // tangent direction (counter-clockwise orbit)
     last_position_update_ms: nowMs,
     picture_id: npc.npcIndex + 1, // 1-4
     username: `Iron Horde Pirate Lv.${npc.level}`,
