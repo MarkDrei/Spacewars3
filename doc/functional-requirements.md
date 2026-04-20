@@ -22,7 +22,7 @@ Spacewars Ironstrike is a browser-based multi-player 2D space exploration game. 
 
 **Core Economy**: Iron is the primary game currency, acquired through:
 
-- **[Resource Gathering & Harvesting](#cap04-resource-gathering--harvesting)**: Passive iron generation over time, plus active collection from collectible objects (asteroids, shipwrecks, escape pods). Combat and trading with other players also yield iron.
+- **[Resource Gathering & Harvesting](#cap04-resource-gathering--harvesting)**: Passive iron generation over time, plus active collection from collectible objects (asteroids, shipwrecks, escape pods). Combat victories also transfer iron from the defeated player.
 - **[Combat System](#cap05-combat-system)**: Direct player-vs-player combat generates iron rewards. Combat is level-based, restricting participation between similarly-leveled players.
 - **[Research & Technology Tree](#cap06-research--technology-tree)**: Iron is spent to research technologies that unlock new capabilities.
 - **[Factory & Manufacturing](#cap07-factory--manufacturing)**: Iron is spent to manufacture weapons and defensive systems.
@@ -37,10 +37,32 @@ Spacewars Ironstrike is a browser-based multi-player 2D space exploration game. 
 - [Overview](#overview)
 - [Capabilities](#capabilities)
   - [Cap01: Authentication & Session Management](#cap01-authentication--session-management)
+    - [Cap01_Feat001: Account Registration](#cap01_feat001-account-registration)
+    - [Cap01_Feat002: Login & Session](#cap01_feat002-login--session)
+    - [Cap01_Feat003: Password Management](#cap01_feat003-password-management)
+    - [Cap01_Feat004: Email Verification](#cap01_feat004-email-verification)
+    - [Cap01_Feat005: Profile Customization](#cap01_feat005-profile-customization)
   - [Cap02: Game Hub & Player Status](#cap02-game-hub--player-status)
+    - [Cap02_Feat001: Player Stats & Progression](#cap02_feat001-player-stats--progression)
+    - [Cap02_Feat002: Defense Status Display](#cap02_feat002-defense-status-display)
+    - [Cap02_Feat003: Tech Inventory Display](#cap02_feat003-tech-inventory-display)
+    - [Cap02_Feat004: Leaderboard](#cap02_feat004-leaderboard)
+    - [Cap02_Feat005: Battle History](#cap02_feat005-battle-history)
   - [Cap03: Exploration & Navigation](#cap03-exploration--navigation)
+    - [Cap03_Feat001: Ship Navigation](#cap03_feat001-ship-navigation)
+    - [Cap03_Feat002: World & Viewport](#cap03_feat002-world--viewport)
+    - [Cap03_Feat003: Afterburner](#cap03_feat003-afterburner)
+    - [Cap03_Feat004: Teleportation](#cap03_feat004-teleportation)
+    - [Cap03_Feat005: Starbase Interaction](#cap03_feat005-starbase-interaction)
   - [Cap04: Resource Gathering & Harvesting](#cap04-resource-gathering--harvesting)
+    - [Cap04_Feat001: Passive Iron Income](#cap04_feat001-passive-iron-income)
+    - [Cap04_Feat002: Collectible Harvesting](#cap04_feat002-collectible-harvesting)
+    - [Cap04_Feat003: Iron Capacity & Overflow](#cap04_feat003-iron-capacity--overflow)
   - [Cap05: Combat System](#cap05-combat-system)
+    - [Cap05_Feat001: Battle Initiation & Level Matching](#cap05_feat001-battle-initiation--level-matching)
+    - [Cap05_Feat002: Combat Rounds & Damage](#cap05_feat002-combat-rounds--damage)
+    - [Cap05_Feat003: Battle Resolution & Rewards](#cap05_feat003-battle-resolution--rewards)
+    - [Cap05_Feat004: Battle State & Immobilization](#cap05_feat004-battle-state--immobilization)
   - [Cap06: Research & Technology Tree](#cap06-research--technology-tree)
     - [Cap06_Feat001: Research Mechanics](#cap06_feat001-research-mechanics)
     - [Cap06_Feat002: Resource Sciences](#cap06_feat002-resource-sciences)
@@ -57,6 +79,10 @@ Spacewars Ironstrike is a browser-based multi-player 2D space exploration game. 
     - [Cap08_Feat001: Item Inventory](#cap08_feat001-item-inventory)
     - [Cap08_Feat002: Bridge Crew](#cap08_feat002-bridge-crew)
   - [Cap09: Admin Tools](#cap09-admin-tools)
+    - [Cap09_Feat001: Admin Authorization](#cap09_feat001-admin-authorization)
+    - [Cap09_Feat002: Time Multiplier Management](#cap09_feat002-time-multiplier-management)
+    - [Cap09_Feat003: Space Object Spawning](#cap09_feat003-space-object-spawning)
+    - [Cap09_Feat004: Database & Statistics Inspection](#cap09_feat004-database--statistics-inspection)
   - [Cap10: Notifications](#cap10-notifications)
     - [Cap10_Feat001: Notification Sources](#cap10_feat001-notification-sources)
     - [Cap10_Feat002: Notification Display](#cap10_feat002-notification-display)
@@ -71,23 +97,367 @@ _ Each feature contains individual requirements that describe specific behaviors
 
 ### Cap01: Authentication & Session Management
 
-Account creation, login, password recovery, and secure session management with HTTP-only cookies.
+**Purpose**: Players register, log in, and maintain secure sessions. Accounts are protected by bcrypt-hashed passwords and encrypted HTTP-only session cookies. Optional email verification and password-reset flows are available when the server is configured with an SMTP provider.
+
+#### Contained Features
+
+- [Cap01_Feat001](#cap01_feat001-account-registration): Account Registration
+- [Cap01_Feat002](#cap01_feat002-login--session): Login & Session
+- [Cap01_Feat003](#cap01_feat003-password-management): Password Management
+- [Cap01_Feat004](#cap01_feat004-email-verification): Email Verification
+- [Cap01_Feat005](#cap01_feat005-profile-customization): Profile Customization
+
+---
+
+#### Cap01_Feat001: Account Registration
+
+Players create a new account with a unique username and password. A ship is provisioned automatically, and a welcome notification is sent. An optional email address enables verification and password-reset flows.
+
+| ID                   | Requirement                                                                                                                                                                                                                                                     |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Cap01_Feat001_Req001 | Player can register a new account (`POST /api/register`) by providing a username and password. Both fields are required; missing fields are rejected with an error.                                                                                             |
+| Cap01_Feat001_Req002 | An optional email address may be provided at registration. If provided, it must match the format `user@domain.tld` and must be unique; duplicate or malformed addresses are rejected with an error.                                                             |
+| Cap01_Feat001_Req003 | On successful registration, a player ship is created at the default starting position and the player starts with default tech counts: 5× Pulse Laser, 5× Auto Turret, 5× Ship Hull, 5× Kinetic Armor, 5× Energy Shield.                                        |
+| Cap01_Feat001_Req004 | On successful registration, a welcome notification is sent to the new player. See [Cap10: Notifications](#cap10-notifications).                                                                                                                                 |
+| Cap01_Feat001_Req005 | A session cookie is created on successful registration, logging the player in immediately without a separate login step.                                                                                                                                         |
+| Cap01_Feat001_Req006 | If an email address was provided and the server has email enabled, a verification email is sent with a 24-hour verification link. Registration always succeeds even if email delivery fails; the `emailSent` flag in the response indicates whether it was sent. |
+
+---
+
+#### Cap01_Feat002: Login & Session
+
+Players log in with their username and password. Sessions are maintained via encrypted HTTP-only cookies with a 24-hour lifetime.
+
+| ID                   | Requirement                                                                                                                                                                                                                                   |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Cap01_Feat002_Req001 | Player can log in (`POST /api/login`) with a valid username and password. On success, an encrypted session cookie (`spacewars-session`) is set with a 24-hour lifetime.                                                                       |
+| Cap01_Feat002_Req002 | Failed login attempts (wrong username or wrong password) return a generic "Invalid credentials" error; the response does not distinguish between the two failure modes to prevent username enumeration.                                       |
+| Cap01_Feat002_Req003 | Player can check their current session state (`GET /api/session`). The response indicates whether the player is logged in, and if so, returns their username and ship ID.                                                                     |
+| Cap01_Feat002_Req004 | Player can log out (`POST /api/logout`), which destroys the session cookie and ends the session immediately.                                                                                                                                  |
+| Cap01_Feat002_Req005 | All protected pages and API routes redirect unauthenticated requests to the login page. The session is validated server-side on every protected request via the encrypted cookie.                                                            |
+| Cap01_Feat002_Req006 | Session cookies are HTTP-only (preventing JavaScript access) and are `secure` in production (HTTPS only). Session data is encrypted using a server-side secret of at least 32 characters configured via the `SESSION_SECRET` environment variable. |
+
+---
+
+#### Cap01_Feat003: Password Management
+
+Logged-in players can change their password. Players who have registered with an email address can request a password reset by email if they forget their credentials.
+
+| ID                   | Requirement                                                                                                                                                                                                                          |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Cap01_Feat003_Req001 | Authenticated player can change their password (`POST /api/change-password`) by providing their current password, a new password, and a confirmation of the new password. All three fields are required.                            |
+| Cap01_Feat003_Req002 | Password change is rejected if the current password does not match the stored hash, or if the new password and confirmation do not match.                                                                                            |
+| Cap01_Feat003_Req003 | Player can request a password reset email (`POST /api/forgot-password`) by providing their registered email address. The endpoint always returns success to prevent email enumeration, whether or not the address is on file.        |
+| Cap01_Feat003_Req004 | When a password-reset email is sent, a single-use token with a 1-hour expiry is generated and stored. The email contains a link to the reset page (`/reset-password?token=…`).                                                       |
+| Cap01_Feat003_Req005 | Player can set a new password via the reset link (`POST /api/reset-password`) by providing the token, a new password, and a confirmation. The token is consumed on use; expired or already-used tokens are rejected with an error. |
+
+---
+
+#### Cap01_Feat004: Email Verification
+
+When a player registers with an email address and the server has email enabled, a verification flow confirms ownership of the address.
+
+| ID                   | Requirement                                                                                                                                                                                                              |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Cap01_Feat004_Req001 | When a player registers with an email address and the server has email enabled, a verification email is sent containing a link valid for 24 hours (`GET /api/verify-email?token=…`).                                     |
+| Cap01_Feat004_Req002 | Clicking the verification link marks the account's email as verified. The token is single-use and expires after 24 hours; an expired or already-used token is rejected with an error.                                    |
+| Cap01_Feat004_Req003 | Accounts may be used normally regardless of email verification status; verification is optional and does not gate gameplay.                                                                                              |
+
+---
+
+#### Cap01_Feat005: Profile Customization
+
+Players can personalize the visual appearance of their ship shown to other players in the game world.
+
+| ID                   | Requirement                                                                                                                                                                                                             |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Cap01_Feat005_Req001 | Authenticated player can update their ship's picture (`POST /api/update-ship-picture`) by providing a valid picture ID (integer in range 1–1000). Invalid values are rejected with an error.                           |
+| Cap01_Feat005_Req002 | The updated ship picture is immediately visible to all other players observing the game world (`GET /api/world`).                                                                                                        |
+
+---
 
 ### Cap02: Game Hub & Player Status
 
-Central dashboard displaying player progression, defense values, and active battles.
+**Purpose**: The Home page is the player's central dashboard. It displays real-time progression stats, defense health, an active-battle banner, weapon and defense inventory counts, a leaderboard, and the notification feed.
+
+#### Contained Features
+
+- [Cap02_Feat001](#cap02_feat001-player-stats--progression): Player Stats & Progression
+- [Cap02_Feat002](#cap02_feat002-defense-status-display): Defense Status Display
+- [Cap02_Feat003](#cap02_feat003-tech-inventory-display): Tech Inventory Display
+- [Cap02_Feat004](#cap02_feat004-leaderboard): Leaderboard
+- [Cap02_Feat005](#cap02_feat005-battle-history): Battle History
+
+---
+
+#### Cap02_Feat001: Player Stats & Progression
+
+The Home page displays key player stats: iron, level, XP, score, and all active game bonuses. Stats refresh automatically via polling.
+
+| ID                   | Requirement                                                                                                                                                                                                                                                                  |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Cap02_Feat001_Req001 | Player can view their current iron amount, iron-per-second production rate, and iron storage capacity on the Home page. Iron display interpolates smoothly between server polls for visual consistency (`GET /api/user-stats`, polled every 5 seconds).                       |
+| Cap02_Feat001_Req002 | Player can view their current level, total XP, and the XP threshold for the next level. Level is derived from total XP using a triangular-number formula: the XP required to reach level N is `(N-1)×N/2 × 1,000` cumulative XP.                                             |
+| Cap02_Feat001_Req003 | Player can view their total score. Score is awarded by completing research and factory builds; see [Cap06: Research & Technology Tree](#cap06-research--technology-tree) and [Cap07: Factory & Manufacturing](#cap07-factory--manufacturing).                                 |
+| Cap02_Feat001_Req004 | Player can view their Level Bonus, displayed as a percentage. The level multiplier formula is `1.15^(level − 1)` and applies to iron production, iron capacity, weapon damage, and defense max values.                                                                       |
+| Cap02_Feat001_Req005 | Player can view a summary of all active bonuses grouped by category: Iron Economy (iron rate, storage, max ship speed, current max ship speed), Defense Regen (repair rate, shield recharge rate), Projectile Weapons (damage, reload speed, accuracy), and Energy Weapons (damage, reload speed, accuracy). |
+| Cap02_Feat001_Req006 | The Home page also displays the player's current teleport charge count and max charges when the Teleport research has been unlocked. See [Cap03_Feat004: Teleportation](#cap03_feat004-teleportation).                                                                        |
+| Cap02_Feat001_Req007 | When the player is in an active battle, a battle-status banner is shown on the Home page, displaying the battle type (attacker or defender), the opponent, total damage dealt and received, and the remaining cooldown time for each weapon. See [Cap05: Combat System](#cap05-combat-system). |
+
+---
+
+#### Cap02_Feat002: Defense Status Display
+
+The Home page shows the current and maximum HP for each defense layer (hull, armor, shield) with color-coded health indicators. Values update in real time via client-side interpolation between server polls.
+
+| ID                   | Requirement                                                                                                                                                                                                                                                                                 |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Cap02_Feat002_Req001 | Player can view the current and maximum HP for Hull, Armor, and Shield on the Home page (`GET /api/ship-stats`, polled every 2 seconds). If no defense items have been built, an empty-state message is displayed instead.                                                                  |
+| Cap02_Feat002_Req002 | Each defense value is color-coded by health percentage: red when below 50%, yellow when 50%–99%, and green when at 100% (full). Display values interpolate smoothly between server polls using the per-layer regen rate.                                                                    |
+| Cap02_Feat002_Req003 | Maximum defense HP is calculated per layer as `baseValue × techCount × researchMultiplier × levelMultiplier`. All three layers are independent. See [Cap07_Feat004: Defense Systems](#cap07_feat004-defense-systems) and [Cap06_Feat005: Defense Sciences](#cap06_feat005-defense-sciences). |
+| Cap02_Feat002_Req004 | Hull and Armor regenerate (via Repair Speed research) only outside of active combat. Shield regenerates continuously—both in and out of combat. See [Cap06_Feat005: Defense Sciences](#cap06_feat005-defense-sciences).                                                                       |
+
+---
+
+#### Cap02_Feat003: Tech Inventory Display
+
+The Home page shows the player's current count of each weapon and defense item type, grouped by category.
+
+| ID                   | Requirement                                                                                                                                                                                        |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Cap02_Feat003_Req001 | Player can view their current tech inventory on the Home page, grouped into Defense (Ship Hull, Kinetic Armor, Energy Shield, Missile Jammer) and Weapons (Pulse Laser, Auto Turret, Plasma Lance, Gauss Rifle, Photon Torpedo, Rocket Launcher). |
+| Cap02_Feat003_Req002 | Tech counts are the source of truth for defense max HP and combat damage calculations. See [Cap07: Factory & Manufacturing](#cap07-factory--manufacturing).                                         |
+
+---
+
+#### Cap02_Feat004: Leaderboard
+
+Players can view a ranked leaderboard of all players sorted by score, along with category-specific best-in-game highlights.
+
+| ID                   | Requirement                                                                                                                                                                                                                                                                                                                 |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Cap02_Feat004_Req001 | Player can view a ranked leaderboard (`GET /api/leaderboard`) showing all players ordered by score (descending). Each entry shows rank, username, score, and a flag indicating whether it is the current player's entry.                                                                                                     |
+| Cap02_Feat004_Req002 | The leaderboard also shows per-category best-in-game records, including: battles won, battles lost, total damage dealt, total damage received, total iron transferred in combat, total XP awarded, asteroids collected, shipwrecks collected, escape pods collected, total iron from collection, iron spent on research, iron spent on builds, total builds completed, and research completions. |
+| Cap02_Feat004_Req003 | Additional per-category records cover tech levels: highest ship speed, hull strength, shield, armor, and individual weapon counts (Pulse Laser, Auto Turret, Plasma Lance, Gauss Rifle, Photon Torpedo, Rocket Launcher).                                                                                                    |
+
+---
+
+#### Cap02_Feat005: Battle History
+
+Players can review a log of their completed battles, showing opponent names, outcomes, damage totals, and battle duration.
+
+| ID                   | Requirement                                                                                                                                                                                                  |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Cap02_Feat005_Req001 | Player can view a list of their completed battles (`GET /api/user-battles`). Each entry shows: opponent username, whether the player was the attacker, win/loss outcome, damage dealt, damage received, battle duration in seconds, and start and end timestamps. |
+| Cap02_Feat005_Req002 | Only completed battles (those with a recorded end time) are returned. Ongoing battles are excluded from the history list.                                                                                     |
+
+---
 
 ### Cap03: Exploration & Navigation
 
-Navigate the toroidal world, set course and speed, manage viewport zoom, and observe game objects.
+**Purpose**: Players navigate a toroidal 2D world rendered on an HTML5 Canvas. Ships move continuously based on speed and angle; the world wraps seamlessly at its edges. Players control their course through click-to-navigate, direct parameter input, afterburner boosts, and teleportation.
+
+#### Contained Features
+
+- [Cap03_Feat001](#cap03_feat001-ship-navigation): Ship Navigation
+- [Cap03_Feat002](#cap03_feat002-world--viewport): World & Viewport
+- [Cap03_Feat003](#cap03_feat003-afterburner): Afterburner
+- [Cap03_Feat004](#cap03_feat004-teleportation): Teleportation
+- [Cap03_Feat005](#cap03_feat005-starbase-interaction): Starbase Interaction
+
+---
+
+#### Cap03_Feat001: Ship Navigation
+
+Players set their ship's speed and heading to move through the world. A click-to-navigate interaction automatically calculates an interception course toward any target point or object.
+
+| ID                   | Requirement                                                                                                                                                                                                                                                              |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Cap03_Feat001_Req001 | Player can change their ship's speed and/or angle (`POST /api/navigate`) by providing a `speed` (0 to effective max speed) and/or an `angle` in degrees (0–360, automatically normalized). At least one parameter must be provided.                                      |
+| Cap03_Feat001_Req002 | The ship moves continuously based on its current speed and angle. Position is updated using the formula `newPosition = oldPosition + (speed × elapsed × factor) / 60000`, where `factor = 50`. The time multiplier is applied to elapsed time.                            |
+| Cap03_Feat001_Req003 | Navigation is disabled while the player is in an active battle. Attempting to navigate during combat returns an error. See [Cap05_Feat004: Battle State & Immobilization](#cap05_feat004-battle-state--immobilization).                                                    |
+| Cap03_Feat001_Req004 | Clicking on a game object or empty space in the canvas automatically calculates an interception course using a quadratic intercept algorithm that accounts for the target's current speed and direction, as well as toroidal world wrapping. The ship's angle is set accordingly. |
+| Cap03_Feat001_Req005 | Clicking on a collectible object (asteroid, shipwreck, escape pod) within 125 world units of the ship triggers collection directly. Clicking on one that is farther away sets an interception course toward it. See [Cap04_Feat002: Collectible Harvesting](#cap04_feat002-collectible-harvesting). |
+| Cap03_Feat001_Req006 | Max ship speed is controlled by the Ship Speed research level. See [Cap06_Feat003: Mobility Sciences](#cap06_feat003-mobility-sciences).                                                                                                                                   |
+
+---
+
+#### Cap03_Feat002: World & Viewport
+
+The game world is a toroidal 5000×5000-unit space rendered on an HTML5 Canvas. Players can zoom in and out; their ship is always centered on screen.
+
+| ID                   | Requirement                                                                                                                                                                                                                                                        |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Cap03_Feat002_Req001 | The game world is 5000×5000 world units (configurable via the `WORLD_SIZE` environment variable). Objects that move past a boundary wrap seamlessly to the opposite edge: `position = ((position % size) + size) % size`.                                          |
+| Cap03_Feat002_Req002 | The canvas view is always centered on the player's ship. Other players' ships, collectible objects, and starbases are rendered relative to the player's position.                                                                                                   |
+| Cap03_Feat002_Req003 | Player can zoom the viewport in and out. Zoom ranges from 0.25× (maximum zoom-out, showing more world) to 4.0× (maximum zoom-in). The default zoom level is 1.33×. Zoom preference is persisted in `localStorage`.                                                 |
+| Cap03_Feat002_Req004 | The world state (`GET /api/world`) returns all space objects (player ships, asteroids, shipwrecks, escape pods, starbases) with their current positions, types, speeds, and angles. Other players' ships also include username and level.                           |
+| Cap03_Feat002_Req005 | Toroidal distance between two objects is calculated as `sqrt(min(|dx|, W−|dx|)² + min(|dy|, H−|dy|)²)` to correctly account for wrapping. This distance is used for range checks (collection, combat, starbase docking). See [Cap04_Feat002](#cap04_feat002-collectible-harvesting) and [Cap05_Feat001](#cap05_feat001-battle-initiation--level-matching). |
+
+---
+
+#### Cap03_Feat003: Afterburner
+
+The Afterburner research (unlock gate, starts at level 0) grants a temporary speed boost fuelled by a rechargeable fuel tank.
+
+| ID                   | Requirement                                                                                                                                                                                                                                                                              |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Cap03_Feat003_Req001 | Player can activate or deactivate the afterburner (`POST /api/afterburner` with `action: 'activate'` or `'deactivate'`). Activating requires the Afterburner Duration research to be at level ≥ 1. See [Cap06_Feat003: Mobility Sciences](#cap06_feat003-mobility-sciences).            |
+| Cap03_Feat003_Req002 | While the afterburner is active, ship speed can exceed the normal max up to the boosted speed: `boostedSpeed = maxSpeed × (1 + afterburnerSpeedIncrease% / 100)`. When deactivated, speed is capped back to `maxSpeed`.                                                                   |
+| Cap03_Feat003_Req003 | The afterburner uses a fuel tank with capacity set by the Afterburner Duration research level. Fuel drains linearly while the afterburner is active and recharges linearly while inactive (recharge time set by Afterburner Cooldown research). The time multiplier is applied to both. |
+| Cap03_Feat003_Req004 | The afterburner can only be activated when fuel is at or above 33% capacity. Attempting to activate below this threshold returns an error.                                                                                                                                               |
+| Cap03_Feat003_Req005 | The `GET /api/ship-stats` response includes the full afterburner status: active flag, remaining fuel (ms), fuel capacity (ms), fuel percentage, boosted speed, time until next activation, and whether the afterburner can currently be activated.                                       |
+
+---
+
+#### Cap03_Feat004: Teleportation
+
+The Teleport research (unlock gate, starts at level 0) grants rechargeable teleport charges that allow instant positional jumps anywhere in the world.
+
+| ID                   | Requirement                                                                                                                                                                                                                                                     |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Cap03_Feat004_Req001 | Player can teleport their ship to any valid coordinate within the world (`POST /api/teleport` with `x`, `y`, and optional `preserveVelocity`). Teleporting requires the Teleport research to be at level ≥ 1 and at least 1 full charge available.              |
+| Cap03_Feat004_Req002 | Teleportation cost scales with distance: `cost = min(1.0, distance / 2000)`. Traveling ≤ 2000 units costs a proportional fraction of a charge; traveling > 2000 units always costs exactly 1.0 charge.                                                         |
+| Cap03_Feat004_Req003 | Charges are stored as floating-point values. The player must have `floor(charges) ≥ 1` to teleport. The cost is deducted from `charges` after a successful teleport.                                                                                            |
+| Cap03_Feat004_Req004 | When `preserveVelocity` is false (the default), the ship arrives at the destination with speed = 0. When true, the ship retains its current speed and angle.                                                                                                    |
+| Cap03_Feat004_Req005 | Charges recharge over time at a rate controlled by the Teleport Recharge Speed research. The number of max charges is determined by the Teleport research level. See [Cap06_Feat003: Mobility Sciences](#cap06_feat003-mobility-sciences).                       |
+| Cap03_Feat004_Req006 | Teleportation is disabled while the player is in an active battle. Attempting to teleport during combat returns an error. See [Cap05_Feat004: Battle State & Immobilization](#cap05_feat004-battle-state--immobilization).                                        |
+
+---
+
+#### Cap03_Feat005: Starbase Interaction
+
+Starbases are stationary space stations. A player who docks within range can buy or sell Commanders via the Starbase shop.
+
+| ID                   | Requirement                                                                                                                                                                                                                                                                      |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Cap03_Feat005_Req001 | Starbases are visible in the game world as large stationary objects. Clicking a starbase within 500 world units opens the starbase menu; clicking one that is farther away sets an interception course toward it.                                                                 |
+| Cap03_Feat005_Req002 | The starbase shop (`GET /api/starbase/shop`) offers 10 randomly generated Commander items for purchase. The shop stock is stored in the player's session; a new shop is generated on each visit.                                                                                 |
+| Cap03_Feat005_Req003 | Player can buy a Commander from a shop slot (`POST /api/starbase/buy` with `slotIndex` 0–9), paying the listed iron price. The Commander is added to the first available inventory slot. If the player has insufficient iron or a full inventory, the purchase is rejected.      |
+| Cap03_Feat005_Req004 | Player can sell a Commander from their inventory at the starbase (`POST /api/starbase/sell` with `row` and `col`). The Commander is removed from inventory and the sell price is added to the player's iron. Only Commander items can be sold; other item types return an error. |
+
+---
 
 ### Cap04: Resource Gathering & Harvesting
 
-Iron is collected both passively and actively. Passive income is generated over time. Active collection includes harvesting collectibles (asteroids, shipwrecks, escape pods) using interception algorithms, as well as winning iron in combat or through trading with other players.
+**Purpose**: Iron is the primary currency, earned both passively over time and actively by collecting space objects. Passive income scales with research level and player level. Active collection requires navigating to collectible objects; escape pods yield Commanders instead of iron.
+
+#### Contained Features
+
+- [Cap04_Feat001](#cap04_feat001-passive-iron-income): Passive Iron Income
+- [Cap04_Feat002](#cap04_feat002-collectible-harvesting): Collectible Harvesting
+- [Cap04_Feat003](#cap04_feat003-iron-capacity--overflow): Iron Capacity & Overflow
+
+---
+
+#### Cap04_Feat001: Passive Iron Income
+
+Iron accumulates automatically over time at a rate determined by the Iron Harvesting research level and the player's level multiplier.
+
+| ID                   | Requirement                                                                                                                                                                                                                                                                             |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Cap04_Feat001_Req001 | Iron accumulates passively at a rate of `IronHarvesting_Effect × levelMultiplier` iron per second. At research level 1 the base rate is 1.0 iron/sec; each additional level multiplies the rate by 1.1. The time multiplier is applied server-side when stats are updated.             |
+| Cap04_Feat001_Req002 | The Iron Harvesting research effect and the level multiplier (`1.15^(level − 1)`) together determine the displayed iron-per-second rate on the Home page. See [Cap06_Feat002: Resource Sciences](#cap06_feat002-resource-sciences) and [Cap02_Feat001](#cap02_feat001-player-stats--progression). |
+| Cap04_Feat001_Req003 | If the Iron Harvesting research completes during a passive income update, iron is awarded at the old rate up to the research completion time and at the new (higher) rate for the remainder of the interval.                                                                              |
+
+---
+
+#### Cap04_Feat002: Collectible Harvesting
+
+Players actively collect asteroids, shipwrecks, and escape pods by moving to within 125 world units and triggering a harvest. Each object type yields a different reward, and collected objects are replaced immediately by a new randomly typed object.
+
+| ID                   | Requirement                                                                                                                                                                                                                                                                                              |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Cap04_Feat002_Req001 | Player can harvest a collectible space object (`POST /api/harvest` with `objectId`) when within 125 world units (toroidal distance). Requests for objects farther away are rejected with an error.                                                                                                       |
+| Cap04_Feat002_Req002 | **Asteroid**: Yields 50–700 iron (random, uniform distribution). Moves slowly (base speed 5 units/sec ±25%).                                                                                                                                                                                             |
+| Cap04_Feat002_Req003 | **Shipwreck**: Yields 50–2,000 iron (random, uniform distribution). Moves at medium speed (base 10 units/sec ±25%).                                                                                                                                                                                       |
+| Cap04_Feat002_Req004 | **Escape Pod**: Yields 0 iron but adds a randomly generated Commander to the player's inventory. If the inventory is full the Commander is lost (notification states this). Escape pods move fast (base 25 units/sec ±25%). See [Cap08_Feat001: Item Inventory](#cap08_feat001-item-inventory).           |
+| Cap04_Feat002_Req005 | After any collectible is harvested, a new object spawns immediately at a random world position with a random angle. The new object type is drawn with probabilities: 60% asteroid, 30% shipwreck, 10% escape pod.                                                                                        |
+| Cap04_Feat002_Req006 | A notification is sent to the player on each successful harvest, stating the object type and iron received. Escape pod notifications name the rescued Commander and list the stat bonuses awarded (or note that the Commander was lost due to a full inventory). See [Cap10: Notifications](#cap10-notifications). |
+
+---
+
+#### Cap04_Feat003: Iron Capacity & Overflow
+
+Iron storage is capped by the Iron Capacity research level and the player's level multiplier. Iron above the cap is silently discarded.
+
+| ID                   | Requirement                                                                                                                                                                                                                                         |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Cap04_Feat003_Req001 | The player's maximum iron storage is `IronCapacity_Effect × levelMultiplier`. At research level 1 the base capacity is 5,000 iron; each additional level doubles the capacity. See [Cap06_Feat002: Resource Sciences](#cap06_feat002-resource-sciences). |
+| Cap04_Feat003_Req002 | When iron is added (passive income, collection, or combat reward) and the result would exceed the capacity cap, only the iron that fits is added; the excess is discarded silently.                                                                  |
+| Cap04_Feat003_Req003 | The iron reward shown in collection and combat responses reflects the amount actually added (after capacity enforcement), not the raw reward value.                                                                                                  |
+
+---
 
 ### Cap05: Combat System
 
-Attack other players, manage combat state, and track battle outcomes and rewards.
+**Purpose**: Players attack other players within range and level restrictions. Combat proceeds automatically in timed rounds; each round fires all ready weapons and applies damage to the opponent's defense layers. The battle ends when one player's hull reaches zero; the winner receives iron and XP, and the loser is teleported away.
+
+#### Contained Features
+
+- [Cap05_Feat001](#cap05_feat001-battle-initiation--level-matching): Battle Initiation & Level Matching
+- [Cap05_Feat002](#cap05_feat002-combat-rounds--damage): Combat Rounds & Damage
+- [Cap05_Feat003](#cap05_feat003-battle-resolution--rewards): Battle Resolution & Rewards
+- [Cap05_Feat004](#cap05_feat004-battle-state--immobilization): Battle State & Immobilization
+
+---
+
+#### Cap05_Feat001: Battle Initiation & Level Matching
+
+A player initiates combat by targeting another player's ship. Several conditions must be met: proximity, level parity, and neither player already being in a battle.
+
+| ID                   | Requirement                                                                                                                                                                                                                                             |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Cap05_Feat001_Req001 | Player can initiate a battle against another player (`POST /api/attack` with `targetUserId`). On the canvas, enemy ships are highlighted by color to indicate whether they are attackable based on level difference.                                     |
+| Cap05_Feat001_Req002 | Attack is only allowed when the level difference between attacker and target is ≤ 3. Ships outside this range are shown in gray on the canvas (not attackable). Ships within the range are color-coded from green (easy target) to red (hard target).   |
+| Cap05_Feat001_Req003 | Attack is only allowed when both players are within 100 world units (toroidal distance) of each other.                                                                                                                                                  |
+| Cap05_Feat001_Req004 | Attack is rejected if either player is already in an active battle.                                                                                                                                                                                     |
+| Cap05_Feat001_Req005 | Attack is rejected if the attacker has no weapons.                                                                                                                                                                                                      |
+| Cap05_Feat001_Req006 | Attack is rejected if the attacker has targeted the same player as one of their last 3 opponents (prevents repeated farming of the same target).                                                                                                         |
+
+---
+
+#### Cap05_Feat002: Combat Rounds & Damage
+
+After a battle starts, combat is processed automatically every second. All weapons that have completed their cooldown fire simultaneously; damage is applied to the defender's layered defenses.
+
+| ID                   | Requirement                                                                                                                                                                                                                                                                                                                         |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Cap05_Feat002_Req001 | Each battle is processed every 1 second by an automated scheduler. In each processing step, all weapons on both sides whose cooldown has expired fire simultaneously.                                                                                                                                                               |
+| Cap05_Feat002_Req002 | Weapon cooldowns are measured from the time the weapon last fired. Effective cooldown = `baseCooldown ÷ reloadFactor`. The time multiplier is applied: `ceil(effectiveCooldown ÷ timeMultiplier)`. Cooldowns incorporate research, level, and commander bonus multipliers.                                                           |
+| Cap05_Feat002_Req003 | Damage flows through three defense layers in order: Shield → Armor → Hull. Shield absorbs energy weapon damage at 50% effectiveness and projectile weapon damage at full effectiveness. Armor absorbs projectile weapon damage at 50% effectiveness and energy weapon damage at full effectiveness. Hull absorbs all remaining damage. |
+| Cap05_Feat002_Req004 | Projectile weapons (Gauss Rifle) partially bypass the Shield layer based on the Projectile Weapon Tier research: `bypass fraction = 1 − 0.95^researchLevel`. Bypassed damage is applied directly to the Armor layer. See [Cap06_Feat004: Weapons Sciences](#cap06_feat004-weapons-sciences).                                        |
+| Cap05_Feat002_Req005 | Energy weapons (Plasma Lance) partially bypass the Armor layer when the Energy Accuracy research multiplier exceeds 1.0: `bypass fraction = max(0, 1 − 1/accuracyMultiplier)`. Bypassed damage is applied directly to the Hull layer. See [Cap06_Feat004: Weapons Sciences](#cap06_feat004-weapons-sciences).                       |
+| Cap05_Feat002_Req006 | Guided weapons (Rocket Launcher, Photon Torpedo) are affected by the defender's Missile Jammer count. Each jammer reduces effective accuracy: `accuracy = base × accMult × (1 − ecmEffectiveness)`. Photon Torpedos receive only one-third of the ECM penalty. See [Cap07_Feat004: Defense Systems](#cap07_feat004-defense-systems). |
+| Cap05_Feat002_Req007 | After each weapon fires, a notification is sent to both the attacker and the defender listing the weapon, shots fired, shots that hit, and total damage dealt. A separate notification is sent if all shots miss. See [Cap10_Feat001: Notification Sources](#cap10_feat001-notification-sources).                                     |
+| Cap05_Feat002_Req008 | Damage multipliers from research, level, and bridge crew stack multiplicatively. The combined multiplier is applied to raw weapon damage before layer processing. See [Cap08_Feat002: Bridge Crew](#cap08_feat002-bridge-crew).                                                                                                       |
+
+---
+
+#### Cap05_Feat003: Battle Resolution & Rewards
+
+The battle ends when a player's hull HP reaches zero. The winner receives iron and XP; the loser is teleported to a random distant position.
+
+| ID                   | Requirement                                                                                                                                                                                                                                                                                       |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Cap05_Feat003_Req001 | The battle ends when either player's Hull HP reaches 0 or below. The player with remaining hull HP > 0 is the winner.                                                                                                                                                                             |
+| Cap05_Feat003_Req002 | On victory, the winner receives iron transferred from the loser: up to `min(loser.iron, winner.remaining_iron_capacity)`. The loser's iron is reduced by the same amount.                                                                                                                         |
+| Cap05_Feat003_Req003 | On victory, the winner receives XP. Base XP = `winnerLevel × 200`. If the loser was a higher level, XP is multiplied by `1.3^levelDifference`; if lower level, XP is multiplied by `0.7^|levelDifference|`. Completing a level-up triggers a level-up notification. See [Cap10_Feat001](#cap10_feat001-notification-sources). |
+| Cap05_Feat003_Req004 | The loser is teleported to a random position at least 1,000 world units from the winner's current position. The loser's ship speed is set to 0 on arrival.                                                                                                                                       |
+| Cap05_Feat003_Req005 | Victory and defeat notifications are sent to both players stating iron gained/lost, XP gained, and the opponent's name. See [Cap10_Feat001: Notification Sources](#cap10_feat001-notification-sources).                                                                                            |
+
+---
+
+#### Cap05_Feat004: Battle State & Immobilization
+
+While a battle is active, both players are immobilized and restricted from performing most other game actions.
+
+| ID                   | Requirement                                                                                                                                                                                                                                                                             |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Cap05_Feat004_Req001 | At battle start, both players' ship speed is set to 0. Ships cannot move (navigate), teleport, or harvest collectibles while in battle.                                                                                                                                                 |
+| Cap05_Feat004_Req002 | The current battle state is available via `GET /api/battle-status`. When in battle it returns: battle ID, attacker/defender flag, opponent ID, cumulative damage totals, weapon cooldown timestamps, and the full battle event log.                                                      |
+| Cap05_Feat004_Req003 | When not in a battle, `GET /api/battle-status` returns `{ inBattle: false }`.                                                                                                                                                                                                           |
+| Cap05_Feat004_Req004 | Hull and Armor do not regenerate during active combat. Shield regeneration continues during combat. See [Cap06_Feat005: Defense Sciences](#cap06_feat005-defense-sciences).                                                                                                              |
 
 ### Cap06: Research & Technology Tree
 
@@ -310,7 +680,66 @@ Players assign inventory items to bridge slots to activate their stat bonuses. B
 
 ### Cap09: Admin Tools
 
-(Authorization required) Manage game operations: adjust time multipliers, spawn space objects, view game statistics.
+**Purpose**: Authorized developers manage live game operations from the Admin panel: adjusting the global time multiplier, spawning new space objects, and inspecting the full database and game statistics.
+
+#### Contained Features
+
+- [Cap09_Feat001](#cap09_feat001-admin-authorization): Admin Authorization
+- [Cap09_Feat002](#cap09_feat002-time-multiplier-management): Time Multiplier Management
+- [Cap09_Feat003](#cap09_feat003-space-object-spawning): Space Object Spawning
+- [Cap09_Feat004](#cap09_feat004-database--statistics-inspection): Database & Statistics Inspection
+
+---
+
+#### Cap09_Feat001: Admin Authorization
+
+Admin features are restricted to developer accounts. Access is enforced on every admin endpoint.
+
+| ID                   | Requirement                                                                                                                                                                                                                            |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Cap09_Feat001_Req001 | Admin endpoints require an authenticated session. Unauthenticated requests return `401 Unauthorized`.                                                                                                                                  |
+| Cap09_Feat001_Req002 | Within an authenticated session, admin access is further restricted to accounts with the username `a` or `q`. All other authenticated users receive `403 Forbidden` with the message "Admin access restricted to developers".          |
+| Cap09_Feat001_Req003 | The Admin page (`/admin`) displays an error banner and a retry button when the server returns a 403 response. Unauthorized users cannot perform any admin action.                                                                       |
+
+---
+
+#### Cap09_Feat002: Time Multiplier Management
+
+Admins can accelerate all time-based game mechanics (research, build times, iron generation, afterburner fuel, combat cooldowns) by setting a global time multiplier for a fixed duration.
+
+| ID                   | Requirement                                                                                                                                                                                                                                              |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Cap09_Feat002_Req001 | Admin can read the current time multiplier (`GET /api/admin/time-multiplier`). The response includes the current multiplier value, the activation timestamp, the expiration timestamp, and the remaining seconds.                                        |
+| Cap09_Feat002_Req002 | Admin can set a new time multiplier (`POST /api/admin/time-multiplier`) by providing a multiplier ≥ 1 and a duration in minutes > 0. The multiplier expires automatically after the specified duration and resets to 1×.                                  |
+| Cap09_Feat002_Req003 | The time multiplier is stored in-memory only; it is not persisted to the database and resets to 1× on server restart.                                                                                                                                    |
+| Cap09_Feat002_Req004 | The Admin page provides preset buttons for common configurations (10× for 5 min, 100× for 5 min, 1000× for 5 min) and a custom form for arbitrary multiplier and duration values. A "Reset to 1×" button is shown when the multiplier is active.         |
+| Cap09_Feat002_Req005 | The Admin page polls the current multiplier status every 5 seconds and shows a live countdown timer for the remaining duration.                                                                                                                           |
+
+---
+
+#### Cap09_Feat003: Space Object Spawning
+
+Admins can inject new collectible objects into the live game world at random positions.
+
+| ID                   | Requirement                                                                                                                                                                                                                                                          |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Cap09_Feat003_Req001 | Admin can spawn new space objects (`POST /api/admin/spawn-objects`) by specifying a type (`asteroid`, `shipwreck`, or `escape_pod`) and a quantity (1–50). The response returns the count of spawned objects and their newly assigned IDs.                           |
+| Cap09_Feat003_Req002 | Spawned objects are placed at random positions within the world bounds with a random angle and a speed equal to the base speed for that type ±25%. They are immediately visible to all players via `GET /api/world`.                                                 |
+| Cap09_Feat003_Req003 | The Admin page provides quick-spawn buttons (spawn 1, 5, or 10) for each object type, plus a custom form for arbitrary type and quantity. Spawn success and error messages are displayed and auto-clear after 5 seconds.                                             |
+
+---
+
+#### Cap09_Feat004: Database & Statistics Inspection
+
+Admins can view the full current state of the database (all users, space objects, and battles) and read per-player and global game statistics.
+
+| ID                   | Requirement                                                                                                                                                                                                                                                                                  |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Cap09_Feat004_Req001 | Admin can retrieve a full database snapshot (`GET /api/admin/database`). Before querying, the server flushes all in-memory caches to the database to ensure the snapshot reflects the latest state. The response includes all users, all space objects, all battles, and summary counts.    |
+| Cap09_Feat004_Req002 | The user snapshot includes each player's iron, XP, tech counts (all weapon and defense types), research levels, build queue, and battle state.                                                                                                                                               |
+| Cap09_Feat004_Req003 | The battle snapshot includes all active and completed battles with attacker/attackee IDs, start and end times, winner/loser, damage totals, and the number of battle log events.                                                                                                             |
+| Cap09_Feat004_Req004 | Any authenticated player can retrieve global and per-player statistics (`GET /api/statistics`). Statistics include combat totals (battles won/lost, damage dealt/received, iron transferred, XP awarded), collection totals (asteroids, shipwrecks, escape pods, iron from collection), and economy totals (iron spent on research, iron spent on builds, builds completed, research completions). |
+| Cap09_Feat004_Req005 | The statistics endpoint also returns global aggregates (totals and averages across all players) and top-5 rankings per metric, which power the leaderboard best-in-category highlights. See [Cap02_Feat004: Leaderboard](#cap02_feat004-leaderboard).                                        |
 
 ### Cap10: Notifications
 
