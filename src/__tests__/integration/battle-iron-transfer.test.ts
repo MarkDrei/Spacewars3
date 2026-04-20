@@ -20,6 +20,7 @@ async function setUserIron(ctx: ReturnType<typeof createLockContext>, userId: nu
     const user = await userCache.getUserByIdWithLock(userCtx, userId);
     if (!user) throw new Error('user not found');
     user.iron = amount;
+    user.last_updated = Math.floor(Date.now() / 1000) + 60;
     await userCache.updateUserInCache(userCtx, user);
   });
 }
@@ -120,12 +121,15 @@ describe('Battle iron transfer', () => {
       await emptyCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
         const att = await userCache.getUserByUsername(userCtx, 'a');
         const def = await userCache.getUserByUsername(userCtx, 'dummy');
+        const frozenLastUpdated = Math.floor(Date.now() / 1000) + 60;
         attackerId = att!.id;
         defenderId = def!.id;
         // set a low capacity on attacker
         att!.techTree.ironCapacity = 1; // assuming effect=5000? but we will reduce iron to near cap
         att!.iron = att!.getMaxIronCapacity() - 50; // leave 50 capacity
+        att!.last_updated = frozenLastUpdated;
         def!.iron = 200;
+        def!.last_updated = frozenLastUpdated;
         await userCache.updateUserInCache(userCtx, att!);
         await userCache.updateUserInCache(userCtx, def!);
       });
@@ -182,6 +186,7 @@ describe('Battle iron transfer', () => {
       await emptyCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
         const att = await userCache.getUserByUsername(userCtx, 'a');
         const def = await userCache.getUserByUsername(userCtx, 'dummy');
+        const frozenLastUpdated = Math.floor(Date.now() / 1000) + 60;
         expect(att).not.toBeNull();
         expect(def).not.toBeNull();
 
@@ -190,7 +195,9 @@ describe('Battle iron transfer', () => {
 
         att!.addXp(1000); // level 2 => storage capacity bonus applies
         att!.iron = 5600; // above base cap (5000), below bonused cap (5750)
+        att!.last_updated = frozenLastUpdated;
         def!.iron = 200;
+        def!.last_updated = frozenLastUpdated;
 
         await userCache.updateUserInCache(userCtx, att!);
         await userCache.updateUserInCache(userCtx, def!);
