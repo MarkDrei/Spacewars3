@@ -204,7 +204,7 @@ export const LoginPageComponent: React.FC<LoginPageComponentProps> = ({
                   </div>
                 )}
                 {!successMessage && (
-                  <button type="submit" className="auth-button" disabled={isLoading}>
+                  <button type="submit" className="btn-primary" disabled={isLoading}>
                     {isLoading ? 'Sending…' : 'Send Reset Link'}
                   </button>
                 )}
@@ -305,7 +305,7 @@ export const LoginPageComponent: React.FC<LoginPageComponentProps> = ({
 
                 <button
                   type="submit"
-                  className="auth-button"
+                  className="btn-primary"
                   disabled={isLoading}
                 >
                   {isLoading 

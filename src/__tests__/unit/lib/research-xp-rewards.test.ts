@@ -58,7 +58,7 @@ describe('Research XP Rewards System', () => {
       expect(result?.completed).toBe(true);
       expect(result?.type).toBe(ResearchType.IronHarvesting);
       expect(result?.completedLevel).toBe(2); // Completed level after increment
-      expect(tree.ironHarvesting).toBe(2); // Level AFTER increment
+      expect(tree.ironHarvesting).toBe(2);
       expect(tree.activeResearch).toBeUndefined();
     });
 

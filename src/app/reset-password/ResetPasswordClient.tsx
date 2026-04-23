@@ -99,7 +99,7 @@ export const ResetPasswordClient: React.FC<ResetPasswordClientProps> = ({ token 
 
             <button
               type="submit"
-              className="auth-button"
+              className="btn-primary"
               disabled={isLoading || !!successMessage}
             >
               {isLoading ? 'Updating…' : 'Set New Password'}

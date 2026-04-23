@@ -19,42 +19,42 @@ describe('calculateBattleXp()', () => {
 
   it('calculateBattleXp_enemyHigherBy2_appliesMultiplier', () => {
     // Winner level 5, loser level 7 (levelDiff = 2)
-    // baseXp = 5 * 200 = 1000
-    // xp = 1000 * 1.3^2 = 1000 * 1.69 = 1690
+    // baseXp = 7 * 200 = 1400
+    // xp = 1400 * 1.3^2 = 1400 * 1.69 = 2366
     const xp = calculateBattleXp(5, 7);
-    expect(xp).toBe(Math.floor(1000 * Math.pow(1.3, 2)));
+    expect(xp).toBe(Math.floor(1400 * Math.pow(1.3, 2)));
   });
 
   it('calculateBattleXp_enemyHigherBy1_appliesMultiplier', () => {
     // Winner level 3, loser level 4 (levelDiff = 1)
-    // baseXp = 3 * 200 = 600
-    // xp = 600 * 1.3 = 780
+    // baseXp = 4 * 200 = 800
+    // xp = 800 * 1.3 = 1040
     const xp = calculateBattleXp(3, 4);
-    expect(xp).toBe(Math.floor(600 * 1.3));
+    expect(xp).toBe(Math.floor(800 * 1.3));
   });
 
   it('calculateBattleXp_enemyLowerBy3_appliesReduction', () => {
     // Winner level 5, loser level 2 (levelDiff = -3, abs = 3)
-    // baseXp = 5 * 200 = 1000
-    // xp = 1000 * 0.7^3 = 1000 * 0.343 = 343
+    // baseXp = 2 * 200 = 400
+    // xp = 400 * 0.7^3 = 400 * 0.343 = 137.2
     const xp = calculateBattleXp(5, 2);
-    expect(xp).toBe(Math.floor(1000 * Math.pow(0.7, 3)));
+    expect(xp).toBe(Math.floor(400 * Math.pow(0.7, 3)));
   });
 
   it('calculateBattleXp_enemyLowerBy1_appliesReduction', () => {
     // Winner level 4, loser level 3 (levelDiff = -1)
-    // baseXp = 4 * 200 = 800
-    // xp = 800 * 0.7 = 560
+    // baseXp = 3 * 200 = 600
+    // xp = 600 * 0.7 = 420
     const xp = calculateBattleXp(4, 3);
-    expect(xp).toBe(Math.floor(800 * 0.7));
+    expect(xp).toBe(Math.floor(600 * 0.7));
   });
 
   it('calculateBattleXp_largeLevelDifference_handlesCorrectly', () => {
     // Winner level 1, loser level 10 (levelDiff = 9)
-    // baseXp = 1 * 200 = 200
-    // xp = 200 * 1.3^9 = 200 * 10.604... = 2120
+    // baseXp = 10 * 200 = 2000
+    // xp = 2000 * 1.3^9 = 2000 * 10.604... = 21208
     const xp = calculateBattleXp(1, 10);
-    expect(xp).toBe(Math.floor(200 * Math.pow(1.3, 9)));
+    expect(xp).toBe(Math.floor(2000 * Math.pow(1.3, 9)));
   });
 
   it('calculateBattleXp_returnsFlooredInteger', () => {

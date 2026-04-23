@@ -225,6 +225,13 @@
   }
 }
 
+.profile-top-bar-actions {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+
 .logout-button {
   background-color: #f44336;
   color: white;
