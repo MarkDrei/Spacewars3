@@ -181,4 +181,36 @@ describe('GamePageClient mobile tap mode button', () => {
     expect(initGame).toHaveBeenCalledTimes(1);
     expect(mockGame.stop).not.toHaveBeenCalled();
   });
+
+  it('touchModeButton_mobile_savedPreference_restoresInfoModeAfterRemount', async () => {
+    const firstGame = makeMockGame();
+    const secondGame = makeMockGame();
+    vi.mocked(initGame)
+      .mockReturnValueOnce(firstGame as never)
+      .mockReturnValueOnce(secondGame as never);
+    setMatchMedia(true);
+
+    const firstRender = render(<GamePageClient auth={defaultAuth} />);
+
+    await waitFor(() => {
+      expect(screen.getByTitle('Tap mode: direct')).toBeDefined();
+    });
+
+    fireEvent.click(screen.getByTitle('Tap mode: direct'));
+
+    await waitFor(() => {
+      expect(screen.getByTitle('Tap mode: info')).toBeDefined();
+      expect(JSON.parse(localStorage.getItem('game-ui-preferences') ?? '{}')).toMatchObject({
+        mobileTapInfoMode: true,
+      });
+    });
+
+    firstRender.unmount();
+
+    render(<GamePageClient auth={defaultAuth} />);
+
+    await waitFor(() => {
+      expect(screen.getByTitle('Tap mode: info')).toBeDefined();
+    });
+  });
 });

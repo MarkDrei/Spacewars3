@@ -557,4 +557,35 @@ describe('GamePageClient afterburner controls', () => {
       expect(mockGame.setDebugDrawingsEnabled).toHaveBeenCalledWith(true);
     });
   });
+
+  it('gameInit_savedUiPreferences_restorePanelsAndModes', async () => {
+    const mockGame = makeMockGame();
+    vi.mocked(initGame).mockReturnValue(mockGame as never);
+    vi.mocked(userStatsService.getUserStats).mockResolvedValue(makeUserStats({ teleportMaxCharges: 2, teleportCharges: 1 }));
+    vi.mocked(getShipStats).mockResolvedValue(
+      makeShipStats(makeAfterburnerStatus({ canActivate: true, fuelPercent: 100, fuelRemainingMs: 30000 })),
+    );
+    localStorage.setItem('game-ui-preferences', JSON.stringify({
+      zoom: 1.8,
+      debugDrawingsEnabled: true,
+      navOpen: true,
+      teleportOpen: true,
+      afterburnerOpen: true,
+      teleportClickMode: true,
+      attackClickMode: true,
+    }));
+
+    render(<GamePageClient auth={defaultAuth} />);
+
+    await waitFor(() => {
+      expect(initGame).toHaveBeenCalled();
+      expect(mockGame.setZoom).toHaveBeenCalledWith(1.8);
+      expect(mockGame.setDebugDrawingsEnabled).toHaveBeenCalledWith(true);
+      expect(mockGame.setTeleportClickMode).toHaveBeenCalledWith(true);
+      expect(mockGame.setAttackClickMode).toHaveBeenCalledWith(true);
+      expect(screen.getByRole('slider', { name: /speed/i })).toBeDefined();
+      expect(screen.getByRole('button', { name: /^enter coordinates$/i })).toBeDefined();
+      expect(screen.getByText('engage')).toBeDefined();
+    });
+  });
 });

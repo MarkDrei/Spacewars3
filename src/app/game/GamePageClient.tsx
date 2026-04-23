@@ -25,6 +25,59 @@ const SPEED_SLIDER_SNAP_ZONE_PERCENT = 12;
 const SPEED_SLIDER_ACTIVE_TRACK_START = SPEED_SLIDER_SNAP_ZONE_PERCENT;
 const SPEED_SLIDER_ACTIVE_TRACK_END = SPEED_SLIDER_RANGE_MAX - SPEED_SLIDER_SNAP_ZONE_PERCENT;
 const MOBILE_GAME_MEDIA_QUERY = '(max-width: 768px), (hover: none) and (pointer: coarse)';
+const GAME_UI_PREFERENCES_STORAGE_KEY = 'game-ui-preferences';
+const LEGACY_GAME_UI_DEBUG_STORAGE_KEY = 'game-ui-debug-enabled';
+const LEGACY_GAME_UI_ZOOM_STORAGE_KEY = 'game-ui-zoom';
+
+type GameUiPreferences = {
+  debugDrawingsEnabled: boolean;
+  zoom: number;
+  navOpen: boolean;
+  teleportOpen: boolean;
+  afterburnerOpen: boolean;
+  mobileTapInfoMode: boolean;
+  teleportClickMode: boolean;
+  attackClickMode: boolean;
+};
+
+const parseStoredBoolean = (value: unknown) => typeof value === 'boolean' ? value : undefined;
+
+const parseStoredZoom = (value: unknown) => {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return undefined;
+  }
+
+  return Math.min(Math.max(value, MIN_ZOOM), MAX_ZOOM);
+};
+
+const readLegacyStorageValue = (storageKey: string) => {
+  const rawValue = localStorage.getItem(storageKey);
+  if (rawValue === null) {
+    return undefined;
+  }
+
+  return JSON.parse(rawValue) as unknown;
+};
+
+const loadGameUiPreferences = (): Partial<GameUiPreferences> => {
+  const defaults: Partial<GameUiPreferences> = {};
+
+  const rawPreferences = localStorage.getItem(GAME_UI_PREFERENCES_STORAGE_KEY);
+  const parsedPreferences = rawPreferences ? JSON.parse(rawPreferences) as unknown : null;
+  const storedPreferences = parsedPreferences && typeof parsedPreferences === 'object' ? parsedPreferences as Record<string, unknown> : null;
+
+  return {
+    debugDrawingsEnabled: parseStoredBoolean(storedPreferences?.debugDrawingsEnabled) ?? parseStoredBoolean(readLegacyStorageValue(LEGACY_GAME_UI_DEBUG_STORAGE_KEY)),
+    zoom: parseStoredZoom(storedPreferences?.zoom) ?? parseStoredZoom(readLegacyStorageValue(LEGACY_GAME_UI_ZOOM_STORAGE_KEY)),
+    navOpen: parseStoredBoolean(storedPreferences?.navOpen),
+    teleportOpen: parseStoredBoolean(storedPreferences?.teleportOpen),
+    afterburnerOpen: parseStoredBoolean(storedPreferences?.afterburnerOpen),
+    mobileTapInfoMode: parseStoredBoolean(storedPreferences?.mobileTapInfoMode),
+    teleportClickMode: parseStoredBoolean(storedPreferences?.teleportClickMode),
+    attackClickMode: parseStoredBoolean(storedPreferences?.attackClickMode),
+    ...defaults,
+  };
+};
 
 const clampSpeedValue = (value: number, speedLimit: number) => {
   if (Number.isNaN(value)) {
@@ -85,6 +138,8 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
   const iconBarRef = useRef<HTMLDivElement>(null);
   const isMobileModeRef = useRef(false);
   const mobileTapInfoModeRef = useRef(false);
+  const teleportClickModeRef = useRef(false);
+  const attackClickModeRef = useRef(false);
   const debugDrawingsEnabledRef = useRef(false);
   const zoomRef = useRef(DEFAULT_ZOOM);
   const [debugDrawingsEnabled, setDebugDrawingsEnabled] = useState(false);
@@ -109,6 +164,7 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
   const [navOpen, setNavOpen] = useState(false);
   const [teleportOpen, setTeleportOpen] = useState(false);
   const [afterburnerOpen, setAfterburnerOpen] = useState(false);
+  const [uiPreferencesLoaded, setUiPreferencesLoaded] = useState(false);
   const [afterburnerStatus, setAfterburnerStatus] = useState<AfterburnerStatus | null>(null);
   const [announcement, setAnnouncement] = useState<{ text: string; key: number; variant?: 'orange' } | null>(null);
   const announcementTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -178,39 +234,86 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
     mobileTapInfoModeRef.current = mobileTapInfoMode;
   }, [mobileTapInfoMode]);
 
-  // Load UI preferences from localStorage on mount
+  useEffect(() => {
+    teleportClickModeRef.current = teleportClickMode;
+  }, [teleportClickMode]);
+
+  useEffect(() => {
+    attackClickModeRef.current = attackClickMode;
+  }, [attackClickMode]);
+
+  // Load UI preferences from localStorage on mount.
+  // Keep legacy zoom/debug keys readable so existing players retain their settings.
   useEffect(() => {
     try {
-      const savedDebugEnabled = localStorage.getItem('game-ui-debug-enabled');
-      const savedZoom = localStorage.getItem('game-ui-zoom');
-      if (savedDebugEnabled !== null) {
-        setDebugDrawingsEnabled(JSON.parse(savedDebugEnabled));
+      const savedPreferences = loadGameUiPreferences();
+
+      if (typeof savedPreferences.debugDrawingsEnabled === 'boolean') {
+        setDebugDrawingsEnabled(savedPreferences.debugDrawingsEnabled);
       }
-      if (savedZoom !== null) {
-        setZoom(JSON.parse(savedZoom));
+      if (typeof savedPreferences.zoom === 'number') {
+        setZoom(savedPreferences.zoom);
+      }
+      if (typeof savedPreferences.navOpen === 'boolean') {
+        setNavOpen(savedPreferences.navOpen);
+      }
+      if (typeof savedPreferences.teleportOpen === 'boolean') {
+        setTeleportOpen(savedPreferences.teleportOpen);
+      }
+      if (typeof savedPreferences.afterburnerOpen === 'boolean') {
+        setAfterburnerOpen(savedPreferences.afterburnerOpen);
+      }
+      if (typeof savedPreferences.mobileTapInfoMode === 'boolean') {
+        setMobileTapInfoMode(savedPreferences.mobileTapInfoMode);
+      }
+      if (typeof savedPreferences.teleportClickMode === 'boolean') {
+        setTeleportClickMode(savedPreferences.teleportClickMode);
+      }
+      if (typeof savedPreferences.attackClickMode === 'boolean') {
+        setAttackClickMode(savedPreferences.attackClickMode);
       }
     } catch (err) {
       console.warn('Failed to load UI preferences from localStorage:', err);
+    } finally {
+      setUiPreferencesLoaded(true);
     }
   }, []);
 
-  // Save debug flag to localStorage
+  // Persist UI preferences together so controls restore consistently between sessions.
   useEffect(() => {
-    try {
-      localStorage.setItem('game-ui-debug-enabled', JSON.stringify(debugDrawingsEnabled));
-    } catch (err) {
-      console.warn('Failed to save debug preference:', err);
+    if (!uiPreferencesLoaded) {
+      return;
     }
-  }, [debugDrawingsEnabled]);
 
-  // Save zoom to localStorage
-  useEffect(() => {
     try {
-      localStorage.setItem('game-ui-zoom', JSON.stringify(zoom));
+      const preferences: GameUiPreferences = {
+        debugDrawingsEnabled,
+        zoom,
+        navOpen,
+        teleportOpen,
+        afterburnerOpen,
+        mobileTapInfoMode,
+        teleportClickMode,
+        attackClickMode,
+      };
+
+      localStorage.setItem(GAME_UI_PREFERENCES_STORAGE_KEY, JSON.stringify(preferences));
+      localStorage.setItem(LEGACY_GAME_UI_DEBUG_STORAGE_KEY, JSON.stringify(debugDrawingsEnabled));
+      localStorage.setItem(LEGACY_GAME_UI_ZOOM_STORAGE_KEY, JSON.stringify(zoom));
     } catch (err) {
-      console.warn('Failed to save zoom preference:', err);
+      console.warn('Failed to save UI preferences:', err);
     }
-  }, [zoom]);
+  }, [
+    afterburnerOpen,
+    attackClickMode,
+    debugDrawingsEnabled,
+    mobileTapInfoMode,
+    navOpen,
+    teleportClickMode,
+    teleportOpen,
+    uiPreferencesLoaded,
+    zoom,
+  ]);
 
   // Resize canvas buffer to match physical pixel count: reads rendered CSS dimensions,
   // multiplies by devicePixelRatio to get the buffer size, and re-runs when isLoading
@@ -351,6 +454,8 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
       game.setZoom(zoomRef.current);
       game.setMobileInteractionMode(isMobileModeRef.current);
       game.setMobileInfoMode(mobileTapInfoModeRef.current);
+      game.setTeleportClickMode(teleportClickModeRef.current);
+      game.setAttackClickMode(attackClickModeRef.current);
       // The game will receive world data through the update effect
       // Initial mode state is synced via the dedicated useEffects below
     } else {
@@ -363,7 +468,7 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
     let retryInitializeFrame: number | null = null;
 
     // Initialize game only when we have necessary data AND canvas is rendered (not loading)
-    if (!gameInitializedRef.current && auth.shipId && !isLoading) {
+    if (!gameInitializedRef.current && auth.shipId && !isLoading && uiPreferencesLoaded) {
       // Use requestAnimationFrame to ensure DOM is fully rendered
       const initializeAfterRender = () => {
         if (canvasRef.current) {
@@ -398,7 +503,7 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
         gameInstanceRef.current = null;
       }
     };
-  }, [auth.shipId, isLoading, initializeGame]); // Depend on shipId, loading state, and the stable initializeGame callback
+  }, [auth.shipId, initializeGame, isLoading, uiPreferencesLoaded]); // Depend on shipId, loading state, preferences load, and the stable initializeGame callback
 
   // Update game world when server data changes
   useEffect(() => {
@@ -583,7 +688,7 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
     if (gameInstanceRef.current) {
       gameInstanceRef.current.setMobileInfoMode(mobileTapInfoMode);
     }
-  }, [mobileTapInfoMode]);
+  }, [isMobileMode, mobileTapInfoMode]);
 
   useEffect(() => {
     if (gameInstanceRef.current) {

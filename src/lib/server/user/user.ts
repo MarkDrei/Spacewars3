@@ -391,8 +391,8 @@ class User {
       this.bonusCache.invalidateBonuses(this.id);
 
       const research = AllResearches[researchResult.type];
-      // Get the cost of the level that was just completed (completedLevel + 1)
-      const cost = getResearchUpgradeCost(research, researchResult.completedLevel + 1);
+      // Get the cost of the level that was just completed
+      const cost = getResearchUpgradeCost(research, researchResult.completedLevel);
       const scoreReward = Math.floor(cost / 25);
       this.addScore(scoreReward);
 
