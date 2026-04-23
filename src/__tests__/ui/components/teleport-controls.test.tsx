@@ -95,6 +95,7 @@ const defaultAuth = { userId: 1, username: 'testuser', shipId: 42 };
 describe('GamePageClient teleport controls', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    localStorage.clear();
     vi.mocked(initGame).mockReturnValue(makeMockGame() as never);
     vi.spyOn(globalThis, 'setInterval').mockImplementation(() => 0 as never);
   });

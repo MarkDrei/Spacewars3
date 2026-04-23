@@ -6,14 +6,23 @@ const makeContext = () => ({
   save: vi.fn(),
   restore: vi.fn(),
   scale: vi.fn(),
+  beginPath: vi.fn(),
+  roundRect: vi.fn(),
+  fill: vi.fn(),
+  stroke: vi.fn(),
+  moveTo: vi.fn(),
+  lineTo: vi.fn(),
+  createLinearGradient: vi.fn(() => ({
+    addColorStop: vi.fn(),
+  })),
   fillRect: vi.fn(),
-  strokeRect: vi.fn(),
   fillText: vi.fn(),
   fillStyle: '',
   strokeStyle: '',
   lineWidth: 0,
   font: '',
   textAlign: 'left' as CanvasTextAlign,
+  textBaseline: 'top' as CanvasTextBaseline,
   shadowColor: '',
   shadowBlur: 0,
 });
@@ -59,12 +68,14 @@ describe('TooltipRenderer', () => {
     expect(ctx.scale).toHaveBeenNthCalledWith(1, 2, 2);
     expect(ctx.scale).toHaveBeenNthCalledWith(2, 2, 2);
 
-    const mainBoxCalls = vi.mocked(ctx.fillRect).mock.calls.filter(([, , width, height]) => width === 206 && height === 114);
+    const mainBoxCalls = vi
+      .mocked(ctx.roundRect)
+      .mock.calls.filter(([, , width, height]) => width === 160 && height === 90);
 
-    expect(mainBoxCalls).toHaveLength(2);
+    expect(mainBoxCalls).toHaveLength(6);
 
-    const accentRail = vi.mocked(ctx.fillRect).mock.calls.find(([, , width, height]) => width === 4 && height === 90);
-    expect(accentRail).toBeDefined();
+    const accentLine = vi.mocked(ctx.fillRect).mock.calls.find(([, , width, height]) => width === 24 && height === 1.5);
+    expect(accentLine).toBeDefined();
   });
 
   test('drawTooltip_usesToroidalIncarnationClosestToShip', () => {
@@ -81,8 +92,8 @@ describe('TooltipRenderer', () => {
 
     renderer.drawTooltip([hoveredObject] as never, ship as never, 1);
 
-    const firstFillRect = vi.mocked(ctx.fillRect).mock.calls[0];
-    expect(firstFillRect?.[0]).toBe(128);
+    const firstMainRect = vi.mocked(ctx.roundRect).mock.calls[0];
+    expect(firstMainRect?.[0]).toBe(116);
   });
 
   test('drawTooltip_formatsNumbersWithSharedFormatter', () => {
@@ -100,7 +111,7 @@ describe('TooltipRenderer', () => {
     renderer.drawTooltip([hoveredObject] as never, ship as never, 1);
 
     const lines = vi.mocked(ctx.fillText).mock.calls.map(call => call[0]);
-    expect(lines).toContain('Asteroid');
+    expect(lines).toContain('ASTEROID');
     expect(lines).toContain('Speed: 5.43');
     expect(lines).toContain('Angle: 45.7°');
     expect(lines).toContain('Distance: 50');
@@ -129,7 +140,7 @@ describe('TooltipRenderer', () => {
     renderer.drawTooltip([hoveredObject] as never, ship as never, 1);
 
     const lines = vi.mocked(ctx.fillText).mock.calls.map(call => call[0]);
-    expect(lines).toContain('Enemy Ship');
+    expect(lines).toContain('ENEMY SHIP');
     expect(lines).toContain('Level: 7');
     expect(lines).toContain('Speed: 12.3');
     expect(lines).toContain('Distance: 40');

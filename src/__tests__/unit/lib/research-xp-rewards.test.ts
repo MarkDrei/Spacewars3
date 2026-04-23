@@ -57,7 +57,7 @@ describe('Research XP Rewards System', () => {
       expect(result).toBeDefined();
       expect(result?.completed).toBe(true);
       expect(result?.type).toBe(ResearchType.IronHarvesting);
-      expect(result?.completedLevel).toBe(1); // Level BEFORE increment
+      expect(result?.completedLevel).toBe(2); // Completed level after increment
       expect(tree.ironHarvesting).toBe(2); // Level AFTER increment
       expect(tree.activeResearch).toBeUndefined();
     });
@@ -82,7 +82,7 @@ describe('Research XP Rewards System', () => {
         const result = updateTechTree(tree, 10);
 
         expect(result?.type).toBe(type);
-        expect(result?.completedLevel).toBe(1);
+        expect(result?.completedLevel).toBe(2);
         expect(tree[treeKey]).toBe(2);
       });
     });
@@ -101,7 +101,7 @@ describe('Research XP Rewards System', () => {
       
       expect(result).toBeDefined();
       expect(result?.completed).toBe(true);
-      expect(result?.completedLevel).toBe(1);
+      expect(result?.completedLevel).toBe(2);
     });
   });
 
@@ -289,7 +289,7 @@ describe('Research XP Rewards System', () => {
 
       expect(result.researchCompleted).toBeDefined();
       expect(result.researchCompleted?.type).toBe(ResearchType.ShipSpeed);
-      expect(result.researchCompleted?.completedLevel).toBe(1);
+      expect(result.researchCompleted?.completedLevel).toBe(2);
       expect(result.researchCompleted?.researchName).toBe('Ship Speed');
       expect(result.researchCompleted?.scoreReward).toBe(20);
     });
