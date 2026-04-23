@@ -4,6 +4,8 @@ import { Collectible } from '../game/Collectible';
 import { Shipwreck } from '../game/Shipwreck';
 import { EscapePod } from '../game/EscapePod';
 import { Starbase } from '../game/Starbase';
+import { World } from '../game/World';
+import { formatNumber } from '@/shared/numberFormat';
 
 export class TooltipRenderer {
     private ctx: CanvasRenderingContext2D;
@@ -22,63 +24,132 @@ export class TooltipRenderer {
         return Math.sqrt(dx * dx + dy * dy);
     }
 
+    private getClosestToroidalOffset(delta: number, worldSize: number): number {
+        const candidates = [delta, delta - worldSize, delta + worldSize];
+        return candidates.reduce((closest, candidate) => {
+            return Math.abs(candidate) < Math.abs(closest) ? candidate : closest;
+        });
+    }
+
+    private getTooltipAnchor(object: SpaceObjectOld, ship: Ship, worldScale: number, cssWidth: number, cssHeight: number) {
+        if (object === ship) {
+            return {
+                screenX: cssWidth / 2,
+                screenY: cssHeight / 2,
+            };
+        }
+
+        const relativeX = this.getClosestToroidalOffset(object.getX() - ship.getX(), World.WIDTH);
+        const relativeY = this.getClosestToroidalOffset(object.getY() - ship.getY(), World.HEIGHT);
+
+        return {
+            screenX: cssWidth / 2 + relativeX * worldScale,
+            screenY: cssHeight / 2 + relativeY * worldScale,
+        };
+    }
+
     drawTooltip(spaceObjects: SpaceObjectOld[], ship: Ship, worldScale?: number): void {
         // Find the first hovered object
         const hoveredObject = spaceObjects.find(obj => obj.isHoveredState());
         
         if (!hoveredObject) return;
         
-        // Calculate screen position for the tooltip (in physical pixels)
-        // With the DPR-aware canvas, canvas.width is in physical pixels.
-        // World-unit offsets need multiplying by dpr * worldScale to become physical pixels.
+        // Draw the tooltip in CSS pixels so its size stays readable regardless of
+        // device pixel ratio or gameplay zoom. The object anchor still follows the
+        // zoomed world position, but the box dimensions and text stay constant.
         const dpr = (typeof window !== 'undefined' && window.devicePixelRatio) || 1;
-        const effectiveScale = (worldScale ?? 1) * dpr;
-        
-        let screenX: number;
-        let screenY: number;
-        
-        if (hoveredObject === ship) {
-            screenX = this.canvas.width / 2;
-            screenY = this.canvas.height / 2;
-        } else {
-            screenX = this.canvas.width / 2 + (hoveredObject.getX() - ship.getX()) * effectiveScale;
-            screenY = this.canvas.height / 2 + (hoveredObject.getY() - ship.getY()) * effectiveScale;
-        }
+        const effectiveScale = worldScale ?? 1;
+        const cssWidth = this.canvas.width / dpr;
+        const cssHeight = this.canvas.height / dpr;
+        const { screenX, screenY } = this.getTooltipAnchor(hoveredObject, ship, effectiveScale, cssWidth, cssHeight);
         
         // Get object information
         const tooltipText = this.getTooltipTextForObject(hoveredObject, ship);
         
         // Draw tooltip background
-        const padding = 5;
-        const lineHeight = 20;
-        const tooltipWidth = 180;
-        const tooltipHeight = tooltipText.length * lineHeight + padding * 2;
+        const paddingX = 14;
+        const paddingY = 10;
+        const lineHeight = 16;
+        const tooltipWidth = 160;
+        const tooltipHeight = tooltipText.length * lineHeight + paddingY * 2 + 6;
         
         // Position tooltip to avoid going off-screen
-        const tooltipX = Math.min(screenX + 30, this.canvas.width - tooltipWidth - 5);
-        const tooltipY = Math.min(screenY - tooltipHeight - 10, this.canvas.height - tooltipHeight - 5);
+        const tooltipX = Math.max(8, Math.min(screenX + 16, cssWidth - tooltipWidth - 8));
+        const tooltipY = Math.max(8, Math.min(screenY - tooltipHeight - 10, cssHeight - tooltipHeight - 8));
+
+        this.ctx.save();
+        this.ctx.scale(dpr, dpr);
+
+        // Tiny glow effect to the boundary
+        this.ctx.shadowColor = 'rgba(76, 175, 80, 0.35)';
+        this.ctx.shadowBlur = 4;
         
-        // Draw tooltip background
-        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-        this.ctx.fillRect(tooltipX, tooltipY, tooltipWidth, tooltipHeight);
+        // Main Background - semi-transparent deep black/green
+        this.ctx.fillStyle = 'rgba(5, 10, 8, 0.92)';
+        this.ctx.beginPath();
+        this.ctx.roundRect(tooltipX, tooltipY, tooltipWidth, tooltipHeight, 3);
+        this.ctx.fill();
+
+        this.ctx.shadowBlur = 0;
+
+        // Subtle gradient overlay for depth
+        const gradient = this.ctx.createLinearGradient(tooltipX, tooltipY, tooltipX, tooltipY + tooltipHeight);
+        gradient.addColorStop(0, 'rgba(255, 255, 255, 0.05)');
+        gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+        this.ctx.fillStyle = gradient;
+        this.ctx.beginPath();
+        this.ctx.roundRect(tooltipX, tooltipY, tooltipWidth, tooltipHeight, 3);
+        this.ctx.fill();
         
-        // Draw tooltip border
-        this.ctx.strokeStyle = '#ffffff';
-        this.ctx.lineWidth = 1;
-        this.ctx.strokeRect(tooltipX, tooltipY, tooltipWidth, tooltipHeight);
+        // Border - thin and sharp with the green theme
+        this.ctx.strokeStyle = 'rgba(76, 175, 80, 0.5)';
+        this.ctx.lineWidth = 0.8;
+        this.ctx.beginPath();
+        this.ctx.roundRect(tooltipX, tooltipY, tooltipWidth, tooltipHeight, 3);
+        this.ctx.stroke();
+
+        // Accent indicator at the top
+        this.ctx.fillStyle = '#4caf50';
+        this.ctx.fillRect(tooltipX + tooltipWidth / 2 - 12, tooltipY, 24, 1.5);
         
         // Draw tooltip text
-        this.ctx.fillStyle = '#ffffff';
-        this.ctx.font = '14px Arial';
+        this.ctx.font = '500 11px "Geist", "Arial", sans-serif';
         this.ctx.textAlign = 'left';
+        this.ctx.textBaseline = 'top';
         
         tooltipText.forEach((line, index) => {
-            this.ctx.fillText(
-                line, 
-                tooltipX + padding, 
-                tooltipY + padding + (index + 1) * lineHeight - 5
-            );
+            const isTitle = index === 0;
+            const isAction = line.startsWith('Action:');
+
+            if (isTitle) {
+                this.ctx.fillStyle = '#4caf50'; // Green theme color for heading
+                this.ctx.font = '700 12px "Geist", "Arial", sans-serif';
+                this.ctx.fillText(
+                    line.toUpperCase(), 
+                    tooltipX + paddingX,
+                    tooltipY + paddingY + index * lineHeight
+                );
+                
+                // Separator line after title
+                this.ctx.strokeStyle = 'rgba(76, 175, 80, 0.2)';
+                this.ctx.beginPath();
+                this.ctx.moveTo(tooltipX + paddingX, tooltipY + paddingY + lineHeight + 2);
+                this.ctx.lineTo(tooltipX + tooltipWidth - paddingX, tooltipY + paddingY + lineHeight + 2);
+                this.ctx.stroke();
+            } else {
+                this.ctx.fillStyle = isAction ? '#81c784' : 'rgba(232, 245, 233, 0.75)';
+                this.ctx.font = isAction ? '600 10px "Geist Mono", "Courier New", monospace' : '400 10px "Geist", "Arial", sans-serif';
+                
+                const yOffset = isTitle ? 0 : 6; // Extra padding after title
+                this.ctx.fillText(
+                    line, 
+                    tooltipX + paddingX,
+                    tooltipY + paddingY + index * lineHeight + yOffset
+                );
+            }
         });
+
+        this.ctx.restore();
     }
     
     /**
@@ -87,31 +158,61 @@ export class TooltipRenderer {
     private getTooltipTextForObject(object: SpaceObjectOld, ship: Ship): string[] {
         // Calculate common properties
         const distance = this.calculateDistanceToShip(object, ship);
-        const angleDegrees = Math.round(object.getAngleDegrees()); // Already in degrees, no conversion needed
+        const angleDegrees = object.getAngleDegrees();
+        const objectType = object.getType();
         
         // Check object type and create appropriate tooltip
         if (object === ship) {
             return [
-                'Type: Ship',
-                `Speed: ${object.getSpeed()}`,
-                `Angle: ${angleDegrees}°`
-            ];
-        } else if (object instanceof Starbase) {
-            return [
-                'Type: Starbase',
-                `Distance: ${Math.round(distance)}`,
-                'Click to dock',
-            ];
-        } else if (object instanceof Collectible) {
-            return this.getCollectibleTooltip(object as Collectible, distance, angleDegrees);
-        } else {
-            return [
-                'Type: Asteroid',
-                `Speed: ${object.getSpeed()}`,
-                `Angle: ${angleDegrees}°`,
-                `Distance: ${Math.round(distance)}`
+                'Ship',
+                `Speed: ${formatNumber(object.getSpeed())}`,
+                `Angle: ${formatNumber(angleDegrees)}°`
             ];
         }
+
+        if (object instanceof Starbase || objectType === 'starbase') {
+            return [
+                'Starbase',
+                `Distance: ${formatNumber(distance)}`,
+                'Action: tap again to dock',
+            ];
+        }
+
+        if (object instanceof Ship || objectType === 'player_ship' || objectType === 'npc_ship') {
+            const objectLevel = object.getLevel();
+            const shipLines = [
+                objectType === 'npc_ship' ? 'NPC Ship' : 'Enemy Ship',
+                `Speed: ${formatNumber(object.getSpeed())}`,
+                `Angle: ${formatNumber(angleDegrees)}°`,
+                `Distance: ${formatNumber(distance)}`,
+            ];
+
+            if (typeof objectLevel === 'number') {
+                shipLines.splice(1, 0, `Level: ${formatNumber(objectLevel)}`);
+            }
+
+            return shipLines;
+        }
+
+        if (objectType === 'asteroid') {
+            return [
+                'Asteroid',
+                `Speed: ${formatNumber(object.getSpeed())}`,
+                `Angle: ${formatNumber(angleDegrees)}°`,
+                `Distance: ${formatNumber(distance)}`,
+            ];
+        }
+
+        if (object instanceof Collectible) {
+            return this.getCollectibleTooltip(object as Collectible, distance, angleDegrees);
+        }
+
+        return [
+            'Space Object',
+            `Speed: ${formatNumber(object.getSpeed())}`,
+            `Angle: ${formatNumber(angleDegrees)}°`,
+            `Distance: ${formatNumber(distance)}`
+        ];
     }
     
     /**
@@ -119,10 +220,10 @@ export class TooltipRenderer {
      */
     private getCollectibleTooltip(collectible: Collectible, distance: number, angleDegrees: number): string[] {
         const baseTooltip = [
-            `Type: ${this.getReadableTypeName(collectible)}`,
-            `Speed: ${collectible.getSpeed()}`,
-            `Angle: ${angleDegrees}°`,
-            `Distance: ${Math.round(distance)}`
+            this.getReadableTypeName(collectible),
+            `Speed: ${formatNumber(collectible.getSpeed())}`,
+            `Angle: ${formatNumber(angleDegrees)}°`,
+            `Distance: ${formatNumber(distance)}`
         ];
         
         return baseTooltip;
@@ -136,6 +237,8 @@ export class TooltipRenderer {
             return 'Ship Wreck';
         } else if (collectible instanceof EscapePod) {
             return 'Escape Pod';
+        } else if (collectible.getType() === 'asteroid') {
+            return 'Asteroid';
         } else {
             return 'Collectible';
         }

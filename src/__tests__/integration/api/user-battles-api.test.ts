@@ -4,7 +4,11 @@ import { describe, expect, test, beforeEach, afterEach } from 'vitest';
 import { GET as userBattlesGET } from '@/app/api/user-battles/route';
 
 // Import shared test helpers
-import { createRequest, createAuthenticatedSession } from '../../helpers/apiTestHelpers';
+import {
+  createRequest,
+  createAuthenticatedSession,
+  createAuthenticatedSessionWithUser,
+} from '../../helpers/apiTestHelpers';
 
 // Import battle creation utilities
 import { endBattle, getBattleCache } from '@/lib/server/battle/BattleCache';
@@ -116,20 +120,11 @@ describe('User battles API', () => {
 
   test('userBattles_withBattles_returnsBattleHistory', async () => {
     await withTransaction(async () => {
-      // Create two users
-      const sessionCookie1 = await createAuthenticatedSession('battleuser1');
-      await createAuthenticatedSession('battleuser2'); // Create second user but don't need their session
-
-      // Get their user data - the last two created users
-      const db = await getDatabase();
-      const usersResult = await db.query('SELECT id, username FROM users ORDER BY id DESC LIMIT 2');
-      const users = usersResult.rows as Array<{ id: number; username: string }>;
-
-      const user1 = users[1]; // Second to last
-      const user2 = users[0]; // Last
+      const { sessionCookie: sessionCookie1, username: user1 } = await createAuthenticatedSessionWithUser('battleuser1');
+      const { username: user2 } = await createAuthenticatedSessionWithUser('battleuser2');
 
       // Create a battle between user1 and user2
-      await createTestBattle(user1.username, user2.username, true);
+      await createTestBattle(user1, user2, true);
 
       // Fetch battles for user1
       const request = createRequest('http://localhost:3000/api/user-battles', 'GET', undefined, sessionCookie1);
@@ -157,27 +152,17 @@ describe('User battles API', () => {
       // User1 was the attacker and won
       expect(battle.isAttacker).toBe(true);
       expect(battle.didWin).toBe(true);
-      expect(battle.opponentUsername).toBe(user2.username);
+      expect(battle.opponentUsername).toBe(user2);
     });
   }, 10000); // Increase timeout to 10 seconds
 
   test('userBattles_battleStatistics_areAccurate', async () => {
     await withTransaction(async () => {
-      // Create two users and a battle
-      const sessionCookie1 = await createAuthenticatedSession('statuser1');
-      await createAuthenticatedSession('statuser2'); // Create second user but don't need their session
-
-      const db = await getDatabase();
-      
-      // Get user data - last two users
-      const usersResult = await db.query('SELECT id, username FROM users ORDER BY id DESC LIMIT 2');
-      const users = usersResult.rows as Array<{ id: number; username: string }>;
-
-      const user1 = users[1]; // Second to last
-      const user2 = users[0]; // Last
+      const { sessionCookie: sessionCookie1, username: user1 } = await createAuthenticatedSessionWithUser('statuser1');
+      const { username: user2 } = await createAuthenticatedSessionWithUser('statuser2');
 
       // Create a battle where user2 wins (user1 is attacker but loses)
-      await createTestBattle(user1.username, user2.username, false);
+      await createTestBattle(user1, user2, false);
 
       // Fetch battles for user1 (the loser)
       const request = createRequest('http://localhost:3000/api/user-battles', 'GET', undefined, sessionCookie1);
@@ -192,7 +177,7 @@ describe('User battles API', () => {
       // User1 was the attacker but lost
       expect(battle.isAttacker).toBe(true);
       expect(battle.didWin).toBe(false);
-      expect(battle.opponentUsername).toBe(user2.username);
+      expect(battle.opponentUsername).toBe(user2);
       
       // Verify damage values are numbers
       expect(typeof battle.userDamage).toBe('number');

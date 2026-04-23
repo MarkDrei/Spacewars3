@@ -1,8 +1,8 @@
 // UI tests for GamePageClient teleport controls
 // Pure service/type tests extracted to unit/components/teleport-service.test.ts
 import React from 'react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 
 // ─────────── Module mocks ───────────────────────────────────────────────────
 vi.mock('@/components/Layout/AuthenticatedLayout', () => ({
@@ -52,6 +52,7 @@ vi.mock('next/navigation', () => ({
 }));
 
 // ─────────── Re-import after mocks ──────────────────────────────────────────
+import { initGame } from '@/lib/client/game/Game';
 import { userStatsService, UserStatsResponse } from '@/lib/client/services/userStatsService';
 import GamePageClient from '@/app/game/GamePageClient';
 
@@ -76,12 +77,31 @@ const makeUserStats = (overrides: Partial<UserStatsResponse> = {}): UserStatsRes
   ...overrides,
 });
 
+const makeMockGame = () => ({
+  setDebugDrawingsEnabled: vi.fn(),
+  setZoom: vi.fn(),
+  setSafeAreaBottom: vi.fn(),
+  setTeleportClickMode: vi.fn(),
+  setAttackClickMode: vi.fn(),
+  setPlayerLevel: vi.fn(),
+  setMobileInteractionMode: vi.fn(),
+  setMobileInfoMode: vi.fn(),
+  stop: vi.fn(),
+});
+
 const defaultAuth = { userId: 1, username: 'testuser', shipId: 42 };
 
 // ─────────── GamePageClient teleport controls UI tests ───────────────────────
 describe('GamePageClient teleport controls', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    localStorage.clear();
+    vi.mocked(initGame).mockReturnValue(makeMockGame() as never);
+    vi.spyOn(globalThis, 'setInterval').mockImplementation(() => 0 as never);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it('teleportControls_noTeleportResearch_controlsNotRendered', async () => {
@@ -125,7 +145,7 @@ describe('GamePageClient teleport controls', () => {
 
     // Click to expand the teleport panel
     const teleportIcon = screen.getByTitle('Teleport');
-    teleportIcon.click();
+    fireEvent.click(teleportIcon);
 
     // The "enter coordinates" button in the panel should be disabled when no charges
     await waitFor(() => {
@@ -147,7 +167,7 @@ describe('GamePageClient teleport controls', () => {
 
     // Click to expand the teleport panel
     const teleportIcon = screen.getByTitle('Teleport');
-    teleportIcon.click();
+    fireEvent.click(teleportIcon);
 
     // The "enter coordinates" button in the panel should be enabled when there are charges
     await waitFor(() => {
@@ -169,7 +189,7 @@ describe('GamePageClient teleport controls', () => {
 
     // Click to expand the teleport panel
     const teleportIcon = screen.getByTitle('Teleport');
-    teleportIcon.click();
+    fireEvent.click(teleportIcon);
 
     // 0.5 charges remaining * 7200 seconds = 3600 seconds = 1h 0m
     await waitFor(() => {

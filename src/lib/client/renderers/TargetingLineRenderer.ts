@@ -1,6 +1,5 @@
 import { World } from '../game/World';
 import type { TargetingLine } from '@shared/types/gameTypes';
-import { debugState } from '../debug/debugState';
 
 export class TargetingLineRenderer {
   constructor(private ctx: CanvasRenderingContext2D) {}
@@ -12,8 +11,6 @@ export class TargetingLineRenderer {
     shipX: number,
     shipY: number
   ): void {
-    if (!debugState.debugDrawingsEnabled) return;
-
     const opacity = this.calculateOpacity(targetingLine);
     if (opacity <= 0) return; // Don't render if fully faded
     

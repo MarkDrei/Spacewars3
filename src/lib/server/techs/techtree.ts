@@ -817,10 +817,12 @@ export function updateTechTree(tree: TechTree, timeSeconds: number): { completed
   if (!tree.activeResearch) return undefined;
   tree.activeResearch.remainingDuration -= timeSeconds;
   if (tree.activeResearch.remainingDuration <= 0) {
-    // Research complete: increase level
-    // Store the level BEFORE incrementing for XP calculation
+    // Research complete: increase level.
+    // Store the type and current level for return info.
     const completedType = tree.activeResearch.type;
-    const completedLevel = getResearchLevelFromTree(tree, completedType);
+    const completedLevelBefore = getResearchLevelFromTree(tree, completedType);
+    const completedLevel = completedLevelBefore + 1;
+
     switch (tree.activeResearch.type) {
       case ResearchType.IronHarvesting:
         tree.ironHarvesting += 1;

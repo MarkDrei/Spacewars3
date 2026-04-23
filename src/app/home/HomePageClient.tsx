@@ -45,12 +45,24 @@ function parseMessage(message: string): ParsedMessage {
 }
 
 function formatBoldText(text: string): React.ReactNode {
-  const parts = text.split(/(\*\*.*?\*\*)/g);
-  return parts.map((part, index) => {
-    if (part.startsWith('**') && part.endsWith('**')) {
-      return <strong key={index}>{part.slice(2, -2)}</strong>;
-    }
-    return <React.Fragment key={index}>{part}</React.Fragment>;
+  // First split by newlines and map to fragments with <br />
+  const lines = text.split('\n');
+  return lines.map((line, lineIndex) => {
+    // Then process bold text for each line
+    const parts = line.split(/(\*\*.*?\*\*)/g);
+    const formattedLine = parts.map((part, index) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return <strong key={index}>{part.slice(2, -2)}</strong>;
+      }
+      return <React.Fragment key={index}>{part}</React.Fragment>;
+    });
+
+    return (
+      <React.Fragment key={lineIndex}>
+        {formattedLine}
+        {lineIndex < lines.length - 1 && <br />}
+      </React.Fragment>
+    );
   });
 }
 

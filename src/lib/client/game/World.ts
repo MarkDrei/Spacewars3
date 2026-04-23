@@ -278,6 +278,22 @@ export class World {
         return this.hoveredObjectId;
     }
 
+    setHoveredObjectById(objectId?: number): SpaceObjectOld | undefined {
+        let hoveredObject: SpaceObjectOld | undefined;
+
+        this.spaceObjects.forEach(obj => {
+            const isHovered = objectId !== undefined && obj.getId() === objectId;
+            obj.setHovered(isHovered);
+
+            if (isHovered) {
+                hoveredObject = obj;
+            }
+        });
+
+        this.hoveredObjectId = hoveredObject?.getId();
+        return hoveredObject;
+    }
+
     /**
      * Set the ship's angle directly
      */
