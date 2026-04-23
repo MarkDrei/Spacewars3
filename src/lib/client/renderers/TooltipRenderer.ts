@@ -67,60 +67,86 @@ export class TooltipRenderer {
         const tooltipText = this.getTooltipTextForObject(hoveredObject, ship);
         
         // Draw tooltip background
-        const paddingX = 24;
-        const paddingY = 12;
-        const lineHeight = 19;
-        const tooltipWidth = 206;
-        const tooltipHeight = tooltipText.length * lineHeight + paddingY * 2 + 14;
+        const paddingX = 14;
+        const paddingY = 10;
+        const lineHeight = 16;
+        const tooltipWidth = 160;
+        const tooltipHeight = tooltipText.length * lineHeight + paddingY * 2 + 6;
         
         // Position tooltip to avoid going off-screen
-        const tooltipX = Math.max(8, Math.min(screenX + 28, cssWidth - tooltipWidth - 8));
-        const tooltipY = Math.max(8, Math.min(screenY - tooltipHeight - 14, cssHeight - tooltipHeight - 8));
+        const tooltipX = Math.max(8, Math.min(screenX + 16, cssWidth - tooltipWidth - 8));
+        const tooltipY = Math.max(8, Math.min(screenY - tooltipHeight - 10, cssHeight - tooltipHeight - 8));
 
         this.ctx.save();
         this.ctx.scale(dpr, dpr);
 
-        this.ctx.shadowColor = 'rgba(76, 175, 80, 0.22)';
-        this.ctx.shadowBlur = 16;
+        // Tiny glow effect to the boundary
+        this.ctx.shadowColor = 'rgba(76, 175, 80, 0.35)';
+        this.ctx.shadowBlur = 4;
         
-        // Draw tooltip background
-        this.ctx.fillStyle = 'rgba(6, 14, 10, 0.94)';
-        this.ctx.fillRect(tooltipX, tooltipY, tooltipWidth, tooltipHeight);
+        // Main Background - semi-transparent deep black/green
+        this.ctx.fillStyle = 'rgba(5, 10, 8, 0.92)';
+        this.ctx.beginPath();
+        this.ctx.roundRect(tooltipX, tooltipY, tooltipWidth, tooltipHeight, 3);
+        this.ctx.fill();
 
         this.ctx.shadowBlur = 0;
 
-        this.ctx.fillStyle = 'rgba(255, 255, 255, 0.03)';
-        this.ctx.fillRect(tooltipX + 1, tooltipY + 1, tooltipWidth - 2, tooltipHeight - 2);
+        // Subtle gradient overlay for depth
+        const gradient = this.ctx.createLinearGradient(tooltipX, tooltipY, tooltipX, tooltipY + tooltipHeight);
+        gradient.addColorStop(0, 'rgba(255, 255, 255, 0.05)');
+        gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+        this.ctx.fillStyle = gradient;
+        this.ctx.beginPath();
+        this.ctx.roundRect(tooltipX, tooltipY, tooltipWidth, tooltipHeight, 3);
+        this.ctx.fill();
         
-        // Draw tooltip border
-        this.ctx.strokeStyle = 'rgba(112, 196, 120, 0.9)';
-        this.ctx.lineWidth = 1;
-        this.ctx.strokeRect(tooltipX, tooltipY, tooltipWidth, tooltipHeight);
+        // Border - thin and sharp with the green theme
+        this.ctx.strokeStyle = 'rgba(76, 175, 80, 0.5)';
+        this.ctx.lineWidth = 0.8;
+        this.ctx.beginPath();
+        this.ctx.roundRect(tooltipX, tooltipY, tooltipWidth, tooltipHeight, 3);
+        this.ctx.stroke();
 
-        this.ctx.fillStyle = 'rgba(129, 199, 132, 0.92)';
-        this.ctx.fillRect(tooltipX + 12, tooltipY + 12, 4, tooltipHeight - 24);
+        // Accent indicator at the top
+        this.ctx.fillStyle = '#4caf50';
+        this.ctx.fillRect(tooltipX + tooltipWidth / 2 - 12, tooltipY, 24, 1.5);
         
         // Draw tooltip text
-        this.ctx.fillStyle = '#e8f5e9';
-        this.ctx.font = '600 13px Arial';
+        this.ctx.font = '500 11px "Geist", "Arial", sans-serif';
         this.ctx.textAlign = 'left';
+        this.ctx.textBaseline = 'top';
         
         tooltipText.forEach((line, index) => {
-            if (index === 0) {
-                this.ctx.fillStyle = '#f5fff5';
-                this.ctx.font = '700 14px Arial';
-            } else {
-                this.ctx.fillStyle = index === tooltipText.length - 1 && line.startsWith('Action:')
-                    ? '#9ccc65'
-                    : '#d7ead8';
-                this.ctx.font = '500 12px Arial';
-            }
+            const isTitle = index === 0;
+            const isAction = line.startsWith('Action:');
 
-            this.ctx.fillText(
-                line, 
-                tooltipX + paddingX,
-                tooltipY + paddingY + 16 + index * lineHeight
-            );
+            if (isTitle) {
+                this.ctx.fillStyle = '#4caf50'; // Green theme color for heading
+                this.ctx.font = '700 12px "Geist", "Arial", sans-serif';
+                this.ctx.fillText(
+                    line.toUpperCase(), 
+                    tooltipX + paddingX,
+                    tooltipY + paddingY + index * lineHeight
+                );
+                
+                // Separator line after title
+                this.ctx.strokeStyle = 'rgba(76, 175, 80, 0.2)';
+                this.ctx.beginPath();
+                this.ctx.moveTo(tooltipX + paddingX, tooltipY + paddingY + lineHeight + 2);
+                this.ctx.lineTo(tooltipX + tooltipWidth - paddingX, tooltipY + paddingY + lineHeight + 2);
+                this.ctx.stroke();
+            } else {
+                this.ctx.fillStyle = isAction ? '#81c784' : 'rgba(232, 245, 233, 0.75)';
+                this.ctx.font = isAction ? '600 10px "Geist Mono", "Courier New", monospace' : '400 10px "Geist", "Arial", sans-serif';
+                
+                const yOffset = isTitle ? 0 : 6; // Extra padding after title
+                this.ctx.fillText(
+                    line, 
+                    tooltipX + paddingX,
+                    tooltipY + paddingY + index * lineHeight + yOffset
+                );
+            }
         });
 
         this.ctx.restore();
