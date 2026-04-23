@@ -2,6 +2,11 @@ import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { TooltipRenderer } from '@/lib/client/renderers/TooltipRenderer';
 import { World } from '@/lib/client/game/World';
 
+const EXPECTED_TOOLTIP_WIDTH = 160;
+const EXPECTED_TOOLTIP_HEIGHT = 90;
+const EXPECTED_ACCENT_WIDTH = 24;
+const EXPECTED_ACCENT_HEIGHT = 1.5;
+
 const makeContext = () => ({
   save: vi.fn(),
   restore: vi.fn(),
@@ -70,11 +75,14 @@ describe('TooltipRenderer', () => {
 
     const mainBoxCalls = vi
       .mocked(ctx.roundRect)
-      .mock.calls.filter(([, , width, height]) => width === 160 && height === 90);
+      .mock.calls.filter(([, , width, height]) => width === EXPECTED_TOOLTIP_WIDTH && height === EXPECTED_TOOLTIP_HEIGHT);
 
+    // Each draw uses roundRect three times: background, gradient overlay, border.
     expect(mainBoxCalls).toHaveLength(6);
 
-    const accentLine = vi.mocked(ctx.fillRect).mock.calls.find(([, , width, height]) => width === 24 && height === 1.5);
+    const accentLine = vi
+      .mocked(ctx.fillRect)
+      .mock.calls.find(([, , width, height]) => width === EXPECTED_ACCENT_WIDTH && height === EXPECTED_ACCENT_HEIGHT);
     expect(accentLine).toBeDefined();
   });
 
