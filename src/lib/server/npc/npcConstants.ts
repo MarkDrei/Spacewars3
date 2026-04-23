@@ -30,6 +30,11 @@ export function npcUserId(ownerId: number, npcIndex: number): number {
   return NPC_USER_ID_OFFSET + ownerId * NPC_IDS_PER_USER + npcIndex;
 }
 
+/** Return the display name for an NPC of the given level. */
+export function npcDisplayName(level: number): string {
+  return `Iron Horde Pirate Lv.${level}`;
+}
+
 /** Return true when `id` falls within the NPC user-ID range. */
 export function isNpcId(id: number): boolean {
   return id >= NPC_USER_ID_OFFSET && id < 2_000_000_000;

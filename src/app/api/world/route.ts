@@ -10,6 +10,7 @@ import { STARBASES } from '@/shared/starbases';
 import { NPCManager } from '@/lib/server/npc/NPCManager';
 import {
   BASE_ANGULAR_VELOCITY_DEG_PER_SEC,
+  npcDisplayName,
 } from '@/lib/server/npc/npcConstants';
 import { TimeMultiplierService } from '@/lib/server/timeMultiplier';
 import type { SpaceObject } from '@shared/types/gameTypes';
@@ -27,7 +28,7 @@ function npcToSpaceObject(npc: NpcShip, timeMultiplier: number, nowMs: number): 
     angle: npc.orbitAngleDeg + 90, // tangent direction (counter-clockwise orbit)
     last_position_update_ms: nowMs,
     picture_id: npc.npcIndex + 1, // 1-4
-    username: `Iron Horde Pirate Lv.${npc.level}`,
+    username: npcDisplayName(npc.level),
     userId: npc.id,
     level: npc.level,
     orbitAngleDeg: npc.orbitAngleDeg,
