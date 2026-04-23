@@ -6,7 +6,7 @@ import AuthenticatedLayout from '@/components/Layout/AuthenticatedLayout';
 import './GamePage.css';
 import { initGame, Game } from '@/lib/client/game/Game';
 import { useWorldData } from '@/lib/client/hooks/useWorldData';
-import { navigateShip } from '@/lib/client/services/navigationService';
+import { navigateShip, NavigateResponse } from '@/lib/client/services/navigationService';
 import { teleportShip } from '@/lib/client/services/teleportService';
 import { getShipStats } from '@/lib/client/services/shipStatsService';
 import { activateAfterburner, deactivateAfterburner, AfterburnerStatus } from '@/lib/client/services/afterburnerService';
@@ -20,6 +20,61 @@ interface GamePageClientProps {
   auth: ServerAuthState;
 }
 
+const SPEED_SLIDER_RANGE_MAX = 100;
+const SPEED_SLIDER_SNAP_ZONE_PERCENT = 12;
+const SPEED_SLIDER_ACTIVE_TRACK_START = SPEED_SLIDER_SNAP_ZONE_PERCENT;
+const SPEED_SLIDER_ACTIVE_TRACK_END = SPEED_SLIDER_RANGE_MAX - SPEED_SLIDER_SNAP_ZONE_PERCENT;
+const MOBILE_GAME_MEDIA_QUERY = '(max-width: 768px), (hover: none) and (pointer: coarse)';
+
+const clampSpeedValue = (value: number, speedLimit: number) => {
+  if (Number.isNaN(value)) {
+    return 0;
+  }
+
+  const normalizedSpeedLimit = Math.max(speedLimit, 0);
+  return Number(Math.min(Math.max(value, 0), normalizedSpeedLimit).toFixed(1));
+};
+
+const sliderPositionToSpeed = (position: number, speedLimit: number) => {
+  const normalizedSpeedLimit = Math.max(speedLimit, 0);
+  if (normalizedSpeedLimit === 0) {
+    return 0;
+  }
+
+  const clampedPosition = Math.min(Math.max(position, 0), SPEED_SLIDER_RANGE_MAX);
+
+  if (clampedPosition <= SPEED_SLIDER_ACTIVE_TRACK_START) {
+    return 0;
+  }
+
+  if (clampedPosition >= SPEED_SLIDER_ACTIVE_TRACK_END) {
+    return normalizedSpeedLimit;
+  }
+
+  const progress = (clampedPosition - SPEED_SLIDER_ACTIVE_TRACK_START) / (SPEED_SLIDER_ACTIVE_TRACK_END - SPEED_SLIDER_ACTIVE_TRACK_START);
+  return clampSpeedValue(progress * normalizedSpeedLimit, normalizedSpeedLimit);
+};
+
+const speedToSliderPosition = (speed: number, speedLimit: number) => {
+  const normalizedSpeedLimit = Math.max(speedLimit, 0);
+  if (normalizedSpeedLimit === 0) {
+    return 0;
+  }
+
+  const clampedSpeed = clampSpeedValue(speed, normalizedSpeedLimit);
+
+  if (clampedSpeed <= 0) {
+    return 0;
+  }
+
+  if (clampedSpeed >= normalizedSpeedLimit) {
+    return SPEED_SLIDER_RANGE_MAX;
+  }
+
+  const progress = clampedSpeed / normalizedSpeedLimit;
+  return Number((SPEED_SLIDER_ACTIVE_TRACK_START + progress * (SPEED_SLIDER_ACTIVE_TRACK_END - SPEED_SLIDER_ACTIVE_TRACK_START)).toFixed(1));
+};
+
 const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
   const router = useRouter();
   const gameInitializedRef = useRef(false);
@@ -28,6 +83,10 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
   const canvasContainerRef = useRef<HTMLDivElement>(null);
   const controlBarRef = useRef<HTMLDivElement>(null);
   const iconBarRef = useRef<HTMLDivElement>(null);
+  const isMobileModeRef = useRef(false);
+  const mobileTapInfoModeRef = useRef(false);
+  const debugDrawingsEnabledRef = useRef(false);
+  const zoomRef = useRef(DEFAULT_ZOOM);
   const [debugDrawingsEnabled, setDebugDrawingsEnabled] = useState(false);
   const [angleInput, setAngleInput] = useState<string>('0');
   const [speedInput, setSpeedInput] = useState<string>('0');
@@ -42,6 +101,8 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
   const [teleportClickMode, setTeleportClickMode] = useState(false);
   const [showTeleportCoordModal, setShowTeleportCoordModal] = useState(false);
   const [attackClickMode, setAttackClickMode] = useState(false);
+  const [isMobileMode, setIsMobileMode] = useState(false);
+  const [mobileTapInfoMode, setMobileTapInfoMode] = useState(false);
   const [teleportRechargeTimeSec, setTeleportRechargeTimeSec] = useState(0);
   const [timeMultiplier, setTimeMultiplier] = useState(1);
   const [zoom, setZoom] = useState(DEFAULT_ZOOM);
@@ -55,6 +116,9 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
   const [playerLevel, setPlayerLevel] = useState(1);
   // Auth is guaranteed by server, so pass true and use auth.shipId
   const { worldData, isLoading, error, refetch, lastUpdateTime } = useWorldData(3000);
+  const currentSpeedLimit = afterburnerStatus?.isActive && afterburnerStatus.boostedSpeed > 0 ? afterburnerStatus.boostedSpeed : maxSpeed;
+  const currentSpeedValue = parseFloat(speedInput) || 0;
+  const speedSliderPosition = speedToSliderPosition(currentSpeedValue, currentSpeedLimit);
 
   // Prevent page scrolling while on the game page
   useEffect(() => {
@@ -72,6 +136,47 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+      return;
+    }
+
+    const mediaQuery = window.matchMedia(MOBILE_GAME_MEDIA_QUERY);
+    const updateMobileMode = () => setIsMobileMode(mediaQuery.matches);
+
+    updateMobileMode();
+
+    if (typeof mediaQuery.addEventListener === 'function') {
+      mediaQuery.addEventListener('change', updateMobileMode);
+      return () => mediaQuery.removeEventListener('change', updateMobileMode);
+    }
+
+    mediaQuery.addListener(updateMobileMode);
+    return () => mediaQuery.removeListener(updateMobileMode);
+  }, []);
+
+  useEffect(() => {
+    if (!isMobileMode) {
+      setMobileTapInfoMode(false);
+    }
+  }, [isMobileMode]);
+
+  useEffect(() => {
+    debugDrawingsEnabledRef.current = debugDrawingsEnabled;
+  }, [debugDrawingsEnabled]);
+
+  useEffect(() => {
+    zoomRef.current = zoom;
+  }, [zoom]);
+
+  useEffect(() => {
+    isMobileModeRef.current = isMobileMode;
+  }, [isMobileMode]);
+
+  useEffect(() => {
+    mobileTapInfoModeRef.current = mobileTapInfoMode;
+  }, [mobileTapInfoMode]);
 
   // Load UI preferences from localStorage on mount
   useEffect(() => {
@@ -154,13 +259,6 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
       window.removeEventListener('resize', update);
     };
   });
-
-  // Sync debugDrawingsEnabled state with game instance
-  useEffect(() => {
-    if (gameInstanceRef.current) {
-      setDebugDrawingsEnabled(gameInstanceRef.current.getDebugDrawingsEnabled());
-    }
-  }, []);
 
   // Fetch max speed for the slider and afterburner status
   useEffect(() => {
@@ -249,15 +347,21 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
         console.error('Game initialization failed: initGame returned undefined');
         return;
       }
-      console.log('🎮 Game initialized successfully');
+      game.setDebugDrawingsEnabled(debugDrawingsEnabledRef.current);
+      game.setZoom(zoomRef.current);
+      game.setMobileInteractionMode(isMobileModeRef.current);
+      game.setMobileInfoMode(mobileTapInfoModeRef.current);
       // The game will receive world data through the update effect
       // Initial mode state is synced via the dedicated useEffects below
     } else {
       console.error('Game canvas not found');
     }
-  }, []); // intentionally empty: only run once on mount
+  }, []);
 
   useEffect(() => {
+    let initializeAfterRenderFrame: number | null = null;
+    let retryInitializeFrame: number | null = null;
+
     // Initialize game only when we have necessary data AND canvas is rendered (not loading)
     if (!gameInitializedRef.current && auth.shipId && !isLoading) {
       // Use requestAnimationFrame to ensure DOM is fully rendered
@@ -267,7 +371,7 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
           gameInitializedRef.current = true;
         } else {
           // Retry once if canvas not immediately available
-          requestAnimationFrame(() => {
+          retryInitializeFrame = requestAnimationFrame(() => {
             if (canvasRef.current) {
               initializeGame();
               gameInitializedRef.current = true;
@@ -278,11 +382,17 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
         }
       };
 
-      requestAnimationFrame(initializeAfterRender);
+      initializeAfterRenderFrame = requestAnimationFrame(initializeAfterRender);
     }
 
     // Clean up function
     return () => {
+      if (initializeAfterRenderFrame !== null) {
+        cancelAnimationFrame(initializeAfterRenderFrame);
+      }
+      if (retryInitializeFrame !== null) {
+        cancelAnimationFrame(retryInitializeFrame);
+      }
       if (gameInstanceRef.current) {
         gameInstanceRef.current.stop?.();
         gameInstanceRef.current = null;
@@ -320,7 +430,17 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
     }
   }, [worldData, auth.shipId, angleInput, speedInput]);
 
-  const updateInputFieldsFromShip = () => {
+  const updateInputFieldsFromShip = (navigation?: Pick<NavigateResponse, 'angle' | 'speed'>) => {
+    if (navigation) {
+      if (typeof navigation.angle === 'number') {
+        setAngleInput(navigation.angle.toFixed(1));
+      }
+      if (typeof navigation.speed === 'number') {
+        setSpeedInput(navigation.speed.toFixed(1));
+      }
+      return;
+    }
+
     if (gameInstanceRef.current) {
       const ship = gameInstanceRef.current.getWorld().getShip();
       if (ship) {
@@ -328,6 +448,17 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
         setSpeedInput(ship.getSpeed().toFixed(1));
       }
     }
+  };
+
+  const handleSpeedSliderChange = (rawValue: string) => {
+    const parsedPosition = parseFloat(rawValue);
+    if (Number.isNaN(parsedPosition)) {
+      setSpeedInput('0.0');
+      return;
+    }
+
+    const previewSpeed = sliderPositionToSpeed(parsedPosition, currentSpeedLimit);
+    setSpeedInput(previewSpeed.toFixed(1));
   };
 
   const handleSetAngle = async () => {
@@ -360,30 +491,49 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
     }
   };
 
-  const handleSetSpeed = async () => {
+  const handleSetSpeed = async (nextSpeed?: number | string) => {
     if (isSettingSpeed) return;
     
     setIsSettingSpeed(true);
     try {
-      const speed = parseFloat(speedInput);
-      if (isNaN(speed) || speed < 0) {
+      const speedSource = nextSpeed ?? speedInput;
+      const parsedSpeed = typeof speedSource === 'number' ? speedSource : parseFloat(speedSource);
+      if (Number.isNaN(parsedSpeed)) {
         console.error('Invalid speed value');
         return;
       }
+
+      const speed = clampSpeedValue(parsedSpeed, currentSpeedLimit);
       
-      await navigateShip({ speed });
+      setSpeedInput(speed.toFixed(1));
+
+      const navigationResult = await navigateShip({ speed });
       
       // Refresh world data to get updated ship state
       if (refetch) {
         refetch();
       }
       
-      // Update input fields after successful navigation
-      setTimeout(updateInputFieldsFromShip, 100); // Small delay to ensure world data is updated
+      updateInputFieldsFromShip({ angle: navigationResult.angle, speed: navigationResult.speed });
     } catch (error) {
       console.error('❌ [CLIENT] Failed to set speed:', error);
     } finally {
       setIsSettingSpeed(false);
+    }
+  };
+
+  const commitSpeedSlider = (rawValue: string) => {
+    const parsedPosition = parseFloat(rawValue);
+    if (Number.isNaN(parsedPosition)) {
+      return;
+    }
+
+    void handleSetSpeed(sliderPositionToSpeed(parsedPosition, currentSpeedLimit));
+  };
+
+  const handleSpeedSliderKeyUp = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', 'PageUp', 'PageDown'].includes(e.key)) {
+      commitSpeedSlider(e.currentTarget.value);
     }
   };
 
@@ -422,6 +572,24 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
       gameInstanceRef.current.setAttackClickMode(attackClickMode);
     }
   }, [attackClickMode]);
+
+  useEffect(() => {
+    if (gameInstanceRef.current) {
+      gameInstanceRef.current.setMobileInteractionMode(isMobileMode);
+    }
+  }, [isMobileMode]);
+
+  useEffect(() => {
+    if (gameInstanceRef.current) {
+      gameInstanceRef.current.setMobileInfoMode(mobileTapInfoMode);
+    }
+  }, [mobileTapInfoMode]);
+
+  useEffect(() => {
+    if (gameInstanceRef.current) {
+      gameInstanceRef.current.setDebugDrawingsEnabled(debugDrawingsEnabled);
+    }
+  }, [debugDrawingsEnabled]);
 
   // Sync playerLevel with game instance
   useEffect(() => {
@@ -718,6 +886,20 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
 
               <div className="spacer"></div>
 
+              {isMobileMode && (
+                <button
+                  className={`icon-button toggle-icon ${mobileTapInfoMode ? 'active' : ''}`}
+                  onClick={() => {
+                    const next = !mobileTapInfoMode;
+                    setMobileTapInfoMode(next);
+                    announce(next ? 'Info mode: first tap shows object info' : 'Direct mode: taps act immediately');
+                  }}
+                  title={`Tap mode: ${mobileTapInfoMode ? 'info' : 'direct'}`}
+                >
+                  ℹ️
+                </button>
+              )}
+
               {/* Attack toggle */}
               <button
                 className={`icon-button toggle-icon ${attackClickMode ? 'active' : ''}`}
@@ -759,15 +941,23 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
                         id="speed-slider"
                         type="range"
                         min={0}
-                        max={afterburnerStatus?.isActive && afterburnerStatus.boostedSpeed > 0 ? afterburnerStatus.boostedSpeed : maxSpeed}
+                        max={SPEED_SLIDER_RANGE_MAX}
                         step={0.1}
-                        value={parseFloat(speedInput) || 0}
-                        onChange={(e) => setSpeedInput(e.target.value)}
-                        onPointerUp={handleSetSpeed}
+                        value={speedSliderPosition}
+                        onChange={(e) => handleSpeedSliderChange(e.target.value)}
+                        onMouseUp={(e) => commitSpeedSlider(e.currentTarget.value)}
+                        onTouchEnd={(e) => commitSpeedSlider(e.currentTarget.value)}
+                        onKeyUp={handleSpeedSliderKeyUp}
+                        aria-valuetext={`${currentSpeedValue.toFixed(1)} / ${currentSpeedLimit.toFixed(1)}`}
+                        data-speed-limit={currentSpeedLimit.toFixed(1)}
                         disabled={isSettingSpeed}
-                        className="speed-slider"
+                        className="speed-slider speed-slider--snap-zones"
+                        style={{
+                          '--speed-slider-snap-start': `${SPEED_SLIDER_ACTIVE_TRACK_START}%`,
+                          '--speed-slider-snap-end': `${SPEED_SLIDER_ACTIVE_TRACK_END}%`,
+                        } as React.CSSProperties}
                       />
-                      <span className="speed-value">{parseFloat(speedInput).toFixed(1)}</span>
+                      <span className="speed-value">{currentSpeedValue.toFixed(1)}</span>
                     </div>
                     <div className="control-row">
                       <label htmlFor="angle-input">angle °</label>

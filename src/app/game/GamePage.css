@@ -76,6 +76,14 @@
   padding: 0;
 }
 
+.icon-button-label {
+  font-size: 0.58rem;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 .icon-button:hover:not(:disabled) {
   background: rgb(30, 55, 30);
   border-color: rgb(76, 175, 80);
@@ -213,6 +221,19 @@
   background: rgba(76, 175, 80, 0.3);
   outline: none;
   cursor: pointer;
+}
+
+.speed-slider--snap-zones {
+  background:
+    linear-gradient(
+      90deg,
+      rgba(255, 140, 0, 0.72) 0%,
+      rgba(255, 140, 0, 0.72) var(--speed-slider-snap-start, 12%),
+      rgba(76, 175, 80, 0.35) var(--speed-slider-snap-start, 12%),
+      rgba(76, 175, 80, 0.35) var(--speed-slider-snap-end, 88%),
+      rgba(255, 140, 0, 0.72) var(--speed-slider-snap-end, 88%),
+      rgba(255, 140, 0, 0.72) 100%
+    );
 }
 
 .speed-slider::-webkit-slider-thumb {

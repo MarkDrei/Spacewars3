@@ -20,6 +20,7 @@ async function setUserIron(ctx: ReturnType<typeof createLockContext>, userId: nu
     const user = await userCache.getUserByIdWithLock(userCtx, userId);
     if (!user) throw new Error('user not found');
     user.iron = amount;
+    // Prevent passive iron regeneration from changing exact battle-transfer assertions.
     user.last_updated = Math.floor(Date.now() / 1000) + 60;
     await userCache.updateUserInCache(userCtx, user);
   });

@@ -55,8 +55,10 @@ vi.mock('next/navigation', () => ({
 import { userStatsService, UserStatsResponse } from '@/lib/client/services/userStatsService';
 import { getShipStats } from '@/lib/client/services/shipStatsService';
 import { activateAfterburner, deactivateAfterburner } from '@/lib/client/services/afterburnerService';
+import { navigateShip } from '@/lib/client/services/navigationService';
 import type { ShipStatsResponse } from '@/lib/client/services/shipStatsService';
 import type { AfterburnerStatus } from '@/lib/client/services/afterburnerService';
+import { initGame } from '@/lib/client/game/Game';
 import GamePageClient from '@/app/game/GamePageClient';
 
 const mockFetch = vi.fn();
@@ -110,10 +112,23 @@ const makeShipStats = (afterburner?: AfterburnerStatus): ShipStatsResponse => ({
 
 const defaultAuth = { userId: 1, username: 'testuser', shipId: 42 };
 
+const makeMockGame = () => ({
+  setDebugDrawingsEnabled: vi.fn(),
+  setZoom: vi.fn(),
+  setSafeAreaBottom: vi.fn(),
+  setTeleportClickMode: vi.fn(),
+  setAttackClickMode: vi.fn(),
+  setPlayerLevel: vi.fn(),
+  setMobileInteractionMode: vi.fn(),
+  setMobileInfoMode: vi.fn(),
+  stop: vi.fn(),
+});
+
 describe('GamePageClient afterburner controls', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
+    vi.mocked(initGame).mockReturnValue(makeMockGame() as never);
     vi.mocked(userStatsService.getUserStats).mockResolvedValue(makeUserStats());
   });
 
@@ -386,7 +401,8 @@ describe('GamePageClient afterburner controls', () => {
     fireEvent.click(screen.getByTitle('Navigation (angle, speed, zoom)'));
 
     const speedSlider = screen.getByRole('slider', { name: /speed/i });
-    expect(speedSlider).toHaveAttribute('max', '50');
+    expect(speedSlider).toHaveAttribute('max', '100');
+    expect(speedSlider).toHaveAttribute('data-speed-limit', '50.0');
   });
 
   it('speedSlider_afterburnerNotActive_usesNormalMaxSpeed', async () => {
@@ -403,7 +419,8 @@ describe('GamePageClient afterburner controls', () => {
     fireEvent.click(screen.getByTitle('Navigation (angle, speed, zoom)'));
 
     const speedSlider = screen.getByRole('slider', { name: /speed/i });
-    expect(speedSlider).toHaveAttribute('max', '25');
+    expect(speedSlider).toHaveAttribute('max', '100');
+    expect(speedSlider).toHaveAttribute('data-speed-limit', '25.0');
   });
 
   it('speedInput_afterburnerExpiresDuringPolling_updatesToServerCappedSpeed', async () => {
@@ -442,6 +459,102 @@ describe('GamePageClient afterburner controls', () => {
     fireEvent.click(screen.getByTitle('Navigation (angle, speed, zoom)'));
 
     const speedSlider = screen.getByRole('slider', { name: /speed/i });
-    expect(speedSlider).toHaveAttribute('value', '25');
+    expect(speedSlider).toHaveAttribute('aria-valuetext', '25.0 / 25.0');
+  });
+
+  it('speedSlider_dragRelease_commitsReleasedSpeed', async () => {
+    vi.mocked(getShipStats).mockResolvedValue(makeShipStats());
+    vi.mocked(navigateShip).mockResolvedValue({
+      success: true,
+      speed: 12.3,
+      angle: 45,
+      maxSpeed: 25,
+    });
+
+    render(<GamePageClient auth={defaultAuth} />);
+
+    await waitFor(() => {
+      expect(getShipStats).toHaveBeenCalled();
+    });
+
+    fireEvent.click(screen.getByTitle('Navigation (angle, speed, zoom)'));
+
+    const speedSlider = screen.getByRole('slider', { name: /speed/i });
+    fireEvent.change(speedSlider, { target: { value: '50' } });
+    fireEvent.mouseUp(speedSlider);
+
+    await waitFor(() => {
+      expect(navigateShip).toHaveBeenCalledWith({ speed: 12.5 });
+    });
+  });
+
+  it('speedSlider_nearZero_snapsToZeroOnRelease', async () => {
+    vi.mocked(getShipStats).mockResolvedValue(makeShipStats());
+    vi.mocked(navigateShip).mockResolvedValue({
+      success: true,
+      speed: 0,
+      angle: 45,
+      maxSpeed: 25,
+    });
+
+    render(<GamePageClient auth={defaultAuth} />);
+
+    await waitFor(() => {
+      expect(getShipStats).toHaveBeenCalled();
+    });
+
+    fireEvent.click(screen.getByTitle('Navigation (angle, speed, zoom)'));
+
+    const speedSlider = screen.getByRole('slider', { name: /speed/i });
+    fireEvent.change(speedSlider, { target: { value: '5' } });
+    fireEvent.mouseUp(speedSlider);
+
+    await waitFor(() => {
+      expect(navigateShip).toHaveBeenCalledWith({ speed: 0 });
+    });
+
+    expect(screen.getByText('0.0')).toBeDefined();
+  });
+
+  it('speedSlider_rightSnapZone_commitsMaxSpeed', async () => {
+    vi.mocked(getShipStats).mockResolvedValue(makeShipStats());
+    vi.mocked(navigateShip).mockResolvedValue({
+      success: true,
+      speed: 25,
+      angle: 45,
+      maxSpeed: 25,
+    });
+
+    render(<GamePageClient auth={defaultAuth} />);
+
+    await waitFor(() => {
+      expect(getShipStats).toHaveBeenCalled();
+    });
+
+    fireEvent.click(screen.getByTitle('Navigation (angle, speed, zoom)'));
+
+    const speedSlider = screen.getByRole('slider', { name: /speed/i });
+    fireEvent.change(speedSlider, { target: { value: '96' } });
+    fireEvent.mouseUp(speedSlider);
+
+    await waitFor(() => {
+      expect(navigateShip).toHaveBeenCalledWith({ speed: 25 });
+    });
+  });
+
+  it('gameInit_savedUiPreferences_syncsZoomAndDebugStateToGame', async () => {
+    const mockGame = makeMockGame();
+    vi.mocked(initGame).mockReturnValue(mockGame as never);
+    vi.mocked(getShipStats).mockResolvedValue(makeShipStats());
+    localStorage.setItem('game-ui-zoom', JSON.stringify(1.75));
+    localStorage.setItem('game-ui-debug-enabled', JSON.stringify(true));
+
+    render(<GamePageClient auth={defaultAuth} />);
+
+    await waitFor(() => {
+      expect(initGame).toHaveBeenCalled();
+      expect(mockGame.setZoom).toHaveBeenCalledWith(1.75);
+      expect(mockGame.setDebugDrawingsEnabled).toHaveBeenCalledWith(true);
+    });
   });
 });

@@ -194,6 +194,31 @@ describe('Game – starbase entry callback', () => {
     expect(interceptTarget).toHaveBeenCalled();
   });
 
+  test('starbaseClick_outsideDockRange_interceptionUpdatesNavigationCallback', async () => {
+    const { interceptTarget } = await import('@/lib/client/services/navigationService');
+    const { getShipStats } = await import('@/lib/client/services/shipStatsService');
+    const navigationCallback = vi.fn();
+
+    vi.mocked(getShipStats).mockResolvedValue({ maxSpeed: 10 } as never);
+    vi.mocked(interceptTarget).mockResolvedValue({
+      success: true,
+      angle: 15,
+      speed: 10,
+      maxSpeed: 10,
+    } as never);
+
+    game.setNavigationCallback(navigationCallback);
+    game.setStarbaseEntryCallback(vi.fn());
+    mockFindHoveredObject.mockReturnValue(makeStarbaseObj(9001));
+    mockCalculateToroidalDistance.mockReturnValue(STARBASE_DOCK_RANGE + 100);
+
+    canvas._fire('click', { clientX: 400, clientY: 300 });
+
+    await new Promise(r => setTimeout(r, 0));
+
+    expect(navigationCallback).toHaveBeenCalledWith({ angle: 15, speed: 10 });
+  });
+
   test('starbaseClick_attackModeOff_doesNotFireCallback', () => {
     const cb = vi.fn();
     game.setStarbaseEntryCallback(cb);
