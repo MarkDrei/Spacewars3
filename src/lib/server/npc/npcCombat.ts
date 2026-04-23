@@ -112,7 +112,7 @@ export async function upsertNpcUser(
   context: LockContext<LocksAtMostAndHas4>,
 ): Promise<void> {
   const npcId = npcUserId(npc.ownerId, npc.npcIndex);
-  const username = `iron_horde_${npc.ownerId}_${npc.npcIndex}`;
+  const username = `Iron Horde Pirate Lv.${npc.level}`;
   const now = Math.floor(Date.now() / 1000);
 
   // 1. Generate randomised tech counts scaled to NPC level

@@ -14,7 +14,7 @@ import { BATTLE_LOCK, USER_LOCK } from '@/lib/server/typedLocks';
 import { isAttackAllowed } from '@shared/utils/levelUtils';
 import { isNpcId } from '@/lib/server/npc/npcConstants';
 import { NPCManager } from '@/lib/server/npc/NPCManager';
-import { upsertNpcUser } from '@/lib/server/npc/npcCombat';
+import { upsertNpcUser, removeNpcSpaceObject } from '@/lib/server/npc/npcCombat';
 
 // Force dynamic rendering for this route
 export const dynamic = 'force-dynamic';
@@ -100,6 +100,12 @@ export async function POST(request: NextRequest) {
         
         // Initiate the battle - this will handle its own locking internally
         const battle = await initiateBattle(battleContext, userContext, attacker, target);
+        
+        // After battle is initiated, remove the NPC space object from the world
+        // so it is no longer rendered on the frontend during the battle
+        if (targetIsNpc) {
+          await removeNpcSpaceObject(targetUserId, userContext);
+        }
         
         console.log(`✅ Battle ${battle.id} initiated successfully`);
         
