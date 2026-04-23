@@ -29,6 +29,7 @@ import {
 import { createLockContext, HasLock14Context, IronLocks, LockContext, LocksAtMostAndHas4 } from '@markdrei/ironguard-typescript-locks';
 import { STATISTICS_LOCK } from '../typedLocks';
 import { Cache } from '../caches/Cache';
+import { isNpcId } from '../npc/npcConstants';
 
 const PERSISTENCE_INTERVAL_MS = 60_000; // 60 seconds
 
@@ -290,7 +291,9 @@ export class StatisticsCache extends Cache {
   }
 
   private computeGlobalStats(): GlobalStatAggregates {
-    const allUsers = Array.from(this.userAggregates.entries());
+    const allUsers = Array.from(this.userAggregates.entries()).filter(
+      ([userId]) => !isNpcId(userId),
+    );
     const totalPlayers = allUsers.length;
 
     // Compute totals (sums across all players)

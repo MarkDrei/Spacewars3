@@ -67,7 +67,7 @@ export class NPCManager {
     // Lazy midnight respawn check
     this.checkMidnightRespawn(state);
 
-    return state.npcs.filter((npc) => !npc.defeated);
+    return state.npcs.filter((npc) => !npc.defeated && !npc.inBattle);
   }
 
   /**

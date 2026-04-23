@@ -189,6 +189,37 @@ describe('NPCManager', () => {
       expect(npcs2.find((n) => n.id === npcs[0].id)).toBeUndefined();
     });
 
+    it('getNpcsForPlayer_inBattleNpc_excludedFromResult', () => {
+      freezeTime(1_000_000);
+      const mgr = NPCManager.getInstance();
+
+      // First call generates NPCs
+      const npcs = mgr.getNpcsForPlayer(1, 1);
+      expect(npcs).toHaveLength(4);
+
+      // Mark one NPC as in battle
+      mgr.setInBattle(npcs[1].id, true);
+
+      // Fetch again — only 3 returned (in-battle NPC excluded)
+      const npcs2 = mgr.getNpcsForPlayer(1, 1);
+      expect(npcs2).toHaveLength(3);
+      expect(npcs2.find((n) => n.id === npcs[1].id)).toBeUndefined();
+    });
+
+    it('getNpcsForPlayer_inBattleClearedNpc_includedInResult', () => {
+      freezeTime(1_000_000);
+      const mgr = NPCManager.getInstance();
+
+      mgr.getNpcsForPlayer(1, 1);
+
+      // Mark NPC as in battle then clear
+      mgr.setInBattle(npcUserId(1, 2), true);
+      expect(mgr.getNpcsForPlayer(1, 1)).toHaveLength(3);
+
+      mgr.setInBattle(npcUserId(1, 2), false);
+      expect(mgr.getNpcsForPlayer(1, 1)).toHaveLength(4);
+    });
+
     it('getNpcsForPlayer_secondCallSameLevel_returnsCachedNpcs', () => {
       freezeTime(1_000_000);
       const mgr = NPCManager.getInstance();

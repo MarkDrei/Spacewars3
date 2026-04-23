@@ -312,4 +312,49 @@ describe('StatisticsCache', () => {
     expect(stats.totalDamageDealt).toBe(0);
     expect(stats.totalIronFromCollection).toBe(0);
   });
+
+  // ── NPC filtering ──────────────────────────────────────────────────────────
+
+  it('getGlobalStats_npcEvents_excludedFromGlobalStats', async () => {
+    const { NPC_USER_ID_OFFSET } = await import('@/lib/server/npc/npcConstants');
+    const cache = await createTestCache((id) => `player${id}`);
+
+    const npcId = NPC_USER_ID_OFFSET + 1000; // a valid NPC ID
+
+    // Record events for a real player (id=1) and an NPC
+    await cache.recordEvent(1, 'battle_completed', {
+      battleId: 1,
+      opponentId: npcId,
+      won: true,
+      damageDealt: 500,
+      damageReceived: 100,
+      ironTransferred: 0,
+      xpAwarded: 10,
+      durationSec: 30,
+    });
+    await cache.recordEvent(npcId, 'battle_completed', {
+      battleId: 1,
+      opponentId: 1,
+      won: false,
+      damageDealt: 100,
+      damageReceived: 500,
+      ironTransferred: 0,
+      xpAwarded: 0,
+      durationSec: 30,
+    });
+
+    const { createLockContext } = await import('@markdrei/ironguard-typescript-locks');
+    const { STATISTICS_LOCK } = await import('@/lib/server/typedLocks');
+    const ctx = createLockContext();
+    let global: ReturnType<typeof cache.getGlobalStats> | null = null;
+    await ctx.useLockWithAcquire(STATISTICS_LOCK, async (lockCtx) => {
+      global = cache.getGlobalStats(lockCtx);
+    });
+
+    // Only the real player should be counted
+    expect(global!.totalPlayers).toBe(1);
+    // Top 5 should not include the NPC
+    const top5 = global!.top5.battlesWon;
+    expect(top5.every((e: { userId: number }) => e.userId < NPC_USER_ID_OFFSET)).toBe(true);
+  });
 });
