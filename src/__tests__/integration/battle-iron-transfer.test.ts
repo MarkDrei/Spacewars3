@@ -115,6 +115,68 @@ describe('Battle iron transfer', () => {
     });
   });
 
+  it('winnerReceivesScoreEqualToThreeTimesXp', async () => {
+    await withTransaction(async () => {
+      let attackerId: number = 0;
+      let defenderId: number = 0;
+      let attackerStartScore = 0;
+      let winnerLevel = 0;
+      let loserLevel = 0;
+
+      await emptyCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
+        const att = await userCache.getUserByUsername(userCtx, 'a');
+        const def = await userCache.getUserByUsername(userCtx, 'dummy');
+        expect(att).not.toBeNull();
+        expect(def).not.toBeNull();
+
+        attackerId = att!.id;
+        defenderId = def!.id;
+        attackerStartScore = att!.score;
+        winnerLevel = att!.getLevel();
+        loserLevel = def!.getLevel();
+      });
+
+      const attackerStats: BattleStats = {
+        hull: { current: 100, max: 100 },
+        armor: { current: 50, max: 50 },
+        shield: { current: 25, max: 25 },
+      };
+      const defenderStats: BattleStats = {
+        hull: { current: 0, max: 100 },
+        armor: { current: 0, max: 50 },
+        shield: { current: 0, max: 25 },
+      };
+      const cooldowns: Record<string, number> = {};
+
+      let battleId: number;
+      await emptyCtx.useLockWithAcquire(BATTLE_LOCK, async (battleCtx) => {
+        await battleCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
+          const battle = await battleCache!.createBattle(
+            battleCtx,
+            userCtx,
+            attackerId,
+            defenderId,
+            attackerStats,
+            defenderStats,
+            cooldowns,
+            {}
+          );
+          battleId = battle.id;
+        });
+      });
+
+      await emptyCtx.useLockWithAcquire(BATTLE_LOCK, async (battleCtx) => {
+        await battleService.resolveBattle(battleCtx, battleId!, attackerId, defenderId);
+      });
+
+      await emptyCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
+        const winner = await userCache.getUserByIdWithLock(userCtx, attackerId);
+        const expectedXp = battleService.calculateBattleXp(winnerLevel, loserLevel);
+        expect(winner?.score).toBe(attackerStartScore + expectedXp * 3);
+      });
+    });
+  });
+
   it('winnerCapacityLimitsTransfer', async () => {
     await withTransaction(async () => {
       let attackerId: number = 0;

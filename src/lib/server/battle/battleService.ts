@@ -36,7 +36,7 @@ import { calculateNpcIronReward, removeNpcSpaceObject } from '../npc/npcCombat';
 /**
  * Calculate XP awarded to the winner of a battle based on level difference.
  * Formula:
- * - baseXp = winnerLevel * 200
+ * - baseXp = loserLevel * 200
  * - If loserLevel > winnerLevel: xp = baseXp * (1.3 ^ levelDiff)
  * - If loserLevel < winnerLevel: xp = baseXp * (0.7 ^ abs(levelDiff))
  * - If same level: xp = baseXp
@@ -46,7 +46,7 @@ import { calculateNpcIronReward, removeNpcSpaceObject } from '../npc/npcCombat';
  * @returns XP to award (floored to integer)
  */
 export function calculateBattleXp(winnerLevel: number, loserLevel: number): number {
-  const baseXp = winnerLevel * 200;
+  const baseXp = loserLevel * 200;
   const levelDiff = loserLevel - winnerLevel;
 
   let xp: number;
@@ -554,6 +554,7 @@ export async function resolveBattle(
 
   let ironResult: IronTransferResult = { amount: 0, winnerName: '', loserName: '' };
   let xpAwarded = 0;
+  let scoreAwarded = 0;
   let levelUpResult: { leveledUp: boolean; oldLevel: number; newLevel: number } | undefined;
 
   const winnerIsNpc = isNpcId(winnerId);
@@ -584,7 +585,7 @@ export async function resolveBattle(
       ironResult = await transferIronOnBattle(userContext, winnerId, loserId);
     }
 
-    // --- XP award (skip if winner is NPC) ---
+    // --- XP and score award (skip if winner is NPC) ---
     if (!winnerIsNpc) {
       const userWorldCache = UserCache.getInstance2();
       const winner = userWorldCache.getUserByIdFromCache(userContext, winnerId);
@@ -593,7 +594,9 @@ export async function resolveBattle(
         const winnerLevel = winner.getLevel();
         const loserLevel = loser.getLevel();
         xpAwarded = calculateBattleXp(winnerLevel, loserLevel);
+        scoreAwarded = xpAwarded * 3;
         levelUpResult = winner.addXp(xpAwarded);
+        winner.addScore(scoreAwarded);
         await userWorldCache.updateUserInCache(userContext, winner);
       }
     }
@@ -648,7 +651,7 @@ export async function resolveBattle(
       await sendMessageToUser(
         context,
         winnerId,
-        `P: 🎉 **Victory!** You won the battle! You gained ${ironResult.amount} iron and ${xpAwarded} XP from ${npcLabel}.`
+        `P: 🎉 **Victory!** You won the battle! You gained ${ironResult.amount} iron, ${xpAwarded} XP and ${scoreAwarded} score from ${npcLabel}.`
       );
 
       // Send level-up notification if winner leveled up

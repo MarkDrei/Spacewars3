@@ -163,7 +163,7 @@ const ProfilePageClient: React.FC<ProfilePageClientProps> = ({ auth }) => {
             <h1 className="page-heading">Player Profile</h1>
             <div className="profile-top-bar-actions">
               <button
-                className="change-password-button"
+                className="btn-secondary"
                 onClick={openChangePasswordDialog}
                 type="button"
               >

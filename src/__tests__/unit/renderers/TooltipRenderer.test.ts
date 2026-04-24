@@ -100,8 +100,8 @@ describe('TooltipRenderer', () => {
 
     renderer.drawTooltip([hoveredObject] as never, ship as never, 1);
 
-    const firstMainRect = vi.mocked(ctx.roundRect).mock.calls[0];
-    expect(firstMainRect?.[0]).toBe(116);
+    const firstRoundRect = vi.mocked(ctx.roundRect).mock.calls[0];
+    expect(firstRoundRect?.[0]).toBe(116);
   });
 
   test('drawTooltip_formatsNumbersWithSharedFormatter', () => {

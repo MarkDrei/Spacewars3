@@ -161,18 +161,7 @@
   color: #666;
 }
 
-.auth-button {
-  padding: 0.75rem 1.5rem;
-  font-size: 1rem;
-  font-weight: 600;
-  margin-top: 0.5rem;
-}
 
-.auth-button:disabled {
-  background-color: #2d2d2d !important;
-  color: #666 !important;
-  cursor: not-allowed !important;
-}
 
 .auth-footer {
   text-align: center;
