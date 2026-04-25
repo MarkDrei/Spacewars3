@@ -1,0 +1,397 @@
+/* ═══════════════════════════════════════════════════════
+   BattleMockups – 10 alternative battle display designs
+   ═══════════════════════════════════════════════════════ */
+
+/* ── Shared helpers ───────────────────────────────────── */
+.bm-wrapper {
+  margin-bottom: 2rem;
+}
+
+.bm-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 0.75rem;
+}
+
+.bm-nav-btn {
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.3);
+  color: white;
+  padding: 0.35rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: background 0.2s;
+}
+.bm-nav-btn:hover { background: rgba(255,255,255,0.2); }
+
+.bm-nav-label {
+  color: rgba(255,255,255,0.75);
+  font-size: 0.9rem;
+  min-width: 220px;
+  text-align: center;
+}
+
+.bm-ready { color: #66bb6a !important; font-weight: 700; }
+.bm-cooling { color: #ffa726; }
+
+
+/* ═══════════════════════════════════════════════════════
+   DESIGN 1 – Classic Enhanced (red banner, more info)
+   ═══════════════════════════════════════════════════════ */
+.bm-d1 {
+  background: linear-gradient(135deg, #b71c1c 0%, #e53935 100%);
+  border: 2px solid #ff5252;
+  border-radius: 8px;
+  padding: 1.5rem;
+  color: white;
+  animation: bm-pulse-red 2s ease-in-out infinite;
+}
+@keyframes bm-pulse-red {
+  0%,100% { box-shadow: 0 4px 6px rgba(0,0,0,.3), 0 0 20px rgba(255,82,82,.2); }
+  50%      { box-shadow: 0 4px 6px rgba(0,0,0,.3), 0 0 32px rgba(255,82,82,.45); }
+}
+.bm-d1-header {
+  font-size: 1.5rem;
+  font-weight: 700;
+  text-align: center;
+  letter-spacing: 2px;
+  margin-bottom: 0.5rem;
+}
+.bm-d1-sub {
+  text-align: center;
+  font-size: 0.95rem;
+  opacity: 0.9;
+  margin-bottom: 1rem;
+}
+.bm-d1-stats {
+  display: flex;
+  justify-content: center;
+  gap: 3rem;
+  padding: 0.75rem 1rem;
+  background: rgba(0,0,0,.25);
+  border-radius: 6px;
+  margin-bottom: 1rem;
+}
+.bm-d1-stat { display: flex; flex-direction: column; align-items: center; gap: 0.25rem; }
+.bm-d1-label { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; opacity: 0.85; }
+.bm-d1-value { font-size: 1.9rem; font-weight: 700; color: #ffeb3b; text-shadow: 0 0 8px rgba(255,235,59,.5); }
+.bm-d1-log { background: rgba(0,0,0,.2); border-radius: 4px; padding: 0.75rem 1rem; margin-bottom: 1rem; }
+.bm-d1-log-title { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; opacity: .75; margin-bottom: 0.4rem; }
+.bm-d1-log-item { font-size: 0.85rem; padding: 0.15rem 0; opacity: 0.9; }
+.bm-d1-cooldowns { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.bm-d1-cooldown-item {
+  display: flex; justify-content: space-between; align-items: center;
+  background: rgba(0,0,0,.25); padding: 0.5rem 0.75rem; border-radius: 4px;
+  border: 1px solid rgba(255,255,255,.2); font-size: 0.9rem; min-width: 160px;
+}
+
+/* ═══════════════════════════════════════════════════════
+   DESIGN 2 – Sci-Fi HUD
+   ═══════════════════════════════════════════════════════ */
+.bm-d2 {
+  background: #050d1a;
+  border: 2px solid #00e5ff;
+  border-radius: 4px;
+  padding: 1.25rem 1.5rem;
+  color: #cce7ff;
+  box-shadow: 0 0 24px rgba(0,229,255,.25), inset 0 0 40px rgba(0,100,160,.1);
+  font-family: 'Courier New', monospace;
+}
+.bm-d2-title {
+  text-align: center;
+  font-size: 1.1rem;
+  letter-spacing: 4px;
+  color: #00e5ff;
+  margin-bottom: 1rem;
+  text-shadow: 0 0 8px #00e5ff;
+}
+.bm-d2-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 0.75rem; margin-bottom: 1rem; }
+@media (max-width: 600px) { .bm-d2-grid { grid-template-columns: repeat(2,1fr); } }
+.bm-d2-block {
+  background: rgba(0,229,255,.05);
+  border: 1px solid rgba(0,229,255,.25);
+  border-radius: 4px; padding: 0.6rem 0.75rem;
+}
+.bm-d2-block-label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 2px; color: #5ed8f0; margin-bottom: 0.3rem; }
+.bm-d2-block-val { font-size: 1.1rem; font-weight: 700; color: #00e5ff; }
+.bm-d2-blink { animation: bm-blink 1s step-end infinite; }
+@keyframes bm-blink { 50% { opacity: 0.3; } }
+.bm-d2-bar-section { margin-bottom: 1rem; }
+.bm-d2-bar-label { display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 0.35rem; color: #5ed8f0; }
+.bm-d2-bar-track { height: 12px; background: rgba(255,255,255,.07); border-radius: 6px; position: relative; overflow: hidden; }
+.bm-d2-bar-fill {
+  height: 100%; background: linear-gradient(90deg,#00c853,#69f0ae);
+  border-radius: 6px; transition: width .5s;
+}
+.bm-d2-bar-center {
+  position: absolute; top: 0; left: 50%; width: 2px; height: 100%;
+  background: rgba(255,255,255,.4);
+}
+.bm-d2-weapons { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.bm-d2-weapon {
+  background: rgba(0,229,255,.05); border: 1px solid rgba(0,229,255,.2);
+  border-radius: 4px; padding: 0.5rem 0.75rem; flex: 1; min-width: 120px;
+}
+.bm-d2-weapon-ready { border-color: #00c853; background: rgba(0,200,83,.08); }
+.bm-d2-weapon-name { font-size: 0.8rem; text-transform: capitalize; color: #5ed8f0; margin-bottom: 0.2rem; }
+.bm-d2-weapon-status { font-size: 1rem; font-weight: 700; color: #ffeb3b; }
+.bm-d2-weapon-ready .bm-d2-weapon-status { color: #69f0ae; }
+
+/* ═══════════════════════════════════════════════════════
+   DESIGN 3 – Terminal Console
+   ═══════════════════════════════════════════════════════ */
+.bm-d3 {
+  background: #0a0a0a;
+  border: 1px solid #1a3a1a;
+  border-radius: 4px;
+  overflow: hidden;
+  font-family: 'Courier New', Courier, monospace;
+}
+.bm-d3-header {
+  background: #1a3a1a;
+  color: #00ff41;
+  font-size: 0.85rem;
+  padding: 0.4rem 1rem;
+  letter-spacing: 2px;
+}
+.bm-d3-body { padding: 0.75rem 1rem; max-height: 340px; overflow-y: auto; }
+.bm-d3-line { color: #00ff41; font-size: 0.85rem; line-height: 1.6; white-space: nowrap; }
+.bm-d3-cursor {
+  color: #00ff41;
+  display: inline-block;
+  animation: bm-blink 0.8s step-end infinite;
+  margin-top: 0.2rem;
+}
+
+/* ═══════════════════════════════════════════════════════
+   DESIGN 4 – VS Split
+   ═══════════════════════════════════════════════════════ */
+.bm-d4 {
+  background: #1a1a2e;
+  border: 2px solid #533483;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.bm-d4-header {
+  background: #16213e;
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 0.6rem 1rem;
+  color: #e0e0e0;
+  font-size: 0.95rem;
+}
+.bm-d4-duration { color: #bb86fc; font-weight: 600; }
+.bm-d4-vs {
+  display: flex; align-items: stretch;
+}
+.bm-d4-side {
+  flex: 1; padding: 1.5rem 1rem; text-align: center;
+}
+.bm-d4-you { background: linear-gradient(135deg,#0d2137,#163356); border-right: 1px solid #533483; }
+.bm-d4-opp { background: linear-gradient(135deg,#2d1515,#4a1a1a); }
+.bm-d4-role { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 2px; color: #bb86fc; margin-bottom: 0.5rem; }
+.bm-d4-player { font-size: 1.8rem; font-weight: 700; color: white; margin-bottom: 0.75rem; }
+.bm-d4-dmg-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; color: rgba(255,255,255,.55); margin-bottom: 0.25rem; }
+.bm-d4-dmg { font-size: 2.5rem; font-weight: 900; color: #ffeb3b; line-height: 1; }
+.bm-d4-center {
+  display: flex; align-items: center; justify-content: center;
+  width: 60px; flex-shrink: 0;
+  font-size: 1.5rem; font-weight: 900; color: #bb86fc;
+  background: #1a1a2e;
+  border-left: 1px solid #533483; border-right: 1px solid #533483;
+}
+.bm-d4-weapons { margin-top: 1rem; display: flex; flex-direction: column; gap: 0.35rem; }
+.bm-d4-weapon-row { display: flex; justify-content: space-between; font-size: 0.8rem; color: rgba(255,255,255,.7); }
+
+/* ═══════════════════════════════════════════════════════
+   DESIGN 5 – Damage Meter
+   ═══════════════════════════════════════════════════════ */
+.bm-d5 {
+  background: #111;
+  border-left: 4px solid #f44336;
+  border-radius: 4px;
+  padding: 1.25rem 1.5rem;
+  color: #e0e0e0;
+}
+.bm-d5-title { font-size: 1.2rem; font-weight: 700; color: #ff5252; margin-bottom: 0.4rem; }
+.bm-d5-meta { font-size: 0.85rem; color: #888; margin-bottom: 1.25rem; }
+.bm-d5-meter-row { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem; }
+.bm-d5-meter-label { width: 30px; font-size: 0.85rem; color: #aaa; flex-shrink: 0; }
+.bm-d5-meter-track { flex: 1; height: 22px; background: rgba(255,255,255,.07); border-radius: 11px; overflow: hidden; }
+.bm-d5-meter-fill { height: 100%; border-radius: 11px; transition: width .5s; }
+.bm-d5-you-fill { background: linear-gradient(90deg, #1565c0, #42a5f5); }
+.bm-d5-opp-fill { background: linear-gradient(90deg, #b71c1c, #ef5350); }
+.bm-d5-meter-num { width: 50px; text-align: right; font-size: 0.95rem; font-weight: 600; color: #ccc; flex-shrink: 0; }
+.bm-d5-cooldowns { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #333; }
+.bm-d5-cooldowns-title { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; color: #666; margin-bottom: 0.5rem; }
+.bm-d5-cooldowns-grid { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.bm-d5-weapon {
+  display: flex; justify-content: space-between; gap: 0.5rem;
+  background: rgba(255,255,255,.05); border-radius: 4px; padding: 0.4rem 0.75rem;
+  font-size: 0.85rem; color: #aaa; border: 1px solid #2a2a2a;
+}
+.bm-d5-weapon-ready { border-color: #2e7d32; color: #81c784; background: rgba(46,125,50,.1); }
+
+/* ═══════════════════════════════════════════════════════
+   DESIGN 6 – Minimal Compact Bar
+   ═══════════════════════════════════════════════════════ */
+.bm-d6 {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 0 0.6rem;
+  background: #1a0000;
+  border: 1px solid #f44336;
+  border-radius: 4px;
+  padding: 0.55rem 1rem;
+  font-size: 0.85rem;
+  color: #ffcdd2;
+  overflow: hidden;
+}
+.bm-d6-badge { background: #c62828; color: white; font-weight: 700; padding: 0.15rem 0.5rem; border-radius: 3px; font-size: 0.8rem; }
+.bm-d6-sep { color: rgba(255,255,255,.25); }
+.bm-d6-id { color: #ef9a9a; }
+.bm-d6-role { color: #ffcc80; }
+.bm-d6-opp { color: #ef9a9a; }
+.bm-d6-dur { color: #80cbc4; font-family: monospace; }
+.bm-d6-dmg { color: #ffeb3b; font-weight: 600; }
+.bm-d6-weapons { color: #a5d6a7; }
+.bm-d6-event { color: rgba(255,255,255,.6); font-size: 0.8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 280px; }
+
+/* ═══════════════════════════════════════════════════════
+   DESIGN 7 – RPG Combat Screen
+   ═══════════════════════════════════════════════════════ */
+.bm-d7 {
+  background: #1a1600;
+  border: 3px solid #b8860b;
+  border-radius: 4px;
+  overflow: hidden;
+  font-family: 'Georgia', serif;
+}
+.bm-d7-header { background: #2d2200; padding: 0.75rem 1rem; text-align: center; border-bottom: 2px solid #b8860b; }
+.bm-d7-title { color: #ffd700; font-size: 1.3rem; letter-spacing: 3px; }
+.bm-d7-subtitle { color: #a0916a; font-size: 0.75rem; margin-top: 0.2rem; }
+.bm-d7-field { display: flex; align-items: center; padding: 1.5rem 1rem; gap: 0.5rem; }
+.bm-d7-combatant { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 0.5rem; }
+.bm-d7-sprite { font-size: 2.5rem; }
+.bm-d7-name { color: #ffd700; font-weight: 700; font-size: 1.1rem; }
+.bm-d7-hp-bar { width: 100%; height: 12px; background: #3a2a00; border: 1px solid #b8860b; border-radius: 6px; overflow: hidden; }
+.bm-d7-hp-fill { height: 100%; border-radius: 6px; transition: width .5s; }
+.bm-d7-hp-you { background: linear-gradient(90deg,#1b5e20,#66bb6a); }
+.bm-d7-hp-opp { background: linear-gradient(90deg,#b71c1c,#ef5350); }
+.bm-d7-stat { color: #a0916a; font-size: 0.85rem; }
+.bm-d7-mid { display: flex; flex-direction: column; align-items: center; gap: 0.25rem; flex-shrink: 0; width: 70px; }
+.bm-d7-timer { color: #80cbc4; font-family: monospace; font-size: 0.8rem; }
+.bm-d7-vs { color: #ffd700; font-size: 1.5rem; font-weight: 900; }
+.bm-d7-id { color: #a0916a; font-size: 0.75rem; }
+.bm-d7-log { background: #2d2200; border-top: 1px solid #b8860b; padding: 0.6rem 1rem; }
+.bm-d7-log-line { color: #c8b46a; font-size: 0.8rem; padding: 0.15rem 0; font-family: 'Courier New', monospace; }
+.bm-d7-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; padding: 0.75rem 1rem; background: #100e00; border-top: 1px solid #b8860b; }
+.bm-d7-action {
+  padding: 0.4rem 0.75rem; border: 1px solid #b8860b; border-radius: 3px;
+  color: #a0916a; font-size: 0.8rem; background: rgba(184,134,11,.05);
+}
+.bm-d7-action-ready { color: #ffd700; border-color: #ffd700; background: rgba(255,215,0,.1); }
+
+/* ═══════════════════════════════════════════════════════
+   DESIGN 8 – Military Ops SITREP
+   ═══════════════════════════════════════════════════════ */
+.bm-d8 {
+  background: #0d0d0d;
+  border: 1px solid #5d4c00;
+  border-radius: 0;
+  font-family: 'Courier New', Courier, monospace;
+  overflow: hidden;
+}
+.bm-d8-header {
+  background: #1a1400;
+  border-bottom: 2px solid #b8860b;
+  padding: 0.6rem 1rem;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.bm-d8-title { color: #f5c842; font-size: 0.9rem; letter-spacing: 2px; }
+.bm-d8-time { color: #cc9900; font-size: 0.85rem; }
+.bm-d8-grid { padding: 0.75rem 1rem; display: grid; grid-template-columns: 1fr 1fr; gap: 0.25rem 1rem; }
+@media (max-width: 480px) { .bm-d8-grid { grid-template-columns: 1fr; } }
+.bm-d8-row { display: flex; justify-content: space-between; border-bottom: 1px dotted #2a2000; padding: 0.3rem 0; }
+.bm-d8-key { color: #666; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; }
+.bm-d8-val { color: #f5c842; font-size: 0.85rem; }
+.bm-d8-ready { color: #a5d6a7 !important; }
+.bm-d8-log { background: #0a0900; border-top: 1px solid #5d4c00; padding: 0.6rem 1rem; }
+.bm-d8-log-title { color: #b8860b; font-size: 0.7rem; letter-spacing: 2px; margin-bottom: 0.4rem; }
+.bm-d8-log-line { color: #b8a055; font-size: 0.78rem; padding: 0.1rem 0; }
+
+/* ═══════════════════════════════════════════════════════
+   DESIGN 9 – Breaking Alert / Newspaper
+   ═══════════════════════════════════════════════════════ */
+.bm-d9 {
+  background: #fff;
+  border: 3px solid #c62828;
+  border-radius: 4px;
+  overflow: hidden;
+  color: #111;
+  font-family: 'Georgia', serif;
+}
+.bm-d9-ticker {
+  background: #c62828;
+  color: white;
+  font-size: 0.8rem;
+  font-family: Arial, sans-serif;
+  font-weight: 700;
+  padding: 0.25rem 0;
+  text-align: center;
+  letter-spacing: 2px;
+  animation: bm-ticker-pulse 1s ease-in-out infinite;
+}
+@keyframes bm-ticker-pulse { 50% { background: #b71c1c; } }
+.bm-d9-headline {
+  font-size: 1.35rem;
+  font-weight: 900;
+  text-align: center;
+  padding: 1rem 1rem 0.25rem;
+  color: #c62828;
+  text-transform: uppercase;
+  line-height: 1.25;
+}
+.bm-d9-sub { text-align: center; font-size: 0.8rem; color: #555; font-family: Arial, sans-serif; padding: 0 1rem 0.75rem; border-bottom: 3px double #111; }
+.bm-d9-body { display: flex; align-items: center; justify-content: center; gap: 1rem; padding: 1rem; }
+.bm-d9-stat { text-align: center; }
+.bm-d9-stat-num { font-size: 2.5rem; font-weight: 900; line-height: 1; }
+.bm-d9-you { color: #1565c0; }
+.bm-d9-opp { color: #c62828; }
+.bm-d9-stat-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; color: #555; font-family: Arial,sans-serif; margin-top: 0.2rem; }
+.bm-d9-verdict { font-size: 1.4rem; font-weight: 900; font-family: Arial,sans-serif; padding: 0 1rem; }
+.bm-d9-winning { color: #2e7d32; }
+.bm-d9-losing { color: #c62828; }
+.bm-d9-footer { display: flex; flex-wrap: wrap; gap: 0.4rem; padding: 0.6rem 1rem; background: #f5f5f5; border-top: 1px solid #ddd; }
+.bm-d9-weapon-tag { font-size: 0.75rem; font-family: Arial,sans-serif; padding: 0.2rem 0.5rem; border-radius: 3px; }
+.bm-d9-tag-ready { background: #e8f5e9; color: #2e7d32; border: 1px solid #a5d6a7; }
+.bm-d9-tag-cool  { background: #fff3e0; color: #e65100; border: 1px solid #ffcc80; }
+
+/* ═══════════════════════════════════════════════════════
+   DESIGN 10 – Stats Dashboard Cards
+   ═══════════════════════════════════════════════════════ */
+.bm-d10 {
+  background: #1a1a2e;
+  border-radius: 8px;
+  padding: 1.25rem;
+  color: #e0e0e0;
+}
+.bm-d10-title { font-size: 1.1rem; font-weight: 700; color: #7986cb; margin-bottom: 1rem; }
+.bm-d10-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; margin-bottom: 1rem; }
+@media (max-width: 480px) { .bm-d10-cards { grid-template-columns: repeat(2, 1fr); } }
+.bm-d10-card {
+  background: #16213e;
+  border: 1px solid rgba(121,134,203,.25);
+  border-radius: 6px;
+  padding: 0.9rem 0.75rem;
+  text-align: center;
+  transition: border-color 0.2s;
+}
+.bm-d10-card:hover { border-color: rgba(121,134,203,.6); }
+.bm-d10-card-icon { font-size: 1.5rem; margin-bottom: 0.4rem; }
+.bm-d10-card-val { font-size: 1.3rem; font-weight: 700; color: #7986cb; margin-bottom: 0.2rem; }
+.bm-d10-card-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; color: rgba(255,255,255,.45); }
+.bm-d10-events { background: rgba(0,0,0,.2); border-radius: 4px; padding: 0.75rem 1rem; }
+.bm-d10-events-title { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; color: #7986cb; margin-bottom: 0.5rem; }
+.bm-d10-event-row { font-size: 0.85rem; color: rgba(255,255,255,.65); padding: 0.2rem 0; border-bottom: 1px solid rgba(255,255,255,.06); }
+.bm-d10-event-row:last-child { border-bottom: none; }

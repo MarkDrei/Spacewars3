@@ -9,6 +9,7 @@ import { useBattleStatus } from '@/lib/client/hooks/useBattleStatus';
 import { useUserStats } from '@/lib/client/hooks/useUserStats';
 import { ServerAuthState } from '@/lib/server/serverSession';
 import { formatNumber } from '@/shared/numberFormat';
+import { BattleMockups } from '@/components/BattleMockups/BattleMockups';
 import './HomePage.css';
 
 interface HomePageClientProps {
@@ -184,58 +185,13 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
     }
   };
 
-  // Format weapon cooldown time remaining
-  const formatCooldown = (cooldownTimestamp: number): string => {
-    const now = Math.floor(Date.now() / 1000);
-    const secondsRemaining = Math.max(0, cooldownTimestamp - now);
-    
-    if (secondsRemaining === 0) return 'Ready';
-    if (secondsRemaining < 60) return `${secondsRemaining}s`;
-    
-    const minutes = Math.floor(secondsRemaining / 60);
-    const seconds = secondsRemaining % 60;
-    return `${minutes}m ${seconds}s`;
-  };
-
   return (
     <AuthenticatedLayout>
       <div className="home-page">
         <div className="home-container">
-          {/* Battle Status Banner */}
-          {!battleLoading && battleStatus?.inBattle && battleStatus.battle && (
-            <div id="battle-status" className="battle-banner">
-              <div className="battle-banner-header">
-                ⚔️ BATTLE IN PROGRESS
-              </div>
-              <div className="battle-banner-content">
-                <p>
-                  {battleStatus.battle.isAttacker ? 'You attacked' : 'You are under attack from'} opponent #{battleStatus.battle.opponentId}
-                </p>
-                <div className="battle-damage-stats">
-                  <div className="damage-stat">
-                    <span className="damage-label">Your Damage:</span>
-                    <span className="damage-value">{formatNumber(battleStatus.battle.myTotalDamage)}</span>
-                  </div>
-                  <div className="damage-stat">
-                    <span className="damage-label">Opponent Damage:</span>
-                    <span className="damage-value">{formatNumber(battleStatus.battle.opponentTotalDamage)}</span>
-                  </div>
-                </div>
-                {battleStatus.battle.weaponCooldowns && Object.keys(battleStatus.battle.weaponCooldowns).length > 0 && (
-                  <div className="weapon-cooldowns">
-                    <div className="cooldown-header">Weapon Cooldowns:</div>
-                    <div className="cooldown-list">
-                      {Object.entries(battleStatus.battle.weaponCooldowns).map(([weapon, timestamp]) => (
-                        <div key={weapon} className="cooldown-item">
-                          <span className="weapon-name">{weapon.replace(/_/g, ' ')}</span>
-                          <span className="cooldown-time">{formatCooldown(timestamp)}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
+          {/* Battle Status – 10 mockup designs */}
+          {!battleLoading && battleStatus && (
+            <BattleMockups battleStatus={battleStatus} />
           )}
 
           {/* Notifications */}
