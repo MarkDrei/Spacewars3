@@ -80,7 +80,7 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
 
   const { techCounts, weapons, defenses, isLoading: techLoading, error: techError } = useTechCounts();
   const { defenseValues, isLoading: defenseLoading, error: defenseError } = useDefenseValues();
-  const { battleStatus, isLoading: battleLoading } = useBattleStatus();
+  const { battleStatus } = useBattleStatus();
   const { xp, level, xpForNextLevel, score, isLoading: xpLoading, bonuses } = useUserStats(5000);
 
   // Handler for refreshing messages
@@ -185,18 +185,6 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
     }
   };
 
-  // Format weapon cooldown time remaining
-  const formatCooldown = (cooldownTimestamp: number): string => {
-    const now = Math.floor(Date.now() / 1000);
-    const secondsRemaining = Math.max(0, cooldownTimestamp - now);
-
-    if (secondsRemaining === 0) return 'Ready';
-    if (secondsRemaining < 60) return `${secondsRemaining}s`;
-
-    const minutes = Math.floor(secondsRemaining / 60);
-    const seconds = secondsRemaining % 60;
-    return `${minutes}m ${seconds}s`;
-  };
 
   return (
     <AuthenticatedLayout>

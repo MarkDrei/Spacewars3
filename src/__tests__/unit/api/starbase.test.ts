@@ -32,7 +32,7 @@ describe('POST /api/starbase/buy', () => {
       slotIndex: 99,
     }, cookie);
     const response = await buyPOST(request);
-    const data = await response.json();
+    await response.json();
     expect(response.status).toBe(400);
   });
 
@@ -43,7 +43,7 @@ describe('POST /api/starbase/buy', () => {
       slotIndex: -1,
     }, cookie);
     const response = await buyPOST(request);
-    const data = await response.json();
+    await response.json();
     expect(response.status).toBe(400);
   });
 });
@@ -68,7 +68,7 @@ describe('POST /api/starbase/sell', () => {
       col: 0,
     }, cookie);
     const response = await sellPOST(request);
-    const data = await response.json();
+    await response.json();
     expect(response.status).toBe(400);
   });
 });

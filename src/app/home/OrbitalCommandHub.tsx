@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { formatNumber } from '@/shared/numberFormat';
+import type { DefenseValues } from '@/shared/defenseValues';
+import type { BattleStatus } from '@/lib/client/hooks/useBattleStatus';
+import type { TechCounts, WeaponSpec } from '@/lib/client/services/factoryService';
 
 export interface OrbitalCommandHubProps {
-  defenseValues?: any;
-  battleStatus?: any;
-  techCounts?: any;
-  weapons?: any;
+  defenseValues?: DefenseValues | null;
+  battleStatus?: BattleStatus | null;
+  techCounts?: TechCounts | null;
+  weapons?: Record<string, WeaponSpec>;
 }
 
 export const OrbitalCommandHub: React.FC<OrbitalCommandHubProps> = ({
@@ -48,7 +51,7 @@ export const OrbitalCommandHub: React.FC<OrbitalCommandHubProps> = ({
   const fillShield = shieldMax > 0 ? shieldCurrent / shieldMax : 0;
 
   // Active weapons parsing
-  const activeWeapons: any[] = [];
+  const activeWeapons: { id: string; name: string; count: number; cooldownTimestamp: number }[] = [];
   if (techCounts && weapons) {
     for (const [key, count] of Object.entries(techCounts)) {
       if (typeof count === 'number' && count > 0 && weapons[key]) {
@@ -138,33 +141,24 @@ export const OrbitalCommandHub: React.FC<OrbitalCommandHubProps> = ({
         <g id="top-header" transform="translate(800, 70)">
           <text x="0" y="0" className="title-main" filter="url(#drop-shadow)">ORBITAL COMMAND &amp; STATUS HUB</text>
 
-          {/* Status Star */}
-          <g transform="translate(0, 50)">
-            <circle cx="0" cy="0" r="30" fill="#051510" stroke="#00ff87" strokeWidth="3" filter="url(#glow-light)" />
-            <polygon points="0,-15 5,-5 16,-4 8,4 10,15 0,10 -10,15 -8,4 -16,-4 -5,-5" fill="#00ff87" />
-            <text x="0" y="-38" className="status-text" fill="#00ff87" textAnchor="middle">STATUS</text>
-          </g>
-
           {/* Left Top: Damage Dealt */}
-          <g transform="translate(-400, 30)">
-            <text x="0" y="0" className="subtitle-top" textAnchor="end">TOTAL DAMAGE DEALT</text>
-            <path d="M 10 15 L -260 15 L -280 40 L -10 40 Z" fill="url(#bar-bg-grad)" stroke="#00ff87" strokeWidth="1" opacity="0.4" />
+          <g transform="translate(0, 30)">
+            <text x="-50" y="0" className="subtitle-top" textAnchor="end">TOTAL DAMAGE DEALT</text>
+            <path d="M -50 15 L -720 15 L -740 40 L -70 40 Z" fill="url(#bar-bg-grad)" stroke="#00ff87" strokeWidth="1" opacity="0.4" />
             {damageDealtPct > 0 && (
-              <path d={`M 10 15 L ${10 - 270 * damageDealtPct} 15 L ${-10 - 270 * damageDealtPct} 40 L -10 40 Z`} fill="url(#damage-dealt-grad)" filter="url(#glow-light)" />
+              <path d={`M -50 15 L ${-50 - 670 * damageDealtPct} 15 L ${-70 - 670 * damageDealtPct} 40 L -70 40 Z`} fill="url(#damage-dealt-grad)" filter="url(#glow-light)" />
             )}
-            <text x="-270" y="65" className="status-text" fill="#00ff87" textAnchor="start">STATUS: {damageDealt >= damageReceived ? 'LEADING' : 'LAGGING'}</text>
-            <text x="-260" y="33" className="value-large" textAnchor="start" filter="url(#drop-shadow)">{formatNumber(damageDealt)}</text>
+            <text x="-710" y="34" className="value-large" textAnchor="start" filter="url(#drop-shadow)">{formatNumber(damageDealt)}</text>
           </g>
 
           {/* Right Top: Damage Received */}
-          <g transform="translate(400, 30)">
-            <text x="0" y="0" className="subtitle-top" textAnchor="start">TOTAL DAMAGE RECEIVED</text>
-            <path d="M -10 15 L 260 15 L 280 40 L 10 40 Z" fill="url(#bar-bg-grad)" stroke="#ff416c" strokeWidth="1" opacity="0.4" />
+          <g transform="translate(0, 30)">
+            <text x="50" y="0" className="subtitle-top" textAnchor="start">TOTAL DAMAGE RECEIVED</text>
+            <path d="M 50 15 L 720 15 L 740 40 L 70 40 Z" fill="url(#bar-bg-grad)" stroke="#ff416c" strokeWidth="1" opacity="0.4" />
             {damageReceivedPct > 0 && (
-              <path d={`M -10 15 L ${-10 + 270 * damageReceivedPct} 15 L ${10 + 270 * damageReceivedPct} 40 L 10 40 Z`} fill="url(#damage-received-grad)" filter="url(#glow-light)" />
+              <path d={`M 50 15 L ${50 + 670 * damageReceivedPct} 15 L ${70 + 670 * damageReceivedPct} 40 L 70 40 Z`} fill="url(#damage-received-grad)" filter="url(#glow-light)" />
             )}
-            <text x="270" y="65" className="status-text" fill="#ff416c" textAnchor="end">STATUS: {damageReceived > damageDealt ? 'CRITICAL' : 'NOMINAL'}</text>
-            <text x="260" y="33" className="value-large" textAnchor="end" filter="url(#drop-shadow)">{formatNumber(damageReceived)}</text>
+            <text x="710" y="34" className="value-large" textAnchor="end" filter="url(#drop-shadow)">{formatNumber(damageReceived)}</text>
           </g>
         </g>
 
