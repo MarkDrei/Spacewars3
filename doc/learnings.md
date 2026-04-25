@@ -153,6 +153,7 @@ These need refactoring to consistent multiplicative semantics before the bonus s
 **Context**: Tasks 1.1 and 1.2 refactored weapon modifiers to consistent multiplicative semantics
 
 **Current weapon modifier functions after refactor:**
+
 - `getWeaponDamageModifierFromTree()` → `effect / baseValue` (factor ≥ 1.0, 1.0 = no bonus) ← was already this
 - `getWeaponAccuracyModifierFromTree()` → `effect / baseValue` (factor ≥ 1.0, 1.0 = no bonus) ← refactored
 - `getWeaponReloadTimeModifierFromTree()` → `1 / max(0.1, 1 - effect/100)` (speed factor ≥ 1.0, 1.0 = no bonus) ← refactored
@@ -175,6 +176,7 @@ These need refactoring to consistent multiplicative semantics before the bonus s
 **Details**: When a singleton uses a static class field for dependency injection (`static dependencies = null`), calling `resetInstance()` that only sets `instance = null` leaves the stale dependencies in place. Tests that don't call `configureDependencies()` after `resetInstance()` will accidentally inherit dependencies from the previous test.
 
 **Solution**: `resetInstance()` must also clear the static dependencies field:
+
 ```typescript
 static resetInstance(): void {
   UserBonusCache.instance = null;
@@ -192,7 +194,9 @@ This is distinct from `UserCache.resetInstance()` which doesn't use static depen
 **Details**: When reading the bridge grid via `InventoryService.getBridge(userId, maxBridgeSlots)`, passing `DEFAULT_BRIDGE_SLOTS` produces an incomplete view if the user has unlocked more bridge slots via `BridgeSlots` research. Always compute maxBridgeSlots from the user's tech tree:
 
 ```typescript
-const maxBridgeSlots = Math.floor(getResearchEffectFromTree(user.techTree, ResearchType.BridgeSlots));
+const maxBridgeSlots = Math.floor(
+  getResearchEffectFromTree(user.techTree, ResearchType.BridgeSlots),
+);
 const bridge = await inventoryService.getBridge(userId, maxBridgeSlots);
 ```
 
@@ -206,6 +210,7 @@ This pattern is consistent with how the bridge API route (`src/app/api/bridge/ro
 **Problem**: When mocking a class that is instantiated with `new` at module load time (e.g., `const inventoryService = new InventoryService()` in bridge routes), using `vi.fn().mockImplementation(() => ({...}))` fails because an arrow function cannot be used as a constructor. Vitest emits a warning: "The vi.fn() mock did not use 'function' or 'class' in its implementation".
 
 **Solution**: Use a `class` declaration in the vi.mock() factory:
+
 ```typescript
 vi.mock('@/lib/server/inventory/InventoryService', () => {
   class InventoryService {
@@ -236,11 +241,20 @@ vi.mock('@/lib/server/inventory/InventoryService', () => {
 **Context**: Task 4.4 — accessing research duration in tests
 
 **Details**: The `Research` interface in `techtree.ts` does NOT have a `duration` field directly on the object. The actual upgrade duration is computed via:
+
 ```typescript
-import { getResearchUpgradeDuration, AllResearches, ResearchType } from '@/lib/server/techs/techtree';
+import {
+  getResearchUpgradeDuration,
+  AllResearches,
+  ResearchType,
+} from "@/lib/server/techs/techtree";
 // Duration for ShipSpeed from level 1 → 2:
-const duration = getResearchUpgradeDuration(AllResearches[ResearchType.ShipSpeed], 2); // = 30s
+const duration = getResearchUpgradeDuration(
+  AllResearches[ResearchType.ShipSpeed],
+  2,
+); // = 30s
 ```
+
 Or use `baseUpgradeDuration` directly from `AllResearches[type].baseUpgradeDuration` for the base (level 1→2) duration. Using `AllResearches[ResearchType.X].duration` will be `undefined` and silently produce `NaN` in calculations.
 
 ## Bonus Integration Pattern: Optional Parameters for Backward Compatibility
@@ -249,11 +263,13 @@ Or use `baseUpgradeDuration` directly from `AllResearches[type].baseUpgradeDurat
 **Context**: Tasks 5.1–5.4 — integrating UserBonusCache at consumption points
 
 **Details**: When adding bonus parameters to core domain methods (like `updateStats()`, `updateDefenseValues()`), make them **optional** with fallback to legacy behavior. This pattern:
+
 1. Preserves all existing tests without modification
 2. Allows gradual migration of callers
 3. Prevents breaking production paths before bonuses are ready
 
 Pattern:
+
 ```typescript
 // Good — optional with fallback
 updateStats(now: number, bonuses?: UserBonuses): { ... } {
@@ -273,10 +289,12 @@ updateStats(now: number, bonuses: UserBonuses): { ... } { ... }
 **Context**: Task 5.4.1 — weapon reload via bonuses in battleScheduler
 
 **Details**: The `totalReloadFactor` parameter in `calculateWeaponReloadTime()` REPLACES the internal tech tree lookup entirely. It should receive the full combined bonus:
+
 ```
 totalReloadFactor = researchSpeedFactor × levelMultiplier × commanderMultiplier
                   = bonuses.projectileWeaponReloadFactor
 ```
+
 When passing `totalReloadFactor`, the function uses `baseCooldown / totalReloadFactor` directly. Passing `1.0` gives the raw base cooldown (720s for auto_turret = 12min × 60s). The `ProjectileReloadRate` research at level 1 already gives a 10% speed bonus (effect=10%), so the no-factor call returns ~648s (not 720s).
 
 **In battleScheduler**: When using bonuses at fire time, always compute from `TechFactory.getBaseBattleCooldown(weaponSpec)` and divide by the full `bonuses.projectile/energyWeaponReloadFactor` to avoid double-counting the research effect.
@@ -367,6 +385,7 @@ protected async flushAllToDatabase(_context: LockContext<LocksAtMostAndHas4>): P
 ```
 
 **Test server helpers must be updated** when adding a new cache singleton. In `testServer.ts`, add:
+
 - A `shutdownXCache()` function
 - Call it in `initializeIntegrationTestServer()` and `shutdownIntegrationTestServer()`
 - Call `XCache.resetInstance()` in both functions
@@ -434,8 +453,38 @@ const LoginPage: React.FC<{ searchParams?: Promise<Record<...>> }> = async ({ se
 **Context**: The codebase uses numeric ID ranges to distinguish object types without extra DB columns.
 
 **Details**:
+
 - Regular users / space objects: `1 … 999,999`
 - NPC user IDs: `1,000,000 … 1,999,999,999` (`NPC_USER_ID_OFFSET + ownerId * NPC_IDS_PER_USER + npcIndex`)
 - Starbase IDs: `2,000,000,000+` (`STARBASE_ID_OFFSET + index`)
 
 Helper functions `isNpcId()` and `parseNpcId()` in `src/lib/server/npc/npcConstants.ts` handle range checks and decomposition. The `STARBASE_ID_OFFSET` was migrated from `9000` to `2_000_000_000` to make the three namespaces non-overlapping.
+
+## i18n: Cookie + DB Column Locale Strategy for Login-Gated Games
+
+**Discovered by**: Cartographer  
+**Context**: Planning multilingual support (i18n) — choosing between next-intl URL-prefix, cookie-only, and cookie+DB approaches
+
+**Details**: The standard `next-intl` URL-prefix approach requires moving ALL pages under `src/app/[locale]/`, which is a massive restructure. Cookie-only works for UI but the server cannot generate messages in the user's language at event time (battles, harvests, builds). The correct approach for this project is **cookie + DB column**:
+
+- `preferred_locale TEXT DEFAULT 'en'` on the `users` table (follows "Adding New User Fields Pattern")
+- `NEXT_LOCALE` cookie mirrors DB; used for fast middleware/client reads without a DB query
+- **Sync on login**: read DB locale → set cookie on login response
+- **Sync on language switch**: `/api/set-locale` writes to cookie AND DB (if authenticated)
+- **Server message generation**: reads `user.preferredLocale` from UserCache to locale-match messages
+- **Summarizer**: reads `user.preferredLocale` from UserCache (not cookie) to ensure parser locale matches generation locale
+
+**Setup**: Use `next-intl` with `localePrefix: 'never'` in routing config and read locale from `cookies().get('NEXT_LOCALE')` in `getRequestConfig`. The cookie is always consistent after login.
+
+## i18n: Canvas Renderers Cannot Use React Hooks — Use String Injection
+
+**Discovered by**: Cartographer  
+**Context**: Planning multilingual support — handling text drawn directly to canvas in `TooltipRenderer.ts`
+
+**Details**: Canvas renderers (`src/lib/client/renderers/`) are pure TypeScript classes. They cannot import or call `useTranslations()`. The solution:
+
+1. Define a typed `CanvasStrings` interface in `src/lib/client/game/canvasStrings.ts`
+2. Thread it through `Game.ts` → relevant renderers (especially `TooltipRenderer.ts`)
+3. In `GamePageClient.tsx`, use `useTranslations('game')` to build the `CanvasStrings` object and pass it when constructing or updating the Game instance
+
+This cleanly separates the i18n concern (React layer) from the rendering concern (canvas layer). ~12 static strings in `TooltipRenderer.ts` need this treatment.
