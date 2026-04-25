@@ -11,15 +11,17 @@ import { POST as loginPOST } from '@/app/api/login/route';
  * Helper function to create a Next.js request for testing
  */
 export function createRequest(
-  url: string, 
-  method: string, 
-  body?: unknown, 
-  sessionCookie?: string
+  url: string,
+  method: string,
+  body?: unknown,
+  sessionCookie?: string,
+  additionalHeaders?: Record<string, string>
 ): NextRequest {
   const headers: Record<string, string> = {
     'content-type': 'application/json',
+    ...additionalHeaders,
   };
-  
+
   if (sessionCookie) {
     headers['cookie'] = sessionCookie;
   }

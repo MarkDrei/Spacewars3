@@ -177,6 +177,33 @@ Use `defineRouting` from `next-intl/routing` with `localeDetection: false` (cook
 - `src/app/api/set-locale/route.ts` — also persist to DB when authenticated (updated in Task 7.2)
 - `src/app/api/register/route.ts` — detect locale from Accept-Language, store in new user
 
+**Status**: ✅ COMPLETED
+**Implementation Summary**: All Goal 1 infrastructure tasks implemented — next-intl installed, routing/request config created, next.config.ts updated, middleware created, layout wrapped with NextIntlClientProvider, preferred_locale added to DB schema/migrations/User/userRepo, and login/register routes updated to sync locale cookie.
+**Files Modified/Created**:
+- `package.json` / `package-lock.json` — added next-intl dependency
+- `src/i18n/routing.ts` — defineRouting with locales ['en','de'], defaultLocale 'en', localePrefix 'never'
+- `src/i18n/request.ts` — getRequestConfig reading NEXT_LOCALE cookie, loading JSON messages
+- `src/locales/en.json` — placeholder English messages
+- `src/locales/de.json` — placeholder German messages
+- `next.config.ts` — wrapped with createNextIntlPlugin chained with withPWA
+- `src/middleware.ts` — new file using next-intl createMiddleware
+- `src/app/layout.tsx` — async layout with getLocale/getMessages, NextIntlClientProvider
+- `src/lib/server/schema.ts` — added preferred_locale column, MIGRATE_ADD_PREFERRED_LOCALE, SCHEMA_VERSION 17
+- `src/lib/server/migrations.ts` — added applyPreferredLocaleMigration, called from applyTechMigrations
+- `src/lib/server/user/user.ts` — added preferredLocale: string = 'en' class field
+- `src/lib/server/user/userRepo.ts` — updated UserRow, userFromRow, saveUserToDb for preferred_locale
+- `src/app/api/login/route.ts` — sets NEXT_LOCALE cookie from user.preferredLocale on login (fixed: secure flag + corrected comment)
+- `src/app/api/register/route.ts` — reads Accept-Language, sets preferredLocale on new user, sets NEXT_LOCALE cookie (fixed: secure flag + corrected comment)
+- `src/__tests__/helpers/apiTestHelpers.ts` — added `additionalHeaders` param to `createRequest` helper
+- `src/__tests__/integration/api/auth-api.test.ts` — added 3 locale cookie integration tests
+**Deviations from Plan**: Task 1.2 used `localePrefix: 'never'` as specified; Task 1.4 chained withNextIntl(withPWA()(config)) which is the correct order per next-intl docs.
+**Arc42 Updates**: None required
+**Test Results**: ✅ All 8 auth-api tests passing, build successful, no linting errors
+
+**Review Status**: ✅ APPROVED
+**Reviewer**: Medicus
+**Review Notes**: All three previously flagged issues were correctly resolved: secure flag added to NEXT_LOCALE cookie in both login and register routes (environment-conditional), httpOnly comment accurately describes client-side readability requirement, and 3 meaningful integration tests added covering login locale sync, German detect-on-register, and English default. `additionalHeaders` param is a clean backward-compatible extension. Implementation correctly handles the two-step DB write on registration (createUser default + update via user.save()). No code duplication, no design concerns.
+
 ---
 
 ### Goal 2: Translation File Structure

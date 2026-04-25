@@ -51,6 +51,8 @@ interface UserRow {
   // Email
   email?: string | null;
   email_verified?: boolean;
+  // Locale preference
+  preferred_locale?: string;
 }
 
 function getPersistedShipId(shipId?: number): number | null {
@@ -143,6 +145,9 @@ function userFromRow(row: UserRow, saveCallback: SaveUserCallback): User {
   // Set email fields from DB row
   user.email = row.email ?? null;
   user.emailVerified = row.email_verified ?? false;
+
+  // Set locale preference from DB row
+  user.preferredLocale = row.preferred_locale ?? 'en';
 
   return user;
 }
@@ -284,8 +289,9 @@ export function saveUserToDb(db: DatabaseConnection): SaveUserCallback {
         teleport_last_regen = $25,
         score = $26,
         email = $27,
-        email_verified = $28
-      WHERE id = $29`,
+        email_verified = $28,
+        preferred_locale = $29
+      WHERE id = $30`,
       [
         user.iron,
         user.xp,
@@ -315,6 +321,7 @@ export function saveUserToDb(db: DatabaseConnection): SaveUserCallback {
         user.score,
         user.email,
         user.emailVerified,
+        user.preferredLocale,
         user.id
       ]
     );

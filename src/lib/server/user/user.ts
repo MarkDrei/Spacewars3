@@ -26,6 +26,9 @@ class User {
   email: string | null = null;
   emailVerified: boolean = false;
 
+  // Locale preference (persisted)
+  preferredLocale: string = 'en';
+
   // Defense current values (persisted)
   hullCurrent: number;
   armorCurrent: number;
