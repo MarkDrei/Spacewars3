@@ -77,7 +77,7 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
   const [isRefreshing, setIsRefreshing] = React.useState(false);
   const [isSummarizing, setIsSummarizing] = React.useState(false);
   const [isMessagesExpanded, setIsMessagesExpanded] = React.useState(false);
-  
+
   const { techCounts, weapons, defenses, isLoading: techLoading, error: techError } = useTechCounts();
   const { defenseValues, isLoading: defenseLoading, error: defenseError } = useDefenseValues();
   const { battleStatus, isLoading: battleLoading } = useBattleStatus();
@@ -86,7 +86,7 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
   // Handler for refreshing messages
   const handleRefreshMessages = async () => {
     if (isRefreshing) return;
-    
+
     setIsRefreshing(true);
     try {
       const result = await messagesService.getMessages();
@@ -106,7 +106,7 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
   // Handler for marking all messages as read
   const handleMarkAllAsRead = async () => {
     if (isMarkingAsRead || messages.length === 0) return;
-    
+
     setIsMarkingAsRead(true);
     try {
       const result = await messagesService.markAllAsRead();
@@ -126,7 +126,7 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
   // Handler for summarizing messages
   const handleSummarizeMessages = async () => {
     if (isSummarizing || messages.length === 0) return;
-    
+
     setIsSummarizing(true);
     try {
       const response = await fetch('/api/messages/summarize', {
@@ -141,11 +141,11 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
       }
 
       const result = await response.json();
-      
+
       if (result.success) {
         console.log(`✅ Messages summarized`);
         console.log(result.summary);
-        
+
         // Refresh messages to show the summary and any preserved messages
         await handleRefreshMessages();
       }
@@ -163,9 +163,9 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
   // Calculate color based on percentage (0% = red, 50% = yellow, 100% = green)
   const getDefenseColor = (current: number, max: number): string => {
     if (max === 0) return '#4caf50'; // Green if no max (shouldn't happen)
-    
+
     const percentage = current / max;
-    
+
     if (percentage <= 0.5) {
       // Red (0%) to Yellow (50%)
       // Red: #f44336, Yellow: #ffeb3b
@@ -189,10 +189,10 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
   const formatCooldown = (cooldownTimestamp: number): string => {
     const now = Math.floor(Date.now() / 1000);
     const secondsRemaining = Math.max(0, cooldownTimestamp - now);
-    
+
     if (secondsRemaining === 0) return 'Ready';
     if (secondsRemaining < 60) return `${secondsRemaining}s`;
-    
+
     const minutes = Math.floor(secondsRemaining / 60);
     const seconds = secondsRemaining % 60;
     return `${minutes}m ${seconds}s`;
@@ -203,7 +203,12 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
       <div className="home-page">
         <div className="home-container">
           {/* Orbital Command Mockup */}
-          <OrbitalCommandHub />
+          <OrbitalCommandHub 
+            defenseValues={displayDefenseValues}
+            battleStatus={battleStatus}
+            techCounts={techCounts}
+            weapons={weapons}
+          />
 
           {/* Notifications - moved to position 2 */}
           <div id="notifications" className="data-table-container">
@@ -214,7 +219,7 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <span>Notifications</span>
                       <div style={{ display: 'flex', gap: '8px' }}>
-                        <button 
+                        <button
                           onClick={handleRefreshMessages}
                           disabled={isRefreshing}
                           style={{
@@ -242,7 +247,7 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
                         </button>
                         {messages.length > 0 && (
                           <>
-                            <button 
+                            <button
                               onClick={handleSummarizeMessages}
                               disabled={isSummarizing}
                               style={{
@@ -268,7 +273,7 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
                             >
                               {isSummarizing ? 'Summarizing...' : '📊 Summarize'}
                             </button>
-                            <button 
+                            <button
                               onClick={handleMarkAllAsRead}
                               disabled={isMarkingAsRead}
                               style={{
@@ -349,7 +354,7 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
                               (e.target as HTMLButtonElement).style.color = '#2196F3';
                             }}
                           >
-                            <span style={{ 
+                            <span style={{
                               transform: isMessagesExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
                               transition: 'transform 0.2s',
                               display: 'inline-block'
