@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { useTranslations } from 'next-intl';
 import AuthenticatedLayout from '@/components/Layout/AuthenticatedLayout';
 import { messagesService, UnreadMessage } from '@/lib/client/services/messagesService';
 import { useTechCounts } from '@/lib/client/hooks/useTechCounts';
@@ -76,6 +77,7 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
   const [isRefreshing, setIsRefreshing] = React.useState(false);
   const [isSummarizing, setIsSummarizing] = React.useState(false);
   const [isMessagesExpanded, setIsMessagesExpanded] = React.useState(false);
+  const t = useTranslations('home');
   
   const { techCounts, weapons, defenses, isLoading: techLoading, error: techError } = useTechCounts();
   const { defenseValues, isLoading: defenseLoading, error: defenseError } = useDefenseValues();
@@ -213,17 +215,17 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
                 </p>
                 <div className="battle-damage-stats">
                   <div className="damage-stat">
-                    <span className="damage-label">Your Damage:</span>
+                    <span className="damage-label">{t('yourDamage')}</span>
                     <span className="damage-value">{formatNumber(battleStatus.battle.myTotalDamage)}</span>
                   </div>
                   <div className="damage-stat">
-                    <span className="damage-label">Opponent Damage:</span>
+                    <span className="damage-label">{t('opponentDamage')}</span>
                     <span className="damage-value">{formatNumber(battleStatus.battle.opponentTotalDamage)}</span>
                   </div>
                 </div>
                 {battleStatus.battle.weaponCooldowns && Object.keys(battleStatus.battle.weaponCooldowns).length > 0 && (
                   <div className="weapon-cooldowns">
-                    <div className="cooldown-header">Weapon Cooldowns:</div>
+                    <div className="cooldown-header">{t('weaponCooldowns')}</div>
                     <div className="cooldown-list">
                       {Object.entries(battleStatus.battle.weaponCooldowns).map(([weapon, timestamp]) => (
                         <div key={weapon} className="cooldown-item">
@@ -245,8 +247,7 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
                 <tr>
                   <th colSpan={2}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span>Notifications</span>
-                      <div style={{ display: 'flex', gap: '8px' }}>
+                      <span>{t('notificationsHeading')}</span>                      <div style={{ display: 'flex', gap: '8px' }}>
                         <button 
                           onClick={handleRefreshMessages}
                           disabled={isRefreshing}
@@ -271,7 +272,7 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
                             }
                           }}
                         >
-                          {isRefreshing ? 'Refreshing...' : '🔄 Refresh'}
+                          {isRefreshing ? t('refreshingButton') : t('refreshButton')}
                         </button>
                         {messages.length > 0 && (
                           <>
@@ -299,7 +300,7 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
                                 }
                               }}
                             >
-                              {isSummarizing ? 'Summarizing...' : '📊 Summarize'}
+                              {isSummarizing ? t('summarizingButton') : t('summarizeButton')}
                             </button>
                             <button 
                               onClick={handleMarkAllAsRead}
@@ -325,7 +326,7 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
                                 }
                               }}
                             >
-                              {isMarkingAsRead ? 'Marking...' : 'Mark All as Read'}
+                              {isMarkingAsRead ? t('markingButton') : t('markAllAsReadButton')}
                             </button>
                           </>
                         )}
@@ -338,7 +339,7 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
                 {messages.length === 0 ? (
                   <tr>
                     <td colSpan={2} className="empty-cell">
-                      No new messages
+                      {t('noNewMessages')}
                     </td>
                   </tr>
                 ) : (
@@ -389,7 +390,7 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
                             }}>
                               ▼
                             </span>
-                            {isMessagesExpanded ? `Show fewer (${messages.length - 10} hidden)` : `Show ${messages.length - 10} more`}
+                            {isMessagesExpanded ? t('showFewer', { count: messages.length - 10 }) : t('showMore', { count: messages.length - 10 })}
                           </button>
                         </td>
                       </tr>
@@ -405,26 +406,25 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
             <table className="data-table">
               <thead>
                 <tr>
-                  <th colSpan={2}>Your Progress</th>
-                </tr>
+                  <th colSpan={2}>{t('yourProgressHeading')}</th>                </tr>
               </thead>
               <tbody>
                 <tr className="data-row">
-                  <td className="data-cell">Score</td>
+                  <td className="data-cell">{t('score')}</td>
                   <td className="data-cell value-cell">{xpLoading ? '...' : formatNumber(score)}</td>
                 </tr>
                 <tr className="data-row">
-                  <td className="data-cell">Level</td>
+                  <td className="data-cell">{t('level')}</td>
                   <td className="data-cell value-cell">{xpLoading ? '...' : level}</td>
                 </tr>
                 <tr className="data-row">
-                  <td className="data-cell">Experience</td>
+                  <td className="data-cell">{t('experience')}</td>
                   <td className="data-cell value-cell">
                     {xpLoading ? '...' : `${formatNumber(xp)} / ${formatNumber(xpForNextLevel)}`}
                   </td>
                 </tr>
                 <tr className="data-row">
-                  <td className="data-cell">Level Bonus</td>
+                  <td className="data-cell">{t('levelBonus')}</td>
                   <td className="data-cell value-cell">
                     {xpLoading ? '...' : `+${formatNumber((bonuses.levelMultiplier - 1) * 100)}%`}
                   </td>
@@ -438,7 +438,7 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
             <table className="data-table">
               <thead>
                 <tr>
-                  <th colSpan={2}>Active Bonuses</th>
+                  <th colSpan={2}>{t('activeBonusesHeading')}</th>
                 </tr>
               </thead>
               <tbody>
