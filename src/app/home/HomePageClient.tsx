@@ -238,7 +238,7 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
             </div>
           )}
 
-          {/* Notifications */}
+          {/* Notifications - moved to position 2 */}
           <div id="notifications" className="data-table-container">
             <table className="data-table">
               <thead>
@@ -396,120 +396,6 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
                     )}
                   </>
                 )}
-              </tbody>
-            </table>
-          </div>
-
-          {/* XP and Level Progress */}
-          <div id="progress" className="data-table-container">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th colSpan={2}>Your Progress</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr className="data-row">
-                  <td className="data-cell">Score</td>
-                  <td className="data-cell value-cell">{xpLoading ? '...' : formatNumber(score)}</td>
-                </tr>
-                <tr className="data-row">
-                  <td className="data-cell">Level</td>
-                  <td className="data-cell value-cell">{xpLoading ? '...' : level}</td>
-                </tr>
-                <tr className="data-row">
-                  <td className="data-cell">Experience</td>
-                  <td className="data-cell value-cell">
-                    {xpLoading ? '...' : `${formatNumber(xp)} / ${formatNumber(xpForNextLevel)}`}
-                  </td>
-                </tr>
-                <tr className="data-row">
-                  <td className="data-cell">Level Bonus</td>
-                  <td className="data-cell value-cell">
-                    {xpLoading ? '...' : `+${formatNumber((bonuses.levelMultiplier - 1) * 100)}%`}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          {/* Active Bonuses */}
-          <div id="bonuses" className="data-table-container">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th colSpan={2}>Active Bonuses</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td colSpan={2} className="category-header">Iron Economy</td>
-                </tr>
-                <tr className="data-row">
-                  <td className="data-cell">Iron Recharge Rate</td>
-                  <td className="data-cell value-cell">
-                    {xpLoading ? '...' : `${formatNumber(bonuses.ironRechargeRate)} /s`}
-                  </td>
-                </tr>
-                <tr className="data-row">
-                  <td className="data-cell">Iron Storage</td>
-                  <td className="data-cell value-cell">
-                    {xpLoading ? '...' : formatNumber(bonuses.ironStorageCapacity)}
-                  </td>
-                </tr>
-                <tr className="data-row">
-                  <td className="data-cell">Max Ship Speed (Theoretical)</td>
-                  <td className="data-cell value-cell">
-                    {xpLoading ? '...' : formatNumber(bonuses.maxShipSpeed)}
-                  </td>
-                </tr>
-                <tr className="data-row">
-                  <td className="data-cell">Max Ship Speed (Current)</td>
-                  <td className="data-cell value-cell">
-                    {xpLoading ? '...' : formatNumber(bonuses.currentMaxShipSpeed)}
-                  </td>
-                </tr>
-                <tr>
-                  <td colSpan={2} className="category-header">Defense Regen (/s)</td>
-                </tr>
-                <tr className="data-row">
-                  <td className="data-cell">Repair (Hull + Armor)</td>
-                  <td className="data-cell value-cell">{xpLoading ? '...' : formatNumber(bonuses.repairRate)}</td>
-                </tr>
-                <tr className="data-row">
-                  <td className="data-cell">Shield Recharge</td>
-                  <td className="data-cell value-cell">{xpLoading ? '...' : formatNumber(bonuses.shieldRechargeRate)}</td>
-                </tr>
-                <tr>
-                  <td colSpan={2} className="category-header">Projectile Weapons</td>
-                </tr>
-                <tr className="data-row">
-                  <td className="data-cell">Damage</td>
-                  <td className="data-cell value-cell">{xpLoading ? '...' : `+${formatNumber((bonuses.projectileWeaponDamageFactor - 1) * 100)}%`}</td>
-                </tr>
-                <tr className="data-row">
-                  <td className="data-cell">Reload Speed</td>
-                  <td className="data-cell value-cell">{xpLoading ? '...' : `+${formatNumber((bonuses.projectileWeaponReloadFactor - 1) * 100)}%`}</td>
-                </tr>
-                <tr className="data-row">
-                  <td className="data-cell">Accuracy</td>
-                  <td className="data-cell value-cell">{xpLoading ? '...' : `+${formatNumber((bonuses.projectileWeaponAccuracyFactor - 1) * 100)}%`}</td>
-                </tr>
-                <tr>
-                  <td colSpan={2} className="category-header">Energy Weapons</td>
-                </tr>
-                <tr className="data-row">
-                  <td className="data-cell">Damage</td>
-                  <td className="data-cell value-cell">{xpLoading ? '...' : `+${formatNumber((bonuses.energyWeaponDamageFactor - 1) * 100)}%`}</td>
-                </tr>
-                <tr className="data-row">
-                  <td className="data-cell">Reload Speed</td>
-                  <td className="data-cell value-cell">{xpLoading ? '...' : `+${formatNumber((bonuses.energyWeaponReloadFactor - 1) * 100)}%`}</td>
-                </tr>
-                <tr className="data-row">
-                  <td className="data-cell">Accuracy</td>
-                  <td className="data-cell value-cell">{xpLoading ? '...' : `+${formatNumber((bonuses.energyWeaponAccuracyFactor - 1) * 100)}%`}</td>
-                </tr>
               </tbody>
             </table>
           </div>
@@ -695,6 +581,119 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
             </table>
           </div>
 
+          {/* Your Progress */}
+          <div id="progress" className="data-table-container">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th colSpan={2}>Your Progress</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="data-row">
+                  <td className="data-cell">Score</td>
+                  <td className="data-cell value-cell">{xpLoading ? '...' : formatNumber(score)}</td>
+                </tr>
+                <tr className="data-row">
+                  <td className="data-cell">Level</td>
+                  <td className="data-cell value-cell">{xpLoading ? '...' : level}</td>
+                </tr>
+                <tr className="data-row">
+                  <td className="data-cell">Experience</td>
+                  <td className="data-cell value-cell">
+                    {xpLoading ? '...' : `${formatNumber(xp)} / ${formatNumber(xpForNextLevel)}`}
+                  </td>
+                </tr>
+                <tr className="data-row">
+                  <td className="data-cell">Level Bonus</td>
+                  <td className="data-cell value-cell">
+                    {xpLoading ? '...' : `+${formatNumber((bonuses.levelMultiplier - 1) * 100)}%`}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          {/* Active Bonuses */}
+          <div id="bonuses" className="data-table-container">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th colSpan={2}>Active Bonuses</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td colSpan={2} className="category-header">Iron Economy</td>
+                </tr>
+                <tr className="data-row">
+                  <td className="data-cell">Iron Recharge Rate</td>
+                  <td className="data-cell value-cell">
+                    {xpLoading ? '...' : `${formatNumber(bonuses.ironRechargeRate)} /s`}
+                  </td>
+                </tr>
+                <tr className="data-row">
+                  <td className="data-cell">Iron Storage</td>
+                  <td className="data-cell value-cell">
+                    {xpLoading ? '...' : formatNumber(bonuses.ironStorageCapacity)}
+                  </td>
+                </tr>
+                <tr className="data-row">
+                  <td className="data-cell">Max Ship Speed (Theoretical)</td>
+                  <td className="data-cell value-cell">
+                    {xpLoading ? '...' : formatNumber(bonuses.maxShipSpeed)}
+                  </td>
+                </tr>
+                <tr className="data-row">
+                  <td className="data-cell">Max Ship Speed (Current)</td>
+                  <td className="data-cell value-cell">
+                    {xpLoading ? '...' : formatNumber(bonuses.currentMaxShipSpeed)}
+                  </td>
+                </tr>
+                <tr>
+                  <td colSpan={2} className="category-header">Defense Regen (/s)</td>
+                </tr>
+                <tr className="data-row">
+                  <td className="data-cell">Repair (Hull + Armor)</td>
+                  <td className="data-cell value-cell">{xpLoading ? '...' : formatNumber(bonuses.repairRate)}</td>
+                </tr>
+                <tr className="data-row">
+                  <td className="data-cell">Shield Recharge</td>
+                  <td className="data-cell value-cell">{xpLoading ? '...' : formatNumber(bonuses.shieldRechargeRate)}</td>
+                </tr>
+                <tr>
+                  <td colSpan={2} className="category-header">Projectile Weapons</td>
+                </tr>
+                <tr className="data-row">
+                  <td className="data-cell">Damage</td>
+                  <td className="data-cell value-cell">{xpLoading ? '...' : `+${formatNumber((bonuses.projectileWeaponDamageFactor - 1) * 100)}%`}</td>
+                </tr>
+                <tr className="data-row">
+                  <td className="data-cell">Reload Speed</td>
+                  <td className="data-cell value-cell">{xpLoading ? '...' : `+${formatNumber((bonuses.projectileWeaponReloadFactor - 1) * 100)}%`}</td>
+                </tr>
+                <tr className="data-row">
+                  <td className="data-cell">Accuracy</td>
+                  <td className="data-cell value-cell">{xpLoading ? '...' : `+${formatNumber((bonuses.projectileWeaponAccuracyFactor - 1) * 100)}%`}</td>
+                </tr>
+                <tr>
+                  <td colSpan={2} className="category-header">Energy Weapons</td>
+                </tr>
+                <tr className="data-row">
+                  <td className="data-cell">Damage</td>
+                  <td className="data-cell value-cell">{xpLoading ? '...' : `+${formatNumber((bonuses.energyWeaponDamageFactor - 1) * 100)}%`}</td>
+                </tr>
+                <tr className="data-row">
+                  <td className="data-cell">Reload Speed</td>
+                  <td className="data-cell value-cell">{xpLoading ? '...' : `+${formatNumber((bonuses.energyWeaponReloadFactor - 1) * 100)}%`}</td>
+                </tr>
+                <tr className="data-row">
+                  <td className="data-cell">Accuracy</td>
+                  <td className="data-cell value-cell">{xpLoading ? '...' : `+${formatNumber((bonuses.energyWeaponAccuracyFactor - 1) * 100)}%`}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
 
         </div>
       </div>
