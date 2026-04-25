@@ -28,10 +28,10 @@ const NPC_PASSWORD_HASH =
 const ALL_WEAPON_KEYS: (keyof TechCounts)[] = TechFactory.getWeaponKeys() as (keyof TechCounts)[];
 
 /** Defense base values per level (before random variance). */
-const DEFENSE_BASE_PER_LEVEL = 10;
+const DEFENSE_BASE_PER_LEVEL = 30;
 
 /** Weapon base count per level before random variance. */
-const WEAPON_BASE_PER_LEVEL = 5;
+const WEAPON_BASE_PER_LEVEL = 10;
 
 // ---------------------------------------------------------------------------
 // Random helpers
@@ -277,10 +277,10 @@ export async function removeNpcSpaceObject(
 
 /**
  * Calculate the iron reward for defeating an NPC of a given level.
- * Formula: `5000 × 5^(level − 1)`.
+ * Formula: `5000 × level`.
  *
- * L1=5 000, L2=25 000, L3=125 000, L4=625 000.
+ * L1=5 000, L2=10 000, L3=15 000, L4=20 000.
  */
 export function calculateNpcIronReward(npcLevel: number): number {
-  return 5000 * Math.pow(5, npcLevel - 1);
+  return 5000 * npcLevel;
 }
