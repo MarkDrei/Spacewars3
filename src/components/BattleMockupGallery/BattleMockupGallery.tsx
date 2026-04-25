@@ -30,6 +30,10 @@ const MOCKUP_VARIANTS: MockupVariant[] = [
   { id: 10, label: 'Executive Debrief', accent: 'debrief' },
 ];
 
+/**
+ * Formats Unix timestamps expressed in whole seconds.
+ * Battle timestamps from the API/backend model use seconds, not milliseconds.
+ */
 function formatTimestamp(timestamp: number | null | undefined): string {
   if (!timestamp) {
     return '—';
@@ -151,18 +155,20 @@ export default function BattleMockupGallery({
   const recentEvents = battle?.battleLog.slice(-4).reverse() ?? [];
   const firstEvent = battle?.battleLog[0];
   const latestEvent = battle?.battleLog.at(-1);
-  const currentDefenses = formatCurrentDefenses(defenseValues);
-  const myStartStats = formatBattleStats(battle?.myStartStats);
-  const opponentStartStats = formatBattleStats(battle?.opponentStartStats);
-  const myEndStats = formatBattleStats(battle?.myEndStats);
-  const opponentEndStats = formatBattleStats(battle?.opponentEndStats);
+  const currentDefenses = React.useMemo(() => formatCurrentDefenses(defenseValues), [defenseValues]);
+  const myStartStats = React.useMemo(() => formatBattleStats(battle?.myStartStats), [battle?.myStartStats]);
+  const opponentStartStats = React.useMemo(() => formatBattleStats(battle?.opponentStartStats), [battle?.opponentStartStats]);
+  const myEndStats = React.useMemo(() => formatBattleStats(battle?.myEndStats), [battle?.myEndStats]);
+  const opponentEndStats = React.useMemo(() => formatBattleStats(battle?.opponentEndStats), [battle?.opponentEndStats]);
   const damageLead = battle ? Math.round(battle.myTotalDamage - battle.opponentTotalDamage) : 0;
-  const eventTypeCounts = battle?.battleLog.reduce<Record<string, number>>((accumulator, event) => {
-    accumulator[event.type] = (accumulator[event.type] ?? 0) + 1;
-    return accumulator;
-  }, {}) ?? {};
+  const eventTypeCounts = React.useMemo(() => {
+    return battle?.battleLog.reduce<Record<string, number>>((accumulator, event) => {
+      accumulator[event.type] = (accumulator[event.type] ?? 0) + 1;
+      return accumulator;
+    }, {}) ?? {};
+  }, [battle?.battleLog]);
 
-  const backendFieldCards: Array<{ field: string; value: string; source: string }> = [
+  const backendFieldCards: Array<{ field: string; value: string; source: string }> = React.useMemo(() => [
     { field: 'battle.id', value: battle ? String(battle.id) : 'Waiting for battle', source: 'active battle API' },
     { field: 'battle.battleStartTime', value: formatTimestamp(battle?.battleStartTime), source: 'active battle API' },
     { field: 'battle.battleEndTime', value: formatTimestamp(battle?.battleEndTime), source: 'active battle API / null in live battle' },
@@ -174,7 +180,7 @@ export default function BattleMockupGallery({
     { field: 'battle.opponentStartStats', value: opponentStartStats.map((item) => `${item.label} ${item.value}`).join(' · '), source: 'persisted model snapshot' },
     { field: 'battle.myEndStats', value: myEndStats.map((item) => `${item.label} ${item.value}`).join(' · '), source: 'persisted model snapshot / available after battle ends' },
     { field: 'battle.opponentEndStats', value: opponentEndStats.map((item) => `${item.label} ${item.value}`).join(' · '), source: 'persisted model snapshot / available after battle ends' },
-  ];
+  ], [battle, cooldowns.length, myStartStats, opponentStartStats, myEndStats, opponentEndStats]);
 
   const renderSnapshotTable = (title: string, snapshot: Array<{ label: string; value: string }>) => (
     <div className="battle-mockup-panel">
