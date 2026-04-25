@@ -62,7 +62,11 @@ export async function GET(request: NextRequest) {
           weaponCooldowns,
           battleLog: battle.battleLog,
           myTotalDamage: isAttacker ? battle.attackerTotalDamage : battle.attackeeTotalDamage,
-          opponentTotalDamage: isAttacker ? battle.attackeeTotalDamage : battle.attackerTotalDamage
+          opponentTotalDamage: isAttacker ? battle.attackeeTotalDamage : battle.attackerTotalDamage,
+          myStartStats: isAttacker ? battle.attackerStartStats : battle.attackeeStartStats,
+          opponentStartStats: isAttacker ? battle.attackeeStartStats : battle.attackerStartStats,
+          myEndStats: isAttacker ? battle.attackerEndStats : battle.attackeeEndStats,
+          opponentEndStats: isAttacker ? battle.attackeeEndStats : battle.attackerEndStats,
         }
       });
     });

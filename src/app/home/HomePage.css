@@ -128,147 +128,404 @@
   }
 }
 
-/* Battle Banner Styles */
-.battle-banner {
-  background: linear-gradient(135deg, #d32f2f 0%, #f44336 100%);
-  border: 2px solid #ff5252;
-  border-radius: 8px;
-  padding: 1.5rem;
+/* Battle mockup lab */
+.battle-mockup-shell {
   margin-bottom: 2rem;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3), 0 0 20px rgba(255, 82, 82, 0.2);
-  animation: pulse-border 2s ease-in-out infinite;
+  padding: 1.5rem;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background:
+    radial-gradient(circle at top right, rgba(76, 175, 80, 0.16), transparent 35%),
+    linear-gradient(160deg, rgba(18, 24, 38, 0.98), rgba(12, 14, 22, 0.98));
+  box-shadow: 0 24px 50px rgba(0, 0, 0, 0.3);
 }
 
-@keyframes pulse-border {
-  0%, 100% {
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3), 0 0 20px rgba(255, 82, 82, 0.2);
-  }
-  50% {
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3), 0 0 30px rgba(255, 82, 82, 0.4);
-  }
+.battle-mockup-shell--split {
+  background:
+    radial-gradient(circle at top left, rgba(33, 150, 243, 0.18), transparent 35%),
+    linear-gradient(160deg, rgba(18, 24, 38, 0.98), rgba(12, 14, 22, 0.98));
 }
 
-.battle-banner-header {
-  font-size: 1.5rem;
-  font-weight: 700;
-  text-align: center;
-  margin-bottom: 1rem;
-  color: white;
-  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
-  letter-spacing: 2px;
+.battle-mockup-shell--broadcast {
+  background:
+    radial-gradient(circle at top center, rgba(255, 152, 0, 0.18), transparent 35%),
+    linear-gradient(160deg, rgba(18, 24, 38, 0.98), rgba(12, 14, 22, 0.98));
 }
 
-.battle-banner-content {
-  color: white;
+.battle-mockup-shell--timeline {
+  background:
+    radial-gradient(circle at top right, rgba(156, 39, 176, 0.18), transparent 35%),
+    linear-gradient(160deg, rgba(18, 24, 38, 0.98), rgba(12, 14, 22, 0.98));
 }
 
-.battle-banner-content p {
-  text-align: center;
-  margin-bottom: 1rem;
-  font-size: 1.1rem;
+.battle-mockup-shell--audit,
+.battle-mockup-shell--telemetry {
+  background:
+    radial-gradient(circle at top right, rgba(0, 188, 212, 0.14), transparent 35%),
+    linear-gradient(160deg, rgba(14, 18, 28, 0.98), rgba(8, 10, 16, 0.98));
 }
 
-.battle-damage-stats {
+.battle-mockup-header {
   display: flex;
-  justify-content: center;
-  gap: 2rem;
-  margin-bottom: 1rem;
-  padding: 1rem;
-  background-color: rgba(0, 0, 0, 0.3);
-  border-radius: 4px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
 }
 
-.damage-stat {
+.battle-mockup-eyebrow {
+  margin: 0 0 0.35rem;
+  color: #7dd3fc;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-size: 0.75rem;
+}
+
+.battle-mockup-header h2 {
+  margin: 0;
+  font-size: 1.6rem;
+}
+
+.battle-mockup-subtitle {
+  margin: 0.5rem 0 0;
+  color: #b0bec5;
+  max-width: 70ch;
+}
+
+.battle-mockup-status-pill {
+  padding: 0.55rem 0.85rem;
+  border-radius: 999px;
+  background: rgba(76, 175, 80, 0.15);
+  border: 1px solid rgba(76, 175, 80, 0.3);
+  color: #b9f6ca;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.battle-mockup-selector {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.battle-mockup-selector-button {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 0.5rem;
+  align-items: flex-start;
+  gap: 0.3rem;
+  padding: 0.8rem 0.9rem;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  color: inherit;
+  cursor: pointer;
+  transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease;
 }
 
-.damage-label {
-  font-size: 0.9rem;
-  opacity: 0.9;
-  text-transform: uppercase;
-  letter-spacing: 1px;
+.battle-mockup-selector-button:hover,
+.battle-mockup-selector-button.is-active {
+  transform: translateY(-1px);
+  border-color: rgba(76, 175, 80, 0.5);
+  background: rgba(76, 175, 80, 0.12);
 }
 
-.damage-value {
-  font-size: 1.8rem;
-  font-weight: 700;
-  color: #ffeb3b;
-  text-shadow: 0 0 10px rgba(255, 235, 59, 0.5);
+.battle-mockup-selector-button span {
+  font-size: 0.8rem;
+  color: #90caf9;
 }
 
-.weapon-cooldowns {
-  margin-top: 1rem;
-  padding-top: 1rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.3);
+.battle-mockup-frame {
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(6, 10, 18, 0.85);
+  overflow: hidden;
 }
 
-.cooldown-header {
-  font-weight: 600;
-  margin-bottom: 0.75rem;
-  font-size: 1rem;
-  text-align: center;
-}
-
-.cooldown-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 0.75rem;
-}
-
-.cooldown-item {
+.battle-mockup-frame-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background-color: rgba(0, 0, 0, 0.3);
-  padding: 0.75rem;
-  border-radius: 4px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
 }
 
-.weapon-name {
-  font-weight: 500;
-  text-transform: capitalize;
+.battle-mockup-layout {
+  padding: 1rem;
+}
+
+.battle-mockup-layout--overview,
+.battle-mockup-layout--cooldowns,
+.battle-mockup-layout--stacked {
+  display: grid;
+  gap: 1rem;
+}
+
+.battle-mockup-layout--split {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.battle-mockup-layout--broadcast,
+.battle-mockup-layout--briefing,
+.battle-mockup-layout--debrief {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.battle-mockup-layout--timeline {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(280px, 1fr);
+  gap: 1rem;
+}
+
+.battle-mockup-layout--audit {
+  overflow-x: auto;
+}
+
+.battle-mockup-layout--telemetry {
+  padding: 0;
+}
+
+.battle-mockup-hero {
+  padding: 1rem;
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(76, 175, 80, 0.14), rgba(33, 150, 243, 0.08));
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.battle-mockup-kicker {
+  color: #ffcc80;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+}
+
+.battle-mockup-hero h3,
+.battle-mockup-panel-title,
+.battle-mockup-frame-header strong {
+  margin: 0;
+}
+
+.battle-mockup-card-grid,
+.battle-mockup-mini-grid,
+.battle-mockup-field-grid,
+.battle-mockup-cooldown-grid {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.battle-mockup-card-grid,
+.battle-mockup-field-grid {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.battle-mockup-mini-grid {
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+}
+
+.battle-mockup-cooldown-grid {
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+
+.battle-mockup-metric-card,
+.battle-mockup-mini-stat,
+.battle-mockup-field-card,
+.battle-mockup-cooldown-card,
+.battle-mockup-panel,
+.battle-mockup-side {
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.battle-mockup-metric-card,
+.battle-mockup-mini-stat,
+.battle-mockup-field-card,
+.battle-mockup-cooldown-card {
+  padding: 0.85rem 0.95rem;
+}
+
+.battle-mockup-metric-card span,
+.battle-mockup-mini-stat span,
+.battle-mockup-field-card span,
+.battle-mockup-cooldown-card span {
+  display: block;
+  color: #90a4ae;
+  font-size: 0.82rem;
+  margin-bottom: 0.35rem;
+}
+
+.battle-mockup-metric-card strong,
+.battle-mockup-mini-stat strong,
+.battle-mockup-field-card strong,
+.battle-mockup-cooldown-card strong,
+.battle-mockup-big-number {
+  font-size: 1.3rem;
+}
+
+.battle-mockup-field-card small {
+  display: block;
+  margin-top: 0.45rem;
+  color: #78909c;
+}
+
+.battle-mockup-panel {
+  padding: 1rem;
+}
+
+.battle-mockup-side {
+  padding: 1rem;
+  display: grid;
+  gap: 1rem;
+}
+
+.battle-mockup-side--mine {
+  background: linear-gradient(180deg, rgba(76, 175, 80, 0.12), rgba(255, 255, 255, 0.04));
+}
+
+.battle-mockup-side--opponent {
+  background: linear-gradient(180deg, rgba(244, 67, 54, 0.12), rgba(255, 255, 255, 0.04));
+}
+
+.battle-mockup-big-number {
+  font-size: 2.2rem;
+  font-weight: 800;
+}
+
+.battle-mockup-side-caption,
+.battle-mockup-inline-notes,
+.battle-mockup-footer-note,
+.battle-mockup-summary {
+  color: #b0bec5;
+}
+
+.battle-mockup-banner-strip {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.9rem 1rem;
+  border-radius: 14px;
+  background: linear-gradient(90deg, rgba(255, 152, 0, 0.18), rgba(244, 67, 54, 0.08));
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.battle-mockup-banner-strip strong {
+  font-size: 1.4rem;
+}
+
+.battle-mockup-progress-compare {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.battle-mockup-progress-compare label {
+  display: block;
+  margin-bottom: 0.35rem;
+}
+
+.battle-mockup-progress-compare progress {
+  width: 100%;
+  height: 16px;
+}
+
+.battle-mockup-inline-notes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.battle-mockup-timeline {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.battle-mockup-timeline-item {
+  display: grid;
+  gap: 0.2rem;
+  padding-left: 1rem;
+  border-left: 2px solid rgba(76, 175, 80, 0.45);
+}
+
+.battle-mockup-comparison-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.battle-mockup-comparison-table th,
+.battle-mockup-comparison-table td {
+  padding: 0.7rem 0.8rem;
+  text-align: left;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.battle-mockup-list-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.battle-mockup-terminal {
+  margin: 0;
+  padding: 1rem;
+  color: #80cbc4;
+  background: #05070c;
   font-size: 0.95rem;
+  overflow-x: auto;
 }
 
-.cooldown-time {
-  font-weight: 700;
-  color: #ffeb3b;
-  font-size: 1rem;
-  min-width: var(--min-width-cooldown);
-  text-align: right;
+.battle-mockup-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.battle-mockup-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.4rem 0.7rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #e1f5fe;
+  font-size: 0.9rem;
+}
+
+.battle-mockup-footer {
+  margin-top: 1rem;
+  display: grid;
+  gap: 0.9rem;
+}
+
+.battle-mockup-empty {
+  color: #90a4ae;
 }
 
 @media (max-width: 768px) {
-  .battle-banner {
+  .battle-mockup-shell {
     padding: 1rem;
-    margin-bottom: 1.5rem;
   }
 
-  .battle-banner-header {
-    font-size: 1.25rem;
-    letter-spacing: 1px;
-  }
-
-  .battle-banner-content p {
-    font-size: 1rem;
-  }
-
-  .battle-damage-stats {
+  .battle-mockup-header,
+  .battle-mockup-frame-header,
+  .battle-mockup-banner-strip {
     flex-direction: column;
-    gap: 1rem;
+    align-items: flex-start;
   }
 
-  .damage-value {
-    font-size: 1.5rem;
-  }
-
-  .cooldown-list {
+  .battle-mockup-layout--split,
+  .battle-mockup-layout--timeline,
+  .battle-mockup-list-row {
     grid-template-columns: 1fr;
-    gap: 0.5rem;
   }
 }

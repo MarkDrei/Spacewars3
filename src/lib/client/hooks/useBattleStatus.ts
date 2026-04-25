@@ -7,7 +7,7 @@
 // ---
 
 import { useState, useEffect } from 'react';
-import type { WeaponCooldowns, BattleEvent } from '@/lib/server/battle/battleTypes';
+import type { WeaponCooldowns, BattleEvent, BattleStats } from '@/lib/server/battle/battleTypes';
 
 export interface BattleStatus {
   inBattle: boolean;
@@ -23,6 +23,10 @@ export interface BattleStatus {
     battleLog: BattleEvent[];
     myTotalDamage: number;
     opponentTotalDamage: number;
+    myStartStats: BattleStats;
+    opponentStartStats: BattleStats;
+    myEndStats: BattleStats | null;
+    opponentEndStats: BattleStats | null;
   };
 }
 
