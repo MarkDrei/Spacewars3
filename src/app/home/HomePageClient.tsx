@@ -203,12 +203,14 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
       <div className="home-page">
         <div className="home-container">
           {/* Orbital Command Mockup */}
-          <OrbitalCommandHub 
-            defenseValues={displayDefenseValues}
-            battleStatus={battleStatus}
-            techCounts={techCounts}
-            weapons={weapons}
-          />
+          {battleStatus?.inBattle && (
+            <OrbitalCommandHub 
+              defenseValues={displayDefenseValues}
+              battleStatus={battleStatus}
+              techCounts={techCounts}
+              weapons={weapons}
+            />
+          )}
 
           {/* Notifications - moved to position 2 */}
           <div id="notifications" className="data-table-container">
