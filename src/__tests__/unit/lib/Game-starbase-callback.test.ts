@@ -63,7 +63,7 @@ vi.mock('@/lib/client/services/collectionService', () => ({
 
 const mockCalculateToroidalDistance = vi.fn(() => 100);
 vi.mock('@shared/physics', () => ({
-  calculateToroidalDistance: (...args: [{ x: number; y: number }, { x: number; y: number }, { width: number; height: number }]) => mockCalculateToroidalDistance(...args),
+  calculateToroidalDistance: () => mockCalculateToroidalDistance(),
 }));
 
 vi.mock('@/lib/client/debug/debugState', () => ({
