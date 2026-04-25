@@ -1,5 +1,46 @@
 # Technical Debt
 
+## NPC Battle History zeigt falschen Namen nach Level-Up
+
+**Priority**: Low
+**Added**: 2026-04-25
+**Component**: `src/lib/server/npc/npcConstants.ts`, `src/app/api/user-battles/route.ts`
+
+### Context
+
+NPC-User-IDs werden deterministisch aus `ownerId` und `npcIndex` (Slot 0–3) berechnet:
+
+```
+npcId = 1_000_000 + ownerId * 1_000 + npcIndex
+```
+
+Der Level ist nicht Teil der ID. Steigt ein Spieler ein Level auf, werden die NPCs seines Slots per `ON CONFLICT DO UPDATE` neu geschrieben — inklusive `username` (z.B. `Iron Horde Pirate Lv.4` statt `Lv.3`). Da die Battle-History-API Gegnernamen live aus `users.username` auflöst (`SELECT username FROM users WHERE id = $1`), zeigen ältere Battle-Einträge danach den **neuen** Level-Namen, nicht den Kampf-zeitigen.
+
+### Consequences
+
+- Battle-History ist semantisch falsch: Vergangene Kämpfe gegen `Lv.3`-NPCs erscheinen als `Lv.4`-Kämpfe, sobald der Spieler aufsteigt.
+- Das Problem ist rein kosmetisch, aber irreführend.
+
+### Proper Solution
+
+NPC-IDs level-basiert statt index-basiert berechnen:
+
+```
+npcId = 1_000_000 + ownerId * 1_000 + level
+```
+
+Dann ist die `users`-Row pro `(ownerId, level)`-Kombination stabil. Ein Upsert für `Lv.4` überschreibt nie die Row für `Lv.3`. Der Name in der Battle-History bleibt dauerhaft korrekt.
+
+Zusätzlich könnte man beim Upsert eines neuen NPCs die Row des alten Levels löschen (`DELETE FROM users WHERE id = oldNpcId`), sofern kein offener Battle-FK-Eintrag darauf zeigt. Das würde die Tabelle sauber halten, ist aber optional.
+
+### Related Files
+
+- `src/lib/server/npc/npcConstants.ts` — `npcUserId()` Formel
+- `src/lib/server/npc/npcCombat.ts` — `upsertNpcUser()` mit `ON CONFLICT DO UPDATE`
+- `src/app/api/user-battles/route.ts` — `getUsernameById()` live-Auflösung
+
+---
+
 ## Minor Balance Change: Multiplicative Accuracy Refactor (Task 1.1)
 
 **Priority**: Low  

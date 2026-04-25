@@ -10,6 +10,7 @@ import { TechCounts, BuildQueueItem } from '../techs/TechFactory';
 import { TechService } from '../techs/TechService';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 import { DEFAULT_SHIP_START_X, DEFAULT_SHIP_START_Y, DEFAULT_SHIP_START_SPEED, DEFAULT_SHIP_START_ANGLE } from '../constants';
+import { isNpcId } from '../npc/npcConstants';
 
 interface UserRow {
   id: number;
@@ -50,6 +51,14 @@ interface UserRow {
   // Email
   email?: string | null;
   email_verified?: boolean;
+}
+
+function getPersistedShipId(shipId?: number): number | null {
+  if (shipId === undefined || isNpcId(shipId)) {
+    return null;
+  }
+
+  return shipId;
 }
 
 function userFromRow(row: UserRow, saveCallback: SaveUserCallback): User {
@@ -244,6 +253,8 @@ async function createUserWithShip(db: DatabaseConnection, username: string, pass
 
 export function saveUserToDb(db: DatabaseConnection): SaveUserCallback {
   return async (user: User) => {
+    const persistedShipId = getPersistedShipId(user.ship_id);
+
     await db.query(
       `UPDATE users SET 
         iron = $1, 
@@ -280,7 +291,7 @@ export function saveUserToDb(db: DatabaseConnection): SaveUserCallback {
         user.xp,
         user.last_updated,
         JSON.stringify(user.techTree),
-        user.ship_id,
+        persistedShipId,
         user.techCounts.pulse_laser,
         user.techCounts.auto_turret,
         user.techCounts.plasma_lance,

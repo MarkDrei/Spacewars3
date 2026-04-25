@@ -16,6 +16,7 @@ import { WorldCache } from '../world/worldCache';
 import { Cache } from '../caches/Cache';
 import { UserBonusCache } from '../bonus/UserBonusCache';
 import type { UserBonuses } from '../bonus/userBonusTypes';
+import { isNpcId } from '../npc/npcConstants';
 
 type userCacheDependencies = {
   worldCache?: WorldCache;
@@ -43,6 +44,14 @@ export interface TypedCacheStats {
 
 declare global {
   var userWorldCacheInstance: UserCache | null;
+}
+
+function getPersistedShipId(shipId?: number): number | null {
+  if (shipId === undefined || isNpcId(shipId)) {
+    return null;
+  }
+
+  return shipId;
 }
 
 /**
@@ -518,6 +527,8 @@ export class UserCache extends Cache {
   private async persistUserToDb(user: User): Promise<void> {
     if (!this.db) throw new Error('Database not initialized');
 
+    const persistedShipId = getPersistedShipId(user.ship_id);
+
     await this.db.query(
       `UPDATE users SET 
         iron = $1, 
@@ -552,7 +563,7 @@ export class UserCache extends Cache {
         user.xp,
         user.last_updated,
         JSON.stringify(user.techTree),
-        user.ship_id,
+        persistedShipId,
         user.techCounts.pulse_laser,
         user.techCounts.auto_turret,
         user.techCounts.plasma_lance,
