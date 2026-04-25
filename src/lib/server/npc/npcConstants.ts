@@ -25,9 +25,12 @@ export const BASE_ANGULAR_VELOCITY_DEG_PER_SEC = 2.5;
 /** Starting angles for the 4 NPCs (one per quadrant) */
 export const NPC_START_ANGLES = [0, 90, 180, 270] as const;
 
-/** Compute the deterministic NPC user ID from owner and index. */
-export function npcUserId(ownerId: number, npcIndex: number): number {
-  return NPC_USER_ID_OFFSET + ownerId * NPC_IDS_PER_USER + npcIndex;
+/** Compute the deterministic NPC user ID from owner and NPC level.
+ * Using level (not slot index) means the same NPC level always maps to the
+ * same user-ID row, so battle history names stay correct after level-ups.
+ */
+export function npcUserId(ownerId: number, level: number): number {
+  return NPC_USER_ID_OFFSET + ownerId * NPC_IDS_PER_USER + level;
 }
 
 /** Return the display name for an NPC of the given level. */
@@ -40,11 +43,11 @@ export function isNpcId(id: number): boolean {
   return id >= NPC_USER_ID_OFFSET && id < 2_000_000_000;
 }
 
-/** Decompose an NPC user ID into ownerId + npcIndex, or null if not an NPC ID. */
-export function parseNpcId(id: number): { ownerId: number; npcIndex: number } | null {
+/** Decompose an NPC user ID into ownerId + npcLevel, or null if not an NPC ID. */
+export function parseNpcId(id: number): { ownerId: number; npcLevel: number } | null {
   if (!isNpcId(id)) return null;
   const offset = id - NPC_USER_ID_OFFSET;
   const ownerId = Math.floor(offset / NPC_IDS_PER_USER);
-  const npcIndex = offset % NPC_IDS_PER_USER;
-  return { ownerId, npcIndex };
+  const npcLevel = offset % NPC_IDS_PER_USER;
+  return { ownerId, npcLevel };
 }

@@ -111,7 +111,7 @@ export async function upsertNpcUser(
   npc: NpcShip,
   context: LockContext<LocksAtMostAndHas4>,
 ): Promise<void> {
-  const npcId = npcUserId(npc.ownerId, npc.npcIndex);
+  const npcId = npcUserId(npc.ownerId, npc.level);
   const username = npcDisplayName(npc.level);
   const now = Math.floor(Date.now() / 1000);
 

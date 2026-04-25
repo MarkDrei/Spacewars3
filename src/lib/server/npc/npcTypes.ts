@@ -3,7 +3,7 @@
  * Not persisted to the database; regenerated on server restart.
  */
 export interface NpcShip {
-  /** Same as NPC user ID: NPC_USER_ID_OFFSET + ownerId * NPC_IDS_PER_USER + npcIndex */
+  /** Same as NPC user ID: NPC_USER_ID_OFFSET + ownerId * NPC_IDS_PER_USER + level */
   id: number;
   /** Player who sees this NPC */
   ownerId: number;

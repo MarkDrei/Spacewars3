@@ -34,11 +34,11 @@ describe('npcConstants helpers', () => {
       expect(npcUserId(0, 0)).toBe(NPC_USER_ID_OFFSET);
     });
 
-    it('npcUserId_owner1Index0_returnsOffsetPlus1000', () => {
+    it('npcUserId_owner1Level0_returnsOffsetPlus1000', () => {
       expect(npcUserId(1, 0)).toBe(NPC_USER_ID_OFFSET + NPC_IDS_PER_USER);
     });
 
-    it('npcUserId_owner1Index3_returnsCorrectValue', () => {
+    it('npcUserId_owner1Level3_returnsCorrectValue', () => {
       expect(npcUserId(1, 3)).toBe(NPC_USER_ID_OFFSET + NPC_IDS_PER_USER + 3);
     });
 
@@ -72,9 +72,9 @@ describe('npcConstants helpers', () => {
   });
 
   describe('parseNpcId', () => {
-    it('parseNpcId_validId_returnsOwnerAndIndex', () => {
+    it('parseNpcId_validId_returnsOwnerAndLevel', () => {
       const id = npcUserId(7, 2);
-      expect(parseNpcId(id)).toEqual({ ownerId: 7, npcIndex: 2 });
+      expect(parseNpcId(id)).toEqual({ ownerId: 7, npcLevel: 2 });
     });
 
     it('parseNpcId_nonNpcId_returnsNull', () => {
@@ -147,7 +147,7 @@ describe('NPCManager', () => {
       for (let i = 0; i < NPC_COUNT; i++) {
         expect(npcs[i].ownerId).toBe(42);
         expect(npcs[i].npcIndex).toBe(i);
-        expect(npcs[i].id).toBe(npcUserId(42, i));
+        expect(npcs[i].id).toBe(npcUserId(42, 1 + i)); // playerLevel=1, so level = 1+i
       }
     });
 
@@ -213,7 +213,7 @@ describe('NPCManager', () => {
       mgr.getNpcsForPlayer(1, 1);
 
       // Mark NPC as in battle then clear
-      mgr.setInBattle(npcUserId(1, 2), true);
+      mgr.setInBattle(npcUserId(1, 2), true); // player level=1, level=2 = index 1
       expect(mgr.getNpcsForPlayer(1, 1)).toHaveLength(3);
 
       mgr.setInBattle(npcUserId(1, 2), false);
@@ -283,7 +283,7 @@ describe('NPCManager', () => {
       const yesterday11pm = getMidnightUtcMs() - 3_600_000; // 1h before midnight
       freezeTime(yesterday11pm);
       mgr.getNpcsForPlayer(1, 1);
-      mgr.markDefeated(npcUserId(1, 0));
+      mgr.markDefeated(npcUserId(1, 1)); // player level=1, level=1=index 0
 
       // Now it's after midnight
       const todayNoon = getMidnightUtcMs() + 12 * 3_600_000;
@@ -300,7 +300,7 @@ describe('NPCManager', () => {
       const today1am = getMidnightUtcMs() + 3_600_000;
       freezeTime(today1am);
       mgr.getNpcsForPlayer(1, 1);
-      mgr.markDefeated(npcUserId(1, 0));
+      mgr.markDefeated(npcUserId(1, 1)); // player level=1, level=1=index 0
 
       // Still today, 2pm
       const today2pm = getMidnightUtcMs() + 14 * 3_600_000;
@@ -318,7 +318,7 @@ describe('NPCManager', () => {
       mgr.getNpcsForPlayer(1, 1);
 
       // Simulate having a DB user and then defeating
-      const npc = mgr.getNpcById(npcUserId(1, 0))!;
+      const npc = mgr.getNpcById(npcUserId(1, 1))!; // player level=1, level=1=index 0
       npc.npcUserCreated = true;
       mgr.markDefeated(npc.id);
 
@@ -326,7 +326,7 @@ describe('NPCManager', () => {
       freezeTime(getMidnightUtcMs() + 3_600_000);
       mgr.getNpcsForPlayer(1, 1);
 
-      const respawned = mgr.getNpcById(npcUserId(1, 0))!;
+      const respawned = mgr.getNpcById(npcUserId(1, 1))!;
       expect(respawned.npcUserCreated).toBe(false);
       expect(respawned.defeated).toBe(false);
     });
@@ -339,7 +339,7 @@ describe('NPCManager', () => {
       mgr.getNpcsForPlayer(1, 1);
 
       // Move angle away from start
-      const npc = mgr.getNpcById(npcUserId(1, 1))!;
+      const npc = mgr.getNpcById(npcUserId(1, 2))!; // player level=1, level=2=index 1
       npc.orbitAngleDeg = 123.456;
       mgr.markDefeated(npc.id);
 
@@ -347,7 +347,7 @@ describe('NPCManager', () => {
       freezeTime(getMidnightUtcMs() + 3_600_000);
       mgr.getNpcsForPlayer(1, 1);
 
-      const respawned = mgr.getNpcById(npcUserId(1, 1))!;
+      const respawned = mgr.getNpcById(npcUserId(1, 2))!;
       expect(respawned.orbitAngleDeg).toBe(NPC_START_ANGLES[1]);
     });
   });
@@ -365,7 +365,7 @@ describe('NPCManager', () => {
       const futureMs = baseTime + 10_000;
       mgr.updateNpcPositions(1, futureMs);
 
-      const npc = mgr.getNpcById(npcUserId(1, 0))!;
+      const npc = mgr.getNpcById(npcUserId(1, 1))!; // player level=1, level=1=index 0
       const expectedAngle = (NPC_START_ANGLES[0] + BASE_ANGULAR_VELOCITY_DEG_PER_SEC * 10) % 360;
       expect(npc.orbitAngleDeg).toBeCloseTo(expectedAngle, 5);
     });
@@ -383,7 +383,7 @@ describe('NPCManager', () => {
       const futureMs = baseTime + 10_000;
       mgr.updateNpcPositions(1, futureMs);
 
-      const npc = mgr.getNpcById(npcUserId(1, 0))!;
+      const npc = mgr.getNpcById(npcUserId(1, 1))!; // player level=1, level=1=index 0
       const expectedAngle = (NPC_START_ANGLES[0] + BASE_ANGULAR_VELOCITY_DEG_PER_SEC * 10 * 5) % 360;
       expect(npc.orbitAngleDeg).toBeCloseTo(expectedAngle, 5);
     });
@@ -394,12 +394,12 @@ describe('NPCManager', () => {
       const mgr = NPCManager.getInstance();
       mgr.getNpcsForPlayer(1, 1);
 
-      mgr.markDefeated(npcUserId(1, 0));
-      const beforeAngle = mgr.getNpcById(npcUserId(1, 0))!.orbitAngleDeg;
+      mgr.markDefeated(npcUserId(1, 1)); // player level=1, level=1=index 0
+      const beforeAngle = mgr.getNpcById(npcUserId(1, 1))!.orbitAngleDeg;
 
       mgr.updateNpcPositions(1, baseTime + 10_000);
 
-      expect(mgr.getNpcById(npcUserId(1, 0))!.orbitAngleDeg).toBe(beforeAngle);
+      expect(mgr.getNpcById(npcUserId(1, 1))!.orbitAngleDeg).toBe(beforeAngle);
     });
 
     it('updateNpcPositions_inBattleNpc_doesNotAdvance', () => {
@@ -431,7 +431,7 @@ describe('NPCManager', () => {
       const secondsFor200Deg = 200 / BASE_ANGULAR_VELOCITY_DEG_PER_SEC;
       mgr.updateNpcPositions(1, baseTime + secondsFor200Deg * 1000);
 
-      const npc = mgr.getNpcById(npcUserId(1, 3))!; // starts at 270°
+      const npc = mgr.getNpcById(npcUserId(1, 4))!; // player level=1, index=3 => level=4, starts at 270°
       expect(npc.orbitAngleDeg).toBeCloseTo(110, 1);
     });
   });
@@ -445,7 +445,7 @@ describe('NPCManager', () => {
       const mgr = NPCManager.getInstance();
       mgr.getNpcsForPlayer(1, 1);
 
-      mgr.markDefeated(npcUserId(1, 2));
+      mgr.markDefeated(npcUserId(1, 2)); // player level=1, level=2 = index 1
 
       const npc = mgr.getNpcById(npcUserId(1, 2))!;
       expect(npc.defeated).toBe(true);
@@ -466,8 +466,8 @@ describe('NPCManager', () => {
       const mgr = NPCManager.getInstance();
       mgr.getNpcsForPlayer(1, 1);
 
-      mgr.setInBattle(npcUserId(1, 0), true);
-      expect(mgr.getNpcById(npcUserId(1, 0))!.inBattle).toBe(true);
+      mgr.setInBattle(npcUserId(1, 1), true); // player level=1, level=1 = index 0
+      expect(mgr.getNpcById(npcUserId(1, 1))!.inBattle).toBe(true);
     });
 
     it('setInBattle_false_clearsFlag', () => {
@@ -475,9 +475,9 @@ describe('NPCManager', () => {
       const mgr = NPCManager.getInstance();
       mgr.getNpcsForPlayer(1, 1);
 
-      mgr.setInBattle(npcUserId(1, 0), true);
-      mgr.setInBattle(npcUserId(1, 0), false);
-      expect(mgr.getNpcById(npcUserId(1, 0))!.inBattle).toBe(false);
+      mgr.setInBattle(npcUserId(1, 1), true); // player level=1, level=1 = index 0
+      mgr.setInBattle(npcUserId(1, 1), false);
+      expect(mgr.getNpcById(npcUserId(1, 1))!.inBattle).toBe(false);
     });
 
     it('setInBattle_unknownNpc_doesNotThrow', () => {
@@ -494,7 +494,7 @@ describe('NPCManager', () => {
       const mgr = NPCManager.getInstance();
       mgr.getNpcsForPlayer(10, 2);
 
-      const npc = mgr.getNpcById(npcUserId(10, 3));
+      const npc = mgr.getNpcById(npcUserId(10, 5)); // player level=2, index=3 => level=5
       expect(npc).not.toBeNull();
       expect(npc!.ownerId).toBe(10);
       expect(npc!.npcIndex).toBe(3);

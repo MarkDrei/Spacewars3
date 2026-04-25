@@ -143,7 +143,7 @@ export class NPCManager {
 
     for (let i = 0; i < NPC_COUNT; i++) {
       npcs.push({
-        id: npcUserId(userId, i),
+        id: npcUserId(userId, playerLevel + i),
         ownerId: userId,
         npcIndex: i,
         level: playerLevel + i,

@@ -335,9 +335,9 @@ describe('Battle iron transfer', () => {
         playerId = player!.id;
       });
 
-      // Use a deterministic NPC id (owner=playerId, index=0).
+      // Use a deterministic NPC id (owner=playerId, level=1).
       const { npcUserId } = await import('@/lib/server/npc/npcConstants');
-      npcId = npcUserId(playerId, 0);
+      npcId = npcUserId(playerId, 1);
 
       // Seed the ship row first so upsertNpcUser can safely point ship_id at it.
       const db = await getDatabase();
