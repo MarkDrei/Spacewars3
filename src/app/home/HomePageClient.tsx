@@ -10,6 +10,7 @@ import { useUserStats } from '@/lib/client/hooks/useUserStats';
 import { ServerAuthState } from '@/lib/server/serverSession';
 import { formatNumber } from '@/shared/numberFormat';
 import './HomePage.css';
+import { OrbitalCommandHub } from './OrbitalCommandHub';
 
 interface HomePageClientProps {
   auth: ServerAuthState;
@@ -201,42 +202,8 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
     <AuthenticatedLayout>
       <div className="home-page">
         <div className="home-container">
-          {/* Battle Status Banner */}
-          {!battleLoading && battleStatus?.inBattle && battleStatus.battle && (
-            <div id="battle-status" className="battle-banner">
-              <div className="battle-banner-header">
-                ⚔️ BATTLE IN PROGRESS
-              </div>
-              <div className="battle-banner-content">
-                <p>
-                  {battleStatus.battle.isAttacker ? 'You attacked' : 'You are under attack from'} opponent #{battleStatus.battle.opponentId}
-                </p>
-                <div className="battle-damage-stats">
-                  <div className="damage-stat">
-                    <span className="damage-label">Your Damage:</span>
-                    <span className="damage-value">{formatNumber(battleStatus.battle.myTotalDamage)}</span>
-                  </div>
-                  <div className="damage-stat">
-                    <span className="damage-label">Opponent Damage:</span>
-                    <span className="damage-value">{formatNumber(battleStatus.battle.opponentTotalDamage)}</span>
-                  </div>
-                </div>
-                {battleStatus.battle.weaponCooldowns && Object.keys(battleStatus.battle.weaponCooldowns).length > 0 && (
-                  <div className="weapon-cooldowns">
-                    <div className="cooldown-header">Weapon Cooldowns:</div>
-                    <div className="cooldown-list">
-                      {Object.entries(battleStatus.battle.weaponCooldowns).map(([weapon, timestamp]) => (
-                        <div key={weapon} className="cooldown-item">
-                          <span className="weapon-name">{weapon.replace(/_/g, ' ')}</span>
-                          <span className="cooldown-time">{formatCooldown(timestamp)}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
+          {/* Orbital Command Mockup */}
+          <OrbitalCommandHub />
 
           {/* Notifications - moved to position 2 */}
           <div id="notifications" className="data-table-container">
