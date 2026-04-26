@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useTranslations } from 'next-intl';
 import { BridgeGrid, InventoryItemData, SlotCoordinate, BRIDGE_COLS, getBridgeRows, CommanderStatKey, COMMANDER_STAT_LABELS, SortStatKey, SortDirection, sortGrid, findItemSlot } from '@/shared/inventoryShared';
 import InventoryGridComponent, { ExternalDropSource } from './InventoryGrid';
 import ItemDetailsPanel from './ItemDetailsPanel';
@@ -26,6 +27,7 @@ interface BridgeSectionProps {
 }
 
 const BridgeSection: React.FC<BridgeSectionProps> = ({ refreshTrigger, onCrossTransferDone, onDragStart, onDragEnd, clearSortTrigger }) => {
+  const t = useTranslations('ship');
   const [maxBridgeSlots, setMaxBridgeSlots] = useState<number>(0);
   const [grid, setGrid] = useState<BridgeGrid>([]);
   const [bonuses, setBonuses] = useState<Partial<Record<CommanderStatKey, number>>>({});
@@ -248,9 +250,9 @@ const BridgeSection: React.FC<BridgeSectionProps> = ({ refreshTrigger, onCrossTr
   if (!isLoading && !error && maxBridgeSlots === 0) {
     return (
       <section className="bridge-section bridge-section--locked">
-        <h2 className="bridge-heading">Bridge</h2>
+        <h2 className="bridge-heading">{t('bridgeHeading')}</h2>
         <p className="bridge-locked-message">
-          🔒 Research <strong>Bridge Slots</strong> to unlock your bridge crew system.
+          {t('bridgeLocked', { bridgeSlotsLabel: t('bridgeSlots') })}
         </p>
       </section>
     );
@@ -259,7 +261,7 @@ const BridgeSection: React.FC<BridgeSectionProps> = ({ refreshTrigger, onCrossTr
   return (
     <section className="bridge-section">
       <div className="section-heading-row">
-        <h2 className="bridge-heading">Bridge</h2>
+        <h2 className="bridge-heading">{t('bridgeHeading')}</h2>
         <SortControls
           sortBy={sortBy}
           sortDir={sortDir}
@@ -286,7 +288,7 @@ const BridgeSection: React.FC<BridgeSectionProps> = ({ refreshTrigger, onCrossTr
         <div className="bridge-status-message">{statusMessage}</div>
       )}
 
-      {isLoading && <p className="bridge-loading">Loading bridge…</p>}
+      {isLoading && <p className="bridge-loading">{t('loadingBridge')}</p>}
       {error && <p className="bridge-error">{error}</p>}
 
       {!isLoading && !error && (
@@ -314,7 +316,7 @@ const BridgeSection: React.FC<BridgeSectionProps> = ({ refreshTrigger, onCrossTr
             />
           ) : (
             <div className="inventory-no-selection">
-              <p>{sortBy !== null ? 'Click a commander to see details. You can drag commanders out, but cannot drop new ones in while sorting is active.' : 'Drag a commander here from Inventory, or click an assigned commander to see details.'}</p>
+              <p>{sortBy !== null ? t('bridgeClickHintSorting') : t('bridgeDragHint')}</p>
             </div>
           )}
         </div>
@@ -322,11 +324,11 @@ const BridgeSection: React.FC<BridgeSectionProps> = ({ refreshTrigger, onCrossTr
 
       {!isLoading && !error && Object.keys(bonuses).length > 0 && (
         <div className="bridge-bonuses">
-          <h3 className="bridge-bonuses-heading">Crew Bonuses</h3>
+          <h3 className="bridge-bonuses-heading">{t('crewBonusesHeading')}</h3>
           <ul className="bridge-bonuses-list">
             {(Object.keys(bonuses) as CommanderStatKey[]).map((stat) => (
               <li key={stat} className="bridge-bonus-item">
-                <span className="bonus-stat">{COMMANDER_STAT_LABELS[stat]}</span>
+                <span className="bonus-stat">{t(`commanderStats.${stat}` as Parameters<typeof t>[0])}</span>
                 <span className="bonus-value">+{bonuses[stat]!.toFixed(2)}%</span>
               </li>
             ))}

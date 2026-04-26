@@ -147,7 +147,9 @@
     "triggeringButton": "Triggering...",
     "researchButton": "Research",
     "overlayInProgress": "✅ In Progress",
-    "overlayOtherInProgress": "Other Research In Progress"
+    "overlayOtherInProgress": "Other Research In Progress",
+    "viewCards": "Cards",
+    "viewTable": "Table"
   },
   "factory": {
     "pageHeading": "Factory",
@@ -178,7 +180,9 @@
     "buildingButton": "Building...",
     "completeBuildCheat": "⚡ Complete First Build (Cheat)",
     "completingButton": "Completing...",
-    "weaknessLabel": "Weakness: {weakness}"
+    "weaknessLabel": "Weakness: {weakness}",
+    "viewCards": "Cards",
+    "viewTable": "Table"
   },
   "profile": {
     "pageHeading": "Player Profile",
@@ -357,4 +361,3 @@
     "resetIgnore": "If you did not request a password reset, you can safely ignore this email. Your password will not change."
   }
 }
-

@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { useTranslations } from 'next-intl';
 import Image from 'next/image';
 import { InventoryItemData, CommanderData, SlotCoordinate, COMMANDER_STAT_LABELS } from '@/shared/inventoryShared';
 
@@ -11,7 +12,9 @@ interface ItemDetailsPanelProps {
   isDeleting: boolean;
 }
 
-const CommanderDetails: React.FC<{ data: CommanderData }> = ({ data }) => (
+const CommanderDetails: React.FC<{ data: CommanderData }> = ({ data }) => {
+  const t = useTranslations('ship');
+  return (
   <div className="item-details-commander">
     <div className="item-details-image-wrap">
       <Image
@@ -24,17 +27,18 @@ const CommanderDetails: React.FC<{ data: CommanderData }> = ({ data }) => (
       />
     </div>
     <h3 className="item-details-name">{data.name}</h3>
-    <p className="item-details-type">Commander</p>
+    <p className="item-details-type">{t('commanderType')}</p>
     <ul className="item-details-bonuses">
       {data.statBonuses.map((bonus) => (
         <li key={bonus.stat} className="item-details-bonus">
-          <span className="bonus-stat">{COMMANDER_STAT_LABELS[bonus.stat]}</span>
+          <span className="bonus-stat">{t(`commanderStats.${bonus.stat}` as Parameters<typeof t>[0])}</span>
           <span className="bonus-value">+{bonus.value.toFixed(1)}%</span>
         </li>
       ))}
     </ul>
   </div>
-);
+  );
+};
 
 const ItemDetailsPanel: React.FC<ItemDetailsPanelProps> = ({
   item,
@@ -42,9 +46,10 @@ const ItemDetailsPanel: React.FC<ItemDetailsPanelProps> = ({
   onDelete,
   isDeleting,
 }) => {
+  const t = useTranslations('ship');
   return (
     <div className="item-details-panel">
-      <h2 className="item-details-heading">Selected Item</h2>
+      <h2 className="item-details-heading">{t('selectedItemHeading')}</h2>
       <p className="item-details-slot">
         Slot: row {slot.row}, col {slot.col}
       </p>

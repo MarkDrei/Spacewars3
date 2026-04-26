@@ -8,6 +8,25 @@ vi.mock('@/components/Layout/AuthenticatedLayout', () => ({
   default: ({ children }: { children: React.ReactNode }) => <>{children}</>
 }));
 
+// Mock next-intl so components using useTranslations work without a provider
+vi.mock('next-intl', async () => {
+  const { default: en } = await import('../../../locales/en.json');
+  return {
+    useTranslations: (namespace: string) => {
+      return (key: string, params?: Record<string, string | number>) => {
+        const ns = (en as unknown as Record<string, Record<string, string>>)[namespace] ?? {};
+        let value: string = ns[key] ?? key;
+        if (params) {
+          for (const [k, v] of Object.entries(params)) {
+            value = value.replace(`{${k}}`, String(v));
+          }
+        }
+        return value;
+      };
+    },
+  };
+});
+
 import ResearchPageClient from '@/app/research/ResearchPageClient';
 import { researchService, TechTree, ResearchDef } from '@/lib/client/services/researchService';
 import { ResearchType } from '@/shared/src/types/gameTypes';

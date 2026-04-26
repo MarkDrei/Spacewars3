@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
+import { useTranslations } from 'next-intl';
 import AuthenticatedLayout from '@/components/Layout/AuthenticatedLayout';
 import { researchService, TechTree, ResearchDef, ResearchType } from '@/lib/client/services/researchService';
 import { userStatsService } from '@/lib/client/services/userStatsService';
@@ -156,6 +157,7 @@ interface ResearchPageClientProps {
 
 // Tooltip component for showing next 20 levels
 const CostTooltip: React.FC<{ research: ResearchDef; currentLevel: number }> = ({ research, currentLevel }) => {
+  const t = useTranslations('research');
   const [show, setShow] = useState(false);
   const [position, setPosition] = useState<'top' | 'bottom'>('top');
   const tooltipRef = useRef<HTMLDivElement>(null);
@@ -233,9 +235,9 @@ const CostTooltip: React.FC<{ research: ResearchDef; currentLevel: number }> = (
           <table className="tooltip-table">
             <thead>
               <tr>
-                <th>Level</th>
-                <th>Cost</th>
-                <th>Effect</th>
+                <th>{t('colLevel')}</th>
+                <th>{t('colCost')}</th>
+                <th>{t('colEffect')}</th>
               </tr>
             </thead>
             <tbody>
@@ -255,6 +257,7 @@ const CostTooltip: React.FC<{ research: ResearchDef; currentLevel: number }> = (
 };
 
 const ResearchPageClient: React.FC<ResearchPageClientProps> = () => {
+  const t = useTranslations('research');
   const [techTree, setTechTree] = useState<TechTree | null>(null);
   const [researches, setResearches] = useState<Record<ResearchType, ResearchDef> | null>(null);
   const [currentIron, setCurrentIron] = useState<number>(0);
@@ -434,8 +437,8 @@ const ResearchPageClient: React.FC<ResearchPageClientProps> = () => {
       <AuthenticatedLayout>
         <div className="research-page">
           <div className="research-container">
-            <h1 className="page-heading">Research</h1>
-            <div className="loading-message">Loading research data...</div>
+            <h1 className="page-heading">{t('pageHeading')}</h1>
+            <div className="loading-message">{t('loadingMessage')}</div>
           </div>
         </div>
       </AuthenticatedLayout>
@@ -447,7 +450,7 @@ const ResearchPageClient: React.FC<ResearchPageClientProps> = () => {
       <AuthenticatedLayout>
         <div className="research-page">
           <div className="research-container">
-            <h1 className="page-heading">Research</h1>
+            <h1 className="page-heading">{t('pageHeading')}</h1>
             <div className="error-message">
               Error: {error}
             </div>
@@ -463,8 +466,8 @@ const ResearchPageClient: React.FC<ResearchPageClientProps> = () => {
       <AuthenticatedLayout>
         <div className="research-page">
           <div className="research-container">
-            <h1 className="page-heading">Research</h1>
-            <div className="no-data-message">No research data available</div>
+            <h1 className="page-heading">{t('pageHeading')}</h1>
+            <div className="no-data-message">{t('noDataMessage')}</div>
           </div>
         </div>
       </AuthenticatedLayout>
@@ -512,7 +515,7 @@ const ResearchPageClient: React.FC<ResearchPageClientProps> = () => {
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             {isActive ? (
               <div className="research-countdown">
-                {remaining !== null ? researchService.formatDuration(remaining) : 'Active'}
+                {remaining !== null ? researchService.formatDuration(remaining) : t('activeStatus')}
               </div>
             ) : isAnyResearchActive ? (
               <>
@@ -528,7 +531,7 @@ const ResearchPageClient: React.FC<ResearchPageClientProps> = () => {
                   onClick={() => handleTriggerResearch(research.type)}
                   disabled={isTriggering}
                 >
-                  {isTriggering ? 'Processing...' : `Upgrade (${formatNumber(research.nextUpgradeCost)})`}
+                  {isTriggering ? t('processingButton') : t('upgradeButton', { cost: formatNumber(research.nextUpgradeCost) })}
                 </button>
                 <CostTooltip research={research} currentLevel={level} />
               </>
@@ -567,7 +570,7 @@ const ResearchPageClient: React.FC<ResearchPageClientProps> = () => {
     <AuthenticatedLayout>
       <div className="research-page">
         <div className="research-container">
-          <h1 className="page-heading">Research</h1>
+          <h1 className="page-heading">{t('pageHeading')}</h1>
         
           {/* View Toggle */}
           <div className="view-toggle">
@@ -575,13 +578,13 @@ const ResearchPageClient: React.FC<ResearchPageClientProps> = () => {
               className={`toggle-button ${viewMode === 'cards' ? 'active' : ''}`}
               onClick={() => setViewMode('cards')}
             >
-              Cards
+              {t('viewCards')}
             </button>
             <button
               className={`toggle-button ${viewMode === 'table' ? 'active' : ''}`}
               onClick={() => setViewMode('table')}
             >
-              Table
+              {t('viewTable')}
             </button>
           </div>
 
@@ -599,13 +602,13 @@ const ResearchPageClient: React.FC<ResearchPageClientProps> = () => {
                   <table className="data-table">
                     <thead>
                       <tr>
-                        <th>Name</th>
-                        <th>Level</th>
-                        <th>Current Value</th>
-                        <th>Next Level Value</th>
-                        <th>Upgrade Duration</th>
-                        <th>Description</th>
-                        <th>Upgrade</th>
+                        <th>{t('colName')}</th>
+                        <th>{t('colLevel')}</th>
+                        <th>{t('colCurrentValue')}</th>
+                        <th>{t('colNextLevelValue')}</th>
+                        <th>{t('colUpgradeDuration')}</th>
+                        <th>{t('colDescription')}</th>
+                        <th>{t('colUpgrade')}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -642,13 +645,13 @@ const ResearchPageClient: React.FC<ResearchPageClientProps> = () => {
                               className="research-image" 
                             />
                             {/* overlay message when this card is active or locked by another research */}
-                            {(() => {
-                              const overlayText = isActive
-                                ? '✅ In Progress'
+                      {(() => {
+                              const overlayType = isActive
+                                ? 'inProgress' as const
                                 : isAnyResearchActive
-                                ? 'Other Research In Progress'
+                                ? 'otherInProgress' as const
                                 : null;
-                              return overlayText ? <ResearchCardOverlay text={overlayText} /> : null;
+                              return overlayType ? <ResearchCardOverlay overlayType={overlayType} /> : null;
                             })()}
                           </div>
                           <div className="card-header">
@@ -656,29 +659,29 @@ const ResearchPageClient: React.FC<ResearchPageClientProps> = () => {
                           </div>
                           <div className="card-details">
                             <div className="card-detail">
-                              <div className="card-detail-label">Level</div>
+                              <div className="card-detail-label">{t('cardLabelLevel')}</div>
                               <div className="card-detail-value">{level}</div>
                             </div>
                             <div className="card-detail">
-                              <div className="card-detail-label">Current Effect</div>
+                              <div className="card-detail-label">{t('cardLabelCurrentEffect')}</div>
                               <div className="card-detail-value">
                                 {researchService.formatEffect(research.currentEffect, research.unit)}
                               </div>
                             </div>
                             <div className="card-detail">
-                              <div className="card-detail-label">Next Effect</div>
+                              <div className="card-detail-label">{t('cardLabelNextEffect')}</div>
                               <div className="card-detail-value">
                                 {researchService.formatEffect(research.nextEffect, research.unit)}
                               </div>
                             </div>
                             <div className="card-detail">
-                              <div className="card-detail-label">Duration</div>
+                              <div className="card-detail-label">{t('cardLabelDuration')}</div>
                               <div className="card-detail-value">
                                 {researchService.formatDuration(research.nextUpgradeDuration)}
                               </div>
                             </div>
                             <div className="card-detail">
-                              <div className="card-detail-label">Cost</div>
+                              <div className="card-detail-label">{t('cardLabelCost')}</div>
                               <div className={`card-detail-value ${researchService.canAffordResearch(research, currentIron) ? 'cost-affordable' : 'cost-expensive'}`}>
                                 {formatNumber(research.nextUpgradeCost)} Iron
                               </div>
@@ -695,7 +698,7 @@ const ResearchPageClient: React.FC<ResearchPageClientProps> = () => {
                                 // already use in the table view.  (formatDuration is stubbed during
                                 // tests and will update as `remaining` state changes.)
                                 <div className="research-countdown">
-                                  {remaining !== null ? researchService.formatDuration(remaining) : 'Active'}
+                                  {remaining !== null ? researchService.formatDuration(remaining) : t('activeStatus')}
                                 </div>
                               ) : (
                                 <>
@@ -704,7 +707,7 @@ const ResearchPageClient: React.FC<ResearchPageClientProps> = () => {
                                     disabled={!canUpgrade}
                                     onClick={() => handleTriggerResearch(type)}
                                   >
-                                    {isTriggering ? 'Triggering...' : 'Research'}
+                                  {isTriggering ? t('triggeringButton') : t('researchButton')}
                                   </button>
                                   <CostTooltip research={research} currentLevel={level} />
                                 </>
@@ -726,7 +729,7 @@ const ResearchPageClient: React.FC<ResearchPageClientProps> = () => {
       {techTree?.activeResearch && researches && (
         <div className="research-progress-overlay">
           <div className="research-progress-content">
-            <span className="research-progress-label">🔬 In Progress:</span>
+            <span className="research-progress-label">{t('inProgressLabel')}</span>
             <span className="research-progress-name">
               {researches[techTree.activeResearch.type]?.name ?? techTree.activeResearch.type}
             </span>

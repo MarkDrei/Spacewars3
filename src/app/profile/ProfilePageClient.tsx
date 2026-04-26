@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import AuthenticatedLayout from '@/components/Layout/AuthenticatedLayout';
 import { ServerAuthState } from '@/lib/server/serverSession';
 import { useAuth } from '@/lib/client/hooks/useAuth';
@@ -29,6 +30,7 @@ interface BattleHistoryItem {
 const ProfilePageClient: React.FC<ProfilePageClientProps> = ({ auth }) => {
   const router = useRouter();
   const { logout } = useAuth();
+  const t = useTranslations('profile');
   const [battles, setBattles] = useState<BattleHistoryItem[]>([]);
   const [isLoadingBattles, setIsLoadingBattles] = useState(true);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -88,12 +90,12 @@ const ProfilePageClient: React.FC<ProfilePageClientProps> = ({ auth }) => {
     setChangePasswordSuccess('');
 
     if (!passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword) {
-      setChangePasswordError('Please fill in all password fields');
+      setChangePasswordError(t('errorFillPasswordFields'));
       return;
     }
 
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      setChangePasswordError('New passwords do not match');
+      setChangePasswordError(t('errorNewPasswordsNoMatch'));
       return;
     }
 
@@ -111,18 +113,18 @@ const ProfilePageClient: React.FC<ProfilePageClientProps> = ({ auth }) => {
       const data = await response.json();
 
       if (!response.ok) {
-        setChangePasswordError(data.error || 'Failed to change password');
+        setChangePasswordError(data.error || t('errorChangePasswordFailed'));
         return;
       }
 
-      setChangePasswordSuccess(data.message || 'Password changed successfully');
+      setChangePasswordSuccess(data.message || t('successPasswordChanged'));
       setPasswordForm({
         currentPassword: '',
         newPassword: '',
         confirmPassword: '',
       });
     } catch {
-      setChangePasswordError('Failed to change password');
+      setChangePasswordError(t('errorChangePasswordFailed'));
     } finally {
       setIsChangingPassword(false);
     }
@@ -160,21 +162,21 @@ const ProfilePageClient: React.FC<ProfilePageClientProps> = ({ auth }) => {
       <div className="profile-page">
         <div className="profile-container">
           <div className="profile-top-bar">
-            <h1 className="page-heading">Player Profile</h1>
+            <h1 className="page-heading">{t('pageHeading')}</h1>
             <div className="profile-top-bar-actions">
               <button
                 className="btn-secondary"
                 onClick={openChangePasswordDialog}
                 type="button"
               >
-                Change Password
+                {t('changePasswordButton')}
               </button>
               <button
                 className="logout-button"
                 onClick={handleLogout}
                 disabled={isLoggingOut}
               >
-                {isLoggingOut ? 'Logging out...' : 'Logout'}
+                {isLoggingOut ? t('loggingOutButton') : t('logoutButton')}
               </button>
             </div>
           </div>
@@ -184,8 +186,8 @@ const ProfilePageClient: React.FC<ProfilePageClientProps> = ({ auth }) => {
             </div>
             <div className="player-info">
               <h2>{auth.username}</h2>
-              <p className="level">Level {liveStats?.level ?? '...'}</p>
-              <p className="total-score">Score: {(liveStats?.score ?? 0).toLocaleString()} · XP: {(liveStats?.xp ?? 0).toLocaleString()}</p>
+              <p className="level">{t('levelDisplay', { level: liveStats?.level ?? '...' })}</p>
+              <p className="total-score">{t('scoreXpDisplay', { score: (liveStats?.score ?? 0).toLocaleString(), xp: (liveStats?.xp ?? 0).toLocaleString() })}</p>
             </div>
           </div>
 
@@ -197,11 +199,11 @@ const ProfilePageClient: React.FC<ProfilePageClientProps> = ({ auth }) => {
 
           {/* Battle History Section */}
           <div className="battle-history">
-            <h3>Battle History</h3>
+            <h3>{t('battleHistoryHeading')}</h3>
             {isLoadingBattles ? (
-              <p className="loading-message">Loading battle history...</p>
+              <p className="loading-message">{t('loadingBattleHistory')}</p>
             ) : battles.length === 0 ? (
-              <p className="no-battles-message">No battles yet. Start your first battle!</p>
+              <p className="no-battles-message">{t('noBattlesYet')}</p>
             ) : (
               <div className="battle-list">
                 {battles.map((battle) => (
@@ -211,27 +213,27 @@ const ProfilePageClient: React.FC<ProfilePageClientProps> = ({ auth }) => {
                   >
                     <div className="battle-header">
                       <span className={`battle-result ${battle.didWin ? 'win' : 'loss'}`}>
-                        {battle.didWin ? '✓ Victory' : '✗ Defeat'}
+                        {battle.didWin ? t('victory') : t('defeat')}
                       </span>
                       <span className="battle-role">
-                        {battle.isAttacker ? 'Attacker' : 'Defender'}
+                        {battle.isAttacker ? t('attackerRole') : t('defenderRole')}
                       </span>
                     </div>
                     <div className="battle-details">
                       <div className="battle-opponent">
-                        <strong>Opponent:</strong> {battle.opponentUsername}
+                        <strong>{t('opponentLabel')}</strong> {battle.opponentUsername}
                       </div>
                       <div className="battle-stats">
                         <div className="stat-item">
-                          <span className="stat-label">Your Damage:</span>
+                          <span className="stat-label">{t('yourDamageLabel')}</span>
                           <span className="stat-value">{Math.round(battle.userDamage)}</span>
                         </div>
                         <div className="stat-item">
-                          <span className="stat-label">Opponent Damage:</span>
+                          <span className="stat-label">{t('opponentDamageLabel')}</span>
                           <span className="stat-value">{Math.round(battle.opponentDamage)}</span>
                         </div>
                         <div className="stat-item">
-                          <span className="stat-label">Duration:</span>
+                          <span className="stat-label">{t('durationLabel')}</span>
                           <span className="stat-value">{battle.duration}s</span>
                         </div>
                       </div>
@@ -256,7 +258,7 @@ const ProfilePageClient: React.FC<ProfilePageClientProps> = ({ auth }) => {
             aria-labelledby="change-password-dialog-title"
           >
             <div className="change-password-dialog-header">
-              <h2 id="change-password-dialog-title">Change Password</h2>
+              <h2 id="change-password-dialog-title">{t('changePasswordDialogTitle')}</h2>
               <button
                 type="button"
                 className="dialog-close-button"
@@ -274,7 +276,7 @@ const ProfilePageClient: React.FC<ProfilePageClientProps> = ({ auth }) => {
                 <div className="change-password-message success">{changePasswordSuccess}</div>
               )}
               <label className="change-password-field">
-                <span>Current Password</span>
+                <span>{t('currentPasswordLabel')}</span>
                 <input
                   type="password"
                   name="currentPassword"
@@ -285,7 +287,7 @@ const ProfilePageClient: React.FC<ProfilePageClientProps> = ({ auth }) => {
                 />
               </label>
               <label className="change-password-field">
-                <span>New Password</span>
+                <span>{t('newPasswordLabel')}</span>
                 <input
                   type="password"
                   name="newPassword"
@@ -296,7 +298,7 @@ const ProfilePageClient: React.FC<ProfilePageClientProps> = ({ auth }) => {
                 />
               </label>
               <label className="change-password-field">
-                <span>Confirm New Password</span>
+                <span>{t('confirmNewPasswordLabel')}</span>
                 <input
                   type="password"
                   name="confirmPassword"
@@ -308,10 +310,10 @@ const ProfilePageClient: React.FC<ProfilePageClientProps> = ({ auth }) => {
               </label>
               <div className="change-password-actions">
                 <button type="button" className="dialog-secondary-button" onClick={closeChangePasswordDialog}>
-                  Cancel
+                  {t('cancelButton')}
                 </button>
                 <button type="submit" className="dialog-primary-button" disabled={isChangingPassword}>
-                  {isChangingPassword ? 'Saving...' : 'Save Password'}
+                  {isChangingPassword ? t('savingButton') : t('savePasswordButton')}
                 </button>
               </div>
             </form>
