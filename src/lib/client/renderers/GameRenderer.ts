@@ -9,6 +9,7 @@ import { TargetingLineRenderer } from './TargetingLineRenderer';
 import type { TargetingLine } from '@shared/types/gameTypes';
 import { debugState } from '../debug/debugState';
 import { BASE_VIEWPORT_WORLD_H, DEFAULT_ZOOM } from '@shared/viewportConstants';
+import { CanvasStrings } from '../game/canvasStrings';
 
 /** Describes what portion of the world is currently visible on screen, in world units. */
 export interface ViewportInfo {
@@ -46,6 +47,10 @@ export class GameRenderer {
     /** Set the zoom level (>1 zooms out, showing more world; <1 zooms in). */
     setZoom(zoom: number): void {
         this.zoom = zoom;
+    }
+
+    updateCanvasStrings(strings: CanvasStrings): void {
+        this.tooltipRenderer.updateCanvasStrings(strings);
     }
 
     /**

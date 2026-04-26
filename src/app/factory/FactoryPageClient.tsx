@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useCallback } from 'react';
 import Image from 'next/image';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import AuthenticatedLayout from '@/components/Layout/AuthenticatedLayout';
 import { useUserStats } from '@/lib/client/hooks/useUserStats';
 import { useBuildQueue } from '@/lib/client/hooks/useBuildQueue';
@@ -22,6 +22,7 @@ const FactoryPageClient: React.FC<FactoryPageClientProps> = ({ auth }) => {
   // Auth is guaranteed by server, so pass true to hooks
   const { ironAmount } = useUserStats();
   const t = useTranslations('factory');
+  const locale = useLocale();
   const {
     buildQueue,
     isLoading: isBuildQueueLoading,
@@ -299,7 +300,7 @@ const FactoryPageClient: React.FC<FactoryPageClientProps> = ({ auth }) => {
                       </td>
                       <td className="data-cell">
                         <span className={factoryService.canAfford(defense.baseCost, ironAmount) ? 'cost-affordable' : 'cost-expensive'}>
-                          {defense.baseCost.toLocaleString()} Iron
+                          {defense.baseCost.toLocaleString(locale)} Iron
                         </span>
                       </td>
                       <td className="data-cell">
@@ -340,7 +341,7 @@ const FactoryPageClient: React.FC<FactoryPageClientProps> = ({ auth }) => {
                     <div className="card-detail">
                       <div className="card-detail-label">{t('colCost')}</div>
                       <div className={`card-detail-value ${factoryService.canAfford(defense.baseCost, ironAmount) ? 'cost-affordable' : 'cost-expensive'}`}>
-                        {defense.baseCost.toLocaleString()} Iron
+                        {defense.baseCost.toLocaleString(locale)} Iron
                       </div>
                     </div>
                     <div className="card-detail">
@@ -407,7 +408,7 @@ const FactoryPageClient: React.FC<FactoryPageClientProps> = ({ auth }) => {
                       </td>
                       <td className="data-cell">
                         <span className={factoryService.canAfford(weapon.baseCost, ironAmount) ? 'cost-affordable' : 'cost-expensive'}>
-                          {weapon.baseCost.toLocaleString()} Iron
+                          {weapon.baseCost.toLocaleString(locale)} Iron
                         </span>
                       </td>
                       <td className="data-cell">
@@ -476,7 +477,7 @@ const FactoryPageClient: React.FC<FactoryPageClientProps> = ({ auth }) => {
                     <div className="card-detail">
                       <div className="card-detail-label">{t('colCost')}</div>
                       <div className={`card-detail-value ${factoryService.canAfford(weapon.baseCost, ironAmount) ? 'cost-affordable' : 'cost-expensive'}`}>
-                        {weapon.baseCost.toLocaleString()} Iron
+                        {weapon.baseCost.toLocaleString(locale)} Iron
                       </div>
                     </div>
                     <div className="card-detail">
@@ -545,7 +546,7 @@ const FactoryPageClient: React.FC<FactoryPageClientProps> = ({ auth }) => {
                       </td>
                       <td className="data-cell">
                         <span className={factoryService.canAfford(weapon.baseCost, ironAmount) ? 'cost-affordable' : 'cost-expensive'}>
-                          {weapon.baseCost.toLocaleString()} Iron
+                          {weapon.baseCost.toLocaleString(locale)} Iron
                         </span>
                       </td>
                       <td className="data-cell">
@@ -614,7 +615,7 @@ const FactoryPageClient: React.FC<FactoryPageClientProps> = ({ auth }) => {
                     <div className="card-detail">
                       <div className="card-detail-label">{t('colCost')}</div>
                       <div className={`card-detail-value ${factoryService.canAfford(weapon.baseCost, ironAmount) ? 'cost-affordable' : 'cost-expensive'}`}>
-                        {weapon.baseCost.toLocaleString()} Iron
+                        {weapon.baseCost.toLocaleString(locale)} Iron
                       </div>
                     </div>
                     <div className="card-detail">

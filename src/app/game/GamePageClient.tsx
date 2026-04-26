@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import AuthenticatedLayout from '@/components/Layout/AuthenticatedLayout';
 import './GamePage.css';
 import { initGame, Game } from '@/lib/client/game/Game';
@@ -15,6 +16,7 @@ import { ServerAuthState } from '@/lib/server/serverSession';
 import DataAgeIndicator from '@/components/DataAgeIndicator/DataAgeIndicator';
 import { formatNumber } from '@/shared/numberFormat';
 import { DEFAULT_ZOOM, MIN_ZOOM, MAX_ZOOM } from '@shared/viewportConstants';
+import { CanvasStrings, defaultCanvasStrings } from '@/lib/client/game/canvasStrings';
 
 interface GamePageClientProps {
   auth: ServerAuthState;
@@ -130,6 +132,7 @@ const speedToSliderPosition = (speed: number, speedLimit: number) => {
 
 const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
   const router = useRouter();
+  const t = useTranslations('game');
   const gameInitializedRef = useRef(false);
   const gameInstanceRef = useRef<Game | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -142,6 +145,7 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
   const attackClickModeRef = useRef(false);
   const debugDrawingsEnabledRef = useRef(false);
   const zoomRef = useRef(DEFAULT_ZOOM);
+  const canvasStringsRef = useRef<CanvasStrings>(defaultCanvasStrings);
   const [debugDrawingsEnabled, setDebugDrawingsEnabled] = useState(false);
   const [angleInput, setAngleInput] = useState<string>('0');
   const [speedInput, setSpeedInput] = useState<string>('0');
@@ -175,6 +179,32 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
   const currentSpeedLimit = afterburnerStatus?.isActive && afterburnerStatus.boostedSpeed > 0 ? afterburnerStatus.boostedSpeed : maxSpeed;
   const currentSpeedValue = parseFloat(speedInput) || 0;
   const speedSliderPosition = speedToSliderPosition(currentSpeedValue, currentSpeedLimit);
+
+  // Build translated canvas strings from the game namespace.
+  // t.raw() returns the raw ICU template so we can extract just the label portion.
+  const canvasStrings: CanvasStrings = useMemo(() => {
+    const extractLabel = (key: string): string => {
+      const raw = String(t.raw(key));
+      // Strip ": {value}" and any trailing punctuation (e.g. "Speed: {value}" → "Speed")
+      return raw.replace(/:\s*\{value\}.*$/, '').trim();
+    };
+    return {
+      ship: t('tooltipShip'),
+      npcShip: t('tooltipNpcShip'),
+      enemyShip: t('tooltipEnemyShip'),
+      starbase: t('tooltipStarbase'),
+      asteroid: t('tooltipAsteroid'),
+      shipWreck: t('tooltipShipWreck'),
+      escapePod: t('tooltipEscapePod'),
+      collectible: t('tooltipCollectible'),
+      spaceObject: t('tooltipSpaceObject'),
+      speed: extractLabel('tooltipSpeed'),
+      angle: extractLabel('tooltipAngle'),
+      distance: extractLabel('tooltipDistance'),
+      level: extractLabel('tooltipLevel'),
+      actionTapToDock: t('tooltipActionDock'),
+    };
+  }, [t]);
 
   // Prevent page scrolling while on the game page
   useEffect(() => {
@@ -452,6 +482,7 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
       }
       game.setDebugDrawingsEnabled(debugDrawingsEnabledRef.current);
       game.setZoom(zoomRef.current);
+      game.updateCanvasStrings(canvasStringsRef.current);
       game.setMobileInteractionMode(isMobileModeRef.current);
       game.setMobileInfoMode(mobileTapInfoModeRef.current);
       game.setTeleportClickMode(teleportClickModeRef.current);
@@ -710,6 +741,14 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
     }
   }, [zoom]);
 
+  // Sync canvas strings (translated tooltip labels) with game instance
+  useEffect(() => {
+    canvasStringsRef.current = canvasStrings;
+    if (gameInstanceRef.current) {
+      gameInstanceRef.current.updateCanvasStrings(canvasStrings);
+    }
+  }, [canvasStrings]);
+
   // Close teleport coord modal on Escape key
   useEffect(() => {
     if (!showTeleportCoordModal) return;
@@ -855,7 +894,7 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
     return (
       <AuthenticatedLayout>
         <div className="game-page">
-          <div className="loading">Loading world data...</div>
+          <div className="loading">{t('loadingWorld')}</div>
         </div>
       </AuthenticatedLayout>
     );
@@ -865,7 +904,7 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
     return (
       <AuthenticatedLayout>
         <div className="game-page">
-          <div className="error">Error loading world data: {error}</div>
+          <div className="error">{t('errorLoadingWorld', { error })}</div>
         </div>
       </AuthenticatedLayout>
     );
@@ -908,9 +947,9 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
                 aria-modal="true"
                 aria-labelledby="teleport-coord-modal-title"
               >
-                <div id="teleport-coord-modal-title" className="teleport-coord-modal-title">teleport to coordinates</div>
+                <div id="teleport-coord-modal-title" className="teleport-coord-modal-title">{t('teleportModalTitle')}</div>
                 <div className="teleport-coord-modal-row">
-                  <label htmlFor="modal-teleport-x" className="teleport-coord-modal-label">x</label>
+                  <label htmlFor="modal-teleport-x" className="teleport-coord-modal-label">{t('teleportXLabel')}</label>
                   <input
                     id="modal-teleport-x"
                     type="number"
@@ -923,7 +962,7 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
                   />
                 </div>
                 <div className="teleport-coord-modal-row">
-                  <label htmlFor="modal-teleport-y" className="teleport-coord-modal-label">y</label>
+                  <label htmlFor="modal-teleport-y" className="teleport-coord-modal-label">{t('teleportYLabel')}</label>
                   <input
                     id="modal-teleport-y"
                     type="number"
@@ -941,7 +980,7 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
                     disabled={isTeleporting || Math.floor(teleportCharges) < 1}
                     className="teleport-coord-modal-btn teleport-coord-modal-btn-primary"
                   >
-                    {isTeleporting ? '...' : 'teleport'}
+                    {isTeleporting ? '...' : t('teleportModalTitle')}
                   </button>
                   <button
                     onClick={() => setShowTeleportCoordModal(false)}
@@ -1039,9 +1078,9 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
                 {/* Navigation section */}
                 {navOpen && (
                   <div className="panel-section">
-                    <span className="section-label">nav</span>
+                    <span className="section-label">{t('navSectionLabel')}</span>
                     <div className="control-row">
-                      <label htmlFor="speed-slider">speed</label>
+                      <label htmlFor="speed-slider">{t('speedLabel')}</label>
                       <input
                         id="speed-slider"
                         type="range"
@@ -1065,7 +1104,7 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
                       <span className="speed-value">{currentSpeedValue.toFixed(1)}</span>
                     </div>
                     <div className="control-row">
-                      <label htmlFor="angle-input">angle °</label>
+                      <label htmlFor="angle-input">{t('angleLabel')}</label>
                       <input
                         id="angle-input"
                         type="number"
@@ -1083,7 +1122,7 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
                       </button>
                     </div>
                     <div className="control-row">
-                      <label htmlFor="zoom-input">zoom</label>
+                      <label htmlFor="zoom-input">{t('zoomLabel')}</label>
                       <input
                         id="zoom-input"
                         type="range"
@@ -1102,11 +1141,11 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
                 {/* Teleport section */}
                 {teleportOpen && teleportMaxCharges > 0 && (
                   <div className="panel-section">
-                    <span className="section-label">teleport</span>
+                    <span className="section-label">{t('teleportSectionLabel')}</span>
                     <div className="status-row">
                       <span className="charges-badge">{formatNumber(teleportCharges)} / {formatNumber(teleportMaxCharges)}</span>
                       {teleportCharges < teleportMaxCharges && teleportRechargeTimeSec > 0 && (
-                        <span className="timer">next: {formatTimeRemaining((Math.ceil(teleportCharges) === Math.floor(teleportCharges) ? 1 : Math.ceil(teleportCharges) - teleportCharges) * teleportRechargeTimeSec / Math.max(1, timeMultiplier))}</span>
+                        <span className="timer">{t('teleportNext', { time: formatTimeRemaining((Math.ceil(teleportCharges) === Math.floor(teleportCharges) ? 1 : Math.ceil(teleportCharges) - teleportCharges) * teleportRechargeTimeSec / Math.max(1, timeMultiplier)) })}</span>
                       )}
                     </div>
                     <div className="control-row">
@@ -1115,11 +1154,11 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
                         disabled={Math.floor(teleportCharges) < 1}
                         className="control-button btn-primary btn-full"
                       >
-                        enter coordinates
+                        {t('teleportEnterCoordinates')}
                       </button>
                     </div>
                     <label className="toggle-label">
-                      click mode
+                      {t('teleportClickMode')}
                       <div className="toggle-switch">
                         <input
                           type="checkbox"
@@ -1137,17 +1176,17 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
                 {/* Afterburner section */}
                 {afterburnerOpen && afterburnerStatus && afterburnerStatus.durationResearchLevel >= 1 && (
                   <div className="panel-section">
-                    <span className="section-label">afterburner</span>
+                    <span className="section-label">{t('afterburnerSectionLabel')}</span>
                     <div className="status-row">
-                      <span className="charges-badge">fuel {formatAfterburnerFuelPercent(afterburnerStatus)}</span>
+                      <span className="charges-badge">{t('afterburnerFuel', { percent: formatAfterburnerFuelPercent(afterburnerStatus) })}</span>
                       {afterburnerStatus.isActive ? (
-                        <span className="status-active">burn: {formatTimeRemaining(afterburnerStatus.boostRemainingMs / 1000)}</span>
+                        <span className="status-active">{t('afterburnerBurn', { time: formatTimeRemaining(afterburnerStatus.boostRemainingMs / 1000) })}</span>
                       ) : afterburnerStatus.canActivate ? (
                         afterburnerStatus.cooldownRemainingMs > 0 ? (
-                          <span className="timer">full in {formatTimeRemaining(afterburnerStatus.cooldownRemainingMs / 1000)}</span>
+                          <span className="timer">{t('afterburnerFullIn', { time: formatTimeRemaining(afterburnerStatus.cooldownRemainingMs / 1000) })}</span>
                         ) : null
                       ) : (
-                        <span className="status-cooldown">ready at {afterburnerStatus.activationThresholdPercent}% in {formatTimeRemaining(afterburnerStatus.timeToActivationMs / 1000)}</span>
+                        <span className="status-cooldown">{t('afterburnerReadyAt', { pct: afterburnerStatus.activationThresholdPercent, time: formatTimeRemaining(afterburnerStatus.timeToActivationMs / 1000) })}</span>
                       )}
                     </div>
                     {afterburnerStatus.isActive ? (
@@ -1160,7 +1199,7 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
                         <span className="afterburner-fuel-button__track" aria-hidden="true">
                           <span className="afterburner-fuel-button__fill"></span>
                         </span>
-                        <span className="afterburner-fuel-button__label">{isUpdatingAfterburner ? '...' : 'disengage'}</span>
+                        <span className="afterburner-fuel-button__label">{isUpdatingAfterburner ? '...' : t('afterburnerDisengage')}</span>
                       </button>
                     ) : afterburnerStatus.canActivate ? (
                       <button
@@ -1172,11 +1211,11 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
                         <span className="afterburner-fuel-button__track" aria-hidden="true">
                           <span className="afterburner-fuel-button__fill"></span>
                         </span>
-                        <span className="afterburner-fuel-button__label">{isUpdatingAfterburner ? '...' : 'engage'}</span>
+                        <span className="afterburner-fuel-button__label">{isUpdatingAfterburner ? '...' : t('afterburnerEngage')}</span>
                       </button>
                     ) : (
                       <div className="status-row">
-                        <span className="status-cooldown">recharging</span>
+                        <span className="status-cooldown">{t('afterburnerRecharging')}</span>
                       </div>
                     )}
                   </div>

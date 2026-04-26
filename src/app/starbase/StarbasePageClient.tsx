@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import AuthenticatedLayout from '@/components/Layout/AuthenticatedLayout';
 import { ServerAuthState } from '@/lib/server/serverSession';
 import { CommanderData, InventoryGrid, InventoryItemData, DEFAULT_INVENTORY_SLOTS, SortStatKey, SortDirection, sortGrid } from '@/shared/inventoryShared';
@@ -18,6 +18,7 @@ interface StarbasePageClientProps {
 const StarbasePageClient: React.FC<StarbasePageClientProps> = (_props) => {
   const router = useRouter();
   const t = useTranslations('starbase');
+  const locale = useLocale();
   const [shopCommanders, setShopCommanders] = useState<CommanderData[]>([]);
   const [inventoryCommanders, setInventoryCommanders] = useState<{ commander: CommanderData; row: number; col: number }[]>([]);
   const [maxInventorySlots, setMaxInventorySlots] = useState<number>(DEFAULT_INVENTORY_SLOTS);
@@ -92,7 +93,7 @@ const StarbasePageClient: React.FC<StarbasePageClientProps> = (_props) => {
       const data = await res.json();
       if (res.ok) {
         setIron(data.newIron);
-        showMessage(`Sold for ${data.ironEarned.toLocaleString()} Iron!`);
+        showMessage(`Sold for ${data.ironEarned.toLocaleString(locale)} Iron!`);
         await fetchInventory();
       } else {
         showMessage(data.error ?? 'Sell failed');
@@ -100,7 +101,7 @@ const StarbasePageClient: React.FC<StarbasePageClientProps> = (_props) => {
     } finally {
       setIsBusy(false);
     }
-  }, [fetchInventory, showMessage]);
+  }, [fetchInventory, showMessage, locale]);
 
   const handleBuy = useCallback(async (slotIndex: number) => {
     setIsBusy(true);
@@ -152,7 +153,7 @@ const StarbasePageClient: React.FC<StarbasePageClientProps> = (_props) => {
           <div className="starbase-header">
             <h1 className="starbase-title">{t('pageHeading')}</h1>
             <div className="starbase-iron-display">
-              {t('ironDisplay', { amount: iron.toLocaleString() })}
+              {t('ironDisplay', { amount: iron.toLocaleString(locale) })}
             </div>
             <button
               className="starbase-return-btn"

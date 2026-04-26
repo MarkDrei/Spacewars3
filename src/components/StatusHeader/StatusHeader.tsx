@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import './StatusHeader.css';
 
 export type StatusIndicator = 'grey' | 'yellow' | 'green' | 'red';
@@ -26,9 +26,10 @@ const StatusHeader: React.FC<StatusHeaderProps> = ({
   level
 }) => {
   const t = useTranslations('common');
+  const locale = useLocale();
 
   const formatIronAmount = (amount: number): string => {
-    return amount.toLocaleString();
+    return amount.toLocaleString(locale);
   };
 
   return (

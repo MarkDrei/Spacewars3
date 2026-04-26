@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import AuthenticatedLayout from '@/components/Layout/AuthenticatedLayout';
 import { ServerAuthState } from '@/lib/server/serverSession';
 import { useAuth } from '@/lib/client/hooks/useAuth';
@@ -31,6 +31,7 @@ const ProfilePageClient: React.FC<ProfilePageClientProps> = ({ auth }) => {
   const router = useRouter();
   const { logout } = useAuth();
   const t = useTranslations('profile');
+  const locale = useLocale();
   const [battles, setBattles] = useState<BattleHistoryItem[]>([]);
   const [isLoadingBattles, setIsLoadingBattles] = useState(true);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -187,7 +188,7 @@ const ProfilePageClient: React.FC<ProfilePageClientProps> = ({ auth }) => {
             <div className="player-info">
               <h2>{auth.username}</h2>
               <p className="level">{t('levelDisplay', { level: liveStats?.level ?? '...' })}</p>
-              <p className="total-score">{t('scoreXpDisplay', { score: (liveStats?.score ?? 0).toLocaleString(), xp: (liveStats?.xp ?? 0).toLocaleString() })}</p>
+              <p className="total-score">{t('scoreXpDisplay', { score: (liveStats?.score ?? 0).toLocaleString(locale), xp: (liveStats?.xp ?? 0).toLocaleString(locale) })}</p>
             </div>
           </div>
 
@@ -238,7 +239,7 @@ const ProfilePageClient: React.FC<ProfilePageClientProps> = ({ auth }) => {
                         </div>
                       </div>
                       <div className="battle-time">
-                        {new Date(battle.battleStartTime * 1000).toLocaleString()}
+                        {new Date(battle.battleStartTime * 1000).toLocaleString(locale)}
                       </div>
                     </div>
                   </div>

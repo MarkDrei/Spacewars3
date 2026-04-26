@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import './Leaderboard.css';
 import type { BestInData, LeaderboardResponse } from '@/app/api/leaderboard/route';
 
@@ -51,6 +51,7 @@ const BEST_IN_ROWS: BestInRow[] = [
 
 const Leaderboard: React.FC = () => {
   const t = useTranslations('statistics');
+  const locale = useLocale();
   const [data, setData] = useState<LeaderboardResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -123,7 +124,7 @@ const Leaderboard: React.FC = () => {
                   {entry.username}
                   {entry.isCurrentUser && <span className="leaderboard-you"> {t('youLabel')}</span>}
                 </span>
-                <span className="leaderboard-score">{entry.score.toLocaleString()}</span>
+                <span className="leaderboard-score">{entry.score.toLocaleString(locale)}</span>
               </div>
             ))}
           </div>

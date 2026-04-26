@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import './StatisticsPanel.css';
 
 interface UserStatAggregates {
@@ -65,23 +65,24 @@ interface StatRowProps {
   avgValue: number | string;
   totalValue: number | string;
   rank: number | null;
+  locale: string;
 }
 
-function StatRow({ label, userValue, avgValue, totalValue, rank }: StatRowProps) {
+function StatRow({ label, userValue, avgValue, totalValue, rank, locale }: StatRowProps) {
   return (
     <div className="stat-row">
       <span className="stat-row-label">{label}</span>
       <span className="stat-row-user">
-        {typeof userValue === 'number' ? Math.round(userValue).toLocaleString() : userValue}
+        {typeof userValue === 'number' ? Math.round(userValue).toLocaleString(locale) : userValue}
         {rank !== null && (
           <span className="top5-badge" title={`Rank #${rank}`}>{RANK_MEDALS[rank]}</span>
         )}
       </span>
       <span className="stat-row-avg">
-        {typeof avgValue === 'number' ? Math.round(avgValue).toLocaleString() : avgValue}
+        {typeof avgValue === 'number' ? Math.round(avgValue).toLocaleString(locale) : avgValue}
       </span>
       <span className="stat-row-total">
-        {typeof totalValue === 'number' ? Math.round(totalValue).toLocaleString() : totalValue}
+        {typeof totalValue === 'number' ? Math.round(totalValue).toLocaleString(locale) : totalValue}
       </span>
     </div>
   );
@@ -89,6 +90,7 @@ function StatRow({ label, userValue, avgValue, totalValue, rank }: StatRowProps)
 
 const StatisticsPanel: React.FC = () => {
   const t = useTranslations('statistics');
+  const locale = useLocale();
   const [stats, setStats] = useState<StatisticsResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -161,6 +163,7 @@ const StatisticsPanel: React.FC = () => {
           avgValue={global.averages.battlesWon}
           totalValue={global.totals.battlesWon}
           rank={getRank(global.top5.battlesWon)}
+          locale={locale}
         />
         <StatRow
           label={t('statBattlesLost')}
@@ -168,6 +171,7 @@ const StatisticsPanel: React.FC = () => {
           avgValue={global.averages.battlesLost}
           totalValue={global.totals.battlesLost}
           rank={getRank(global.top5.battlesLost)}
+          locale={locale}
         />
         <StatRow
           label={t('statTotalDamageDealt')}
@@ -175,6 +179,7 @@ const StatisticsPanel: React.FC = () => {
           avgValue={global.averages.totalDamageDealt}
           totalValue={global.totals.totalDamageDealt}
           rank={getRank(global.top5.totalDamageDealt)}
+          locale={locale}
         />
         <StatRow
           label={t('statTotalDamageReceived')}
@@ -182,6 +187,7 @@ const StatisticsPanel: React.FC = () => {
           avgValue={global.averages.totalDamageReceived}
           totalValue={global.totals.totalDamageReceived}
           rank={getRank(global.top5.totalDamageReceived)}
+          locale={locale}
         />
         <StatRow
           label={t('statIronTransferred')}
@@ -189,6 +195,7 @@ const StatisticsPanel: React.FC = () => {
           avgValue={global.averages.totalIronTransferred}
           totalValue={global.totals.totalIronTransferred}
           rank={getRank(global.top5.totalIronTransferred)}
+          locale={locale}
         />
         <StatRow
           label={t('statXpFromBattles')}
@@ -196,6 +203,7 @@ const StatisticsPanel: React.FC = () => {
           avgValue={global.averages.totalXpAwarded}
           totalValue={global.totals.totalXpAwarded}
           rank={getRank(global.top5.totalXpAwarded)}
+          locale={locale}
         />
       </div>
 
@@ -208,6 +216,7 @@ const StatisticsPanel: React.FC = () => {
           avgValue={global.averages.asteroidsCollected}
           totalValue={global.totals.asteroidsCollected}
           rank={getRank(global.top5.asteroidsCollected)}
+          locale={locale}
         />
         <StatRow
           label={t('statShipwrecksCollected')}
@@ -215,6 +224,7 @@ const StatisticsPanel: React.FC = () => {
           avgValue={global.averages.shipwrecksCollected}
           totalValue={global.totals.shipwrecksCollected}
           rank={getRank(global.top5.shipwrecksCollected)}
+          locale={locale}
         />
         <StatRow
           label={t('statEscapePodsCollected')}
@@ -222,6 +232,7 @@ const StatisticsPanel: React.FC = () => {
           avgValue={global.averages.escapePodsCollected}
           totalValue={global.totals.escapePodsCollected}
           rank={getRank(global.top5.escapePodsCollected)}
+          locale={locale}
         />
         <StatRow
           label={t('statIronFromCollection')}
@@ -229,6 +240,7 @@ const StatisticsPanel: React.FC = () => {
           avgValue={global.averages.totalIronFromCollection}
           totalValue={global.totals.totalIronFromCollection}
           rank={getRank(global.top5.totalIronFromCollection)}
+          locale={locale}
         />
       </div>
 
@@ -241,6 +253,7 @@ const StatisticsPanel: React.FC = () => {
           avgValue={global.averages.totalIronSpentOnResearch}
           totalValue={global.totals.totalIronSpentOnResearch}
           rank={getRank(global.top5.totalIronSpentOnResearch)}
+          locale={locale}
         />
         <StatRow
           label={t('statResearchCount')}
@@ -248,6 +261,7 @@ const StatisticsPanel: React.FC = () => {
           avgValue={global.averages.researchCount}
           totalValue={global.totals.researchCount}
           rank={getRank(global.top5.researchCount)}
+          locale={locale}
         />
         <StatRow
           label={t('statIronSpentOnBuilds')}
@@ -255,6 +269,7 @@ const StatisticsPanel: React.FC = () => {
           avgValue={global.averages.totalIronSpentOnBuilds}
           totalValue={global.totals.totalIronSpentOnBuilds}
           rank={getRank(global.top5.totalIronSpentOnBuilds)}
+          locale={locale}
         />
         <StatRow
           label={t('statItemsBuilt')}
@@ -262,6 +277,7 @@ const StatisticsPanel: React.FC = () => {
           avgValue={global.averages.totalBuildsCompleted}
           totalValue={global.totals.totalBuildsCompleted}
           rank={getRank(global.top5.totalBuildsCompleted)}
+          locale={locale}
         />
       </div>
     </div>

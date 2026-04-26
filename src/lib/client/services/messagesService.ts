@@ -46,9 +46,9 @@ class MessagesService {
   /**
    * Format timestamp for display
    */
-  formatTime(timestamp: number): string {
+  formatTime(timestamp: number, locale: string = 'en-US'): string {
     const date = new Date(timestamp); // Timestamp is already in milliseconds
-    return date.toLocaleTimeString('en-US', { 
+    return date.toLocaleTimeString(locale, { 
       hour12: false,
       hour: '2-digit', 
       minute: '2-digit', 
@@ -59,9 +59,9 @@ class MessagesService {
   /**
    * Format date for display (no year)
    */
-  formatDate(timestamp: number): string {
+  formatDate(timestamp: number, locale: string = 'en-US'): string {
     const date = new Date(timestamp); // Timestamp is already in milliseconds
-    return date.toLocaleDateString('en-US', { 
+    return date.toLocaleDateString(locale, { 
       month: 'short', 
       day: 'numeric' 
     });

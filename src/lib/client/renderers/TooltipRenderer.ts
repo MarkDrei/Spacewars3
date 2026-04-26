@@ -6,14 +6,21 @@ import { EscapePod } from '../game/EscapePod';
 import { Starbase } from '../game/Starbase';
 import { World } from '../game/World';
 import { formatNumber } from '@/shared/numberFormat';
+import { CanvasStrings, defaultCanvasStrings } from '../game/canvasStrings';
 
 export class TooltipRenderer {
     private ctx: CanvasRenderingContext2D;
     private canvas: HTMLCanvasElement;
+    private canvasStrings: CanvasStrings;
 
-    constructor(canvas: HTMLCanvasElement) {
+    constructor(canvas: HTMLCanvasElement, canvasStrings: CanvasStrings = defaultCanvasStrings) {
         this.canvas = canvas;
         this.ctx = canvas.getContext('2d')!;
+        this.canvasStrings = canvasStrings;
+    }
+
+    updateCanvasStrings(strings: CanvasStrings): void {
+        this.canvasStrings = strings;
     }
 
     private calculateDistanceToShip(object: SpaceObjectOld, ship: Ship): number {
@@ -164,31 +171,31 @@ export class TooltipRenderer {
         // Check object type and create appropriate tooltip
         if (object === ship) {
             return [
-                'Ship',
-                `Speed: ${formatNumber(object.getSpeed())}`,
-                `Angle: ${formatNumber(angleDegrees)}°`
+                this.canvasStrings.ship,
+                `${this.canvasStrings.speed}: ${formatNumber(object.getSpeed())}`,
+                `${this.canvasStrings.angle}: ${formatNumber(angleDegrees)}°`
             ];
         }
 
         if (object instanceof Starbase || objectType === 'starbase') {
             return [
-                'Starbase',
-                `Distance: ${formatNumber(distance)}`,
-                'Action: tap again to dock',
+                this.canvasStrings.starbase,
+                `${this.canvasStrings.distance}: ${formatNumber(distance)}`,
+                this.canvasStrings.actionTapToDock,
             ];
         }
 
         if (object instanceof Ship || objectType === 'player_ship' || objectType === 'npc_ship') {
             const objectLevel = object.getLevel();
             const shipLines = [
-                objectType === 'npc_ship' ? 'NPC Ship' : 'Enemy Ship',
-                `Speed: ${formatNumber(object.getSpeed())}`,
-                `Angle: ${formatNumber(angleDegrees)}°`,
-                `Distance: ${formatNumber(distance)}`,
+                objectType === 'npc_ship' ? this.canvasStrings.npcShip : this.canvasStrings.enemyShip,
+                `${this.canvasStrings.speed}: ${formatNumber(object.getSpeed())}`,
+                `${this.canvasStrings.angle}: ${formatNumber(angleDegrees)}°`,
+                `${this.canvasStrings.distance}: ${formatNumber(distance)}`,
             ];
 
             if (typeof objectLevel === 'number') {
-                shipLines.splice(1, 0, `Level: ${formatNumber(objectLevel)}`);
+                shipLines.splice(1, 0, `${this.canvasStrings.level}: ${formatNumber(objectLevel)}`);
             }
 
             return shipLines;
@@ -196,10 +203,10 @@ export class TooltipRenderer {
 
         if (objectType === 'asteroid') {
             return [
-                'Asteroid',
-                `Speed: ${formatNumber(object.getSpeed())}`,
-                `Angle: ${formatNumber(angleDegrees)}°`,
-                `Distance: ${formatNumber(distance)}`,
+                this.canvasStrings.asteroid,
+                `${this.canvasStrings.speed}: ${formatNumber(object.getSpeed())}`,
+                `${this.canvasStrings.angle}: ${formatNumber(angleDegrees)}°`,
+                `${this.canvasStrings.distance}: ${formatNumber(distance)}`,
             ];
         }
 
@@ -208,10 +215,10 @@ export class TooltipRenderer {
         }
 
         return [
-            'Space Object',
-            `Speed: ${formatNumber(object.getSpeed())}`,
-            `Angle: ${formatNumber(angleDegrees)}°`,
-            `Distance: ${formatNumber(distance)}`
+            this.canvasStrings.spaceObject,
+            `${this.canvasStrings.speed}: ${formatNumber(object.getSpeed())}`,
+            `${this.canvasStrings.angle}: ${formatNumber(angleDegrees)}°`,
+            `${this.canvasStrings.distance}: ${formatNumber(distance)}`
         ];
     }
     
@@ -221,9 +228,9 @@ export class TooltipRenderer {
     private getCollectibleTooltip(collectible: Collectible, distance: number, angleDegrees: number): string[] {
         const baseTooltip = [
             this.getReadableTypeName(collectible),
-            `Speed: ${formatNumber(collectible.getSpeed())}`,
-            `Angle: ${formatNumber(angleDegrees)}°`,
-            `Distance: ${formatNumber(distance)}`
+            `${this.canvasStrings.speed}: ${formatNumber(collectible.getSpeed())}`,
+            `${this.canvasStrings.angle}: ${formatNumber(angleDegrees)}°`,
+            `${this.canvasStrings.distance}: ${formatNumber(distance)}`
         ];
         
         return baseTooltip;
@@ -234,13 +241,13 @@ export class TooltipRenderer {
      */
     private getReadableTypeName(collectible: Collectible): string {
         if (collectible instanceof Shipwreck) {
-            return 'Ship Wreck';
+            return this.canvasStrings.shipWreck;
         } else if (collectible instanceof EscapePod) {
-            return 'Escape Pod';
+            return this.canvasStrings.escapePod;
         } else if (collectible.getType() === 'asteroid') {
-            return 'Asteroid';
+            return this.canvasStrings.asteroid;
         } else {
-            return 'Collectible';
+            return this.canvasStrings.collectible;
         }
     }
     

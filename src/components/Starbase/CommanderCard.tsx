@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import Image from 'next/image';
 import { CommanderData, COMMANDER_STAT_LABELS } from '@/shared/inventoryShared';
 import './CommanderCard.css';
@@ -22,6 +22,7 @@ const CommanderCard: React.FC<CommanderCardProps> = ({
   disabled = false,
 }) => {
   const t = useTranslations('starbase');
+  const locale = useLocale();
   return (
     <div className="commander-card">
       <div className="commander-card-image-wrap">
@@ -46,7 +47,7 @@ const CommanderCard: React.FC<CommanderCardProps> = ({
         </ul>
       </div>
       <div className="commander-card-footer">
-        <span className="commander-card-price">{t('ironPrice', { amount: price.toLocaleString() })}</span>
+        <span className="commander-card-price">{t('ironPrice', { amount: price.toLocaleString(locale) })}</span>
         <button
           className="commander-card-action-btn"
           onClick={onAction}
