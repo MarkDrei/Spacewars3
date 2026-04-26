@@ -17,8 +17,7 @@ import { getDatabase } from '../database';
 import { DATABASE_LOCK_MESSAGES, MESSAGE_LOCK } from '../typedLocks';
 import { MessagesRepo, type Message, type UnreadMessage } from './messagesRepo';
 import { Cache } from '../caches/Cache';
-
-interface MessageCacheConfig {
+import { getServerT } from '../i18n/serverTranslations';interface MessageCacheConfig {
   persistenceIntervalMs: number;
   enableAutoPersistence: boolean;
 }
@@ -323,8 +322,8 @@ export class MessageCache extends Cache {
     totalIronCollected: number,
     buildCompletions: Map<string, number>
   } | null {
-    // Check if this is a summary message
-    if (!summaryText.includes('📊') || !summaryText.includes('Message Summary')) {
+    // Detect summary by its emoji marker (locale-independent)
+    if (!summaryText.includes('📊')) {
       return null;
     }
 
@@ -344,60 +343,69 @@ export class MessageCache extends Cache {
       buildCompletions: new Map<string, number>()
     };
 
-    // Parse battles: "⚔️ **Battles:** X victory(ies), Y defeat(s)"
-    const battleMatch = summaryText.match(/⚔️ \*\*Battles:\*\* (.+)/);
-    if (battleMatch) {
-      const victoriesMatch = battleMatch[1].match(/(\d+) victory\(ies\)/);
-      const defeatsMatch = battleMatch[1].match(/(\d+) defeat\(s\)/);
-      if (victoriesMatch) stats.victories = parseInt(victoriesMatch[1]);
-      if (defeatsMatch) stats.defeats = parseInt(defeatsMatch[1]);
+    // Extract numbers from the ⚔️ line (battles: first number = victories, second = defeats)
+    const battleLine = summaryText.split('\n').find(l => l.includes('⚔️') && !l.startsWith('P:') && !l.startsWith('N:') && !l.startsWith('A:'));
+    if (battleLine) {
+      const numbers = [...battleLine.matchAll(/\d+/g)].map(m => parseInt(m[0]));
+      if (numbers.length >= 1) stats.victories = numbers[0];
+      if (numbers.length >= 2) stats.defeats = numbers[1];
     }
 
-    // Parse damage: "💥 **Damage:** Dealt X, Received Y"
-    const damageMatch = summaryText.match(/💥 \*\*Damage:\*\* Dealt (\d+), Received (\d+)/);
-    if (damageMatch) {
-      stats.damageDealt = parseInt(damageMatch[1]);
-      stats.damageReceived = parseInt(damageMatch[2]);
+    // Extract numbers from the 💥 line (damage: first = dealt, second = received)
+    const damageLine = summaryText.split('\n').find(l => l.includes('💥'));
+    if (damageLine) {
+      const numbers = [...damageLine.matchAll(/\d+/g)].map(m => parseInt(m[0]));
+      if (numbers.length >= 2) {
+        stats.damageDealt = numbers[0];
+        stats.damageReceived = numbers[1];
+      }
     }
 
-    // Parse accuracy: "🎯 **Your Accuracy:** X/Y hits (Z%)"
-    const accuracyMatch = summaryText.match(/🎯 \*\*Your Accuracy:\*\* (\d+)\/(\d+) hits/);
-    if (accuracyMatch) {
-      stats.shotsHit = parseInt(accuracyMatch[1]);
-      const totalShots = parseInt(accuracyMatch[2]);
-      stats.shotsMissed = totalShots - stats.shotsHit;
+    // Extract numbers from the 🎯 line (accuracy: first = hits, second = total)
+    const accuracyLine = summaryText.split('\n').find(l => l.includes('🎯'));
+    if (accuracyLine) {
+      const fractionMatch = accuracyLine.match(/(\d+)\/(\d+)/);
+      if (fractionMatch) {
+        stats.shotsHit = parseInt(fractionMatch[1]);
+        const totalShots = parseInt(fractionMatch[2]);
+        stats.shotsMissed = totalShots - stats.shotsHit;
+      }
     }
 
-    // Parse enemy accuracy: "🛡️ **Enemy Accuracy:** X/Y hits (Z%)"
-    const enemyAccuracyMatch = summaryText.match(/🛡️ \*\*Enemy Accuracy:\*\* (\d+)\/(\d+) hits/);
-    if (enemyAccuracyMatch) {
-      stats.enemyShotsHit = parseInt(enemyAccuracyMatch[1]);
-      const totalEnemyShots = parseInt(enemyAccuracyMatch[2]);
-      stats.enemyShotsMissed = totalEnemyShots - stats.enemyShotsHit;
+    // Extract numbers from the 🛡️ summary line (enemy accuracy; skip in-battle messages which start with N:)
+    const enemyAccuracyLine = summaryText.split('\n').find(l => l.includes('🛡️') && !l.startsWith('N:'));
+    if (enemyAccuracyLine) {
+      const fractionMatch = enemyAccuracyLine.match(/(\d+)\/(\d+)/);
+      if (fractionMatch) {
+        stats.enemyShotsHit = parseInt(fractionMatch[1]);
+        const totalEnemyShots = parseInt(fractionMatch[2]);
+        stats.enemyShotsMissed = totalEnemyShots - stats.enemyShotsHit;
+      }
     }
 
-    // Parse collections: "⛏️ **Collections:** X asteroid(s), Y shipwreck(s), Z escape pod(s)"
-    const collectionsMatch = summaryText.match(/⛏️ \*\*Collections:\*\* (.+)/);
-    if (collectionsMatch) {
-      const collectionText = collectionsMatch[1].split('\n')[0]; // Get just the collection line
-      const asteroidsMatch = collectionText.match(/(\d+) asteroid\(s\)/);
-      const shipwrecksMatch = collectionText.match(/(\d+) shipwreck\(s\)/);
-      const escapePodsMatch = collectionText.match(/(\d+) escape pod\(s\)/);
-      if (asteroidsMatch) stats.asteroidsCollected = parseInt(asteroidsMatch[1]);
-      if (shipwrecksMatch) stats.shipwrecksCollected = parseInt(shipwrecksMatch[1]);
-      if (escapePodsMatch) stats.escapePodsCollected = parseInt(escapePodsMatch[1]);
+    // Extract collection counts from the ⛏️ line: three consecutive groups of "N <text>"
+    // Format (any locale): "N <asteroid-text>, N <shipwreck-text>, N <escapepod-text>"
+    const collectionsLine = summaryText.split('\n').find(l => l.includes('⛏️'));
+    if (collectionsLine) {
+      const numbers = [...collectionsLine.matchAll(/\b(\d+)\b/g)].map(m => parseInt(m[1]));
+      if (numbers.length >= 1) stats.asteroidsCollected = numbers[0];
+      if (numbers.length >= 2) stats.shipwrecksCollected = numbers[1];
+      if (numbers.length >= 3) stats.escapePodsCollected = numbers[2];
     }
 
-    // Parse iron collected: "💎 **Iron Collected:** X"
-    const ironMatch = summaryText.match(/💎 \*\*Iron Collected:\*\* (\d+)/);
-    if (ironMatch) {
-      stats.totalIronCollected = parseInt(ironMatch[1]);
+    // Extract iron collected from the 💎 line
+    const ironLine = summaryText.split('\n').find(l => l.includes('💎'));
+    if (ironLine) {
+      const numbers = [...ironLine.matchAll(/\d+/g)].map(m => parseInt(m[0]));
+      if (numbers.length >= 1) stats.totalIronCollected = numbers[0];
     }
 
-    // Parse builds completed: "🏭 **Builds Completed:** X Item Name(s), Y Other Item(s)"
-    const buildsMatch = summaryText.match(/🏭 \*\*Builds Completed:\*\* (.+)/);
-    if (buildsMatch) {
-      const buildsText = buildsMatch[1].split('\n')[0];
+    // Extract build completions from the 🏭 line: format "N name(s)"  (any locale)
+    const buildsLine = summaryText.split('\n').find(l => l.includes('🏭'));
+    if (buildsLine) {
+      // Find text after the label (after **: or after last colon)
+      const colonIdx = buildsLine.lastIndexOf(':');
+      const buildsText = colonIdx >= 0 ? buildsLine.slice(colonIdx + 1).trim() : '';
       const buildEntries = buildsText.split(', ');
       for (const entry of buildEntries) {
         const entryMatch = entry.match(/^(\d+) (.+?)\(s\)$/);
@@ -420,24 +428,27 @@ export class MessageCache extends Cache {
    *   * Battle damage received: "N: 🛡️ Enemy **[weapon]** fired X shot(s), **Y hit** you for **Z damage**!"
    *   * Missed shots (player): "Your [weapon] fired X shot(s) but all missed!"
    *   * Missed shots (enemy): "A: Enemy [weapon] fired X shot(s) but all missed!"
-   *   * Victory: "P: 🎉 **Victory!** You won the battle!"
-   *   * Defeat: "A: 💀 **Defeat!** You lost the battle..."
-   *   * Collections: "P: Successfully collected [type] and received **X** iron."
+   *   * Victory: "P: 🎉 **Victory!** / **Sieg!** ..."
+   *   * Defeat: "A: 💀 **Defeat!** / **Niederlage!** ..."
+   *   * Collections: harvest messages (P: prefix, collected/gesammelt keyword)
    * - Preserves unknown messages as new unread messages with original timestamps
    * - Accumulates statistics from previous summaries to create a single comprehensive summary
    * Returns the summary message
-   * 
+   *
+   * @param locale  BCP 47 locale code for the summary output ('en' | 'de'), defaults to 'en'
+   *
    * IMPORTANT: Only processes unread messages to avoid re-summarizing already-read messages
    */
-  async summarizeMessages(context: LockContext<LocksAtMost7>, userId: number): Promise<string> {
+  async summarizeMessages(context: LockContext<LocksAtMost7>, userId: number, locale = 'en'): Promise<string> {
     return await context.useLockWithAcquire(MESSAGE_LOCK, async (messageContext) => {
+      const t = await getServerT(locale, 'messages');
       const allMessages = await this.ensureMessagesLoaded(messageContext, userId);
       
       // Filter for only unread messages - this prevents re-summarizing already-read messages
       const unreadMessages = allMessages.filter(msg => !msg.is_read);
       
       if (unreadMessages.length === 0) {
-        return 'No messages to summarize.';
+        return t('summaryNoMessages');
       }
   
       // Track statistics
@@ -501,25 +512,27 @@ export class MessageCache extends Cache {
         const text = msg.message;
         
         // Parse battle damage dealt (P: prefix, with "hit for X damage")
-        if (text.startsWith('P:') && text.includes('hit') && text.includes('for') && text.includes('damage')) {
-          const damageMatch = text.match(/\*\*(\d+)\s+hit\*\*\s+for\s+\*\*(\d+)\s+damage/);
+        // Parse battle damage dealt (P: prefix, emoji ⚔️, contains hits + damage numbers)
+        if (text.startsWith('P:') && text.includes('⚔️') && text.match(/\*\*\d+\s+\w+\*\*[^*]+\*\*\d+\s+\w+\*\*/)) {
+          // Matches both EN ("**X hit** for **Y damage**") and DE ("**X Treffer** für **Y Schaden**")
+          const damageMatch = text.match(/\*\*(\d+)\s+\w+\*\*[^*]+\*\*(\d+)\s+\w+\*\*/);
           if (damageMatch) {
             const hits = parseInt(damageMatch[1]);
             const damage = parseInt(damageMatch[2]);
             stats.damageDealt += damage;
             stats.shotsHit += hits;
             
-            // Count missed shots from this salvo
-            const shotsMatch = text.match(/fired\s+(\d+)\s+shot\(s\)/);
+            // Count missed shots from this salvo (numbers in "X shot(s)" or "X Schuss")
+            const shotsMatch = text.match(/fired\s+(\d+)\s+shot|hat\s+(\d+)\s+Schuss/);
             if (shotsMatch) {
-              const totalShots = parseInt(shotsMatch[1]);
+              const totalShots = parseInt(shotsMatch[1] ?? shotsMatch[2]);
               stats.shotsMissed += (totalShots - hits);
             }
           }
         }
-        // Parse battle damage received (N: prefix, with "hit you for X damage")
-        else if (text.startsWith('N:') && text.includes('hit') && text.includes('you for') && text.includes('damage')) {
-          const damageMatch = text.match(/\*\*(\d+)\s+hit\*\*\s+you\s+for\s+\*\*(\d+)\s+damage\*\*/);
+        // Parse battle damage received (N: prefix, contains hits + damage numbers)
+        else if (text.startsWith('N:') && text.includes('🛡️') && text.match(/\*\*\d+\s+\w+\*\*[^*]+\*\*\d+\s+\w+\*\*/)) {
+          const damageMatch = text.match(/\*\*(\d+)\s+\w+\*\*[^*]+\*\*(\d+)\s+\w+\*\*/);
           if (damageMatch) {
             const hits = parseInt(damageMatch[1]);
             const damage = parseInt(damageMatch[2]);
@@ -527,65 +540,61 @@ export class MessageCache extends Cache {
             stats.enemyShotsHit += hits;
             
             // Count missed shots from this salvo
-            const shotsMatch = text.match(/fired\s+(\d+)\s+shot\(s\)/);
+            const shotsMatch = text.match(/fired\s+(\d+)\s+shot|hat\s+(\d+)\s+Schuss/);
             if (shotsMatch) {
-              const totalShots = parseInt(shotsMatch[1]);
+              const totalShots = parseInt(shotsMatch[1] ?? shotsMatch[2]);
               stats.enemyShotsMissed += (totalShots - hits);
             }
           }
         }
-        // Parse missed shots (Your weapon)
-        else if (text.includes('Your') && text.includes('but all missed!')) {
-          const shotsMatch = text.match(/(\d+)\s+shot\(s\)/);
+        // Parse missed shots (player): EN "Your X fired Y shot(s) but all missed!" / DE "Deine X hat Y Schuss abgefeuert, aber alle verfehlt!"
+        else if (!text.startsWith('P:') && !text.startsWith('N:') && !text.startsWith('A:') &&
+                 (text.includes('but all missed!') || text.includes('aber alle verfehlt!'))) {
+          const shotsMatch = text.match(/(\d+)\s+shot|(\d+)\s+Schuss/);
           if (shotsMatch) {
-            stats.shotsMissed += parseInt(shotsMatch[1]);
+            stats.shotsMissed += parseInt(shotsMatch[1] ?? shotsMatch[2]);
           }
         }
-        // Parse missed shots (Enemy weapon with A: prefix)
-        else if (text.startsWith('A:') && text.includes('but all missed!')) {
-          const shotsMatch = text.match(/(\d+)\s+shot\(s\)/);
+        // Parse missed shots (enemy, A: prefix)
+        else if (text.startsWith('A:') && (text.includes('but all missed!') || text.includes('aber alle verfehlt!'))) {
+          const shotsMatch = text.match(/(\d+)\s+shot|(\d+)\s+Schuss/);
           if (shotsMatch) {
-            stats.enemyShotsMissed += parseInt(shotsMatch[1]);
+            stats.enemyShotsMissed += parseInt(shotsMatch[1] ?? shotsMatch[2]);
           }
         }
-        // Parse new-format escape pod commander messages:
-        // "P: 🚀 Escape pod collected! Commander **X** rescued ..."
-        else if (text.includes('Escape pod collected!')) {
+        // Parse escape pod messages (P: prefix, rocket emoji 🚀)
+        else if (text.startsWith('P:') && text.includes('🚀')) {
           stats.escapePodsCollected++;
           // Commanders don't yield iron
         }
-        // Parse collection messages (legacy format: "Successfully collected <type>")
-        else if (text.includes('Successfully collected')) {
-          const ironMatch = text.match(/received \*\*(\d+)\*\* iron/);
+        // Parse collection messages: EN "Successfully collected" / DE "Erfolgreich ... gesammelt"
+        else if (text.startsWith('P:') && (text.includes('Successfully collected') || text.includes('gesammelt'))) {
+          // Extract iron amount: EN "received **N** iron" / DE "**N** Eisen erhalten"
+          const ironMatch = text.match(/\*\*(\d+)\*\*/);
           const ironAmount = ironMatch ? parseInt(ironMatch[1]) : 0;
           
-          // Parse asteroid collection
-          if (text.includes('asteroid')) {
+          // Determine type by keywords (EN / DE)
+          if (text.includes('asteroid') || text.includes('Asteroid')) {
             stats.asteroidsCollected++;
             stats.totalIronCollected += ironAmount;
-          }
-          // Parse shipwreck collection
-          else if (text.includes('shipwreck')) {
+          } else if (text.includes('shipwreck') || text.includes('Schiffswrack')) {
             stats.shipwrecksCollected++;
             stats.totalIronCollected += ironAmount;
-          }
-          // Parse escape pod collection (legacy: "Successfully collected escape pod.")
-          else if (text.includes('escape pod')) {
+          } else if (text.includes('escape pod') || text.includes('Rettungskapsel')) {
             stats.escapePodsCollected++;
-            // Escape pods don't give iron
           }
         }
-        // Parse victory
-        else if (text.includes('Victory!') || text.startsWith('P:') && text.includes('won the battle')) {
+        // Parse victory: EN "Victory!" / DE "Sieg!"
+        else if (text.startsWith('P:') && (text.includes('Victory!') || text.includes('Sieg!'))) {
           stats.victories++;
         }
-        // Parse defeat
-        else if (text.includes('Defeat!') || text.startsWith('A:') && text.includes('lost the battle')) {
+        // Parse defeat: EN "Defeat!" / DE "Niederlage!"
+        else if (text.startsWith('A:') && (text.includes('Defeat!') || text.includes('Niederlage!'))) {
           stats.defeats++;
         }
-        // Parse build complete: "Build complete: <Item Name>"
-        else if (text.startsWith('Build complete:')) {
-          const buildMatch = text.match(/^Build complete:\s+(.+)$/);
+        // Parse build complete: EN "Build complete:" / DE "Bau abgeschlossen:"
+        else if (text.startsWith('Build complete:') || text.startsWith('Bau abgeschlossen:')) {
+          const buildMatch = text.match(/^[^:]+:\s+(.+)$/);
           if (buildMatch) {
             const itemName = buildMatch[1].trim();
             stats.buildCompletions.set(itemName, (stats.buildCompletions.get(itemName) ?? 0) + 1);
@@ -633,48 +642,48 @@ export class MessageCache extends Cache {
   
       // Build summary
       const summaryParts: string[] = [];
-      summaryParts.push('📊 **Message Summary**');
+      summaryParts.push(t('summaryHeader'));
       
       if (stats.victories > 0 || stats.defeats > 0) {
         const battleResults: string[] = [];
-        if (stats.victories > 0) battleResults.push(`${stats.victories} victory(ies)`);
-        if (stats.defeats > 0) battleResults.push(`${stats.defeats} defeat(s)`);
-        summaryParts.push(`⚔️ **Battles:** ${battleResults.join(', ')}`);
+        if (stats.victories > 0) battleResults.push(t('summaryVictories', { n: stats.victories }));
+        if (stats.defeats > 0) battleResults.push(t('summaryDefeats', { n: stats.defeats }));
+        summaryParts.push(t('summaryBattles', { text: battleResults.join(', ') }));
       }
   
       if (stats.damageDealt > 0 || stats.damageReceived > 0) {
-        summaryParts.push(`💥 **Damage:** Dealt ${stats.damageDealt}, Received ${stats.damageReceived}`);
+        summaryParts.push(t('summaryDamage', { dealt: stats.damageDealt, received: stats.damageReceived }));
       }
   
       if (stats.shotsHit > 0 || stats.shotsMissed > 0) {
         const totalShots = stats.shotsHit + stats.shotsMissed;
         const accuracy = totalShots > 0 ? Math.round((stats.shotsHit / totalShots) * 100) : 0;
-        summaryParts.push(`🎯 **Your Accuracy:** ${stats.shotsHit}/${totalShots} hits (${accuracy}%)`);
+        summaryParts.push(t('summaryAccuracy', { hits: stats.shotsHit, total: totalShots, pct: accuracy }));
       }
   
       if (stats.enemyShotsHit > 0 || stats.enemyShotsMissed > 0) {
         const totalEnemyShots = stats.enemyShotsHit + stats.enemyShotsMissed;
         const enemyAccuracy = totalEnemyShots > 0 ? Math.round((stats.enemyShotsHit / totalEnemyShots) * 100) : 0;
-        summaryParts.push(`🛡️ **Enemy Accuracy:** ${stats.enemyShotsHit}/${totalEnemyShots} hits (${enemyAccuracy}%)`);
+        summaryParts.push(t('summaryEnemyAccuracy', { hits: stats.enemyShotsHit, total: totalEnemyShots, pct: enemyAccuracy }));
       }
   
       if (stats.asteroidsCollected > 0 || stats.shipwrecksCollected > 0 || stats.escapePodsCollected > 0) {
         const collectionParts: string[] = [];
-        if (stats.asteroidsCollected > 0) collectionParts.push(`${stats.asteroidsCollected} asteroid(s)`);
-        if (stats.shipwrecksCollected > 0) collectionParts.push(`${stats.shipwrecksCollected} shipwreck(s)`);
-        if (stats.escapePodsCollected > 0) collectionParts.push(`${stats.escapePodsCollected} escape pod(s)`);
-        summaryParts.push(`⛏️ **Collections:** ${collectionParts.join(', ')}`);
+        if (stats.asteroidsCollected > 0) collectionParts.push(t('summaryAsteroids', { n: stats.asteroidsCollected }));
+        if (stats.shipwrecksCollected > 0) collectionParts.push(t('summaryShipwrecks', { n: stats.shipwrecksCollected }));
+        if (stats.escapePodsCollected > 0) collectionParts.push(t('summaryEscapePods', { n: stats.escapePodsCollected }));
+        summaryParts.push(t('summaryCollections', { text: collectionParts.join(', ') }));
         if (stats.totalIronCollected > 0) {
-          summaryParts.push(`💎 **Iron Collected:** ${stats.totalIronCollected}`);
+          summaryParts.push(t('summaryIronCollected', { iron: stats.totalIronCollected }));
         }
       }
 
       if (stats.buildCompletions.size > 0) {
         const buildParts: string[] = [];
         for (const [name, count] of stats.buildCompletions) {
-          buildParts.push(`${count} ${name}(s)`);
+          buildParts.push(t('summaryBuildItem', { n: count, name }));
         }
-        summaryParts.push(`🏭 **Builds Completed:** ${buildParts.join(', ')}`);
+        summaryParts.push(t('summaryBuildsCompleted', { text: buildParts.join(', ') }));
       }
 
       const summary = summaryParts.join('\n');

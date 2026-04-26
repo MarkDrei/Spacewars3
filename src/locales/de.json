@@ -355,6 +355,36 @@
     "resetButton": "Passwort zurücksetzen",
     "resetFallback": "Falls der Button nicht funktioniert, kopiere die folgende URL in deinen Browser:",
     "resetIgnore": "Falls du kein Passwort-Reset angefordert hast, kannst du diese E-Mail ignorieren. Dein Passwort wird nicht geändert."
+  },
+  "messages": {
+    "shotHitAttacker": "P: ⚔️ Deine **{weapon}** hat {shots} Schuss abgefeuert, **{hits} Treffer** für **{damage} Schaden**! Gegner: {defenses}",
+    "shotHitDefender": "N: 🛡️ Feindliche **{weapon}** hat {shots} Schuss abgefeuert, **{hits} Treffer** für **{damage} Schaden**! Deine Abwehr: {defenses}",
+    "shotMissAttacker": "Deine {weapon} hat {shots} Schuss abgefeuert, aber alle verfehlt!",
+    "shotMissDefender": "A: Feindliche {weapon} hat {shots} Schuss abgefeuert, aber alle verfehlt!",
+    "battleVictory": "P: 🎉 **Sieg!** Du hast die Schlacht gewonnen! Du hast {iron} Eisen, {xp} EP und {score} Punkte von {enemy} gewonnen.",
+    "battleDefeat": "A: 💀 **Niederlage!** Du hast die Schlacht gegen {enemy} verloren. Du hast {iron} Eisen verloren.",
+    "levelUp": "P: 🎉 Levelaufstieg! Du hast Level {level} erreicht!",
+    "buildComplete": "Bau abgeschlossen: {name}",
+    "buildQueueAborted": "Bauwarteschlange abgebrochen: zu wenig Eisen für {name}. {count} Element(e) aus der Warteschlange entfernt.",
+    "harvestCollected": "P: Erfolgreich {type} gesammelt und **{iron}** Eisen erhalten.",
+    "harvestCollectedNoIron": "P: Erfolgreich {type} gesammelt.",
+    "escapePodRescued": "P: 🚀 Rettungskapsel geborgen! Kommandant **{commander}** gerettet und zum Inventar hinzugefügt. Boni: {bonuses}.",
+    "escapePodFull": "P: 🚀 Rettungskapsel geborgen! Kommandant **{commander}** gerettet, aber das Inventar ist voll — Kommandant verloren! Boni wären gewesen: {bonuses}.",
+    "summaryHeader": "📊 **Nachrichtenübersicht**",
+    "summaryNoMessages": "Keine Nachrichten zum Zusammenfassen.",
+    "summaryBattles": "⚔️ **Kämpfe:** {text}",
+    "summaryVictories": "{n} Sieg(e)",
+    "summaryDefeats": "{n} Niederlage(n)",
+    "summaryDamage": "💥 **Schaden:** Verursacht {dealt}, Erhalten {received}",
+    "summaryAccuracy": "🎯 **Deine Trefferquote:** {hits}/{total} Treffer ({pct}%)",
+    "summaryEnemyAccuracy": "🛡️ **Gegnerische Trefferquote:** {hits}/{total} Treffer ({pct}%)",
+    "summaryCollections": "⛏️ **Sammlungen:** {text}",
+    "summaryAsteroids": "{n} Asteroid(en)",
+    "summaryShipwrecks": "{n} Schiffswrack(s)",
+    "summaryEscapePods": "{n} Rettungskapsel(n)",
+    "summaryIronCollected": "💎 **Gesammeltes Eisen:** {iron}",
+    "summaryBuildsCompleted": "🏭 **Abgeschlossene Bauten:** {text}",
+    "summaryBuildItem": "{n} {name}(s)"
   }
 }
 

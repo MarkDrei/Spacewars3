@@ -383,13 +383,13 @@ export async function consumeEmailVerificationToken(
 export async function getUserByEmail(
   db: DatabaseConnection,
   email: string
-): Promise<{ id: number; username: string } | null> {
+): Promise<{ id: number; username: string; preferred_locale: string | null } | null> {
   const result = await db.query(
-    'SELECT id, username FROM users WHERE email = $1',
+    'SELECT id, username, preferred_locale FROM users WHERE email = $1',
     [email]
   );
   if (result.rows.length === 0) return null;
-  return result.rows[0] as { id: number; username: string };
+  return result.rows[0] as { id: number; username: string; preferred_locale: string | null };
 }
 
 // --- Password reset token helpers ---

@@ -4,6 +4,8 @@ import { sessionOptions, SessionData } from '@/lib/server/session';
 import { cookies } from 'next/headers';
 import { MessageCache } from '@/lib/server/messages/MessageCache';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
+import { UserCache } from '@/lib/server/user/userCache';
+import { USER_LOCK } from '@/lib/server/typedLocks';
 
 /**
  * POST /api/messages/summarize
@@ -20,9 +22,19 @@ export async function POST() {
       );
     }
 
-    const messageCache = MessageCache.getInstance();
+    // Look up user's preferred locale
+    const userCache = UserCache.getInstance2();
     const ctx = createLockContext();
-    const summary = await messageCache.summarizeMessages(ctx, session.userId);
+    let locale = 'en';
+    await ctx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
+      const user = await userCache.getUserByIdWithLock(userCtx, session.userId!);
+      if (user) {
+        locale = user.preferredLocale ?? 'en';
+      }
+    });
+
+    const messageCache = MessageCache.getInstance();
+    const summary = await messageCache.summarizeMessages(ctx, session.userId, locale);
 
     return NextResponse.json({
       success: true,

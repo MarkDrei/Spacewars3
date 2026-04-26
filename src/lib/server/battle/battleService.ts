@@ -28,6 +28,7 @@ import { WORLD_LOCK, USER_LOCK } from '../typedLocks';
 import { WorldCache } from '../world/worldCache';
 import { DEFAULT_WORLD_WIDTH, DEFAULT_WORLD_HEIGHT } from '@shared/worldConstants';
 import { sendMessageToUser } from '../messages/MessageCache';
+import { getServerT } from '../i18n/serverTranslations';
 import { StatisticsCache } from '../statistics/StatisticsCache';
 import { isNpcId } from '../npc/npcConstants';
 import { NPCManager } from '../npc/NPCManager';
@@ -556,6 +557,8 @@ export async function resolveBattle(
   let xpAwarded = 0;
   let scoreAwarded = 0;
   let levelUpResult: { leveledUp: boolean; oldLevel: number; newLevel: number } | undefined;
+  let winnerLocale = 'en';
+  let loserLocale = 'en';
 
   const winnerIsNpc = isNpcId(winnerId);
   const loserIsNpc = isNpcId(loserId);
@@ -642,16 +645,28 @@ export async function resolveBattle(
       await removeNpcSpaceObject(npcId, userContext);
       console.log(`🏴‍☠️ NPC ${npcId} marked as defeated and removed from world`);
     }
+
+    // Capture preferred locales for post-lock message building
+    const userWorldCacheFinal = UserCache.getInstance2();
+    if (!winnerIsNpc) {
+      const w = userWorldCacheFinal.getUserByIdFromCache(userContext, winnerId);
+      if (w) winnerLocale = w.preferredLocale ?? 'en';
+    }
+    if (!loserIsNpc) {
+      const l = userWorldCacheFinal.getUserByIdFromCache(userContext, loserId);
+      if (l) loserLocale = l.preferredLocale ?? 'en';
+    }
   });
 
   // send victory/defeat messages to users (skip NPCs — they don't receive messages)
   try {
     if (!winnerIsNpc) {
       const npcLabel = loserIsNpc ? 'an Iron Horde Pirate' : ironResult.loserName;
+      const tWinner = await getServerT(winnerLocale, 'messages');
       await sendMessageToUser(
         context,
         winnerId,
-        `P: 🎉 **Victory!** You won the battle! You gained ${ironResult.amount} iron, ${xpAwarded} XP and ${scoreAwarded} score from ${npcLabel}.`
+        tWinner('battleVictory', { iron: ironResult.amount, xp: xpAwarded, score: scoreAwarded, enemy: npcLabel })
       );
 
       // Send level-up notification if winner leveled up
@@ -659,17 +674,18 @@ export async function resolveBattle(
         await sendMessageToUser(
           context,
           winnerId,
-          `P: 🎉 Level Up! You reached level ${levelUpResult.newLevel}!`
+          tWinner('levelUp', { level: levelUpResult.newLevel })
         );
       }
     }
 
     if (!loserIsNpc) {
       const npcLabel = winnerIsNpc ? 'an Iron Horde Pirate' : ironResult.winnerName;
+      const tLoser = await getServerT(loserLocale, 'messages');
       await sendMessageToUser(
         context,
         loserId,
-        `A: 💀 **Defeat!** You lost the battle against ${npcLabel}. You lost ${ironResult.amount} iron.`
+        tLoser('battleDefeat', { enemy: npcLabel, iron: ironResult.amount })
       );
     }
   } catch (msgErr) {

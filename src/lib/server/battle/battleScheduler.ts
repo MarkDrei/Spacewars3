@@ -20,6 +20,7 @@ import type { Battle, BattleEvent } from './battleTypes';
 import { DAMAGE_CALC_DEFAULTS } from './battleTypes';
 import { TechFactory } from '../techs/TechFactory';
 import { sendMessageToUser } from '../messages/MessageCache';
+import { getServerT } from '../i18n/serverTranslations';
 import { getBattleCache } from './BattleCache';
 import { BATTLE_LOCK, USER_LOCK } from '../typedLocks';
 import { createLockContext, LockContext, LocksAtMostAndHas2, LocksAtMost3, LocksAtMostAndHas4 } from '@markdrei/ironguard-typescript-locks';
@@ -407,9 +408,14 @@ async function fireWeapon(
       
       await BattleRepo.addBattleEvent(context, battle.id, missEvent);
       
-      // Send message to both players
-      await createMessage(attackerId, `Your ${weaponType.replace(/_/g, ' ')} fired ${shotsPerSalvo} shot(s) but all missed!`);
-      await createMessage(defenderId, `A: Enemy ${weaponType.replace(/_/g, ' ')} fired ${shotsPerSalvo} shot(s) but all missed!`);
+      // Send locale-aware miss messages to each player
+      const attackerLocale = attackerUser.preferredLocale ?? 'en';
+      const defenderLocale = defenderUser.preferredLocale ?? 'en';
+      const weaponLabel = weaponType.replace(/_/g, ' ');
+      const tAttacker = await getServerT(attackerLocale, 'messages');
+      const tDefender = await getServerT(defenderLocale, 'messages');
+      await createMessage(attackerId, tAttacker('shotMissAttacker', { weapon: weaponLabel, shots: shotsPerSalvo }));
+      await createMessage(defenderId, tDefender('shotMissDefender', { weapon: weaponLabel, shots: shotsPerSalvo }));
       
       // Update cooldown using bonused reload time
       const nextReadyTime = currentTime + effectiveCooldown;
@@ -460,9 +466,14 @@ async function fireWeapon(
     // Format defense status for messages - ALWAYS show all three defense values
     const defenseStatus = `Hull: ${remainingHull}, Armor: ${remainingArmor}, Shield: ${remainingShield}`;
     
-    // Send detailed messages to both players
-    const attackerMessage = `P: ⚔️ Your **${weaponType.replace(/_/g, ' ')}** fired ${shotsPerSalvo} shot(s), **${damageCalc.weaponsHit} hit** for **${totalDamage} damage**! Enemy: ${defenseStatus}`;
-    const defenderMessage = `N: 🛡️ Enemy **${weaponType.replace(/_/g, ' ')}** fired ${shotsPerSalvo} shot(s), **${damageCalc.weaponsHit} hit** you for **${totalDamage} damage**! Your defenses: ${defenseStatus}`;
+    // Send locale-aware hit messages to each player
+    const attackerLocale = attackerUser.preferredLocale ?? 'en';
+    const defenderLocale = defenderUser.preferredLocale ?? 'en';
+    const weaponLabel = weaponType.replace(/_/g, ' ');
+    const tAttacker = await getServerT(attackerLocale, 'messages');
+    const tDefender = await getServerT(defenderLocale, 'messages');
+    const attackerMessage = tAttacker('shotHitAttacker', { weapon: weaponLabel, shots: shotsPerSalvo, hits: damageCalc.weaponsHit, damage: totalDamage, defenses: defenseStatus });
+    const defenderMessage = tDefender('shotHitDefender', { weapon: weaponLabel, shots: shotsPerSalvo, hits: damageCalc.weaponsHit, damage: totalDamage, defenses: defenseStatus });
     
     await createMessage(attackerId, attackerMessage);
     await createMessage(defenderId, defenderMessage);

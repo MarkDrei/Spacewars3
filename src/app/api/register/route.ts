@@ -110,7 +110,7 @@ export async function POST(request: NextRequest) {
           `${request.headers.get('x-forwarded-proto') ?? 'http'}://${request.headers.get('host') ?? 'localhost:3000'}`;
         const verificationUrl = `${baseUrl}/api/verify-email?token=${token}`;
 
-        const { subject, html, text } = buildVerificationEmail(username, verificationUrl);
+        const { subject, html, text } = await buildVerificationEmail(username, verificationUrl, preferredLocale);
         // Fire-and-forget — do not await, do not fail registration on error
         void sendEmail(normalizedEmail, subject, html, text);
         emailSent = true;
