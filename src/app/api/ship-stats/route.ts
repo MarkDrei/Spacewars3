@@ -130,6 +130,7 @@ async function getShipStats(
     last_position_update_ms: playerShip.last_position_update_ms,
     defenseValues,
     afterburner: afterburnerStatus,
+    shipPictureId: playerShip.picture_id,
   };
 
   return NextResponse.json(responseData);

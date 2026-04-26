@@ -79,7 +79,7 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
   const [isMessagesExpanded, setIsMessagesExpanded] = React.useState(false);
 
   const { techCounts, weapons, defenses, isLoading: techLoading, error: techError } = useTechCounts();
-  const { defenseValues, isLoading: defenseLoading, error: defenseError } = useDefenseValues();
+  const { defenseValues, isLoading: defenseLoading, error: defenseError, shipPictureId } = useDefenseValues();
   const { battleStatus } = useBattleStatus();
   const { xp, level, xpForNextLevel, score, isLoading: xpLoading, bonuses } = useUserStats(5000);
 
@@ -197,6 +197,7 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
               battleStatus={battleStatus}
               techCounts={techCounts}
               weapons={weapons}
+              shipPictureId={shipPictureId}
             />
           )}
 

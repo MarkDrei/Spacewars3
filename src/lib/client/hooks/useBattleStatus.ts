@@ -15,6 +15,7 @@ export interface BattleStatus {
     id: number;
     isAttacker: boolean;
     opponentId: number;
+    opponentName: string;
     battleStartTime: number;
     battleEndTime: number | null;
     winnerId: number | null;

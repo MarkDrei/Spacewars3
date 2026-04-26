@@ -14,6 +14,7 @@ export interface ShipStatsResponse {
   last_position_update_ms: number;
   defenseValues: DefenseValues;
   afterburner?: AfterburnerStatus;
+  shipPictureId?: number;
 }
 
 export interface ShipStatsError {

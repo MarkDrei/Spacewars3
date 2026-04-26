@@ -9,6 +9,7 @@ interface UseDefenseValuesReturn {
   isLoading: boolean;
   error: string | null;
   refetch: () => void;
+  shipPictureId: number | null;
 }
 
 export const useDefenseValues = (pollInterval: number = 2000): UseDefenseValuesReturn => {
@@ -19,6 +20,7 @@ export const useDefenseValues = (pollInterval: number = 2000): UseDefenseValuesR
   const [lastServerUpdate, setLastServerUpdate] = useState<number>(Date.now());
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [shipPictureId, setShipPictureId] = useState<number | null>(null);
   
   // Use ref to track if component is mounted (for cleanup)
   const isMountedRef = useRef<boolean>(true);
@@ -47,6 +49,9 @@ export const useDefenseValues = (pollInterval: number = 2000): UseDefenseValuesR
       setServerDefenseValues(result.defenseValues);
       setDisplayDefenseValues(result.defenseValues);
       setLastServerUpdate(Date.now());
+      if (result.shipPictureId !== undefined) {
+        setShipPictureId(result.shipPictureId);
+      }
       setIsLoading(false);
     } catch {
       if (isMountedRef.current) {
@@ -148,6 +153,7 @@ export const useDefenseValues = (pollInterval: number = 2000): UseDefenseValuesR
     defenseValues: displayDefenseValues,
     isLoading,
     error,
-    refetch: fetchDefenseValues
+    refetch: fetchDefenseValues,
+    shipPictureId,
   };
 };

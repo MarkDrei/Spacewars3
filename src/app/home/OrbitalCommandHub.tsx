@@ -9,13 +9,15 @@ export interface OrbitalCommandHubProps {
   battleStatus?: BattleStatus | null;
   techCounts?: TechCounts | null;
   weapons?: Record<string, WeaponSpec>;
+  shipPictureId?: number | null;
 }
 
 export const OrbitalCommandHub: React.FC<OrbitalCommandHubProps> = ({
   defenseValues,
   battleStatus,
   techCounts,
-  weapons
+  weapons,
+  shipPictureId,
 }) => {
   const [now, setNow] = useState(Math.floor(Date.now() / 1000));
   const [isPortrait, setIsPortrait] = useState(false);
@@ -76,6 +78,24 @@ export const OrbitalCommandHub: React.FC<OrbitalCommandHubProps> = ({
 
   const weaponColors = ['#00c6ff', '#f5af19', '#ff416c', '#00ff87', '#b341ff', '#ffeb3b'];
 
+  const formatBattleDuration = (seconds: number): string => {
+    const d = Math.floor(seconds / 86400);
+    const h = Math.floor((seconds % 86400) / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = seconds % 60;
+    const parts: string[] = [];
+    if (d > 0) parts.push(`${d}d`);
+    if (h > 0 || d > 0) parts.push(`${h}h`);
+    if (m > 0 || h > 0 || d > 0) parts.push(`${m}m`);
+    parts.push(`${s}s`);
+    return parts.join(' ');
+  };
+
+  const opponentName = battleStatus?.battle?.opponentName ?? '';
+  const battleStartTime = battleStatus?.battle?.battleStartTime ?? now;
+  const battleElapsedSec = Math.max(0, now - battleStartTime);
+  const battleDurationText = formatBattleDuration(battleElapsedSec);
+
   const renderDefs = () => (
     <defs>
       <linearGradient id="shield-grad" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -113,6 +133,9 @@ export const OrbitalCommandHub: React.FC<OrbitalCommandHubProps> = ({
       <filter id="drop-shadow" x="-20%" y="-20%" width="140%" height="140%">
         <feDropShadow dx="0" dy="4" stdDeviation="4" floodColor="#000" floodOpacity="0.5" />
       </filter>
+      <clipPath id="ship-center-clip">
+        <circle cx="0" cy="0" r="55" />
+      </clipPath>
     </defs>
   );
 
@@ -138,18 +161,23 @@ export const OrbitalCommandHub: React.FC<OrbitalCommandHubProps> = ({
   // Visual extents: x in [-258, +470], y in [-270, +100]
   const renderDefenseGroup = () => (
     <>
-      {/* Decorative center */}
-      <circle cx="0" cy="0" r="30" fill="#0a0510" stroke="#fff" strokeWidth="1" opacity="0.2" />
-      <circle cx="0" cy="0" r="10" fill="#fff" opacity="0.1" />
+      {/* Player ship in center */}
+      <circle cx="0" cy="0" r="58" fill="#0a0510" stroke="rgba(255,255,255,0.25)" strokeWidth="2" />
+      <image
+        href={`/assets/images/ship${shipPictureId || 1}.png`}
+        x="-55" y="-55" width="110" height="110"
+        clipPath="url(#ship-center-clip)"
+        preserveAspectRatio="xMidYMid meet"
+      />
 
       {/* Crosshairs */}
       <path d="M -260 0 L 260 0 M 0 -260 L 0 260" stroke="rgba(255,255,255,0.05)" strokeWidth="1" />
 
       {/* Inner Red Ring (Hull) */}
       <g transform="rotate(-90)">
-        <circle cx="0" cy="0" r={rHull} fill="none" stroke="#25050a" strokeWidth="24" />
-        <circle cx="0" cy="0" r={rHull} fill="none" stroke="#ff416c" strokeWidth="20" strokeDasharray="8 4" opacity="0.2" />
-        <circle cx="0" cy="0" r={rHull} fill="none" stroke="url(#hull-grad)" strokeWidth="20"
+        <circle cx="0" cy="0" r={rHull} fill="none" stroke="#25050a" strokeWidth="32" />
+        <circle cx="0" cy="0" r={rHull} fill="none" stroke="#ff416c" strokeWidth="28" strokeDasharray="8 4" opacity="0.2" />
+        <circle cx="0" cy="0" r={rHull} fill="none" stroke="url(#hull-grad)" strokeWidth="28"
           strokeDasharray={cHull} strokeDashoffset={cHull * (1 - fillHull)} filter="url(#glow-heavy)" strokeLinecap="round" />
       </g>
       <path id="hull-curve" d={`M -${rHull + 25},0 A ${rHull + 25},${rHull + 25} 0 0,1 ${rHull + 25},0`} fill="none" />
@@ -263,13 +291,13 @@ export const OrbitalCommandHub: React.FC<OrbitalCommandHubProps> = ({
   //             SHIELD text at y=830 → weapons panel starts at y=860 (30px clear gap)
   if (isPortrait) {
     const pvW = 800;
-    const weaponsY = 860;
+    const weaponsY = 880;
     const weaponsContentH = activeWeapons.length > 0
       ? 30 + activeWeapons.length * 80  // header + items
       : 50;                              // "no weapons" line
     const pvH = weaponsY + weaponsContentH + 30; // bottom padding
     const defX = 294;
-    const defY = 550;
+    const defY = 570;
 
     return (
       <div className="orbital-command-container" style={containerStyle}>
@@ -289,10 +317,11 @@ export const OrbitalCommandHub: React.FC<OrbitalCommandHubProps> = ({
 
           {/* Title */}
           <text x={pvW / 2} y="52" className="title-main" filter="url(#drop-shadow)">BATTLE STATUS HUB</text>
-          <text x={pvW / 2} y="74" className="subtitle-top" textAnchor="middle">DEFENSE &amp; COMBAT ANALYTICS</text>
+          <text x={pvW / 2} y="76" className="subtitle-top" textAnchor="middle">vs. {opponentName.toUpperCase()}</text>
+          <text x={pvW / 2} y="98" className="subtitle-top" textAnchor="middle">ONGOING: {battleDurationText}</text>
 
           {/* Damage Dealt — full width, fills left-to-right */}
-          <g transform="translate(30, 100)">
+          <g transform="translate(30, 120)">
             <text x="0" y="0" className="subtitle-top" textAnchor="start">TOTAL DAMAGE DEALT</text>
             <rect x="0" y="14" width="740" height="32" rx="4" fill="url(#bar-bg-grad)" stroke="#00ff87" strokeWidth="1" opacity="0.4" />
             {damageDealtPct > 0 && (
@@ -302,7 +331,7 @@ export const OrbitalCommandHub: React.FC<OrbitalCommandHubProps> = ({
           </g>
 
           {/* Damage Received — full width, fills left-to-right */}
-          <g transform="translate(30, 175)">
+          <g transform="translate(30, 195)">
             <text x="0" y="0" className="subtitle-top" textAnchor="start">TOTAL DAMAGE RECEIVED</text>
             <rect x="0" y="14" width="740" height="32" rx="4" fill="url(#bar-bg-grad)" stroke="#ff416c" strokeWidth="1" opacity="0.4" />
             {damageReceivedPct > 0 && (
@@ -365,9 +394,10 @@ export const OrbitalCommandHub: React.FC<OrbitalCommandHubProps> = ({
         {/* --- TOP HEADER --- */}
         <g id="top-header" transform="translate(800, 70)">
           <text x="0" y="0" className="title-main" filter="url(#drop-shadow)">BATTLE STATUS HUB</text>
+          <text x="0" y="28" className="subtitle-top" textAnchor="middle">vs. {opponentName.toUpperCase()}  ·  ONGOING: {battleDurationText}</text>
 
           {/* Left Top: Damage Dealt */}
-          <g transform="translate(0, 30)">
+          <g transform="translate(0, 55)">
             <text x="-50" y="0" className="subtitle-top" textAnchor="end">TOTAL DAMAGE DEALT</text>
             <path d="M -50 15 L -720 15 L -740 40 L -70 40 Z" fill="url(#bar-bg-grad)" stroke="#00ff87" strokeWidth="1" opacity="0.4" />
             {damageDealtPct > 0 && (
@@ -377,7 +407,7 @@ export const OrbitalCommandHub: React.FC<OrbitalCommandHubProps> = ({
           </g>
 
           {/* Right Top: Damage Received */}
-          <g transform="translate(0, 30)">
+          <g transform="translate(0, 55)">
             <text x="50" y="0" className="subtitle-top" textAnchor="start">TOTAL DAMAGE RECEIVED</text>
             <path d="M 50 15 L 720 15 L 740 40 L 70 40 Z" fill="url(#bar-bg-grad)" stroke="#ff416c" strokeWidth="1" opacity="0.4" />
             {damageReceivedPct > 0 && (
