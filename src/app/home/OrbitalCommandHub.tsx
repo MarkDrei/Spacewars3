@@ -91,7 +91,7 @@ export const OrbitalCommandHub: React.FC<OrbitalCommandHubProps> = ({
     return parts.join(' ');
   };
 
-  const opponentName = battleStatus?.battle?.opponentName ?? '';
+  const opponentName = battleStatus?.battle?.opponentName ?? 'Unknown';
   const battleStartTime = battleStatus?.battle?.battleStartTime ?? now;
   const battleElapsedSec = Math.max(0, now - battleStartTime);
   const battleDurationText = formatBattleDuration(battleElapsedSec);
@@ -164,7 +164,7 @@ export const OrbitalCommandHub: React.FC<OrbitalCommandHubProps> = ({
       {/* Player ship in center */}
       <circle cx="0" cy="0" r="58" fill="#0a0510" stroke="rgba(255,255,255,0.25)" strokeWidth="2" />
       <image
-        href={`/assets/images/ship${shipPictureId || 1}.png`}
+        href={`/assets/images/ship${shipPictureId ?? 1}.png`}
         x="-55" y="-55" width="110" height="110"
         clipPath="url(#ship-center-clip)"
         preserveAspectRatio="xMidYMid meet"
