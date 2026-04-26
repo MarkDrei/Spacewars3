@@ -38,6 +38,7 @@ vi.mock('next-intl', async () => {
         return value;
       };
     },
+    useLocale: () => 'en',
   };
 });
 
