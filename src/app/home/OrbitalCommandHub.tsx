@@ -123,7 +123,7 @@ export const OrbitalCommandHub: React.FC<OrbitalCommandHubProps> = ({
         .subtitle-top { font-family: var(--font-geist-sans), sans-serif; fill: #a0c0d0; font-size: 16px; letter-spacing: 2px; text-transform: uppercase; }
         .value-large { font-family: var(--font-geist-mono), monospace; fill: #ffffff; font-size: 24px; font-weight: bold; }
         .status-text { font-family: var(--font-geist-sans), sans-serif; font-size: 14px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; }
-        .bsh-weapon-name { font-family: var(--font-geist-sans), sans-serif; fill: #e0e0e0; font-size: 16px; text-anchor: end; font-weight: 600; letter-spacing: 1px; }
+        .battle-hub-weapon-name { font-family: var(--font-geist-sans), sans-serif; fill: #e0e0e0; font-size: 16px; text-anchor: end; font-weight: 600; letter-spacing: 1px; }
         .weapon-val { font-family: var(--font-geist-mono), monospace; fill: #8ab4f8; font-size: 16px; text-anchor: start; }
         .ring-label { font-family: var(--font-geist-sans), sans-serif; font-size: 14px; letter-spacing: 4px; font-weight: bold; text-anchor: middle; text-transform: uppercase; }
         .box-value { font-family: var(--font-geist-mono), monospace; font-size: 14px; font-weight: bold; }
@@ -331,7 +331,7 @@ export const OrbitalCommandHub: React.FC<OrbitalCommandHubProps> = ({
 
                 return (
                   <g key={w.id} transform={`translate(0, ${30 + idx * 80})`}>
-                    <text x="170" y="8" className="bsh-weapon-name">{w.name.toUpperCase()}</text>
+                    <text x="170" y="8" className="battle-hub-weapon-name">{w.name.toUpperCase()}</text>
                     <g transform="translate(190, 0)">
                       <circle cx="0" cy="0" r="24" fill="#001525" stroke={color} strokeWidth="2" filter="url(#glow-light)" />
                       <polygon points="0,-8 8,4 -8,4" fill={color} />
@@ -401,7 +401,7 @@ export const OrbitalCommandHub: React.FC<OrbitalCommandHubProps> = ({
 
               return (
                 <g key={w.id} transform={`translate(0, ${idx * 80})`}>
-                  <text x="-60" y="8" className="bsh-weapon-name">{w.name.toUpperCase()}</text>
+                  <text x="-60" y="8" className="battle-hub-weapon-name">{w.name.toUpperCase()}</text>
                   <g transform="translate(0, 0)">
                     <circle cx="0" cy="0" r="24" fill="#001525" stroke={color} strokeWidth="2" filter="url(#glow-light)" />
                     <polygon points="0,-8 8,4 -8,4" fill={color} />
