@@ -403,9 +403,8 @@ export class MessageCache extends Cache {
     // Extract build completions from the 🏭 line: format "N name(s)"  (any locale)
     const buildsLine = summaryText.split('\n').find(l => l.includes('🏭'));
     if (buildsLine) {
-      // Find text after the label (after **: or after last colon)
-      const colonIdx = buildsLine.lastIndexOf(':');
-      const buildsText = colonIdx >= 0 ? buildsLine.slice(colonIdx + 1).trim() : '';
+      // Remove everything up to and including the label colon + any trailing markdown bold (**)
+      const buildsText = buildsLine.replace(/^[^:]+:\*{0,2}\s*/, '').trim();
       const buildEntries = buildsText.split(', ');
       for (const entry of buildEntries) {
         const entryMatch = entry.match(/^(\d+) (.+?)\(s\)$/);
