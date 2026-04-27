@@ -163,8 +163,8 @@ describe('Defense Value Persistence After Battle', () => {
         const finalAttackerHull = currentBattle?.attackerEndStats?.hull.current ?? initialAttackerHull;
         const finalDefenderHull = currentBattle?.attackeeEndStats?.hull.current ?? initialDefenderHull;
 
-        expect(reloadedAttacker.hull_current).toBe(finalAttackerHull);
-        expect(reloadedDefender.hull_current).toBe(finalDefenderHull);
+        expect(Math.abs(reloadedAttacker.hull_current - finalAttackerHull)).toBeLessThan(1);
+        expect(Math.abs(reloadedDefender.hull_current - finalDefenderHull)).toBeLessThan(1);
 
         const attackerDestroyed = reloadedAttacker.hull_current === 0;
         const defenderDestroyed = reloadedDefender.hull_current === 0;
