@@ -1,12 +1,8 @@
-import createMiddleware from 'next-intl/middleware';
-import { routing } from './i18n/routing';
+import { NextResponse, type NextRequest } from 'next/server';
 
-export default createMiddleware(routing);
-
-export const config = {
-  // Match all pathnames except for
-  // - API routes
-  // - _next (Next.js internals)
-  // - static files
-  matcher: ['/((?!api|_next|.*\\..*).*)'],
-};
+// Locale resolution is handled in src/i18n/request.ts via the NEXT_LOCALE cookie.
+// Rewriting through next-intl middleware requires locale-segmented routes, which
+// this app does not use and would turn / into a 404.
+export default function middleware(_request: NextRequest) {
+  return NextResponse.next();
+}
