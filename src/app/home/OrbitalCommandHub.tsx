@@ -284,25 +284,26 @@ export const OrbitalCommandHub: React.FC<OrbitalCommandHubProps> = ({
 
   const svgStyle: React.CSSProperties = { width: '100%', height: 'auto', display: 'block' };
 
+  const inBattle = battleStatus?.inBattle ?? false;
+  const pageTitle = inBattle ? t('orbitalTitle') : t('orbitalShipStatusTitle');
+
   // Portrait layout (mobile / vertical screens)
   // Layout top-to-bottom:
-  //   Title → Damage Dealt (full-width, L→R) → Damage Received (full-width, L→R)
-  //   → Defense group (circles+boxes as unit, centered) → Weapon cooldowns
+  //   Title → [battle: Damage bars] → Defense group → [battle: Weapon cooldowns]
   //
   // Defense group visual extents: x in [-258,+470], y in [-270,+100]
   //   Visual width 728px → 36px margins each side in 800-wide viewport
   //   Visual centre-x = +106 from local origin → translate-x = 400 - 106 = 294
-  //   defY=550: shield label at y=280 (just after damage bars), outer ring bottom at y=808,
-  //             SHIELD text at y=830 → weapons panel starts at y=860 (30px clear gap)
   if (isPortrait) {
     const pvW = 800;
-    const weaponsY = 880;
-    const weaponsContentH = activeWeapons.length > 0
-      ? 30 + activeWeapons.length * 80  // header + items
-      : 50;                              // "no weapons" line
-    const pvH = weaponsY + weaponsContentH + 30; // bottom padding
+    const battleHeaderH = inBattle ? 155 : 0; // damage bars height
+    const weaponsContentH = inBattle
+      ? (activeWeapons.length > 0 ? 30 + activeWeapons.length * 80 : 50)
+      : 0;
+    const weaponsY = 880 + (inBattle ? 0 : -155);
+    const pvH = (inBattle ? weaponsY + weaponsContentH + 30 : 720);
     const defX = 294;
-    const defY = 570;
+    const defY = 120 + battleHeaderH + 310; // title area + optional damage bars + ring offset
 
     return (
       <div className="orbital-command-container" style={containerStyle}>
@@ -321,36 +322,41 @@ export const OrbitalCommandHub: React.FC<OrbitalCommandHubProps> = ({
           <rect width={pvW} height={pvH} fill="rgba(2, 5, 15, 0.4)" />
 
           {/* Title */}
-          <text x={pvW / 2} y="52" className="title-main" filter="url(#drop-shadow)">{t('orbitalTitle')}</text>
-          <text x={pvW / 2} y="76" className="subtitle-top" textAnchor="middle">{t('orbitalVersus', { opponent: opponentName })}</text>
-          <text x={pvW / 2} y="98" className="subtitle-top" textAnchor="middle">{t('orbitalOngoing', { duration: battleDurationText })}</text>
+          <text x={pvW / 2} y="52" className="title-main" filter="url(#drop-shadow)">{pageTitle}</text>
+          {inBattle && (
+            <>
+              <text x={pvW / 2} y="76" className="subtitle-top" textAnchor="middle">{t('orbitalVersus', { opponent: opponentName })}</text>
+              <text x={pvW / 2} y="98" className="subtitle-top" textAnchor="middle">{t('orbitalOngoing', { duration: battleDurationText })}</text>
 
-          {/* Damage Dealt — full width, fills left-to-right */}
-          <g transform="translate(30, 120)">
-            <text x="0" y="0" className="subtitle-top" textAnchor="start">{t('orbitalDamageDealt')}</text>
-            <rect x="0" y="14" width="740" height="32" rx="4" fill="url(#bar-bg-grad)" stroke="#00ff87" strokeWidth="1" opacity="0.4" />
-            {damageDealtPct > 0 && (
-              <rect x="0" y="14" width={740 * damageDealtPct} height="32" rx="4" fill="url(#damage-dealt-grad)" filter="url(#glow-light)" />
-            )}
-            <text x="10" y="36" className="value-large" filter="url(#drop-shadow)">{formatLocalizedNumber(damageDealt)}</text>
-          </g>
+              {/* Damage Dealt — full width, fills left-to-right */}
+              <g transform="translate(30, 120)">
+                <text x="0" y="0" className="subtitle-top" textAnchor="start">{t('orbitalDamageDealt')}</text>
+                <rect x="0" y="14" width="740" height="32" rx="4" fill="url(#bar-bg-grad)" stroke="#00ff87" strokeWidth="1" opacity="0.4" />
+                {damageDealtPct > 0 && (
+                  <rect x="0" y="14" width={740 * damageDealtPct} height="32" rx="4" fill="url(#damage-dealt-grad)" filter="url(#glow-light)" />
+                )}
+                <text x="10" y="36" className="value-large" filter="url(#drop-shadow)">{formatLocalizedNumber(damageDealt)}</text>
+              </g>
 
-          {/* Damage Received — full width, fills left-to-right */}
-          <g transform="translate(30, 195)">
-            <text x="0" y="0" className="subtitle-top" textAnchor="start">{t('orbitalDamageReceived')}</text>
-            <rect x="0" y="14" width="740" height="32" rx="4" fill="url(#bar-bg-grad)" stroke="#ff416c" strokeWidth="1" opacity="0.4" />
-            {damageReceivedPct > 0 && (
-              <rect x="0" y="14" width={740 * damageReceivedPct} height="32" rx="4" fill="url(#damage-received-grad)" filter="url(#glow-light)" />
-            )}
-            <text x="10" y="36" className="value-large" filter="url(#drop-shadow)">{formatLocalizedNumber(damageReceived)}</text>
-          </g>
+              {/* Damage Received — full width, fills left-to-right */}
+              <g transform="translate(30, 195)">
+                <text x="0" y="0" className="subtitle-top" textAnchor="start">{t('orbitalDamageReceived')}</text>
+                <rect x="0" y="14" width="740" height="32" rx="4" fill="url(#bar-bg-grad)" stroke="#ff416c" strokeWidth="1" opacity="0.4" />
+                {damageReceivedPct > 0 && (
+                  <rect x="0" y="14" width={740 * damageReceivedPct} height="32" rx="4" fill="url(#damage-received-grad)" filter="url(#glow-light)" />
+                )}
+                <text x="10" y="36" className="value-large" filter="url(#drop-shadow)">{formatLocalizedNumber(damageReceived)}</text>
+              </g>
+            </>
+          )}
 
           {/* Defense group — circles + stats boxes as a single immovable unit */}
           <g id="defense-group" transform={`translate(${defX}, ${defY})`}>
             {renderDefenseGroup()}
           </g>
 
-          {/* Weapon cooldowns — at the bottom */}
+          {/* Weapon cooldowns — at the bottom, battle only */}
+          {inBattle && (
           <g id="weapons-panel" transform={`translate(30, ${weaponsY})`}>
             <text x="0" y="0" className="subtitle-top" textAnchor="start">{t('orbitalWeaponSystems')}</text>
             {activeWeapons.length === 0 ? (
@@ -386,15 +392,21 @@ export const OrbitalCommandHub: React.FC<OrbitalCommandHubProps> = ({
               })
             )}
           </g>
+          )}
         </svg>
       </div>
     );
   }
 
   // Landscape layout (default / desktop)
+  // When in battle: viewBox 1600x850, defense group at y=480, header + weapons panel shown
+  // When not in battle: viewBox 1600x620, defense group centered at y=350, no battle panels
+  const lsViewBox = inBattle ? "0 0 1600 850" : "0 0 1600 620";
+  const lsDefenseY = inBattle ? 480 : 350;
+
   return (
     <div className="orbital-command-container" style={containerStyle}>
-      <svg viewBox="0 0 1600 850" style={svgStyle}>
+      <svg viewBox={lsViewBox} style={svgStyle}>
         {renderDefs()}
         {renderStyles()}
 
@@ -404,31 +416,36 @@ export const OrbitalCommandHub: React.FC<OrbitalCommandHubProps> = ({
 
         {/* --- TOP HEADER --- */}
         <g id="top-header" transform="translate(800, 70)">
-          <text x="0" y="0" className="title-main" filter="url(#drop-shadow)">{t('orbitalTitle')}</text>
-          <text x="0" y="28" className="subtitle-top" textAnchor="middle">{`${t('orbitalVersus', { opponent: opponentName })}  ·  ${t('orbitalOngoing', { duration: battleDurationText })}`}</text>
+          <text x="0" y="0" className="title-main" filter="url(#drop-shadow)">{pageTitle}</text>
+          {inBattle && (
+            <>
+              <text x="0" y="28" className="subtitle-top" textAnchor="middle">{`${t('orbitalVersus', { opponent: opponentName })}  ·  ${t('orbitalOngoing', { duration: battleDurationText })}`}</text>
 
-          {/* Left Top: Damage Dealt */}
-          <g transform="translate(0, 55)">
-            <text x="-50" y="0" className="subtitle-top" textAnchor="end">{t('orbitalDamageDealt')}</text>
-            <path d="M -50 15 L -720 15 L -740 40 L -70 40 Z" fill="url(#bar-bg-grad)" stroke="#00ff87" strokeWidth="1" opacity="0.4" />
-            {damageDealtPct > 0 && (
-              <path d={`M -50 15 L ${-50 - 670 * damageDealtPct} 15 L ${-70 - 670 * damageDealtPct} 40 L -70 40 Z`} fill="url(#damage-dealt-grad)" filter="url(#glow-light)" />
-            )}
-            <text x="-710" y="34" className="value-large" textAnchor="start" filter="url(#drop-shadow)">{formatLocalizedNumber(damageDealt)}</text>
-          </g>
+              {/* Left Top: Damage Dealt */}
+              <g transform="translate(0, 55)">
+                <text x="-50" y="0" className="subtitle-top" textAnchor="end">{t('orbitalDamageDealt')}</text>
+                <path d="M -50 15 L -720 15 L -740 40 L -70 40 Z" fill="url(#bar-bg-grad)" stroke="#00ff87" strokeWidth="1" opacity="0.4" />
+                {damageDealtPct > 0 && (
+                  <path d={`M -50 15 L ${-50 - 670 * damageDealtPct} 15 L ${-70 - 670 * damageDealtPct} 40 L -70 40 Z`} fill="url(#damage-dealt-grad)" filter="url(#glow-light)" />
+                )}
+                <text x="-710" y="34" className="value-large" textAnchor="start" filter="url(#drop-shadow)">{formatLocalizedNumber(damageDealt)}</text>
+              </g>
 
-          {/* Right Top: Damage Received */}
-          <g transform="translate(0, 55)">
-            <text x="50" y="0" className="subtitle-top" textAnchor="start">{t('orbitalDamageReceived')}</text>
-            <path d="M 50 15 L 720 15 L 740 40 L 70 40 Z" fill="url(#bar-bg-grad)" stroke="#ff416c" strokeWidth="1" opacity="0.4" />
-            {damageReceivedPct > 0 && (
-              <path d={`M 50 15 L ${50 + 670 * damageReceivedPct} 15 L ${70 + 670 * damageReceivedPct} 40 L 70 40 Z`} fill="url(#damage-received-grad)" filter="url(#glow-light)" />
-            )}
-            <text x="710" y="34" className="value-large" textAnchor="end" filter="url(#drop-shadow)">{formatLocalizedNumber(damageReceived)}</text>
-          </g>
+              {/* Right Top: Damage Received */}
+              <g transform="translate(0, 55)">
+                <text x="50" y="0" className="subtitle-top" textAnchor="start">{t('orbitalDamageReceived')}</text>
+                <path d="M 50 15 L 720 15 L 740 40 L 70 40 Z" fill="url(#bar-bg-grad)" stroke="#ff416c" strokeWidth="1" opacity="0.4" />
+                {damageReceivedPct > 0 && (
+                  <path d={`M 50 15 L ${50 + 670 * damageReceivedPct} 15 L ${70 + 670 * damageReceivedPct} 40 L 70 40 Z`} fill="url(#damage-received-grad)" filter="url(#glow-light)" />
+                )}
+                <text x="710" y="34" className="value-large" textAnchor="end" filter="url(#drop-shadow)">{formatLocalizedNumber(damageReceived)}</text>
+              </g>
+            </>
+          )}
         </g>
 
-        {/* --- LEFT PANEL: WEAPONS --- */}
+        {/* --- LEFT PANEL: WEAPONS (battle only) --- */}
+        {inBattle && (
         <g id="weapons-panel" transform="translate(180, 250)">
           {activeWeapons.length === 0 ? (
             <text x="50" y="0" className="weapon-val" fill="#a0c0d0">{t('orbitalNoWeapons')}</text>
@@ -463,9 +480,10 @@ export const OrbitalCommandHub: React.FC<OrbitalCommandHubProps> = ({
             })
           )}
         </g>
+        )}
 
         {/* --- DEFENSE GROUP: circles + stats boxes (single immovable unit) --- */}
-        <g id="defense-group" transform="translate(800, 480)">
+        <g id="defense-group" transform={`translate(800, ${lsDefenseY})`}>
           {renderDefenseGroup()}
         </g>
 

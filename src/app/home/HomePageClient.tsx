@@ -192,16 +192,14 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
     <AuthenticatedLayout>
       <div className="home-page">
         <div className="home-container">
-          {/* Orbital Command Mockup */}
-          {battleStatus?.inBattle && (
-            <OrbitalCommandHub
-              defenseValues={displayDefenseValues}
-              battleStatus={battleStatus}
-              techCounts={techCounts}
-              weapons={weapons}
-              shipPictureId={shipPictureId}
-            />
-          )}
+          {/* Ship Status / Battle Hub */}
+          <OrbitalCommandHub
+            defenseValues={displayDefenseValues}
+            battleStatus={battleStatus}
+            techCounts={techCounts}
+            weapons={weapons}
+            shipPictureId={shipPictureId}
+          />
 
           {/* Notifications */}
           <div id="notifications" className="data-table-container">

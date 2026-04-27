@@ -123,6 +123,7 @@
     "noTechData": "No tech data available",
     "errorTechCounts": "Error: {error}",
     "orbitalTitle": "Battle Status Hub",
+    "orbitalShipStatusTitle": "Ship Status",
     "orbitalVersus": "vs. {opponent}",
     "orbitalOngoing": "ongoing: {duration}",
     "orbitalDamageDealt": "Total Damage Dealt",

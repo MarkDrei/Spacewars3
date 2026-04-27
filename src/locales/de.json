@@ -123,6 +123,7 @@
     "noTechData": "Keine Technologiedaten verfügbar",
     "errorTechCounts": "Fehler: {error}",
     "orbitalTitle": "Kampfstatus-Zentrale",
+    "orbitalShipStatusTitle": "Schiffsstatus",
     "orbitalVersus": "gegen {opponent}",
     "orbitalOngoing": "laufend: {duration}",
     "orbitalDamageDealt": "Gesamtschaden verursacht",
