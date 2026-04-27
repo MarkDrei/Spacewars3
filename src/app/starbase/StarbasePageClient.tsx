@@ -15,7 +15,7 @@ interface StarbasePageClientProps {
   auth: ServerAuthState;
 }
 
-const StarbasePageClient: React.FC<StarbasePageClientProps> = (_props) => {
+const StarbasePageClient: React.FC<StarbasePageClientProps> = () => {
   const router = useRouter();
   const t = useTranslations('starbase');
   const locale = useLocale();

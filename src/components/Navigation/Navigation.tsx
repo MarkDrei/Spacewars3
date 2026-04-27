@@ -6,7 +6,6 @@ import { usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useAuth } from '@/lib/client/hooks/useAuth';
 import NavigationIcon from './NavigationIcon';
-import LocaleSwitcher from './LocaleSwitcher';
 import './Navigation.css';
 
 interface NavigationProps {
@@ -120,7 +119,6 @@ const Navigation: React.FC<NavigationProps> = ({ onLogout }) => {
           >
             {t('logout')}
           </button>
-          <LocaleSwitcher />
         </div>
 
         {/* Mobile Navigation - Bottom Bar */}
@@ -134,7 +132,6 @@ const Navigation: React.FC<NavigationProps> = ({ onLogout }) => {
           {hasAdminAccess && (
             <NavigationIcon route="/admin" label={t('admin')} isActive={isActive('/admin')} />
           )}
-          <LocaleSwitcher />
         </div>
 
         {/* Mobile Shortcut Bar - Only on Home, Factory, and Research Pages */}

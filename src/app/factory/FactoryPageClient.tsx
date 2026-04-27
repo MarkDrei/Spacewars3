@@ -11,6 +11,14 @@ import {
   factoryService, 
   getTechCount
 } from '@/lib/client/services/factoryService';
+import {
+  formatIronCost,
+  localizeFactoryDefense,
+  localizeFactoryItemType,
+  localizeFactoryStrength,
+  localizeFactorySubtype,
+  localizeFactoryWeapon,
+} from '@/lib/client/i18n/catalogTranslations';
 import { ServerAuthState } from '@/lib/server/serverSession';
 import './FactoryPage.css';
 
@@ -150,6 +158,9 @@ const FactoryPageClient: React.FC<FactoryPageClientProps> = ({ auth }) => {
     );
   }
 
+  const getLocalizedWeapon = (key: string) => localizeFactoryWeapon(key, weapons[key], locale);
+  const getLocalizedDefense = (key: string) => localizeFactoryDefense(key, defenses[key], locale);
+
   const renderBuildControls = (key: string, itemType: 'weapon' | 'defense', baseCost: number) => {
     const count = getBuildCount(key);
     // Only check affordability for one item: iron is charged per build start, not per queued item.
@@ -240,11 +251,15 @@ const FactoryPageClient: React.FC<FactoryPageClientProps> = ({ auth }) => {
                       <tr key={`${item.itemKey}-${index}`} className="data-row">
                         <td className="data-cell">
                           <span className="stat-value">
-                            {item.itemType === 'weapon' ? weapons[item.itemKey]?.name : defenses[item.itemKey]?.name || item.itemKey}
+                            {item.itemType === 'weapon'
+                              ? weapons[item.itemKey]?.name ?? item.itemKey
+                              : defenses[item.itemKey]
+                                ? getLocalizedDefense(item.itemKey).name
+                                : item.itemKey}
                           </span>
                         </td>
                         <td className="data-cell">
-                          {item.itemType}
+                          {localizeFactoryItemType(item.itemType, locale)}
                         </td>
                         <td className="data-cell">
                           <span className="research-countdown">
@@ -288,10 +303,13 @@ const FactoryPageClient: React.FC<FactoryPageClientProps> = ({ auth }) => {
                   </tr>
                 </thead>
                 <tbody>
-                  {Object.entries(defenses).map(([key, defense]) => (
+                  {Object.entries(defenses).map(([key, defense]) => {
+                    const localizedDefense = getLocalizedDefense(key);
+
+                    return (
                     <tr key={key} className="data-row">
                       <td className="data-cell">
-                        <span className="stat-value">{defense.name}</span>
+                        <span className="stat-value">{localizedDefense.name}</span>
                       </td>
                       <td className="data-cell">
                         <span className="stat-value">
@@ -300,36 +318,39 @@ const FactoryPageClient: React.FC<FactoryPageClientProps> = ({ auth }) => {
                       </td>
                       <td className="data-cell">
                         <span className={factoryService.canAfford(defense.baseCost, ironAmount) ? 'cost-affordable' : 'cost-expensive'}>
-                          {defense.baseCost.toLocaleString(locale)} Iron
+                          {formatIronCost(defense.baseCost, locale)}
                         </span>
                       </td>
                       <td className="data-cell">
                         {factoryService.formatDuration(defense.buildDurationMinutes)}
                       </td>
                       <td className="data-cell description-cell">
-                        {defense.description}
+                        {localizedDefense.description}
                       </td>
                       <td className="data-cell action-cell">
                         {renderBuildControls(key, 'defense', defense.baseCost)}
                       </td>
                     </tr>
-                  ))}
+                  );})}
                 </tbody>
               </table>
             </div>
           ) : (
             <div className="item-cards-grid">
-              {Object.entries(defenses).map(([key, defense]) => (
+              {Object.entries(defenses).map(([key, defense]) => {
+                const localizedDefense = getLocalizedDefense(key);
+
+                return (
                 <div key={key} className="item-card">                <div className="weapon-image-container">
                   <Image 
                     src={`/assets/images/factory/${getTechImageName(key)}.png`} 
-                    alt={`${defense.name} icon`} 
+                    alt={`${localizedDefense.name} icon`} 
                     width={288}
                     height={288}
                     className="weapon-image" 
                   />
                 </div>                  <div className="card-header">
-                    <div className="card-title">{defense.name}</div>
+                    <div className="card-title">{localizedDefense.name}</div>
                   </div>
                   <div className="card-details">
                     <div className="card-detail">
@@ -341,7 +362,7 @@ const FactoryPageClient: React.FC<FactoryPageClientProps> = ({ auth }) => {
                     <div className="card-detail">
                       <div className="card-detail-label">{t('colCost')}</div>
                       <div className={`card-detail-value ${factoryService.canAfford(defense.baseCost, ironAmount) ? 'cost-affordable' : 'cost-expensive'}`}>
-                        {defense.baseCost.toLocaleString(locale)} Iron
+                        {formatIronCost(defense.baseCost, locale)}
                       </div>
                     </div>
                     <div className="card-detail">
@@ -352,13 +373,13 @@ const FactoryPageClient: React.FC<FactoryPageClientProps> = ({ auth }) => {
                     </div>
                   </div>
                   <div className="card-description">
-                    {defense.description}
+                    {localizedDefense.description}
                   </div>
                   <div className="card-actions">
                     {renderBuildControls(key, 'defense', defense.baseCost)}
                   </div>
                 </div>
-              ))}
+              );})}
             </div>
           )}
 
@@ -382,14 +403,17 @@ const FactoryPageClient: React.FC<FactoryPageClientProps> = ({ auth }) => {
                   </tr>
                 </thead>
                 <tbody>
-                  {Object.entries(weapons).filter(([, weapon]) => weapon.subtype === 'Projectile').map(([key, weapon]) => (
+                  {Object.entries(weapons).filter(([, weapon]) => weapon.subtype === 'Projectile').map(([key, weapon]) => {
+                    const localizedWeapon = getLocalizedWeapon(key);
+
+                    return (
                     <tr key={key} className="data-row">
                       <td className="data-cell">
-                        <span className="stat-value">{weapon.name}</span>
+                        <span className="stat-value">{localizedWeapon.name}</span>
                       </td>
                       <td className="data-cell">
                         <span className={`stat-value ${factoryService.getStrengthClass(weapon.strength)}`}>
-                          {weapon.strength}
+                          {localizeFactoryStrength(weapon.strength, locale)}
                         </span>
                       </td>
                       <td className="data-cell">
@@ -408,50 +432,53 @@ const FactoryPageClient: React.FC<FactoryPageClientProps> = ({ auth }) => {
                       </td>
                       <td className="data-cell">
                         <span className={factoryService.canAfford(weapon.baseCost, ironAmount) ? 'cost-affordable' : 'cost-expensive'}>
-                          {weapon.baseCost.toLocaleString(locale)} Iron
+                          {formatIronCost(weapon.baseCost, locale)}
                         </span>
                       </td>
                       <td className="data-cell">
                         {factoryService.formatDuration(weapon.buildDurationMinutes)}
                       </td>
                       <td className="data-cell description-cell">
-                        {weapon.advantage}
+                        {localizedWeapon.advantage}
                         {weapon.disadvantage && (
-                          <><br /><em>{t('weaknessLabel', { weakness: weapon.disadvantage })}</em></>
+                          <><br /><em>{t('weaknessLabel', { weakness: localizedWeapon.disadvantage })}</em></>
                         )}
                       </td>
                       <td className="data-cell action-cell">
                         {renderBuildControls(key, 'weapon', weapon.baseCost)}
                       </td>
                     </tr>
-                  ))}
+                  );})}
                 </tbody>
               </table>
             </div>
           ) : (
             <div className="item-cards-grid">
-              {Object.entries(weapons).filter(([, weapon]) => weapon.subtype === 'Projectile').map(([key, weapon]) => (
+              {Object.entries(weapons).filter(([, weapon]) => weapon.subtype === 'Projectile').map(([key, weapon]) => {
+                const localizedWeapon = getLocalizedWeapon(key);
+
+                return (
                 <div key={key} className="item-card">
                   <div className="weapon-image-container">
                     <Image 
                       src={`/assets/images/factory/${getTechImageName(key)}.png`} 
-                      alt={`${weapon.name} icon`} 
+                      alt={`${localizedWeapon.name} icon`} 
                       width={288}
                       height={288}
                       className="weapon-image" 
                     />
                   </div>
                   <div className="card-header">
-                    <div className="card-title">{weapon.name}</div>
+                    <div className="card-title">{localizedWeapon.name}</div>
                     <div className={`card-type subtype-badge ${factoryService.getSubtypeClass(weapon.subtype)}`}>
-                      {weapon.subtype}
+                      {localizeFactorySubtype(weapon.subtype, locale)}
                     </div>
                   </div>
                   <div className="card-details">
                     <div className="card-detail">
                       <div className="card-detail-label">{t('colStrength')}</div>
                       <div className={`card-detail-value stat-value ${factoryService.getStrengthClass(weapon.strength)}`}>
-                        {weapon.strength}
+                        {localizeFactoryStrength(weapon.strength, locale)}
                       </div>
                     </div>
                     <div className="card-detail">
@@ -477,7 +504,7 @@ const FactoryPageClient: React.FC<FactoryPageClientProps> = ({ auth }) => {
                     <div className="card-detail">
                       <div className="card-detail-label">{t('colCost')}</div>
                       <div className={`card-detail-value ${factoryService.canAfford(weapon.baseCost, ironAmount) ? 'cost-affordable' : 'cost-expensive'}`}>
-                        {weapon.baseCost.toLocaleString(locale)} Iron
+                        {formatIronCost(weapon.baseCost, locale)}
                       </div>
                     </div>
                     <div className="card-detail">
@@ -488,16 +515,16 @@ const FactoryPageClient: React.FC<FactoryPageClientProps> = ({ auth }) => {
                     </div>
                   </div>
                   <div className="card-description">
-                    {weapon.advantage}
+                    {localizedWeapon.advantage}
                     {weapon.disadvantage && (
-                      <><br /><em>{t('weaknessLabel', { weakness: weapon.disadvantage })}</em></>
+                      <><br /><em>{t('weaknessLabel', { weakness: localizedWeapon.disadvantage })}</em></>
                     )}
                   </div>
                   <div className="card-actions">
                     {renderBuildControls(key, 'weapon', weapon.baseCost)}
                   </div>
                 </div>
-              ))}
+              );})}
             </div>
           )}
 
@@ -520,14 +547,17 @@ const FactoryPageClient: React.FC<FactoryPageClientProps> = ({ auth }) => {
                   </tr>
                 </thead>
                 <tbody>
-                  {Object.entries(weapons).filter(([, weapon]) => weapon.subtype === 'Energy').map(([key, weapon]) => (
+                  {Object.entries(weapons).filter(([, weapon]) => weapon.subtype === 'Energy').map(([key, weapon]) => {
+                    const localizedWeapon = getLocalizedWeapon(key);
+
+                    return (
                     <tr key={key} className="data-row">
                       <td className="data-cell">
-                        <span className="stat-value">{weapon.name}</span>
+                        <span className="stat-value">{localizedWeapon.name}</span>
                       </td>
                       <td className="data-cell">
                         <span className={`stat-value ${factoryService.getStrengthClass(weapon.strength)}`}>
-                          {weapon.strength}
+                          {localizeFactoryStrength(weapon.strength, locale)}
                         </span>
                       </td>
                       <td className="data-cell">
@@ -546,50 +576,53 @@ const FactoryPageClient: React.FC<FactoryPageClientProps> = ({ auth }) => {
                       </td>
                       <td className="data-cell">
                         <span className={factoryService.canAfford(weapon.baseCost, ironAmount) ? 'cost-affordable' : 'cost-expensive'}>
-                          {weapon.baseCost.toLocaleString(locale)} Iron
+                          {formatIronCost(weapon.baseCost, locale)}
                         </span>
                       </td>
                       <td className="data-cell">
                         {factoryService.formatDuration(weapon.buildDurationMinutes)}
                       </td>
                       <td className="data-cell description-cell">
-                        {weapon.advantage}
+                        {localizedWeapon.advantage}
                         {weapon.disadvantage && (
-                          <><br /><em>{t('weaknessLabel', { weakness: weapon.disadvantage })}</em></>
+                          <><br /><em>{t('weaknessLabel', { weakness: localizedWeapon.disadvantage })}</em></>
                         )}
                       </td>
                       <td className="data-cell action-cell">
                         {renderBuildControls(key, 'weapon', weapon.baseCost)}
                       </td>
                     </tr>
-                  ))}
+                  );})}
                 </tbody>
               </table>
             </div>
           ) : (
             <div className="item-cards-grid">
-              {Object.entries(weapons).filter(([, weapon]) => weapon.subtype === 'Energy').map(([key, weapon]) => (
+              {Object.entries(weapons).filter(([, weapon]) => weapon.subtype === 'Energy').map(([key, weapon]) => {
+                const localizedWeapon = getLocalizedWeapon(key);
+
+                return (
                 <div key={key} className="item-card">
                   <div className="weapon-image-container">
                     <Image 
                       src={`/assets/images/factory/${getTechImageName(key)}.png`} 
-                      alt={`${weapon.name} icon`} 
+                      alt={`${localizedWeapon.name} icon`} 
                       width={288}
                       height={288}
                       className="weapon-image" 
                     />
                   </div>
                   <div className="card-header">
-                    <div className="card-title">{weapon.name}</div>
+                    <div className="card-title">{localizedWeapon.name}</div>
                     <div className={`card-type subtype-badge ${factoryService.getSubtypeClass(weapon.subtype)}`}>
-                      {weapon.subtype}
+                      {localizeFactorySubtype(weapon.subtype, locale)}
                     </div>
                   </div>
                   <div className="card-details">
                     <div className="card-detail">
                       <div className="card-detail-label">{t('colStrength')}</div>
                       <div className={`card-detail-value stat-value ${factoryService.getStrengthClass(weapon.strength)}`}>
-                        {weapon.strength}
+                        {localizeFactoryStrength(weapon.strength, locale)}
                       </div>
                     </div>
                     <div className="card-detail">
@@ -615,7 +648,7 @@ const FactoryPageClient: React.FC<FactoryPageClientProps> = ({ auth }) => {
                     <div className="card-detail">
                       <div className="card-detail-label">{t('colCost')}</div>
                       <div className={`card-detail-value ${factoryService.canAfford(weapon.baseCost, ironAmount) ? 'cost-affordable' : 'cost-expensive'}`}>
-                        {weapon.baseCost.toLocaleString(locale)} Iron
+                        {formatIronCost(weapon.baseCost, locale)}
                       </div>
                     </div>
                     <div className="card-detail">
@@ -626,16 +659,16 @@ const FactoryPageClient: React.FC<FactoryPageClientProps> = ({ auth }) => {
                     </div>
                   </div>
                   <div className="card-description">
-                    {weapon.advantage}
+                    {localizedWeapon.advantage}
                     {weapon.disadvantage && (
-                      <><br /><em>{t('weaknessLabel', { weakness: weapon.disadvantage })}</em></>
+                      <><br /><em>{t('weaknessLabel', { weakness: localizedWeapon.disadvantage })}</em></>
                     )}
                   </div>
                   <div className="card-actions">
                     {renderBuildControls(key, 'weapon', weapon.baseCost)}
                   </div>
                 </div>
-              ))}
+              );})}
             </div>
           )}
         </div>

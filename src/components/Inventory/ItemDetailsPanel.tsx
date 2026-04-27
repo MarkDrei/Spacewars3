@@ -3,7 +3,7 @@
 import React from 'react';
 import { useTranslations } from 'next-intl';
 import Image from 'next/image';
-import { InventoryItemData, CommanderData, SlotCoordinate, COMMANDER_STAT_LABELS } from '@/shared/inventoryShared';
+import { InventoryItemData, CommanderData, SlotCoordinate } from '@/shared/inventoryShared';
 
 interface ItemDetailsPanelProps {
   item: InventoryItemData;

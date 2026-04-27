@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
-import { BridgeGrid, InventoryItemData, SlotCoordinate, BRIDGE_COLS, getBridgeRows, CommanderStatKey, COMMANDER_STAT_LABELS, SortStatKey, SortDirection, sortGrid, findItemSlot } from '@/shared/inventoryShared';
+import { BridgeGrid, InventoryItemData, SlotCoordinate, BRIDGE_COLS, getBridgeRows, CommanderStatKey, SortStatKey, SortDirection, sortGrid, findItemSlot } from '@/shared/inventoryShared';
 import InventoryGridComponent, { ExternalDropSource } from './InventoryGrid';
 import ItemDetailsPanel from './ItemDetailsPanel';
 import SortControls from './SortControls';

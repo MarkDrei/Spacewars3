@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import AuthenticatedLayout from '@/components/Layout/AuthenticatedLayout';
 import { researchService, TechTree, ResearchDef, ResearchType } from '@/lib/client/services/researchService';
 import { userStatsService } from '@/lib/client/services/userStatsService';
@@ -13,6 +13,11 @@ import { AllResearches, getResearchUpgradeCost, getResearchEffect } from '@/lib/
 import { formatNumber } from '@/shared/numberFormat';
 import './ResearchPage.css';
 import ResearchCardOverlay from '@/components/Research/ResearchCardOverlay';
+import {
+  formatIronCost,
+  localizeResearchCategory,
+  localizeResearchDefinition,
+} from '@/lib/client/i18n/catalogTranslations';
 
 const researchTypeToKey: Record<ResearchType, keyof TechTree> = {
   IronHarvesting: 'ironHarvesting',
@@ -59,13 +64,13 @@ interface ResearchNode {
 }
 
 interface ResearchCategory {
-  name: string;
+  id: string;
   nodes: ResearchNode[];
 }
 
 const researchHierarchy: ResearchCategory[] = [
   {
-    name: 'Projectile Weapons',
+    id: 'projectile-weapons',
     nodes: [
       {
         type: 'projectileDamage' as ResearchType,
@@ -78,7 +83,7 @@ const researchHierarchy: ResearchCategory[] = [
     ]
   },
   {
-    name: 'Energy Weapons',
+    id: 'energy-weapons',
     nodes: [
       {
         type: 'energyDamage' as ResearchType,
@@ -91,7 +96,7 @@ const researchHierarchy: ResearchCategory[] = [
     ]
   },
   {
-    name: 'Defense',
+    id: 'defense',
     nodes: [
       {
         type: 'hullStrength' as ResearchType,
@@ -109,7 +114,7 @@ const researchHierarchy: ResearchCategory[] = [
     ]
   },
   {
-    name: 'Ship',
+    id: 'ship',
     nodes: [
       {
         type: 'shipSpeed' as ResearchType,
@@ -136,7 +141,7 @@ const researchHierarchy: ResearchCategory[] = [
     ]
   },
   {
-    name: 'Spies',
+    id: 'spies',
     nodes: [
       {
         type: 'spyChance' as ResearchType,
@@ -158,6 +163,7 @@ interface ResearchPageClientProps {
 // Tooltip component for showing next 20 levels
 const CostTooltip: React.FC<{ research: ResearchDef; currentLevel: number }> = ({ research, currentLevel }) => {
   const t = useTranslations('research');
+  const locale = useLocale();
   const [show, setShow] = useState(false);
   const [position, setPosition] = useState<'top' | 'bottom'>('top');
   const tooltipRef = useRef<HTMLDivElement>(null);
@@ -167,6 +173,7 @@ const CostTooltip: React.FC<{ research: ResearchDef; currentLevel: number }> = (
   // Calculate next 20 levels
   const futureData = [];
   const researchDef = AllResearches[research.type as keyof typeof AllResearches];
+  const localizedResearch = localizeResearchDefinition(research, locale);
   
   for (let i = 1; i <= 20; i++) {
     const level = currentLevel + i;
@@ -244,8 +251,8 @@ const CostTooltip: React.FC<{ research: ResearchDef; currentLevel: number }> = (
               {futureData.map(({ level, cost, effect }) => (
                 <tr key={level}>
                   <td>{level}</td>
-                  <td>{formatNumber(cost)}</td>
-                  <td>{formatNumber(effect)} {research.unit}</td>
+                  <td>{formatNumber(cost, locale)}</td>
+                  <td>{formatNumber(effect, locale)} {localizedResearch.unit}</td>
                 </tr>
               ))}
             </tbody>
@@ -258,6 +265,7 @@ const CostTooltip: React.FC<{ research: ResearchDef; currentLevel: number }> = (
 
 const ResearchPageClient: React.FC<ResearchPageClientProps> = () => {
   const t = useTranslations('research');
+  const locale = useLocale();
   const [techTree, setTechTree] = useState<TechTree | null>(null);
   const [researches, setResearches] = useState<Record<ResearchType, ResearchDef> | null>(null);
   const [currentIron, setCurrentIron] = useState<number>(0);
@@ -360,7 +368,7 @@ const ResearchPageClient: React.FC<ResearchPageClientProps> = () => {
 
     const research = researches[type];
     if (!researchService.canAffordResearch(research, currentIron)) {
-      setError('Insufficient iron for this research');
+      setError(locale.startsWith('de') ? 'Nicht genug Eisen fuer diese Forschung' : 'Insufficient iron for this research');
       return;
     }
 
@@ -382,7 +390,7 @@ const ResearchPageClient: React.FC<ResearchPageClientProps> = () => {
       globalEvents.emit(EVENTS.RESEARCH_TRIGGERED);
 
     } catch (err) {
-      setError('Failed to trigger research');
+      setError(locale.startsWith('de') ? 'Forschung konnte nicht gestartet werden' : 'Failed to trigger research');
       console.error('Error triggering research:', err);
     } finally {
       setIsTriggering(false);
@@ -480,6 +488,7 @@ const ResearchPageClient: React.FC<ResearchPageClientProps> = () => {
   const renderResearchRow = (researchType: ResearchType, indent: number = 0) => {
     const research = researches[researchType];
     if (!research) return null;
+    const localizedResearch = localizeResearchDefinition(research, locale);
 
     const key = researchTypeToKey[research.type];
     const levelValue = techTree[key];
@@ -494,22 +503,22 @@ const ResearchPageClient: React.FC<ResearchPageClientProps> = () => {
         className={`data-row ${isActive ? 'active' : ''} ${isAnyResearchActive && !isActive ? 'disabled' : ''} indent-${indent}`}
       >
         <td className="data-cell">
-          <span style={{ marginLeft: `${indent * 20}px` }}>{research.name}</span>
+          <span style={{ marginLeft: `${indent * 20}px` }}>{localizedResearch.name}</span>
         </td>
         <td className="data-cell">
           {level}
         </td>
         <td className="data-cell">
-          {researchService.formatEffect(research.currentEffect, research.unit)}
+          {researchService.formatEffect(research.currentEffect, localizedResearch.unit, locale)}
         </td>
         <td className="data-cell">
-          {researchService.formatEffect(research.nextEffect, research.unit)}
+          {researchService.formatEffect(research.nextEffect, localizedResearch.unit, locale)}
         </td>
         <td className="data-cell">
           {researchService.formatDuration(research.nextUpgradeDuration)}
         </td>
         <td className="data-cell description-cell">
-          {research.description}
+          {localizedResearch.description}
         </td>
         <td className="data-cell action-cell">
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -520,7 +529,7 @@ const ResearchPageClient: React.FC<ResearchPageClientProps> = () => {
             ) : isAnyResearchActive ? (
               <>
                 <span className="cost-disabled">
-                  {formatNumber(research.nextUpgradeCost)}
+                  {formatNumber(research.nextUpgradeCost, locale)}
                 </span>
                 <CostTooltip research={research} currentLevel={level} />
               </>
@@ -538,7 +547,7 @@ const ResearchPageClient: React.FC<ResearchPageClientProps> = () => {
             ) : (
               <>
                 <span className="cost-insufficient">
-                  {formatNumber(research.nextUpgradeCost)}
+                  {formatNumber(research.nextUpgradeCost, locale)}
                 </span>
                 <CostTooltip research={research} currentLevel={level} />
               </>
@@ -597,8 +606,8 @@ const ResearchPageClient: React.FC<ResearchPageClientProps> = () => {
           {viewMode === 'table' ? (
             <div className="data-table-container">
               {researchHierarchy.map(category => (
-                <div key={category.name} className="research-category">
-                  <h2 id={category.name.toLowerCase().replace(' ', '-')} className="category-heading">{category.name}</h2>
+                <div key={category.id} className="research-category">
+                  <h2 id={category.id} className="category-heading">{localizeResearchCategory(category.id, locale)}</h2>
                   <table className="data-table">
                     <thead>
                       <tr>
@@ -621,12 +630,13 @@ const ResearchPageClient: React.FC<ResearchPageClientProps> = () => {
           ) : (
             <div>
               {researchHierarchy.map(category => (
-                <div key={category.name} className="research-category">
-                  <h2 id={category.name.toLowerCase().replace(' ', '-')} className="category-heading">{category.name}</h2>
+                <div key={category.id} className="research-category">
+                  <h2 id={category.id} className="category-heading">{localizeResearchCategory(category.id, locale)}</h2>
                   <div className="item-cards-grid">
                     {category.nodes.flatMap(node => getAllResearchTypes(node)).map(type => {
                       const research = researches[type];
                       if (!research) return null;
+                      const localizedResearch = localizeResearchDefinition(research, locale);
                       
                       const key = researchTypeToKey[type];
                       const levelValue = techTree[key];
@@ -639,7 +649,7 @@ const ResearchPageClient: React.FC<ResearchPageClientProps> = () => {
                           <div className="research-image-container">
                             <Image 
                               src={`/assets/images/research/${getResearchImageName(type)}.png`} 
-                              alt={`${research.name} icon`} 
+                              alt={`${localizedResearch.name} icon`} 
                               width={288}
                               height={288}
                               className="research-image" 
@@ -655,7 +665,7 @@ const ResearchPageClient: React.FC<ResearchPageClientProps> = () => {
                             })()}
                           </div>
                           <div className="card-header">
-                            <div className="card-title">{research.name}</div>
+                            <div className="card-title">{localizedResearch.name}</div>
                           </div>
                           <div className="card-details">
                             <div className="card-detail">
@@ -665,13 +675,13 @@ const ResearchPageClient: React.FC<ResearchPageClientProps> = () => {
                             <div className="card-detail">
                               <div className="card-detail-label">{t('cardLabelCurrentEffect')}</div>
                               <div className="card-detail-value">
-                                {researchService.formatEffect(research.currentEffect, research.unit)}
+                                {researchService.formatEffect(research.currentEffect, localizedResearch.unit, locale)}
                               </div>
                             </div>
                             <div className="card-detail">
                               <div className="card-detail-label">{t('cardLabelNextEffect')}</div>
                               <div className="card-detail-value">
-                                {researchService.formatEffect(research.nextEffect, research.unit)}
+                                {researchService.formatEffect(research.nextEffect, localizedResearch.unit, locale)}
                               </div>
                             </div>
                             <div className="card-detail">
@@ -683,12 +693,12 @@ const ResearchPageClient: React.FC<ResearchPageClientProps> = () => {
                             <div className="card-detail">
                               <div className="card-detail-label">{t('cardLabelCost')}</div>
                               <div className={`card-detail-value ${researchService.canAffordResearch(research, currentIron) ? 'cost-affordable' : 'cost-expensive'}`}>
-                                {formatNumber(research.nextUpgradeCost)} Iron
+                                {formatIronCost(research.nextUpgradeCost, locale)}
                               </div>
                             </div>
                           </div>
                           <div className="card-description">
-                            {research.description}
+                            {localizedResearch.description}
                           </div>
                           <div className="card-actions">
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -731,7 +741,9 @@ const ResearchPageClient: React.FC<ResearchPageClientProps> = () => {
           <div className="research-progress-content">
             <span className="research-progress-label">{t('inProgressLabel')}</span>
             <span className="research-progress-name">
-              {researches[techTree.activeResearch.type]?.name ?? techTree.activeResearch.type}
+              {researches[techTree.activeResearch.type]
+                ? localizeResearchDefinition(researches[techTree.activeResearch.type], locale).name
+                : techTree.activeResearch.type}
             </span>
             <span className="research-progress-separator">|</span>
             <span className="research-progress-timer">

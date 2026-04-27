@@ -186,6 +186,7 @@
   },
   "profile": {
     "pageHeading": "Player Profile",
+    "languageLabel": "Language",
     "changePasswordButton": "Change Password",
     "logoutButton": "Logout",
     "loggingOutButton": "Logging out...",

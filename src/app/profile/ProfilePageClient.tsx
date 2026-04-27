@@ -10,6 +10,7 @@ import { userStatsService, UserStatsResponse } from '@/lib/client/services/userS
 import './ProfilePage.css';
 import StatisticsPanel from '@/components/Statistics/StatisticsPanel';
 import Leaderboard from '@/components/Statistics/Leaderboard';
+import LocaleSwitcher from '@/components/Navigation/LocaleSwitcher';
 
 interface ProfilePageClientProps {
   auth: ServerAuthState;
@@ -165,6 +166,10 @@ const ProfilePageClient: React.FC<ProfilePageClientProps> = ({ auth }) => {
           <div className="profile-top-bar">
             <h1 className="page-heading">{t('pageHeading')}</h1>
             <div className="profile-top-bar-actions">
+              <div className="profile-language-control">
+                <span className="profile-language-label">{t('languageLabel')}</span>
+                <LocaleSwitcher />
+              </div>
               <button
                 className="btn-secondary"
                 onClick={openChangePasswordDialog}

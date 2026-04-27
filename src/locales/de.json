@@ -147,7 +147,9 @@
     "triggeringButton": "Wird gestartet...",
     "researchButton": "Forschen",
     "overlayInProgress": "✅ In Bearbeitung",
-    "overlayOtherInProgress": "Andere Forschung in Bearbeitung"
+    "overlayOtherInProgress": "Andere Forschung in Bearbeitung",
+    "viewCards": "Karten",
+    "viewTable": "Tabelle"
   },
   "factory": {
     "pageHeading": "Fabrik",
@@ -178,10 +180,13 @@
     "buildingButton": "Wird gebaut...",
     "completeBuildCheat": "⚡ Ersten Bau abschließen (Cheat)",
     "completingButton": "Wird abgeschlossen...",
-    "weaknessLabel": "Schwäche: {weakness}"
+    "weaknessLabel": "Schwäche: {weakness}",
+    "viewCards": "Karten",
+    "viewTable": "Tabelle"
   },
   "profile": {
     "pageHeading": "Spielerprofil",
+    "languageLabel": "Sprache",
     "changePasswordButton": "Passwort ändern",
     "logoutButton": "Abmelden",
     "loggingOutButton": "Abmelden...",
