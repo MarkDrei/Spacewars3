@@ -3,6 +3,7 @@
 - This project is a 2D space exploration game built with Next.js 15, TypeScript, and React.
 - The game uses HTML5 Canvas for rendering within a React application.
 - The project follows Next.js App Router architecture with clear separation between client, server, and shared code.
+- The application supports multilingual UI and locale-aware server text in English and German via `next-intl`.
 - All new code should be written in TypeScript with proper type definitions.
 - The project is a Next.js fullstack application with integrated API routes.
 
@@ -12,6 +13,7 @@
 - Do not take shortcuts when implementing features; follow best practices. If the task is too complex, break it down into smaller steps and explain your approach, document the needed and completed steps in a TODO file.
 - If you encounter any technical debt, add this to [doc/TechnicalDebt.md](../doc/TechnicalDebt.md) with details.
 - Do not keep old code or files that are no longer needed; clean up the project as you go.
+- When adding or changing user-facing text, update both `src/locales/en.json` and `src/locales/de.json`, keep translation keys aligned, and preserve the existing locale flow (`NEXT_LOCALE` cookie plus persisted `preferred_locale` for authenticated users).
 - Add tests for all new business logic, run linting and compile.
 
 ## Module System
@@ -35,6 +37,7 @@
   - `src/components/Navigation/`: Navigation component with responsive design
   - `src/components/StatusHeader/`: Iron amount and status display
   - `src/components/Layout/`: Layout components for authenticated pages
+- `src/i18n/`: `next-intl` request and routing configuration
 - `src/lib/`: Core application logic
   - `src/lib/client/`: Client-side code (hooks, services, game engine)
     - `src/lib/client/hooks/`: React hooks for authentication, data fetching, defense values
@@ -51,6 +54,7 @@
     - `src/lib/server/techtree.ts`: Research system logic
     - `src/lib/server/TechFactory.ts`: Tech/defense calculations and specifications
 - `src/shared/`: Shared types and utilities used by both client and server (defenseValues, etc.)
+- `src/locales/`: Translation catalogs for supported locales (`en`, `de`)
 - `src/__tests__/`: Test files for all components and logic
 
 ## Development Guidelines

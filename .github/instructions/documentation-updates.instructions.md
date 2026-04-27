@@ -34,6 +34,13 @@ This instruction defines the separation of concerns, verification standards, and
 - **Unverified future plans** (only documented requirements that are **implemented and realized**)
 - **Personal opinions or aspirational statements** (use neutral, PRD tone)
 
+## Internationalization Documentation Rules
+
+- **Functional requirements:** Document player-visible language switching, translated UI availability, and locale-specific notifications in `doc/functional-requirements.md`.
+- **Architecture:** Document `next-intl` wiring, locale resolution, cookie/database persistence, and locale catalog structure in `doc/architecture/arc42-architecture.md`.
+- **Proof sources:** Verify multilingual behavior in `src/i18n/routing.ts`, `src/i18n/request.ts`, `src/app/api/set-locale/route.ts`, `src/lib/server/i18n/serverTranslations.ts`, and `src/locales/*.json` before documenting it.
+- **Change discipline:** When documentation mentions newly added UI text or notifications, ensure the English and German catalogs stay aligned with implementation.
+
 ## Verification Standards
 
 ### Before Adding a Requirement
