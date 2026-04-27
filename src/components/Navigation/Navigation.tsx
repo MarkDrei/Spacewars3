@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { useAuth } from '@/lib/client/hooks/useAuth';
 import NavigationIcon from './NavigationIcon';
 import './Navigation.css';
@@ -15,6 +16,7 @@ const Navigation: React.FC<NavigationProps> = ({ onLogout }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const pathname = usePathname();
   const { username } = useAuth();
+  const t = useTranslations('nav');
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
@@ -62,42 +64,42 @@ const Navigation: React.FC<NavigationProps> = ({ onLogout }) => {
             className={`navbar-item ${isActive('/home') ? 'active' : ''}`}
             onClick={closeMenu}
           >
-            Home
+            {t('home')}
           </Link>
           <Link 
             href="/game" 
             className={`navbar-item ${isActive('/game') ? 'active' : ''}`}
             onClick={closeMenu}
           >
-            Game
+            {t('game')}
           </Link>
           <Link 
             href="/factory" 
             className={`navbar-item ${isActive('/factory') ? 'active' : ''}`}
             onClick={closeMenu}
           >
-            Factory
+            {t('factory')}
           </Link>
           <Link 
             href="/research" 
             className={`navbar-item ${isActive('/research') ? 'active' : ''}`}
             onClick={closeMenu}
           >
-            Research
+            {t('research')}
           </Link>
           <Link 
             href="/ship" 
             className={`navbar-item ${isActive('/ship') ? 'active' : ''}`}
             onClick={closeMenu}
           >
-            Ship
+            {t('ship')}
           </Link>
           <Link 
             href="/profile" 
             className={`navbar-item ${isActive('/profile') ? 'active' : ''}`}
             onClick={closeMenu}
           >
-            Profile
+            {t('profile')}
           </Link>
           {hasAdminAccess && (
             <Link 
@@ -105,7 +107,7 @@ const Navigation: React.FC<NavigationProps> = ({ onLogout }) => {
               className={`navbar-item ${isActive('/admin') ? 'active' : ''} admin-link`}
               onClick={closeMenu}
             >
-              🛠️ Admin
+              🛠️ {t('admin')}
             </Link>
           )}
           <button 
@@ -115,20 +117,20 @@ const Navigation: React.FC<NavigationProps> = ({ onLogout }) => {
               onLogout();
             }}
           >
-            Logout
+            {t('logout')}
           </button>
         </div>
 
         {/* Mobile Navigation - Bottom Bar */}
         <div className="navbar-menu navbar-menu-mobile">
-          <NavigationIcon route="/home" label="Home" isActive={isActive('/home')} />
-          <NavigationIcon route="/game" label="Game" isActive={isActive('/game')} />
-          <NavigationIcon route="/factory" label="Factory" isActive={isActive('/factory')} />
-          <NavigationIcon route="/research" label="Research" isActive={isActive('/research')} />
-          <NavigationIcon route="/ship" label="Ship" isActive={isActive('/ship')} />
-          <NavigationIcon route="/profile" label="Profile" isActive={isActive('/profile')} />
+          <NavigationIcon route="/home" label={t('home')} isActive={isActive('/home')} />
+          <NavigationIcon route="/game" label={t('game')} isActive={isActive('/game')} />
+          <NavigationIcon route="/factory" label={t('factory')} isActive={isActive('/factory')} />
+          <NavigationIcon route="/research" label={t('research')} isActive={isActive('/research')} />
+          <NavigationIcon route="/ship" label={t('ship')} isActive={isActive('/ship')} />
+          <NavigationIcon route="/profile" label={t('profile')} isActive={isActive('/profile')} />
           {hasAdminAccess && (
-            <NavigationIcon route="/admin" label="Admin" isActive={isActive('/admin')} />
+            <NavigationIcon route="/admin" label={t('admin')} isActive={isActive('/admin')} />
           )}
         </div>
 
@@ -138,52 +140,52 @@ const Navigation: React.FC<NavigationProps> = ({ onLogout }) => {
             {(pathname === '/' || pathname === '/home') ? (
               <>
                 <button className="shortcut-button" onClick={() => scrollToSection('battle-status')}>
-                  Battle
+                  {t('homeShortcuts.battle')}
                 </button>
                 <button className="shortcut-button" onClick={() => scrollToSection('notifications')}>
-                  Messages
+                  {t('homeShortcuts.messages')}
                 </button>
                 <button className="shortcut-button" onClick={() => scrollToSection('progress')}>
-                  Progress
+                  {t('homeShortcuts.progress')}
                 </button>
                 <button className="shortcut-button" onClick={() => scrollToSection('defense')}>
-                  Defense
+                  {t('homeShortcuts.defense')}
                 </button>
                 <button className="shortcut-button" onClick={() => scrollToSection('tech-inventory')}>
-                  Tech
+                  {t('homeShortcuts.tech')}
                 </button>
               </>
             ) : pathname === '/factory' ? (
               <>
                 <button className="shortcut-button" onClick={() => scrollToSection('build-queue')}>
-                  Queue
+                  {t('factoryShortcuts.queue')}
                 </button>
                 <button className="shortcut-button" onClick={() => scrollToSection('defense-systems')}>
-                  Defense
+                  {t('factoryShortcuts.defense')}
                 </button>
                 <button className="shortcut-button" onClick={() => scrollToSection('projectile-weapons')}>
-                  Projectile
+                  {t('factoryShortcuts.projectile')}
                 </button>
                 <button className="shortcut-button" onClick={() => scrollToSection('energy-weapons')}>
-                  Energy
+                  {t('factoryShortcuts.energy')}
                 </button>
               </>
             ) : pathname === '/research' ? (
               <>
                 <button className="shortcut-button" onClick={() => scrollToSection('projectile-weapons')}>
-                  Projectile
+                  {t('researchShortcuts.projectile')}
                 </button>
                 <button className="shortcut-button" onClick={() => scrollToSection('energy-weapons')}>
-                  Energy
+                  {t('researchShortcuts.energy')}
                 </button>
                 <button className="shortcut-button" onClick={() => scrollToSection('defense')}>
-                  Defense
+                  {t('researchShortcuts.defense')}
                 </button>
                 <button className="shortcut-button" onClick={() => scrollToSection('ship')}>
-                  Ship
+                  {t('researchShortcuts.ship')}
                 </button>
                 <button className="shortcut-button" onClick={() => scrollToSection('spies')}>
-                  Spies
+                  {t('researchShortcuts.spies')}
                 </button>
               </>
             ) : null}

@@ -52,6 +52,31 @@ vi.mock('next/navigation', () => ({
   useRouter: vi.fn(() => ({ push: vi.fn() })),
 }));
 
+// Mock next-intl so components using useTranslations work without a provider
+vi.mock('next-intl', async () => {
+  const { default: en } = await import('../../../locales/en.json');
+  return {
+    useTranslations: (namespace: string) => {
+      const t = (key: string, params?: Record<string, string | number>) => {
+        const ns = (en as unknown as Record<string, Record<string, string>>)[namespace] ?? {};
+        let value: string = ns[key] ?? key;
+        if (params) {
+          for (const [k, v] of Object.entries(params)) {
+            value = value.replace(`{${k}}`, String(v));
+          }
+        }
+        return value;
+      };
+      t.raw = (key: string) => {
+        const ns = (en as unknown as Record<string, Record<string, string>>)[namespace] ?? {};
+        return ns[key] ?? key;
+      };
+      return t;
+    },
+    useLocale: () => 'en',
+  };
+});
+
 import { userStatsService, UserStatsResponse } from '@/lib/client/services/userStatsService';
 import { getShipStats } from '@/lib/client/services/shipStatsService';
 import { activateAfterburner, deactivateAfterburner } from '@/lib/client/services/afterburnerService';
@@ -121,6 +146,7 @@ const makeMockGame = () => ({
   setPlayerLevel: vi.fn(),
   setMobileInteractionMode: vi.fn(),
   setMobileInfoMode: vi.fn(),
+  updateCanvasStrings: vi.fn(),
   stop: vi.fn(),
 });
 

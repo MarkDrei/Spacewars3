@@ -200,6 +200,10 @@
     gap: 1rem;
   }
 
+  .profile-top-bar-actions {
+    flex-wrap: wrap;
+  }
+
   .profile-header {
     flex-direction: column;
     text-align: center;
@@ -229,6 +233,18 @@
   display: flex;
   gap: 1rem;
   align-items: center;
+}
+
+.profile-language-control {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.profile-language-label {
+  color: var(--primary-green);
+  font-size: 0.95rem;
+  font-weight: 600;
 }
 
 

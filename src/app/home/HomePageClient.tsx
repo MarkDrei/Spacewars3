@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { useTranslations } from 'next-intl';
 import AuthenticatedLayout from '@/components/Layout/AuthenticatedLayout';
 import { messagesService, UnreadMessage } from '@/lib/client/services/messagesService';
 import { useTechCounts } from '@/lib/client/hooks/useTechCounts';
@@ -77,6 +78,7 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
   const [isRefreshing, setIsRefreshing] = React.useState(false);
   const [isSummarizing, setIsSummarizing] = React.useState(false);
   const [isMessagesExpanded, setIsMessagesExpanded] = React.useState(false);
+  const t = useTranslations('home');
 
   const { techCounts, weapons, defenses, isLoading: techLoading, error: techError } = useTechCounts();
   const { defenseValues, isLoading: defenseLoading, error: defenseError, shipPictureId } = useDefenseValues();
@@ -192,7 +194,7 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
         <div className="home-container">
           {/* Orbital Command Mockup */}
           {battleStatus?.inBattle && (
-            <OrbitalCommandHub 
+            <OrbitalCommandHub
               defenseValues={displayDefenseValues}
               battleStatus={battleStatus}
               techCounts={techCounts}
@@ -201,14 +203,14 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
             />
           )}
 
-          {/* Notifications - moved to position 2 */}
+          {/* Notifications */}
           <div id="notifications" className="data-table-container">
             <table className="data-table">
               <thead>
                 <tr>
                   <th colSpan={2}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span>Notifications</span>
+                      <span>{t('notificationsHeading')}</span>
                       <div style={{ display: 'flex', gap: '8px' }}>
                         <button
                           onClick={handleRefreshMessages}
@@ -234,7 +236,7 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
                             }
                           }}
                         >
-                          {isRefreshing ? 'Refreshing...' : '🔄 Refresh'}
+                          {isRefreshing ? t('refreshingButton') : t('refreshButton')}
                         </button>
                         {messages.length > 0 && (
                           <>
@@ -262,7 +264,7 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
                                 }
                               }}
                             >
-                              {isSummarizing ? 'Summarizing...' : '📊 Summarize'}
+                              {isSummarizing ? t('summarizingButton') : t('summarizeButton')}
                             </button>
                             <button
                               onClick={handleMarkAllAsRead}
@@ -288,7 +290,7 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
                                 }
                               }}
                             >
-                              {isMarkingAsRead ? 'Marking...' : 'Mark All as Read'}
+                              {isMarkingAsRead ? t('markingButton') : t('markAllAsReadButton')}
                             </button>
                           </>
                         )}
@@ -301,7 +303,7 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
                 {messages.length === 0 ? (
                   <tr>
                     <td colSpan={2} className="empty-cell">
-                      No new messages
+                      {t('noNewMessages')}
                     </td>
                   </tr>
                 ) : (
@@ -352,7 +354,7 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
                             }}>
                               ▼
                             </span>
-                            {isMessagesExpanded ? `Show fewer (${messages.length - 10} hidden)` : `Show ${messages.length - 10} more`}
+                            {isMessagesExpanded ? t('showFewer', { count: messages.length - 10 }) : t('showMore', { count: messages.length - 10 })}
                           </button>
                         </td>
                       </tr>
@@ -363,25 +365,139 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
             </table>
           </div>
 
+          {/* XP and Level Progress */}
+          <div id="progress" className="data-table-container">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th colSpan={2}>{t('yourProgressHeading')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="data-row">
+                  <td className="data-cell">{t('score')}</td>
+                  <td className="data-cell value-cell">{xpLoading ? '...' : formatNumber(score)}</td>
+                </tr>
+                <tr className="data-row">
+                  <td className="data-cell">{t('level')}</td>
+                  <td className="data-cell value-cell">{xpLoading ? '...' : level}</td>
+                </tr>
+                <tr className="data-row">
+                  <td className="data-cell">{t('experience')}</td>
+                  <td className="data-cell value-cell">
+                    {xpLoading ? '...' : `${formatNumber(xp)} / ${formatNumber(xpForNextLevel)}`}
+                  </td>
+                </tr>
+                <tr className="data-row">
+                  <td className="data-cell">{t('levelBonus')}</td>
+                  <td className="data-cell value-cell">
+                    {xpLoading ? '...' : `+${formatNumber((bonuses.levelMultiplier - 1) * 100)}%`}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          {/* Active Bonuses */}
+          <div id="bonuses" className="data-table-container">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th colSpan={2}>{t('activeBonusesHeading')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td colSpan={2} className="category-header">{t('ironEconomyCategory')}</td>
+                </tr>
+                <tr className="data-row">
+                  <td className="data-cell">{t('ironRechargeRate')}</td>
+                  <td className="data-cell value-cell">
+                    {xpLoading ? '...' : `${formatNumber(bonuses.ironRechargeRate)} /s`}
+                  </td>
+                </tr>
+                <tr className="data-row">
+                  <td className="data-cell">{t('ironStorage')}</td>
+                  <td className="data-cell value-cell">
+                    {xpLoading ? '...' : formatNumber(bonuses.ironStorageCapacity)}
+                  </td>
+                </tr>
+                <tr className="data-row">
+                  <td className="data-cell">{t('maxShipSpeedTheoretical')}</td>
+                  <td className="data-cell value-cell">
+                    {xpLoading ? '...' : formatNumber(bonuses.maxShipSpeed)}
+                  </td>
+                </tr>
+                <tr className="data-row">
+                  <td className="data-cell">{t('maxShipSpeedCurrent')}</td>
+                  <td className="data-cell value-cell">
+                    {xpLoading ? '...' : formatNumber(bonuses.currentMaxShipSpeed)}
+                  </td>
+                </tr>
+                <tr>
+                  <td colSpan={2} className="category-header">{t('defenseRegenCategory')}</td>
+                </tr>
+                <tr className="data-row">
+                  <td className="data-cell">{t('repairHullArmor')}</td>
+                  <td className="data-cell value-cell">{xpLoading ? '...' : formatNumber(bonuses.repairRate)}</td>
+                </tr>
+                <tr className="data-row">
+                  <td className="data-cell">{t('shieldRecharge')}</td>
+                  <td className="data-cell value-cell">{xpLoading ? '...' : formatNumber(bonuses.shieldRechargeRate)}</td>
+                </tr>
+                <tr>
+                  <td colSpan={2} className="category-header">{t('projectileWeaponsCategory')}</td>
+                </tr>
+                <tr className="data-row">
+                  <td className="data-cell">{t('damage')}</td>
+                  <td className="data-cell value-cell">{xpLoading ? '...' : `+${formatNumber((bonuses.projectileWeaponDamageFactor - 1) * 100)}%`}</td>
+                </tr>
+                <tr className="data-row">
+                  <td className="data-cell">{t('reloadSpeed')}</td>
+                  <td className="data-cell value-cell">{xpLoading ? '...' : `+${formatNumber((bonuses.projectileWeaponReloadFactor - 1) * 100)}%`}</td>
+                </tr>
+                <tr className="data-row">
+                  <td className="data-cell">{t('accuracy')}</td>
+                  <td className="data-cell value-cell">{xpLoading ? '...' : `+${formatNumber((bonuses.projectileWeaponAccuracyFactor - 1) * 100)}%`}</td>
+                </tr>
+                <tr>
+                  <td colSpan={2} className="category-header">{t('energyWeaponsCategory')}</td>
+                </tr>
+                <tr className="data-row">
+                  <td className="data-cell">{t('damage')}</td>
+                  <td className="data-cell value-cell">{xpLoading ? '...' : `+${formatNumber((bonuses.energyWeaponDamageFactor - 1) * 100)}%`}</td>
+                </tr>
+                <tr className="data-row">
+                  <td className="data-cell">{t('reloadSpeed')}</td>
+                  <td className="data-cell value-cell">{xpLoading ? '...' : `+${formatNumber((bonuses.energyWeaponReloadFactor - 1) * 100)}%`}</td>
+                </tr>
+                <tr className="data-row">
+                  <td className="data-cell">{t('accuracy')}</td>
+                  <td className="data-cell value-cell">{xpLoading ? '...' : `+${formatNumber((bonuses.energyWeaponAccuracyFactor - 1) * 100)}%`}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
           {/* Defense Values Table */}
           <div id="defense" className="data-table-container defense-values-table-container">
             <table className="data-table">
               <thead>
                 <tr>
-                  <th colSpan={3}>Defense Values</th>
+                  <th colSpan={3}>{t('defenseValuesHeading')}</th>
                 </tr>
               </thead>
               <tbody>
                 {defenseLoading ? (
                   <tr>
                     <td colSpan={3} className="loading-cell">
-                      Loading defense values...
+                      {t('loadingDefenseValues')}
                     </td>
                   </tr>
                 ) : defenseError ? (
                   <tr>
                     <td colSpan={3} className="error-cell">
-                      Error: {defenseError}
+                      {t('errorDefenseValues', { error: defenseError })}
                     </td>
                   </tr>
                 ) : displayDefenseValues ? (
@@ -416,7 +532,7 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
                     {(displayDefenseValues.hull.max === 0 && displayDefenseValues.armor.max === 0 && displayDefenseValues.shield.max === 0) && (
                       <tr>
                         <td colSpan={3} className="empty-cell">
-                          No defense systems built yet
+                          {t('noDefenseSystems')}
                         </td>
                       </tr>
                     )}
@@ -424,7 +540,7 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
                 ) : (
                   <tr>
                     <td colSpan={3} className="empty-cell">
-                      No defense data available
+                      {t('noDefenseData')}
                     </td>
                   </tr>
                 )}
@@ -437,20 +553,20 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
             <table className="data-table">
               <thead>
                 <tr>
-                  <th colSpan={2}>Tech Inventory</th>
+                  <th colSpan={2}>{t('techInventoryHeading')}</th>
                 </tr>
               </thead>
               <tbody>
                 {techLoading ? (
                   <tr>
                     <td colSpan={2} className="loading-cell">
-                      Loading tech counts...
+                      {t('loadingTechCounts')}
                     </td>
                   </tr>
                 ) : techError ? (
                   <tr>
                     <td colSpan={2} className="error-cell">
-                      Error: {techError}
+                      {t('errorTechCounts', { error: techError })}
                     </td>
                   </tr>
                 ) : techCounts ? (
@@ -459,7 +575,7 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
                     {(techCounts.ship_hull > 0 || techCounts.kinetic_armor > 0 || techCounts.energy_shield > 0 || techCounts.missile_jammer > 0) && (
                       <>
                         <tr>
-                          <td colSpan={2} className="category-header">Defense</td>
+                          <td colSpan={2} className="category-header">{t('defenseCategory')}</td>
                         </tr>
                         {techCounts.ship_hull > 0 && (
                           <tr className="data-row">
@@ -492,7 +608,7 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
                     {(techCounts.pulse_laser > 0 || techCounts.auto_turret > 0 || techCounts.plasma_lance > 0 || techCounts.gauss_rifle > 0 || techCounts.photon_torpedo > 0 || techCounts.rocket_launcher > 0) && (
                       <>
                         <tr>
-                          <td colSpan={2} className="category-header">Weapons</td>
+                          <td colSpan={2} className="category-header">{t('weaponsCategory')}</td>
                         </tr>
                         {techCounts.pulse_laser > 0 && (
                           <tr className="data-row">
@@ -536,124 +652,10 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
                 ) : (
                   <tr>
                     <td colSpan={2} className="empty-cell">
-                      No tech data available
+                      {t('noTechData')}
                     </td>
                   </tr>
                 )}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Your Progress */}
-          <div id="progress" className="data-table-container">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th colSpan={2}>Your Progress</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr className="data-row">
-                  <td className="data-cell">Score</td>
-                  <td className="data-cell value-cell">{xpLoading ? '...' : formatNumber(score)}</td>
-                </tr>
-                <tr className="data-row">
-                  <td className="data-cell">Level</td>
-                  <td className="data-cell value-cell">{xpLoading ? '...' : level}</td>
-                </tr>
-                <tr className="data-row">
-                  <td className="data-cell">Experience</td>
-                  <td className="data-cell value-cell">
-                    {xpLoading ? '...' : `${formatNumber(xp)} / ${formatNumber(xpForNextLevel)}`}
-                  </td>
-                </tr>
-                <tr className="data-row">
-                  <td className="data-cell">Level Bonus</td>
-                  <td className="data-cell value-cell">
-                    {xpLoading ? '...' : `+${formatNumber((bonuses.levelMultiplier - 1) * 100)}%`}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          {/* Active Bonuses */}
-          <div id="bonuses" className="data-table-container">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th colSpan={2}>Active Bonuses</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td colSpan={2} className="category-header">Iron Economy</td>
-                </tr>
-                <tr className="data-row">
-                  <td className="data-cell">Iron Recharge Rate</td>
-                  <td className="data-cell value-cell">
-                    {xpLoading ? '...' : `${formatNumber(bonuses.ironRechargeRate)} /s`}
-                  </td>
-                </tr>
-                <tr className="data-row">
-                  <td className="data-cell">Iron Storage</td>
-                  <td className="data-cell value-cell">
-                    {xpLoading ? '...' : formatNumber(bonuses.ironStorageCapacity)}
-                  </td>
-                </tr>
-                <tr className="data-row">
-                  <td className="data-cell">Max Ship Speed (Theoretical)</td>
-                  <td className="data-cell value-cell">
-                    {xpLoading ? '...' : formatNumber(bonuses.maxShipSpeed)}
-                  </td>
-                </tr>
-                <tr className="data-row">
-                  <td className="data-cell">Max Ship Speed (Current)</td>
-                  <td className="data-cell value-cell">
-                    {xpLoading ? '...' : formatNumber(bonuses.currentMaxShipSpeed)}
-                  </td>
-                </tr>
-                <tr>
-                  <td colSpan={2} className="category-header">Defense Regen (/s)</td>
-                </tr>
-                <tr className="data-row">
-                  <td className="data-cell">Repair (Hull + Armor)</td>
-                  <td className="data-cell value-cell">{xpLoading ? '...' : formatNumber(bonuses.repairRate)}</td>
-                </tr>
-                <tr className="data-row">
-                  <td className="data-cell">Shield Recharge</td>
-                  <td className="data-cell value-cell">{xpLoading ? '...' : formatNumber(bonuses.shieldRechargeRate)}</td>
-                </tr>
-                <tr>
-                  <td colSpan={2} className="category-header">Projectile Weapons</td>
-                </tr>
-                <tr className="data-row">
-                  <td className="data-cell">Damage</td>
-                  <td className="data-cell value-cell">{xpLoading ? '...' : `+${formatNumber((bonuses.projectileWeaponDamageFactor - 1) * 100)}%`}</td>
-                </tr>
-                <tr className="data-row">
-                  <td className="data-cell">Reload Speed</td>
-                  <td className="data-cell value-cell">{xpLoading ? '...' : `+${formatNumber((bonuses.projectileWeaponReloadFactor - 1) * 100)}%`}</td>
-                </tr>
-                <tr className="data-row">
-                  <td className="data-cell">Accuracy</td>
-                  <td className="data-cell value-cell">{xpLoading ? '...' : `+${formatNumber((bonuses.projectileWeaponAccuracyFactor - 1) * 100)}%`}</td>
-                </tr>
-                <tr>
-                  <td colSpan={2} className="category-header">Energy Weapons</td>
-                </tr>
-                <tr className="data-row">
-                  <td className="data-cell">Damage</td>
-                  <td className="data-cell value-cell">{xpLoading ? '...' : `+${formatNumber((bonuses.energyWeaponDamageFactor - 1) * 100)}%`}</td>
-                </tr>
-                <tr className="data-row">
-                  <td className="data-cell">Reload Speed</td>
-                  <td className="data-cell value-cell">{xpLoading ? '...' : `+${formatNumber((bonuses.energyWeaponReloadFactor - 1) * 100)}%`}</td>
-                </tr>
-                <tr className="data-row">
-                  <td className="data-cell">Accuracy</td>
-                  <td className="data-cell value-cell">{xpLoading ? '...' : `+${formatNumber((bonuses.energyWeaponAccuracyFactor - 1) * 100)}%`}</td>
-                </tr>
               </tbody>
             </table>
           </div>

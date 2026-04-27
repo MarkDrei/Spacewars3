@@ -6,6 +6,7 @@ import { DefenseValues } from '@/shared/defenseValues';
 import { MessageCache } from '../messages/MessageCache';
 import { TechTree, ResearchType, getResearchEffectFromTree } from './techtree';
 import { TimeMultiplierService } from '../timeMultiplier';
+import { getServerT } from '../i18n/serverTranslations';
 
 export class TechService {
     private static instance: TechService;
@@ -222,7 +223,9 @@ export class TechService {
                 // Send notification
                 try {
                     const ctx = createLockContext();
-                    await this.messageCacheInstance.createMessage(ctx, userId, `Build complete: ${spec.name}`);
+                    const locale = user.preferredLocale ?? 'en';
+                    const tMsg = await getServerT(locale, 'messages');
+                    await this.messageCacheInstance.createMessage(ctx, userId, tMsg('buildComplete', { name: spec.name }));
                 } catch (error) {
                     console.error(`Failed to send build completion notification to user ${userId}:`, error);
                 }
@@ -240,8 +243,10 @@ export class TechService {
                         user.buildStartSec = null;
                         try {
                             const ctx = createLockContext();
+                            const locale = user.preferredLocale ?? 'en';
+                            const tMsg = await getServerT(locale, 'messages');
                             await this.messageCacheInstance.createMessage(ctx, userId,
-                                `Build queue aborted: insufficient iron to start ${itemName}. ${abortedCount} item(s) removed from queue.`);
+                                tMsg('buildQueueAborted', { name: itemName, count: abortedCount }));
                         } catch (error) {
                             console.error(`Failed to send queue abort notification to user ${userId}:`, error);
                         }

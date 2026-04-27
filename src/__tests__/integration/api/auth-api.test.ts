@@ -107,6 +107,64 @@ describe('Auth API', () => {
     });
   });
 
+  test('login_success_setsNextLocaleCookie', async () => {
+    await withTransaction(async () => {
+      const username = randomUsername();
+      const password = 'testpass123';
+
+      // Register (default locale — no Accept-Language header → 'en')
+      const registerRequest = createRequest('http://localhost:3000/api/register', 'POST', {
+        username,
+        password,
+      });
+      await registerPOST(registerRequest);
+
+      // Login
+      const loginRequest = createRequest('http://localhost:3000/api/login', 'POST', {
+        username,
+        password,
+      });
+      const response = await loginPOST(loginRequest);
+
+      expect(response.status).toBe(200);
+      const setCookieHeader = response.headers.get('Set-Cookie') ?? '';
+      expect(setCookieHeader).toContain('NEXT_LOCALE=en');
+    });
+  });
+
+  test('register_withAcceptLanguageDe_setsNextLocaleCookieDe', async () => {
+    await withTransaction(async () => {
+      const username = randomUsername();
+      const registerRequest = createRequest(
+        'http://localhost:3000/api/register',
+        'POST',
+        { username, password: 'testpass123' },
+        undefined,
+        { 'accept-language': 'de-DE,de;q=0.9,en;q=0.8' }
+      );
+      const response = await registerPOST(registerRequest);
+
+      expect(response.status).toBe(200);
+      const setCookieHeader = response.headers.get('Set-Cookie') ?? '';
+      expect(setCookieHeader).toContain('NEXT_LOCALE=de');
+    });
+  });
+
+  test('register_withoutAcceptLanguage_defaultsToEnglishLocale', async () => {
+    await withTransaction(async () => {
+      const username = randomUsername();
+      const registerRequest = createRequest('http://localhost:3000/api/register', 'POST', {
+        username,
+        password: 'testpass123',
+      });
+      const response = await registerPOST(registerRequest);
+
+      expect(response.status).toBe(200);
+      const setCookieHeader = response.headers.get('Set-Cookie') ?? '';
+      expect(setCookieHeader).toContain('NEXT_LOCALE=en');
+    });
+  });
+
   test('changePassword_validRequest_updatesStoredPassword', async () => {
     await withTransaction(async () => {
       const oldPassword = 'testpass123';

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations, useLocale } from 'next-intl';
 import AuthenticatedLayout from '@/components/Layout/AuthenticatedLayout';
 import { ServerAuthState } from '@/lib/server/serverSession';
 import { CommanderData, InventoryGrid, InventoryItemData, DEFAULT_INVENTORY_SLOTS, SortStatKey, SortDirection, sortGrid } from '@/shared/inventoryShared';
@@ -16,6 +17,8 @@ interface StarbasePageClientProps {
 
 const StarbasePageClient: React.FC<StarbasePageClientProps> = () => {
   const router = useRouter();
+  const t = useTranslations('starbase');
+  const locale = useLocale();
   const [shopCommanders, setShopCommanders] = useState<CommanderData[]>([]);
   const [inventoryCommanders, setInventoryCommanders] = useState<{ commander: CommanderData; row: number; col: number }[]>([]);
   const [maxInventorySlots, setMaxInventorySlots] = useState<number>(DEFAULT_INVENTORY_SLOTS);
@@ -90,7 +93,7 @@ const StarbasePageClient: React.FC<StarbasePageClientProps> = () => {
       const data = await res.json();
       if (res.ok) {
         setIron(data.newIron);
-        showMessage(`Sold for ${data.ironEarned.toLocaleString()} Iron!`);
+        showMessage(`Sold for ${data.ironEarned.toLocaleString(locale)} Iron!`);
         await fetchInventory();
       } else {
         showMessage(data.error ?? 'Sell failed');
@@ -98,7 +101,7 @@ const StarbasePageClient: React.FC<StarbasePageClientProps> = () => {
     } finally {
       setIsBusy(false);
     }
-  }, [fetchInventory, showMessage]);
+  }, [fetchInventory, showMessage, locale]);
 
   const handleBuy = useCallback(async (slotIndex: number) => {
     setIsBusy(true);
@@ -148,15 +151,15 @@ const StarbasePageClient: React.FC<StarbasePageClientProps> = () => {
       <div className="starbase-page">
         <div className="starbase-container">
           <div className="starbase-header">
-            <h1 className="starbase-title">🛸 Starbase</h1>
+            <h1 className="starbase-title">{t('pageHeading')}</h1>
             <div className="starbase-iron-display">
-              ⚙ Iron: <strong>{iron.toLocaleString()}</strong>
+              {t('ironDisplay', { amount: iron.toLocaleString(locale) })}
             </div>
             <button
               className="starbase-return-btn"
               onClick={() => router.push('/game')}
             >
-              ← Return to Game
+              {t('returnToGame')}
             </button>
           </div>
 
@@ -165,13 +168,13 @@ const StarbasePageClient: React.FC<StarbasePageClientProps> = () => {
           )}
 
           {isLoading ? (
-            <div className="starbase-loading">Loading…</div>
+            <div className="starbase-loading">{t('loadingMessage')}</div>
           ) : (
             <div className="starbase-panels">
               {/* Sell Panel */}
               <div className="starbase-panel starbase-panel--sell">
                 <div className="starbase-panel-heading-row">
-                  <h2 className="starbase-panel-heading">Sell Commanders</h2>
+                  <h2 className="starbase-panel-heading">{t('sellCommandersHeading')}</h2>
                   <SortControls
                     sortBy={sellSortBy}
                     sortDir={sellSortDir}
@@ -180,7 +183,7 @@ const StarbasePageClient: React.FC<StarbasePageClientProps> = () => {
                   />
                 </div>
                 {inventoryCommanders.length === 0 ? (
-                  <p className="starbase-empty">No commanders in inventory.</p>
+                  <p className="starbase-empty">{t('noCommandersInInventory')}</p>
                 ) : (
                   <div className="starbase-card-list">
                     {sortedInventoryCommanders.map(({ commander, row, col }) => (
@@ -188,7 +191,7 @@ const StarbasePageClient: React.FC<StarbasePageClientProps> = () => {
                         key={`${row}-${col}`}
                         commander={commander}
                         price={commanderSellPrice(commander)}
-                        actionLabel="Sell"
+                        actionLabel={t('sellButton')}
                         onAction={() => handleSell(row, col)}
                         disabled={isBusy}
                       />
@@ -200,7 +203,7 @@ const StarbasePageClient: React.FC<StarbasePageClientProps> = () => {
               {/* Buy Panel */}
               <div className="starbase-panel starbase-panel--buy">
                 <div className="starbase-panel-heading-row">
-                  <h2 className="starbase-panel-heading">Buy Commanders</h2>
+                  <h2 className="starbase-panel-heading">{t('buyCommandersHeading')}</h2>
                   <SortControls
                     sortBy={buySortBy}
                     sortDir={buySortDir}
@@ -216,7 +219,7 @@ const StarbasePageClient: React.FC<StarbasePageClientProps> = () => {
                         key={index}
                         commander={commander}
                         price={price}
-                        actionLabel="Buy"
+                        actionLabel={t('buyButton')}
                         onAction={() => handleBuy(index)}
                         disabled={isBusy || iron < price || inventoryFull}
                       />

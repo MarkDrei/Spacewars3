@@ -38,6 +38,15 @@ export async function POST(request: NextRequest) {
     // Create response
     const response = NextResponse.json({ success: true });
     
+    // Set NEXT_LOCALE cookie to user's preferred locale
+    response.cookies.set('NEXT_LOCALE', user.preferredLocale, {
+      httpOnly: false, // httpOnly: false — must be readable by client-side JS (language switcher UI reads current locale)
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 60 * 60 * 24 * 365, // 1 year
+    });
+
     // Set session with the response object
     const session = await getIronSession<SessionData>(request, response, sessionOptions);
     session.userId = user.id;

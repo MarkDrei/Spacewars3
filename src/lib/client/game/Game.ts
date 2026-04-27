@@ -13,6 +13,7 @@ import { STARBASE_DOCK_RANGE } from '@/shared/starbases';
 import { debugState } from '../debug/debugState';
 import { InterceptionLineRenderer } from '../renderers/InterceptionLineRenderer';
 import { isAttackAllowed } from '@shared/utils/levelUtils';
+import { CanvasStrings } from './canvasStrings';
 
 export class Game {
   private world: World;
@@ -536,6 +537,14 @@ export class Game {
    */
   public setStarbaseEntryCallback(fn: (starbaseId: number) => void): void {
     this.onStarbaseEntryCallback = fn;
+  }
+
+  /**
+   * Update translated canvas strings for the tooltip renderer.
+   * Call this from a React component whenever the locale changes.
+   */
+  public updateCanvasStrings(strings: CanvasStrings): void {
+    this.renderer.updateCanvasStrings(strings);
   }
 
   /**

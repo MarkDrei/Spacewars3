@@ -57,6 +57,9 @@ CREATE TABLE IF NOT EXISTS users (
   -- Password reset (optional, expiry-based single-use)
   password_reset_token TEXT DEFAULT NULL,
   password_reset_expires BIGINT DEFAULT NULL,
+
+  -- Locale preference
+  preferred_locale TEXT NOT NULL DEFAULT 'en',
   
   FOREIGN KEY (ship_id) REFERENCES space_objects (id)
 )`;
@@ -229,5 +232,10 @@ export const MIGRATE_ADD_PASSWORD_RESET = [
   'ALTER TABLE users ADD COLUMN IF NOT EXISTS password_reset_expires BIGINT DEFAULT NULL'
 ];
 
+// Migration to add preferred_locale column
+export const MIGRATE_ADD_PREFERRED_LOCALE = [
+  "ALTER TABLE users ADD COLUMN IF NOT EXISTS preferred_locale TEXT NOT NULL DEFAULT 'en'",
+];
+
 // Optional: Version management for migrations
-export const SCHEMA_VERSION = 16;
+export const SCHEMA_VERSION = 17;

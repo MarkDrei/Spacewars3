@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLocale, useTranslations } from 'next-intl';
 import { formatNumber } from '@/shared/numberFormat';
 import type { DefenseValues } from '@/shared/defenseValues';
 import type { BattleStatus } from '@/lib/client/hooks/useBattleStatus';
@@ -19,8 +20,12 @@ export const OrbitalCommandHub: React.FC<OrbitalCommandHubProps> = ({
   weapons,
   shipPictureId,
 }) => {
+  const t = useTranslations('home');
+  const locale = useLocale();
   const [now, setNow] = useState(Math.floor(Date.now() / 1000));
   const [isPortrait, setIsPortrait] = useState(false);
+
+  const formatLocalizedNumber = (value: number): string => formatNumber(value, locale);
 
   useEffect(() => {
     const interval = setInterval(() => setNow(Math.floor(Date.now() / 1000)), 1000);
@@ -84,14 +89,14 @@ export const OrbitalCommandHub: React.FC<OrbitalCommandHubProps> = ({
     const m = Math.floor((seconds % 3600) / 60);
     const s = seconds % 60;
     const parts: string[] = [];
-    if (d > 0) parts.push(`${d}d`);
-    if (h > 0 || d > 0) parts.push(`${h}h`);
-    if (m > 0 || h > 0 || d > 0) parts.push(`${m}m`);
-    parts.push(`${s}s`);
+    if (d > 0) parts.push(`${d}${t('orbitalDurationDaysShort')}`);
+    if (h > 0 || d > 0) parts.push(`${h}${t('orbitalDurationHoursShort')}`);
+    if (m > 0 || h > 0 || d > 0) parts.push(`${m}${t('orbitalDurationMinutesShort')}`);
+    parts.push(`${s}${t('orbitalDurationSecondsShort')}`);
     return parts.join(' ');
   };
 
-  const opponentName = battleStatus?.battle?.opponentName ?? 'Unknown';
+  const opponentName = battleStatus?.battle?.opponentName ?? t('orbitalUnknownOpponent');
   const battleStartTime = battleStatus?.battle?.battleStartTime ?? now;
   const battleElapsedSec = Math.max(0, now - battleStartTime);
   const battleDurationText = formatBattleDuration(battleElapsedSec);
@@ -182,7 +187,7 @@ export const OrbitalCommandHub: React.FC<OrbitalCommandHubProps> = ({
       </g>
       <path id="hull-curve" d={`M -${rHull + 25},0 A ${rHull + 25},${rHull + 25} 0 0,1 ${rHull + 25},0`} fill="none" />
       <text className="ring-label" fill="#ff416c" filter="url(#glow-light)">
-        <textPath href="#hull-curve" startOffset="50%" textAnchor="middle">HULL INTEGRITY</textPath>
+        <textPath href="#hull-curve" startOffset="50%" textAnchor="middle">{t('orbitalHullIntegrity')}</textPath>
       </text>
 
       {/* Middle Yellow Ring (Armor) */}
@@ -194,9 +199,9 @@ export const OrbitalCommandHub: React.FC<OrbitalCommandHubProps> = ({
       </g>
       <path id="armor-curve-top" d={`M -${rArmor + 30},0 A ${rArmor + 30},${rArmor + 30} 0 0,1 ${rArmor + 30},0`} fill="none" />
       <text className="ring-label" fill="#f5af19" filter="url(#glow-light)">
-        <textPath href="#armor-curve-top" startOffset="50%" textAnchor="middle">ARMOR REINFORCEMENT</textPath>
+        <textPath href="#armor-curve-top" startOffset="50%" textAnchor="middle">{t('orbitalArmorReinforcement')}</textPath>
       </text>
-      <text x="0" y={rArmor + 40} className="ring-label" fill="#f5af19" filter="url(#glow-light)">ARMOR</text>
+      <text x="0" y={rArmor + 40} className="ring-label" fill="#f5af19" filter="url(#glow-light)">{t('orbitalArmor')}</text>
 
       {/* Outer Blue Ring (Shield) */}
       <g transform="rotate(-90)">
@@ -207,8 +212,8 @@ export const OrbitalCommandHub: React.FC<OrbitalCommandHubProps> = ({
         {/* Outer decorative thin ring */}
         <circle cx="0" cy="0" r={rShield + 28} fill="none" stroke="#00c6ff" strokeWidth="2" opacity="0.5" strokeDasharray="10 20" />
       </g>
-      <text x="0" y={-(rShield + 40)} className="ring-label" fill="#00c6ff" filter="url(#glow-light)">SHIELD SYSTEM</text>
-      <text x="0" y={rShield + 50} className="ring-label" fill="#00c6ff" filter="url(#glow-light)">SHIELD</text>
+      <text x="0" y={-(rShield + 40)} className="ring-label" fill="#00c6ff" filter="url(#glow-light)">{t('orbitalShieldSystem')}</text>
+      <text x="0" y={rShield + 50} className="ring-label" fill="#00c6ff" filter="url(#glow-light)">{t('orbitalShield')}</text>
 
       {/* Connection Lines (commented out — kept as part of the unit) */}
       {/* Shield Line (Blue) */}
@@ -237,10 +242,10 @@ export const OrbitalCommandHub: React.FC<OrbitalCommandHubProps> = ({
         <rect x="0" y="0" width="280" height="90" rx="6" fill="rgba(1, 52, 66, 0.8)" stroke="#00c6ff" strokeWidth="2" filter="url(#drop-shadow)" />
         <path d="M 0 20 L 0 6 L 6 0 L 20 0" fill="none" stroke="#00c6ff" strokeWidth="6" />
         <path d="M 280 70 L 280 84 L 274 90 L 260 90" fill="none" stroke="#00c6ff" strokeWidth="6" />
-        <text x="25" y="35" className="box-label" fill="#00c6ff" style={{ fontSize: '16px' }}>CURRENT</text>
-        <text x="110" y="36" className="box-value" fill="#fff" style={{ fontSize: '20px' }}>{formatNumber(shieldCurrent)}</text>
-        <text x="25" y="70" className="box-label" fill="#00c6ff" style={{ fontSize: '16px' }}>MAXIMUM</text>
-        <text x="110" y="71" className="box-value" fill="#a0c0d0" style={{ fontSize: '20px' }}>{formatNumber(shieldMax)}</text>
+        <text x="25" y="35" className="box-label" fill="#00c6ff" style={{ fontSize: '16px' }}>{t('orbitalCurrent')}</text>
+        <text x="110" y="36" className="box-value" fill="#fff" style={{ fontSize: '20px' }}>{formatLocalizedNumber(shieldCurrent)}</text>
+        <text x="25" y="70" className="box-label" fill="#00c6ff" style={{ fontSize: '16px' }}>{t('orbitalMaximum')}</text>
+        <text x="110" y="71" className="box-value" fill="#a0c0d0" style={{ fontSize: '20px' }}>{formatLocalizedNumber(shieldMax)}</text>
       </g>
 
       {/* Hull Stats Box */}
@@ -248,10 +253,10 @@ export const OrbitalCommandHub: React.FC<OrbitalCommandHubProps> = ({
         <rect x="0" y="0" width="280" height="90" rx="6" fill="rgba(75, 19, 32, 0.8)" stroke="#ff416c" strokeWidth="2" filter="url(#drop-shadow)" />
         <path d="M 0 20 L 0 6 L 6 0 L 20 0" fill="none" stroke="#ff416c" strokeWidth="6" />
         <path d="M 280 70 L 280 84 L 274 90 L 260 90" fill="none" stroke="#ff416c" strokeWidth="6" />
-        <text x="25" y="35" className="box-label" fill="#ff416c" style={{ fontSize: '16px' }}>CURRENT</text>
-        <text x="110" y="36" className="box-value" fill="#fff" style={{ fontSize: '20px' }}>{formatNumber(hullCurrent)}</text>
-        <text x="25" y="70" className="box-label" fill="#ff416c" style={{ fontSize: '16px' }}>MAXIMUM</text>
-        <text x="110" y="71" className="box-value" fill="#a0c0d0" style={{ fontSize: '20px' }}>{formatNumber(hullMax)}</text>
+        <text x="25" y="35" className="box-label" fill="#ff416c" style={{ fontSize: '16px' }}>{t('orbitalCurrent')}</text>
+        <text x="110" y="36" className="box-value" fill="#fff" style={{ fontSize: '20px' }}>{formatLocalizedNumber(hullCurrent)}</text>
+        <text x="25" y="70" className="box-label" fill="#ff416c" style={{ fontSize: '16px' }}>{t('orbitalMaximum')}</text>
+        <text x="110" y="71" className="box-value" fill="#a0c0d0" style={{ fontSize: '20px' }}>{formatLocalizedNumber(hullMax)}</text>
       </g>
 
       {/* Armor Stats Box */}
@@ -259,10 +264,10 @@ export const OrbitalCommandHub: React.FC<OrbitalCommandHubProps> = ({
         <rect x="0" y="0" width="280" height="90" rx="6" fill="rgba(56, 40, 6, 0.8)" stroke="#f5af19" strokeWidth="2" filter="url(#drop-shadow)" />
         <path d="M 0 20 L 0 6 L 6 0 L 20 0" fill="none" stroke="#9b7013ff" strokeWidth="6" />
         <path d="M 280 70 L 280 84 L 274 90 L 260 90" fill="none" stroke="#9b7013ff" strokeWidth="6" />
-        <text x="25" y="35" className="box-label" fill="#f5af19" style={{ fontSize: '16px' }}>CURRENT</text>
-        <text x="110" y="36" className="box-value" fill="#fff" style={{ fontSize: '20px' }}>{formatNumber(armorCurrent)}</text>
-        <text x="25" y="70" className="box-label" fill="#f5af19" style={{ fontSize: '16px' }}>MAXIMUM</text>
-        <text x="110" y="71" className="box-value" fill="#a0c0d0" style={{ fontSize: '20px' }}>{formatNumber(armorMax)}</text>
+        <text x="25" y="35" className="box-label" fill="#f5af19" style={{ fontSize: '16px' }}>{t('orbitalCurrent')}</text>
+        <text x="110" y="36" className="box-value" fill="#fff" style={{ fontSize: '20px' }}>{formatLocalizedNumber(armorCurrent)}</text>
+        <text x="25" y="70" className="box-label" fill="#f5af19" style={{ fontSize: '16px' }}>{t('orbitalMaximum')}</text>
+        <text x="110" y="71" className="box-value" fill="#a0c0d0" style={{ fontSize: '20px' }}>{formatLocalizedNumber(armorMax)}</text>
       </g>
     </>
   );
@@ -316,28 +321,28 @@ export const OrbitalCommandHub: React.FC<OrbitalCommandHubProps> = ({
           <rect width={pvW} height={pvH} fill="rgba(2, 5, 15, 0.4)" />
 
           {/* Title */}
-          <text x={pvW / 2} y="52" className="title-main" filter="url(#drop-shadow)">BATTLE STATUS HUB</text>
-          <text x={pvW / 2} y="76" className="subtitle-top" textAnchor="middle">vs. {opponentName.toUpperCase()}</text>
-          <text x={pvW / 2} y="98" className="subtitle-top" textAnchor="middle">ONGOING: {battleDurationText}</text>
+          <text x={pvW / 2} y="52" className="title-main" filter="url(#drop-shadow)">{t('orbitalTitle')}</text>
+          <text x={pvW / 2} y="76" className="subtitle-top" textAnchor="middle">{t('orbitalVersus', { opponent: opponentName })}</text>
+          <text x={pvW / 2} y="98" className="subtitle-top" textAnchor="middle">{t('orbitalOngoing', { duration: battleDurationText })}</text>
 
           {/* Damage Dealt — full width, fills left-to-right */}
           <g transform="translate(30, 120)">
-            <text x="0" y="0" className="subtitle-top" textAnchor="start">TOTAL DAMAGE DEALT</text>
+            <text x="0" y="0" className="subtitle-top" textAnchor="start">{t('orbitalDamageDealt')}</text>
             <rect x="0" y="14" width="740" height="32" rx="4" fill="url(#bar-bg-grad)" stroke="#00ff87" strokeWidth="1" opacity="0.4" />
             {damageDealtPct > 0 && (
               <rect x="0" y="14" width={740 * damageDealtPct} height="32" rx="4" fill="url(#damage-dealt-grad)" filter="url(#glow-light)" />
             )}
-            <text x="10" y="36" className="value-large" filter="url(#drop-shadow)">{formatNumber(damageDealt)}</text>
+            <text x="10" y="36" className="value-large" filter="url(#drop-shadow)">{formatLocalizedNumber(damageDealt)}</text>
           </g>
 
           {/* Damage Received — full width, fills left-to-right */}
           <g transform="translate(30, 195)">
-            <text x="0" y="0" className="subtitle-top" textAnchor="start">TOTAL DAMAGE RECEIVED</text>
+            <text x="0" y="0" className="subtitle-top" textAnchor="start">{t('orbitalDamageReceived')}</text>
             <rect x="0" y="14" width="740" height="32" rx="4" fill="url(#bar-bg-grad)" stroke="#ff416c" strokeWidth="1" opacity="0.4" />
             {damageReceivedPct > 0 && (
               <rect x="0" y="14" width={740 * damageReceivedPct} height="32" rx="4" fill="url(#damage-received-grad)" filter="url(#glow-light)" />
             )}
-            <text x="10" y="36" className="value-large" filter="url(#drop-shadow)">{formatNumber(damageReceived)}</text>
+            <text x="10" y="36" className="value-large" filter="url(#drop-shadow)">{formatLocalizedNumber(damageReceived)}</text>
           </g>
 
           {/* Defense group — circles + stats boxes as a single immovable unit */}
@@ -347,14 +352,14 @@ export const OrbitalCommandHub: React.FC<OrbitalCommandHubProps> = ({
 
           {/* Weapon cooldowns — at the bottom */}
           <g id="weapons-panel" transform={`translate(30, ${weaponsY})`}>
-            <text x="0" y="0" className="subtitle-top" textAnchor="start">WEAPON SYSTEMS</text>
+            <text x="0" y="0" className="subtitle-top" textAnchor="start">{t('orbitalWeaponSystems')}</text>
             {activeWeapons.length === 0 ? (
-              <text x="0" y="30" className="weapon-val">No weapons equipped</text>
+              <text x="0" y="30" className="weapon-val">{t('orbitalNoWeapons')}</text>
             ) : (
               activeWeapons.map((w, idx) => {
                 const secondsRemaining = Math.max(0, w.cooldownTimestamp - now);
                 const isReady = secondsRemaining === 0;
-                const timeText = isReady ? 'Ready' : `${secondsRemaining}s`;
+                const timeText = isReady ? t('orbitalReady') : `${secondsRemaining}${t('orbitalDurationSecondsShort')}`;
                 const fillPct = isReady ? 1 : Math.max(0, 1 - (secondsRemaining / 10));
                 const color = weaponColors[idx % weaponColors.length];
 
@@ -369,7 +374,13 @@ export const OrbitalCommandHub: React.FC<OrbitalCommandHubProps> = ({
                     {fillPct > 0 && (
                       <rect x="225" y="-12" width={320 * fillPct} height="12" rx="6" fill={color} filter="url(#glow-light)" />
                     )}
-                    <text x="225" y="22" className="weapon-val">{formatNumber(w.count)} units / {timeText}</text>
+                    <text x="225" y="22" className="weapon-val">
+                      {t('orbitalWeaponCountStatus', {
+                        count: formatLocalizedNumber(w.count),
+                        units: t('orbitalUnits'),
+                        status: timeText,
+                      })}
+                    </text>
                   </g>
                 );
               })
@@ -393,39 +404,39 @@ export const OrbitalCommandHub: React.FC<OrbitalCommandHubProps> = ({
 
         {/* --- TOP HEADER --- */}
         <g id="top-header" transform="translate(800, 70)">
-          <text x="0" y="0" className="title-main" filter="url(#drop-shadow)">BATTLE STATUS HUB</text>
-          <text x="0" y="28" className="subtitle-top" textAnchor="middle">vs. {opponentName.toUpperCase()}  ·  ONGOING: {battleDurationText}</text>
+          <text x="0" y="0" className="title-main" filter="url(#drop-shadow)">{t('orbitalTitle')}</text>
+          <text x="0" y="28" className="subtitle-top" textAnchor="middle">{`${t('orbitalVersus', { opponent: opponentName })}  ·  ${t('orbitalOngoing', { duration: battleDurationText })}`}</text>
 
           {/* Left Top: Damage Dealt */}
           <g transform="translate(0, 55)">
-            <text x="-50" y="0" className="subtitle-top" textAnchor="end">TOTAL DAMAGE DEALT</text>
+            <text x="-50" y="0" className="subtitle-top" textAnchor="end">{t('orbitalDamageDealt')}</text>
             <path d="M -50 15 L -720 15 L -740 40 L -70 40 Z" fill="url(#bar-bg-grad)" stroke="#00ff87" strokeWidth="1" opacity="0.4" />
             {damageDealtPct > 0 && (
               <path d={`M -50 15 L ${-50 - 670 * damageDealtPct} 15 L ${-70 - 670 * damageDealtPct} 40 L -70 40 Z`} fill="url(#damage-dealt-grad)" filter="url(#glow-light)" />
             )}
-            <text x="-710" y="34" className="value-large" textAnchor="start" filter="url(#drop-shadow)">{formatNumber(damageDealt)}</text>
+            <text x="-710" y="34" className="value-large" textAnchor="start" filter="url(#drop-shadow)">{formatLocalizedNumber(damageDealt)}</text>
           </g>
 
           {/* Right Top: Damage Received */}
           <g transform="translate(0, 55)">
-            <text x="50" y="0" className="subtitle-top" textAnchor="start">TOTAL DAMAGE RECEIVED</text>
+            <text x="50" y="0" className="subtitle-top" textAnchor="start">{t('orbitalDamageReceived')}</text>
             <path d="M 50 15 L 720 15 L 740 40 L 70 40 Z" fill="url(#bar-bg-grad)" stroke="#ff416c" strokeWidth="1" opacity="0.4" />
             {damageReceivedPct > 0 && (
               <path d={`M 50 15 L ${50 + 670 * damageReceivedPct} 15 L ${70 + 670 * damageReceivedPct} 40 L 70 40 Z`} fill="url(#damage-received-grad)" filter="url(#glow-light)" />
             )}
-            <text x="710" y="34" className="value-large" textAnchor="end" filter="url(#drop-shadow)">{formatNumber(damageReceived)}</text>
+            <text x="710" y="34" className="value-large" textAnchor="end" filter="url(#drop-shadow)">{formatLocalizedNumber(damageReceived)}</text>
           </g>
         </g>
 
         {/* --- LEFT PANEL: WEAPONS --- */}
         <g id="weapons-panel" transform="translate(180, 250)">
           {activeWeapons.length === 0 ? (
-            <text x="50" y="0" className="weapon-val" fill="#a0c0d0">No weapons equipped</text>
+            <text x="50" y="0" className="weapon-val" fill="#a0c0d0">{t('orbitalNoWeapons')}</text>
           ) : (
             activeWeapons.map((w, idx) => {
               const secondsRemaining = Math.max(0, w.cooldownTimestamp - now);
               const isReady = secondsRemaining === 0;
-              const timeText = isReady ? 'Ready' : `${secondsRemaining}s`;
+              const timeText = isReady ? t('orbitalReady') : `${secondsRemaining}${t('orbitalDurationSecondsShort')}`;
               const fillPct = isReady ? 1 : Math.max(0, 1 - (secondsRemaining / 10));
               const color = weaponColors[idx % weaponColors.length];
 
@@ -440,7 +451,13 @@ export const OrbitalCommandHub: React.FC<OrbitalCommandHubProps> = ({
                   {fillPct > 0 && (
                     <rect x="50" y="-12" width={180 * fillPct} height="12" rx="6" fill={color} filter="url(#glow-light)" />
                   )}
-                  <text x="50" y="22" className="weapon-val">{formatNumber(w.count)} units / {timeText}</text>
+                  <text x="50" y="22" className="weapon-val">
+                    {t('orbitalWeaponCountStatus', {
+                      count: formatLocalizedNumber(w.count),
+                      units: t('orbitalUnits'),
+                      status: timeText,
+                    })}
+                  </text>
                 </g>
               );
             })

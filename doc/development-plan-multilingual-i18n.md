@@ -177,6 +177,33 @@ Use `defineRouting` from `next-intl/routing` with `localeDetection: false` (cook
 - `src/app/api/set-locale/route.ts` — also persist to DB when authenticated (updated in Task 7.2)
 - `src/app/api/register/route.ts` — detect locale from Accept-Language, store in new user
 
+**Status**: ✅ COMPLETED
+**Implementation Summary**: All Goal 1 infrastructure tasks implemented — next-intl installed, routing/request config created, next.config.ts updated, middleware created, layout wrapped with NextIntlClientProvider, preferred_locale added to DB schema/migrations/User/userRepo, and login/register routes updated to sync locale cookie.
+**Files Modified/Created**:
+- `package.json` / `package-lock.json` — added next-intl dependency
+- `src/i18n/routing.ts` — defineRouting with locales ['en','de'], defaultLocale 'en', localePrefix 'never'
+- `src/i18n/request.ts` — getRequestConfig reading NEXT_LOCALE cookie, loading JSON messages
+- `src/locales/en.json` — placeholder English messages
+- `src/locales/de.json` — placeholder German messages
+- `next.config.ts` — wrapped with createNextIntlPlugin chained with withPWA
+- `src/middleware.ts` — new file using next-intl createMiddleware
+- `src/app/layout.tsx` — async layout with getLocale/getMessages, NextIntlClientProvider
+- `src/lib/server/schema.ts` — added preferred_locale column, MIGRATE_ADD_PREFERRED_LOCALE, SCHEMA_VERSION 17
+- `src/lib/server/migrations.ts` — added applyPreferredLocaleMigration, called from applyTechMigrations
+- `src/lib/server/user/user.ts` — added preferredLocale: string = 'en' class field
+- `src/lib/server/user/userRepo.ts` — updated UserRow, userFromRow, saveUserToDb for preferred_locale
+- `src/app/api/login/route.ts` — sets NEXT_LOCALE cookie from user.preferredLocale on login (fixed: secure flag + corrected comment)
+- `src/app/api/register/route.ts` — reads Accept-Language, sets preferredLocale on new user, sets NEXT_LOCALE cookie (fixed: secure flag + corrected comment)
+- `src/__tests__/helpers/apiTestHelpers.ts` — added `additionalHeaders` param to `createRequest` helper
+- `src/__tests__/integration/api/auth-api.test.ts` — added 3 locale cookie integration tests
+**Deviations from Plan**: Task 1.2 used `localePrefix: 'never'` as specified; Task 1.4 chained withNextIntl(withPWA()(config)) which is the correct order per next-intl docs.
+**Arc42 Updates**: None required
+**Test Results**: ✅ All 8 auth-api tests passing, build successful, no linting errors
+
+**Review Status**: ✅ APPROVED
+**Reviewer**: Medicus
+**Review Notes**: All three previously flagged issues were correctly resolved: secure flag added to NEXT_LOCALE cookie in both login and register routes (environment-conditional), httpOnly comment accurately describes client-side readability requirement, and 3 meaningful integration tests added covering login locale sync, German detect-on-register, and English default. `additionalHeaders` param is a clean backward-compatible extension. Implementation correctly handles the two-step DB write on registration (createUser default + update via user.save()). No code duplication, no design concerns.
+
 ---
 
 ### Goal 2: Translation File Structure
@@ -260,6 +287,37 @@ Include all strings from:
 **Files**:
 
 - `src/locales/de.json` — complete German translation
+
+**Status**: ✅ COMPLETED
+**Implementation Summary**: Audited all 19 source files listed in the task, extracted all user-visible strings, and populated complete `en.json` and `de.json` files with 12 namespaces (common, nav, auth, home, research, factory, profile, ship, starbase, game, statistics, email). All German translations follow the rules: Iron→Eisen, Starbase→Sternenbasis, Escape Pod→Rettungskapsel, Shipwreck→Schiffswrack, weapon names unchanged.
+**Files Modified/Created**:
+- `src/locales/en.json` — complete English source of truth (~200 keys across 12 namespaces)
+- `src/locales/de.json` — complete German translation (identical key structure)
+**Deviations from Plan**: No `admin` namespace added (admin page not in scope of current audit per task list; can be added in a future phase). Canvas tooltip strings added under `game` namespace as specified. `commanderStats` nested under `ship` namespace for clean grouping.
+**Arc42 Updates**: None required
+**Test Results**: ✅ All 1690 tests passing, no linting errors
+
+**Review Status**: ⚠️ NEEDS REVISION
+**Reviewer**: Medicus
+**Issues Found**:
+1. **Missing strings in `home` namespace** — The following user-visible strings from `HomePageClient.tsx` are absent from `en.json`/`de.json`:
+   - Notification action buttons: `"🔄 Refresh"`, `"Refreshing..."`, `"📊 Summarize"`, `"Summarizing..."`, `"Mark All as Read"`, `"Marking..."`
+   - Empty state: `"No new messages"`
+   - Defense table states: `"Loading defense values..."`, `"Error: {error}"`, `"No defense systems built yet"`, `"No defense data available"`
+   - Tech table states: `"Loading tech counts..."`, `"No tech data available"`
+2. **Missing strings in `game` namespace** — Two strings from `GamePageClient.tsx` are absent:
+   - `"enter coordinates"` (teleport button inside the panel)
+   - `"click mode"` (teleport toggle label)
+3. **`ship.bridgeSlots` not translated in `de.json`** — Value is `"Bridge Slots"` in both EN and DE. The plan rule only exempts weapon names and NPC names; "Bridge Slots" is a UI feature name that should be translated (e.g., `"Brückenplätze"` or `"Brücken-Slots"`), consistent with how `bridgeHeading` was translated to `"Brücke"` and `bridgeDragHint` to German.
+**Required Changes**:
+- Add the 13 missing `home` namespace keys to **both** `en.json` and `de.json` with appropriate German translations.
+- Add the 2 missing `game` namespace keys (`teleportEnterCoordinates`, `teleportClickMode`) to both files.
+- Translate `ship.bridgeSlots` in `de.json` to `"Brückenplätze"` (or `"Brücken-Slots"` if the compound form is preferred).
+- Ensure both files remain structurally identical after the additions.
+
+**Re-Review Status**: ✅ APPROVED
+**Reviewer**: Medicus
+**Review Notes**: All 3 required fixes confirmed. 13 home namespace keys added (using descriptive names: `refreshButton`, `refreshingButton`, `summarizeButton`, `summarizingButton`, `markAllAsReadButton`, `markingButton`, `noNewMessages`, `loadingDefenseValues`, `errorDefenseValues`, `noDefenseSystems`, `noDefenseData`, `loadingTechCounts`, `noTechData`). 2 game keys added (`teleportEnterCoordinates`, `teleportClickMode`). `ship.bridgeSlots` correctly translated to "Brückenplätze" in de.json. Both files confirmed at 325 keys with perfect structural parity, identical interpolation placeholders (`{error}` preserved), and valid JSON.
 
 ---
 

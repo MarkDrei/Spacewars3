@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
+import { useTranslations } from 'next-intl';
 import AuthenticatedLayout from '@/components/Layout/AuthenticatedLayout';
 import { ServerAuthState } from '@/lib/server/serverSession';
 import InventorySection from '@/components/Inventory/InventorySection';
@@ -13,6 +14,7 @@ interface ShipPageClientProps {
 }
 
 const ShipPageClient: React.FC<ShipPageClientProps> = () => {
+  const t = useTranslations('ship');
   const [availableShips, setAvailableShips] = useState<number[]>([]);
   const [selectedShip, setSelectedShip] = useState<number | null>(null);
   const [currentShip, setCurrentShip] = useState<number | null>(null);
@@ -99,15 +101,15 @@ const ShipPageClient: React.FC<ShipPageClientProps> = () => {
         // body consumed above or ignored
         await response.json(); 
         setCurrentShip(shipNumber);
-        setMessage(`✅ Ship ${shipNumber} selected successfully! 🚀`);
+        setMessage(t('successShipSelected', { shipNumber }));
       } else {
         const error = await response.json();
-        setMessage(`❌ Failed to update ship: ${error.message || 'Unknown error'}`);
+        setMessage(t('errorUpdateShip', { message: error.message || 'Unknown error' }));
         setSelectedShip(currentShip); // Revert selection on error
       }
     } catch (error) {
       console.error('Error updating ship:', error);
-      setMessage('❌ Failed to update ship. Please try again.');
+      setMessage(t('errorUpdateShipGeneric'));
       setSelectedShip(currentShip); // Revert selection on error
     } finally {
       setIsLoading(false);
@@ -118,7 +120,7 @@ const ShipPageClient: React.FC<ShipPageClientProps> = () => {
     <AuthenticatedLayout>
       <div className="ship-page">
         <div className="ship-container">
-          <h1 className="page-heading">Ship Configuration</h1>
+          <h1 className="page-heading">{t('pageHeading')}</h1>
           
           {message && (
             <div className="ship-selection-message">
@@ -172,30 +174,30 @@ const ShipPageClient: React.FC<ShipPageClientProps> = () => {
                   });
                   const data = await response.json();
                   if (response.ok && data.success) {
-                    setMessage('✅ Assigned to first free slot');
+                    setMessage(t('successAutoAssigned'));
                     // trigger refresh of both sections so they reflect change
                     setInvRefreshKey((k) => k + 1);
                     setBridgeRefreshKey((k) => k + 1);
                   } else {
-                    setMessage(`❌ ${data.error || 'Transfer failed'}`);
+                    setMessage(`❌ ${data.error || t('errorTransferFailed')}`);
                   }
                 } catch (err) {
                   console.error('Auto transfer error', err);
-                  setMessage('❌ Transfer failed. Please try again.');
+                  setMessage(t('errorTransferFailed'));
                 }
                 setDragSource(null);
               }}
             >
               {dragSource.gridKey === 'inventory'
-                ? 'Drop here to auto‑assign to bridge' 
-                : 'Drop here to auto‑return to inventory'}
+                ? t('dropToAssignToBridge') 
+                : t('dropToReturnToInventory')}
             </div>
           )}
 
           <section className="ship-selection-section">
             <p className="ship-selection-intro">
               Select your preferred ship design from the available options below:
-              {currentShip && <span> (Current: Ship {currentShip})</span>}
+              {currentShip && <span> {t('currentShipLabel', { shipNumber: currentShip })}</span>}
             </p>
 
             <div className="ship-grid">
@@ -218,7 +220,7 @@ const ShipPageClient: React.FC<ShipPageClientProps> = () => {
                     />
                   </div>
                   <div className="ship-label">
-                    Ship {shipNumber}
+                    {t('shipLabel', { shipNumber })}
                   </div>
                   {selectedShip === shipNumber && (
                     <div className="selected-indicator">✓</div>
@@ -229,13 +231,13 @@ const ShipPageClient: React.FC<ShipPageClientProps> = () => {
 
             {availableShips.length === 0 && (
               <div className="loading-message">
-                Loading available ships...
+                {t('loadingAvailableShips')}
               </div>
             )}
             
             {isLoading && (
               <div className="loading-message">
-                Updating ship selection...
+                {t('updatingShipSelection')}
               </div>
             )}
           </section>
