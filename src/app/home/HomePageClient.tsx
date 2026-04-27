@@ -11,6 +11,7 @@ import { useUserStats } from '@/lib/client/hooks/useUserStats';
 import { ServerAuthState } from '@/lib/server/serverSession';
 import { formatNumber } from '@/shared/numberFormat';
 import './HomePage.css';
+import { OrbitalCommandHub } from './OrbitalCommandHub';
 
 interface HomePageClientProps {
   auth: ServerAuthState;
@@ -78,16 +79,16 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
   const [isSummarizing, setIsSummarizing] = React.useState(false);
   const [isMessagesExpanded, setIsMessagesExpanded] = React.useState(false);
   const t = useTranslations('home');
-  
+
   const { techCounts, weapons, defenses, isLoading: techLoading, error: techError } = useTechCounts();
-  const { defenseValues, isLoading: defenseLoading, error: defenseError } = useDefenseValues();
-  const { battleStatus, isLoading: battleLoading } = useBattleStatus();
+  const { defenseValues, isLoading: defenseLoading, error: defenseError, shipPictureId } = useDefenseValues();
+  const { battleStatus } = useBattleStatus();
   const { xp, level, xpForNextLevel, score, isLoading: xpLoading, bonuses } = useUserStats(5000);
 
   // Handler for refreshing messages
   const handleRefreshMessages = async () => {
     if (isRefreshing) return;
-    
+
     setIsRefreshing(true);
     try {
       const result = await messagesService.getMessages();
@@ -107,7 +108,7 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
   // Handler for marking all messages as read
   const handleMarkAllAsRead = async () => {
     if (isMarkingAsRead || messages.length === 0) return;
-    
+
     setIsMarkingAsRead(true);
     try {
       const result = await messagesService.markAllAsRead();
@@ -127,7 +128,7 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
   // Handler for summarizing messages
   const handleSummarizeMessages = async () => {
     if (isSummarizing || messages.length === 0) return;
-    
+
     setIsSummarizing(true);
     try {
       const response = await fetch('/api/messages/summarize', {
@@ -142,11 +143,11 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
       }
 
       const result = await response.json();
-      
+
       if (result.success) {
         console.log(`✅ Messages summarized`);
         console.log(result.summary);
-        
+
         // Refresh messages to show the summary and any preserved messages
         await handleRefreshMessages();
       }
@@ -164,9 +165,9 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
   // Calculate color based on percentage (0% = red, 50% = yellow, 100% = green)
   const getDefenseColor = (current: number, max: number): string => {
     if (max === 0) return '#4caf50'; // Green if no max (shouldn't happen)
-    
+
     const percentage = current / max;
-    
+
     if (percentage <= 0.5) {
       // Red (0%) to Yellow (50%)
       // Red: #f44336, Yellow: #ffeb3b
@@ -186,58 +187,20 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
     }
   };
 
-  // Format weapon cooldown time remaining
-  const formatCooldown = (cooldownTimestamp: number): string => {
-    const now = Math.floor(Date.now() / 1000);
-    const secondsRemaining = Math.max(0, cooldownTimestamp - now);
-    
-    if (secondsRemaining === 0) return 'Ready';
-    if (secondsRemaining < 60) return `${secondsRemaining}s`;
-    
-    const minutes = Math.floor(secondsRemaining / 60);
-    const seconds = secondsRemaining % 60;
-    return `${minutes}m ${seconds}s`;
-  };
 
   return (
     <AuthenticatedLayout>
       <div className="home-page">
         <div className="home-container">
-          {/* Battle Status Banner */}
-          {!battleLoading && battleStatus?.inBattle && battleStatus.battle && (
-            <div id="battle-status" className="battle-banner">
-              <div className="battle-banner-header">
-                ⚔️ BATTLE IN PROGRESS
-              </div>
-              <div className="battle-banner-content">
-                <p>
-                  {battleStatus.battle.isAttacker ? 'You attacked' : 'You are under attack from'} opponent #{battleStatus.battle.opponentId}
-                </p>
-                <div className="battle-damage-stats">
-                  <div className="damage-stat">
-                    <span className="damage-label">{t('yourDamage')}</span>
-                    <span className="damage-value">{formatNumber(battleStatus.battle.myTotalDamage)}</span>
-                  </div>
-                  <div className="damage-stat">
-                    <span className="damage-label">{t('opponentDamage')}</span>
-                    <span className="damage-value">{formatNumber(battleStatus.battle.opponentTotalDamage)}</span>
-                  </div>
-                </div>
-                {battleStatus.battle.weaponCooldowns && Object.keys(battleStatus.battle.weaponCooldowns).length > 0 && (
-                  <div className="weapon-cooldowns">
-                    <div className="cooldown-header">{t('weaponCooldowns')}</div>
-                    <div className="cooldown-list">
-                      {Object.entries(battleStatus.battle.weaponCooldowns).map(([weapon, timestamp]) => (
-                        <div key={weapon} className="cooldown-item">
-                          <span className="weapon-name">{weapon.replace(/_/g, ' ')}</span>
-                          <span className="cooldown-time">{formatCooldown(timestamp)}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
+          {/* Orbital Command Mockup */}
+          {battleStatus?.inBattle && (
+            <OrbitalCommandHub
+              defenseValues={displayDefenseValues}
+              battleStatus={battleStatus}
+              techCounts={techCounts}
+              weapons={weapons}
+              shipPictureId={shipPictureId}
+            />
           )}
 
           {/* Notifications */}
@@ -247,8 +210,9 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
                 <tr>
                   <th colSpan={2}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span>{t('notificationsHeading')}</span>                      <div style={{ display: 'flex', gap: '8px' }}>
-                        <button 
+                      <span>{t('notificationsHeading')}</span>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button
                           onClick={handleRefreshMessages}
                           disabled={isRefreshing}
                           style={{
@@ -276,7 +240,7 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
                         </button>
                         {messages.length > 0 && (
                           <>
-                            <button 
+                            <button
                               onClick={handleSummarizeMessages}
                               disabled={isSummarizing}
                               style={{
@@ -302,7 +266,7 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
                             >
                               {isSummarizing ? t('summarizingButton') : t('summarizeButton')}
                             </button>
-                            <button 
+                            <button
                               onClick={handleMarkAllAsRead}
                               disabled={isMarkingAsRead}
                               style={{
@@ -383,7 +347,7 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
                               (e.target as HTMLButtonElement).style.color = '#2196F3';
                             }}
                           >
-                            <span style={{ 
+                            <span style={{
                               transform: isMessagesExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
                               transition: 'transform 0.2s',
                               display: 'inline-block'
@@ -406,7 +370,8 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
             <table className="data-table">
               <thead>
                 <tr>
-                  <th colSpan={2}>{t('yourProgressHeading')}</th>                </tr>
+                  <th colSpan={2}>{t('yourProgressHeading')}</th>
+                </tr>
               </thead>
               <tbody>
                 <tr className="data-row">
@@ -439,6 +404,301 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
               <thead>
                 <tr>
                   <th colSpan={2}>{t('activeBonusesHeading')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td colSpan={2} className="category-header">{t('ironEconomyCategory')}</td>
+                </tr>
+                <tr className="data-row">
+                  <td className="data-cell">{t('ironRechargeRate')}</td>
+                  <td className="data-cell value-cell">
+                    {xpLoading ? '...' : `${formatNumber(bonuses.ironRechargeRate)} /s`}
+                  </td>
+                </tr>
+                <tr className="data-row">
+                  <td className="data-cell">{t('ironStorage')}</td>
+                  <td className="data-cell value-cell">
+                    {xpLoading ? '...' : formatNumber(bonuses.ironStorageCapacity)}
+                  </td>
+                </tr>
+                <tr className="data-row">
+                  <td className="data-cell">{t('maxShipSpeedTheoretical')}</td>
+                  <td className="data-cell value-cell">
+                    {xpLoading ? '...' : formatNumber(bonuses.maxShipSpeed)}
+                  </td>
+                </tr>
+                <tr className="data-row">
+                  <td className="data-cell">{t('maxShipSpeedCurrent')}</td>
+                  <td className="data-cell value-cell">
+                    {xpLoading ? '...' : formatNumber(bonuses.currentMaxShipSpeed)}
+                  </td>
+                </tr>
+                <tr>
+                  <td colSpan={2} className="category-header">{t('defenseRegenCategory')}</td>
+                </tr>
+                <tr className="data-row">
+                  <td className="data-cell">{t('repairHullArmor')}</td>
+                  <td className="data-cell value-cell">{xpLoading ? '...' : formatNumber(bonuses.repairRate)}</td>
+                </tr>
+                <tr className="data-row">
+                  <td className="data-cell">{t('shieldRecharge')}</td>
+                  <td className="data-cell value-cell">{xpLoading ? '...' : formatNumber(bonuses.shieldRechargeRate)}</td>
+                </tr>
+                <tr>
+                  <td colSpan={2} className="category-header">{t('projectileWeaponsCategory')}</td>
+                </tr>
+                <tr className="data-row">
+                  <td className="data-cell">{t('damage')}</td>
+                  <td className="data-cell value-cell">{xpLoading ? '...' : `+${formatNumber((bonuses.projectileWeaponDamageFactor - 1) * 100)}%`}</td>
+                </tr>
+                <tr className="data-row">
+                  <td className="data-cell">{t('reloadSpeed')}</td>
+                  <td className="data-cell value-cell">{xpLoading ? '...' : `+${formatNumber((bonuses.projectileWeaponReloadFactor - 1) * 100)}%`}</td>
+                </tr>
+                <tr className="data-row">
+                  <td className="data-cell">{t('accuracy')}</td>
+                  <td className="data-cell value-cell">{xpLoading ? '...' : `+${formatNumber((bonuses.projectileWeaponAccuracyFactor - 1) * 100)}%`}</td>
+                </tr>
+                <tr>
+                  <td colSpan={2} className="category-header">{t('energyWeaponsCategory')}</td>
+                </tr>
+                <tr className="data-row">
+                  <td className="data-cell">{t('damage')}</td>
+                  <td className="data-cell value-cell">{xpLoading ? '...' : `+${formatNumber((bonuses.energyWeaponDamageFactor - 1) * 100)}%`}</td>
+                </tr>
+                <tr className="data-row">
+                  <td className="data-cell">{t('reloadSpeed')}</td>
+                  <td className="data-cell value-cell">{xpLoading ? '...' : `+${formatNumber((bonuses.energyWeaponReloadFactor - 1) * 100)}%`}</td>
+                </tr>
+                <tr className="data-row">
+                  <td className="data-cell">{t('accuracy')}</td>
+                  <td className="data-cell value-cell">{xpLoading ? '...' : `+${formatNumber((bonuses.energyWeaponAccuracyFactor - 1) * 100)}%`}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          {/* Defense Values Table */}
+          <div id="defense" className="data-table-container defense-values-table-container">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th colSpan={3}>{t('defenseValuesHeading')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {defenseLoading ? (
+                  <tr>
+                    <td colSpan={3} className="loading-cell">
+                      {t('loadingDefenseValues')}
+                    </td>
+                  </tr>
+                ) : defenseError ? (
+                  <tr>
+                    <td colSpan={3} className="error-cell">
+                      {t('errorDefenseValues', { error: defenseError })}
+                    </td>
+                  </tr>
+                ) : displayDefenseValues ? (
+                  <>
+                    {(displayDefenseValues.hull.max > 0) && (
+                      <tr className="data-row">
+                        <td className="data-cell">{displayDefenseValues.hull.name}</td>
+                        <td className="data-cell value-cell" style={{ color: getDefenseColor(displayDefenseValues.hull.current, displayDefenseValues.hull.max) }}>
+                          {formatNumber(displayDefenseValues.hull.current)}
+                        </td>
+                        <td className="data-cell value-cell">{formatNumber(displayDefenseValues.hull.max)}</td>
+                      </tr>
+                    )}
+                    {(displayDefenseValues.armor.max > 0) && (
+                      <tr className="data-row">
+                        <td className="data-cell">{displayDefenseValues.armor.name}</td>
+                        <td className="data-cell value-cell" style={{ color: getDefenseColor(displayDefenseValues.armor.current, displayDefenseValues.armor.max) }}>
+                          {formatNumber(displayDefenseValues.armor.current)}
+                        </td>
+                        <td className="data-cell value-cell">{formatNumber(displayDefenseValues.armor.max)}</td>
+                      </tr>
+                    )}
+                    {(displayDefenseValues.shield.max > 0) && (
+                      <tr className="data-row">
+                        <td className="data-cell">{displayDefenseValues.shield.name}</td>
+                        <td className="data-cell value-cell" style={{ color: getDefenseColor(displayDefenseValues.shield.current, displayDefenseValues.shield.max) }}>
+                          {formatNumber(displayDefenseValues.shield.current)}
+                        </td>
+                        <td className="data-cell value-cell">{formatNumber(displayDefenseValues.shield.max)}</td>
+                      </tr>
+                    )}
+                    {(displayDefenseValues.hull.max === 0 && displayDefenseValues.armor.max === 0 && displayDefenseValues.shield.max === 0) && (
+                      <tr>
+                        <td colSpan={3} className="empty-cell">
+                          {t('noDefenseSystems')}
+                        </td>
+                      </tr>
+                    )}
+                  </>
+                ) : (
+                  <tr>
+                    <td colSpan={3} className="empty-cell">
+                      {t('noDefenseData')}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Tech Counts Table */}
+          <div id="tech-inventory" className="data-table-container tech-counts-table-container">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th colSpan={2}>{t('techInventoryHeading')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {techLoading ? (
+                  <tr>
+                    <td colSpan={2} className="loading-cell">
+                      {t('loadingTechCounts')}
+                    </td>
+                  </tr>
+                ) : techError ? (
+                  <tr>
+                    <td colSpan={2} className="error-cell">
+                      {t('errorTechCounts', { error: techError })}
+                    </td>
+                  </tr>
+                ) : techCounts ? (
+                  <>
+                    {/* Defense Section */}
+                    {(techCounts.ship_hull > 0 || techCounts.kinetic_armor > 0 || techCounts.energy_shield > 0 || techCounts.missile_jammer > 0) && (
+                      <>
+                        <tr>
+                          <td colSpan={2} className="category-header">{t('defenseCategory')}</td>
+                        </tr>
+                        {techCounts.ship_hull > 0 && (
+                          <tr className="data-row">
+                            <td className="data-cell">{defenses.ship_hull?.name || 'Ship Hull'}</td>
+                            <td className="data-cell value-cell">{techCounts.ship_hull}</td>
+                          </tr>
+                        )}
+                        {techCounts.kinetic_armor > 0 && (
+                          <tr className="data-row">
+                            <td className="data-cell">{defenses.kinetic_armor?.name || 'Kinetic Armor'}</td>
+                            <td className="data-cell value-cell">{techCounts.kinetic_armor}</td>
+                          </tr>
+                        )}
+                        {techCounts.energy_shield > 0 && (
+                          <tr className="data-row">
+                            <td className="data-cell">{defenses.energy_shield?.name || 'Energy Shield'}</td>
+                            <td className="data-cell value-cell">{techCounts.energy_shield}</td>
+                          </tr>
+                        )}
+                        {techCounts.missile_jammer > 0 && (
+                          <tr className="data-row">
+                            <td className="data-cell">{defenses.missile_jammer?.name || 'Missile Jammer'}</td>
+                            <td className="data-cell value-cell">{techCounts.missile_jammer}</td>
+                          </tr>
+                        )}
+                      </>
+                    )}
+
+                    {/* Weapons Section */}
+                    {(techCounts.pulse_laser > 0 || techCounts.auto_turret > 0 || techCounts.plasma_lance > 0 || techCounts.gauss_rifle > 0 || techCounts.photon_torpedo > 0 || techCounts.rocket_launcher > 0) && (
+                      <>
+                        <tr>
+                          <td colSpan={2} className="category-header">{t('weaponsCategory')}</td>
+                        </tr>
+                        {techCounts.pulse_laser > 0 && (
+                          <tr className="data-row">
+                            <td className="data-cell">{weapons.pulse_laser?.name || 'Pulse Laser'}</td>
+                            <td className="data-cell value-cell">{techCounts.pulse_laser}</td>
+                          </tr>
+                        )}
+                        {techCounts.auto_turret > 0 && (
+                          <tr className="data-row">
+                            <td className="data-cell">{weapons.auto_turret?.name || 'Auto Turret'}</td>
+                            <td className="data-cell value-cell">{techCounts.auto_turret}</td>
+                          </tr>
+                        )}
+                        {techCounts.plasma_lance > 0 && (
+                          <tr className="data-row">
+                            <td className="data-cell">{weapons.plasma_lance?.name || 'Plasma Lance'}</td>
+                            <td className="data-cell value-cell">{techCounts.plasma_lance}</td>
+                          </tr>
+                        )}
+                        {techCounts.gauss_rifle > 0 && (
+                          <tr className="data-row">
+                            <td className="data-cell">{weapons.gauss_rifle?.name || 'Gauss Rifle'}</td>
+                            <td className="data-cell value-cell">{techCounts.gauss_rifle}</td>
+                          </tr>
+                        )}
+                        {techCounts.photon_torpedo > 0 && (
+                          <tr className="data-row">
+                            <td className="data-cell">{weapons.photon_torpedo?.name || 'Photon Torpedo'}</td>
+                            <td className="data-cell value-cell">{techCounts.photon_torpedo}</td>
+                          </tr>
+                        )}
+                        {techCounts.rocket_launcher > 0 && (
+                          <tr className="data-row">
+                            <td className="data-cell">{weapons.rocket_launcher?.name || 'Rocket Launcher'}</td>
+                            <td className="data-cell value-cell">{techCounts.rocket_launcher}</td>
+                          </tr>
+                        )}
+                      </>
+                    )}
+                  </>
+                ) : (
+                  <tr>
+                    <td colSpan={2} className="empty-cell">
+                      {t('noTechData')}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Your Progress */}
+          <div id="progress" className="data-table-container">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th colSpan={2}>Your Progress</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="data-row">
+                  <td className="data-cell">Score</td>
+                  <td className="data-cell value-cell">{xpLoading ? '...' : formatNumber(score)}</td>
+                </tr>
+                <tr className="data-row">
+                  <td className="data-cell">Level</td>
+                  <td className="data-cell value-cell">{xpLoading ? '...' : level}</td>
+                </tr>
+                <tr className="data-row">
+                  <td className="data-cell">Experience</td>
+                  <td className="data-cell value-cell">
+                    {xpLoading ? '...' : `${formatNumber(xp)} / ${formatNumber(xpForNextLevel)}`}
+                  </td>
+                </tr>
+                <tr className="data-row">
+                  <td className="data-cell">Level Bonus</td>
+                  <td className="data-cell value-cell">
+                    {xpLoading ? '...' : `+${formatNumber((bonuses.levelMultiplier - 1) * 100)}%`}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          {/* Active Bonuses */}
+          <div id="bonuses" className="data-table-container">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th colSpan={2}>Active Bonuses</th>
                 </tr>
               </thead>
               <tbody>
@@ -513,188 +773,6 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
               </tbody>
             </table>
           </div>
-
-          {/* Defense Values Table */}
-          <div id="defense" className="data-table-container defense-values-table-container">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th colSpan={3}>Defense Values</th>
-                </tr>
-              </thead>
-              <tbody>
-                {defenseLoading ? (
-                  <tr>
-                    <td colSpan={3} className="loading-cell">
-                      Loading defense values...
-                    </td>
-                  </tr>
-                ) : defenseError ? (
-                  <tr>
-                    <td colSpan={3} className="error-cell">
-                      Error: {defenseError}
-                    </td>
-                  </tr>
-                ) : displayDefenseValues ? (
-                  <>
-                    {(displayDefenseValues.hull.max > 0) && (
-                      <tr className="data-row">
-                        <td className="data-cell">{displayDefenseValues.hull.name}</td>
-                        <td className="data-cell value-cell" style={{ color: getDefenseColor(displayDefenseValues.hull.current, displayDefenseValues.hull.max) }}>
-                          {formatNumber(displayDefenseValues.hull.current)}
-                        </td>
-                        <td className="data-cell value-cell">{formatNumber(displayDefenseValues.hull.max)}</td>
-                      </tr>
-                    )}
-                    {(displayDefenseValues.armor.max > 0) && (
-                      <tr className="data-row">
-                        <td className="data-cell">{displayDefenseValues.armor.name}</td>
-                        <td className="data-cell value-cell" style={{ color: getDefenseColor(displayDefenseValues.armor.current, displayDefenseValues.armor.max) }}>
-                          {formatNumber(displayDefenseValues.armor.current)}
-                        </td>
-                        <td className="data-cell value-cell">{formatNumber(displayDefenseValues.armor.max)}</td>
-                      </tr>
-                    )}
-                    {(displayDefenseValues.shield.max > 0) && (
-                      <tr className="data-row">
-                        <td className="data-cell">{displayDefenseValues.shield.name}</td>
-                        <td className="data-cell value-cell" style={{ color: getDefenseColor(displayDefenseValues.shield.current, displayDefenseValues.shield.max) }}>
-                          {formatNumber(displayDefenseValues.shield.current)}
-                        </td>
-                        <td className="data-cell value-cell">{formatNumber(displayDefenseValues.shield.max)}</td>
-                      </tr>
-                    )}
-                    {(displayDefenseValues.hull.max === 0 && displayDefenseValues.armor.max === 0 && displayDefenseValues.shield.max === 0) && (
-                      <tr>
-                        <td colSpan={3} className="empty-cell">
-                          No defense systems built yet
-                        </td>
-                      </tr>
-                    )}
-                  </>
-                ) : (
-                  <tr>
-                    <td colSpan={3} className="empty-cell">
-                      No defense data available
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Tech Counts Table */}
-          <div id="tech-inventory" className="data-table-container tech-counts-table-container">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th colSpan={2}>Tech Inventory</th>
-                </tr>
-              </thead>
-              <tbody>
-                {techLoading ? (
-                  <tr>
-                    <td colSpan={2} className="loading-cell">
-                      Loading tech counts...
-                    </td>
-                  </tr>
-                ) : techError ? (
-                  <tr>
-                    <td colSpan={2} className="error-cell">
-                      Error: {techError}
-                    </td>
-                  </tr>
-                ) : techCounts ? (
-                  <>
-                    {/* Defense Section */}
-                    {(techCounts.ship_hull > 0 || techCounts.kinetic_armor > 0 || techCounts.energy_shield > 0 || techCounts.missile_jammer > 0) && (
-                      <>
-                        <tr>
-                          <td colSpan={2} className="category-header">Defense</td>
-                        </tr>
-                        {techCounts.ship_hull > 0 && (
-                          <tr className="data-row">
-                            <td className="data-cell">{defenses.ship_hull?.name || 'Ship Hull'}</td>
-                            <td className="data-cell value-cell">{techCounts.ship_hull}</td>
-                          </tr>
-                        )}
-                        {techCounts.kinetic_armor > 0 && (
-                          <tr className="data-row">
-                            <td className="data-cell">{defenses.kinetic_armor?.name || 'Kinetic Armor'}</td>
-                            <td className="data-cell value-cell">{techCounts.kinetic_armor}</td>
-                          </tr>
-                        )}
-                        {techCounts.energy_shield > 0 && (
-                          <tr className="data-row">
-                            <td className="data-cell">{defenses.energy_shield?.name || 'Energy Shield'}</td>
-                            <td className="data-cell value-cell">{techCounts.energy_shield}</td>
-                          </tr>
-                        )}
-                        {techCounts.missile_jammer > 0 && (
-                          <tr className="data-row">
-                            <td className="data-cell">{defenses.missile_jammer?.name || 'Missile Jammer'}</td>
-                            <td className="data-cell value-cell">{techCounts.missile_jammer}</td>
-                          </tr>
-                        )}
-                      </>
-                    )}
-
-                    {/* Weapons Section */}
-                    {(techCounts.pulse_laser > 0 || techCounts.auto_turret > 0 || techCounts.plasma_lance > 0 || techCounts.gauss_rifle > 0 || techCounts.photon_torpedo > 0 || techCounts.rocket_launcher > 0) && (
-                      <>
-                        <tr>
-                          <td colSpan={2} className="category-header">Weapons</td>
-                        </tr>
-                        {techCounts.pulse_laser > 0 && (
-                          <tr className="data-row">
-                            <td className="data-cell">{weapons.pulse_laser?.name || 'Pulse Laser'}</td>
-                            <td className="data-cell value-cell">{techCounts.pulse_laser}</td>
-                          </tr>
-                        )}
-                        {techCounts.auto_turret > 0 && (
-                          <tr className="data-row">
-                            <td className="data-cell">{weapons.auto_turret?.name || 'Auto Turret'}</td>
-                            <td className="data-cell value-cell">{techCounts.auto_turret}</td>
-                          </tr>
-                        )}
-                        {techCounts.plasma_lance > 0 && (
-                          <tr className="data-row">
-                            <td className="data-cell">{weapons.plasma_lance?.name || 'Plasma Lance'}</td>
-                            <td className="data-cell value-cell">{techCounts.plasma_lance}</td>
-                          </tr>
-                        )}
-                        {techCounts.gauss_rifle > 0 && (
-                          <tr className="data-row">
-                            <td className="data-cell">{weapons.gauss_rifle?.name || 'Gauss Rifle'}</td>
-                            <td className="data-cell value-cell">{techCounts.gauss_rifle}</td>
-                          </tr>
-                        )}
-                        {techCounts.photon_torpedo > 0 && (
-                          <tr className="data-row">
-                            <td className="data-cell">{weapons.photon_torpedo?.name || 'Photon Torpedo'}</td>
-                            <td className="data-cell value-cell">{techCounts.photon_torpedo}</td>
-                          </tr>
-                        )}
-                        {techCounts.rocket_launcher > 0 && (
-                          <tr className="data-row">
-                            <td className="data-cell">{weapons.rocket_launcher?.name || 'Rocket Launcher'}</td>
-                            <td className="data-cell value-cell">{techCounts.rocket_launcher}</td>
-                          </tr>
-                        )}
-                      </>
-                    )}
-                  </>
-                ) : (
-                  <tr>
-                    <td colSpan={2} className="empty-cell">
-                      No tech data available
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-
 
         </div>
       </div>
