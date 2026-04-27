@@ -24,6 +24,7 @@ export interface CanvasStrings {
   distance: string;
   level: string;
   actionTapToDock: string;
+  levelTooFarToAttack: string;
 }
 
 export const defaultCanvasStrings: CanvasStrings = {
@@ -41,4 +42,5 @@ export const defaultCanvasStrings: CanvasStrings = {
   distance: 'Distance',
   level: 'Level',
   actionTapToDock: 'Action: tap again to dock',
+  levelTooFarToAttack: 'Level difference too large to attack this target.',
 };

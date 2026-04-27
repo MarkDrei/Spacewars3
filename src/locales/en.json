@@ -323,7 +323,20 @@
     "tooltipLevel": "Level: {value}",
     "tooltipActionDock": "Action: tap again to dock",
     "teleportEnterCoordinates": "enter coordinates",
-    "teleportClickMode": "click mode"
+    "teleportClickMode": "click mode",
+    "announcementIronFromObject": "+{iron} iron from {object}",
+    "announcementCollected": "Collected!",
+    "announcementCollectionFailed": "Collection failed",
+    "announcementAttackFailed": "Attack failed",
+    "announcementLevelTooFarToAttack": "Level difference too large to attack this target.",
+    "announcementAttackAlreadyInBattle": "You are already in a battle.",
+    "announcementAttackTargetInBattle": "Target is already in a battle.",
+    "announcementAttackNoShip": "Both players must have ships to battle.",
+    "announcementAttackRecentlyAttacked": "You have attacked this player recently. Choose a different target.",
+    "announcementAttackTooFar": "Target is too far away.",
+    "announcementAttackNoWeapon": "You need at least one weapon to attack.",
+    "announcementAttackNpcDefeated": "This NPC has already been defeated.",
+    "announcementAttackNpcInBattle": "This NPC is already in battle."
   },
   "statistics": {
     "playerStatsHeading": "Player Statistics",

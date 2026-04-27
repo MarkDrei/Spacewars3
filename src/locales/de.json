@@ -323,7 +323,20 @@
     "tooltipLevel": "Stufe: {value}",
     "tooltipActionDock": "Aktion: erneut tippen zum Andocken",
     "teleportEnterCoordinates": "Koordinaten eingeben",
-    "teleportClickMode": "Klick-Modus"
+    "teleportClickMode": "Klick-Modus",
+    "announcementIronFromObject": "+{iron} Eisen von {object}",
+    "announcementCollected": "Eingesammelt!",
+    "announcementCollectionFailed": "Einsammeln fehlgeschlagen",
+    "announcementAttackFailed": "Angriff fehlgeschlagen",
+    "announcementLevelTooFarToAttack": "Stufenunterschied zu groß, um dieses Ziel anzugreifen.",
+    "announcementAttackAlreadyInBattle": "Du befindest dich bereits in einem Kampf.",
+    "announcementAttackTargetInBattle": "Das Ziel befindet sich bereits in einem Kampf.",
+    "announcementAttackNoShip": "Beide Spieler müssen ein Schiff haben, um zu kämpfen.",
+    "announcementAttackRecentlyAttacked": "Du hast diesen Spieler kürzlich angegriffen. Wähle ein anderes Ziel.",
+    "announcementAttackTooFar": "Das Ziel ist zu weit entfernt.",
+    "announcementAttackNoWeapon": "Du brauchst mindestens eine Waffe, um anzugreifen.",
+    "announcementAttackNpcDefeated": "Dieser NPC wurde bereits besiegt.",
+    "announcementAttackNpcInBattle": "Dieser NPC befindet sich bereits in einem Kampf."
   },
   "statistics": {
     "playerStatsHeading": "Spielerstatistiken",

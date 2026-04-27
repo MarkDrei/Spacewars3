@@ -13,7 +13,7 @@ import { STARBASE_DOCK_RANGE } from '@/shared/starbases';
 import { debugState } from '../debug/debugState';
 import { InterceptionLineRenderer } from '../renderers/InterceptionLineRenderer';
 import { isAttackAllowed } from '@shared/utils/levelUtils';
-import { CanvasStrings } from './canvasStrings';
+import { CanvasStrings, defaultCanvasStrings } from './canvasStrings';
 
 export class Game {
   private world: World;
@@ -28,7 +28,9 @@ export class Game {
   private interceptionLines: InterceptionLines | null = null;
   private onNavigationCallback?: (navigation?: Pick<NavigateResponse, 'angle' | 'speed'>) => void; // Callback for when navigation happens
   private onAttackSuccessCallback?: () => void; // Callback for when attack succeeds
+  private onAttackFailedCallback?: (error: string) => void; // Callback for when attack fails
   private onHarvestCallback?: (result: { success: boolean; ironReward?: number; objectType?: string; error?: string }) => void; // Callback for harvest result
+  private canvasStrings: CanvasStrings = defaultCanvasStrings;
   private teleportClickMode: boolean = false;
   private attackClickMode: boolean = false;
   private mobileInteractionMode: boolean = false;
@@ -388,6 +390,7 @@ export class Game {
           console.warn(`⚔️ Target ship has no level data (userId ${userId}); skipping level check`);
         } else if (!isAttackAllowed(this.playerLevel, targetLevel)) {
           console.log(`⚔️ Attack blocked: level difference too large (player ${this.playerLevel} vs target ${targetLevel})`);
+          this.onAttackFailedCallback?.(this.canvasStrings.levelTooFarToAttack);
           return;
         }
       }
@@ -420,7 +423,7 @@ export class Game {
         }
       } else {
         console.error('⚔️ Failed to initiate battle:', result.error);
-        // Could show user feedback here (e.g., toast notification)
+        this.onAttackFailedCallback?.(result.error ?? 'Attack failed');
       }
     } catch (error) {
       console.error('⚔️ Failed to handle attack:', error);
@@ -526,6 +529,13 @@ export class Game {
   }
 
   /**
+   * Set a callback function to trigger when attack fails
+   */
+  public setAttackFailedCallback(callback: (error: string) => void): void {
+    this.onAttackFailedCallback = callback;
+  }
+
+  /**
    * Set a callback function to trigger after a harvest attempt (success or failure)
    */
   public setHarvestCallback(callback: (result: { success: boolean; ironReward?: number; objectType?: string; error?: string }) => void): void {
@@ -544,6 +554,7 @@ export class Game {
    * Call this from a React component whenever the locale changes.
    */
   public updateCanvasStrings(strings: CanvasStrings): void {
+    this.canvasStrings = strings;
     this.renderer.updateCanvasStrings(strings);
   }
 

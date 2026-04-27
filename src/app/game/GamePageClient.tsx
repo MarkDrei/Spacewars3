@@ -203,6 +203,7 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
       distance: extractLabel('tooltipDistance'),
       level: extractLabel('tooltipLevel'),
       actionTapToDock: t('tooltipActionDock'),
+      levelTooFarToAttack: t('announcementLevelTooFarToAttack'),
     };
   }, [t]);
 
@@ -430,25 +431,32 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
     router.push('/');
   }, [router]);
 
+  // Memoize attack failed callback - called from Game when attack is rejected
+  const handleAttackFailed = useCallback((error: string) => {
+    if (announcementTimerRef.current) clearTimeout(announcementTimerRef.current);
+    setAnnouncement({ text: error || t('announcementAttackFailed'), key: Date.now(), variant: 'orange' });
+    announcementTimerRef.current = setTimeout(() => setAnnouncement(null), 2500);
+  }, [t]);
+
   // Memoize harvest result callback - called from Game after a collect attempt
   const handleHarvestResult = useCallback((result: { success: boolean; ironReward?: number; objectType?: string; error?: string }) => {
     if (result.success) {
       if (result.ironReward && result.ironReward > 0) {
         const label = result.objectType ? result.objectType.replace('_', ' ') : 'object';
         if (announcementTimerRef.current) clearTimeout(announcementTimerRef.current);
-        setAnnouncement({ text: `+${result.ironReward} iron from ${label}`, key: Date.now() });
+        setAnnouncement({ text: t('announcementIronFromObject', { iron: result.ironReward, object: label }), key: Date.now() });
         announcementTimerRef.current = setTimeout(() => setAnnouncement(null), 2500);
       } else {
         if (announcementTimerRef.current) clearTimeout(announcementTimerRef.current);
-        setAnnouncement({ text: 'Collected!', key: Date.now() });
+        setAnnouncement({ text: t('announcementCollected'), key: Date.now() });
         announcementTimerRef.current = setTimeout(() => setAnnouncement(null), 2500);
       }
     } else {
       if (announcementTimerRef.current) clearTimeout(announcementTimerRef.current);
-      setAnnouncement({ text: result.error ?? 'Collection failed', key: Date.now(), variant: 'orange' });
+      setAnnouncement({ text: result.error ?? t('announcementCollectionFailed'), key: Date.now(), variant: 'orange' });
       announcementTimerRef.current = setTimeout(() => setAnnouncement(null), 2500);
     }
-  }, []);
+  }, [t]);
 
   // Memoize starbase entry callback - called from Game when player enters a starbase
   const handleStarbaseEntry = useCallback(() => {
@@ -546,6 +554,8 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
       gameInstanceRef.current.setNavigationCallback?.(updateInputFieldsFromShip);
       // Set the attack success callback to redirect to home page
       gameInstanceRef.current.setAttackSuccessCallback?.(handleAttackSuccess);
+      // Set the attack failed callback to display feedback on canvas
+      gameInstanceRef.current.setAttackFailedCallback?.(handleAttackFailed);
       // Set the harvest result callback to display feedback on canvas
       gameInstanceRef.current.setHarvestCallback?.(handleHarvestResult);
       // Set the teleport click callback for canvas click-to-teleport mode
@@ -553,7 +563,7 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
       // Set the starbase entry callback to redirect to starbase page
       gameInstanceRef.current.setStarbaseEntryCallback(handleStarbaseEntry);
     }
-  }, [worldData, auth.shipId, refetch, handleAttackSuccess, handleHarvestResult, handleCanvasTeleport, handleStarbaseEntry]);
+  }, [worldData, auth.shipId, refetch, handleAttackSuccess, handleAttackFailed, handleHarvestResult, handleCanvasTeleport, handleStarbaseEntry]);
 
   // Initialize input fields with current ship state only once when game starts
   useEffect(() => {
