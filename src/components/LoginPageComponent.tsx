@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { useAuth } from '@/lib/client/hooks/useAuth';
 import '../app/login/LoginPage.css';
 
@@ -37,6 +38,7 @@ export const LoginPageComponent: React.FC<LoginPageComponentProps> = ({
 }) => {
   const router = useRouter();
   const { login: hookLogin, register: hookRegister } = useAuth();
+  const t = useTranslations('auth');
   
   // Use props if provided (for testing), otherwise use hooks
   const login = propOnLogin || hookLogin;
@@ -68,12 +70,12 @@ export const LoginPageComponent: React.FC<LoginPageComponentProps> = ({
 
   const validateForm = (): boolean => {
     if (!formData.username.trim() || !formData.password.trim()) {
-      setError('Please fill in all fields');
+      setError(t('errorFillAllFields'));
       return false;
     }
 
     if (isSignUp && formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
+      setError(t('errorPasswordsNoMatch'));
       return false;
     }
 
@@ -94,24 +96,24 @@ export const LoginPageComponent: React.FC<LoginPageComponentProps> = ({
         const result = await register(formData.username, formData.password, formData.email || undefined);
         if (result.success) {
           if (result.emailSent) {
-            setSuccessMessage('Account created! Check your email to verify your address. Redirecting…');
+            setSuccessMessage(t('successAccountCreated'));
             setTimeout(() => router.push('/game'), 3000);
           } else {
             router.push('/game');
           }
         } else {
-          setError(result.error || 'Registration failed');
+          setError(result.error || t('errorRegistrationFailed'));
         }
       } else {
         const result = await login(formData.username, formData.password);
         if (result.success) {
           router.push('/game');
         } else {
-          setError(result.error || 'Authentication failed');
+          setError(result.error || t('errorAuthFailed'));
         }
       }
     } catch {
-      setError('An unexpected error occurred');
+      setError(t('errorUnexpected'));
     } finally {
       setIsLoading(false);
     }
@@ -149,16 +151,16 @@ export const LoginPageComponent: React.FC<LoginPageComponentProps> = ({
     setError('');
     setSuccessMessage('');
     if (!forgotEmail.trim()) {
-      setError('Please enter your email address.');
+      setError(t('errorEnterEmail'));
       return;
     }
     setIsLoading(true);
     try {
       await forgotPasswordFn(forgotEmail.trim());
       // Always show the same message — no leakage of whether email exists
-      setSuccessMessage('If that email is registered, a reset link has been sent. Check your inbox.');
+      setSuccessMessage(t('successResetLinkSent'));
     } catch {
-      setError('An unexpected error occurred. Please try again.');
+      setError(t('errorUnexpectedRetry'));
     } finally {
       setIsLoading(false);
     }
@@ -166,53 +168,53 @@ export const LoginPageComponent: React.FC<LoginPageComponentProps> = ({
 
   // Determine banner message from query params (shown on login page after redirect)
   const queryBanner = verifiedParam === 'true'
-    ? 'Email verified! You can now sign in.'
+    ? t('bannerEmailVerified')
     : errorParam === 'invalid-token'
-    ? 'Email verification link is invalid or has expired.'
+    ? t('bannerInvalidToken')
     : resetParam === 'true'
-    ? 'Password updated! You can now sign in with your new password.'
+    ? t('bannerPasswordReset')
     : null;
 
   return (
     <div className="login-page">
       <div className="login-container">
-        <h1>Spacewars: Ironstrike</h1>
-        <p>Welcome to the space exploration game.</p>
+        <h1>{t('gameTitle')}</h1>
+        <p>{t('welcomeSubtitle')}</p>
         
         <div className="auth-form-container">
           {isForgotPassword ? (
             /* ── Forgot-password inline form ── */
             <>
               <h2 style={{ color: 'var(--primary-green)', marginBottom: '1rem', fontSize: '1.25rem' }}>
-                Reset Password
+                {t('resetPasswordHeading')}
               </h2>
               <form onSubmit={handleForgotPasswordSubmit} className="auth-form">
                 {successMessage && <div className="success-message">{successMessage}</div>}
                 {error && <div className="error-message">{error}</div>}
                 {!successMessage && (
                   <div className="form-group">
-                    <label htmlFor="forgotEmail">Email address</label>
+                    <label htmlFor="forgotEmail">{t('emailAddressLabel')}</label>
                     <input
                       type="email"
                       id="forgotEmail"
                       name="forgotEmail"
                       value={forgotEmail}
                       onChange={(e) => { setForgotEmail(e.target.value); if (error) setError(''); }}
-                      placeholder="Enter your registered email"
+                      placeholder={t('emailAddressPlaceholder')}
                       required
                     />
                   </div>
                 )}
                 {!successMessage && (
-                  <button type="submit" className="auth-button" disabled={isLoading}>
-                    {isLoading ? 'Sending…' : 'Send Reset Link'}
+                  <button type="submit" className="btn-primary" disabled={isLoading}>
+                    {isLoading ? t('sendingButton') : t('sendResetLinkButton')}
                   </button>
                 )}
               </form>
               <div className="auth-footer">
                 <p>
                   <button type="button" onClick={closeForgotPassword} className="link-button">
-                    Back to Sign In
+                    {t('backToSignIn')}
                   </button>
                 </p>
               </div>
@@ -226,14 +228,14 @@ export const LoginPageComponent: React.FC<LoginPageComponentProps> = ({
                   className={`auth-tab ${!isSignUp ? 'active' : ''}`}
                   onClick={() => !isSignUp || toggleMode()}
                 >
-                  Sign In
+                  {t('signInTab')}
                 </button>
                 <button
                   type="button"
                   className={`auth-tab ${isSignUp ? 'active' : ''}`}
                   onClick={() => isSignUp || toggleMode()}
                 >
-                  Sign Up
+                  {t('signUpTab')}
                 </button>
               </div>
 
@@ -247,41 +249,41 @@ export const LoginPageComponent: React.FC<LoginPageComponentProps> = ({
                 {error && <div className="error-message">{error}</div>}
                 
                 <div className="form-group">
-                  <label htmlFor="username">Username</label>
+                  <label htmlFor="username">{t('usernameLabel')}</label>
                   <input
                     type="text"
                     id="username"
                     name="username"
                     value={formData.username}
                     onChange={handleInputChange}
-                    placeholder="Enter any username"
+                    placeholder={t('usernamePlaceholder')}
                     required
                   />
                 </div>
 
                 <div className="form-group">
-                  <label htmlFor="password">Password</label>
+                  <label htmlFor="password">{t('passwordLabel')}</label>
                   <input
                     type="password"
                     id="password"
                     name="password"
                     value={formData.password}
                     onChange={handleInputChange}
-                    placeholder="Enter any password"
+                    placeholder={t('passwordPlaceholder')}
                     required
                   />
                 </div>
 
                 {isSignUp && (
                   <div className="form-group">
-                    <label htmlFor="confirmPassword">Confirm Password</label>
+                    <label htmlFor="confirmPassword">{t('confirmPasswordLabel')}</label>
                     <input
                       type="password"
                       id="confirmPassword"
                       name="confirmPassword"
                       value={formData.confirmPassword}
                       onChange={handleInputChange}
-                      placeholder="Confirm your password"
+                      placeholder={t('confirmPasswordPlaceholder')}
                       required
                     />
                   </div>
@@ -290,7 +292,7 @@ export const LoginPageComponent: React.FC<LoginPageComponentProps> = ({
                 {isSignUp && (
                   <div className="form-group">
                     <label htmlFor="email">
-                      Email <span style={{ fontWeight: 'normal', color: '#607a99' }}>(optional)</span>
+                      {t('emailLabel')} <span style={{ fontWeight: 'normal', color: '#607a99' }}>{t('emailOptional')}</span>
                     </label>
                     <input
                       type="email"
@@ -298,21 +300,21 @@ export const LoginPageComponent: React.FC<LoginPageComponentProps> = ({
                       name="email"
                       value={formData.email}
                       onChange={handleInputChange}
-                      placeholder="Email (optional — for account notifications)"
+                      placeholder={t('emailPlaceholder')}
                     />
                   </div>
                 )}
 
                 <button
                   type="submit"
-                  className="auth-button"
+                  className="btn-primary"
                   disabled={isLoading}
                 >
                   {isLoading 
-                    ? 'Loading...' 
+                    ? t('loadingButton') 
                     : isSignUp 
-                      ? 'Create Account' 
-                      : 'Sign In'
+                      ? t('createAccountButton') 
+                      : t('signInButton')
                   }
                 </button>
 
@@ -323,7 +325,7 @@ export const LoginPageComponent: React.FC<LoginPageComponentProps> = ({
                       onClick={openForgotPassword}
                       className="link-button"
                     >
-                      Forgot password?
+                      {t('forgotPassword')}
                     </button>
                   </div>
                 )}
@@ -331,13 +333,13 @@ export const LoginPageComponent: React.FC<LoginPageComponentProps> = ({
 
               <div className="auth-footer">
                 <p>
-                  {isSignUp ? 'Already have an account?' : "Don't have an account?"}
+                  {isSignUp ? t('alreadyHaveAccount') : t('noAccountYet')}
                   <button
                     type="button"
                     onClick={toggleMode}
                     className="link-button"
                   >
-                    {isSignUp ? 'Sign In' : 'Sign Up'}
+                    {isSignUp ? t('signInTab') : t('signUpTab')}
                   </button>
                 </p>
               </div>

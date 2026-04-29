@@ -19,6 +19,9 @@ vi.mock('@/lib/client/renderers/OtherShipRenderer', () => ({
 vi.mock('@/lib/client/renderers/StarbaseRenderer', () => ({
     StarbaseRenderer: class { drawStarbase = vi.fn(); }
 }));
+vi.mock('@/lib/client/renderers/NPCShipRenderer', () => ({
+    NPCShipRenderer: class { drawNpcShip = vi.fn(); }
+}));
 
 // Helpers to access private fields
 const getField = <T>(obj: unknown, field: string): T =>
@@ -121,6 +124,25 @@ describe('SpaceObjectsRenderer', () => {
                 renderer, 'shipRenderer'
             );
             expect(shipRenderer.drawOtherShip).toHaveBeenCalledOnce();
+        });
+
+        test('dispatches npc_ship objects to NPCShipRenderer', () => {
+            const npcShip = makeSpaceObject('npc_ship');
+            renderer.drawSpaceObjects(mockShip as never, [npcShip], WORLD, WORLD, mockViewport);
+
+            const npcShipRenderer = getField<{ drawNpcShip: ReturnType<typeof vi.fn> }>(
+                renderer, 'npcShipRenderer'
+            );
+            expect(npcShipRenderer.drawNpcShip).toHaveBeenCalledOnce();
+            expect(npcShipRenderer.drawNpcShip).toHaveBeenCalledWith(
+                mockCtx,
+                expect.any(Number),
+                expect.any(Number),
+                expect.any(Number),
+                expect.any(Number),
+                npcShip,
+                expect.any(Number)
+            );
         });
 
         test('does not call starbaseRenderer for non-starbase objects', () => {

@@ -1,10 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import { Starbase } from '@/lib/client/game/Starbase';
 import type { StarbaseObject } from '@shared/types/gameTypes';
+import { STARBASE_ID_OFFSET } from '@/shared/starbases';
 
 function makeStarbaseData(x = 2500, y = 2500): StarbaseObject {
   return {
-    id: 9001,
+    id: STARBASE_ID_OFFSET + 1,
     type: 'starbase',
     x,
     y,

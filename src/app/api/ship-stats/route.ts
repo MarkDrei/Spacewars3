@@ -9,10 +9,11 @@ import { World } from '@/lib/server/world/world';
 import { TechService } from '@/lib/server/techs/TechService';
 import { createLockContext, LockContext, LocksAtMostAndHas6 } from '@markdrei/ironguard-typescript-locks';
 import { WorldCache } from '@/lib/server/world/worldCache';
-import { UserBonusCache } from '@/lib/server/bonus/UserBonusCache';
 import { AfterburnerService } from '@/lib/server/afterburner/AfterburnerService';
 import { checkAndExpireAfterburner } from '@/lib/server/afterburner/afterburnerExpiration';
 import { TimeMultiplierService } from '@/lib/server/timeMultiplier';
+import { getResearchEffectFromTree, ResearchType } from '@/lib/server/techs/techtree';
+import type { UserBonuses } from '@/lib/server/bonus/userBonusTypes';
 
 export async function GET(request: NextRequest) {
   try {
@@ -36,8 +37,7 @@ export async function GET(request: NextRequest) {
           throw new ApiError(404, 'User not found');
         }
 
-        // Fetch bonuses (cache hit — already computed by getUserByIdWithLock)
-        const bonuses = await UserBonusCache.getInstance().getBonuses(userContext, user.id);
+        const bonuses = await userWorldCache.getBonusesByUserIdWithLock(userContext, user.id);
 
         // Continue with ship stats logic
         return await getShipStats(worldContext, world, user, bonuses);
@@ -52,7 +52,7 @@ async function getShipStats(
   worldContext: LockContext<LocksAtMostAndHas6>,
   world: World,
   user: User,
-  bonuses: Awaited<ReturnType<typeof UserBonusCache.prototype.getBonuses>>
+  bonuses: UserBonuses
 ): Promise<NextResponse> {
   // Update physics for all objects first
   const currentTime = Date.now();
@@ -72,11 +72,20 @@ async function getShipStats(
 
   // Use current max ship speed (affected by damage, modifiers, etc.)
   const maxSpeed = user.getCurrentMaxShipSpeed(bonuses);
+  const timeMultiplier = TimeMultiplierService.getInstance().getMultiplier();
+  const afterburnerDurationMs = getResearchEffectFromTree(user.techTree, ResearchType.AfterburnerDuration) * 1000;
+  const afterburnerCooldownMs = getResearchEffectFromTree(user.techTree, ResearchType.AfterburnerCooldown) * 1000;
+  const afterburnerSpeedIncreasePercent = getResearchEffectFromTree(user.techTree, ResearchType.AfterburnerSpeedIncrease);
+  const afterburnerConfig = {
+    timeMultiplier,
+    fuelCapacityMs: afterburnerDurationMs,
+    cooldownMs: afterburnerCooldownMs,
+    boostedSpeed: maxSpeed * (1 + afterburnerSpeedIncreasePercent / 100),
+  };
 
   // Check and expire afterburner if boost has ended — cap speed at normal maxSpeed
   const afterburnerService = AfterburnerService.getInstance();
-  const timeMultiplier = TimeMultiplierService.getInstance().getMultiplier();
-  const afterburnerExpired = checkAndExpireAfterburner(user.id, playerShip, maxSpeed, timeMultiplier);
+  const afterburnerExpired = checkAndExpireAfterburner(user.id, playerShip, maxSpeed, afterburnerConfig);
   if (afterburnerExpired) {
     await WorldCache.getInstance().updateWorldUnsafe(worldContext, world);
   }
@@ -97,13 +106,19 @@ async function getShipStats(
   );
 
   // Build afterburner status for the client
+  const afterburnerSnapshot = afterburnerService.getStatus(user.id, afterburnerConfig);
   const afterburnerStatus = {
-    isActive: afterburnerService.isActive(user.id, timeMultiplier),
-    boostRemainingMs: afterburnerService.getBoostRemainingMs(user.id, timeMultiplier),
-    cooldownRemainingMs: afterburnerService.getCooldownRemainingMs(user.id, timeMultiplier),
-    canActivate: afterburnerService.canActivate(user.id, timeMultiplier),
+    isActive: afterburnerSnapshot.isActive,
+    boostRemainingMs: afterburnerSnapshot.boostRemainingMs,
+    cooldownRemainingMs: afterburnerSnapshot.cooldownRemainingMs,
+    canActivate: user.techTree.afterburnerDuration >= 1 && afterburnerSnapshot.canActivate,
     durationResearchLevel: user.techTree.afterburnerDuration,
-    boostedSpeed: afterburnerService.getState(user.id)?.boostedSpeed ?? 0,
+    boostedSpeed: afterburnerSnapshot.boostedSpeed,
+    fuelRemainingMs: afterburnerSnapshot.fuelRemainingMs,
+    fuelCapacityMs: afterburnerSnapshot.fuelCapacityMs,
+    fuelPercent: afterburnerSnapshot.fuelPercent,
+    timeToActivationMs: afterburnerSnapshot.timeToActivationMs,
+    activationThresholdPercent: Math.round(AfterburnerService.MIN_ACTIVATION_RATIO * 100),
   };
 
   const responseData = {
@@ -115,6 +130,7 @@ async function getShipStats(
     last_position_update_ms: playerShip.last_position_update_ms,
     defenseValues,
     afterburner: afterburnerStatus,
+    shipPictureId: playerShip.picture_id,
   };
 
   return NextResponse.json(responseData);

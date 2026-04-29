@@ -38,7 +38,7 @@
  * formatNumber(0.001234) // "0.00123"
  * formatNumber(0)        // "0"
  */
-export function formatNumber(value: number): string {
+export function formatNumber(value: number, locale: string = 'en-US'): string {
   if (!isFinite(value)) return String(value);
   if (value === 0) return '0';
 
@@ -69,7 +69,7 @@ export function formatNumber(value: number): string {
   const targetDecimalPlaces = Math.max(0, 3 - integerDigits);
 
   if (targetDecimalPlaces === 0) {
-    return sign + Math.round(absValue).toLocaleString('en-US');
+    return sign + Math.round(absValue).toLocaleString(locale);
   }
 
   // Round to the target decimal places.  Rounding may carry over and increase
@@ -79,12 +79,12 @@ export function formatNumber(value: number): string {
   const finalDecimalPlaces = Math.max(0, 3 - newIntDigits);
 
   if (finalDecimalPlaces === 0) {
-    return sign + Math.round(rounded).toLocaleString('en-US');
+    return sign + Math.round(rounded).toLocaleString(locale);
   }
 
   const [intStr, decStr] = rounded.toFixed(finalDecimalPlaces).split('.');
   const trimmedDec = decStr.replace(/0+$/, '');
-  const intWithSep = parseInt(intStr).toLocaleString('en-US');
+  const intWithSep = parseInt(intStr).toLocaleString(locale);
 
   return trimmedDec
     ? sign + intWithSep + '.' + trimmedDec

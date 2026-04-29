@@ -3,7 +3,7 @@
 // ---
 
 import { DatabaseConnection } from './database';
-import { MIGRATE_ADD_PICTURE_ID, MIGRATE_ADD_TELEPORT_CHARGES, MIGRATE_ADD_EMAIL, MIGRATE_ADD_PASSWORD_RESET } from './schema';
+import { MIGRATE_ADD_PICTURE_ID, MIGRATE_ADD_TELEPORT_CHARGES, MIGRATE_ADD_EMAIL, MIGRATE_ADD_PASSWORD_RESET, MIGRATE_ADD_PREFERRED_LOCALE } from './schema';
 
 export interface Migration {
   version: number;
@@ -344,6 +344,8 @@ export async function applyTechMigrations(db: DatabaseConnection): Promise<void>
   await applyEmailColumnsMigration(db);
   // Apply password reset columns migration
   await applyPasswordResetMigration(db);
+  // Apply preferred_locale column migration
+  await applyPreferredLocaleMigration(db);
 }
 
 /**
@@ -777,5 +779,30 @@ export async function applyPasswordResetMigration(db: DatabaseConnection): Promi
     console.log('✅ Password reset columns migration completed');
   } catch (error) {
     console.error('❌ Error applying password reset migration:', error);
+  }
+}
+
+/**
+ * Apply preferred_locale column migration to the users table
+ */
+export async function applyPreferredLocaleMigration(db: DatabaseConnection): Promise<void> {
+  console.log('🔄 Checking for preferred_locale column migration...');
+
+  try {
+    const exists = await columnExists(db, 'users', 'preferred_locale');
+    if (exists) {
+      console.log('✅ preferred_locale column already exists');
+      return;
+    }
+
+    console.log('🚀 Adding preferred_locale column...');
+
+    for (const statement of MIGRATE_ADD_PREFERRED_LOCALE) {
+      await runMigrationStatement(db, statement);
+    }
+
+    console.log('✅ preferred_locale column migration completed');
+  } catch (error) {
+    console.error('❌ Error applying preferred_locale migration:', error);
   }
 }

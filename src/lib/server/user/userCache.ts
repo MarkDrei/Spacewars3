@@ -15,6 +15,8 @@ import { getUserByIdFromDb, getUserByUsernameFromDb } from './userRepo';
 import { WorldCache } from '../world/worldCache';
 import { Cache } from '../caches/Cache';
 import { UserBonusCache } from '../bonus/UserBonusCache';
+import type { UserBonuses } from '../bonus/userBonusTypes';
+import { isNpcId } from '../npc/npcConstants';
 
 type userCacheDependencies = {
   worldCache?: WorldCache;
@@ -42,6 +44,14 @@ export interface TypedCacheStats {
 
 declare global {
   var userWorldCacheInstance: UserCache | null;
+}
+
+function getPersistedShipId(shipId?: number): number | null {
+  if (shipId === undefined || isNpcId(shipId)) {
+    return null;
+  }
+
+  return shipId;
 }
 
 /**
@@ -304,6 +314,37 @@ export class UserCache extends Cache {
   }
 
   /**
+   * Return pre-computed bonuses for a user while holding USER_LOCK.
+   * Loads the user into the cache first if needed, then delegates to the bonus cache.
+   */
+  async getBonusesByUserIdWithLock(
+    context: LockContext<LocksAtMostAndHas4>,
+    userId: number
+  ): Promise<UserBonuses> {
+    let user = this.getUserByIdFromCache(context, userId);
+
+    if (!user) {
+      user = await this.loadUserFromDb(context, userId);
+      if (!user) {
+        throw new Error(`User not found: ${userId}`);
+      }
+      this.setUserUnsafe(context, user);
+    }
+
+    return UserBonusCache.getInstance().getBonuses(context, userId);
+  }
+
+  /** Invalidate cached bonus values for a user. */
+  invalidateBonuses(userId: number): void {
+    UserBonusCache.getInstance().invalidateBonuses(userId);
+  }
+
+  /** Clear all cached bonus values. */
+  discardAllBonuses(): void {
+    UserBonusCache.getInstance().discardAllBonuses();
+  }
+
+  /**
    * Get user by ID (with caching) for reading purposes
    * - Loads from database if not in cache
    * - Updates user before returning
@@ -486,6 +527,8 @@ export class UserCache extends Cache {
   private async persistUserToDb(user: User): Promise<void> {
     if (!this.db) throw new Error('Database not initialized');
 
+    const persistedShipId = getPersistedShipId(user.ship_id);
+
     await this.db.query(
       `UPDATE users SET 
         iron = $1, 
@@ -520,7 +563,7 @@ export class UserCache extends Cache {
         user.xp,
         user.last_updated,
         JSON.stringify(user.techTree),
-        user.ship_id,
+        persistedShipId,
         user.techCounts.pulse_laser,
         user.techCounts.auto_turret,
         user.techCounts.plasma_lance,

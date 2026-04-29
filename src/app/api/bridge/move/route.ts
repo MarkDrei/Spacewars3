@@ -12,7 +12,6 @@ import { UserCache } from '@/lib/server/user/userCache';
 import { USER_LOCK } from '@/lib/server/typedLocks';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 import { getResearchEffectFromTree, ResearchType } from '@/lib/server/techs/techtree';
-import { UserBonusCache } from '@/lib/server/bonus/UserBonusCache';
 
 const inventoryService = new InventoryService();
 
@@ -48,7 +47,7 @@ export async function POST(request: NextRequest) {
 
     const maxBridgeSlots = await getMaxBridgeSlotsForUser(session.userId!);
     await inventoryService.moveBridgeItem(session.userId!, from, to, maxBridgeSlots);
-    UserBonusCache.getInstance().invalidateBonuses(session.userId!);
+    UserCache.getInstance2().invalidateBonuses(session.userId!);
     return NextResponse.json({ success: true });
   } catch (error) {
     if (

@@ -26,6 +26,9 @@ class User {
   email: string | null = null;
   emailVerified: boolean = false;
 
+  // Locale preference (persisted)
+  preferredLocale: string = 'en';
+
   // Defense current values (persisted)
   hullCurrent: number;
   armorCurrent: number;
@@ -398,8 +401,8 @@ class User {
       this.bonusCache.invalidateBonuses(this.id);
 
       const research = AllResearches[researchResult.type];
-      // Get the cost of the level that was just completed (completedLevel + 1)
-      const cost = getResearchUpgradeCost(research, researchResult.completedLevel + 1);
+      // Get the cost of the level that was just completed
+      const cost = getResearchUpgradeCost(research, researchResult.completedLevel);
       const scoreReward = Math.floor(cost / 25);
       this.addScore(scoreReward);
 

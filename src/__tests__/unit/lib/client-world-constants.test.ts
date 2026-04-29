@@ -8,6 +8,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { World } from '../../../lib/client/game/World';
 import { DEFAULT_WORLD_WIDTH, DEFAULT_WORLD_HEIGHT } from '@shared/worldConstants';
+import { NPC_ORBIT_RADIUS } from '@shared/npcOrbit';
 
 describe('World class shared constants integration', () => {
   
@@ -141,6 +142,65 @@ describe('World class shared constants integration', () => {
       // Document that Goal 8 is complete - values updated from 500x500 to 5000x5000
       expect(DEFAULT_WORLD_WIDTH).toBe(5000);
       expect(DEFAULT_WORLD_HEIGHT).toBe(5000);
+    });
+  });
+
+  describe('npcShipParsing_updateFromServerData_setsSpeedFromOrbitVelocity', () => {
+    let world: World;
+
+    beforeEach(() => {
+      world = new World(false);
+      World.WIDTH = DEFAULT_WORLD_WIDTH;
+      World.HEIGHT = DEFAULT_WORLD_HEIGHT;
+    });
+
+    function makeNpcShip(angularVelocityDegPerSec: number) {
+      return {
+        id: 1_000_001,
+        type: 'npc_ship' as const,
+        x: 4750,
+        y: 4000,
+        speed: 0,
+        angle: 90,
+        last_position_update_ms: Date.now(),
+        picture_id: 1,
+        orbitAngleDeg: 0,
+        angularVelocityDegPerSec,
+        userId: 1_000_001,
+        level: 2,
+        username: 'Iron Horde Pirate Lv.2',
+      };
+    }
+
+    it('npcShip_withAngularVelocity_setsLinearSpeed', () => {
+      const angVel = 2.5;
+      world.updateFromServerData(
+        {
+          currentTime: Date.now(),
+          worldSize: { width: 5000, height: 5000 },
+          spaceObjects: [makeNpcShip(angVel)],
+        },
+        undefined
+      );
+      const npc = world.getSpaceObjects().find(o => o.getId() === 1_000_001);
+      const expectedSpeed = angVel * (Math.PI / 180) * NPC_ORBIT_RADIUS;
+      expect(npc?.getSpeed()).toBeCloseTo(expectedSpeed, 5);
+    });
+
+    it('npcShip_withoutAngularVelocity_keepsZeroSpeed', () => {
+      const npcData = makeNpcShip(0);
+      // Remove the field to simulate absent angularVelocityDegPerSec
+      delete (npcData as { angularVelocityDegPerSec?: number }).angularVelocityDegPerSec;
+      world.updateFromServerData(
+        {
+          currentTime: Date.now(),
+          worldSize: { width: 5000, height: 5000 },
+          spaceObjects: [npcData],
+        },
+        undefined
+      );
+      const npc = world.getSpaceObjects().find(o => o.getId() === 1_000_001);
+      expect(npc?.getSpeed()).toBe(0);
     });
   });
 });

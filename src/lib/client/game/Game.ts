@@ -3,7 +3,7 @@ import { World } from './World';
 import { GameRenderer } from '../renderers/GameRenderer';
 import { Ship } from './Ship';
 import { WorldData, TargetingLine, InterceptionLines } from '@shared/types/gameTypes';
-import { setShipDirection, interceptTarget } from '../services/navigationService';
+import { setShipDirection, interceptTarget, NavigateResponse } from '../services/navigationService';
 import { getShipStats } from '../services/shipStatsService';
 import { InterceptCalculator } from './InterceptCalculator';
 import { SpaceObjectOld } from './SpaceObject';
@@ -13,6 +13,7 @@ import { STARBASE_DOCK_RANGE } from '@/shared/starbases';
 import { debugState } from '../debug/debugState';
 import { InterceptionLineRenderer } from '../renderers/InterceptionLineRenderer';
 import { isAttackAllowed } from '@shared/utils/levelUtils';
+import { CanvasStrings, defaultCanvasStrings } from './canvasStrings';
 
 export class Game {
   private world: World;
@@ -25,11 +26,16 @@ export class Game {
   private refetchWorldData?: () => void; // Function to refresh world data from server
   private targetingLine: TargetingLine | null = null;
   private interceptionLines: InterceptionLines | null = null;
-  private onNavigationCallback?: () => void; // Callback for when navigation happens
+  private onNavigationCallback?: (navigation?: Pick<NavigateResponse, 'angle' | 'speed'>) => void; // Callback for when navigation happens
   private onAttackSuccessCallback?: () => void; // Callback for when attack succeeds
+  private onAttackFailedCallback?: (error: string) => void; // Callback for when attack fails
   private onHarvestCallback?: (result: { success: boolean; ironReward?: number; objectType?: string; error?: string }) => void; // Callback for harvest result
+  private canvasStrings: CanvasStrings = defaultCanvasStrings;
   private teleportClickMode: boolean = false;
   private attackClickMode: boolean = false;
+  private mobileInteractionMode: boolean = false;
+  private mobileInfoMode: boolean = false;
+  private selectedMobileObjectId?: number;
   private onTeleportClickCallback: ((x: number, y: number) => void) | null = null;
   private onStarbaseEntryCallback: ((starbaseId: number) => void) | null = null;
   private playerLevel: number = 1;
@@ -85,9 +91,6 @@ export class Game {
       this.mouseX = logicalX;
       this.mouseY = logicalY;
       
-      // Update hover states with fresh click coordinates to ensure accuracy
-      this.updateHoverStates();
-      
       // Handle teleport click mode first
       if (this.teleportClickMode && this.onTeleportClickCallback) {
         const ship = this.world.getShip();
@@ -104,71 +107,129 @@ export class Game {
         return; // don't process normal click
       }
 
-      // Check if any object is hovered
-      const hoveredObject = this.world.findHoveredObject();
-      
-      if (hoveredObject) {
-        // Check if object is close enough to collect and not a ship
-        const ship = this.world.getShip();
-        const distance = calculateToroidalDistance(
-          { x: ship.getX(), y: ship.getY() },
-          { x: hoveredObject.getX(), y: hoveredObject.getY() },
-          { width: this.world.getWidth(), height: this.world.getHeight() }
-        );
-        
-        // Check if it's a player ship (attack) or collectible object
-        if (hoveredObject.getType() === 'player_ship') {
-          if (this.attackClickMode) {
-            if (distance <= 100) {
-              // Player ship is in attack range - initiate battle
-              this.handleAttack(hoveredObject);
-            } else {
-              // Player ship is too far - use interception to get closer
-              this.handleInterception(hoveredObject);
-            }
-          } else {
-            // Attack mode is off, treat as empty space click
-            this.handleEmptySpaceClick(canvas, logicalX, logicalY);
-          }
-        } else if (hoveredObject.getType() === 'starbase') {
-          if (this.attackClickMode) {
-            if (distance <= STARBASE_DOCK_RANGE) {
-              // Close enough to dock - fire entry callback
-              this.onStarbaseEntryCallback?.(hoveredObject.getId());
-            } else {
-              // Too far - fly toward the starbase first
-              this.handleInterception(hoveredObject);
-            }
-          }
-          // Outside attack mode: starbase click does nothing
-        } else if (distance <= 125) {
-          // Object is close enough and collectible - try to collect it
-          this.handleCollection(hoveredObject);
-        } else {
-          // Object is too far - use interception
-          this.handleInterception(hoveredObject);
-        }
-      } else {
-        // If no object is hovered, use the regular click-to-aim behavior
-        this.handleEmptySpaceClick(canvas, logicalX, logicalY);
+      const tappedObject = this.getTappedObject();
+
+      if (this.mobileInteractionMode && this.mobileInfoMode) {
+        this.handleMobileInfoTap(canvas, logicalX, logicalY, tappedObject);
+        return;
+      }
+
+      this.handleResolvedTap(canvas, logicalX, logicalY, tappedObject);
+
+      if (this.mobileInteractionMode) {
+        this.clearMobileInfoSelection();
       }
     });
 
     // Handle mouse move events for hover detection
     canvas.addEventListener('mousemove', (event) => {
+      if (this.mobileInteractionMode) {
+        return;
+      }
+
       const rect = canvas.getBoundingClientRect();
       const mouseX = event.clientX - rect.left;
       const mouseY = event.clientY - rect.top;
-      
+
       // Scale coordinates to match canvas logical size
       const scaleX = canvas.width / rect.width;
       const scaleY = canvas.height / rect.height;
       this.mouseX = mouseX * scaleX;
       this.mouseY = mouseY * scaleY;
-      
+
       // Update hover states for all objects
       this.updateHoverStates();
     });
+  }
+
+  private getTappedObject(): SpaceObjectOld | undefined {
+    this.world.updateHoverStates(...this.getWorldPointerPosition());
+    return this.world.findHoveredObject();
+  }
+
+  private getWorldPointerPosition(): [number, number] {
+    const dpr = (typeof window !== 'undefined' && window.devicePixelRatio) || 1;
+    const worldScale = this.renderer.getWorldScale();
+    const cssW = this.ctx.canvas.width / dpr;
+    const cssH = this.ctx.canvas.height / dpr;
+    const worldMouseX = (this.mouseX / dpr - cssW / 2) / worldScale + this.ship.getX();
+    const worldMouseY = (this.mouseY / dpr - cssH / 2) / worldScale + this.ship.getY();
+
+    return [worldMouseX, worldMouseY];
+  }
+
+  private clearMobileInfoSelection(): void {
+    this.selectedMobileObjectId = undefined;
+    this.world.setHoveredObjectById(undefined);
+  }
+
+  private handleMobileInfoTap(
+    canvas: HTMLCanvasElement,
+    logicalX: number,
+    logicalY: number,
+    tappedObject?: SpaceObjectOld,
+  ): void {
+    if (!tappedObject) {
+      this.clearMobileInfoSelection();
+      this.handleEmptySpaceClick(canvas, logicalX, logicalY);
+      return;
+    }
+
+    const tappedObjectId = tappedObject.getId();
+
+    if (this.selectedMobileObjectId === tappedObjectId) {
+      this.clearMobileInfoSelection();
+      this.handleResolvedTap(canvas, logicalX, logicalY, tappedObject);
+      return;
+    }
+
+    if (this.selectedMobileObjectId !== undefined) {
+      this.clearMobileInfoSelection();
+    }
+
+    this.selectedMobileObjectId = tappedObjectId;
+    this.world.setHoveredObjectById(tappedObjectId);
+  }
+
+  private handleResolvedTap(
+    canvas: HTMLCanvasElement,
+    logicalX: number,
+    logicalY: number,
+    hoveredObject?: SpaceObjectOld,
+  ): void {
+
+    if (hoveredObject) {
+      const ship = this.world.getShip();
+      const distance = calculateToroidalDistance(
+        { x: ship.getX(), y: ship.getY() },
+        { x: hoveredObject.getX(), y: hoveredObject.getY() },
+        { width: this.world.getWidth(), height: this.world.getHeight() }
+      );
+
+      if (hoveredObject.getType() === 'player_ship' || hoveredObject.getType() === 'npc_ship') {
+        if (this.attackClickMode && distance <= 100) {
+          this.handleAttack(hoveredObject);
+        } else {
+          this.handleInterception(hoveredObject);
+        }
+      } else if (hoveredObject.getType() === 'starbase') {
+        if (this.attackClickMode) {
+          if (distance <= STARBASE_DOCK_RANGE) {
+            this.onStarbaseEntryCallback?.(hoveredObject.getId());
+          } else {
+            this.handleInterception(hoveredObject);
+          }
+        }
+      } else if (distance <= 125) {
+        this.handleCollection(hoveredObject);
+      } else {
+        this.handleInterception(hoveredObject);
+      }
+
+      return;
+    }
+
+    this.handleEmptySpaceClick(canvas, logicalX, logicalY);
   }
 
   private handleEmptySpaceClick(canvas: HTMLCanvasElement, logicalX: number, logicalY: number): void {
@@ -202,7 +263,7 @@ export class Game {
       this.world.setShipAngle(angleDegrees);
       
       // Then update via API
-      await setShipDirection(angleDegrees);
+      const navigationResult = await setShipDirection(angleDegrees);
       console.log('Ship direction updated via API:', angleDegrees);
 
       // Trigger world data refresh to get authoritative server state
@@ -212,7 +273,7 @@ export class Game {
 
       // Trigger navigation callback to update input fields
       if (this.onNavigationCallback) {
-        this.onNavigationCallback();
+        this.onNavigationCallback({ angle: navigationResult.angle, speed: navigationResult.speed });
       }
     } catch (error) {
       console.error('Failed to update ship direction:', error);
@@ -246,7 +307,7 @@ export class Game {
         this.createInterceptionLines(interceptResult.globalCoordinates, interceptResult.timeToIntercept);
         
         // Then update via API with effective max speed
-        await interceptTarget(interceptResult.angle, effectiveMaxSpeed);
+        const navigationResult = await interceptTarget(interceptResult.angle, effectiveMaxSpeed);
         console.log('Ship interception updated via API with angle: ', interceptResult.angle, " and max speed: ", effectiveMaxSpeed);
 
         // Trigger world data refresh to get authoritative server state
@@ -256,7 +317,7 @@ export class Game {
 
         // Trigger navigation callback to update input fields
         if (this.onNavigationCallback) {
-          this.onNavigationCallback();
+          this.onNavigationCallback({ angle: navigationResult.angle, speed: navigationResult.speed });
         }
       } else {
         console.warn('Could not calculate valid interception angle');
@@ -321,13 +382,17 @@ export class Game {
         return;
       }
 
-      // Frontend level-range check: only allow attacks within ±3 levels
+      // Frontend level-range check: only allow attacks within ±3 levels (skip for NPCs)
       const targetLevel = targetObject.getLevel();
-      if (targetLevel === undefined) {
-        console.warn(`⚔️ Target ship has no level data (userId ${userId}); skipping level check`);
-      } else if (!isAttackAllowed(this.playerLevel, targetLevel)) {
-        console.log(`⚔️ Attack blocked: level difference too large (player ${this.playerLevel} vs target ${targetLevel})`);
-        return;
+      const isNpc = objectType === 'npc_ship';
+      if (!isNpc) {
+        if (targetLevel === undefined) {
+          console.warn(`⚔️ Target ship has no level data (userId ${userId}); skipping level check`);
+        } else if (!isAttackAllowed(this.playerLevel, targetLevel)) {
+          console.log(`⚔️ Attack blocked: level difference too large (player ${this.playerLevel} vs target ${targetLevel})`);
+          this.onAttackFailedCallback?.(this.canvasStrings.levelTooFarToAttack);
+          return;
+        }
       }
       
       const { attackPlayer } = await import('../services/attackService');
@@ -358,7 +423,7 @@ export class Game {
         }
       } else {
         console.error('⚔️ Failed to initiate battle:', result.error);
-        // Could show user feedback here (e.g., toast notification)
+        this.onAttackFailedCallback?.(result.error ?? 'Attack failed');
       }
     } catch (error) {
       console.error('⚔️ Failed to handle attack:', error);
@@ -367,17 +432,13 @@ export class Game {
   
   // Update hover states based on current mouse position
   private updateHoverStates(): void {
+    if (this.mobileInteractionMode) {
+      return;
+    }
+
     // Convert physical-pixel mouse coords to world coordinates.
     // this.mouseX/Y are stored in physical pixels (canvas.width / rect.width = dpr).
-    const dpr = (typeof window !== 'undefined' && window.devicePixelRatio) || 1;
-    const worldScale = this.renderer.getWorldScale();
-    const cssW = this.ctx.canvas.width / dpr;
-    const cssH = this.ctx.canvas.height / dpr;
-    const worldMouseX = (this.mouseX / dpr - cssW / 2) / worldScale + this.ship.getX();
-    const worldMouseY = (this.mouseY / dpr - cssH / 2) / worldScale + this.ship.getY();
-
-    // Update hover states for all objects
-    this.world.updateHoverStates(worldMouseX, worldMouseY);
+    this.world.updateHoverStates(...this.getWorldPointerPosition());
   }
 
   /**
@@ -387,6 +448,18 @@ export class Game {
     this.world.updateFromServerData(worldData, playerShipId);
     // Update the local player ship reference
     this.ship = this.world.getShip();
+
+    if (this.mobileInteractionMode && this.mobileInfoMode && this.selectedMobileObjectId !== undefined) {
+      const selectedObject = this.world.setHoveredObjectById(this.selectedMobileObjectId);
+      if (!selectedObject) {
+        this.selectedMobileObjectId = undefined;
+      }
+      return;
+    }
+
+    if (this.mobileInteractionMode) {
+      this.world.setHoveredObjectById(undefined);
+    }
   }
 
   /**
@@ -399,7 +472,7 @@ export class Game {
   /**
    * Set a callback function to trigger when navigation happens
    */
-  public setNavigationCallback(callback: () => void): void {
+  public setNavigationCallback(callback: (navigation?: Pick<NavigateResponse, 'angle' | 'speed'>) => void): void {
     this.onNavigationCallback = callback;
   }
 
@@ -415,6 +488,23 @@ export class Game {
    */
   public setAttackClickMode(enabled: boolean): void {
     this.attackClickMode = enabled;
+  }
+
+  public setMobileInteractionMode(enabled: boolean): void {
+    this.mobileInteractionMode = enabled;
+
+    if (!enabled) {
+      this.mobileInfoMode = false;
+      this.clearMobileInfoSelection();
+    }
+  }
+
+  public setMobileInfoMode(enabled: boolean): void {
+    this.mobileInfoMode = enabled;
+
+    if (!enabled) {
+      this.clearMobileInfoSelection();
+    }
   }
 
   /**
@@ -439,6 +529,13 @@ export class Game {
   }
 
   /**
+   * Set a callback function to trigger when attack fails
+   */
+  public setAttackFailedCallback(callback: (error: string) => void): void {
+    this.onAttackFailedCallback = callback;
+  }
+
+  /**
    * Set a callback function to trigger after a harvest attempt (success or failure)
    */
   public setHarvestCallback(callback: (result: { success: boolean; ironReward?: number; objectType?: string; error?: string }) => void): void {
@@ -450,6 +547,15 @@ export class Game {
    */
   public setStarbaseEntryCallback(fn: (starbaseId: number) => void): void {
     this.onStarbaseEntryCallback = fn;
+  }
+
+  /**
+   * Update translated canvas strings for the tooltip renderer.
+   * Call this from a React component whenever the locale changes.
+   */
+  public updateCanvasStrings(strings: CanvasStrings): void {
+    this.canvasStrings = strings;
+    this.renderer.updateCanvasStrings(strings);
   }
 
   /**

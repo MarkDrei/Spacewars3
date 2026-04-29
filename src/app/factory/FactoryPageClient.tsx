@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useCallback } from 'react';
 import Image from 'next/image';
+import { useTranslations, useLocale } from 'next-intl';
 import AuthenticatedLayout from '@/components/Layout/AuthenticatedLayout';
 import { useUserStats } from '@/lib/client/hooks/useUserStats';
 import { useBuildQueue } from '@/lib/client/hooks/useBuildQueue';
@@ -10,6 +11,14 @@ import {
   factoryService, 
   getTechCount
 } from '@/lib/client/services/factoryService';
+import {
+  formatIronCost,
+  localizeFactoryDefense,
+  localizeFactoryItemType,
+  localizeFactoryStrength,
+  localizeFactorySubtype,
+  localizeFactoryWeapon,
+} from '@/lib/client/i18n/catalogTranslations';
 import { ServerAuthState } from '@/lib/server/serverSession';
 import './FactoryPage.css';
 
@@ -20,6 +29,8 @@ interface FactoryPageClientProps {
 const FactoryPageClient: React.FC<FactoryPageClientProps> = ({ auth }) => {
   // Auth is guaranteed by server, so pass true to hooks
   const { ironAmount } = useUserStats();
+  const t = useTranslations('factory');
+  const locale = useLocale();
   const {
     buildQueue,
     isLoading: isBuildQueueLoading,
@@ -107,8 +118,8 @@ const FactoryPageClient: React.FC<FactoryPageClientProps> = ({ auth }) => {
       <AuthenticatedLayout>
         <div className="factory-page">
           <div className="factory-container">
-            <h1 className="page-heading">Factory</h1>
-            <div className="loading-message">Loading factory data...</div>
+            <h1 className="page-heading">{t('pageHeading')}</h1>
+            <div className="loading-message">{t('loadingMessage')}</div>
           </div>
         </div>
       </AuthenticatedLayout>
@@ -120,7 +131,7 @@ const FactoryPageClient: React.FC<FactoryPageClientProps> = ({ auth }) => {
       <AuthenticatedLayout>
         <div className="factory-page">
           <div className="factory-container">
-            <h1 className="page-heading">Factory</h1>
+            <h1 className="page-heading">{t('pageHeading')}</h1>
             <div className="error-message">
               Error: {error}
             </div>
@@ -139,13 +150,16 @@ const FactoryPageClient: React.FC<FactoryPageClientProps> = ({ auth }) => {
       <AuthenticatedLayout>
         <div className="factory-page">
           <div className="factory-container">
-            <h1 className="page-heading">Factory</h1>
-            <div className="no-data-message">No factory data available</div>
+            <h1 className="page-heading">{t('pageHeading')}</h1>
+            <div className="no-data-message">{t('noDataMessage')}</div>
           </div>
         </div>
       </AuthenticatedLayout>
     );
   }
+
+  const getLocalizedWeapon = (key: string) => localizeFactoryWeapon(key, weapons[key], locale);
+  const getLocalizedDefense = (key: string) => localizeFactoryDefense(key, defenses[key], locale);
 
   const renderBuildControls = (key: string, itemType: 'weapon' | 'defense', baseCost: number) => {
     const count = getBuildCount(key);
@@ -159,7 +173,7 @@ const FactoryPageClient: React.FC<FactoryPageClientProps> = ({ auth }) => {
           disabled={!canAfford || isBuilding}
           onClick={() => buildItem(key, itemType, count)}
         >
-          {isBuilding ? 'Building...' : `Build ${count}`}
+          {isBuilding ? t('buildingButton') : t('buildButton', { count })}
         </button>
         <button
           className="build-count-btn"
@@ -195,21 +209,19 @@ const FactoryPageClient: React.FC<FactoryPageClientProps> = ({ auth }) => {
     <AuthenticatedLayout>
       <div className="factory-page">
         <div className="factory-container">
-          <h1 className="page-heading">Factory</h1>
-
-          {/* View Toggle */}
+          <h1 className="page-heading">{t('pageHeading')}</h1>
           <div className="view-toggle">
             <button
               className={`toggle-button ${viewMode === 'cards' ? 'active' : ''}`}
               onClick={() => setViewMode('cards')}
             >
-              Cards
+              {t('viewCards')}
             </button>
             <button
               className={`toggle-button ${viewMode === 'table' ? 'active' : ''}`}
               onClick={() => setViewMode('table')}
             >
-              Table
+              {t('viewTable')}
             </button>
           </div>
 
@@ -220,18 +232,18 @@ const FactoryPageClient: React.FC<FactoryPageClientProps> = ({ auth }) => {
           )}
 
           {/* Build Queue Section */}
-          <h2 id="build-queue" className="section-header">Build Queue</h2>
+          <h2 id="build-queue" className="section-header">{t('buildQueueHeading')}</h2>
           {buildQueue.length === 0 ? (
-            <div className="no-build-queue-message">No items in build queue</div>
+            <div className="no-build-queue-message">{t('noBuildQueueMessage')}</div>
           ) : (
             <>
               <div className="data-table-container" style={{ maxHeight: '300px', overflowY: 'auto' }}>
                 <table className="data-table">
                   <thead>
                     <tr>
-                      <th>Item</th>
-                      <th>Type</th>
-                      <th>Time Remaining</th>
+                      <th>{t('colItem')}</th>
+                      <th>{t('colType')}</th>
+                      <th>{t('colTimeRemaining')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -239,11 +251,15 @@ const FactoryPageClient: React.FC<FactoryPageClientProps> = ({ auth }) => {
                       <tr key={`${item.itemKey}-${index}`} className="data-row">
                         <td className="data-cell">
                           <span className="stat-value">
-                            {item.itemType === 'weapon' ? weapons[item.itemKey]?.name : defenses[item.itemKey]?.name || item.itemKey}
+                            {item.itemType === 'weapon'
+                              ? weapons[item.itemKey]?.name ?? item.itemKey
+                              : defenses[item.itemKey]
+                                ? getLocalizedDefense(item.itemKey).name
+                                : item.itemKey}
                           </span>
                         </td>
                         <td className="data-cell">
-                          {item.itemType}
+                          {localizeFactoryItemType(item.itemType, locale)}
                         </td>
                         <td className="data-cell">
                           <span className="research-countdown">
@@ -264,7 +280,7 @@ const FactoryPageClient: React.FC<FactoryPageClientProps> = ({ auth }) => {
                     onClick={completeBuild}
                     disabled={isCompletingBuild || buildQueue.length === 0}
                   >
-                    {isCompletingBuild ? 'Completing...' : '⚡ Complete First Build (Cheat)'}
+                    {isCompletingBuild ? t('completingButton') : t('completeBuildCheat')}
                   </button>
                 </div>
               )}
@@ -272,25 +288,28 @@ const FactoryPageClient: React.FC<FactoryPageClientProps> = ({ auth }) => {
           )}
 
           {/* Defense Items Section */}
-          <h2 id="defense-systems" className="section-header">Defense Systems</h2>
+          <h2 id="defense-systems" className="section-header">{t('defenseSystemsHeading')}</h2>
           {viewMode === 'table' ? (
             <div className="data-table-container">
               <table className="data-table">
                 <thead>
                   <tr>
-                    <th>Name</th>
-                    <th>Current Count</th>
-                    <th>Cost</th>
-                    <th>Build Duration</th>
-                    <th>Description</th>
-                    <th>Action</th>
+                    <th>{t('colName')}</th>
+                    <th>{t('colCurrentCount')}</th>
+                    <th>{t('colCost')}</th>
+                    <th>{t('colBuildDuration')}</th>
+                    <th>{t('colDescription')}</th>
+                    <th>{t('colAction')}</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {Object.entries(defenses).map(([key, defense]) => (
+                  {Object.entries(defenses).map(([key, defense]) => {
+                    const localizedDefense = getLocalizedDefense(key);
+
+                    return (
                     <tr key={key} className="data-row">
                       <td className="data-cell">
-                        <span className="stat-value">{defense.name}</span>
+                        <span className="stat-value">{localizedDefense.name}</span>
                       </td>
                       <td className="data-cell">
                         <span className="stat-value">
@@ -299,96 +318,102 @@ const FactoryPageClient: React.FC<FactoryPageClientProps> = ({ auth }) => {
                       </td>
                       <td className="data-cell">
                         <span className={factoryService.canAfford(defense.baseCost, ironAmount) ? 'cost-affordable' : 'cost-expensive'}>
-                          {defense.baseCost.toLocaleString()} Iron
+                          {formatIronCost(defense.baseCost, locale)}
                         </span>
                       </td>
                       <td className="data-cell">
                         {factoryService.formatDuration(defense.buildDurationMinutes)}
                       </td>
                       <td className="data-cell description-cell">
-                        {defense.description}
+                        {localizedDefense.description}
                       </td>
                       <td className="data-cell action-cell">
                         {renderBuildControls(key, 'defense', defense.baseCost)}
                       </td>
                     </tr>
-                  ))}
+                  );})}
                 </tbody>
               </table>
             </div>
           ) : (
             <div className="item-cards-grid">
-              {Object.entries(defenses).map(([key, defense]) => (
+              {Object.entries(defenses).map(([key, defense]) => {
+                const localizedDefense = getLocalizedDefense(key);
+
+                return (
                 <div key={key} className="item-card">                <div className="weapon-image-container">
                   <Image 
                     src={`/assets/images/factory/${getTechImageName(key)}.png`} 
-                    alt={`${defense.name} icon`} 
+                    alt={`${localizedDefense.name} icon`} 
                     width={288}
                     height={288}
                     className="weapon-image" 
                   />
                 </div>                  <div className="card-header">
-                    <div className="card-title">{defense.name}</div>
+                    <div className="card-title">{localizedDefense.name}</div>
                   </div>
                   <div className="card-details">
                     <div className="card-detail">
-                      <div className="card-detail-label">Current Count</div>
+                      <div className="card-detail-label">{t('colCurrentCount')}</div>
                       <div className="card-detail-value stat-value">
                         {getTechCount(techCounts, key)}
                       </div>
                     </div>
                     <div className="card-detail">
-                      <div className="card-detail-label">Cost</div>
+                      <div className="card-detail-label">{t('colCost')}</div>
                       <div className={`card-detail-value ${factoryService.canAfford(defense.baseCost, ironAmount) ? 'cost-affordable' : 'cost-expensive'}`}>
-                        {defense.baseCost.toLocaleString()} Iron
+                        {formatIronCost(defense.baseCost, locale)}
                       </div>
                     </div>
                     <div className="card-detail">
-                      <div className="card-detail-label">Build Duration</div>
+                      <div className="card-detail-label">{t('colBuildDuration')}</div>
                       <div className="card-detail-value">
                         {factoryService.formatDuration(defense.buildDurationMinutes)}
                       </div>
                     </div>
                   </div>
                   <div className="card-description">
-                    {defense.description}
+                    {localizedDefense.description}
                   </div>
                   <div className="card-actions">
                     {renderBuildControls(key, 'defense', defense.baseCost)}
                   </div>
                 </div>
-              ))}
+              );})}
             </div>
           )}
 
           {/* Weapons Section */}
-          <h2 id="projectile-weapons" className="section-header">Projectile Weapons</h2>
+          <h2 id="projectile-weapons" className="section-header">{t('projectileWeaponsHeading')}</h2>
           {viewMode === 'table' ? (
             <div className="data-table-container">
               <table className="data-table">
                 <thead>
                   <tr>
-                    <th>Name</th>
-                    <th>Strength</th>
-                    <th>Count</th>
-                    <th>Damage</th>
-                    <th>Accuracy</th>
-                    <th>Reload</th>
-                    <th>Cost</th>
-                    <th>Build Time</th>
-                    <th>Advantage</th>
-                    <th>Action</th>
+                    <th>{t('colName')}</th>
+                    <th>{t('colStrength')}</th>
+                    <th>{t('colCount')}</th>
+                    <th>{t('colDamage')}</th>
+                    <th>{t('colAccuracy')}</th>
+                    <th>{t('colReload')}</th>
+                    <th>{t('colCost')}</th>
+                    <th>{t('colBuildTime')}</th>
+                    <th>{t('colAdvantage')}</th>
+                    <th>{t('colAction')}</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {Object.entries(weapons).filter(([, weapon]) => weapon.subtype === 'Projectile').map(([key, weapon]) => (
+                  {Object.entries(weapons).filter(([, weapon]) => weapon.subtype === 'Projectile').map(([key, weapon]) => {
+                    const localizedWeapon = getLocalizedWeapon(key);
+
+                    return (
                     <tr key={key} className="data-row">
                       <td className="data-cell">
-                        <span className="stat-value">{weapon.name}</span>
+                        <span className="stat-value">{localizedWeapon.name}</span>
                       </td>
                       <td className="data-cell">
                         <span className={`stat-value ${factoryService.getStrengthClass(weapon.strength)}`}>
-                          {weapon.strength}
+                          {localizeFactoryStrength(weapon.strength, locale)}
                         </span>
                       </td>
                       <td className="data-cell">
@@ -407,126 +432,132 @@ const FactoryPageClient: React.FC<FactoryPageClientProps> = ({ auth }) => {
                       </td>
                       <td className="data-cell">
                         <span className={factoryService.canAfford(weapon.baseCost, ironAmount) ? 'cost-affordable' : 'cost-expensive'}>
-                          {weapon.baseCost.toLocaleString()} Iron
+                          {formatIronCost(weapon.baseCost, locale)}
                         </span>
                       </td>
                       <td className="data-cell">
                         {factoryService.formatDuration(weapon.buildDurationMinutes)}
                       </td>
                       <td className="data-cell description-cell">
-                        {weapon.advantage}
+                        {localizedWeapon.advantage}
                         {weapon.disadvantage && (
-                          <><br /><em>Weakness: {weapon.disadvantage}</em></>
+                          <><br /><em>{t('weaknessLabel', { weakness: localizedWeapon.disadvantage })}</em></>
                         )}
                       </td>
                       <td className="data-cell action-cell">
                         {renderBuildControls(key, 'weapon', weapon.baseCost)}
                       </td>
                     </tr>
-                  ))}
+                  );})}
                 </tbody>
               </table>
             </div>
           ) : (
             <div className="item-cards-grid">
-              {Object.entries(weapons).filter(([, weapon]) => weapon.subtype === 'Projectile').map(([key, weapon]) => (
+              {Object.entries(weapons).filter(([, weapon]) => weapon.subtype === 'Projectile').map(([key, weapon]) => {
+                const localizedWeapon = getLocalizedWeapon(key);
+
+                return (
                 <div key={key} className="item-card">
                   <div className="weapon-image-container">
                     <Image 
                       src={`/assets/images/factory/${getTechImageName(key)}.png`} 
-                      alt={`${weapon.name} icon`} 
+                      alt={`${localizedWeapon.name} icon`} 
                       width={288}
                       height={288}
                       className="weapon-image" 
                     />
                   </div>
                   <div className="card-header">
-                    <div className="card-title">{weapon.name}</div>
+                    <div className="card-title">{localizedWeapon.name}</div>
                     <div className={`card-type subtype-badge ${factoryService.getSubtypeClass(weapon.subtype)}`}>
-                      {weapon.subtype}
+                      {localizeFactorySubtype(weapon.subtype, locale)}
                     </div>
                   </div>
                   <div className="card-details">
                     <div className="card-detail">
-                      <div className="card-detail-label">Strength</div>
+                      <div className="card-detail-label">{t('colStrength')}</div>
                       <div className={`card-detail-value stat-value ${factoryService.getStrengthClass(weapon.strength)}`}>
-                        {weapon.strength}
+                        {localizeFactoryStrength(weapon.strength, locale)}
                       </div>
                     </div>
                     <div className="card-detail">
-                      <div className="card-detail-label">Count</div>
+                      <div className="card-detail-label">{t('colCount')}</div>
                       <div className="card-detail-value stat-value">
                         {getTechCount(techCounts, key)}
                       </div>
                     </div>
                     <div className="card-detail">
-                      <div className="card-detail-label">Damage</div>
+                      <div className="card-detail-label">{t('colDamage')}</div>
                       <div className="card-detail-value">{weapon.baseDamage}</div>
                     </div>
                     <div className="card-detail">
-                      <div className="card-detail-label">Accuracy</div>
+                      <div className="card-detail-label">{t('colAccuracy')}</div>
                       <div className="card-detail-value">{weapon.baseAccuracy}%</div>
                     </div>
                     <div className="card-detail">
-                      <div className="card-detail-label">Reload</div>
+                      <div className="card-detail-label">{t('colReload')}</div>
                       <div className="card-detail-value">
                         {factoryService.formatDuration(weapon.reloadTimeMinutes)}
                       </div>
                     </div>
                     <div className="card-detail">
-                      <div className="card-detail-label">Cost</div>
+                      <div className="card-detail-label">{t('colCost')}</div>
                       <div className={`card-detail-value ${factoryService.canAfford(weapon.baseCost, ironAmount) ? 'cost-affordable' : 'cost-expensive'}`}>
-                        {weapon.baseCost.toLocaleString()} Iron
+                        {formatIronCost(weapon.baseCost, locale)}
                       </div>
                     </div>
                     <div className="card-detail">
-                      <div className="card-detail-label">Build Time</div>
+                      <div className="card-detail-label">{t('colBuildTime')}</div>
                       <div className="card-detail-value">
                         {factoryService.formatDuration(weapon.buildDurationMinutes)}
                       </div>
                     </div>
                   </div>
                   <div className="card-description">
-                    {weapon.advantage}
+                    {localizedWeapon.advantage}
                     {weapon.disadvantage && (
-                      <><br /><em>Weakness: {weapon.disadvantage}</em></>
+                      <><br /><em>{t('weaknessLabel', { weakness: localizedWeapon.disadvantage })}</em></>
                     )}
                   </div>
                   <div className="card-actions">
                     {renderBuildControls(key, 'weapon', weapon.baseCost)}
                   </div>
                 </div>
-              ))}
+              );})}
             </div>
           )}
 
-          <h2 id="energy-weapons" className="section-header">Energy Weapons</h2>
+          <h2 id="energy-weapons" className="section-header">{t('energyWeaponsHeading')}</h2>
           {viewMode === 'table' ? (
             <div className="data-table-container">
               <table className="data-table">
                 <thead>
                   <tr>
-                    <th>Name</th>
-                    <th>Strength</th>
-                    <th>Count</th>
-                    <th>Damage</th>
-                    <th>Accuracy</th>
-                    <th>Reload</th>
-                    <th>Cost</th>
-                    <th>Build Time</th>
-                    <th>Advantage</th>
-                    <th>Action</th>
+                    <th>{t('colName')}</th>
+                    <th>{t('colStrength')}</th>
+                    <th>{t('colCount')}</th>
+                    <th>{t('colDamage')}</th>
+                    <th>{t('colAccuracy')}</th>
+                    <th>{t('colReload')}</th>
+                    <th>{t('colCost')}</th>
+                    <th>{t('colBuildTime')}</th>
+                    <th>{t('colAdvantage')}</th>
+                    <th>{t('colAction')}</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {Object.entries(weapons).filter(([, weapon]) => weapon.subtype === 'Energy').map(([key, weapon]) => (
+                  {Object.entries(weapons).filter(([, weapon]) => weapon.subtype === 'Energy').map(([key, weapon]) => {
+                    const localizedWeapon = getLocalizedWeapon(key);
+
+                    return (
                     <tr key={key} className="data-row">
                       <td className="data-cell">
-                        <span className="stat-value">{weapon.name}</span>
+                        <span className="stat-value">{localizedWeapon.name}</span>
                       </td>
                       <td className="data-cell">
                         <span className={`stat-value ${factoryService.getStrengthClass(weapon.strength)}`}>
-                          {weapon.strength}
+                          {localizeFactoryStrength(weapon.strength, locale)}
                         </span>
                       </td>
                       <td className="data-cell">
@@ -545,96 +576,99 @@ const FactoryPageClient: React.FC<FactoryPageClientProps> = ({ auth }) => {
                       </td>
                       <td className="data-cell">
                         <span className={factoryService.canAfford(weapon.baseCost, ironAmount) ? 'cost-affordable' : 'cost-expensive'}>
-                          {weapon.baseCost.toLocaleString()} Iron
+                          {formatIronCost(weapon.baseCost, locale)}
                         </span>
                       </td>
                       <td className="data-cell">
                         {factoryService.formatDuration(weapon.buildDurationMinutes)}
                       </td>
                       <td className="data-cell description-cell">
-                        {weapon.advantage}
+                        {localizedWeapon.advantage}
                         {weapon.disadvantage && (
-                          <><br /><em>Weakness: {weapon.disadvantage}</em></>
+                          <><br /><em>{t('weaknessLabel', { weakness: localizedWeapon.disadvantage })}</em></>
                         )}
                       </td>
                       <td className="data-cell action-cell">
                         {renderBuildControls(key, 'weapon', weapon.baseCost)}
                       </td>
                     </tr>
-                  ))}
+                  );})}
                 </tbody>
               </table>
             </div>
           ) : (
             <div className="item-cards-grid">
-              {Object.entries(weapons).filter(([, weapon]) => weapon.subtype === 'Energy').map(([key, weapon]) => (
+              {Object.entries(weapons).filter(([, weapon]) => weapon.subtype === 'Energy').map(([key, weapon]) => {
+                const localizedWeapon = getLocalizedWeapon(key);
+
+                return (
                 <div key={key} className="item-card">
                   <div className="weapon-image-container">
                     <Image 
                       src={`/assets/images/factory/${getTechImageName(key)}.png`} 
-                      alt={`${weapon.name} icon`} 
+                      alt={`${localizedWeapon.name} icon`} 
                       width={288}
                       height={288}
                       className="weapon-image" 
                     />
                   </div>
                   <div className="card-header">
-                    <div className="card-title">{weapon.name}</div>
+                    <div className="card-title">{localizedWeapon.name}</div>
                     <div className={`card-type subtype-badge ${factoryService.getSubtypeClass(weapon.subtype)}`}>
-                      {weapon.subtype}
+                      {localizeFactorySubtype(weapon.subtype, locale)}
                     </div>
                   </div>
                   <div className="card-details">
                     <div className="card-detail">
-                      <div className="card-detail-label">Strength</div>
+                      <div className="card-detail-label">{t('colStrength')}</div>
                       <div className={`card-detail-value stat-value ${factoryService.getStrengthClass(weapon.strength)}`}>
-                        {weapon.strength}
+                        {localizeFactoryStrength(weapon.strength, locale)}
                       </div>
                     </div>
                     <div className="card-detail">
-                      <div className="card-detail-label">Count</div>
+                      <div className="card-detail-label">{t('colCount')}</div>
                       <div className="card-detail-value stat-value">
                         {getTechCount(techCounts, key)}
                       </div>
                     </div>
                     <div className="card-detail">
-                      <div className="card-detail-label">Damage</div>
+                      <div className="card-detail-label">{t('colDamage')}</div>
                       <div className="card-detail-value">{weapon.baseDamage}</div>
                     </div>
                     <div className="card-detail">
-                      <div className="card-detail-label">Accuracy</div>
+                      <div className="card-detail-label">{t('colAccuracy')}</div>
                       <div className="card-detail-value">{weapon.baseAccuracy}%</div>
                     </div>
                     <div className="card-detail">
-                      <div className="card-detail-label">Reload</div>
+                      <div className="card-detail-label">{t('colReload')}</div>
                       <div className="card-detail-value">
                         {factoryService.formatDuration(weapon.reloadTimeMinutes)}
                       </div>
                     </div>
                     <div className="card-detail">
-                      <div className="card-detail-label">Cost</div>
+                      <div className="card-detail-label">{t('colCost')}</div>
                       <div className={`card-detail-value ${factoryService.canAfford(weapon.baseCost, ironAmount) ? 'cost-affordable' : 'cost-expensive'}`}>
-                        {weapon.baseCost.toLocaleString()} Iron
+                        {formatIronCost(weapon.baseCost, locale)}
                       </div>
                     </div>
                     <div className="card-detail">
-                      <div className="card-detail-label">Build Time</div>
+                      <div className="card-detail-label">{t('colBuildTime')}</div>
                       <div className="card-detail-value">
                         {factoryService.formatDuration(weapon.buildDurationMinutes)}
                       </div>
                     </div>
                   </div>
                   <div className="card-description">
-                    {weapon.advantage}
+                    {localizedWeapon.advantage}
                     {weapon.disadvantage && (
-                      <><br /><em>Weakness: {weapon.disadvantage}</em></>
+                      <><br /><em>{t('weaknessLabel', { weakness: localizedWeapon.disadvantage })}</em></>
                     )}
                   </div>
                   <div className="card-actions">
                     {renderBuildControls(key, 'weapon', weapon.baseCost)}
                   </div>
                 </div>
-              ))}
+              );})}
             </div>
           )}
         </div>

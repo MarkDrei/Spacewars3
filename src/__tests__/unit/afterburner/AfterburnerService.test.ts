@@ -1,11 +1,18 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { AfterburnerService } from '@/lib/server/afterburner/AfterburnerService';
+import type { AfterburnerConfig } from '@/lib/server/afterburner/afterburnerTypes';
 
 const USER_ID = 42;
-const DURATION_MS = 10_000; // 10 s
-const COOLDOWN_MS = 20_000; // 20 s
-const BOOSTED_SPEED = 500;
-const DEFAULT_MULTIPLIER = 1;
+const DEFAULT_CONFIG: AfterburnerConfig = {
+  timeMultiplier: 1,
+  fuelCapacityMs: 10_000,
+  cooldownMs: 20_000,
+  boostedSpeed: 500,
+};
+
+function makeConfig(overrides: Partial<AfterburnerConfig> = {}): AfterburnerConfig {
+  return { ...DEFAULT_CONFIG, ...overrides };
+}
 
 describe('AfterburnerService', () => {
   let service: AfterburnerService;
@@ -20,205 +27,125 @@ describe('AfterburnerService', () => {
     vi.useRealTimers();
   });
 
-  // ── activate / getState ──
-
-  it('activate_storesState_stateRetrievable', () => {
-    service.activate(USER_ID, DURATION_MS, COOLDOWN_MS, BOOSTED_SPEED);
+  it('activate_storesActiveState_withFullFuel', () => {
+    service.activate(USER_ID, DEFAULT_CONFIG);
 
     const state = service.getState(USER_ID);
     expect(state).not.toBeNull();
     expect(state!.userId).toBe(USER_ID);
-    expect(state!.durationMs).toBe(DURATION_MS);
-    expect(state!.cooldownMs).toBe(COOLDOWN_MS);
-    expect(state!.boostedSpeed).toBe(BOOSTED_SPEED);
+    expect(state!.fuelRatio).toBe(1);
+    expect(state!.isActive).toBe(true);
+    expect(state!.boostedSpeed).toBe(DEFAULT_CONFIG.boostedSpeed);
   });
 
-  // ── isActive ──
+  it('activate_returnsImmediateSnapshot_withFullFuel', () => {
+    const status = service.activate(USER_ID, DEFAULT_CONFIG);
 
-  it('isActive_withinDuration_returnsTrue', () => {
-    service.activate(USER_ID, DURATION_MS, COOLDOWN_MS, BOOSTED_SPEED);
-
-    vi.advanceTimersByTime(DURATION_MS - 1);
-
-    expect(service.isActive(USER_ID, DEFAULT_MULTIPLIER)).toBe(true);
+    expect(status.isActive).toBe(true);
+    expect(status.fuelRemainingMs).toBe(DEFAULT_CONFIG.fuelCapacityMs);
+    expect(status.fuelCapacityMs).toBe(DEFAULT_CONFIG.fuelCapacityMs);
+    expect(status.fuelPercent).toBe(100);
+    expect(status.boostRemainingMs).toBe(DEFAULT_CONFIG.fuelCapacityMs);
   });
 
-  it('isActive_afterDuration_returnsFalse', () => {
-    service.activate(USER_ID, DURATION_MS, COOLDOWN_MS, BOOSTED_SPEED);
+  it('isActive_withinFuelDuration_returnsTrue', () => {
+    service.activate(USER_ID, DEFAULT_CONFIG);
 
-    vi.advanceTimersByTime(DURATION_MS);
+    vi.advanceTimersByTime(DEFAULT_CONFIG.fuelCapacityMs - 1);
 
-    expect(service.isActive(USER_ID, DEFAULT_MULTIPLIER)).toBe(false);
+    expect(service.isActive(USER_ID, DEFAULT_CONFIG)).toBe(true);
   });
 
-  // ── isOnCooldown ──
+  it('isActive_afterFuelDepletes_returnsFalse', () => {
+    service.activate(USER_ID, DEFAULT_CONFIG);
 
-  it('isOnCooldown_afterDurationBeforeCooldownEnd_returnsTrue', () => {
-    service.activate(USER_ID, DURATION_MS, COOLDOWN_MS, BOOSTED_SPEED);
+    vi.advanceTimersByTime(DEFAULT_CONFIG.fuelCapacityMs);
 
-    vi.advanceTimersByTime(DURATION_MS + 1);
-
-    expect(service.isOnCooldown(USER_ID, DEFAULT_MULTIPLIER)).toBe(true);
+    expect(service.isActive(USER_ID, DEFAULT_CONFIG)).toBe(false);
   });
-
-  it('isOnCooldown_afterCooldownEnd_returnsFalse', () => {
-    service.activate(USER_ID, DURATION_MS, COOLDOWN_MS, BOOSTED_SPEED);
-
-    vi.advanceTimersByTime(DURATION_MS + COOLDOWN_MS);
-
-    expect(service.isOnCooldown(USER_ID, DEFAULT_MULTIPLIER)).toBe(false);
-  });
-
-  // ── canActivate ──
 
   it('canActivate_noState_returnsTrue', () => {
-    expect(service.canActivate(USER_ID, DEFAULT_MULTIPLIER)).toBe(true);
+    expect(service.canActivate(USER_ID, DEFAULT_CONFIG)).toBe(true);
   });
 
   it('canActivate_duringBoost_returnsFalse', () => {
-    service.activate(USER_ID, DURATION_MS, COOLDOWN_MS, BOOSTED_SPEED);
+    service.activate(USER_ID, DEFAULT_CONFIG);
 
-    vi.advanceTimersByTime(DURATION_MS / 2);
+    vi.advanceTimersByTime(2_000);
 
-    expect(service.canActivate(USER_ID, DEFAULT_MULTIPLIER)).toBe(false);
+    expect(service.canActivate(USER_ID, DEFAULT_CONFIG)).toBe(false);
   });
 
-  it('canActivate_duringCooldown_returnsFalse', () => {
-    service.activate(USER_ID, DURATION_MS, COOLDOWN_MS, BOOSTED_SPEED);
+  it('deactivate_midBoost_preservesFuelForLaterReuse', () => {
+    service.activate(USER_ID, DEFAULT_CONFIG);
 
-    vi.advanceTimersByTime(DURATION_MS + COOLDOWN_MS / 2);
-
-    expect(service.canActivate(USER_ID, DEFAULT_MULTIPLIER)).toBe(false);
-  });
-
-  it('canActivate_afterCooldownEnd_returnsTrue', () => {
-    service.activate(USER_ID, DURATION_MS, COOLDOWN_MS, BOOSTED_SPEED);
-
-    vi.advanceTimersByTime(DURATION_MS + COOLDOWN_MS);
-
-    expect(service.canActivate(USER_ID, DEFAULT_MULTIPLIER)).toBe(true);
-  });
-
-  it('canActivate_afterCooldownEnd_cleansUpState', () => {
-    service.activate(USER_ID, DURATION_MS, COOLDOWN_MS, BOOSTED_SPEED);
-
-    vi.advanceTimersByTime(DURATION_MS + COOLDOWN_MS);
-
-    service.canActivate(USER_ID, DEFAULT_MULTIPLIER);
-    expect(service.getState(USER_ID)).toBeNull();
-  });
-
-  // ── checkAndExpire ──
-
-  it('checkAndExpire_boostExpired_returnsNonNull', () => {
-    service.activate(USER_ID, DURATION_MS, COOLDOWN_MS, BOOSTED_SPEED);
-
-    vi.advanceTimersByTime(DURATION_MS);
-
-    const result = service.checkAndExpire(USER_ID, DEFAULT_MULTIPLIER);
-    expect(result).not.toBeNull();
-    expect(result!.expired).toBe(true);
-  });
-
-  it('checkAndExpire_boostNotExpired_returnsNull', () => {
-    service.activate(USER_ID, DURATION_MS, COOLDOWN_MS, BOOSTED_SPEED);
-
-    vi.advanceTimersByTime(DURATION_MS - 1);
-
-    expect(service.checkAndExpire(USER_ID, DEFAULT_MULTIPLIER)).toBeNull();
-  });
-
-  it('checkAndExpire_noState_returnsNull', () => {
-    expect(service.checkAndExpire(USER_ID, DEFAULT_MULTIPLIER)).toBeNull();
-  });
-
-  // ── timeMultiplier ──
-
-  it('timeMultiplier_doublesEffectiveElapsedTime', () => {
-    const multiplier = 2;
-    service.activate(USER_ID, DURATION_MS, COOLDOWN_MS, BOOSTED_SPEED);
-
-    // With 2× multiplier, boost should expire in half the wall-clock time
-    vi.advanceTimersByTime(DURATION_MS / 2 - 1);
-    expect(service.isActive(USER_ID, multiplier)).toBe(true);
-
-    vi.advanceTimersByTime(1);
-    expect(service.isActive(USER_ID, multiplier)).toBe(false);
-  });
-
-  it('timeMultiplier_changesMidBoost_affectsRemainingTime', () => {
-    service.activate(USER_ID, DURATION_MS, COOLDOWN_MS, BOOSTED_SPEED);
-
-    // Advance 4 000 ms at 1× → effective = 4 000 ms, remaining = 6 000 ms
     vi.advanceTimersByTime(4_000);
-    expect(service.getBoostRemainingMs(USER_ID, 1)).toBe(6_000);
 
-    // Now switch to 2× — effective = 4 000 × 2 = 8 000 ms, remaining = 2 000 ms
-    expect(service.getBoostRemainingMs(USER_ID, 2)).toBe(2_000);
+    const status = service.deactivate(USER_ID, DEFAULT_CONFIG);
 
-    // Advance 1 000 ms more → wall = 5 000 ms, effective at 2× = 10 000 ms → boost ends
-    vi.advanceTimersByTime(1_000);
-    expect(service.isActive(USER_ID, 2)).toBe(false);
+    expect(status).not.toBeNull();
+    expect(status!.isActive).toBe(false);
+    expect(status!.fuelPercent).toBeCloseTo(60, 3);
+    expect(service.canActivate(USER_ID, DEFAULT_CONFIG)).toBe(true);
   });
 
-  // ── remaining helpers ──
+  it('canActivate_belowThresholdAfterManualStop_returnsFalse', () => {
+    service.activate(USER_ID, DEFAULT_CONFIG);
 
-  it('getBoostRemainingMs_duringBoost_returnsPositive', () => {
-    service.activate(USER_ID, DURATION_MS, COOLDOWN_MS, BOOSTED_SPEED);
+    vi.advanceTimersByTime(8_000);
+    service.deactivate(USER_ID, DEFAULT_CONFIG);
+
+    expect(service.canActivate(USER_ID, DEFAULT_CONFIG)).toBe(false);
+    expect(service.getTimeToActivationMs(USER_ID, DEFAULT_CONFIG)).toBeCloseTo(2_666.666, 0);
+  });
+
+  it('getBoostRemainingMs_duringBoost_returnsCurrentFuelTime', () => {
+    service.activate(USER_ID, DEFAULT_CONFIG);
 
     vi.advanceTimersByTime(3_000);
 
-    expect(service.getBoostRemainingMs(USER_ID, DEFAULT_MULTIPLIER)).toBe(7_000);
+    expect(service.getBoostRemainingMs(USER_ID, DEFAULT_CONFIG)).toBe(7_000);
   });
 
-  it('getBoostRemainingMs_afterBoost_returnsZero', () => {
-    service.activate(USER_ID, DURATION_MS, COOLDOWN_MS, BOOSTED_SPEED);
+  it('getCooldownRemainingMs_afterFuelDepletes_returnsTimeToFullRecharge', () => {
+    service.activate(USER_ID, DEFAULT_CONFIG);
 
-    vi.advanceTimersByTime(DURATION_MS);
+    vi.advanceTimersByTime(15_000);
 
-    expect(service.getBoostRemainingMs(USER_ID, DEFAULT_MULTIPLIER)).toBe(0);
+    expect(service.getCooldownRemainingMs(USER_ID, DEFAULT_CONFIG)).toBe(15_000);
   });
 
-  it('getCooldownRemainingMs_duringCooldown_returnsPositive', () => {
-    service.activate(USER_ID, DURATION_MS, COOLDOWN_MS, BOOSTED_SPEED);
+  it('checkAndExpire_whenBoostRunsOut_returnsExpired', () => {
+    service.activate(USER_ID, DEFAULT_CONFIG);
 
-    vi.advanceTimersByTime(DURATION_MS + 5_000);
+    vi.advanceTimersByTime(DEFAULT_CONFIG.fuelCapacityMs);
 
-    expect(service.getCooldownRemainingMs(USER_ID, DEFAULT_MULTIPLIER)).toBe(15_000);
+    const result = service.checkAndExpire(USER_ID, DEFAULT_CONFIG);
+    expect(result).toEqual({ expired: true });
   });
 
-  it('getCooldownRemainingMs_afterCooldown_returnsZero', () => {
-    service.activate(USER_ID, DURATION_MS, COOLDOWN_MS, BOOSTED_SPEED);
+  it('fullRecharge_cleansUpState', () => {
+    service.activate(USER_ID, DEFAULT_CONFIG);
 
-    vi.advanceTimersByTime(DURATION_MS + COOLDOWN_MS);
+    vi.advanceTimersByTime(DEFAULT_CONFIG.fuelCapacityMs + DEFAULT_CONFIG.cooldownMs);
 
-    expect(service.getCooldownRemainingMs(USER_ID, DEFAULT_MULTIPLIER)).toBe(0);
-  });
-
-  // ── clearState ──
-
-  it('clearState_removesState', () => {
-    service.activate(USER_ID, DURATION_MS, COOLDOWN_MS, BOOSTED_SPEED);
-
-    service.clearState(USER_ID);
-
+    expect(service.getStatus(USER_ID, DEFAULT_CONFIG).fuelPercent).toBe(100);
     expect(service.getState(USER_ID)).toBeNull();
-    expect(service.isActive(USER_ID, DEFAULT_MULTIPLIER)).toBe(false);
   });
 
-  // ── getActiveUserIds ──
+  it('timeMultiplier_doublesDrainAndRechargeSpeed', () => {
+    const config = makeConfig({ timeMultiplier: 2 });
+    service.activate(USER_ID, config);
 
-  it('getActiveUserIds_returnsStoredUserIds', () => {
-    service.activate(1, DURATION_MS, COOLDOWN_MS, BOOSTED_SPEED);
-    service.activate(2, DURATION_MS, COOLDOWN_MS, BOOSTED_SPEED);
+    vi.advanceTimersByTime(4_000);
+    expect(service.getStatus(USER_ID, config).fuelPercent).toBeCloseTo(20, 3);
 
-    const ids = service.getActiveUserIds();
-    expect(ids).toContain(1);
-    expect(ids).toContain(2);
-    expect(ids).toHaveLength(2);
+    vi.advanceTimersByTime(1_000);
+    expect(service.isActive(USER_ID, config)).toBe(false);
+
+    vi.advanceTimersByTime(2_000);
+    expect(service.getStatus(USER_ID, config).fuelPercent).toBeCloseTo(20, 3);
   });
-
-  // ── singleton ──
 
   it('getInstance_returnsSameInstance', () => {
     const a = AfterburnerService.getInstance();

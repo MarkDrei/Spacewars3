@@ -3,6 +3,7 @@ import { getIronSession } from 'iron-session';
 import { calculateToroidalDistance } from '@shared/physics';
 import { UserCache } from '@/lib/server/user/userCache';
 import { sendMessageToUser } from '@/lib/server/messages/MessageCache';
+import { getServerT } from '@/lib/server/i18n/serverTranslations';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth, ApiError } from '@/lib/server/errors';
 import { USER_INVENTORY_LOCK, USER_LOCK, WORLD_LOCK } from '@/lib/server/typedLocks';
@@ -14,7 +15,6 @@ import { Commander } from '@/lib/server/inventory/Commander';
 import { InventoryService, InventoryFullError } from '@/lib/server/inventory/InventoryService';
 import { getResearchEffectFromTree, ResearchType } from '@/lib/server/techs/techtree';
 import { StatisticsCache } from '@/lib/server/statistics/StatisticsCache';
-import { UserBonusCache } from '@/lib/server/bonus/UserBonusCache';
 
 export async function POST(request: NextRequest) {
   try {
@@ -78,19 +78,25 @@ export async function POST(request: NextRequest) {
       if (collectionResult.escapePodCollected) {
         const inventoryService = new InventoryService();
         const commander = Commander.random();
+        // Look up user's locale for localized messages
+        const userLocale = await emptyCtx.useLockWithAcquire(USER_LOCK, async (localeCtx) => {
+          const u = await userWorldCache.getUserByIdWithLock(localeCtx, session.userId!);
+          return u?.preferredLocale ?? 'en';
+        });
+        const tMsg = await getServerT(userLocale, 'messages');
         let notificationMessage: string;
         try {
           await inventoryService.addItemToFirstFreeSlotWithLock(inventoryContext, session.userId!, commander.toJSON(), collectionResult.maxInventorySlots);
           const bonusDesc = commander.statBonuses
             .map(b => `${b.stat} +${b.value}%`)
             .join(', ');
-          notificationMessage = `P: 🚀 Escape pod collected! Commander **${commander.name}** rescued and added to inventory. Bonuses: ${bonusDesc}.`;
+          notificationMessage = tMsg('escapePodRescued', { commander: commander.name, bonuses: bonusDesc });
         } catch (err) {
           if (err instanceof InventoryFullError) {
             const bonusDesc = commander.statBonuses
               .map(b => `${b.stat} +${b.value}%`)
               .join(', ');
-            notificationMessage = `P: 🚀 Escape pod collected! Commander **${commander.name}** rescued but inventory is full — commander lost! Bonuses would have been: ${bonusDesc}.`;
+            notificationMessage = tMsg('escapePodFull', { commander: commander.name, bonuses: bonusDesc });
           } else {
             throw err;
           }
@@ -161,7 +167,7 @@ async function performCollectionLogic(
   const ironBefore = user.iron;
 
   // Get bonuses so the iron cap includes the user-level multiplier
-  const bonuses = await UserBonusCache.getInstance().getBonuses(userCtx, user.id);
+  const bonuses = await userWorldCache.getBonusesByUserIdWithLock(userCtx, user.id);
 
   // Collect the object using the bonused iron capacity
   user.collected(targetObject.type, bonuses.ironStorageCapacity);
@@ -180,11 +186,14 @@ async function performCollectionLogic(
   // For non-escape-pod objects send the standard collection notification now.
   // Escape pod commander notification is sent after locks are released (in POST handler).
   if (!escapePodCollected) {
-    let notificationMessage = '';
+    const locale = user.preferredLocale ?? 'en';
+    const tMsg = await getServerT(locale, 'messages');
+    const objectLabel = targetObject.type.replace('_', ' ');
+    let notificationMessage: string;
     if (ironReward > 0) {
-      notificationMessage = `P: Successfully collected ${targetObject.type.replace('_', ' ')} and received **${ironReward}** iron.`;
+      notificationMessage = tMsg('harvestCollected', { type: objectLabel, iron: ironReward });
     } else {
-      notificationMessage = `P: Successfully collected ${targetObject.type.replace('_', ' ')}.`;
+      notificationMessage = tMsg('harvestCollectedNoIron', { type: objectLabel });
     }
     console.log(`📝 Creating notification for user ${user.id}: "${notificationMessage}"`);
     sendMessageToUser(worldContext, user.id, notificationMessage).catch((error: Error) => {

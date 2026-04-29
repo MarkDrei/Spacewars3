@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useTranslations, useLocale } from 'next-intl';
 import './StatisticsPanel.css';
 
 interface UserStatAggregates {
@@ -64,29 +65,32 @@ interface StatRowProps {
   avgValue: number | string;
   totalValue: number | string;
   rank: number | null;
+  locale: string;
 }
 
-function StatRow({ label, userValue, avgValue, totalValue, rank }: StatRowProps) {
+function StatRow({ label, userValue, avgValue, totalValue, rank, locale }: StatRowProps) {
   return (
     <div className="stat-row">
       <span className="stat-row-label">{label}</span>
       <span className="stat-row-user">
-        {typeof userValue === 'number' ? Math.round(userValue).toLocaleString() : userValue}
+        {typeof userValue === 'number' ? Math.round(userValue).toLocaleString(locale) : userValue}
         {rank !== null && (
           <span className="top5-badge" title={`Rank #${rank}`}>{RANK_MEDALS[rank]}</span>
         )}
       </span>
       <span className="stat-row-avg">
-        {typeof avgValue === 'number' ? Math.round(avgValue).toLocaleString() : avgValue}
+        {typeof avgValue === 'number' ? Math.round(avgValue).toLocaleString(locale) : avgValue}
       </span>
       <span className="stat-row-total">
-        {typeof totalValue === 'number' ? Math.round(totalValue).toLocaleString() : totalValue}
+        {typeof totalValue === 'number' ? Math.round(totalValue).toLocaleString(locale) : totalValue}
       </span>
     </div>
   );
 }
 
 const StatisticsPanel: React.FC = () => {
+  const t = useTranslations('statistics');
+  const locale = useLocale();
   const [stats, setStats] = useState<StatisticsResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -114,8 +118,8 @@ const StatisticsPanel: React.FC = () => {
   if (isLoading) {
     return (
       <div className="statistics-panel">
-        <h3>Player Statistics</h3>
-        <p className="stats-loading">Loading statistics...</p>
+        <h3>{t('playerStatsHeading')}</h3>
+        <p className="stats-loading">{t('loadingStats')}</p>
       </div>
     );
   }
@@ -123,8 +127,8 @@ const StatisticsPanel: React.FC = () => {
   if (error || !stats) {
     return (
       <div className="statistics-panel">
-        <h3>Player Statistics</h3>
-        <p className="stats-error">{error ?? 'No statistics available'}</p>
+        <h3>{t('playerStatsHeading')}</h3>
+        <p className="stats-error">{error ?? t('noStatsAvailable')}</p>
       </div>
     );
   }
@@ -138,128 +142,142 @@ const StatisticsPanel: React.FC = () => {
 
   return (
     <div className="statistics-panel">
-      <h3>Player Statistics</h3>
+      <h3>{t('playerStatsHeading')}</h3>
       <p className="stats-global-info">
         {global.totalPlayers} player{global.totalPlayers !== 1 ? 's' : ''} tracked
       </p>
 
       <div className="stats-header-row">
-        <span className="stats-col-label">Stat</span>
-        <span className="stats-col-you">You</span>
-        <span className="stats-col-avg">Avg/Player</span>
-        <span className="stats-col-total">Total</span>
+        <span className="stats-col-label">{t('colStat')}</span>
+        <span className="stats-col-you">{t('colYou')}</span>
+        <span className="stats-col-avg">{t('colAvgPerPlayer')}</span>
+        <span className="stats-col-total">{t('colTotal')}</span>
       </div>
 
       {/* ── Combat ── */}
       <div className="stats-category">
-        <h4 className="stats-category-title">⚔️ Combat</h4>
+        <h4 className="stats-category-title">{t('combatCategory')}</h4>
         <StatRow
-          label="Battles Won"
+          label={t('statBattlesWon')}
           userValue={user.battlesWon}
           avgValue={global.averages.battlesWon}
           totalValue={global.totals.battlesWon}
           rank={getRank(global.top5.battlesWon)}
+          locale={locale}
         />
         <StatRow
-          label="Battles Lost"
+          label={t('statBattlesLost')}
           userValue={user.battlesLost}
           avgValue={global.averages.battlesLost}
           totalValue={global.totals.battlesLost}
           rank={getRank(global.top5.battlesLost)}
+          locale={locale}
         />
         <StatRow
-          label="Total Damage Dealt"
+          label={t('statTotalDamageDealt')}
           userValue={user.totalDamageDealt}
           avgValue={global.averages.totalDamageDealt}
           totalValue={global.totals.totalDamageDealt}
           rank={getRank(global.top5.totalDamageDealt)}
+          locale={locale}
         />
         <StatRow
-          label="Total Damage Received"
+          label={t('statTotalDamageReceived')}
           userValue={user.totalDamageReceived}
           avgValue={global.averages.totalDamageReceived}
           totalValue={global.totals.totalDamageReceived}
           rank={getRank(global.top5.totalDamageReceived)}
+          locale={locale}
         />
         <StatRow
-          label="Iron Transferred (Won)"
+          label={t('statIronTransferred')}
           userValue={user.totalIronTransferred}
           avgValue={global.averages.totalIronTransferred}
           totalValue={global.totals.totalIronTransferred}
           rank={getRank(global.top5.totalIronTransferred)}
+          locale={locale}
         />
         <StatRow
-          label="XP Awarded from Battles"
+          label={t('statXpFromBattles')}
           userValue={user.totalXpAwarded}
           avgValue={global.averages.totalXpAwarded}
           totalValue={global.totals.totalXpAwarded}
           rank={getRank(global.top5.totalXpAwarded)}
+          locale={locale}
         />
       </div>
 
       {/* ── Collection ── */}
       <div className="stats-category">
-        <h4 className="stats-category-title">🪨 Collection</h4>
+        <h4 className="stats-category-title">{t('collectionCategory')}</h4>
         <StatRow
-          label="Asteroids Collected"
+          label={t('statAsteroidsCollected')}
           userValue={user.asteroidsCollected}
           avgValue={global.averages.asteroidsCollected}
           totalValue={global.totals.asteroidsCollected}
           rank={getRank(global.top5.asteroidsCollected)}
+          locale={locale}
         />
         <StatRow
-          label="Shipwrecks Collected"
+          label={t('statShipwrecksCollected')}
           userValue={user.shipwrecksCollected}
           avgValue={global.averages.shipwrecksCollected}
           totalValue={global.totals.shipwrecksCollected}
           rank={getRank(global.top5.shipwrecksCollected)}
+          locale={locale}
         />
         <StatRow
-          label="Escape Pods Collected"
+          label={t('statEscapePodsCollected')}
           userValue={user.escapePodsCollected}
           avgValue={global.averages.escapePodsCollected}
           totalValue={global.totals.escapePodsCollected}
           rank={getRank(global.top5.escapePodsCollected)}
+          locale={locale}
         />
         <StatRow
-          label="Iron from Collection"
+          label={t('statIronFromCollection')}
           userValue={user.totalIronFromCollection}
           avgValue={global.averages.totalIronFromCollection}
           totalValue={global.totals.totalIronFromCollection}
           rank={getRank(global.top5.totalIronFromCollection)}
+          locale={locale}
         />
       </div>
 
       {/* ── Economy ── */}
       <div className="stats-category">
-        <h4 className="stats-category-title">💰 Economy</h4>
+        <h4 className="stats-category-title">{t('economyCategory')}</h4>
         <StatRow
-          label="Iron Spent on Research"
+          label={t('statIronSpentOnResearch')}
           userValue={user.totalIronSpentOnResearch}
           avgValue={global.averages.totalIronSpentOnResearch}
           totalValue={global.totals.totalIronSpentOnResearch}
           rank={getRank(global.top5.totalIronSpentOnResearch)}
+          locale={locale}
         />
         <StatRow
-          label="Research Count"
+          label={t('statResearchCount')}
           userValue={user.researchCount}
           avgValue={global.averages.researchCount}
           totalValue={global.totals.researchCount}
           rank={getRank(global.top5.researchCount)}
+          locale={locale}
         />
         <StatRow
-          label="Iron Spent on Builds"
+          label={t('statIronSpentOnBuilds')}
           userValue={user.totalIronSpentOnBuilds}
           avgValue={global.averages.totalIronSpentOnBuilds}
           totalValue={global.totals.totalIronSpentOnBuilds}
           rank={getRank(global.top5.totalIronSpentOnBuilds)}
+          locale={locale}
         />
         <StatRow
-          label="Items Built"
+          label={t('statItemsBuilt')}
           userValue={user.totalBuildsCompleted}
           avgValue={global.averages.totalBuildsCompleted}
           totalValue={global.totals.totalBuildsCompleted}
           rank={getRank(global.top5.totalBuildsCompleted)}
+          locale={locale}
         />
       </div>
     </div>

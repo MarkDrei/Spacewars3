@@ -4,7 +4,7 @@
 
 export interface SpaceObject {
   id: number;
-  type: 'player_ship' | 'asteroid' | 'shipwreck' | 'escape_pod' | 'starbase';
+  type: 'player_ship' | 'asteroid' | 'shipwreck' | 'escape_pod' | 'starbase' | 'npc_ship';
   x: number;
   y: number;
   speed: number;
@@ -14,6 +14,8 @@ export interface SpaceObject {
   username?: string; // Optional: only present for player_ship type
   userId?: number; // Optional: only present for player_ship type
   level?: number; // Optional: only present for player_ship type
+  orbitAngleDeg?: number; // Optional: only present for npc_ship type
+  angularVelocityDegPerSec?: number; // Optional: only present for npc_ship type
 }
 
 export interface WorldData {

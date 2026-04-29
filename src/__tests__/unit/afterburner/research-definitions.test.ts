@@ -155,6 +155,14 @@ describe('IMPLEMENTED_RESEARCHES afterburner membership', () => {
   test('afterburnerSpeedIncrease_isInImplemented', () => {
     expect(IMPLEMENTED_RESEARCHES.has(ResearchType.AfterburnerSpeedIncrease)).toBe(true);
   });
+
+  test('repairSpeed_isInImplemented', () => {
+    expect(IMPLEMENTED_RESEARCHES.has(ResearchType.RepairSpeed)).toBe(true);
+  });
+
+  test('shieldRechargeRate_isInImplemented', () => {
+    expect(IMPLEMENTED_RESEARCHES.has(ResearchType.ShieldRechargeRate)).toBe(true);
+  });
 });
 
 describe('ResearchType enum', () => {

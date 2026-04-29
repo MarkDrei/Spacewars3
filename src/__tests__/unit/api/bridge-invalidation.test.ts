@@ -1,9 +1,10 @@
 // ---
-// Unit tests: verify that UserBonusCache.invalidateBonuses() is called for every
-// bridge route that modifies bridge contents (DELETE, move, transfer, auto-transfer).
+// Unit tests: verify that bridge routes invalidate cached bonuses after mutating
+// bridge contents (DELETE, move, transfer, auto-transfer).
 //
 // All external dependencies (iron-session, UserCache, InventoryService) are mocked
-// so no database or server is needed.
+// so no database or server is needed. The mocked UserCache invalidation wrapper
+// delegates to UserBonusCache so the tests still observe the real cache effect.
 // ---
 
 import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
@@ -93,6 +94,9 @@ beforeEach(() => {
     getUserByIdWithLock: vi.fn().mockResolvedValue({
       id: TEST_USER_ID,
       techTree: createInitialTechTree(),
+    }),
+    invalidateBonuses: vi.fn((userId: number) => {
+      UserBonusCache.getInstance().invalidateBonuses(userId);
     }),
   };
   vi.mocked(UserCache.getInstance2).mockReturnValue(mockUserCacheInstance as never);

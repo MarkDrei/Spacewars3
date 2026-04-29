@@ -8,9 +8,9 @@ import { User } from '@/lib/server/user/user';
 import { World } from '@/lib/server/world/world';
 import { createLockContext, LockContext, LocksAtMostAndHas4, LocksAtMostAndHas6 } from '@markdrei/ironguard-typescript-locks';
 import { WorldCache } from '@/lib/server/world/worldCache';
-import { UserBonusCache } from '@/lib/server/bonus/UserBonusCache';
 import { AfterburnerService } from '@/lib/server/afterburner/AfterburnerService';
 import { TimeMultiplierService } from '@/lib/server/timeMultiplier';
+import { getResearchEffectFromTree, ResearchType } from '@/lib/server/techs/techtree';
 
 export async function POST(request: NextRequest) {
   try {
@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
         }
         
         // Continue with navigation logic
-        return await performNavigationLogic(worldContext, userContext, world, user, speed, angle);
+        return await performNavigationLogic(worldContext, userContext, userWorldCache, world, user, speed, angle);
 
       });
     });
@@ -60,6 +60,7 @@ export async function POST(request: NextRequest) {
 async function performNavigationLogic(
   worldContext: LockContext<LocksAtMostAndHas6>,
   userCtx: LockContext<LocksAtMostAndHas4>,
+  userWorldCache: UserCache,
   world: World,
   user: User,
   speed: number | undefined,
@@ -90,15 +91,21 @@ async function performNavigationLogic(
   // Update ship properties
   if (speed !== undefined) {
     // Use current max ship speed (affected by damage, modifiers, etc.)
-    const bonuses = await UserBonusCache.getInstance().getBonuses(userCtx, user.id);
+    const bonuses = await userWorldCache.getBonusesByUserIdWithLock(userCtx, user.id);
     const maxSpeed = user.getCurrentMaxShipSpeed(bonuses);
 
     // If afterburner is active, allow speed up to the boosted speed
     const afterburnerService = AfterburnerService.getInstance();
     const timeMultiplier = TimeMultiplierService.getInstance().getMultiplier();
+    const afterburnerConfig = {
+      timeMultiplier,
+      fuelCapacityMs: getResearchEffectFromTree(user.techTree, ResearchType.AfterburnerDuration) * 1000,
+      cooldownMs: getResearchEffectFromTree(user.techTree, ResearchType.AfterburnerCooldown) * 1000,
+      boostedSpeed: maxSpeed * (1 + getResearchEffectFromTree(user.techTree, ResearchType.AfterburnerSpeedIncrease) / 100),
+    };
     const afterburnerState = afterburnerService.getState(user.id);
     const effectiveMaxSpeed =
-      afterburnerService.isActive(user.id, timeMultiplier) &&
+      afterburnerService.isActive(user.id, afterburnerConfig) &&
       afterburnerState &&
       afterburnerState.boostedSpeed > maxSpeed
         ? afterburnerState.boostedSpeed

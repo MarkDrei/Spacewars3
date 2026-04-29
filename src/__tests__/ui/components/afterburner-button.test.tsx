@@ -1,9 +1,7 @@
-// UI tests for GamePageClient afterburner button controls
 import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
 
-// ─────────── Module mocks ───────────────────────────────────────────────────
 vi.mock('@/components/Layout/AuthenticatedLayout', () => ({
   __esModule: true,
   default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
@@ -14,7 +12,6 @@ vi.mock('@/components/DataAgeIndicator/DataAgeIndicator', () => ({
   default: () => null,
 }));
 
-// Mock Game + initGame — the canvas API is not available in jsdom
 vi.mock('@/lib/client/game/Game', () => ({
   initGame: vi.fn(),
   Game: vi.fn(),
@@ -48,25 +45,50 @@ vi.mock('@/lib/client/services/shipStatsService', () => ({
 
 vi.mock('@/lib/client/services/afterburnerService', () => ({
   activateAfterburner: vi.fn(),
+  deactivateAfterburner: vi.fn(),
 }));
 
 vi.mock('next/navigation', () => ({
   useRouter: vi.fn(() => ({ push: vi.fn() })),
 }));
 
-// ─────────── Re-import after mocks ──────────────────────────────────────────
+// Mock next-intl so components using useTranslations work without a provider
+vi.mock('next-intl', async () => {
+  const { default: en } = await import('../../../locales/en.json');
+  return {
+    useTranslations: (namespace: string) => {
+      const t = (key: string, params?: Record<string, string | number>) => {
+        const ns = (en as unknown as Record<string, Record<string, string>>)[namespace] ?? {};
+        let value: string = ns[key] ?? key;
+        if (params) {
+          for (const [k, v] of Object.entries(params)) {
+            value = value.replace(`{${k}}`, String(v));
+          }
+        }
+        return value;
+      };
+      t.raw = (key: string) => {
+        const ns = (en as unknown as Record<string, Record<string, string>>)[namespace] ?? {};
+        return ns[key] ?? key;
+      };
+      return t;
+    },
+    useLocale: () => 'en',
+  };
+});
+
 import { userStatsService, UserStatsResponse } from '@/lib/client/services/userStatsService';
 import { getShipStats } from '@/lib/client/services/shipStatsService';
-import { activateAfterburner } from '@/lib/client/services/afterburnerService';
+import { activateAfterburner, deactivateAfterburner } from '@/lib/client/services/afterburnerService';
+import { navigateShip } from '@/lib/client/services/navigationService';
 import type { ShipStatsResponse } from '@/lib/client/services/shipStatsService';
 import type { AfterburnerStatus } from '@/lib/client/services/afterburnerService';
+import { initGame } from '@/lib/client/game/Game';
 import GamePageClient from '@/app/game/GamePageClient';
 
-// Mock fetch globally
 const mockFetch = vi.fn();
 vi.stubGlobal('fetch', mockFetch);
 
-// ─────────── Helpers ─────────────────────────────────────────────────────────
 const makeUserStats = (overrides: Partial<UserStatsResponse> = {}): UserStatsResponse => ({
   iron: 100,
   last_updated: 1000,
@@ -80,6 +102,21 @@ const makeUserStats = (overrides: Partial<UserStatsResponse> = {}): UserStatsRes
   teleportMaxCharges: 0,
   teleportRechargeTimeSec: 86400,
   teleportRechargeSpeed: 1,
+  ...overrides,
+});
+
+const makeAfterburnerStatus = (overrides: Partial<AfterburnerStatus> = {}): AfterburnerStatus => ({
+  isActive: false,
+  boostRemainingMs: 0,
+  cooldownRemainingMs: 0,
+  canActivate: false,
+  durationResearchLevel: 1,
+  boostedSpeed: 0,
+  fuelRemainingMs: 0,
+  fuelCapacityMs: 30000,
+  fuelPercent: 100,
+  timeToActivationMs: 0,
+  activationThresholdPercent: 33,
   ...overrides,
 });
 
@@ -100,30 +137,35 @@ const makeShipStats = (afterburner?: AfterburnerStatus): ShipStatsResponse => ({
 
 const defaultAuth = { userId: 1, username: 'testuser', shipId: 42 };
 
-// ─────────── GamePageClient afterburner controls UI tests ────────────────────
+const makeMockGame = () => ({
+  setDebugDrawingsEnabled: vi.fn(),
+  setZoom: vi.fn(),
+  setSafeAreaBottom: vi.fn(),
+  setTeleportClickMode: vi.fn(),
+  setAttackClickMode: vi.fn(),
+  setPlayerLevel: vi.fn(),
+  setMobileInteractionMode: vi.fn(),
+  setMobileInfoMode: vi.fn(),
+  updateCanvasStrings: vi.fn(),
+  stop: vi.fn(),
+});
+
 describe('GamePageClient afterburner controls', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
-    // Default: userStats returns minimal stats
+    vi.mocked(initGame).mockReturnValue(makeMockGame() as never);
     vi.mocked(userStatsService.getUserStats).mockResolvedValue(makeUserStats());
   });
 
   afterEach(() => {
-    // Ensure fake timers are cleaned up even if a test fails
     vi.useRealTimers();
   });
 
   it('afterburnerButton_notResearched_isInvisible', async () => {
-    const afterburner: AfterburnerStatus = {
-      isActive: false,
-      boostRemainingMs: 0,
-      cooldownRemainingMs: 0,
-      canActivate: false,
-      durationResearchLevel: 0,
-      boostedSpeed: 0,
-    };
-    vi.mocked(getShipStats).mockResolvedValue(makeShipStats(afterburner));
+    vi.mocked(getShipStats).mockResolvedValue(
+      makeShipStats(makeAfterburnerStatus({ durationResearchLevel: 0, canActivate: false })),
+    );
 
     render(<GamePageClient auth={defaultAuth} />);
 
@@ -131,21 +173,14 @@ describe('GamePageClient afterburner controls', () => {
       expect(getShipStats).toHaveBeenCalled();
     });
 
-    // When not researched (level 0), the afterburner button should be invisible
     expect(screen.queryByText(/Afterburner/)).toBeNull();
     expect(screen.queryByText(/🔥/)).toBeNull();
   });
 
-  it('afterburnerButton_canActivate_showsActivateButton', async () => {
-    const afterburner: AfterburnerStatus = {
-      isActive: false,
-      boostRemainingMs: 0,
-      cooldownRemainingMs: 0,
-      canActivate: true,
-      durationResearchLevel: 1,
-      boostedSpeed: 0,
-    };
-    vi.mocked(getShipStats).mockResolvedValue(makeShipStats(afterburner));
+  it('afterburnerButton_canActivate_showsEngageButton', async () => {
+    vi.mocked(getShipStats).mockResolvedValue(
+      makeShipStats(makeAfterburnerStatus({ canActivate: true, fuelPercent: 100, fuelRemainingMs: 30000 })),
+    );
 
     render(<GamePageClient auth={defaultAuth} />);
 
@@ -153,74 +188,71 @@ describe('GamePageClient afterburner controls', () => {
       expect(screen.getByTitle('Afterburner')).toBeDefined();
     });
 
-    const iconButton = screen.getByTitle('Afterburner');
-    expect(iconButton).toHaveProperty('disabled', false);
-    
-    // Click to expand the panel
-    fireEvent.click(iconButton);
+    fireEvent.click(screen.getByTitle('Afterburner'));
 
-    // Now the activate button should be visible
     await waitFor(() => {
-      expect(screen.getByText(/🔥 Activate/)).toBeDefined();
+      expect(screen.getByText('engage')).toBeDefined();
+      expect(screen.getByText(/fuel 100%/i)).toBeDefined();
     });
   });
 
-  it('afterburnerPanel_isActive_showsActiveWithTimer', async () => {
-    const afterburner: AfterburnerStatus = {
-      isActive: true,
-      boostRemainingMs: 15000,
-      cooldownRemainingMs: 0,
-      canActivate: false,
-      durationResearchLevel: 1,
-      boostedSpeed: 50,
-    };
-    vi.mocked(getShipStats).mockResolvedValue(makeShipStats(afterburner));
+  it('afterburnerPanel_isActive_showsBurnTimerAndDisengageButton', async () => {
+    vi.mocked(getShipStats).mockResolvedValue(
+      makeShipStats(
+        makeAfterburnerStatus({
+          isActive: true,
+          boostRemainingMs: 15000,
+          fuelPercent: 50,
+          fuelRemainingMs: 15000,
+          boostedSpeed: 50,
+        }),
+      ),
+    );
 
     render(<GamePageClient auth={defaultAuth} />);
 
     await waitFor(() => {
-      const afterburnerIcon = screen.getByTitle('Afterburner');
-      expect(afterburnerIcon).toBeDefined();
+      expect(screen.getByTitle('Afterburner')).toBeDefined();
     });
 
-    // Click to expand the afterburner panel
     fireEvent.click(screen.getByTitle('Afterburner'));
 
-    // Now the active status should be visible
     await waitFor(() => {
-      expect(screen.getByText(/Active \(15s\)/)).toBeDefined();
+      expect(screen.getByText(/burn: 15s/i)).toBeDefined();
+      expect(screen.getByText('disengage')).toBeDefined();
+      expect(screen.getByText(/fuel 50%/i)).toBeDefined();
     });
   });
 
-  it('afterburnerPanel_onCooldown_showsCooldownWithTimer', async () => {
-    const afterburner: AfterburnerStatus = {
-      isActive: false,
-      boostRemainingMs: 0,
-      cooldownRemainingMs: 3600000, // 1 hour
-      canActivate: false,
-      durationResearchLevel: 1,
-      boostedSpeed: 0,
-    };
-    vi.mocked(getShipStats).mockResolvedValue(makeShipStats(afterburner));
+  it('afterburnerPanel_belowThreshold_showsReadyTimer', async () => {
+    vi.mocked(getShipStats).mockResolvedValue(
+      makeShipStats(
+        makeAfterburnerStatus({
+          canActivate: false,
+          fuelPercent: 20,
+          fuelRemainingMs: 6000,
+          cooldownRemainingMs: 24000,
+          timeToActivationMs: 7800,
+        }),
+      ),
+    );
 
     render(<GamePageClient auth={defaultAuth} />);
 
     await waitFor(() => {
-      const afterburnerIcon = screen.getByTitle('Afterburner');
-      expect(afterburnerIcon).toBeDefined();
+      expect(screen.getByTitle('Afterburner')).toBeDefined();
     });
 
-    // Click to expand the afterburner panel
     fireEvent.click(screen.getByTitle('Afterburner'));
 
-    // Now the cooldown status should be visible
     await waitFor(() => {
-      expect(screen.getByText(/Cooldown \(1h 0m\)/)).toBeDefined();
+      expect(screen.getByText(/ready at 33% in 7s/i)).toBeDefined();
+      expect(screen.getByText(/recharging/i)).toBeDefined();
+      expect(screen.getByText(/fuel 20%/i)).toBeDefined();
     });
   });
 
   it('afterburnerPanel_noAfterburnerStatus_panelNotRendered', async () => {
-    // ship-stats returns no afterburner field
     vi.mocked(getShipStats).mockResolvedValue(makeShipStats(undefined));
 
     render(<GamePageClient auth={defaultAuth} />);
@@ -229,20 +261,14 @@ describe('GamePageClient afterburner controls', () => {
       expect(getShipStats).toHaveBeenCalled();
     });
 
-    expect(screen.queryByText(/Activate Afterburner/)).toBeNull();
-    expect(screen.queryByText(/Afterburner \(Not Researched\)/)).toBeNull();
+    expect(screen.queryByText('engage')).toBeNull();
+    expect(screen.queryByText('disengage')).toBeNull();
   });
 
   it('afterburnerPanel_hasIconButton_showsAfterburnerIcon', async () => {
-    const afterburner: AfterburnerStatus = {
-      isActive: false,
-      boostRemainingMs: 0,
-      cooldownRemainingMs: 0,
-      canActivate: true,
-      durationResearchLevel: 2,
-      boostedSpeed: 0,
-    };
-    vi.mocked(getShipStats).mockResolvedValue(makeShipStats(afterburner));
+    vi.mocked(getShipStats).mockResolvedValue(
+      makeShipStats(makeAfterburnerStatus({ canActivate: true, durationResearchLevel: 2 })),
+    );
 
     render(<GamePageClient auth={defaultAuth} />);
 
@@ -254,15 +280,9 @@ describe('GamePageClient afterburner controls', () => {
   });
 
   it('afterburnerPanel_clickIcon_togglesVisibility', async () => {
-    const afterburner: AfterburnerStatus = {
-      isActive: false,
-      boostRemainingMs: 0,
-      cooldownRemainingMs: 0,
-      canActivate: true,
-      durationResearchLevel: 1,
-      boostedSpeed: 0,
-    };
-    vi.mocked(getShipStats).mockResolvedValue(makeShipStats(afterburner));
+    vi.mocked(getShipStats).mockResolvedValue(
+      makeShipStats(makeAfterburnerStatus({ canActivate: true, fuelPercent: 100, fuelRemainingMs: 30000 })),
+    );
 
     render(<GamePageClient auth={defaultAuth} />);
 
@@ -271,44 +291,32 @@ describe('GamePageClient afterburner controls', () => {
     });
 
     const iconButton = screen.getByTitle('Afterburner');
-    
-    // Initially, the activate button should not be visible
-    expect(screen.queryByText(/🔥 Activate/)).toBeNull();
 
-    // Click to expand the panel
+    expect(screen.queryByText('engage')).toBeNull();
+
     fireEvent.click(iconButton);
 
-    // Now the activate button should be visible
     await waitFor(() => {
-      expect(screen.getByText(/🔥 Activate/)).toBeDefined();
+      expect(screen.getByText('engage')).toBeDefined();
     });
 
-    // Click again to collapse the panel
     fireEvent.click(iconButton);
 
-    // The activate button should no longer be visible
     await waitFor(() => {
-      expect(screen.queryByText(/🔥 Activate/)).toBeNull();
+      expect(screen.queryByText('engage')).toBeNull();
     });
   });
 
-  it('afterburnerButton_activateClick_callsService', async () => {
-    const afterburnerBefore: AfterburnerStatus = {
-      isActive: false,
-      boostRemainingMs: 0,
-      cooldownRemainingMs: 0,
-      canActivate: true,
-      durationResearchLevel: 1,
-      boostedSpeed: 0,
-    };
-    const afterburnerAfter: AfterburnerStatus = {
+  it('afterburnerButton_engageClick_callsService', async () => {
+    const afterburnerBefore = makeAfterburnerStatus({ canActivate: true, fuelPercent: 60, fuelRemainingMs: 18000 });
+    const afterburnerAfter = makeAfterburnerStatus({
       isActive: true,
-      boostRemainingMs: 30000,
-      cooldownRemainingMs: 0,
       canActivate: false,
-      durationResearchLevel: 1,
+      boostRemainingMs: 18000,
+      fuelPercent: 60,
+      fuelRemainingMs: 18000,
       boostedSpeed: 50,
-    };
+    });
 
     vi.mocked(getShipStats)
       .mockResolvedValueOnce(makeShipStats(afterburnerBefore))
@@ -316,11 +324,15 @@ describe('GamePageClient afterburner controls', () => {
 
     vi.mocked(activateAfterburner).mockResolvedValue({
       success: true,
+      action: 'activated',
       boostedSpeed: 50,
       previousSpeed: 25,
       durationMs: 30000,
       cooldownMs: 3600000,
       maxSpeed: 25,
+      fuelRemainingMs: 18000,
+      fuelCapacityMs: 30000,
+      fuelPercent: 60,
     });
 
     render(<GamePageClient auth={defaultAuth} />);
@@ -329,59 +341,82 @@ describe('GamePageClient afterburner controls', () => {
       expect(screen.getByTitle('Afterburner')).toBeDefined();
     });
 
-    // Click icon to expand the afterburner panel
     fireEvent.click(screen.getByTitle('Afterburner'));
 
-    // Now look for the activate button
     await waitFor(() => {
-      expect(screen.getByText(/🔥 Activate/)).toBeDefined();
+      expect(screen.getByText('engage')).toBeDefined();
     });
 
-    const activateButton = screen.getByText(/🔥 Activate/);
-    fireEvent.click(activateButton);
+    fireEvent.click(screen.getByText('engage'));
 
     await waitFor(() => {
       expect(activateAfterburner).toHaveBeenCalledTimes(1);
     });
   });
 
-  it('afterburnerPanel_cooldownShortDuration_showsMinutesAndSeconds', async () => {
-    const afterburner: AfterburnerStatus = {
-      isActive: false,
-      boostRemainingMs: 0,
-      cooldownRemainingMs: 150000, // 2m 30s
-      canActivate: false,
-      durationResearchLevel: 1,
+  it('afterburnerButton_disengageClick_callsService', async () => {
+    const activeAfterburner = makeAfterburnerStatus({
+      isActive: true,
+      boostRemainingMs: 15000,
+      fuelPercent: 50,
+      fuelRemainingMs: 15000,
+      boostedSpeed: 50,
+    });
+    const inactiveAfterburner = makeAfterburnerStatus({
+      canActivate: true,
+      fuelPercent: 50,
+      fuelRemainingMs: 15000,
+      cooldownRemainingMs: 15000,
+    });
+
+    vi.mocked(getShipStats)
+      .mockResolvedValueOnce(makeShipStats(activeAfterburner))
+      .mockResolvedValue(makeShipStats(inactiveAfterburner));
+
+    vi.mocked(deactivateAfterburner).mockResolvedValue({
+      success: true,
+      action: 'deactivated',
       boostedSpeed: 0,
-    };
-    vi.mocked(getShipStats).mockResolvedValue(makeShipStats(afterburner));
+      previousSpeed: 50,
+      durationMs: 30000,
+      cooldownMs: 3600000,
+      maxSpeed: 25,
+      fuelRemainingMs: 15000,
+      fuelCapacityMs: 30000,
+      fuelPercent: 50,
+    });
 
     render(<GamePageClient auth={defaultAuth} />);
 
     await waitFor(() => {
-      const afterburnerIcon = screen.getByTitle('Afterburner');
-      expect(afterburnerIcon).toBeDefined();
+      expect(screen.getByTitle('Afterburner')).toBeDefined();
     });
 
-    // Click to expand the afterburner panel
     fireEvent.click(screen.getByTitle('Afterburner'));
 
-    // Now the cooldown status should be visible
     await waitFor(() => {
-      expect(screen.getByText(/Cooldown \(2m 30s\)/)).toBeDefined();
+      expect(screen.getByText('disengage')).toBeDefined();
+    });
+
+    fireEvent.click(screen.getByText('disengage'));
+
+    await waitFor(() => {
+      expect(deactivateAfterburner).toHaveBeenCalledTimes(1);
     });
   });
 
   it('speedSlider_afterburnerActive_usesBoostedSpeedAsMax', async () => {
-    const afterburner: AfterburnerStatus = {
-      isActive: true,
-      boostRemainingMs: 20000,
-      cooldownRemainingMs: 0,
-      canActivate: false,
-      durationResearchLevel: 1,
-      boostedSpeed: 50, // boosted max is 50 while normal maxSpeed is 25
-    };
-    vi.mocked(getShipStats).mockResolvedValue(makeShipStats(afterburner));
+    vi.mocked(getShipStats).mockResolvedValue(
+      makeShipStats(
+        makeAfterburnerStatus({
+          isActive: true,
+          boostRemainingMs: 20000,
+          fuelPercent: 66.7,
+          fuelRemainingMs: 20000,
+          boostedSpeed: 50,
+        }),
+      ),
+    );
 
     render(<GamePageClient auth={defaultAuth} />);
 
@@ -389,24 +424,17 @@ describe('GamePageClient afterburner controls', () => {
       expect(getShipStats).toHaveBeenCalled();
     });
 
-    // Click navigation icon to expand and access the speed slider
     fireEvent.click(screen.getByTitle('Navigation (angle, speed, zoom)'));
 
-    // The speed slider should use boostedSpeed (50) as max, not normal maxSpeed (25)
     const speedSlider = screen.getByRole('slider', { name: /speed/i });
-    expect(speedSlider).toHaveAttribute('max', '50');
+    expect(speedSlider).toHaveAttribute('max', '100');
+    expect(speedSlider).toHaveAttribute('data-speed-limit', '50.0');
   });
 
   it('speedSlider_afterburnerNotActive_usesNormalMaxSpeed', async () => {
-    const afterburner: AfterburnerStatus = {
-      isActive: false,
-      boostRemainingMs: 0,
-      cooldownRemainingMs: 0,
-      canActivate: true,
-      durationResearchLevel: 1,
-      boostedSpeed: 0,
-    };
-    vi.mocked(getShipStats).mockResolvedValue(makeShipStats(afterburner));
+    vi.mocked(getShipStats).mockResolvedValue(
+      makeShipStats(makeAfterburnerStatus({ canActivate: true, fuelPercent: 100, fuelRemainingMs: 30000 })),
+    );
 
     render(<GamePageClient auth={defaultAuth} />);
 
@@ -414,57 +442,176 @@ describe('GamePageClient afterburner controls', () => {
       expect(getShipStats).toHaveBeenCalled();
     });
 
-    // Click navigation icon to expand and access the speed slider
     fireEvent.click(screen.getByTitle('Navigation (angle, speed, zoom)'));
 
-    // The speed slider should use normal maxSpeed (25) when afterburner is not active
     const speedSlider = screen.getByRole('slider', { name: /speed/i });
-    expect(speedSlider).toHaveAttribute('max', '25');
+    expect(speedSlider).toHaveAttribute('max', '100');
+    expect(speedSlider).toHaveAttribute('data-speed-limit', '25.0');
   });
 
   it('speedInput_afterburnerExpiresDuringPolling_updatesToServerCappedSpeed', async () => {
     vi.useFakeTimers();
 
-    const activeAfterburner: AfterburnerStatus = {
+    const activeAfterburner = makeAfterburnerStatus({
       isActive: true,
       boostRemainingMs: 5000,
-      cooldownRemainingMs: 0,
-      canActivate: false,
-      durationResearchLevel: 1,
+      fuelPercent: 16.7,
+      fuelRemainingMs: 5000,
       boostedSpeed: 50,
-    };
-    const expiredAfterburner: AfterburnerStatus = {
-      isActive: false,
-      boostRemainingMs: 0,
-      cooldownRemainingMs: 3600000,
+    });
+    const expiredAfterburner = makeAfterburnerStatus({
       canActivate: false,
-      durationResearchLevel: 1,
+      fuelPercent: 10,
+      fuelRemainingMs: 3000,
+      cooldownRemainingMs: 27000,
+      timeToActivationMs: 6900,
       boostedSpeed: 0,
-    };
+    });
 
-    // First call returns active afterburner at boosted speed (50),
-    // subsequent calls return expired afterburner with speed capped at normal maxSpeed (25).
     vi.mocked(getShipStats)
       .mockResolvedValueOnce({ ...makeShipStats(activeAfterburner), speed: 50 })
       .mockResolvedValue({ ...makeShipStats(expiredAfterburner), speed: 25 });
 
     render(<GamePageClient auth={defaultAuth} />);
 
-    // Flush initial async effects (initial getShipStats call + React state updates)
     await act(async () => {
       await vi.advanceTimersByTimeAsync(0);
     });
 
-    // Advance past the 1-second polling interval to trigger the second getShipStats call
     await act(async () => {
       await vi.advanceTimersByTimeAsync(1100);
     });
 
-    // Click navigation icon to expand and access the speed slider
     fireEvent.click(screen.getByTitle('Navigation (angle, speed, zoom)'));
 
-    // The speed input should now show the server-capped speed (25), not the boosted speed (50)
     const speedSlider = screen.getByRole('slider', { name: /speed/i });
-    expect(speedSlider).toHaveAttribute('value', '25');
+    expect(speedSlider).toHaveAttribute('aria-valuetext', '25.0 / 25.0');
+  });
+
+  it('speedSlider_dragRelease_commitsReleasedSpeed', async () => {
+    vi.mocked(getShipStats).mockResolvedValue(makeShipStats());
+    vi.mocked(navigateShip).mockResolvedValue({
+      success: true,
+      speed: 12.3,
+      angle: 45,
+      maxSpeed: 25,
+    });
+
+    render(<GamePageClient auth={defaultAuth} />);
+
+    await waitFor(() => {
+      expect(getShipStats).toHaveBeenCalled();
+    });
+
+    fireEvent.click(screen.getByTitle('Navigation (angle, speed, zoom)'));
+
+    const speedSlider = screen.getByRole('slider', { name: /speed/i });
+    fireEvent.change(speedSlider, { target: { value: '50' } });
+    fireEvent.mouseUp(speedSlider);
+
+    await waitFor(() => {
+      expect(navigateShip).toHaveBeenCalledWith({ speed: 12.5 });
+    });
+  });
+
+  it('speedSlider_nearZero_snapsToZeroOnRelease', async () => {
+    vi.mocked(getShipStats).mockResolvedValue(makeShipStats());
+    vi.mocked(navigateShip).mockResolvedValue({
+      success: true,
+      speed: 0,
+      angle: 45,
+      maxSpeed: 25,
+    });
+
+    render(<GamePageClient auth={defaultAuth} />);
+
+    await waitFor(() => {
+      expect(getShipStats).toHaveBeenCalled();
+    });
+
+    fireEvent.click(screen.getByTitle('Navigation (angle, speed, zoom)'));
+
+    const speedSlider = screen.getByRole('slider', { name: /speed/i });
+    fireEvent.change(speedSlider, { target: { value: '5' } });
+    fireEvent.mouseUp(speedSlider);
+
+    await waitFor(() => {
+      expect(navigateShip).toHaveBeenCalledWith({ speed: 0 });
+    });
+
+    expect(screen.getByText('0.0')).toBeDefined();
+  });
+
+  it('speedSlider_rightSnapZone_commitsMaxSpeed', async () => {
+    vi.mocked(getShipStats).mockResolvedValue(makeShipStats());
+    vi.mocked(navigateShip).mockResolvedValue({
+      success: true,
+      speed: 25,
+      angle: 45,
+      maxSpeed: 25,
+    });
+
+    render(<GamePageClient auth={defaultAuth} />);
+
+    await waitFor(() => {
+      expect(getShipStats).toHaveBeenCalled();
+    });
+
+    fireEvent.click(screen.getByTitle('Navigation (angle, speed, zoom)'));
+
+    const speedSlider = screen.getByRole('slider', { name: /speed/i });
+    fireEvent.change(speedSlider, { target: { value: '96' } });
+    fireEvent.mouseUp(speedSlider);
+
+    await waitFor(() => {
+      expect(navigateShip).toHaveBeenCalledWith({ speed: 25 });
+    });
+  });
+
+  it('gameInit_savedUiPreferences_syncsZoomAndDebugStateToGame', async () => {
+    const mockGame = makeMockGame();
+    vi.mocked(initGame).mockReturnValue(mockGame as never);
+    vi.mocked(getShipStats).mockResolvedValue(makeShipStats());
+    localStorage.setItem('game-ui-zoom', JSON.stringify(1.75));
+    localStorage.setItem('game-ui-debug-enabled', JSON.stringify(true));
+
+    render(<GamePageClient auth={defaultAuth} />);
+
+    await waitFor(() => {
+      expect(initGame).toHaveBeenCalled();
+      expect(mockGame.setZoom).toHaveBeenCalledWith(1.75);
+      expect(mockGame.setDebugDrawingsEnabled).toHaveBeenCalledWith(true);
+    });
+  });
+
+  it('gameInit_savedUiPreferences_restorePanelsAndModes', async () => {
+    const mockGame = makeMockGame();
+    vi.mocked(initGame).mockReturnValue(mockGame as never);
+    vi.mocked(userStatsService.getUserStats).mockResolvedValue(makeUserStats({ teleportMaxCharges: 2, teleportCharges: 1 }));
+    vi.mocked(getShipStats).mockResolvedValue(
+      makeShipStats(makeAfterburnerStatus({ canActivate: true, fuelPercent: 100, fuelRemainingMs: 30000 })),
+    );
+    localStorage.setItem('game-ui-preferences', JSON.stringify({
+      zoom: 1.8,
+      debugDrawingsEnabled: true,
+      navOpen: true,
+      teleportOpen: true,
+      afterburnerOpen: true,
+      teleportClickMode: true,
+      attackClickMode: true,
+    }));
+
+    render(<GamePageClient auth={defaultAuth} />);
+
+    await waitFor(() => {
+      expect(initGame).toHaveBeenCalled();
+      expect(mockGame.setZoom).toHaveBeenCalledWith(1.8);
+      expect(mockGame.setDebugDrawingsEnabled).toHaveBeenCalledWith(true);
+      expect(mockGame.setTeleportClickMode).toHaveBeenCalledWith(true);
+      expect(mockGame.setAttackClickMode).toHaveBeenCalledWith(true);
+      expect(screen.getByRole('slider', { name: /speed/i })).toBeDefined();
+      expect(screen.getByRole('button', { name: /^enter coordinates$/i })).toBeDefined();
+      expect(screen.getByText('engage')).toBeDefined();
+    });
   });
 });

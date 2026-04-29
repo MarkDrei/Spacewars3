@@ -1,5 +1,5 @@
 import { describe, expect, test, beforeEach, vi } from 'vitest';
-import { STARBASE_DOCK_RANGE } from '@/shared/starbases';
+import { STARBASE_DOCK_RANGE, STARBASE_ID_OFFSET } from '@/shared/starbases';
 
 // ── Mock all heavy dependencies before importing Game ─────────────────────────
 
@@ -61,9 +61,9 @@ vi.mock('@/lib/client/services/collectionService', () => ({
   collectionService: { collectObject: vi.fn() },
 }));
 
-const mockCalculateToroidalDistance = vi.fn((_pos1: { x: number; y: number }, _pos2: { x: number; y: number }, _bounds: { width: number; height: number }) => 100);
+const mockCalculateToroidalDistance = vi.fn(() => 100);
 vi.mock('@shared/physics', () => ({
-  calculateToroidalDistance: (...args: [{ x: number; y: number }, { x: number; y: number }, { width: number; height: number }]) => mockCalculateToroidalDistance(...args),
+  calculateToroidalDistance: () => mockCalculateToroidalDistance(),
 }));
 
 vi.mock('@/lib/client/debug/debugState', () => ({
@@ -94,7 +94,7 @@ function makeCanvas() {
 }
 
 /** Build a fake SpaceObjectOld for a starbase */
-function makeStarbaseObj(id = 9001, x = 2500, y = 2500) {
+function makeStarbaseObj(id = STARBASE_ID_OFFSET + 1, x = 2500, y = 2500) {
   return {
     getType: () => 'starbase' as string,
     getId: () => id,
@@ -144,33 +144,33 @@ describe('Game – starbase entry callback', () => {
     game.setStarbaseEntryCallback(cb);
 
     // Starbase hovered; distance returned is within range
-    mockFindHoveredObject.mockReturnValue(makeStarbaseObj(9001));
+    mockFindHoveredObject.mockReturnValue(makeStarbaseObj());
     mockCalculateToroidalDistance.mockReturnValue(STARBASE_DOCK_RANGE - 1);
 
     canvas._fire('click', { clientX: 400, clientY: 300 });
 
     expect(cb).toHaveBeenCalledOnce();
-    expect(cb).toHaveBeenCalledWith(9001);
+    expect(cb).toHaveBeenCalledWith(STARBASE_ID_OFFSET + 1);
   });
 
   test('starbaseClick_exactlyAtDockRange_firesCallback', () => {
     const cb = vi.fn();
     game.setStarbaseEntryCallback(cb);
 
-    mockFindHoveredObject.mockReturnValue(makeStarbaseObj(9001));
+    mockFindHoveredObject.mockReturnValue(makeStarbaseObj());
     mockCalculateToroidalDistance.mockReturnValue(STARBASE_DOCK_RANGE);
 
     canvas._fire('click', { clientX: 400, clientY: 300 });
 
     expect(cb).toHaveBeenCalledOnce();
-    expect(cb).toHaveBeenCalledWith(9001);
+    expect(cb).toHaveBeenCalledWith(STARBASE_ID_OFFSET + 1);
   });
 
   test('starbaseClick_outsideDockRange_doesNotFireCallback', () => {
     const cb = vi.fn();
     game.setStarbaseEntryCallback(cb);
 
-    mockFindHoveredObject.mockReturnValue(makeStarbaseObj(9001));
+    mockFindHoveredObject.mockReturnValue(makeStarbaseObj());
     mockCalculateToroidalDistance.mockReturnValue(STARBASE_DOCK_RANGE + 1);
 
     canvas._fire('click', { clientX: 400, clientY: 300 });
@@ -184,7 +184,7 @@ describe('Game – starbase entry callback', () => {
     vi.mocked(getShipStats).mockResolvedValue({ maxSpeed: 10 } as never);
 
     game.setStarbaseEntryCallback(vi.fn());
-    mockFindHoveredObject.mockReturnValue(makeStarbaseObj(9001));
+    mockFindHoveredObject.mockReturnValue(makeStarbaseObj());
     mockCalculateToroidalDistance.mockReturnValue(STARBASE_DOCK_RANGE + 100);
 
     canvas._fire('click', { clientX: 400, clientY: 300 });
@@ -194,12 +194,37 @@ describe('Game – starbase entry callback', () => {
     expect(interceptTarget).toHaveBeenCalled();
   });
 
+  test('starbaseClick_outsideDockRange_interceptionUpdatesNavigationCallback', async () => {
+    const { interceptTarget } = await import('@/lib/client/services/navigationService');
+    const { getShipStats } = await import('@/lib/client/services/shipStatsService');
+    const navigationCallback = vi.fn();
+
+    vi.mocked(getShipStats).mockResolvedValue({ maxSpeed: 10 } as never);
+    vi.mocked(interceptTarget).mockResolvedValue({
+      success: true,
+      angle: 15,
+      speed: 10,
+      maxSpeed: 10,
+    } as never);
+
+    game.setNavigationCallback(navigationCallback);
+    game.setStarbaseEntryCallback(vi.fn());
+    mockFindHoveredObject.mockReturnValue(makeStarbaseObj(9001));
+    mockCalculateToroidalDistance.mockReturnValue(STARBASE_DOCK_RANGE + 100);
+
+    canvas._fire('click', { clientX: 400, clientY: 300 });
+
+    await new Promise(r => setTimeout(r, 0));
+
+    expect(navigationCallback).toHaveBeenCalledWith({ angle: 15, speed: 10 });
+  });
+
   test('starbaseClick_attackModeOff_doesNotFireCallback', () => {
     const cb = vi.fn();
     game.setStarbaseEntryCallback(cb);
     game.setAttackClickMode(false);
 
-    mockFindHoveredObject.mockReturnValue(makeStarbaseObj(9001));
+    mockFindHoveredObject.mockReturnValue(makeStarbaseObj());
     mockCalculateToroidalDistance.mockReturnValue(STARBASE_DOCK_RANGE - 1);
 
     canvas._fire('click', { clientX: 400, clientY: 300 });
@@ -209,7 +234,7 @@ describe('Game – starbase entry callback', () => {
 
   test('starbaseClick_noCallbackSet_doesNotThrow', () => {
     // No callback registered — clicking within range should silently no-op
-    mockFindHoveredObject.mockReturnValue(makeStarbaseObj(9001));
+    mockFindHoveredObject.mockReturnValue(makeStarbaseObj());
     mockCalculateToroidalDistance.mockReturnValue(STARBASE_DOCK_RANGE - 1);
 
     expect(() => canvas._fire('click', { clientX: 400, clientY: 300 })).not.toThrow();

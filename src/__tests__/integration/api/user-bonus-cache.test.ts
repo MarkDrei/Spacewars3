@@ -7,6 +7,7 @@ import { UserBonusCache } from '@/lib/server/bonus/UserBonusCache';
 import { UserCache } from '@/lib/server/user/userCache';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 import { USER_LOCK } from '@/lib/server/typedLocks';
+import { createInitialTechTree, getResearchEffectFromTree, ResearchType } from '@/lib/server/techs/techtree';
 
 describe('UserBonusCache initialization', () => {
   beforeEach(async () => {
@@ -38,16 +39,18 @@ describe('UserBonusCache initialization', () => {
         const user = await userCache.getUserByUsername(userCtx, username);
         if (!user) throw new Error(`User not found: ${username}`);
 
-        return UserBonusCache.getInstance().getBonuses(userCtx, user.id);
+        return userCache.getBonusesByUserIdWithLock(userCtx, user.id);
       });
+
+      const initialTree = createInitialTechTree();
 
       // New user at level 1 with no research should have base multipliers
       expect(bonuses).toBeDefined();
       expect(bonuses.levelMultiplier).toBe(1.0); // level 1 → 1.15^0 = 1.0
       expect(bonuses.ironRechargeRate).toBeGreaterThan(0);
       expect(bonuses.ironStorageCapacity).toBeGreaterThan(0);
-      expect(bonuses.repairRate).toBeGreaterThan(0);
-      expect(bonuses.shieldRechargeRate).toBeGreaterThan(0);
+      expect(bonuses.repairRate).toBe(getResearchEffectFromTree(initialTree, ResearchType.RepairSpeed));
+      expect(bonuses.shieldRechargeRate).toBe(getResearchEffectFromTree(initialTree, ResearchType.ShieldRechargeRate));
       expect(bonuses.maxShipSpeed).toBeGreaterThan(0);
 
       // Weapon factors should all be positive
@@ -74,8 +77,8 @@ describe('UserBonusCache initialization', () => {
         const user = await userCache.getUserByUsername(userCtx, username);
         if (!user) throw new Error(`User not found: ${username}`);
 
-        const b1 = await UserBonusCache.getInstance().getBonuses(userCtx, user.id);
-        const b2 = await UserBonusCache.getInstance().getBonuses(userCtx, user.id);
+        const b1 = await userCache.getBonusesByUserIdWithLock(userCtx, user.id);
+        const b2 = await userCache.getBonusesByUserIdWithLock(userCtx, user.id);
         return [b1, b2] as const;
       });
 

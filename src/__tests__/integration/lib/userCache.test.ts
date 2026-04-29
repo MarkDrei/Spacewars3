@@ -14,8 +14,11 @@ import type { MessageCache } from '@/lib/server/messages/MessageCache';
 import { getDatabase } from '@/lib/server/database';
 import { withTransaction } from '../../helpers/transactionHelper';
 import { ResearchType } from '@/lib/server/techs/techtree';
+import { createInitialTechTree } from '@/lib/server/techs/techtree';
 import { UserBonusCache } from '@/lib/server/bonus/UserBonusCache';
 import { InventoryService } from '@/lib/server/inventory/InventoryService';
+import { User } from '@/lib/server/user/user';
+import { npcUserId } from '@/lib/server/npc/npcConstants';
 
 const createWorldCacheStub = (): WorldCache => ({
   getWorldFromCache: vi.fn(() => {
@@ -51,6 +54,19 @@ const initializeCacheWithMockMessages = async (mockCreateMessage: ReturnType<typ
     worldCache: createWorldCacheStub(),
     messageCache: createMessageCacheStub(mockCreateMessage),
   });
+};
+
+const defaultTechCounts = {
+  pulse_laser: 5,
+  auto_turret: 5,
+  plasma_lance: 0,
+  gauss_rifle: 0,
+  photon_torpedo: 0,
+  rocket_launcher: 0,
+  ship_hull: 5,
+  kinetic_armor: 5,
+  energy_shield: 5,
+  missile_jammer: 0,
 };
 
 describe('TypedCacheManager', () => {
@@ -163,6 +179,85 @@ describe('TypedCacheManager', () => {
           expect(results[2]).toBeDefined(); // Stats object
           expect(results[3]).toBeDefined(); // Stats object
         });
+      });
+    });
+  });
+
+  describe('NPC ship persistence', () => {
+    test('flushAllToDatabaseWithLock_npcShipIdPresent_persistsNullShipId', async () => {
+      await withTransaction(async () => {
+        const db = await getDatabase();
+        const now = Math.floor(Date.now() / 1000);
+        const npcId = npcUserId(1, 1);
+
+        await db.query(
+          `INSERT INTO users (
+            id, username, password_hash, iron, xp, last_updated, tech_tree,
+            hull_current, armor_current, shield_current, defense_last_regen,
+            build_queue, build_start_sec, teleport_charges, teleport_last_regen, score
+          ) VALUES (
+            $1, $2, $3, $4, $5, $6, $7,
+            $8, $9, $10, $11,
+            $12, $13, $14, $15, $16
+          )`,
+          [
+            npcId,
+            'npc_persist_guard',
+            'npc-hash',
+            0,
+            0,
+            now,
+            JSON.stringify(createInitialTechTree()),
+            250,
+            250,
+            250,
+            now,
+            JSON.stringify([]),
+            null,
+            0,
+            0,
+            0,
+          ]
+        );
+
+        const npcUser = User.create(
+          npcId,
+          'npc_persist_guard',
+          'npc-hash',
+          0,
+          0,
+          now,
+          createInitialTechTree(),
+          vi.fn(),
+          defaultTechCounts,
+          250,
+          250,
+          250,
+          now,
+          true,
+          123,
+          [],
+          null,
+          0,
+          0,
+          npcId,
+        );
+
+        const emptyCtx = createLockContext();
+        const manager = UserCache.getInstance2();
+        await emptyCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
+          await manager.updateUserInCache(userCtx, npcUser);
+          await manager.flushAllToDatabaseWithLock(userCtx);
+        });
+
+        const persisted = await db.query(
+          'SELECT ship_id, in_battle, current_battle_id FROM users WHERE id = $1',
+          [npcId]
+        );
+
+        expect(persisted.rows[0].ship_id).toBeNull();
+        expect(persisted.rows[0].in_battle).toBe(1);
+        expect(persisted.rows[0].current_battle_id).toBe(123);
       });
     });
   });

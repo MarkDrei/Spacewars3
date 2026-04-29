@@ -4,7 +4,7 @@
  */
 
 class DebugState {
-  private areDebugDrawingsEnabled: boolean = true;
+  private areDebugDrawingsEnabled: boolean = false;
 
   /**
    * Get the current state of debug drawings

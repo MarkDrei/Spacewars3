@@ -2,18 +2,18 @@
 // Email service — thin nodemailer wrapper with graceful no-op when email is disabled.
 // ---
 
-import nodemailer from 'nodemailer';
 import { isEmailEnabled, getSmtpConfig } from './emailConfig';
 
 // Use module-level singleton (stored on globalThis for hot-reload safety in Next.js)
 const TRANSPORT_KEY = '__spacewars_email_transport__';
 
 declare global {
-  var __spacewars_email_transport__: ReturnType<typeof nodemailer.createTransport> | null | undefined;
+  var __spacewars_email_transport__: import('nodemailer').Transporter | null | undefined;
 }
 
-function getTransport(): ReturnType<typeof nodemailer.createTransport> {
+async function getTransport(): Promise<import('nodemailer').Transporter> {
   if (!globalThis[TRANSPORT_KEY]) {
+    const { default: nodemailer } = await import('nodemailer');
     const cfg = getSmtpConfig();
     globalThis[TRANSPORT_KEY] = nodemailer.createTransport({
       host: cfg.host,
@@ -39,14 +39,14 @@ export function resetEmailTransport(): void {
  * Sends an email. Fire-and-forget safe — errors are logged but never thrown.
  * When email is disabled, logs a warning and returns immediately.
  */
-export async function sendEmail(to: string, subject: string, html: string): Promise<void> {
+export async function sendEmail(to: string, subject: string, html: string, text?: string): Promise<void> {
   if (!isEmailEnabled()) {
     console.warn(`⚠️ Email not configured — skipping send to ${to}`);
     return;
   }
 
   const cfg = getSmtpConfig();
-  const transport = getTransport();
+  const transport = await getTransport();
 
   try {
     await transport.sendMail({
@@ -54,6 +54,7 @@ export async function sendEmail(to: string, subject: string, html: string): Prom
       to,
       subject,
       html,
+      ...(text ? { text } : {}),
     });
     console.log(`📧 Email sent to ${to}: ${subject}`);
   } catch (err) {

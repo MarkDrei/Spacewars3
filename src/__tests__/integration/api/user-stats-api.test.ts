@@ -8,8 +8,11 @@ import { createRequest, createAuthenticatedSession, createAuthenticatedSessionWi
 import { initializeIntegrationTestServer, shutdownIntegrationTestServer } from '../../helpers/testServer';
 import { withTransaction } from '../../helpers/transactionHelper';
 import { TimeMultiplierService } from '@/lib/server/timeMultiplier';
+import { createInitialTechTree, getResearchEffectFromTree, ResearchType } from '@/lib/server/techs/techtree';
 
 describe('User stats API', () => {
+  const initialTree = createInitialTechTree();
+
   beforeEach(async () => {
     await initializeIntegrationTestServer();
     // Reset time multiplier to default state before each test
@@ -69,8 +72,8 @@ describe('User stats API', () => {
       // New user at level 1 → level bonus is 0%
       expect(data.levelMultiplier).toBe(1.0);
       expect(data.maxShipSpeed).toBeGreaterThan(0);
-      expect(data.repairRate).toBeGreaterThan(0);
-      expect(data.shieldRechargeRate).toBeGreaterThan(0);
+      expect(data.repairRate).toBe(getResearchEffectFromTree(initialTree, ResearchType.RepairSpeed));
+      expect(data.shieldRechargeRate).toBe(getResearchEffectFromTree(initialTree, ResearchType.ShieldRechargeRate));
     });
   });
 
@@ -94,6 +97,8 @@ describe('User stats API', () => {
       expect(data.level).toBe(1);
       expect(data.xp).toBe(0);
       expect(data.xpForNextLevel).toBe(1000); // First level threshold
+      expect(data.repairRate).toBe(getResearchEffectFromTree(initialTree, ResearchType.RepairSpeed));
+      expect(data.shieldRechargeRate).toBe(getResearchEffectFromTree(initialTree, ResearchType.ShieldRechargeRate));
     });
   });
 

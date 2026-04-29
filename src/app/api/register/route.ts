@@ -47,7 +47,17 @@ export async function POST(request: NextRequest) {
     // Hash password with automatic salt generation
     const hash = await bcrypt.hash(password, 10);
     
+    // Determine preferred locale from Accept-Language header
+    const acceptLanguage = request.headers.get('accept-language') ?? '';
+    const preferredLocale = acceptLanguage.toLowerCase().includes('de') ? 'de' : 'en';
+
     const user = await createUser(db, username, hash, saveUserToDb(db), normalizedEmail);
+
+    // Set preferred locale on new user based on Accept-Language header
+    user.preferredLocale = preferredLocale;
+    // Persist the locale to the DB immediately
+    // Note: /api/set-locale route (Goal 7, Task 7.2) also handles DB sync for locale changes
+    await user.save();
     
     // Add user and ship to cache immediately after creation
     const ctx = createLockContext();
@@ -100,9 +110,9 @@ export async function POST(request: NextRequest) {
           `${request.headers.get('x-forwarded-proto') ?? 'http'}://${request.headers.get('host') ?? 'localhost:3000'}`;
         const verificationUrl = `${baseUrl}/api/verify-email?token=${token}`;
 
-        const { subject, html } = buildVerificationEmail(username, verificationUrl);
+        const { subject, html, text } = await buildVerificationEmail(username, verificationUrl, preferredLocale);
         // Fire-and-forget — do not await, do not fail registration on error
-        void sendEmail(normalizedEmail, subject, html);
+        void sendEmail(normalizedEmail, subject, html, text);
         emailSent = true;
       } catch (emailErr) {
         console.error('❌ Error preparing verification email:', emailErr);
@@ -112,6 +122,15 @@ export async function POST(request: NextRequest) {
     
     // Create response
     const response = NextResponse.json({ success: true, emailSent });
+
+    // Set NEXT_LOCALE cookie to user's preferred locale
+    response.cookies.set('NEXT_LOCALE', user.preferredLocale, {
+      httpOnly: false, // httpOnly: false — must be readable by client-side JS (language switcher UI reads current locale)
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 60 * 60 * 24 * 365, // 1 year
+    });
     
     // Set session with the response object
     const session = await getIronSession<SessionData>(request, response, sessionOptions);

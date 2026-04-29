@@ -1,6 +1,6 @@
 import type { StarbaseObject } from '@shared/types/gameTypes';
 
-export const STARBASE_ID_OFFSET = 9000;
+export const STARBASE_ID_OFFSET = 2_000_000_000;
 export const STARBASE_DOCK_RANGE = 500;
 
 export const STARBASES: StarbaseObject[] = [

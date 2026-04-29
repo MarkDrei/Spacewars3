@@ -10,6 +10,7 @@ import { TechCounts, BuildQueueItem } from '../techs/TechFactory';
 import { TechService } from '../techs/TechService';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 import { DEFAULT_SHIP_START_X, DEFAULT_SHIP_START_Y, DEFAULT_SHIP_START_SPEED, DEFAULT_SHIP_START_ANGLE } from '../constants';
+import { isNpcId } from '../npc/npcConstants';
 
 interface UserRow {
   id: number;
@@ -50,6 +51,16 @@ interface UserRow {
   // Email
   email?: string | null;
   email_verified?: boolean;
+  // Locale preference
+  preferred_locale?: string;
+}
+
+function getPersistedShipId(shipId?: number): number | null {
+  if (shipId === undefined || isNpcId(shipId)) {
+    return null;
+  }
+
+  return shipId;
 }
 
 function userFromRow(row: UserRow, saveCallback: SaveUserCallback): User {
@@ -134,6 +145,9 @@ function userFromRow(row: UserRow, saveCallback: SaveUserCallback): User {
   // Set email fields from DB row
   user.email = row.email ?? null;
   user.emailVerified = row.email_verified ?? false;
+
+  // Set locale preference from DB row
+  user.preferredLocale = row.preferred_locale ?? 'en';
 
   return user;
 }
@@ -244,6 +258,8 @@ async function createUserWithShip(db: DatabaseConnection, username: string, pass
 
 export function saveUserToDb(db: DatabaseConnection): SaveUserCallback {
   return async (user: User) => {
+    const persistedShipId = getPersistedShipId(user.ship_id);
+
     await db.query(
       `UPDATE users SET 
         iron = $1, 
@@ -273,14 +289,15 @@ export function saveUserToDb(db: DatabaseConnection): SaveUserCallback {
         teleport_last_regen = $25,
         score = $26,
         email = $27,
-        email_verified = $28
-      WHERE id = $29`,
+        email_verified = $28,
+        preferred_locale = $29
+      WHERE id = $30`,
       [
         user.iron,
         user.xp,
         user.last_updated,
         JSON.stringify(user.techTree),
-        user.ship_id,
+        persistedShipId,
         user.techCounts.pulse_laser,
         user.techCounts.auto_turret,
         user.techCounts.plasma_lance,
@@ -304,6 +321,7 @@ export function saveUserToDb(db: DatabaseConnection): SaveUserCallback {
         user.score,
         user.email,
         user.emailVerified,
+        user.preferredLocale,
         user.id
       ]
     );
@@ -365,13 +383,13 @@ export async function consumeEmailVerificationToken(
 export async function getUserByEmail(
   db: DatabaseConnection,
   email: string
-): Promise<{ id: number; username: string } | null> {
+): Promise<{ id: number; username: string; preferred_locale: string | null } | null> {
   const result = await db.query(
-    'SELECT id, username FROM users WHERE email = $1',
+    'SELECT id, username, preferred_locale FROM users WHERE email = $1',
     [email]
   );
   if (result.rows.length === 0) return null;
-  return result.rows[0] as { id: number; username: string };
+  return result.rows[0] as { id: number; username: string; preferred_locale: string | null };
 }
 
 // --- Password reset token helpers ---

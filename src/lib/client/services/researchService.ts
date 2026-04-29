@@ -174,8 +174,8 @@ class ResearchService {
    * Format research effect values with units.
    * Numeric part is formatted via {@link formatNumber} from `src/shared/numberFormat`.
    */
-  formatEffect(value: number, unit: string): string {
-    return `${formatNumber(value)} ${unit}`;
+  formatEffect(value: number, unit: string, locale: string = 'en-US'): string {
+    return `${formatNumber(value, locale)} ${unit}`;
   }
 
   /**

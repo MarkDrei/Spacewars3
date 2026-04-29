@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useTranslations } from 'next-intl';
 import { InventoryGrid as InventoryGridType, InventoryItemData, SlotCoordinate, DEFAULT_INVENTORY_SLOTS, getInventoryRows, INVENTORY_COLS, SortStatKey, SortDirection, sortGrid, findItemSlot } from '@/shared/inventoryShared';
 import InventoryGridComponent, { ExternalDropSource } from './InventoryGrid';
 import ItemDetailsPanel from './ItemDetailsPanel';
@@ -24,6 +25,7 @@ interface InventorySectionProps {
 }
 
 const InventorySection: React.FC<InventorySectionProps> = ({ refreshTrigger, onCrossTransferDone, onDragStart, onDragEnd, clearSortTrigger }) => {
+  const t = useTranslations('ship');
   const [maxSlots, setMaxSlots] = useState<number>(DEFAULT_INVENTORY_SLOTS);
   const [grid, setGrid] = useState<InventoryGridType>(makeEmptyGrid(DEFAULT_INVENTORY_SLOTS));
   const [isLoading, setIsLoading] = useState(true);
@@ -241,7 +243,7 @@ const InventorySection: React.FC<InventorySectionProps> = ({ refreshTrigger, onC
   return (
     <section className="inventory-section">
       <div className="section-heading-row">
-        <h2 className="inventory-heading">Inventory</h2>
+        <h2 className="inventory-heading">{t('inventoryHeading')}</h2>
         <SortControls
           sortBy={sortBy}
           sortDir={sortDir}
@@ -264,7 +266,7 @@ const InventorySection: React.FC<InventorySectionProps> = ({ refreshTrigger, onC
         <div className="inventory-status-message">{statusMessage}</div>
       )}
 
-      {isLoading && <p className="inventory-loading">Loading inventory…</p>}
+      {isLoading && <p className="inventory-loading">{t('loadingInventory')}</p>}
       {error && <p className="inventory-error">{error}</p>}
 
       {!isLoading && !error && (
@@ -292,7 +294,7 @@ const InventorySection: React.FC<InventorySectionProps> = ({ refreshTrigger, onC
             />
           ) : (
             <div className="inventory-no-selection">
-              <p>{sortBy !== null ? 'Click an item to see details. You can drag items out, but cannot drop new items in while sorting is active.' : 'Click an item to see its details.'}</p>
+              <p>{sortBy !== null ? t('inventoryClickHintSorting') : t('inventoryClickHint')}</p>
             </div>
           )}
         </div>

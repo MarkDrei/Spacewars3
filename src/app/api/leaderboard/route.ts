@@ -7,6 +7,7 @@ import { STATISTICS_LOCK } from '@/lib/server/typedLocks';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 import { getDatabase } from '@/lib/server/database';
 import { getResearchEffectFromTree, ResearchType, createInitialTechTree } from '@/lib/server/techs/techtree';
+import { NPC_USER_ID_OFFSET } from '@/lib/server/npc/npcConstants';
 
 export interface LeaderboardEntry {
   rank: number;
@@ -103,7 +104,9 @@ export async function GET(request: NextRequest) {
               ship_hull, kinetic_armor, energy_shield,
               tech_tree
        FROM users
-       ORDER BY score DESC`
+       WHERE id < $1
+       ORDER BY score DESC`,
+      [NPC_USER_ID_OFFSET]
     );
     const userRows = result.rows;
 

@@ -96,6 +96,26 @@ describe('TargetingLineRenderer', () => {
       expect(mockCtx.moveTo).toHaveBeenCalled();
       expect(mockCtx.lineTo).toHaveBeenCalled();
     });
+
+    test('should render even when debug drawings are disabled globally', async () => {
+      const { debugState } = await import('@/lib/client/debug/debugState');
+      debugState.setDebugDrawingsEnabled(false);
+
+      const targetingLine: TargetingLine = {
+        startX: 100,
+        startY: 100,
+        targetX: 200,
+        targetY: 200,
+        createdAt: Date.now(),
+        duration: 4000
+      };
+
+      renderer.drawTargetingLine(targetingLine, 400, 400, 100, 100);
+
+      expect(mockCtx.save).toHaveBeenCalled();
+      expect(mockCtx.moveTo).toHaveBeenCalled();
+      expect(mockCtx.lineTo).toHaveBeenCalled();
+    });
   });
 
   describe('opacity calculation', () => {

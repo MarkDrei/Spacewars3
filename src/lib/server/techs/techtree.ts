@@ -16,8 +16,10 @@ export const IMPLEMENTED_RESEARCHES: ReadonlySet<ResearchType> = new Set([
   ResearchType.ConstructionSpeed,
   ResearchType.ArtificialIntelligence,
   ResearchType.HullStrength,
+  ResearchType.RepairSpeed,
   ResearchType.ArmorEffectiveness,
   ResearchType.ShieldEffectiveness,
+  ResearchType.ShieldRechargeRate,
   ResearchType.ProjectileDamage,
   ResearchType.ProjectileReloadRate,
   ResearchType.ProjectileAccuracy,
@@ -90,7 +92,7 @@ export const AllResearches: Record<ResearchType, Research> = {
     baseValue: 100,
     upgradeCostIncrease: 1.5,
     baseValueIncrease: { type: 'factor', value: 1.2 },
-    description: 'Gives the spaceship a much higher speed (% speed increase).',
+    description: 'Legacy afterburner research entry kept for backward compatibility.',
     treeKey: 'afterburner',
     unit: '%',
   },
@@ -220,9 +222,9 @@ export const AllResearches: Record<ResearchType, Research> = {
     level: 1,
     baseUpgradeCost: 1000,
     baseUpgradeDuration: 60,
-    baseValue: 5,
+    baseValue: 0.1,
     upgradeCostIncrease: 2.0,
-    baseValueIncrease: { type: 'polynomial', value: 0.1 },
+    baseValueIncrease: { type: 'factor', value: 1.15 },
     description: 'Increases repair speed for hull, armor and engine. Repairs do not happen during combat.',
     treeKey: 'repairSpeed',
     unit: 'HP/sec',
@@ -257,11 +259,11 @@ export const AllResearches: Record<ResearchType, Research> = {
     type: ResearchType.ShieldRechargeRate,
     name: 'Shield Recharge Rate',
     level: 1,
-    baseUpgradeCost: 1200,
-    baseUpgradeDuration: 70,
-    baseValue: 1,
-    upgradeCostIncrease: 1.9,
-    baseValueIncrease: { type: 'polynomial', value: 0.1 },
+    baseUpgradeCost: 1000,
+    baseUpgradeDuration: 60,
+    baseValue: 0.1,
+    upgradeCostIncrease: 2.0,
+    baseValueIncrease: { type: 'factor', value: 1.13 },
     description: 'Increases shield recharge rate. Shield regenerate per second and also during combat.',
     treeKey: 'shieldRechargeRate',
     unit: 'HP/sec',
@@ -276,7 +278,7 @@ export const AllResearches: Record<ResearchType, Research> = {
     baseValue: 50,
     upgradeCostIncrease: 2.0,
     baseValueIncrease: { type: 'constant', value: 25 },
-    description: 'Increases speed boost from afterburner.',
+    description: 'Increases the speed bonus while the afterburner is engaged.',
     treeKey: 'afterburnerSpeedIncrease',
     unit: '%',
   },
@@ -289,7 +291,7 @@ export const AllResearches: Record<ResearchType, Research> = {
     baseValue: 30,
     upgradeCostIncrease: 1.9,
     baseValueIncrease: { type: 'constant', value: 10 },
-    description: 'Unlocks the afterburner and increases its active duration.',
+    description: 'Unlocks the afterburner, raises its full-fuel burn time, and allows activation once fuel is at least 33%.',
     treeKey: 'afterburnerDuration',
     unit: 'seconds',
   },
@@ -302,7 +304,7 @@ export const AllResearches: Record<ResearchType, Research> = {
     baseValue: 3600,
     upgradeCostIncrease: 2.0,
     baseValueIncrease: { type: 'factor', value: 0.9 },
-    description: 'Reduces the cooldown time between afterburner activations.',
+    description: 'Speeds up afterburner fuel recharge while the afterburner is disengaged.',
     treeKey: 'afterburnerCooldown',
     unit: 'seconds',
   },
@@ -852,10 +854,12 @@ export function updateTechTree(tree: TechTree, timeSeconds: number): { completed
   if (!tree.activeResearch) return undefined;
   tree.activeResearch.remainingDuration -= timeSeconds;
   if (tree.activeResearch.remainingDuration <= 0) {
-    // Research complete: increase level
-    // Store the level BEFORE incrementing for XP calculation
+    // Research complete: increase level.
+    // Store the type and current level for return info.
     const completedType = tree.activeResearch.type;
-    const completedLevel = getResearchLevelFromTree(tree, completedType);
+    const completedLevelBefore = getResearchLevelFromTree(tree, completedType);
+    const completedLevel = completedLevelBefore + 1;
+
     switch (tree.activeResearch.type) {
       case ResearchType.IronHarvesting:
         tree.ironHarvesting += 1;

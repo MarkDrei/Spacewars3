@@ -29,6 +29,10 @@ Status: Work in Progress
 
 ### 1.1 Requirements Overview
 
+> **External requirements document:** detailed functional requirements, the full feature overview, and future balancing scenarios are maintained in
+> **[doc/functional-requirements.md](../functional-requirements.md)**.
+> The arc42 sections below summarise the most architecturally relevant aspects only.
+
 Spacewars Ironstrike is a 2D space exploration game built with Next.js 15, TypeScript, and React. Players navigate space, collect resources, upgrade their ships through a technology tree, and engage in battles.
 
 **Key Features:**
@@ -39,6 +43,7 @@ Spacewars Ironstrike is a 2D space exploration game built with Next.js 15, TypeS
 - Ship defense systems (hull, armor, shields) with regeneration
 - Turn-based battle system between players
 - Message notification system for game events
+- English/German multilingual UI with persisted locale preference and localized server notifications
 - Player inventory system (10×10 grid) with typed items (Commander)
 
 ### 1.2 Quality Goals
@@ -101,6 +106,7 @@ graph TB
 
 - **Frontend:** React Server Components + Client Components
 - **API:** Next.js API Routes (`/api/*`)
+- **Internationalization:** `next-intl` with locale catalogs in `src/locales/*.json` and locale selection via the `NEXT_LOCALE` cookie
 - **Rendering:** HTML5 Canvas for game visualization
 - **State Management:** Server-side with cookie-based sessions (iron-session)
 
@@ -123,6 +129,7 @@ graph TB
 | Frontend       | React 19 + Next.js 15 | UI framework        |
 | Backend        | Next.js API Routes    | RESTful endpoints   |
 | Database       | PostgreSQL            | Persistent storage  |
+| Internationalization | next-intl        | UI and server-side localization |
 | Lock System    | IronGuard             | Deadlock prevention |
 | Canvas         | HTML5 Canvas API      | Game rendering      |
 | Authentication | iron-session          | Secure sessions     |
@@ -755,6 +762,26 @@ Certain drawings (crosshairs, coordinate labels) are rendered near the bottom of
 
 Only `RadarRenderer` needs the safe-area offset because it is the only renderer that intentionally draws at the canvas edges.
 
+### 8.6 Internationalization & Locale Persistence
+
+**Goal:** Provide localized UI text and player-facing server messages without locale-prefixed routes.
+
+**Implementation:**
+
+- `next.config.ts` enables `next-intl` through `createNextIntlPlugin("./src/i18n/request.ts")`.
+- `src/i18n/routing.ts` defines the supported locales `en` and `de` with `localePrefix: 'never'`.
+- `src/i18n/request.ts` resolves the active locale from the `NEXT_LOCALE` cookie, loads `src/locales/{locale}.json`, and `src/app/layout.tsx` injects the messages via `NextIntlClientProvider`.
+- `src/middleware.ts` intentionally stays pass-through because locale resolution is cookie-based; route rewriting would require locale-segmented routes that this app does not use.
+- `src/components/Navigation/LocaleSwitcher.tsx` and `src/app/profile/ProfilePageClient.tsx` expose the language switcher in the Profile page.
+- `POST /api/set-locale` updates the `NEXT_LOCALE` cookie and persists the authenticated player's `preferred_locale` in the `users` table.
+- `src/lib/server/i18n/serverTranslations.ts` provides locale-aware translations for API routes and server-side services such as harvest messages, battle messages, build completions, and message summaries.
+
+**Consequences:**
+
+- UI pages and server-generated notifications stay synchronized to the same locale source.
+- Language changes do not alter URLs because routing remains locale-neutral.
+- Missing locale files or keys fall back to English instead of failing the request path.
+
 ---
 
 ## 9. Architecture Decisions
@@ -925,7 +952,7 @@ Only `RadarRenderer` needs the safe-area offset because it is the only renderer 
 
 ## 11. Risks and Technical Debt
 
-See [TechnicalDebt.md](../../TechnicalDebt.md) for current issues.
+See [TechnicalDebt.md](../TechnicalDebt.md) for current issues.
 
 **Key Risks:**
 
@@ -945,3 +972,4 @@ See [TechnicalDebt.md](../../TechnicalDebt.md) for current issues.
 | **Commander**             | An inventory item that grants percentage-based bonuses to one to three ship stats                |
 | **Inventory**             | A player's 10×10 item grid stored as JSONB in the `inventories` table                            |
 | **Direct-Access Service** | A service that reads/writes the DB on every call with no in-memory cache (e.g. InventoryService) |
+| **Notifications**         | System alerts for game events (formerly called "Messages" — use "Notifications" in new documentation) |

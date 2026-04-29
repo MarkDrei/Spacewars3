@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { useTranslations } from 'next-intl';
 import { CommanderStatKey, COMMANDER_STAT_LABELS, SortStatKey, SortDirection } from '@/shared/inventoryShared';
 import './SortControls.css';
 
@@ -40,6 +41,7 @@ const SortControls: React.FC<SortControlsProps> = ({
   onSortChange,
   accentColor = '#4fc3f7',
 }) => {
+  const t = useTranslations('ship');
   const handleStatClick = (stat: SortStatKey) => {
     if (sortBy === stat) {
       // Toggle direction if already sorted by this stat
@@ -58,7 +60,7 @@ const SortControls: React.FC<SortControlsProps> = ({
 
   return (
     <div className="sort-controls" aria-label="Sort controls">
-      <span className="sort-controls-label">Sort:</span>
+      <span className="sort-controls-label">{t('sortLabel')}</span>
       <div className="sort-controls-buttons">
         {allKeys.map((key) => {
           const active = sortBy === key;

@@ -102,7 +102,7 @@ jobs:
 
       - name: Start and test application
         run: |
-          npm run start &
+          node .next/standalone/server.js &
           PID=$!
           echo "Waiting for server to start..."
           # Poll health endpoint with retry mechanism

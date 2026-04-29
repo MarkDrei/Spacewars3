@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { useTranslations, useLocale } from 'next-intl';
 import './StatusHeader.css';
 
 export type StatusIndicator = 'grey' | 'yellow' | 'green' | 'red';
@@ -24,22 +25,25 @@ const StatusHeader: React.FC<StatusHeaderProps> = ({
   isClickable = false,
   level
 }) => {
+  const t = useTranslations('common');
+  const locale = useLocale();
+
   const formatIronAmount = (amount: number): string => {
-    return amount.toLocaleString();
+    return amount.toLocaleString(locale);
   };
 
   return (
     <div className="status-header">
       <div className="status-content">
         <div className="iron-display">
-          <span className="iron-label">Iron:</span>
+          <span className="iron-label">{t('ironLabel')}</span>
           <span className="iron-amount">
             {isLoading ? '...' : formatIronAmount(ironAmount)}
           </span>
         </div>
         {level !== undefined && (
           <div className="level-display">
-            <span className="level-label">Level:</span>
+            <span className="level-label">{t('levelLabel')}</span>
             <span className="level-value">
               {isLoading ? '...' : level}
             </span>

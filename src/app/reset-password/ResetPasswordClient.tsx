@@ -61,7 +61,7 @@ export const ResetPasswordClient: React.FC<ResetPasswordClientProps> = ({ token 
   return (
     <div className="login-page">
       <div className="login-container">
-        <h1>Spacewars: Ironcore</h1>
+        <h1>Spacewars: Ironstrike</h1>
         <p>Set a new password for your account.</p>
 
         <div className="auth-form-container">
@@ -99,7 +99,7 @@ export const ResetPasswordClient: React.FC<ResetPasswordClientProps> = ({ token 
 
             <button
               type="submit"
-              className="auth-button"
+              className="btn-primary"
               disabled={isLoading || !!successMessage}
             >
               {isLoading ? 'Updating…' : 'Set New Password'}
