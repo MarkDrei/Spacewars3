@@ -55,7 +55,7 @@ describe('Auth API', () => {
       const data = await response.json();
 
       expect(response.status).toBe(400);
-      expect(data.error).toBe('Username taken');
+      expect(data.error).toBe('Username already taken');
     });
   });
 

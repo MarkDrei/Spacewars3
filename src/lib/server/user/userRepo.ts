@@ -377,6 +377,23 @@ export async function consumeEmailVerificationToken(
 }
 
 /**
+ * Looks up a user by username (lightweight — only returns id and username).
+ * Use this for existence checks (e.g. uniqueness validation on registration).
+ * Returns null if no user has that username.
+ */
+export async function getUserByUsername(
+  db: DatabaseConnection,
+  username: string
+): Promise<{ id: number; username: string } | null> {
+  const result = await db.query(
+    'SELECT id, username FROM users WHERE username = $1',
+    [username]
+  );
+  if (result.rows.length === 0) return null;
+  return result.rows[0] as { id: number; username: string };
+}
+
+/**
  * Looks up a user row by email address.
  * Returns null if no user has that email.
  */

@@ -213,6 +213,16 @@ export const migrations: Migration[] = [
       'ALTER TABLE users DROP COLUMN IF EXISTS password_reset_token',
       'ALTER TABLE users DROP COLUMN IF EXISTS password_reset_expires'
     ]
+  },
+  {
+    version: 18,
+    name: 'remove_username_unique',
+    up: [
+      'ALTER TABLE users DROP CONSTRAINT IF EXISTS users_username_key'
+    ],
+    down: [
+      'ALTER TABLE users ADD CONSTRAINT users_username_key UNIQUE (username)'
+    ]
   }
 ];
 
