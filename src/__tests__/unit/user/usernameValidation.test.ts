@@ -134,24 +134,4 @@ describe('validateUsername', () => {
     });
   });
 
-  // ── reserved NPC patterns ────────────────────────────────────────────────
-
-  describe('reserved NPC pattern rejection', () => {
-    it('rejects the [L<n>-NPC] pattern used for NPC usernames', () => {
-      expect(() => validateUsername('[L1-NPC]')).toThrow(ApiError);
-      expect(() => validateUsername('[L10-NPC]')).toThrow(ApiError);
-      expect(() => validateUsername('[L100-NPC]')).toThrow(ApiError);
-      try {
-        validateUsername('[L1-NPC]');
-      } catch (e) {
-        expect((e as ApiError).statusCode).toBe(400);
-        expect((e as ApiError).message).toMatch(/reserved/i);
-      }
-    });
-
-    it('rejects the "Level N NPC" pattern', () => {
-      expect(() => validateUsername('Level 1 NPC')).toThrow(ApiError);
-      expect(() => validateUsername('Level 99 NPC')).toThrow(ApiError);
-    });
-  });
 });

@@ -35,7 +35,7 @@ export function npcUserId(ownerId: number, level: number): number {
 
 /** Return the display name for an NPC of the given level. */
 export function npcDisplayName(level: number): string {
-  return `[L${level}-NPC]`;
+  return `Iron Horde Pirate Lv.${level}`;
 }
 
 /** Return true when `id` falls within the NPC user-ID range. */

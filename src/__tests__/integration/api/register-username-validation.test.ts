@@ -170,32 +170,6 @@ describe('register – username validation', () => {
     });
   });
 
-  // ── reserved NPC patterns ───────────────────────────────────────────────
-
-  it('register_npcPatternUsername_rejected', async () => {
-    await withTransaction(async () => {
-      const req = createRequest('http://localhost:3000/api/register', 'POST', {
-        username: '[L1-NPC]',
-        password: 'testpass',
-      });
-      const res = await registerPOST(req);
-      const data = await res.json();
-      expect(res.status).toBe(400);
-      expect(data.error).toMatch(/reserved/i);
-    });
-  });
-
-  it('register_levelNpcPatternUsername_rejected', async () => {
-    await withTransaction(async () => {
-      const req = createRequest('http://localhost:3000/api/register', 'POST', {
-        username: 'Level 5 NPC',
-        password: 'testpass',
-      });
-      const res = await registerPOST(req);
-      expect(res.status).toBe(400);
-    });
-  });
-
   // ── duplicate username rejection ────────────────────────────────────────
 
   it('register_duplicatePlayerUsername_rejected', async () => {

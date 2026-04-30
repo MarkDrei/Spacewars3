@@ -9,7 +9,6 @@ import { ApiError } from '@/lib/server/errors';
  *   - No spaces
  *   - No SQL injection patterns
  *   - No HTML/script injection patterns
- *   - No reserved NPC name patterns (e.g. [L1-NPC] or Level 1 NPC)
  *
  * @throws ApiError(400, …) when the username violates any rule.
  */
@@ -24,12 +23,6 @@ export function validateUsername(username: string): void {
 
   if (/\s/.test(username)) {
     throw new ApiError(400, 'Username must not contain spaces');
-  }
-
-  // Reserved NPC patterns — check before the character allowlist so that these
-  // patterns produce the most informative error message.
-  if (/^\[L\d+-NPC\]$/.test(username) || /^Level\s+\d+\s+NPC$/i.test(username)) {
-    throw new ApiError(400, 'Username is reserved and cannot be used');
   }
 
   if (!/^[a-zA-Z0-9_-]+$/.test(username)) {
