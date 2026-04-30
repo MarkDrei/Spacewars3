@@ -78,6 +78,7 @@ const makeFakeTechTree = (overrides: Partial<TechTree> = {}) => ({
   inventorySlots: 0,
   bridgeSlots: 0,
   constructionSpeed: 0,
+  artificialIntelligence: 0,
   spyChance: 0,
   spySpeed: 0,
   spySabotageDamage: 0,

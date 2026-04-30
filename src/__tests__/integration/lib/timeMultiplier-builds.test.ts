@@ -242,6 +242,35 @@ describe('TimeMultiplier - Build Queue Integration', () => {
     });
   });
 
+  test('getBuildQueue_withConstructionSpeed_returnsAdjustedCompletionTimes', async () => {
+    await withTransaction(async () => {
+      const testUserId = 9206;
+      await initTestUser(testUserId);
+
+      const context = createLockContext();
+      await context.useLockWithAcquire(USER_LOCK, async (userContext) => {
+        const user = await UserCache.getInstance2().getUserByIdWithLock(userContext, testUserId);
+        if (user) {
+          user.techTree.constructionSpeed = 1;
+          UserCache.getInstance2().updateUserInCache(userContext, user);
+          UserBonusCache.getInstance().invalidateBonuses(testUserId);
+        }
+      });
+
+      const now = Math.floor(Date.now() / 1000);
+      const buildQueue: BuildQueueItem[] = [
+        { itemKey: 'pulse_laser', itemType: 'weapon', completionTime: 0 }
+      ];
+
+      await updateBuildQueue(testUserId, buildQueue, now);
+
+      const queue = await getBuildQueue(testUserId);
+
+      expect(queue.length).toBe(1);
+      expect(queue[0].completionTime).toBeCloseTo(now + (120 / 1.10), 5);
+    });
+  });
+
   test('processCompletedBuilds_multiplierExpired_usesNormalDuration', async () => {
     await withTransaction(async () => {
       // Setup: Set multiplier then let it expire

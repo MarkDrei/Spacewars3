@@ -13,6 +13,8 @@ export const IMPLEMENTED_RESEARCHES: ReadonlySet<ResearchType> = new Set([
   ResearchType.IronHarvesting,
   ResearchType.ShipSpeed,
   ResearchType.IronCapacity,
+  ResearchType.ConstructionSpeed,
+  ResearchType.ArtificialIntelligence,
   ResearchType.HullStrength,
   ResearchType.RepairSpeed,
   ResearchType.ArmorEffectiveness,
@@ -374,14 +376,27 @@ export const AllResearches: Record<ResearchType, Research> = {
   [ResearchType.ConstructionSpeed]: {
     type: ResearchType.ConstructionSpeed,
     name: 'Construction Speed',
-    level: 1,
-    baseUpgradeCost: 1400,
-    baseUpgradeDuration: 80,
+    level: 0,
+    baseUpgradeCost: 12000,
+    baseUpgradeDuration: 1800,
+    baseValue: 10,
+    upgradeCostIncrease: 1.9,
+    baseValueIncrease: { type: 'polynomial', value: 0.1 },
+    description: 'Reduces the build time for weapons, shields, armor, hull plates, and other tech items in the factory.',
+    treeKey: 'constructionSpeed',
+    unit: '%',
+  },
+  [ResearchType.ArtificialIntelligence]: {
+    type: ResearchType.ArtificialIntelligence,
+    name: 'Artificial Intelligence',
+    level: 0,
+    baseUpgradeCost: 15000,
+    baseUpgradeDuration: 2400,
     baseValue: 10,
     upgradeCostIncrease: 2.0,
     baseValueIncrease: { type: 'polynomial', value: 0.1 },
-    description: 'Reduces construction time for buildings and ships.',
-    treeKey: 'constructionSpeed',
+    description: 'Reduces the time needed for researches.',
+    treeKey: 'artificialIntelligence',
     unit: '%',
   },
   // Spies
@@ -496,6 +511,7 @@ export interface TechTree {
   inventorySlots: number;
   bridgeSlots: number;
   constructionSpeed: number;
+  artificialIntelligence: number;
   // Spies
   spyChance: number;
   spySpeed: number;
@@ -544,6 +560,7 @@ export function createInitialTechTree(): TechTree {
     inventorySlots: AllResearches[ResearchType.InventorySlots].level,
     bridgeSlots: AllResearches[ResearchType.BridgeSlots].level,
     constructionSpeed: AllResearches[ResearchType.ConstructionSpeed].level,
+    artificialIntelligence: AllResearches[ResearchType.ArtificialIntelligence].level,
     // Spies
     spyChance: AllResearches[ResearchType.SpyChance].level,
     spySpeed: AllResearches[ResearchType.SpySpeed].level,
@@ -610,7 +627,9 @@ function getResearchLevelFromTree(tree: TechTree, type: ResearchType): number {
     case ResearchType.BridgeSlots:
       return tree.bridgeSlots;
     case ResearchType.ConstructionSpeed:
-      return tree.constructionSpeed;
+      return tree.constructionSpeed ?? AllResearches[ResearchType.ConstructionSpeed].level;
+    case ResearchType.ArtificialIntelligence:
+      return tree.artificialIntelligence ?? AllResearches[ResearchType.ArtificialIntelligence].level;
     // Spies
     case ResearchType.SpyChance:
       return tree.spyChance;
@@ -648,6 +667,24 @@ export function getResearchUpgradeDuration(research: Research, level: number): n
   const startLevel = AllResearches[research.type].level;
   if (level <= startLevel) return research.baseUpgradeDuration;
   return research.baseUpgradeDuration * Math.pow(research.upgradeCostIncrease, level - startLevel - 1);
+}
+
+/**
+ * Converts a percentage-based speed bonus into a speed factor used for time calculations.
+ * Example: 10% bonus => factor 1.10. A task at base time T completes in T / 1.10.
+ * All time-reducing researches use this formula so that a stated "X%" bonus
+ * shows as "+X%" everywhere in the UI.
+ */
+export function getTimeSpeedFactorFromEffect(effectPercentage: number): number {
+  return 1 + effectPercentage / 100;
+}
+
+export function getTimeSpeedFactorFromTree(
+  tree: TechTree,
+  type: ResearchType.ConstructionSpeed | ResearchType.ArtificialIntelligence,
+  levelMultiplier: number = 1
+): number {
+  return getTimeSpeedFactorFromEffect(getResearchEffectFromTree(tree, type)) * levelMultiplier;
 }
 
 /**
@@ -779,13 +816,9 @@ export function getWeaponReloadTimeModifierFromTree(tree: TechTree, weaponType: 
   }
 
   const effect = getResearchEffectFromTree(tree, researchType);
-  // Effect is a percentage (e.g., 10, 20, 30)
-  // Old inverse multiplier: 1 - (effect / 100)  (e.g., 0.9 for 10% faster)
-  // New speed factor: 1 / (1 - effect/100)  (e.g., 1/0.9 ≈ 1.111 for 10% faster)
-  // Applying: baseCooldown / speedFactor ≡ baseCooldown * (1 - effect/100)  ← numerically identical
-  // Cap the inverse at 0.1 (90% reduction max) → speed factor caps at 10.0
-  const inverseMultiplier = Math.max(0.1, 1 - (effect / 100));
-  return 1 / inverseMultiplier;
+  // Effect is a percentage (e.g., 10, 20, 30).
+  // Speed factor = 1 + effect/100 so that a stated "X%" bonus shows as "+X%" in the UI.
+  return getTimeSpeedFactorFromEffect(effect);
 }
 
 /**
@@ -903,6 +936,9 @@ export function updateTechTree(tree: TechTree, timeSeconds: number): { completed
         break;
       case ResearchType.ConstructionSpeed:
         tree.constructionSpeed += 1;
+        break;
+      case ResearchType.ArtificialIntelligence:
+        tree.artificialIntelligence += 1;
         break;
       // Spies
       case ResearchType.SpyChance:

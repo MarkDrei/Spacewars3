@@ -144,7 +144,10 @@
     "orbitalDurationHoursShort": "h",
     "orbitalDurationMinutesShort": "m",
     "orbitalDurationSecondsShort": "s",
-    "orbitalWeaponCountStatus": "{count} {units} / {status}"
+    "orbitalWeaponCountStatus": "{count} {units} / {status}",
+    "productionSpeedCategory": "Production Speed",
+    "constructionSpeed": "Construction Speed",
+    "researchSpeed": "Research Speed"
   },
   "research": {
     "pageHeading": "Research",

@@ -34,6 +34,7 @@ interface TechTree {
   inventorySlots: number;
   bridgeSlots: number;
   constructionSpeed: number;
+  artificialIntelligence: number;
   // Spies
   spyChance: number;
   spySpeed: number;

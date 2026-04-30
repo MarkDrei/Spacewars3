@@ -201,7 +201,12 @@ const RESEARCH_TEXT_DE: Record<string, { name: string; description: string; unit
   },
   constructionSpeed: {
     name: 'Baugeschwindigkeit',
-    description: 'Verringert die Bauzeit fuer Gebaeude und Schiffe.',
+    description: 'Verringert die Bauzeit fuer Waffen, Schilde, Ruestungsplatten, Rumpfplatten und andere Technologiegegenstaende in der Fabrik.',
+    unit: '%',
+  },
+  artificialIntelligence: {
+    name: 'Kuenstliche Intelligenz',
+    description: 'Reduziert die benoetigte Zeit fuer Forschungen.',
     unit: '%',
   },
   spyChance: {

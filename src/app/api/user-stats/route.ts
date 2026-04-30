@@ -69,6 +69,8 @@ async function processUserStats(user: User, userWorldCache: UserCache, userCtx: 
     energyWeaponDamageFactor: bonuses.energyWeaponDamageFactor,
     energyWeaponReloadFactor: bonuses.energyWeaponReloadFactor,
     energyWeaponAccuracyFactor: bonuses.energyWeaponAccuracyFactor,
+    constructionSpeedFactor: bonuses.constructionSpeedFactor,
+    researchSpeedFactor: bonuses.researchSpeedFactor,
   };
   
   return NextResponse.json(responseData);

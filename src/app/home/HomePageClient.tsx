@@ -473,6 +473,17 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
                   <td className="data-cell">{t('accuracy')}</td>
                   <td className="data-cell value-cell">{xpLoading ? '...' : `+${formatNumber((bonuses.energyWeaponAccuracyFactor - 1) * 100)}%`}</td>
                 </tr>
+                <tr>
+                  <td colSpan={2} className="category-header">{t('productionSpeedCategory')}</td>
+                </tr>
+                <tr className="data-row">
+                  <td className="data-cell">{t('constructionSpeed')}</td>
+                  <td className="data-cell value-cell">{xpLoading ? '...' : `+${formatNumber((bonuses.constructionSpeedFactor - 1) * 100)}%`}</td>
+                </tr>
+                <tr className="data-row">
+                  <td className="data-cell">{t('researchSpeed')}</td>
+                  <td className="data-cell value-cell">{xpLoading ? '...' : `+${formatNumber((bonuses.researchSpeedFactor - 1) * 100)}%`}</td>
+                </tr>
               </tbody>
             </table>
           </div>

@@ -236,14 +236,13 @@ describe('Task 1.1 – Accuracy modifier multiplicative refactor', () => {
 describe('Task 1.2 – Reload modifier multiplicative refactor', () => {
   describe('projectile reload speed factor at levels 1–10', () => {
     for (let level = 1; level <= 10; level++) {
-      test(`projectileReloadRate_level${level}_speedFactorIsReciprocalOfInverseMultiplier`, () => {
+      test(`projectileReloadRate_level${level}_speedFactorIsOnePlusEffectPercent`, () => {
         const tree = createInitialTechTree();
         tree.projectileReloadRate = level;
 
         const speedFactor = getWeaponReloadTimeModifierFromTree(tree, 'auto_turret');
         const effect = getResearchEffect(AllResearches[ResearchType.ProjectileReloadRate], level);
-        const inverseMultiplier = Math.max(0.1, 1 - effect / 100);
-        const expectedSpeedFactor = 1 / inverseMultiplier;
+        const expectedSpeedFactor = 1 + effect / 100;
 
         expect(speedFactor).toBeCloseTo(expectedSpeedFactor, 5);
         // Speed factor is always ≥ 1.0
@@ -254,14 +253,13 @@ describe('Task 1.2 – Reload modifier multiplicative refactor', () => {
 
   describe('energy reload speed factor at levels 1–10', () => {
     for (let level = 1; level <= 10; level++) {
-      test(`energyRechargeRate_level${level}_speedFactorIsReciprocalOfInverseMultiplier`, () => {
+      test(`energyRechargeRate_level${level}_speedFactorIsOnePlusEffectPercent`, () => {
         const tree = createInitialTechTree();
         tree.energyRechargeRate = level;
 
         const speedFactor = getWeaponReloadTimeModifierFromTree(tree, 'pulse_laser');
         const effect = getResearchEffect(AllResearches[ResearchType.EnergyRechargeRate], level);
-        const inverseMultiplier = Math.max(0.1, 1 - effect / 100);
-        const expectedSpeedFactor = 1 / inverseMultiplier;
+        const expectedSpeedFactor = 1 + effect / 100;
 
         expect(speedFactor).toBeCloseTo(expectedSpeedFactor, 5);
         expect(speedFactor).toBeGreaterThanOrEqual(1.0);
@@ -269,40 +267,37 @@ describe('Task 1.2 – Reload modifier multiplicative refactor', () => {
     }
   });
 
-  describe('calculateWeaponReloadTime numeric equivalence at levels 1–10', () => {
-    // For each level, verify: baseCooldown / speedFactor === baseCooldown * oldInverseMultiplier
-    // This is the key guarantee: the refactoring is numerically identical to the old formula.
+  describe('calculateWeaponReloadTime numeric formula at levels 1–10', () => {
+    // For each level, verify: baseCooldown / speedFactor === baseCooldown / (1 + effect/100)
 
     const AUTO_TURRET_BASE_COOLDOWN = 720; // reloadTimeMinutes=12 → 12*60=720s
     const PULSE_LASER_BASE_COOLDOWN = 720; // same
 
     for (let level = 1; level <= 10; level++) {
-      test(`projectileReload_level${level}_reloadTimeNumericallyIdenticalToOldFormula`, () => {
+      test(`projectileReload_level${level}_reloadTimeMatchesNewFormula`, () => {
         const tree = createInitialTechTree();
         tree.projectileReloadRate = level;
 
         const effect = getResearchEffect(AllResearches[ResearchType.ProjectileReloadRate], level);
-        const oldMultiplier = Math.max(0.1, 1 - effect / 100);
-        const oldReloadTime = AUTO_TURRET_BASE_COOLDOWN * oldMultiplier;
+        const expectedReloadTime = AUTO_TURRET_BASE_COOLDOWN / (1 + effect / 100);
 
         const newReloadTime = TechFactory.calculateWeaponReloadTime('auto_turret', tree);
 
-        expect(newReloadTime).toBeCloseTo(oldReloadTime, 5);
+        expect(newReloadTime).toBeCloseTo(expectedReloadTime, 5);
       });
     }
 
     for (let level = 1; level <= 10; level++) {
-      test(`energyRecharge_level${level}_reloadTimeNumericallyIdenticalToOldFormula`, () => {
+      test(`energyRecharge_level${level}_reloadTimeMatchesNewFormula`, () => {
         const tree = createInitialTechTree();
         tree.energyRechargeRate = level;
 
         const effect = getResearchEffect(AllResearches[ResearchType.EnergyRechargeRate], level);
-        const oldMultiplier = Math.max(0.1, 1 - effect / 100);
-        const oldReloadTime = PULSE_LASER_BASE_COOLDOWN * oldMultiplier;
+        const expectedReloadTime = PULSE_LASER_BASE_COOLDOWN / (1 + effect / 100);
 
         const newReloadTime = TechFactory.calculateWeaponReloadTime('pulse_laser', tree);
 
-        expect(newReloadTime).toBeCloseTo(oldReloadTime, 5);
+        expect(newReloadTime).toBeCloseTo(expectedReloadTime, 5);
       });
     }
 

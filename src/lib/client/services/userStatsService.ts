@@ -27,6 +27,8 @@ export interface UserStatsResponse {
   energyWeaponDamageFactor?: number;
   energyWeaponReloadFactor?: number;
   energyWeaponAccuracyFactor?: number;
+  constructionSpeedFactor?: number;
+  researchSpeedFactor?: number;
 }
 
 export interface UserStatsError {

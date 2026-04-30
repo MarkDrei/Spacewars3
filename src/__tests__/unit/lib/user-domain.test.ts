@@ -74,6 +74,8 @@ function makeBonuses(overrides: Partial<UserBonuses>): UserBonuses {
     repairRate: 0,
     shieldRechargeRate: 0,
     maxShipSpeed: 0,
+    constructionSpeedFactor: 1,
+    researchSpeedFactor: 1,
     projectileWeaponDamageFactor: 0,
     projectileWeaponReloadFactor: 0,
     projectileWeaponAccuracyFactor: 0,

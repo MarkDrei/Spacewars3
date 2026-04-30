@@ -16,6 +16,7 @@ import { InventoryService } from '../inventory/InventoryService';
 import { Commander, COMMANDER_STAT_KEYS, CommanderStatKey, CommanderData } from '../inventory/Commander';
 import {
   getResearchEffectFromTree,
+  getTimeSpeedFactorFromTree,
   getWeaponDamageModifierFromTree,
   getWeaponAccuracyModifierFromTree,
   getWeaponReloadTimeModifierFromTree,
@@ -169,6 +170,10 @@ export class UserBonusCache {
 
       maxShipSpeed:
         shipSpeedEffect * levelMultiplier * commanderMultipliers.shipSpeed,
+      constructionSpeedFactor:
+        getTimeSpeedFactorFromTree(tree, ResearchType.ConstructionSpeed, levelMultiplier),
+      researchSpeedFactor:
+        getTimeSpeedFactorFromTree(tree, ResearchType.ArtificialIntelligence, levelMultiplier),
 
       projectileWeaponDamageFactor:
         projDamageMod * levelMultiplier * commanderMultipliers.projectileWeaponDamage,

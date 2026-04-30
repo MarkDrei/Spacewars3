@@ -226,7 +226,9 @@ describe('Starbase Shop API', () => {
         expect(sellRes.status).toBe(200);
         expect(sellData.success).toBe(true);
         expect(sellData.ironEarned).toBeGreaterThan(0);
-        expect(sellData.newIron).toBe(sellData.ironEarned);
+        // newIron may include a few iron from harvesting between user creation and sell (1/s at level 1)
+        expect(sellData.newIron).toBeGreaterThanOrEqual(sellData.ironEarned);
+        expect(sellData.newIron).toBeLessThanOrEqual(sellData.ironEarned + 5);
       });
     });
 
@@ -268,7 +270,9 @@ describe('Starbase Shop API', () => {
         expect(sellRes.status).toBe(200);
         expect(sellData.success).toBe(true);
         expect(sellData.ironEarned).toBeGreaterThan(0);
-        expect(sellData.newIron).toBe(sellData.ironEarned);
+        // newIron may include a few iron from harvesting between user creation and sell (1/s at level 1)
+        expect(sellData.newIron).toBeGreaterThanOrEqual(sellData.ironEarned);
+        expect(sellData.newIron).toBeLessThanOrEqual(sellData.ironEarned + 5);
       });
     });
   });

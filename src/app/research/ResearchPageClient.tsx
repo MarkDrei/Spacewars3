@@ -49,6 +49,7 @@ const researchTypeToKey: Record<ResearchType, keyof TechTree> = {
   inventorySlots: 'inventorySlots',
   bridgeSlots: 'bridgeSlots',
   constructionSpeed: 'constructionSpeed',
+  artificialIntelligence: 'artificialIntelligence',
   // Spies
   spyChance: 'spyChance',
   spySpeed: 'spySpeed',
@@ -135,7 +136,12 @@ const researchHierarchy: ResearchCategory[] = [
       {
         type: 'IronHarvesting' as ResearchType,
         children: [
-          { type: 'constructionSpeed' as ResearchType }
+          {
+            type: 'constructionSpeed' as ResearchType,
+            children: [
+              { type: 'artificialIntelligence' as ResearchType }
+            ]
+          }
         ]
       }
     ]

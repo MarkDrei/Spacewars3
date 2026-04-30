@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getIronSession } from 'iron-session';
 import { UserCache } from '@/lib/server/user/userCache';
+import { UserBonusCache } from '@/lib/server/bonus/UserBonusCache';
 import { AllResearches, getResearchUpgradeCost, getResearchUpgradeDuration, getResearchEffect, ResearchType, IMPLEMENTED_RESEARCHES } from '@/lib/server/techs/techtree';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth, ApiError } from '@/lib/server/errors';
@@ -26,15 +27,15 @@ export async function GET(request: NextRequest) {
         throw new ApiError(404, 'User not found');
       }
       
-      // Return techtree data
-      return processTechTree(user);
+      const bonuses = await UserBonusCache.getInstance().getBonuses(userContext, user.id);
+      return processTechTree(user, bonuses.researchSpeedFactor);
     });
   } catch (error) {
     return handleApiError(error);
   }
 }
 
-function processTechTree(user: User): NextResponse {
+function processTechTree(user: User, researchSpeedFactor: number): NextResponse {
   // Build research definitions with next upgrade cost/duration for the user
   const researches: Record<string, {
     name: string;
@@ -54,14 +55,28 @@ function processTechTree(user: User): NextResponse {
     researches[type] = {
       ...research,
       nextUpgradeCost: getResearchUpgradeCost(research, nextLevel),
-      nextUpgradeDuration: getResearchUpgradeDuration(research, nextLevel),
+      nextUpgradeDuration: getResearchUpgradeDuration(research, nextLevel) / researchSpeedFactor,
       currentEffect: getResearchEffect(research, typeof currentLevel === 'number' ? currentLevel : 0),
       nextEffect: getResearchEffect(research, nextLevel),
     };
   });
+
+  const techTree = adjustActiveResearchDuration(user, researchSpeedFactor);
   
   return NextResponse.json({
-    techTree: user.techTree,
+    techTree,
     researches
   });
+}
+
+function adjustActiveResearchDuration(user: User, researchSpeedFactor: number) {
+  return user.techTree.activeResearch
+    ? {
+        ...user.techTree,
+        activeResearch: {
+          ...user.techTree.activeResearch,
+          remainingDuration: user.techTree.activeResearch.remainingDuration / researchSpeedFactor,
+        },
+      }
+    : user.techTree;
 }
