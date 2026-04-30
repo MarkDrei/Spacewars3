@@ -386,7 +386,10 @@ describe('User.updateStats with IronHarvesting research progression', () => {
     user.buildStartSec = 1000;
 
     const processCompletedBuilds = vi.fn().mockImplementation(async (_userId, _context, options?: { now?: number }) => {
-      expect(options?.now).toBe(1060);
+      if (options?.now !== 1060) {
+        throw new Error(`Unexpected build processing time: ${options?.now}`);
+      }
+
       expect(user.iron).toBeCloseTo(60);
 
       user.techCounts.auto_turret += 1;

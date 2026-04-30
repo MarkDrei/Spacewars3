@@ -411,9 +411,9 @@ class User {
     while (cursor < now) {
       const nextBuildTime = this.getNextBuildEventTime(cursor, timeMultiplier, factors.constructionSpeedFactor);
       const nextResearchTime = this.getNextResearchCompletionTime(cursor, timeMultiplier, factors.researchSpeedFactor);
-      const nextEventTime = [now, nextBuildTime, nextResearchTime]
-        .filter((time): time is number => time !== null)
-        .reduce((earliest, time) => Math.min(earliest, time), now);
+      const nextEventTime = Math.min(
+        ...[now, nextBuildTime, nextResearchTime].filter((time): time is number => time !== null)
+      );
 
       if (nextEventTime > cursor) {
         const realElapsed = nextEventTime - cursor;
@@ -434,7 +434,7 @@ class User {
         cursor = nextEventTime;
       }
 
-      if (nextBuildTime !== null && nextBuildTime <= cursor) {
+      if (nextBuildTime !== null && nextBuildTime === cursor) {
         await techService.processCompletedBuilds(this.id, context, { now: cursor });
       }
 
