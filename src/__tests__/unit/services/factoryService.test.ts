@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { getTechCount, getValidTechKeys } from '@/lib/client/services/factoryService';
+import { getTechCount, getValidTechKeys, factoryService } from '@/lib/client/services/factoryService';
 import type { TechCounts } from '@/lib/client/services/factoryService';
 
 describe('factoryService - Type Safety Functions', () => {
@@ -109,5 +109,38 @@ describe('factoryService - Type Safety Functions', () => {
       });
     });
   });
-  
+
+  describe('formatCountdown', () => {
+
+    test('formatCountdown_zeroSeconds_returnsComplete', () => {
+      expect(factoryService.formatCountdown(0)).toBe('Complete');
+    });
+
+    test('formatCountdown_negativeSeconds_returnsComplete', () => {
+      expect(factoryService.formatCountdown(-5)).toBe('Complete');
+    });
+
+    test('formatCountdown_wholeSeconds_formatsCorrectly', () => {
+      expect(factoryService.formatCountdown(65)).toBe('1:05');
+      expect(factoryService.formatCountdown(3661)).toBe('1:01:01');
+    });
+
+    test('formatCountdown_fractionalSeconds_truncatesToWholeSeconds', () => {
+      expect(factoryService.formatCountdown(65.7)).toBe('1:05');
+      expect(factoryService.formatCountdown(65.9)).toBe('1:05');
+      expect(factoryService.formatCountdown(3661.5)).toBe('1:01:01');
+    });
+
+    test('formatCountdown_lessThanOneMinute_formatsAsMinutesAndSeconds', () => {
+      expect(factoryService.formatCountdown(45)).toBe('0:45');
+      expect(factoryService.formatCountdown(5)).toBe('0:05');
+    });
+
+    test('formatCountdown_exactMinutes_formatsWithZeroSeconds', () => {
+      expect(factoryService.formatCountdown(120)).toBe('2:00');
+      expect(factoryService.formatCountdown(3600)).toBe('1:00:00');
+    });
+
+  });
+
 });
