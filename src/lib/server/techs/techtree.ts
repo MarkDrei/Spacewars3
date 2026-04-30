@@ -382,7 +382,7 @@ export const AllResearches: Record<ResearchType, Research> = {
     baseValue: 10,
     upgradeCostIncrease: 1.9,
     baseValueIncrease: { type: 'polynomial', value: 0.1 },
-    description: 'Reduces construction time in the tech factory.',
+    description: 'Reduces the build time for weapons, shields, armor, hull plates, and other tech items in the factory.',
     treeKey: 'constructionSpeed',
     unit: '%',
   },

@@ -22,6 +22,8 @@ interface BonusData {
   energyWeaponDamageFactor: number;
   energyWeaponReloadFactor: number;
   energyWeaponAccuracyFactor: number;
+  constructionSpeedFactor: number;
+  researchSpeedFactor: number;
 }
 
 const DEFAULT_BONUS_DATA: BonusData = {
@@ -38,6 +40,8 @@ const DEFAULT_BONUS_DATA: BonusData = {
   energyWeaponDamageFactor: 1.0,
   energyWeaponReloadFactor: 1.0,
   energyWeaponAccuracyFactor: 1.0,
+  constructionSpeedFactor: 1.0,
+  researchSpeedFactor: 1.0,
 };
 
 interface UseUserStatsReturn {
@@ -131,6 +135,8 @@ export const useUserStats = (pollInterval: number = 5000): UseUserStatsReturn =>
         energyWeaponDamageFactor: result.energyWeaponDamageFactor ?? 1.0,
         energyWeaponReloadFactor: result.energyWeaponReloadFactor ?? 1.0,
         energyWeaponAccuracyFactor: result.energyWeaponAccuracyFactor ?? 1.0,
+        constructionSpeedFactor: result.constructionSpeedFactor ?? 1.0,
+        researchSpeedFactor: result.researchSpeedFactor ?? 1.0,
       });
       setIsLoading(false);
     } catch (err) {
