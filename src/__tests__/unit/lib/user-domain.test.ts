@@ -8,9 +8,10 @@ import {
   getResearchEffectFromTree,
   createInitialTechTree,
 } from '@/lib/server/techs/techtree';
+import { TechService } from '@/lib/server/techs/TechService';
 import { TechCounts } from '@/lib/server/techs/TechFactory';
 import { UserBonuses } from '@/lib/server/bonus/userBonusTypes';
-import { updateStatsWithMockedBuildRefresh } from '@/__tests__/helpers/updateStatsTestHelpers';
+import { updateStatsWithMockedBuildRefresh, withUserLock } from '@/__tests__/helpers/updateStatsTestHelpers';
 
 // The original integration version of this file exercised pure `User` logic
 // without touching the database.  All of those tests have been promoted to
@@ -422,17 +423,32 @@ describe('User.updateStats with IronHarvesting research progression', () => {
     user.buildStartSec = 1000;
 
     const processCompletedBuilds = vi.fn().mockImplementation(async (_userId, _context, options?: { now?: number }) => {
-      expect(options?.now).toBe(1060);
-      expect(user.iron).toBeCloseTo(110);
+      if (options?.now === 1060) {
+        expect(user.iron).toBeCloseTo(110);
 
-      user.techCounts.auto_turret += 1;
-      user.iron -= 100;
-      user.buildQueue = [{ itemKey: 'auto_turret', itemType: 'weapon', completionTime: 0 }];
-      user.buildStartSec = 1060;
+        user.techCounts.auto_turret += 1;
+        user.iron -= 100;
+        user.buildQueue = [{ itemKey: 'auto_turret', itemType: 'weapon', completionTime: 0 }];
+        user.buildStartSec = 1060;
 
-      return {
-        completed: [{ itemKey: 'auto_turret', itemType: 'weapon', completionTime: 1060 }]
-      };
+        return {
+          completed: [{ itemKey: 'auto_turret', itemType: 'weapon', completionTime: 1060 }]
+        };
+      }
+
+      if (options?.now === 1120) {
+        expect(user.iron).toBeCloseTo(70);
+
+        user.techCounts.auto_turret += 1;
+        user.buildQueue = [];
+        user.buildStartSec = null;
+
+        return {
+          completed: [{ itemKey: 'auto_turret', itemType: 'weapon', completionTime: 1120 }]
+        };
+      }
+
+      throw new Error(`Unexpected build processing time: ${options?.now}`);
     });
     const getInstanceSpy = vi.spyOn(TechService, 'getInstance').mockReturnValue({ processCompletedBuilds } as unknown as TechService);
 
@@ -444,10 +460,10 @@ describe('User.updateStats with IronHarvesting research progression', () => {
       getInstanceSpy.mockRestore();
     }
 
-    expect(processCompletedBuilds).toHaveBeenCalledTimes(1);
+    expect(processCompletedBuilds).toHaveBeenCalledTimes(2);
     expect(user.iron).toBeCloseTo(100);
-    expect(user.buildQueue).toHaveLength(1);
-    expect(user.buildStartSec).toBe(1060);
+    expect(user.buildQueue).toEqual([]);
+    expect(user.buildStartSec).toBeNull();
     expect(user.last_updated).toBe(1150);
   });
 

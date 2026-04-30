@@ -397,9 +397,12 @@ class User {
    */
   async updateStats(now: number, context: LockContext<LocksAtMostAndHas4>, bonuses?: UserBonuses): Promise<{ researchCompleted?: { type: ResearchType; completedLevel: number; researchName: string; scoreReward: number } }> {
     const elapsed = now - this.last_updated;
-    if (elapsed <= 0) return {};
-
     const techService = TechService.getInstance();
+    if (elapsed <= 0) {
+      await techService.processCompletedBuilds(this.id, context, { now });
+      return {};
+    }
+
     const timeMultiplier = this.timeMultiplierService.getMultiplier();
     let factors = this.getEconomyFactors(bonuses);
     let cursor = this.last_updated;
