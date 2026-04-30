@@ -24,6 +24,7 @@ import { TechService } from '@/lib/server/techs/TechService';
 import { TechFactory } from '@/lib/server/techs/TechFactory';
 import type { UserBonuses } from '@/lib/server/bonus/userBonusTypes';
 import { BASE_REGEN_RATE } from '@/lib/server/bonus/userBonusTypes';
+import { updateStatsWithMockedBuildRefresh } from '@/__tests__/helpers/updateStatsTestHelpers';
 
 // ---------------------------------------------------------------------------
 // Mock UserBonusCache so that addXp() → invalidateBonuses() doesn't throw
@@ -115,50 +116,50 @@ function makeLevel1Bonuses(user: User): UserBonuses {
 describe('Task 5.1.1 — updateStats() with bonuses', () => {
   beforeEach(() => { vi.clearAllMocks(); });
 
-  test('updateStats_noBonuses_fallsBackToTechTree', () => {
+  test('updateStats_noBonuses_fallsBackToTechTree', async () => {
     const user = makeUser();
     // 10 seconds pass, no bonuses (backward compat mode)
-    user.updateStats(1010);
+    await updateStatsWithMockedBuildRefresh(user, 1010);
     // Base iron rate = 1.0/sec
     expect(user.iron).toBeCloseTo(10, 5);
   });
 
-  test('updateStats_withBonuses_usesIronRechargeRate', () => {
+  test('updateStats_withBonuses_usesIronRechargeRate', async () => {
     const user = makeUser();
     const bonuses = makeLevel1Bonuses(user);
     // Override iron rate to 2.5/sec (e.g., level 2 bonus)
     bonuses.ironRechargeRate = 2.5;
-    user.updateStats(1010, bonuses);
+    await updateStatsWithMockedBuildRefresh(user, 1010, bonuses);
     expect(user.iron).toBeCloseTo(25, 5); // 2.5 × 10s
   });
 
-  test('updateStats_withBonuses_capsAtIronStorageCapacity', () => {
+  test('updateStats_withBonuses_capsAtIronStorageCapacity', async () => {
     const user = makeUser({ iron: 4990 });
     const bonuses = makeLevel1Bonuses(user);
     // Set bonused capacity to 5100 (> default 5000)
     bonuses.ironStorageCapacity = 5100;
-    user.updateStats(1200, bonuses); // 200 seconds pass
+    await updateStatsWithMockedBuildRefresh(user, 1200, bonuses); // 200 seconds pass
     expect(user.iron).toBe(5100); // capped at bonused capacity
   });
 
-  test('updateStats_bonusedCapacityLowerThanResearch_capsAtBonusedValue', () => {
+  test('updateStats_bonusedCapacityLowerThanResearch_capsAtBonusedValue', async () => {
     const user = makeUser({ iron: 0 });
     const bonuses = makeLevel1Bonuses(user);
     // Set a lower bonused capacity to verify it is used over the research value
     bonuses.ironStorageCapacity = 100;
     bonuses.ironRechargeRate = 10; // fast accumulation
-    user.updateStats(1200, bonuses); // 200 seconds pass → 2000 iron but capped at 100
+    await updateStatsWithMockedBuildRefresh(user, 1200, bonuses); // 200 seconds pass → 2000 iron but capped at 100
     expect(user.iron).toBe(100);
   });
 
-  test('updateStats_withLevel2Bonuses_ironRateScaledByLevelMultiplier', () => {
+  test('updateStats_withLevel2Bonuses_ironRateScaledByLevelMultiplier', async () => {
     const user = makeUser();
     const bonuses = makeLevel1Bonuses(user);
     // Simulate level 2: multiplier = 1.15, iron rate = 1.0 × 1.15 = 1.15
     bonuses.levelMultiplier = 1.15;
     bonuses.ironRechargeRate = 1.15;
     bonuses.ironStorageCapacity = 5000 * 1.15;
-    user.updateStats(1010, bonuses);
+    await updateStatsWithMockedBuildRefresh(user, 1010, bonuses);
     expect(user.iron).toBeCloseTo(11.5, 5); // 1.15 × 10s
   });
 });
@@ -170,7 +171,7 @@ describe('Task 5.1.1 — updateStats() with bonuses', () => {
 describe('Task 5.1.1 — mid-tick IronHarvesting with bonuses', () => {
   beforeEach(() => { vi.clearAllMocks(); });
 
-  test('midTick_researchCompletes_usesLevelMultiplierForNewRate', () => {
+  test('midTick_researchCompletes_usesLevelMultiplierForNewRate', async () => {
     const user = makeUser();
     // Start IronHarvesting research (duration 10s at level 1→2)
     triggerResearch(user.techTree, ResearchType.IronHarvesting);
@@ -184,7 +185,7 @@ describe('Task 5.1.1 — mid-tick IronHarvesting with bonuses', () => {
     // 15s pass: research completes at t+10, then 5s at new rate
     // Old rate (before completion): 1.0 iron/sec
     // New rate (after completion): 1.1 × 1.15 = 1.265 iron/sec
-    user.updateStats(1015, bonuses);
+    await updateStatsWithMockedBuildRefresh(user, 1015, bonuses);
 
     // Pre-completion: 1.15 × 10 = 11.5
     // Post-completion: 1.265 × 5 = 6.325
@@ -195,11 +196,11 @@ describe('Task 5.1.1 — mid-tick IronHarvesting with bonuses', () => {
     expect(user.techTree.ironHarvesting).toBe(2); // research completed
   });
 
-  test('midTick_researchCompletes_noBonuses_fallsBackToTechTree', () => {
+  test('midTick_researchCompletes_noBonuses_fallsBackToTechTree', async () => {
     const user = makeUser();
     triggerResearch(user.techTree, ResearchType.IronHarvesting);
     // No bonuses — old behavior: pre: 1.0 * 10 = 10, post: 1.1 * 5 = 5.5
-    user.updateStats(1015);
+    await updateStatsWithMockedBuildRefresh(user, 1015);
     expect(user.iron).toBeCloseTo(10 + 5 * 1.1, 5);
     expect(user.techTree.ironHarvesting).toBe(2);
   });

@@ -11,13 +11,10 @@ import { getServerT } from '../i18n/serverTranslations';
 
 export class TechService {
     private static instance: TechService;
-    private userCacheInstance: UserCache;
-    private messageCacheInstance: MessageCache;
+    private userCacheInstance: UserCache | null = null;
+    private messageCacheInstance: MessageCache | null = null;
 
-    private constructor() {
-        this.userCacheInstance = UserCache.getInstance2();
-        this.messageCacheInstance = MessageCache.getInstance();
-    }
+    private constructor() {}
 
     public static getInstance(): TechService {
         if (!TechService.instance) {
@@ -40,11 +37,28 @@ export class TechService {
         this.messageCacheInstance = cache;
     }
 
+    private getUserCache(): UserCache {
+        if (!this.userCacheInstance) {
+            this.userCacheInstance = UserCache.getInstance2();
+        }
+
+        return this.userCacheInstance;
+    }
+
+    private getMessageCache(): MessageCache {
+        if (this.messageCacheInstance) {
+            return this.messageCacheInstance;
+        }
+
+        this.messageCacheInstance = MessageCache.getInstance();
+        return this.messageCacheInstance;
+    }
+
     /**
      * Get the tech counts for a user
      */
     async getTechCounts(userId: number, context: LockContext<LocksAtMostAndHas4>): Promise<TechCounts | null> {
-        const user = await this.userCacheInstance.getUserByIdWithLock(context, userId);
+        const user = await this.getUserCache().getUserByIdWithLock(context, userId);
 
         if (!user) return null;
 
@@ -55,7 +69,7 @@ export class TechService {
      * Get the current iron amount for a user
      */
     async getIron(userId: number, context: LockContext<LocksAtMostAndHas4>): Promise<number | null> {
-        const user = await this.userCacheInstance.getUserByIdWithLock(context, userId);
+        const user = await this.getUserCache().getUserByIdWithLock(context, userId);
 
         if (!user) return null;
 
@@ -66,7 +80,7 @@ export class TechService {
      * Get the build queue for a user with calculated completion times
      */
     async getBuildQueue(userId: number, context: LockContext<LocksAtMostAndHas4>): Promise<BuildQueueItem[] | null> {
-        const user = await this.userCacheInstance.getUserByIdWithLock(context, userId);
+        const user = await this.getUserCache().getUserByIdWithLock(context, userId);
 
         if (!user) return null;
 
@@ -105,7 +119,7 @@ export class TechService {
      * Get estimated completion time for the current build
      */
     async getEstimatedCompletionTime(userId: number, context: LockContext<LocksAtMostAndHas4>): Promise<number | null> {
-        const user = await this.userCacheInstance.getUserByIdWithLock(context, userId);
+        const user = await this.getUserCache().getUserByIdWithLock(context, userId);
 
         if (!user || user.buildQueue.length === 0) return null;
 
@@ -136,7 +150,7 @@ export class TechService {
         itemType: 'weapon' | 'defense',
         context: LockContext<LocksAtMostAndHas4>
     ): Promise<{ success: boolean; error?: string }> {
-        const user = await this.userCacheInstance.getUserByIdWithLock(context, userId);
+        const user = await this.getUserCache().getUserByIdWithLock(context, userId);
 
         if (!user) return { success: false, error: 'User not found' };
 
@@ -170,7 +184,7 @@ export class TechService {
             user.buildStartSec = Math.floor(Date.now() / 1000);
         }
 
-        this.userCacheInstance.updateUserInCache(context, user);
+        await this.getUserCache().updateUserInCache(context, user);
 
         return { success: true };
     }
@@ -180,7 +194,7 @@ export class TechService {
      * This should be called periodically or when checking status
      */
     async processCompletedBuilds(userId: number, context: LockContext<LocksAtMostAndHas4>): Promise<{ completed: BuildQueueItem[] }> {
-        const user = await this.userCacheInstance.getUserByIdWithLock(context, userId);
+        const user = await this.getUserCache().getUserByIdWithoutRefreshWithLock(context, userId);
 
         if (!user) return { completed: [] };
 
@@ -232,7 +246,7 @@ export class TechService {
                     const ctx = createLockContext();
                     const locale = user.preferredLocale ?? 'en';
                     const tMsg = await getServerT(locale, 'messages');
-                    await this.messageCacheInstance.createMessage(ctx, userId, tMsg('buildComplete', { name: spec.name }));
+                    await this.getMessageCache().createMessage(ctx, userId, tMsg('buildComplete', { name: spec.name }));
                 } catch (error) {
                     console.error(`Failed to send build completion notification to user ${userId}:`, error);
                 }
@@ -252,7 +266,7 @@ export class TechService {
                             const ctx = createLockContext();
                             const locale = user.preferredLocale ?? 'en';
                             const tMsg = await getServerT(locale, 'messages');
-                            await this.messageCacheInstance.createMessage(ctx, userId,
+                            await this.getMessageCache().createMessage(ctx, userId,
                                 tMsg('buildQueueAborted', { name: itemName, count: abortedCount }));
                         } catch (error) {
                             console.error(`Failed to send queue abort notification to user ${userId}:`, error);
@@ -272,7 +286,7 @@ export class TechService {
         }
 
         if (queueChanged) {
-            this.userCacheInstance.updateUserInCache(context, user);
+            await this.getUserCache().updateUserInCache(context, user);
         }
 
         return { completed: completedItems };
@@ -312,7 +326,7 @@ export class TechService {
         userId: number,
         context: LockContext<LocksAtMostAndHas4>
     ) {
-        const user = await this.userCacheInstance.getUserByIdWithLock(context, userId);
+        const user = await this.getUserCache().getUserByIdWithLock(context, userId);
 
         if (!user) {
             throw new Error(`User ${userId} not found`);

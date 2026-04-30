@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { User, SaveUserCallback } from '@/lib/server/user/user';
 import { updateTechTree, ResearchType, AllResearches, getResearchUpgradeCost, TechTree, createInitialTechTree } from '@/lib/server/techs/techtree';
 import { TechCounts } from '@/lib/server/techs/TechFactory';
+import { updateStatsWithMockedBuildRefresh } from '@/__tests__/helpers/updateStatsTestHelpers';
 
 describe('Research XP Rewards System', () => {
   const dummySave: SaveUserCallback = async () => { /* no-op for testing */ };
@@ -22,7 +23,7 @@ describe('Research XP Rewards System', () => {
     it('updateTechTree_noActiveResearch_returnsUndefined', () => {
       const tree: TechTree = { ...createInitialTechTree(), activeResearch: undefined };
       const result = updateTechTree(tree, 10);
-      
+
       expect(result).toBeUndefined();
     });
 
@@ -35,9 +36,9 @@ describe('Research XP Rewards System', () => {
           remainingDuration: 100,
         },
       };
-      
+
       const result = updateTechTree(tree, 50);
-      
+
       expect(result).toBeUndefined();
       expect(tree.activeResearch?.remainingDuration).toBe(50);
     });
@@ -51,13 +52,13 @@ describe('Research XP Rewards System', () => {
           remainingDuration: 10,
         },
       };
-      
+
       const result = updateTechTree(tree, 15);
-      
+
       expect(result).toBeDefined();
       expect(result?.completed).toBe(true);
       expect(result?.type).toBe(ResearchType.IronHarvesting);
-      expect(result?.completedLevel).toBe(2); // Completed level after increment
+      expect(result?.completedLevel).toBe(2);
       expect(tree.ironHarvesting).toBe(2);
       expect(tree.activeResearch).toBeUndefined();
     });
@@ -96,9 +97,9 @@ describe('Research XP Rewards System', () => {
           remainingDuration: 10,
         },
       };
-      
+
       const result = updateTechTree(tree, 10);
-      
+
       expect(result).toBeDefined();
       expect(result?.completed).toBe(true);
       expect(result?.completedLevel).toBe(2);
@@ -106,13 +107,13 @@ describe('Research XP Rewards System', () => {
   });
 
   describe('Task 4.2: Award XP in User.updateStats', () => {
-    it('updateStats_researchCompletes_awardsXP', () => {
+    it('updateStats_researchCompletes_awardsXP', async () => {
       const user = new User(
         1,
         'testuser',
         'hash',
         1000,
-        0, // xp
+        0,
         Math.floor(Date.now() / 1000),
         createInitialTechTree(),
         dummySave,
@@ -125,33 +126,32 @@ describe('Research XP Rewards System', () => {
         null,
         [],
         null,
-        0, // teleportCharges
-        0 // teleportLastRegen
+        0,
+        0
       );
-      
+
       user.techTree.ironHarvesting = 1;
       user.techTree.activeResearch = {
         type: ResearchType.IronHarvesting,
         remainingDuration: 5,
       };
-      
+
       const now = user.last_updated + 10;
-      const result = user.updateStats(now);
-      
-      // Iron Harvesting level 2 costs 100 iron (base cost for first upgrade)
-      const expectedScore = Math.floor(100 / 25); // 4 score
+      const result = await updateStatsWithMockedBuildRefresh(user, now);
+
+      const expectedScore = Math.floor(100 / 25);
       expect(user.score).toBe(expectedScore);
-      expect(user.xp).toBe(0); // XP is NOT awarded from research
+      expect(user.xp).toBe(0);
       expect(result.researchCompleted).toBeDefined();
     });
 
-    it('updateStats_researchCompletesAndLevelsUp_returnsLevelUpInfo', () => {
+    it('updateStats_researchCompletesAndLevelsUp_returnsLevelUpInfo', async () => {
       const user = new User(
         1,
         'testuser',
         'hash',
         1000,
-        996, // 4 XP away from level 2 (1000 XP required)
+        996,
         Math.floor(Date.now() / 1000),
         createInitialTechTree(),
         dummySave,
@@ -164,60 +164,59 @@ describe('Research XP Rewards System', () => {
         null,
         [],
         null,
-        0, // teleportCharges
-        0 // teleportLastRegen
+        0,
+        0
       );
-      
+
       user.techTree.ironHarvesting = 1;
       user.techTree.activeResearch = {
         type: ResearchType.IronHarvesting,
         remainingDuration: 5,
       };
-      
+
       const now = user.last_updated + 10;
-      const result = user.updateStats(now);
-      
-      // Research awards score (not XP), so no level up
-      expect(user.xp).toBe(996); // XP unchanged
-      expect(user.score).toBe(4); // Score awarded: 100/25 = 4
+      const result = await updateStatsWithMockedBuildRefresh(user, now);
+
+      expect(user.xp).toBe(996);
+      expect(user.score).toBe(4);
       expect(result.researchCompleted).toBeDefined();
       expect(result.researchCompleted?.scoreReward).toBe(4);
-    });
+      });
 
-    it('updateStats_noResearchCompletion_returnsEmptyObject', () => {
-      const user = new User(
-        1,
-        'testuser',
-        'hash',
-        1000,
-        0, // xp
-        Math.floor(Date.now() / 1000),
-        createInitialTechTree(),
-        dummySave,
-        defaultTechCounts,
-        250,
-        250,
-        250,
-        Math.floor(Date.now() / 1000),
-        false,
-        null,
-        [],
-        null,
-        0, // teleportCharges
-        0 // teleportLastRegen
-      );
-      
-      user.techTree.activeResearch = undefined;
-      
-      const now = user.last_updated + 10;
-      const result = user.updateStats(now);
-      
-      expect(result.researchCompleted).toBeUndefined();
-      expect(user.xp).toBe(0);
-      expect(user.score).toBe(0);
-    });
+      it('updateStats_noResearchCompletion_returnsEmptyObject', async () => {
+        const user = new User(
+          1,
+          'testuser',
+          'hash',
+          1000,
+          0, // xp
+          Math.floor(Date.now() / 1000),
+          createInitialTechTree(),
+          dummySave,
+          defaultTechCounts,
+          250,
+          250,
+          250,
+          Math.floor(Date.now() / 1000),
+          false,
+          null,
+          [],
+          null,
+          0, // teleportCharges
+          0 // teleportLastRegen
+        );
 
-    it('updateStats_researchCompletesButNoLevelUp_noLevelUpInfo', () => {
+        user.techTree.activeResearch = undefined;
+
+        const now = user.last_updated + 10;
+        const result = await updateStatsWithMockedBuildRefresh(user, now);
+
+        expect(result.researchCompleted).toBeUndefined();
+        expect(user.xp).toBe(0);
+        expect(user.score).toBe(0);
+      });
+
+    it('updateStats_researchCompletesButNoLevelUp_noLevelUpInfo', async () => {
       const user = new User(
         1,
         'testuser',
@@ -247,7 +246,7 @@ describe('Research XP Rewards System', () => {
       };
       
       const now = user.last_updated + 10;
-      const result = user.updateStats(now);
+      const result = await updateStatsWithMockedBuildRefresh(user, now);
       
       // ShipSpeed level 2 costs 500 iron, so 20 score awarded (not XP)
       expect(user.score).toBe(20);
@@ -255,7 +254,7 @@ describe('Research XP Rewards System', () => {
       expect(result.researchCompleted).toBeDefined();
     });
 
-    it('updateStats_researchCompletes_returnsResearchCompletedInfo', () => {
+    it('updateStats_researchCompletes_returnsResearchCompletedInfo', async () => {
       const user = new User(
         1,
         'testuser',
@@ -285,7 +284,7 @@ describe('Research XP Rewards System', () => {
       };
 
       const now = user.last_updated + 10;
-      const result = user.updateStats(now);
+      const result = await updateStatsWithMockedBuildRefresh(user, now);
 
       expect(result.researchCompleted).toBeDefined();
       expect(result.researchCompleted?.type).toBe(ResearchType.ShipSpeed);
@@ -294,7 +293,7 @@ describe('Research XP Rewards System', () => {
       expect(result.researchCompleted?.scoreReward).toBe(20);
     });
 
-    it('updateStats_noResearchCompletion_researchCompletedIsUndefined', () => {
+    it('updateStats_noResearchCompletion_researchCompletedIsUndefined', async () => {
       const user = new User(
         1,
         'testuser',
@@ -320,12 +319,12 @@ describe('Research XP Rewards System', () => {
       user.techTree.activeResearch = undefined;
 
       const now = user.last_updated + 10;
-      const result = user.updateStats(now);
+      const result = await updateStatsWithMockedBuildRefresh(user, now);
 
       expect(result.researchCompleted).toBeUndefined();
     });
 
-    it('updateStats_correctXpCalculationForHigherLevels', () => {
+    it('updateStats_correctXpCalculationForHigherLevels', async () => {
       const user = new User(
         1,
         'testuser',
@@ -355,7 +354,7 @@ describe('Research XP Rewards System', () => {
       };
       
       const now = user.last_updated + 10;
-      user.updateStats(now);
+      await updateStatsWithMockedBuildRefresh(user, now);
       
       // Calculate expected cost for level 6
       const research = AllResearches[ResearchType.IronHarvesting];
@@ -368,7 +367,7 @@ describe('Research XP Rewards System', () => {
       expect(expectedScore).toBe(64);
     });
 
-    it('updateStats_ironHarvestingCompletionDuringInterval_awardsCorrectXP', () => {
+    it('updateStats_ironHarvestingCompletionDuringInterval_awardsCorrectXP', async () => {
       const user = new User(
         1,
         'testuser',
@@ -399,7 +398,7 @@ describe('Research XP Rewards System', () => {
       
       // Complete research in the middle of the interval
       const now = user.last_updated + 20;
-      user.updateStats(now);
+      await updateStatsWithMockedBuildRefresh(user, now);
       
       // Should award score for the completed research (level 2 costs 100)
       const expectedScore = Math.floor(100 / 25); // 4 score
@@ -429,7 +428,7 @@ describe('Research XP Rewards System', () => {
   });
 
   describe('Integration: Research Completion Flow', () => {
-    it('fullFlow_researchCompletionWithLevelUp_worksEndToEnd', () => {
+    it('fullFlow_researchCompletionWithLevelUp_worksEndToEnd', async () => {
       const user = new User(
         1,
         'testuser',
@@ -462,7 +461,7 @@ describe('Research XP Rewards System', () => {
       expect(initialLevel).toBe(1);
       
       const now = user.last_updated + 10;
-      const result = user.updateStats(now);
+      const result = await updateStatsWithMockedBuildRefresh(user, now);
       
       // Verify research completed
       expect(user.techTree.ironHarvesting).toBe(2);
@@ -478,7 +477,7 @@ describe('Research XP Rewards System', () => {
       expect(result.researchCompleted?.scoreReward).toBe(4);
     });
 
-    it('fullFlow_multipleResearchCompletions_awardsCorrectXP', () => {
+    it('fullFlow_multipleResearchCompletions_awardsCorrectXP', async () => {
       const user = new User(
         1,
         'testuser',
@@ -509,7 +508,7 @@ describe('Research XP Rewards System', () => {
       };
       
       let now = user.last_updated + 10;
-      user.updateStats(now);
+      await updateStatsWithMockedBuildRefresh(user, now);
       
       expect(user.score).toBe(20); // 500 / 25 score
       expect(user.xp).toBe(0); // XP NOT awarded from research
@@ -522,7 +521,7 @@ describe('Research XP Rewards System', () => {
       };
       
       now = user.last_updated + 10;
-      user.updateStats(now);
+      await updateStatsWithMockedBuildRefresh(user, now);
       
       // Afterburner level 1 costs 5000, so 200 score awarded
       expect(user.score).toBe(220); // 20 + 200

@@ -8,7 +8,7 @@ import { TechService } from '../techs/TechService';
 import { TimeMultiplierService } from '../timeMultiplier';
 import { UserBonusCache } from '../bonus/UserBonusCache';
 import { BASE_REGEN_RATE, UserBonuses } from '../bonus/userBonusTypes';
-import { HasLock4Context, IronLocks } from '@markdrei/ironguard-typescript-locks';
+import { HasLock4Context, IronLocks, LockContext, LocksAtMostAndHas4 } from '@markdrei/ironguard-typescript-locks';
 
 class User {
   id: number;
@@ -330,10 +330,16 @@ class User {
 
   /**
    * @param now Current timestamp in seconds
+   * @param context Held user lock context used for build-queue refresh and bonus lookups.
    * @param bonuses Pre-computed user bonuses (optional). When provided, bonused iron rate and
    *   capacity are used. When omitted, falls back to direct tech-tree lookups (backward-compat).
    */
-  updateStats(now: number, bonuses?: UserBonuses): { researchCompleted?: { type: ResearchType; completedLevel: number; researchName: string; scoreReward: number } } {
+  async updateStats(now: number, context: LockContext<LocksAtMostAndHas4>, bonuses?: UserBonuses): Promise<{ researchCompleted?: { type: ResearchType; completedLevel: number; researchName: string; scoreReward: number } }> {
+    // Process any completed builds so tech counts are up-to-date
+    // (e.g., if this user was offline and builds completed in the DB)
+    const techService = TechService.getInstance();
+    await techService.processCompletedBuilds(this.id, context);
+
     const elapsed = now - this.last_updated;
     if (elapsed <= 0) return {};
 

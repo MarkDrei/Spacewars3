@@ -52,10 +52,6 @@ async function performResearchTrigger(
   userWorldCache: UserCache,
   userCtx: LockContext<LocksAtMostAndHas4>
 ): Promise<NextResponse> {
-  const now = Math.floor(Date.now() / 1000);
-  const bonuses = await userWorldCache.getBonusesByUserIdWithLock(userCtx, user.id);
-  user.updateStats(now, bonuses);
-  
   if (user.techTree.activeResearch) {
     throw new ApiError(400, 'Research already in progress');
   }

@@ -48,8 +48,6 @@ export async function POST(request: NextRequest) {
 
       const price = commanderSellPrice(item);
 
-      const bonuses = await userCache.getBonusesByUserIdWithLock(userContext, userId);
-      user.updateStats(Math.floor(Date.now() / 1000), bonuses);
       user.addIron(price);
       await userCache.updateUserInCache(userContext, user);
 

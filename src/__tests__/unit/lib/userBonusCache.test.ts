@@ -25,6 +25,7 @@ import { TimeMultiplierService } from '@/lib/server/timeMultiplier';
 import type { UserCache } from '@/lib/server/user/userCache';
 import type { InventoryService } from '@/lib/server/inventory/InventoryService';
 import type { BridgeGrid } from '@/lib/server/inventory/inventoryTypes';
+import { updateStatsWithMockedBuildRefresh } from '@/__tests__/helpers/updateStatsTestHelpers';
 
 // ---------------------------------------------------------------------------
 // Test helpers
@@ -921,7 +922,7 @@ describe('UserBonusCache invalidation triggers — User.updateStats() research',
   // updateTechTree() reports a completed research.
   // These tests verify that path using vi.spyOn on the cache instance.
 
-  test('updateStats_researchCompletes_callsInvalidateBonuses', () => {
+  test('updateStats_researchCompletes_callsInvalidateBonuses', async () => {
     const cache = UserBonusCache.getInstance();
     const spy = vi.spyOn(cache, 'invalidateBonuses');
 
@@ -931,14 +932,14 @@ describe('UserBonusCache invalidation triggers — User.updateStats() research',
     expect(user.techTree.activeResearch).toBeDefined();
 
     // Advance time by 15 s — research completes (duration = 10 s)
-    user.updateStats(1000 + 15);
+    await updateStatsWithMockedBuildRefresh(user, 1000 + 15);
 
     expect(spy).toHaveBeenCalledWith(42);
 
     spy.mockRestore();
   });
 
-  test('updateStats_researchNotYetComplete_doesNotCallInvalidateBonuses', () => {
+  test('updateStats_researchNotYetComplete_doesNotCallInvalidateBonuses', async () => {
     const cache = UserBonusCache.getInstance();
     const spy = vi.spyOn(cache, 'invalidateBonuses');
 
@@ -947,27 +948,27 @@ describe('UserBonusCache invalidation triggers — User.updateStats() research',
     triggerResearch(user.techTree, ResearchType.IronHarvesting);
 
     // Only 5 s pass — research is still in progress
-    user.updateStats(1000 + 5);
+    await updateStatsWithMockedBuildRefresh(user, 1000 + 5);
 
     expect(spy).not.toHaveBeenCalled();
 
     spy.mockRestore();
   });
 
-  test('updateStats_noActiveResearch_doesNotCallInvalidateBonuses', () => {
+  test('updateStats_noActiveResearch_doesNotCallInvalidateBonuses', async () => {
     const cache = UserBonusCache.getInstance();
     const spy = vi.spyOn(cache, 'invalidateBonuses');
 
     const user = makeRealUser(42, /* xp */ 0);
     // No research started — just time passing
-    user.updateStats(1000 + 10);
+    await updateStatsWithMockedBuildRefresh(user, 1000 + 10);
 
     expect(spy).not.toHaveBeenCalled();
 
     spy.mockRestore();
   });
 
-  test('updateStats_researchCompletesAndLevelsUp_callsInvalidateBonusesAtLeastOnce', () => {
+  test('updateStats_researchCompletesAndLevelsUp_callsInvalidateBonusesAtLeastOnce', async () => {
     // When research completes AND the XP reward causes a level-up,
     // invalidateBonuses should be called (at minimum once for the research,
     // and once more for the level-up — both calls are with the same userId).
@@ -982,7 +983,7 @@ describe('UserBonusCache invalidation triggers — User.updateStats() research',
     const enoughTime = 100;
 
     // Complete the research
-    user.updateStats(1000 + enoughTime);
+    await updateStatsWithMockedBuildRefresh(user, 1000 + enoughTime);
 
     // At minimum one call (from research completion); possibly two (if level-up occurred too)
     expect(spy).toHaveBeenCalledWith(42);

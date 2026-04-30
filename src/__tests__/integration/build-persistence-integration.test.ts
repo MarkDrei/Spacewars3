@@ -21,6 +21,7 @@ describe('Build Persistence Integration', () => {
     await initializeIntegrationTestServer();
     userCache = UserCache.getInstance2();
     techService = TechService.getInstance();
+    techService.setUserCacheForTesting(userCache);
   });
 
   afterEach(async () => {
@@ -95,6 +96,50 @@ describe('Build Persistence Integration', () => {
       );
       const persistedQueue = JSON.parse(queueResult.rows[0].build_queue);
       expect(persistedQueue).toHaveLength(0);
+    });
+  });
+
+  it('updateStats_completedBuildQueued_refreshesCountsAndPersists', async () => {
+    await withTransaction(async () => {
+      const db = await getDatabase();
+      const ctx = createLockContext();
+
+      const testUser = await ctx.useLockWithAcquire(USER_LOCK, async (userContext) => {
+        const user = await createUser(db, 'updatestatsbuildtest', 'password', async () => {});
+        user.techTree.ironCapacity = 4;
+        user.iron = 10000;
+        userCache.setUserUnsafe(userContext, user);
+        await userCache.updateUserInCache(userContext, user);
+        return user;
+      });
+
+      await ctx.useLockWithAcquire(USER_LOCK, async (userContext) => {
+        await techService.addTechItemToBuildQueue(testUser.id, 'auto_turret', 'weapon', userContext);
+
+        const user = await userCache.getUserByIdWithoutRefreshWithLock(userContext, testUser.id);
+        expect(user).not.toBeNull();
+
+        user!.buildStartSec = Math.floor(Date.now() / 1000) - 600;
+        await userCache.updateUserInCache(userContext, user!);
+
+        const bonuses = await userCache.getBonusesByUserIdWithLock(userContext, testUser.id);
+        await user!.updateStats(Math.floor(Date.now() / 1000), userContext, bonuses);
+
+        const refreshedUser = await userCache.getUserByIdWithoutRefreshWithLock(userContext, testUser.id);
+        expect(refreshedUser).not.toBeNull();
+
+        expect(refreshedUser!.techCounts.auto_turret).toBe(6);
+        expect(refreshedUser!.buildQueue).toHaveLength(0);
+      });
+
+      const dbResult = await db.query(
+        'SELECT auto_turret, build_queue FROM users WHERE id = $1',
+        [testUser.id]
+      );
+
+      expect(dbResult.rows).toHaveLength(1);
+      expect(dbResult.rows[0].auto_turret).toBe(6);
+      expect(JSON.parse(dbResult.rows[0].build_queue)).toHaveLength(0);
     });
   });
 

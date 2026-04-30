@@ -259,20 +259,14 @@ export class UserCache extends Cache {
   }
 
   /**
-   * Internal method to get user by ID when already holding USER_LOCK
-   * - Loads from database if not in cache
-   * - Updates user before returning
+   * Internal raw accessor that loads the user into cache without running updateStats.
+   * Use this only from code paths that already perform their own refresh steps.
    */
-  async getUserByIdWithLock(
+  async getUserByIdWithoutRefreshWithLock(
     context: LockContext<LocksAtMostAndHas4>,
     userId: number
   ): Promise<User | null> {
-    // Check cache first
     let user = this.getUserByIdFromCache(context, userId);
-
-    // if (user) {
-    //   console.log(`👤 User ${userId} cache hit`);
-    // }
 
     if (!user) {
       console.log(`🔍 User ${userId} cache miss, loading from database`);
@@ -282,12 +276,26 @@ export class UserCache extends Cache {
       }
     }
 
+    return user;
+  }
+
+  /**
+   * Internal method to get user by ID when already holding USER_LOCK
+   * - Loads from database if not in cache
+   * - Updates user before returning
+   */
+  async getUserByIdWithLock(
+    context: LockContext<LocksAtMostAndHas4>,
+    userId: number
+  ): Promise<User | null> {
+    const user = await this.getUserByIdWithoutRefreshWithLock(context, userId);
+
     if (user) {
       // Fetch (or compute) bonuses before calling updateStats so that bonused iron rate,
       // capacity, and defense regen are used.  getBonuses() is a cache-hit for users that
       // have been seen recently; it only computes on first access or after invalidation.
       const bonuses = await UserBonusCache.getInstance().getBonuses(context, user.id);
-      const updateResult = user.updateStats(Math.floor(Date.now() / 1000), bonuses);
+      const updateResult = await user.updateStats(Math.floor(Date.now() / 1000), context, bonuses);
       await this.updateUserInCache(context, user);
 
       // Send research completion notification
@@ -390,7 +398,8 @@ export class UserCache extends Cache {
       // Fetch (or compute) bonuses before calling updateStats so that bonused iron rate,
       // capacity, and defense regen are used.
       const bonuses = await UserBonusCache.getInstance().getBonuses(context, user.id);
-      const updateResult = user.updateStats(Math.floor(Date.now() / 1000), bonuses);
+      const updateResult = await user.updateStats(Math.floor(Date.now() / 1000), context, bonuses);
+
       await this.updateUserInCache(context, user);
 
       // Send research completion notification
