@@ -5,7 +5,7 @@
 export const CREATE_USERS_TABLE = `
 CREATE TABLE IF NOT EXISTS users (
   id SERIAL PRIMARY KEY,
-  username TEXT UNIQUE NOT NULL,
+  username TEXT NOT NULL,
   password_hash TEXT NOT NULL,
   iron DOUBLE PRECISION NOT NULL DEFAULT 0.0,
   xp INTEGER NOT NULL DEFAULT 0,
@@ -238,4 +238,4 @@ export const MIGRATE_ADD_PREFERRED_LOCALE = [
 ];
 
 // Optional: Version management for migrations
-export const SCHEMA_VERSION = 17;
+export const SCHEMA_VERSION = 18;

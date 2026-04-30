@@ -3,7 +3,7 @@ import bcrypt from 'bcrypt';
 import { randomBytes } from 'crypto';
 import { getIronSession } from 'iron-session';
 import { getDatabase } from '@/lib/server/database';
-import { createUser, saveUserToDb, getUserByEmail, setEmailVerificationToken } from '@/lib/server/user/userRepo';
+import { createUser, saveUserToDb, getUserByEmail, setEmailVerificationToken, getUserByUsername } from '@/lib/server/user/userRepo';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, validateRequired, ApiError } from '@/lib/server/errors';
 import { UserCache } from '@/lib/server/user/userCache';
@@ -15,6 +15,7 @@ import { isEmailEnabled } from '@/lib/server/email/emailConfig';
 import { sendEmail } from '@/lib/server/email/emailService';
 import { buildVerificationEmail } from '@/lib/server/email/emailTemplates';
 import { calculateLevelFromXp } from '@shared/utils/levelUtils';
+import { validateUsername } from '@/lib/server/user/usernameValidation';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -26,6 +27,9 @@ export async function POST(request: NextRequest) {
     validateRequired(username, 'username');
     validateRequired(password, 'password');
 
+    // Validate username format and reserved patterns
+    validateUsername(username);
+
     // Validate optional email
     const normalizedEmail: string | null = email && typeof email === 'string' ? email.trim().toLowerCase() : null;
     if (normalizedEmail !== null) {
@@ -35,6 +39,12 @@ export async function POST(request: NextRequest) {
     }
     
     const db = await getDatabase();
+
+    // Check username uniqueness at application level (DB no longer enforces UNIQUE)
+    const existingByUsername = await getUserByUsername(db, username);
+    if (existingByUsername) {
+      throw new ApiError(400, 'Username already taken');
+    }
 
     // Check email uniqueness before creating user
     if (normalizedEmail !== null) {
