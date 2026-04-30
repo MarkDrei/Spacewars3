@@ -46,10 +46,14 @@ export function extractSessionCookie(response: Response): string | null {
 }
 
 /**
- * Helper to generate unique usernames for tests
+ * Helper to generate unique usernames for tests.
+ * Total length is always ≤ 20 chars to satisfy the username validation rules.
  */
-export function randomUsername(prefix: string = 'testuser'): string {
-  return `${prefix}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+export function randomUsername(prefix: string = 'u'): string {
+  // 8-char base-36 random suffix, padded to ensure exactly 8 chars
+  const rand = Math.random().toString(36).slice(2, 10).padEnd(8, '0');
+  // prefix is capped at 11 chars so that 11 + '_' + 8 = 20 total
+  return `${prefix.slice(0, 11)}_${rand}`;
 }
 
 /**
