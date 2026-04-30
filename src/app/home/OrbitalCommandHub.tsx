@@ -127,6 +127,11 @@ export const OrbitalCommandHub: React.FC<OrbitalCommandHubProps> = ({
         <stop offset="0%" stopColor="rgba(255,255,255,0.1)" />
         <stop offset="100%" stopColor="rgba(255,255,255,0.02)" />
       </linearGradient>
+      <radialGradient id="ship-core-grad" cx="50%" cy="50%" r="50%">
+        <stop offset="0%" stopColor="rgba(10, 5, 16, 1)" />
+        <stop offset="70%" stopColor="rgba(10, 5, 16, 0.7)" />
+        <stop offset="100%" stopColor="rgba(10, 5, 16, 0)" />
+      </radialGradient>
       <filter id="glow-heavy" x="-20%" y="-20%" width="140%" height="140%">
         <feGaussianBlur stdDeviation="8" result="blur" />
         <feComposite in="SourceGraphic" in2="blur" operator="over" />
@@ -167,12 +172,13 @@ export const OrbitalCommandHub: React.FC<OrbitalCommandHubProps> = ({
   const renderDefenseGroup = () => (
     <>
       {/* Player ship in center */}
-      <circle cx="0" cy="0" r="58" fill="#0a0510" stroke="rgba(255,255,255,0.25)" strokeWidth="2" />
+      <circle cx="0" cy="0" r="70" fill="url(#ship-core-grad)" />
       <image
         href={`/assets/images/ship${shipPictureId ?? 1}.png`}
         x="-55" y="-55" width="110" height="110"
         clipPath="url(#ship-center-clip)"
         preserveAspectRatio="xMidYMid meet"
+        
       />
 
       {/* Crosshairs */}
