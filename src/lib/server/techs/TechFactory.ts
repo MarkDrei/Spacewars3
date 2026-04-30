@@ -11,6 +11,7 @@ export interface BuildQueueItem {
   itemKey: string;
   itemType: 'weapon' | 'defense';
   completionTime: number; // Unix timestamp when build completes
+  isRecurring?: boolean;
 }
 
 export interface WeaponSpec {
