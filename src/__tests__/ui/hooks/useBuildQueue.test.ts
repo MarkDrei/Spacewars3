@@ -116,8 +116,26 @@ describe('useBuildQueue', () => {
     });
 
     // Assert
-    expect(mockFactoryService.buildItem).toHaveBeenCalledWith('pulse_laser', 'weapon', 1);
+    expect(mockFactoryService.buildItem).toHaveBeenCalledWith('pulse_laser', 'weapon', 1, 'normal');
     expect(result.current.isBuilding).toBe(false); // Should be false after completion
+  });
+
+  test('useBuildQueue_buildForever_callsFactoryServiceWithForeverMode', async () => {
+    mockFactoryService.buildItem.mockResolvedValue({
+      success: true,
+      message: 'Build started forever',
+      estimatedCompletion: Date.now() + 300000,
+      remainingIron: 850
+    });
+
+    const { result } = renderHook(() => useBuildQueue());
+
+    await act(async () => {
+      await result.current.buildItem('pulse_laser', 'weapon', 1, 'forever');
+    });
+
+    expect(mockFactoryService.buildItem).toHaveBeenCalledWith('pulse_laser', 'weapon', 1, 'forever');
+    expect(result.current.isBuilding).toBe(false);
   });
 
   test('useBuildQueue_buildItemError_setsErrorState', async () => {
@@ -155,6 +173,23 @@ describe('useBuildQueue', () => {
     // Assert
     expect(mockFactoryService.completeBuild).toHaveBeenCalled();
     expect(result.current.isCompletingBuild).toBe(false);
+  });
+
+  test('useBuildQueue_abortBuildQueueSuccess_callsFactoryService', async () => {
+    mockFactoryService.abortBuildQueue.mockResolvedValue({
+      success: true,
+      message: 'Build queue aborted',
+      abortedCount: 1
+    });
+
+    const { result } = renderHook(() => useBuildQueue());
+
+    await act(async () => {
+      await result.current.abortBuildQueue();
+    });
+
+    expect(mockFactoryService.abortBuildQueue).toHaveBeenCalled();
+    expect(result.current.isAbortingQueue).toBe(false);
   });
 
   test('useBuildQueue_refetch_callsCacheRefetch', () => {

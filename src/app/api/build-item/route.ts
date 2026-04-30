@@ -18,9 +18,9 @@ export async function POST(request: NextRequest) {
     requireAuth(session.userId);
 
     const body = await request.json();
-    const { itemKey, itemType, count = 1 } = body;
+    const { itemKey, itemType, count = 1, mode = 'normal' } = body;
 
-    console.log(`🔨 Build item request: ${itemType}/${itemKey} x${count} by user: ${session.userId}`);
+    console.log(`🔨 Build item request: ${itemType}/${itemKey} x${count} (${mode}) by user: ${session.userId}`);
 
     // Validate required fields
     validateRequired(itemKey, 'itemKey');
@@ -30,8 +30,16 @@ export async function POST(request: NextRequest) {
       throw new ApiError(400, 'Invalid item type. Must be "weapon" or "defense"');
     }
 
+    if (mode !== 'normal' && mode !== 'forever') {
+      throw new ApiError(400, 'Invalid build mode. Must be "normal" or "forever"');
+    }
+
     if (!Number.isInteger(count) || count < 1) {
       throw new ApiError(400, 'Count must be a positive integer');
+    }
+
+    if (mode === 'forever' && count !== 1) {
+      throw new ApiError(400, 'Forever build mode only supports a count of 1');
     }
 
     // Validate item exists in catalog
@@ -48,7 +56,13 @@ export async function POST(request: NextRequest) {
       // Iron is only charged for the first item (if queue was empty); subsequent
       // items are charged by processCompletedBuilds when they actually start.
       for (let i = 0; i < count; i++) {
-        const addResult = await techService.addTechItemToBuildQueue(session.userId!, itemKey, itemType, userContext);
+        const addResult = await techService.addTechItemToBuildQueue(
+          session.userId!,
+          itemKey,
+          itemType,
+          userContext,
+          { isRecurring: mode === 'forever' }
+        );
 
         if (!addResult.success) {
           throw new ApiError(400, addResult.error || 'Failed to add item to build queue');
@@ -82,9 +96,14 @@ export async function POST(request: NextRequest) {
       itemKey,
       itemType,
       count,
+      mode,
       buildDurationMinutes: spec.buildDurationMinutes,
       estimatedCompletion: result.estimatedCompletion,
-      message: count === 1 ? `Started building ${spec.name}` : `Started building ${count}x ${spec.name}`
+      message: mode === 'forever'
+        ? `Started building ${spec.name} forever`
+        : count === 1
+          ? `Started building ${spec.name}`
+          : `Started building ${count}x ${spec.name}`
     });
 
   } catch (error) {
