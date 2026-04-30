@@ -81,7 +81,7 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
   const t = useTranslations('home');
 
   const { techCounts, weapons, defenses, isLoading: techLoading, error: techError } = useTechCounts();
-  const { defenseValues, isLoading: defenseLoading, error: defenseError, shipPictureId } = useDefenseValues();
+  const { defenseValues, recoveryTimers, isLoading: defenseLoading, error: defenseError, shipPictureId } = useDefenseValues();
   const { battleStatus } = useBattleStatus();
   const { xp, level, xpForNextLevel, score, isLoading: xpLoading, bonuses } = useUserStats(5000);
 
@@ -161,6 +161,8 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
   // Always use defenseValues from the dedicated hook (works both in and out of battle)
   // The useDefenseValues hook polls /api/ship-stats which returns current User defense values
   const displayDefenseValues = defenseValues;
+  const repairRecoveryTimer = recoveryTimers?.repairs;
+  const shieldRecoveryTimer = recoveryTimers?.shield;
 
   // Calculate color based on percentage (0% = red, 50% = yellow, 100% = green)
   const getDefenseColor = (current: number, max: number): string => {
@@ -185,6 +187,19 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
       const b = Math.round(59 + (80 - 59) * ratio);
       return `rgb(${r}, ${g}, ${b})`;
     }
+  };
+
+  const formatRecoveryTimer = (seconds: number): string => {
+    const totalSeconds = Math.max(0, Math.ceil(seconds));
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const remainingSeconds = totalSeconds % 60;
+
+    if (hours > 0) {
+      return [hours, minutes, remainingSeconds].map(value => value.toString().padStart(2, '0')).join(':');
+    }
+
+    return [minutes, remainingSeconds].map(value => value.toString().padStart(2, '0')).join(':');
   };
 
 
@@ -529,6 +544,14 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
                         <td className="data-cell value-cell">{formatNumber(displayDefenseValues.armor.max)}</td>
                       </tr>
                     )}
+                    {repairRecoveryTimer != null && (
+                      <tr className="data-row recovery-timer-row">
+                        <td className="data-cell">{t('repairHullArmor')}</td>
+                        <td colSpan={2} className="data-cell value-cell recovery-timer-value">
+                          {formatRecoveryTimer(repairRecoveryTimer)}
+                        </td>
+                      </tr>
+                    )}
                     {(displayDefenseValues.shield.max > 0) && (
                       <tr className="data-row">
                         <td className="data-cell">{displayDefenseValues.shield.name}</td>
@@ -536,6 +559,14 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
                           {formatNumber(displayDefenseValues.shield.current)}
                         </td>
                         <td className="data-cell value-cell">{formatNumber(displayDefenseValues.shield.max)}</td>
+                      </tr>
+                    )}
+                    {shieldRecoveryTimer != null && (
+                      <tr className="data-row recovery-timer-row">
+                        <td className="data-cell">{t('shieldRecharge')}</td>
+                        <td colSpan={2} className="data-cell value-cell recovery-timer-value">
+                          {formatRecoveryTimer(shieldRecoveryTimer)}
+                        </td>
                       </tr>
                     )}
                     {(displayDefenseValues.hull.max === 0 && displayDefenseValues.armor.max === 0 && displayDefenseValues.shield.max === 0) && (
