@@ -134,4 +134,29 @@ describe('HomePageClient defense recovery timers', () => {
     expect(defenseTableQueries.queryByText('Repair (Hull + Armor)')).not.toBeInTheDocument();
     expect(defenseTableQueries.queryByText('Shield Recharge')).not.toBeInTheDocument();
   });
+
+  it('defenseTimers_longRecovery_renderHourBasedCountdown', () => {
+    useDefenseValuesMock.mockReturnValue({
+      defenseValues: {
+        hull: { name: 'Hull', current: 1, max: 100, regenRate: 1 },
+        armor: { name: 'Armor', current: 1, max: 100, regenRate: 1 },
+        shield: { name: 'Shield', current: 100, max: 100, regenRate: 2 },
+      },
+      recoveryTimers: {
+        repairs: 3661,
+        shield: null,
+      },
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      shipPictureId: null,
+    });
+
+    render(<HomePageClient auth={{ userId: 1, username: 'captain' }} initialMessages={[]} />);
+
+    const defenseTable = screen.getByText('Defense Values').closest('table');
+    expect(defenseTable).not.toBeNull();
+
+    expect(within(defenseTable!).getByText('01:01:01')).toBeInTheDocument();
+  });
 });
