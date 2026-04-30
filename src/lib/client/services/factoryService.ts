@@ -70,6 +70,7 @@ export interface BuildQueueItem {
   itemType: 'weapon' | 'defense';
   completionTime: number; // Unix timestamp
   remainingSeconds: number;
+  isRecurring?: boolean;
 }
 
 export interface TechCatalogResponse {
@@ -96,6 +97,12 @@ export interface BuildItemResponse {
   message: string;
   estimatedCompletion: number; // Unix timestamp
   remainingIron: number;
+}
+
+export interface AbortBuildQueueResponse {
+  success: boolean;
+  message: string;
+  abortedCount: number;
 }
 
 export interface CompleteBuildResponse {
@@ -171,9 +178,14 @@ class FactoryService {
   /**
    * Start building an item
    */
-  async buildItem(itemKey: string, itemType: 'weapon' | 'defense', count: number = 1): Promise<BuildItemResponse | FactoryErrorResponse> {
+  async buildItem(
+    itemKey: string,
+    itemType: 'weapon' | 'defense',
+    count: number = 1,
+    mode: 'normal' | 'forever' = 'normal'
+  ): Promise<BuildItemResponse | FactoryErrorResponse> {
     try {
-      console.log(`🔨 Building ${itemType}: ${itemKey} x${count}`);
+      console.log(`🔨 Building ${itemType}: ${itemKey} x${count} (${mode})`);
       
       const response = await fetch('/api/build-item', {
         method: 'POST',
@@ -181,7 +193,7 @@ class FactoryService {
           'Content-Type': 'application/json',
         },
         credentials: 'include',
-        body: JSON.stringify({ itemKey, itemType, count }),
+        body: JSON.stringify({ itemKey, itemType, count, mode }),
       });
 
       const data = await response.json();
@@ -228,6 +240,33 @@ class FactoryService {
     } catch (error) {
       console.error('❌ Network error completing build:', error);
       return { error: 'Network error occurred while completing build' };
+    }
+  }
+
+  async abortBuildQueue(): Promise<AbortBuildQueueResponse | FactoryErrorResponse> {
+    try {
+      console.log('🛑 Aborting build queue...');
+
+      const response = await fetch('/api/abort-build-queue', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        console.error('❌ Abort build queue API error:', data);
+        return { error: data.error || `HTTP ${response.status}: ${response.statusText}` };
+      }
+
+      console.log('✅ Build queue aborted successfully');
+      return data;
+    } catch (error) {
+      console.error('❌ Network error aborting build queue:', error);
+      return { error: 'Network error occurred while aborting build queue' };
     }
   }
 

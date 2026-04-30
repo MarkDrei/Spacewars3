@@ -19,6 +19,7 @@ import {
   localizeFactorySubtype,
   localizeFactoryWeapon,
 } from '@/lib/client/i18n/catalogTranslations';
+import { LONG_PRESS_INITIAL_DELAY_MS, getLongPressRepeatDelayMs } from '@/lib/client/factory/buildControlPress';
 import { ServerAuthState } from '@/lib/server/serverSession';
 import './FactoryPage.css';
 
@@ -36,9 +37,11 @@ const FactoryPageClient: React.FC<FactoryPageClientProps> = ({ auth }) => {
     isLoading: isBuildQueueLoading,
     isBuilding,
     isCompletingBuild,
+    isAbortingQueue,
     error: buildQueueError,
     buildItem,
     completeBuild,
+    abortBuildQueue,
     refetch: refetchBuildQueue
   } = useBuildQueue(); // Auth guaranteed by server
   const {
@@ -55,7 +58,8 @@ const FactoryPageClient: React.FC<FactoryPageClientProps> = ({ auth }) => {
 
   // Build count state: keyed by itemKey, defaults to 1
   const [buildCounts, setBuildCounts] = useState<Record<string, number>>({});
-  const longPressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const longPressTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressStartedAtRef = useRef<number | null>(null);
 
   const getBuildCount = (key: string): number => buildCounts[key] ?? 1;
 
@@ -66,27 +70,42 @@ const FactoryPageClient: React.FC<FactoryPageClientProps> = ({ auth }) => {
     }));
   }, []);
 
-  const startLongPress = useCallback((key: string, delta: number) => {
-    if (longPressIntervalRef.current) return;
-    longPressIntervalRef.current = setInterval(() => {
+  const stopLongPress = useCallback(() => {
+    if (longPressTimeoutRef.current) {
+      clearTimeout(longPressTimeoutRef.current);
+      longPressTimeoutRef.current = null;
+    }
+    longPressStartedAtRef.current = null;
+  }, []);
+
+  const scheduleLongPressStep = useCallback((key: string, delta: number) => {
+    const startedAt = longPressStartedAtRef.current;
+    if (startedAt === null) return;
+
+    const elapsedMs = Date.now() - startedAt;
+    longPressTimeoutRef.current = setTimeout(() => {
       changeBuildCount(key, delta);
-    }, 150);
+      scheduleLongPressStep(key, delta);
+    }, getLongPressRepeatDelayMs(elapsedMs));
   }, [changeBuildCount]);
 
-  const stopLongPress = useCallback(() => {
-    if (longPressIntervalRef.current) {
-      clearInterval(longPressIntervalRef.current);
-      longPressIntervalRef.current = null;
-    }
-  }, []);
+  const startLongPress = useCallback((key: string, delta: number) => {
+    stopLongPress();
+    longPressStartedAtRef.current = Date.now();
+    longPressTimeoutRef.current = setTimeout(() => {
+      changeBuildCount(key, delta);
+      scheduleLongPressStep(key, delta);
+    }, LONG_PRESS_INITIAL_DELAY_MS);
+  }, [changeBuildCount, scheduleLongPressStep, stopLongPress]);
 
   // Cleanup long-press interval on unmount
   React.useEffect(() => {
-    return () => {
-      if (longPressIntervalRef.current) {
-        clearInterval(longPressIntervalRef.current);
-        longPressIntervalRef.current = null;
+      return () => {
+      if (longPressTimeoutRef.current) {
+        clearTimeout(longPressTimeoutRef.current);
+        longPressTimeoutRef.current = null;
       }
+      longPressStartedAtRef.current = null;
     };
   }, []);
 
@@ -176,6 +195,15 @@ const FactoryPageClient: React.FC<FactoryPageClientProps> = ({ auth }) => {
           {isBuilding ? t('buildingButton') : t('buildButton', { count })}
         </button>
         <button
+          className="build-forever-btn"
+          disabled={!canAfford || isBuilding}
+          onClick={() => buildItem(key, itemType, 1, 'forever')}
+          aria-label={t('buildForeverLabel')}
+          title={t('buildForeverLabel')}
+        >
+          <span className="forever-icon" aria-hidden="true">∞</span>
+        </button>
+        <button
           className="build-count-btn"
           disabled={isBuilding || count <= 1}
           onClick={() => changeBuildCount(key, -1)}
@@ -232,7 +260,18 @@ const FactoryPageClient: React.FC<FactoryPageClientProps> = ({ auth }) => {
           )}
 
           {/* Build Queue Section */}
-          <h2 id="build-queue" className="section-header">{t('buildQueueHeading')}</h2>
+          <div className="build-queue-header">
+            <h2 id="build-queue" className="section-header">{t('buildQueueHeading')}</h2>
+            {buildQueue.length > 0 && (
+              <button
+                className="abort-queue-button"
+                onClick={abortBuildQueue}
+                disabled={isAbortingQueue}
+              >
+                {isAbortingQueue ? t('abortingQueueButton') : t('abortQueueButton')}
+              </button>
+            )}
+          </div>
           {buildQueue.length === 0 ? (
             <div className="no-build-queue-message">{t('noBuildQueueMessage')}</div>
           ) : (
@@ -250,12 +289,17 @@ const FactoryPageClient: React.FC<FactoryPageClientProps> = ({ auth }) => {
                     {buildQueue.map((item, index) => (
                       <tr key={`${item.itemKey}-${index}`} className="data-row">
                         <td className="data-cell">
-                          <span className="stat-value">
+                          <span className="stat-value queue-item-label">
                             {item.itemType === 'weapon'
                               ? weapons[item.itemKey]?.name ?? item.itemKey
                               : defenses[item.itemKey]
                                 ? getLocalizedDefense(item.itemKey).name
                                 : item.itemKey}
+                            {item.isRecurring && (
+                              <span className="queue-forever-badge" title={t('queueForeverBadge')}>
+                                ∞ {t('queueForeverBadge')}
+                              </span>
+                            )}
                           </span>
                         </td>
                         <td className="data-cell">

@@ -31,6 +31,19 @@ describe('Build Item API - input validation (unit)', () => {
     expect(data.error).toContain('Invalid item type');
   });
 
+  test('buildItem_invalidBuildMode_returns400', async () => {
+    const sessionCookie = await createMockSessionCookie();
+    const request = createRequest('http://localhost:3000/api/build-item', 'POST', {
+      itemKey: 'pulse_laser',
+      itemType: 'weapon',
+      mode: 'loop-forever',
+    }, sessionCookie);
+    const response = await buildItemPOST(request);
+    const data = await response.json();
+    expect(response.status).toBe(400);
+    expect(data.error).toContain('Invalid build mode');
+  });
+
   test('buildItem_countZero_returns400', async () => {
     const sessionCookie = await createMockSessionCookie();
     const request = createRequest('http://localhost:3000/api/build-item', 'POST', {
@@ -68,6 +81,20 @@ describe('Build Item API - input validation (unit)', () => {
     const data = await response.json();
     expect(response.status).toBe(400);
     expect(data.error).toContain('Unknown weapon');
+  });
+
+  test('buildItem_foreverWithCountGreaterThanOne_returns400', async () => {
+    const sessionCookie = await createMockSessionCookie();
+    const request = createRequest('http://localhost:3000/api/build-item', 'POST', {
+      itemKey: 'pulse_laser',
+      itemType: 'weapon',
+      count: 2,
+      mode: 'forever',
+    }, sessionCookie);
+    const response = await buildItemPOST(request);
+    const data = await response.json();
+    expect(response.status).toBe(400);
+    expect(data.error).toContain('Forever build mode only supports a count of 1');
   });
 
   test('buildItem_largeCount_passesCountValidation', async () => {

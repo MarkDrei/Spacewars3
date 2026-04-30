@@ -8,9 +8,11 @@ interface UseBuildQueueReturn {
   isLoading: boolean;
   isBuilding: boolean;
   isCompletingBuild: boolean;
+  isAbortingQueue: boolean;
   error: string | null;
-  buildItem: (itemKey: string, itemType: 'weapon' | 'defense', count?: number) => Promise<void>;
+  buildItem: (itemKey: string, itemType: 'weapon' | 'defense', count?: number, mode?: 'normal' | 'forever') => Promise<void>;
   completeBuild: () => Promise<void>;
+  abortBuildQueue: () => Promise<void>;
   refetch: () => void;
 }
 
@@ -19,6 +21,7 @@ export const useBuildQueue = (pollInterval: number = 5000): UseBuildQueueReturn 
   const [buildQueue, setBuildQueue] = useState<BuildQueueItem[]>([]);
   const [isBuilding, setIsBuilding] = useState<boolean>(false);
   const [isCompletingBuild, setIsCompletingBuild] = useState<boolean>(false);
+  const [isAbortingQueue, setIsAbortingQueue] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
   // Use shared factory data cache
@@ -94,14 +97,19 @@ export const useBuildQueue = (pollInterval: number = 5000): UseBuildQueueReturn 
   }, [refetchCache]);
 
   // Build item function
-  const buildItem = useCallback(async (itemKey: string, itemType: 'weapon' | 'defense', count: number = 1) => {
+  const buildItem = useCallback(async (
+    itemKey: string,
+    itemType: 'weapon' | 'defense',
+    count: number = 1,
+    mode: 'normal' | 'forever' = 'normal'
+  ) => {
     if (isBuilding) return;
 
     setIsBuilding(true);
     setError(null);
 
     try {
-      const result = await factoryService.buildItem(itemKey, itemType, count);
+      const result = await factoryService.buildItem(itemKey, itemType, count, mode);
 
       if (!isMountedRef.current) return;
 
@@ -118,7 +126,7 @@ export const useBuildQueue = (pollInterval: number = 5000): UseBuildQueueReturn 
       
     } catch (err) {
       if (isMountedRef.current) {
-        setError('Failed to start building item');
+        setError(mode === 'forever' ? 'Failed to start forever build' : 'Failed to start building item');
         console.error('Error building item:', err);
       }
     } finally {
@@ -162,6 +170,35 @@ export const useBuildQueue = (pollInterval: number = 5000): UseBuildQueueReturn 
       }
     }
   }, [isCompletingBuild, buildQueue.length, refetchCache]);
+
+  const abortBuildQueue = useCallback(async () => {
+    if (isAbortingQueue || buildQueue.length === 0) return;
+
+    setIsAbortingQueue(true);
+    setError(null);
+
+    try {
+      const result = await factoryService.abortBuildQueue();
+
+      if (!isMountedRef.current) return;
+
+      if ('error' in result) {
+        setError(result.error);
+        return;
+      }
+
+      refetchCache();
+    } catch (err) {
+      if (isMountedRef.current) {
+        setError('Failed to abort build queue');
+        console.error('Error aborting build queue:', err);
+      }
+    } finally {
+      if (isMountedRef.current) {
+        setIsAbortingQueue(false);
+      }
+    }
+  }, [isAbortingQueue, buildQueue.length, refetchCache]);
 
   // Initialize mounted ref
   useEffect(() => {
@@ -211,9 +248,11 @@ export const useBuildQueue = (pollInterval: number = 5000): UseBuildQueueReturn 
     isLoading: cacheLoading,
     isBuilding,
     isCompletingBuild,
+    isAbortingQueue,
     error: combinedError,
     buildItem,
     completeBuild,
+    abortBuildQueue,
     refetch
   };
 };

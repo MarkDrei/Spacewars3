@@ -134,7 +134,8 @@ export class TechService {
         userId: number,
         itemKey: string,
         itemType: 'weapon' | 'defense',
-        context: LockContext<LocksAtMostAndHas4>
+        context: LockContext<LocksAtMostAndHas4>,
+        options: { isRecurring?: boolean } = {}
     ): Promise<{ success: boolean; error?: string }> {
         const user = await this.userCacheInstance.getUserByIdWithLock(context, userId);
 
@@ -143,6 +144,8 @@ export class TechService {
         // Check if item exists
         const spec = TechFactory.getTechSpec(itemKey, itemType);
         if (!spec) return { success: false, error: 'Invalid tech item' };
+
+        const removedRecurringItem = this.removeRecurringQueueItem(user);
 
         // Only charge iron for the first item in the queue (it starts building immediately).
         // Subsequent items are free to queue; iron is charged when each build starts.
@@ -160,7 +163,8 @@ export class TechService {
         const queueItem: BuildQueueItem = {
             itemKey,
             itemType,
-            completionTime: 0 // Will be calculated when processing queue
+            completionTime: 0, // Will be calculated when processing queue
+            isRecurring: options.isRecurring
         };
 
         user.buildQueue.push(queueItem);
@@ -170,9 +174,30 @@ export class TechService {
             user.buildStartSec = Math.floor(Date.now() / 1000);
         }
 
-        this.userCacheInstance.updateUserInCache(context, user);
+        await this.userCacheInstance.updateUserInCache(context, user);
+
+        if (removedRecurringItem) {
+            console.log(`♾️ Removed recurring queue item before adding ${itemType}/${itemKey} for user ${userId}`);
+        }
 
         return { success: true };
+    }
+
+    async abortBuildQueue(userId: number, context: LockContext<LocksAtMostAndHas4>): Promise<{ abortedCount: number }> {
+        const user = await this.userCacheInstance.getUserByIdWithLock(context, userId);
+
+        if (!user) return { abortedCount: 0 };
+
+        const abortedCount = user.buildQueue.length;
+        if (abortedCount === 0) {
+            return { abortedCount: 0 };
+        }
+
+        user.buildQueue = [];
+        user.buildStartSec = null;
+        await this.userCacheInstance.updateUserInCache(context, user);
+
+        return { abortedCount };
     }
 
     /**
@@ -222,9 +247,6 @@ export class TechService {
                 // Build complete!
                 this.applyCompletedBuild(user, currentBuild);
                 completedItems.push(currentBuild);
-
-                // Remove from queue
-                user.buildQueue.shift();
                 queueChanged = true;
 
                 // Send notification
@@ -237,33 +259,35 @@ export class TechService {
                     console.error(`Failed to send build completion notification to user ${userId}:`, error);
                 }
 
-                // Setup next build if any
-                if (user.buildQueue.length > 0) {
-                    const nextBuild = user.buildQueue[0];
-                    const nextSpec = TechFactory.getTechSpec(nextBuild.itemKey, nextBuild.itemType);
-
-                    if (!nextSpec || user.iron < nextSpec.baseCost) {
-                        // Not enough iron to start the next item — abort the entire remaining queue
-                        const abortedCount = user.buildQueue.length;
-                        const itemName = nextSpec ? nextSpec.name : nextBuild.itemKey;
-                        user.buildQueue = [];
-                        user.buildStartSec = null;
-                        try {
-                            const ctx = createLockContext();
-                            const locale = user.preferredLocale ?? 'en';
-                            const tMsg = await getServerT(locale, 'messages');
-                            await this.messageCacheInstance.createMessage(ctx, userId,
-                                tMsg('buildQueueAborted', { name: itemName, count: abortedCount }));
-                        } catch (error) {
-                            console.error(`Failed to send queue abort notification to user ${userId}:`, error);
-                        }
+                if (currentBuild.isRecurring) {
+                    if (user.iron < spec.baseCost) {
+                        await this.abortQueueAndNotify(user, userId, spec.name, 1);
                     } else {
-                        // Deduct iron for the next item and start it
-                        user.subtractIron(nextSpec.baseCost);
+                        user.subtractIron(spec.baseCost);
                         user.buildStartSec = calculatedCompletionTime;
                     }
                 } else {
-                    user.buildStartSec = null;
+                    // Remove from queue
+                    user.buildQueue.shift();
+
+                    // Setup next build if any
+                    if (user.buildQueue.length > 0) {
+                        const nextBuild = user.buildQueue[0];
+                        const nextSpec = TechFactory.getTechSpec(nextBuild.itemKey, nextBuild.itemType);
+
+                        if (!nextSpec || user.iron < nextSpec.baseCost) {
+                            // Not enough iron to start the next item — abort the entire remaining queue
+                            const abortedCount = user.buildQueue.length;
+                            const itemName = nextSpec ? nextSpec.name : nextBuild.itemKey;
+                            await this.abortQueueAndNotify(user, userId, itemName, abortedCount);
+                        } else {
+                            // Deduct iron for the next item and start it
+                            user.subtractIron(nextSpec.baseCost);
+                            user.buildStartSec = calculatedCompletionTime;
+                        }
+                    } else {
+                        user.buildStartSec = null;
+                    }
                 }
             } else {
                 // Current build not finished yet
@@ -272,10 +296,39 @@ export class TechService {
         }
 
         if (queueChanged) {
-            this.userCacheInstance.updateUserInCache(context, user);
+            await this.userCacheInstance.updateUserInCache(context, user);
         }
 
         return { completed: completedItems };
+    }
+
+    private removeRecurringQueueItem(user: User): boolean {
+        const recurringIndex = user.buildQueue.findIndex((item) => item.isRecurring);
+        if (recurringIndex === -1) {
+            return false;
+        }
+
+        user.buildQueue.splice(recurringIndex, user.buildQueue.length - recurringIndex);
+        if (user.buildQueue.length === 0) {
+            user.buildStartSec = null;
+        }
+
+        return true;
+    }
+
+    private async abortQueueAndNotify(user: User, userId: number, itemName: string, abortedCount: number): Promise<void> {
+        user.buildQueue = [];
+        user.buildStartSec = null;
+
+        try {
+            const ctx = createLockContext();
+            const locale = user.preferredLocale ?? 'en';
+            const tMsg = await getServerT(locale, 'messages');
+            await this.messageCacheInstance.createMessage(ctx, userId,
+                tMsg('buildQueueAborted', { name: itemName, count: abortedCount }));
+        } catch (error) {
+            console.error(`Failed to send queue abort notification to user ${userId}:`, error);
+        }
     }
 
     private applyCompletedBuild(user: User, build: BuildQueueItem): void {
