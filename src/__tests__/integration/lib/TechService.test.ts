@@ -35,6 +35,7 @@ describe('TechService - Unit Tests', () => {
         // Create mock caches
         mockUserCache = {
             getUserByIdWithLock: mockGetUserByIdWithLock as (context: unknown, userId: number) => Promise<User | null>,
+            getUserByIdWithoutRefreshWithLock: mockGetUserByIdWithLock as (context: unknown, userId: number) => Promise<User | null>,
             getUserByIdFromCache: mockGetUserByIdFromCache as (context: unknown, userId: number) => User | null,
             updateUserInCache: mockUpdateUserInCache as (context: unknown, user: User) => Promise<void>
         };

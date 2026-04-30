@@ -1,6 +1,7 @@
 import { describe, expect, test, beforeEach } from 'vitest';
 import { User, SaveUserCallback } from '@/lib/server/user/user';
 import { ResearchType, createInitialTechTree, getResearchEffectFromTree } from '@/lib/server/techs/techtree';
+import { updateStatsWithMockedBuildRefresh } from '@/__tests__/helpers/updateStatsTestHelpers';
 
 describe('Iron Capacity Management', () => {
   let user: User;
@@ -97,11 +98,11 @@ describe('Iron Capacity Management', () => {
     expect(user.iron).toBe(100); // Iron should not change
   });
 
-  test('updateStats_respectsIronCapacity_capsPassiveIncome', () => {
+  test('updateStats_respectsIronCapacity_capsPassiveIncome', async () => {
     user.iron = 4990;
     user.last_updated = 1000;
     // 20 seconds pass, would generate 20 iron, but capacity is 5000
-    user.updateStats(1020);
+    await updateStatsWithMockedBuildRefresh(user, 1020);
     expect(user.iron).toBe(5000); // Capped at max capacity
   });
 
@@ -120,7 +121,7 @@ describe('Iron Capacity Management', () => {
     expect(user.iron).toBe(ironBefore); // No iron added when at capacity
   });
 
-  test('updateStats_withInventoryUpgrade_allowsMoreIron', () => {
+  test('updateStats_withInventoryUpgrade_allowsMoreIron', async () => {
     user.iron = 5000; // At level 1 capacity
     user.last_updated = 1000;
     
@@ -128,7 +129,7 @@ describe('Iron Capacity Management', () => {
     user.techTree.ironCapacity = 2;
     
     // 1000 seconds pass, should generate 1000 iron
-    user.updateStats(2000);
+    await updateStatsWithMockedBuildRefresh(user, 2000);
     expect(user.iron).toBe(6000); // Was 5000, added 1000
     expect(user.iron).toBeLessThanOrEqual(10000); // Under new capacity
   });

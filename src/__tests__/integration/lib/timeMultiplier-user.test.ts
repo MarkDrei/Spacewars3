@@ -3,6 +3,7 @@ import { User, SaveUserCallback } from '@/lib/server/user/user';
 import { ResearchType, triggerResearch, createInitialTechTree } from '@/lib/server/techs/techtree';
 import { TimeMultiplierService } from '@/lib/server/timeMultiplier';
 import { BASE_REGEN_RATE } from '@/lib/server/bonus/userBonusTypes';
+import { updateStatsWithMockedBuildRefresh } from '../../helpers/updateStatsTestHelpers';
 
 describe('User.updateStats with time multiplier', () => {
   let user: User;
@@ -55,29 +56,29 @@ describe('User.updateStats with time multiplier', () => {
   });
 
   describe('Iron production acceleration', () => {
-    test('updateStats_withMultiplier10_awardsIronAt10xRate', () => {
+    test('updateStats_withMultiplier10_awardsIronAt10xRate', async () => {
       // Set 10x multiplier
       timeMultiplier.setMultiplier(10, 5);
 
       // 5 seconds of real time should produce 50 seconds worth of iron
-      user.updateStats(1005);
+      await updateStatsWithMockedBuildRefresh(user, 1005);
 
       // Base rate: 1 iron/sec, 5s real time * 10x = 50s game time = 50 iron
       expect(user.iron).toBeCloseTo(50, 5);
       expect(user.last_updated).toBe(1005); // Real timestamp updated
     });
 
-    test('updateStats_withMultiplier1_behavesNormally', () => {
+    test('updateStats_withMultiplier1_behavesNormally', async () => {
       // Default multiplier is 1
       expect(timeMultiplier.getMultiplier()).toBe(1);
 
       // 5 seconds should produce 5 iron
-      user.updateStats(1005);
+      await updateStatsWithMockedBuildRefresh(user, 1005);
 
       expect(user.iron).toBeCloseTo(5, 5);
     });
 
-    test('updateStats_multiplierExpired_usesNormalRate', () => {
+    test('updateStats_multiplierExpired_usesNormalRate', async () => {
       // Set multiplier with very short duration
       const now = Date.now();
       timeMultiplier.setMultiplier(10, 0.0001); // ~6ms duration
@@ -92,16 +93,16 @@ describe('User.updateStats with time multiplier', () => {
       expect(timeMultiplier.getMultiplier()).toBe(1);
 
       // Update stats - should use normal rate
-      user.updateStats(1005);
+      await updateStatsWithMockedBuildRefresh(user, 1005);
       expect(user.iron).toBeCloseTo(5, 5);
     });
 
-    test('updateStats_withMultiplier50_awardsIronAt50xRate', () => {
+    test('updateStats_withMultiplier50_awardsIronAt50xRate', async () => {
       // Set 50x multiplier
       timeMultiplier.setMultiplier(50, 5);
 
       // 2 seconds of real time = 100 seconds of game time
-      user.updateStats(1002);
+      await updateStatsWithMockedBuildRefresh(user, 1002);
 
       // Base rate: 1 iron/sec, 2s real time * 50x = 100s game time = 100 iron
       expect(user.iron).toBeCloseTo(100, 5);
@@ -109,27 +110,27 @@ describe('User.updateStats with time multiplier', () => {
   });
 
   describe('Research progression acceleration', () => {
-    test('updateStats_withMultiplier10_progressesResearchAt10xRate', () => {
+    test('updateStats_withMultiplier10_progressesResearchAt10xRate', async () => {
       // Start IronHarvesting research (duration 10s)
       triggerResearch(user.techTree, ResearchType.IronHarvesting);
       timeMultiplier.setMultiplier(10, 5);
 
       // 1 second of real time = 10 seconds of game time
-      user.updateStats(1001);
+      await updateStatsWithMockedBuildRefresh(user, 1001);
 
       // Research should be complete (10s game time >= 10s duration)
       expect(user.techTree.ironHarvesting).toBe(2); // upgraded
       expect(user.techTree.activeResearch).toBeUndefined();
     });
 
-    test('updateStats_withMultiplier10_researchCompletesDuringInterval_splitsIronGainCorrectly', () => {
+    test('updateStats_withMultiplier10_researchCompletesDuringInterval_splitsIronGainCorrectly', async () => {
       // Start IronHarvesting research (duration 10s)
       triggerResearch(user.techTree, ResearchType.IronHarvesting);
       timeMultiplier.setMultiplier(10, 5);
 
       // 1.5 seconds of real time = 15 seconds of game time
       // Research completes at 10s game time, then 5s at new rate (1.1/sec)
-      user.updateStats(1001.5);
+      await updateStatsWithMockedBuildRefresh(user, 1001.5);
 
       // 10s at old rate (1/sec) + 5s at new rate (1.1/sec)
       const expectedIron = 10 + 5 * 1.1;
@@ -138,13 +139,13 @@ describe('User.updateStats with time multiplier', () => {
       expect(user.techTree.activeResearch).toBeUndefined();
     });
 
-    test('updateStats_withMultiplier5_researchProgressesPartially', () => {
+    test('updateStats_withMultiplier5_researchProgressesPartially', async () => {
       // Start IronHarvesting research (duration 10s)
       triggerResearch(user.techTree, ResearchType.IronHarvesting);
       timeMultiplier.setMultiplier(5, 5);
 
       // 1 second of real time = 5 seconds of game time
-      user.updateStats(1001);
+      await updateStatsWithMockedBuildRefresh(user, 1001);
 
       // Research should still be in progress (5s < 10s duration)
       expect(user.techTree.ironHarvesting).toBe(1); // not upgraded yet
@@ -152,28 +153,28 @@ describe('User.updateStats with time multiplier', () => {
       expect(user.techTree.activeResearch?.remainingDuration).toBeCloseTo(5, 5);
     });
 
-    test('updateStats_multiplierChangeDuringResearch_continuesWithNewRate', () => {
+    test('updateStats_multiplierChangeDuringResearch_continuesWithNewRate', async () => {
       // Start IronHarvesting research (duration 10s)
       triggerResearch(user.techTree, ResearchType.IronHarvesting);
 
       // First update: 2s real time, no multiplier = 2s game time
-      user.updateStats(1002);
+      await updateStatsWithMockedBuildRefresh(user, 1002);
       expect(user.techTree.activeResearch?.remainingDuration).toBeCloseTo(8, 5);
 
       // Activate 10x multiplier
       timeMultiplier.setMultiplier(10, 5);
 
       // Second update: 1s real time * 10x = 10s game time (completes research)
-      user.updateStats(1003);
+      await updateStatsWithMockedBuildRefresh(user, 1003);
       expect(user.techTree.ironHarvesting).toBe(2); // upgraded
       expect(user.techTree.activeResearch).toBeUndefined();
     });
 
-    test('updateStats_withArtificialIntelligence_progressesResearchFaster', () => {
+    test('updateStats_withArtificialIntelligence_progressesResearchFaster', async () => {
       user.techTree.artificialIntelligence = 1;
       triggerResearch(user.techTree, ResearchType.ShipSpeed);
 
-      user.updateStats(1020);
+      await updateStatsWithMockedBuildRefresh(user, 1020);
 
       expect(user.techTree.activeResearch).toBeDefined();
       expect(user.techTree.activeResearch?.remainingDuration).toBeCloseTo(
@@ -182,11 +183,11 @@ describe('User.updateStats with time multiplier', () => {
       );
     });
 
-    test('updateStats_withArtificialIntelligence_researchCompletesSoonerAndSplitsIronCorrectly', () => {
+    test('updateStats_withArtificialIntelligence_researchCompletesSoonerAndSplitsIronCorrectly', async () => {
       user.techTree.artificialIntelligence = 1;
       triggerResearch(user.techTree, ResearchType.IronHarvesting);
 
-      user.updateStats(1010);
+      await updateStatsWithMockedBuildRefresh(user, 1010);
 
       expect(user.techTree.ironHarvesting).toBe(2);
       expect(user.techTree.activeResearch).toBeUndefined();
@@ -290,7 +291,7 @@ describe('User.updateStats with time multiplier', () => {
   });
 
   describe('Integration: updateStats calls updateDefenseValues', () => {
-    test('updateStats_withMultiplier10_updatesIronResearchAndDefenses', () => {
+    test('updateStats_withMultiplier10_updatesIronResearchAndDefenses', async () => {
       // Damage defenses
       user.hullCurrent = 100;
       user.armorCurrent = 100;
@@ -303,7 +304,7 @@ describe('User.updateStats with time multiplier', () => {
       timeMultiplier.setMultiplier(10, 5);
 
       // Update stats after 1.5s real time = 15s game time
-      user.updateStats(1001.5);
+      await updateStatsWithMockedBuildRefresh(user, 1001.5);
 
       // Iron: 10s at 1/sec + 5s at 1.1/sec (research completes)
       const expectedIron = 10 + 5 * 1.1;
@@ -320,38 +321,38 @@ describe('User.updateStats with time multiplier', () => {
   });
 
   describe('Edge cases', () => {
-    test('updateStats_zeroElapsedTime_noChanges', () => {
+    test('updateStats_zeroElapsedTime_noChanges', async () => {
       timeMultiplier.setMultiplier(10, 5);
 
       // Same timestamp
-      user.updateStats(1000);
+      await updateStatsWithMockedBuildRefresh(user, 1000);
 
       expect(user.iron).toBe(0);
       expect(user.last_updated).toBe(1000);
     });
 
-    test('updateStats_negativeElapsedTime_noChanges', () => {
+    test('updateStats_negativeElapsedTime_noChanges', async () => {
       timeMultiplier.setMultiplier(10, 5);
 
       // Timestamp in the past (shouldn't happen, but defensive check)
-      user.updateStats(999);
+      await updateStatsWithMockedBuildRefresh(user, 999);
 
       expect(user.iron).toBe(0);
       expect(user.last_updated).toBe(1000); // Unchanged
     });
 
-    test('updateStats_withLargeMultiplier_handlesCorrectly', () => {
+    test('updateStats_withLargeMultiplier_handlesCorrectly', async () => {
       // Set 100x multiplier
       timeMultiplier.setMultiplier(100, 5);
 
       // 1 second real time = 100 seconds game time
-      user.updateStats(1001);
+      await updateStatsWithMockedBuildRefresh(user, 1001);
 
       // Base rate: 1 iron/sec * 100s = 100 iron
       expect(user.iron).toBeCloseTo(100, 5);
     });
 
-    test('updateStats_ironCapacity_enforcedWithMultiplier', () => {
+    test('updateStats_ironCapacity_enforcedWithMultiplier', async () => {
       // Start with high iron near capacity (max 5000 for default tech)
       user.iron = 4980;
 
@@ -359,7 +360,7 @@ describe('User.updateStats with time multiplier', () => {
       timeMultiplier.setMultiplier(10, 5);
 
       // 5 seconds real time = 50 seconds game time = 50 iron
-      user.updateStats(1005);
+      await updateStatsWithMockedBuildRefresh(user, 1005);
 
       // Should cap at 5000 (addIron enforces capacity)
       expect(user.iron).toBe(5000);

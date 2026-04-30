@@ -36,9 +36,7 @@ export async function GET(request: NextRequest) {
 }
 
 async function processUserStats(user: User, userWorldCache: UserCache, userCtx: LockContext<LocksAtMostAndHas4>): Promise<NextResponse> {
-  const now = Math.floor(Date.now() / 1000);
   const bonuses = await userWorldCache.getBonusesByUserIdWithLock(userCtx, user.id);
-  user.updateStats(now, bonuses);
   
   // Update cache with new data (using unsafe methods because we have proper locks)
   userWorldCache.updateUserInCache(userCtx, user);
