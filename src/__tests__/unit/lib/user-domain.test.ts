@@ -230,6 +230,28 @@ describe('User.updateStats with IronHarvesting research progression', () => {
     );
   });
 
+  async function updateStatsWithMockedBuildProcessing(
+    now: number,
+    implementation: (
+      userId: number,
+      context: unknown,
+      options?: { now?: number }
+    ) => Promise<{ completed: { itemKey: string; itemType: 'weapon' | 'defense'; completionTime: number }[] }>
+  ) {
+    const processCompletedBuilds = vi.fn().mockImplementation(implementation);
+    const getInstanceSpy = vi.spyOn(TechService, 'getInstance').mockReturnValue({ processCompletedBuilds } as unknown as TechService);
+
+    try {
+      await withUserLock(async (context) => {
+        await user.updateStats(now, context);
+      });
+    } finally {
+      getInstanceSpy.mockRestore();
+    }
+
+    return processCompletedBuilds;
+  }
+
   test('updateStats_researchDoesNotComplete_awardsAllIronAtOldRate', async () => {
     // Start IronHarvesting research (duration 10s)
     triggerResearch(user.techTree, ResearchType.IronHarvesting);
@@ -385,7 +407,7 @@ describe('User.updateStats with IronHarvesting research progression', () => {
     ];
     user.buildStartSec = 1000;
 
-    const processCompletedBuilds = vi.fn().mockImplementation(async (_userId, _context, options?: { now?: number }) => {
+    const processCompletedBuilds = await updateStatsWithMockedBuildProcessing(1150, async (_userId, _context, options?: { now?: number }) => {
       if (options?.now !== 1060) {
         throw new Error(`Unexpected build processing time: ${options?.now}`);
       }
@@ -400,15 +422,6 @@ describe('User.updateStats with IronHarvesting research progression', () => {
         completed: [{ itemKey: 'auto_turret', itemType: 'weapon', completionTime: 1060 }]
       };
     });
-    const getInstanceSpy = vi.spyOn(TechService, 'getInstance').mockReturnValue({ processCompletedBuilds } as unknown as TechService);
-
-    try {
-      await withUserLock(async (context) => {
-        await user.updateStats(1150, context);
-      });
-    } finally {
-      getInstanceSpy.mockRestore();
-    }
 
     expect(processCompletedBuilds).toHaveBeenCalledTimes(1);
     expect(user.iron).toBeCloseTo(150);
@@ -425,7 +438,7 @@ describe('User.updateStats with IronHarvesting research progression', () => {
     ];
     user.buildStartSec = 1000;
 
-    const processCompletedBuilds = vi.fn().mockImplementation(async (_userId, _context, options?: { now?: number }) => {
+    const processCompletedBuilds = await updateStatsWithMockedBuildProcessing(1150, async (_userId, _context, options?: { now?: number }) => {
       if (options?.now === 1060) {
         expect(user.iron).toBeCloseTo(110);
 
@@ -453,15 +466,6 @@ describe('User.updateStats with IronHarvesting research progression', () => {
 
       throw new Error(`Unexpected build processing time: ${options?.now}`);
     });
-    const getInstanceSpy = vi.spyOn(TechService, 'getInstance').mockReturnValue({ processCompletedBuilds } as unknown as TechService);
-
-    try {
-      await withUserLock(async (context) => {
-        await user.updateStats(1150, context);
-      });
-    } finally {
-      getInstanceSpy.mockRestore();
-    }
 
     expect(processCompletedBuilds).toHaveBeenCalledTimes(2);
     expect(user.iron).toBeCloseTo(100);
