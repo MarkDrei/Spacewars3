@@ -7,7 +7,7 @@ import { POST as registerPOST } from '@/app/api/register/route';
 import { POST as loginPOST } from '@/app/api/login/route';
 
 // Import shared test helpers
-import { createRequest, extractSessionCookie } from '../../helpers/apiTestHelpers';
+import { createRequest, extractSessionCookie, randomUsername } from '../../helpers/apiTestHelpers';
 import { withTransaction } from '../../helpers/transactionHelper';
 import { initializeIntegrationTestServer, shutdownIntegrationTestServer } from '../../helpers/testServer';
 
@@ -66,7 +66,7 @@ describe('Complete Build API (Cheat Mode)', () => {
   test('completeBuild_regularUser_returns403', async () => {
     await withTransaction(async () => {
       // Create a regular user (not 'a' or 'q')
-      const username = `regularuser_${Date.now()}`;
+      const username = randomUsername('reg');
       const password = 'testpass123';
       
       // Register the user

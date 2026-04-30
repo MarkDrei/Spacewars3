@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { POST as registerPOST } from '@/app/api/register/route';
-import { createRequest } from '../../helpers/apiTestHelpers';
+import { createRequest, randomUsername } from '../../helpers/apiTestHelpers';
 import { initializeIntegrationTestServer, shutdownIntegrationTestServer } from '../../helpers/testServer';
 import { withTransaction } from '../../helpers/transactionHelper';
 
@@ -174,7 +174,7 @@ describe('register – username validation', () => {
 
   it('register_duplicatePlayerUsername_rejected', async () => {
     await withTransaction(async () => {
-      const username = `duptest_${Date.now()}`;
+      const username = randomUsername('dup');
 
       // First registration succeeds
       const req1 = createRequest('http://localhost:3000/api/register', 'POST', {
