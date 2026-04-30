@@ -99,7 +99,7 @@ describe('TimeMultiplier - Battle Weapon Cooldowns', () => {
       
       // Cooldown should be ceil(720 / 1.15 / 10) = 63 seconds
       // pulse_laser base: 720s. User 'a' has energyRechargeRate:1 (15% → speed factor 1.15)
-      // bonusedCooldown = 720 / 1.15 ≈ 626.09s. With 10x: ceil(626.09/10) = 63s.
+      // bonusedCooldown = ceil(720 / 1.15) = 627s. With 10x: ceil(627/10) = 63s.
       const expectedCooldown = timeBefore + 63;
       expect(updatedCooldown).toBeGreaterThanOrEqual(expectedCooldown);
       expect(updatedCooldown).toBeLessThanOrEqual(expectedCooldown + 2);
@@ -354,7 +354,7 @@ describe('TimeMultiplier - Battle Weapon Cooldowns', () => {
       
       // Cooldown should be ceil(720 / 1.15 / 10) = 63 seconds
       // BattleStats.cooldown is ignored; battleScheduler uses TechFactory spec (720s for pulse_laser).
-      // User 'a' energyRechargeRate:1 → bonusedCooldown = ceil(720/1.15) = 627s; 10x multiplier → 63s.
+      // User 'a' energyRechargeRate:1 → bonusedCooldown = ceil(720/1.15) = 627s; 10x multiplier → ceil(627/10)=63s.
       const expectedCooldown = timeBefore + 63;
       expect(updatedCooldown).toBeGreaterThanOrEqual(expectedCooldown);
       expect(updatedCooldown).toBeLessThanOrEqual(expectedCooldown + 2);
