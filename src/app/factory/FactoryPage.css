@@ -47,24 +47,30 @@
 }
 
 .abort-queue-button {
-  background: rgba(244, 67, 54, 0.18);
-  color: #ff8a80;
-  border: 1px solid rgba(244, 67, 54, 0.4);
-  padding: 0.55rem 0.9rem;
+  background-color: #f44336;
+  color: white;
+  border: none;
+  padding: 0.6rem 1.2rem;
   border-radius: 6px;
   cursor: pointer;
   font-size: 0.9rem;
-  font-weight: 600;
+  font-weight: 500;
   transition: all 0.2s ease;
+  min-width: var(--min-width-button);
 }
 
 .abort-queue-button:hover:not(:disabled) {
-  background: rgba(244, 67, 54, 0.28);
+  background-color: #d32f2f;
 }
 
 .abort-queue-button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.abort-queue-button:active:not(:disabled) {
+  background-color: #b71c1c;
+  transform: translateY(1px);
 }
 
 /* Build Queue countdown styling */
@@ -176,18 +182,21 @@
 }
 
 .build-forever-btn {
-  background: rgba(255, 255, 255, 0.08);
-  color: var(--primary-green);
-  border: 1px solid rgba(0, 255, 0, 0.35);
+  background-color: var(--primary-green);
+  color: white;
+  border: none;
   padding: 0.6rem 0.7rem;
   border-radius: 6px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  font-size: 1rem;
+  font-weight: 700;
   line-height: 1;
+  transition: all 0.2s ease;
+  user-select: none;
 }
 
 .build-forever-btn:hover:not(:disabled) {
-  background: rgba(0, 255, 0, 0.14);
+  background-color: var(--primary-green-hover);
 }
 
 .build-forever-btn:disabled {
@@ -195,11 +204,15 @@
   cursor: not-allowed;
 }
 
+.build-forever-btn:active:not(:disabled) {
+  background-color: var(--primary-green-active);
+  transform: translateY(1px);
+}
+
 .forever-icon {
   display: inline-block;
   font-size: 1.15rem;
   font-weight: 700;
-  transform: rotate(8deg);
 }
 
 .queue-item-label {
@@ -286,6 +299,7 @@
 
   .build-forever-btn {
     padding: 0.5rem 0.6rem;
+    font-size: 0.9rem;
   }
   
   .section-header {
