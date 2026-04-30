@@ -177,7 +177,7 @@ describe('User.updateStats with time multiplier', () => {
 
       expect(user.techTree.activeResearch).toBeDefined();
       expect(user.techTree.activeResearch?.remainingDuration).toBeCloseTo(
-        30 - (20 * (1 / 0.9)),
+        30 - (20 * 1.10),
         5
       );
     });
@@ -190,7 +190,13 @@ describe('User.updateStats with time multiplier', () => {
 
       expect(user.techTree.ironHarvesting).toBe(2);
       expect(user.techTree.activeResearch).toBeUndefined();
-      expect(user.iron).toBeCloseTo(9 + 1.1, 5);
+      // researchSpeedFactor = 1.10, researchDuration = 10s, gameElapsed = 10s
+      // gameSecondsToComplete = 10 / 1.10 ≈ 9.0909s (real time until research finishes)
+      // ironBefore = 9.0909 * 1 (level-1 rate = 1/s)
+      // remaining = 10 - 9.0909 = 0.9091s
+      // ironAfter = 0.9091 * 1.1 (level-2 rate = 1.1/s) = 1.0
+      // total ≈ 10.0909
+      expect(user.iron).toBeCloseTo(10 / 1.10 + 1, 5);
     });
   });
 

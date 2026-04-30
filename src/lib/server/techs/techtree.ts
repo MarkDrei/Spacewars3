@@ -472,7 +472,6 @@ export const AllResearches: Record<ResearchType, Research> = {
  */
 const PROJECTILE_WEAPONS = ['auto_turret', 'gauss_rifle', 'rocket_launcher'] as const;
 const ENERGY_WEAPONS = ['pulse_laser', 'plasma_lance', 'photon_torpedo'] as const;
-const MIN_TIME_INVERSE_MULTIPLIER = 0.1;
 
 /**
  * Represents the tech tree, which hosts all researches for a user.
@@ -671,12 +670,13 @@ export function getResearchUpgradeDuration(research: Research, level: number): n
 }
 
 /**
- * Converts a percentage-based time reduction into a speed factor used for time calculations.
- * Example: 10% reduction => factor 1 / 0.9 ≈ 1.111.
+ * Converts a percentage-based speed bonus into a speed factor used for time calculations.
+ * Example: 10% bonus => factor 1.10. A task at base time T completes in T / 1.10.
+ * All time-reducing researches use this formula so that a stated "X%" bonus
+ * shows as "+X%" everywhere in the UI.
  */
 export function getTimeSpeedFactorFromEffect(effectPercentage: number): number {
-  const inverseMultiplier = Math.max(MIN_TIME_INVERSE_MULTIPLIER, 1 - (effectPercentage / 100));
-  return 1 / inverseMultiplier;
+  return 1 + effectPercentage / 100;
 }
 
 export function getTimeSpeedFactorFromTree(
@@ -816,13 +816,9 @@ export function getWeaponReloadTimeModifierFromTree(tree: TechTree, weaponType: 
   }
 
   const effect = getResearchEffectFromTree(tree, researchType);
-  // Effect is a percentage (e.g., 10, 20, 30)
-  // Old inverse multiplier: 1 - (effect / 100)  (e.g., 0.9 for 10% faster)
-  // New speed factor: 1 / (1 - effect/100)  (e.g., 1/0.9 ≈ 1.111 for 10% faster)
-  // Applying: baseCooldown / speedFactor ≡ baseCooldown * (1 - effect/100)  ← numerically identical
-  // Cap the inverse at 0.1 (90% reduction max) → speed factor caps at 10.0
-  const inverseMultiplier = Math.max(0.1, 1 - (effect / 100));
-  return 1 / inverseMultiplier;
+  // Effect is a percentage (e.g., 10, 20, 30).
+  // Speed factor = 1 + effect/100 so that a stated "X%" bonus shows as "+X%" in the UI.
+  return getTimeSpeedFactorFromEffect(effect);
 }
 
 /**

@@ -267,7 +267,7 @@ describe('TimeMultiplier - Build Queue Integration', () => {
       const queue = await getBuildQueue(testUserId);
 
       expect(queue.length).toBe(1);
-      expect(queue[0].completionTime).toBeCloseTo(now + (120 / (1 / 0.9)), 5);
+      expect(queue[0].completionTime).toBeCloseTo(now + (120 / 1.10), 5);
     });
   });
 

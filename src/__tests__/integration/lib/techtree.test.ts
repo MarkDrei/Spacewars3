@@ -333,40 +333,40 @@ describe('getWeaponDamageModifierFromTree', () => {
 describe('getWeaponReloadTimeModifierFromTree', () => {
   test('getWeaponReloadTimeModifierFromTree_projectileWeaponAtLevel1_returnsSpeedFactor', () => {
     const tree = createInitialTechTree();
-    // At level 1, effect = 10%, speed factor = 1 / (1 - 0.10) = 1/0.9 ≈ 1.111
+    // At level 1, effect = 10%, speed factor = 1 + 10/100 = 1.10
     const modifier = getWeaponReloadTimeModifierFromTree(tree, 'auto_turret');
-    expect(modifier).toBeCloseTo(1 / 0.9);
+    expect(modifier).toBeCloseTo(1.10);
   });
 
   test('getWeaponReloadTimeModifierFromTree_energyWeaponAtLevel1_returnsSpeedFactor', () => {
     const tree = createInitialTechTree();
-    // At level 1, effect = 15%, speed factor = 1 / (1 - 0.15) = 1/0.85 ≈ 1.176
+    // At level 1, effect = 15%, speed factor = 1 + 15/100 = 1.15
     const modifier = getWeaponReloadTimeModifierFromTree(tree, 'pulse_laser');
-    expect(modifier).toBeCloseTo(1 / 0.85);
+    expect(modifier).toBeCloseTo(1.15);
   });
 
   test('getWeaponReloadTimeModifierFromTree_projectileWeaponAtLevel3_returnsSpeedFactor', () => {
     const tree = createInitialTechTree();
     tree.projectileReloadRate = 3;
-    // At level 3, effect = 10 + 10 + 10 = 30%, speed factor = 1 / (1 - 0.30) = 1/0.7 ≈ 1.429
+    // At level 3, effect = 10 + 10 + 10 = 30%, speed factor = 1 + 30/100 = 1.30
     const modifier = getWeaponReloadTimeModifierFromTree(tree, 'gauss_rifle');
-    expect(modifier).toBeCloseTo(1 / 0.7);
+    expect(modifier).toBeCloseTo(1.30);
   });
 
   test('getWeaponReloadTimeModifierFromTree_energyWeaponAtLevel4_returnsSpeedFactor', () => {
     const tree = createInitialTechTree();
     tree.energyRechargeRate = 4;
-    // At level 4, effect = 15 + 15 + 15 + 15 = 60%, speed factor = 1 / (1 - 0.60) = 1/0.4 = 2.5
+    // At level 4, effect = 15 + 15 + 15 + 15 = 60%, speed factor = 1 + 60/100 = 1.60
     const modifier = getWeaponReloadTimeModifierFromTree(tree, 'plasma_lance');
-    expect(modifier).toBeCloseTo(2.5);
+    expect(modifier).toBeCloseTo(1.60);
   });
 
-  test('getWeaponReloadTimeModifierFromTree_highResearchLevel_capsAt10', () => {
+  test('getWeaponReloadTimeModifierFromTree_highResearchLevel_growsLinearly', () => {
     const tree = createInitialTechTree();
     tree.energyRechargeRate = 10;
-    // At level 10, effect = 15 * 10 = 150%, inverse capped at 0.1 → speed factor = 1/0.1 = 10.0
+    // At level 10, effect = 15 * 10 = 150%, speed factor = 1 + 150/100 = 2.50
     const modifier = getWeaponReloadTimeModifierFromTree(tree, 'photon_torpedo');
-    expect(modifier).toBeCloseTo(10.0);
+    expect(modifier).toBeCloseTo(2.50);
   });
 
   test('getWeaponReloadTimeModifierFromTree_unknownWeaponType_returns1', () => {
