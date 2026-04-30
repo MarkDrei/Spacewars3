@@ -375,6 +375,82 @@ describe('User.updateStats with IronHarvesting research progression', () => {
     expect(user.techTree.activeResearch).toBeDefined();
   });
 
+  test('updateStats_buildCompletesDuringInterval_awardsIronBeforeQueueAbortEvent', async () => {
+    user.iron = 0;
+    user.last_updated = 1000;
+    user.buildQueue = [
+      { itemKey: 'auto_turret', itemType: 'weapon', completionTime: 0 },
+      { itemKey: 'auto_turret', itemType: 'weapon', completionTime: 0 }
+    ];
+    user.buildStartSec = 1000;
+
+    const processCompletedBuilds = vi.fn().mockImplementation(async (_userId, _context, options?: { now?: number }) => {
+      expect(options?.now).toBe(1060);
+      expect(user.iron).toBeCloseTo(60);
+
+      user.techCounts.auto_turret += 1;
+      user.buildQueue = [];
+      user.buildStartSec = null;
+
+      return {
+        completed: [{ itemKey: 'auto_turret', itemType: 'weapon', completionTime: 1060 }]
+      };
+    });
+    const getInstanceSpy = vi.spyOn(TechService, 'getInstance').mockReturnValue({ processCompletedBuilds } as unknown as TechService);
+
+    try {
+      await withUserLock(async (context) => {
+        await user.updateStats(1150, context);
+      });
+    } finally {
+      getInstanceSpy.mockRestore();
+    }
+
+    expect(processCompletedBuilds).toHaveBeenCalledTimes(1);
+    expect(user.iron).toBeCloseTo(150);
+    expect(user.buildQueue).toEqual([]);
+    expect(user.last_updated).toBe(1150);
+  });
+
+  test('updateStats_buildCompletesDuringInterval_spendsOnlyIronAvailableAtBuildEvent', async () => {
+    user.iron = 50;
+    user.last_updated = 1000;
+    user.buildQueue = [
+      { itemKey: 'auto_turret', itemType: 'weapon', completionTime: 0 },
+      { itemKey: 'auto_turret', itemType: 'weapon', completionTime: 0 }
+    ];
+    user.buildStartSec = 1000;
+
+    const processCompletedBuilds = vi.fn().mockImplementation(async (_userId, _context, options?: { now?: number }) => {
+      expect(options?.now).toBe(1060);
+      expect(user.iron).toBeCloseTo(110);
+
+      user.techCounts.auto_turret += 1;
+      user.iron -= 100;
+      user.buildQueue = [{ itemKey: 'auto_turret', itemType: 'weapon', completionTime: 0 }];
+      user.buildStartSec = 1060;
+
+      return {
+        completed: [{ itemKey: 'auto_turret', itemType: 'weapon', completionTime: 1060 }]
+      };
+    });
+    const getInstanceSpy = vi.spyOn(TechService, 'getInstance').mockReturnValue({ processCompletedBuilds } as unknown as TechService);
+
+    try {
+      await withUserLock(async (context) => {
+        await user.updateStats(1150, context);
+      });
+    } finally {
+      getInstanceSpy.mockRestore();
+    }
+
+    expect(processCompletedBuilds).toHaveBeenCalledTimes(1);
+    expect(user.iron).toBeCloseTo(100);
+    expect(user.buildQueue).toHaveLength(1);
+    expect(user.buildStartSec).toBe(1060);
+    expect(user.last_updated).toBe(1150);
+  });
+
   test('updateStats_alsoUpdatesDefenseValues_regeneratesCorrectly', async () => {
     // User starts with partial defense values (250 each, max 500)
     expect(user.hullCurrent).toBe(250);
