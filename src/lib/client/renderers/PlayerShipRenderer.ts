@@ -275,7 +275,8 @@ export class PlayerShipRenderer {
     ): void {
         const sparkCount = 5;
         for (let i = 0; i < sparkCount; i++) {
-            // Pseudo-random but temporally deterministic per spark index
+            // 120 ms cycle gives fast enough flicker; 137.5 is a near-golden-ratio step so
+            // adjacent sparks don't visually align or repeat patterns.
             const seed = (time / 120 + i * 137.5) % (Math.PI * 2);
             const xOff = (Math.sin(seed * 3.1 + i) * shipWidth * 0.4);
             const len = 18 + 14 * Math.abs(Math.sin(seed * 1.7));
@@ -299,7 +300,8 @@ export class PlayerShipRenderer {
      */
     private drawLaunchBurst(ctx: CanvasRenderingContext2D, centerX: number, centerY: number): void {
         const BURST_DURATION = 650; // ms
-        const elapsed = Date.now() - (this.afterburnerActivatedAt ?? Date.now());
+        // afterburnerActivatedAt is guaranteed non-null by the callers' guard
+        const elapsed = Date.now() - this.afterburnerActivatedAt!;
         if (elapsed > BURST_DURATION) return;
 
         const progress = elapsed / BURST_DURATION; // 0 → 1
