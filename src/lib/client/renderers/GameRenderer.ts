@@ -44,6 +44,11 @@ export class GameRenderer {
         this.targetingLineRenderer = new TargetingLineRenderer(ctx);
     }
 
+    /** Notify the player ship renderer whether the afterburner is currently active. */
+    setAfterburnerActive(isActive: boolean): void {
+        this.playerShipRenderer.setAfterburnerActive(isActive);
+    }
+
     /** Set the zoom level (>1 zooms out, showing more world; <1 zooms in). */
     setZoom(zoom: number): void {
         this.zoom = zoom;
