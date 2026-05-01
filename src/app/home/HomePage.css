@@ -79,6 +79,16 @@
   margin-top: 2rem;
 }
 
+.recovery-timer-row .data-cell {
+  color: #8bc34a;
+  font-size: 0.9rem;
+}
+
+.recovery-timer-value {
+  letter-spacing: 0.08em;
+  text-align: center;
+}
+
 /* Tech Counts Table - extends shared data-table styles */
 .tech-counts-table-container {
   margin-top: 2rem;
