@@ -147,6 +147,7 @@ const makeMockGame = () => ({
   setMobileInteractionMode: vi.fn(),
   setMobileInfoMode: vi.fn(),
   updateCanvasStrings: vi.fn(),
+  setAfterburnerActive: vi.fn(),
   stop: vi.fn(),
 });
 

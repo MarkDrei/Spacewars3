@@ -544,6 +544,13 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
     };
   }, [auth.shipId, initializeGame, isLoading, uiPreferencesLoaded]); // Depend on shipId, loading state, preferences load, and the stable initializeGame callback
 
+  // Propagate afterburner active state to the game renderer
+  useEffect(() => {
+    if (gameInstanceRef.current) {
+      gameInstanceRef.current.setAfterburnerActive(afterburnerStatus?.isActive ?? false);
+    }
+  }, [afterburnerStatus?.isActive]);
+
   // Update game world when server data changes
   useEffect(() => {
     if (worldData && gameInstanceRef.current && auth.shipId) {

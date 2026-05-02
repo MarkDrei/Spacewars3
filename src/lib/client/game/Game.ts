@@ -559,6 +559,14 @@ export class Game {
   }
 
   /**
+   * Notify the renderer whether the player's afterburner is currently active.
+   * Call this whenever the afterburner status changes.
+   */
+  public setAfterburnerActive(isActive: boolean): void {
+    this.renderer.setAfterburnerActive(isActive);
+  }
+
+  /**
    * Set the zoom level (>1 zooms out, showing more world; <1 zooms in).
    */
   public setZoom(zoom: number): void {
