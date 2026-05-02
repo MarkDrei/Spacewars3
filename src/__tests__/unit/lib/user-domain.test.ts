@@ -273,6 +273,19 @@ describe('User.updateStats with IronHarvesting research progression', () => {
     expect(user.techTree.activeResearch).toBeUndefined();
   });
 
+  test('updateStats_researchAlreadyDueAtIntervalStart_completesImmediatelyWithoutLooping', async () => {
+    triggerResearch(user.techTree, ResearchType.IronHarvesting);
+    expect(user.techTree.activeResearch).toBeDefined();
+
+    user.techTree.activeResearch!.remainingDuration = 0;
+
+    await updateStatsWithMockedBuildRefresh(user, 1005);
+
+    expect(user.techTree.ironHarvesting).toBe(2);
+    expect(user.techTree.activeResearch).toBeUndefined();
+    expect(user.iron).toBeCloseTo(5 * 1.1, 5);
+  });
+
   test('updateStats_multipleResearchCompletionsAndFurtherResearch0_correctIronAndResearchState', async () => {
     // Start IronHarvesting research (duration 10s)
     triggerResearch(user.techTree, ResearchType.IronHarvesting);

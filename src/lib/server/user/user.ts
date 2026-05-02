@@ -328,23 +328,31 @@ class User {
     this.score += amount;
   }
 
-  private getEconomyFactors(bonuses?: UserBonuses): {
+  private getEconomyFactors(
+    bonuses?: UserBonuses,
+    options: { preferTreeDerivedResearchValues?: boolean } = {}
+  ): {
     ironRate: number;
     maxCapacity: number;
     researchSpeedFactor: number;
     constructionSpeedFactor: number;
   } {
     const levelMultiplier = bonuses?.levelMultiplier ?? this.getLevelMultiplier();
+    const preferTreeDerivedResearchValues = options.preferTreeDerivedResearchValues ?? false;
 
     return {
-      ironRate: bonuses?.ironRechargeRate
-        ?? getResearchEffectFromTree(this.techTree, ResearchType.IronHarvesting) * levelMultiplier,
-      maxCapacity: bonuses?.ironStorageCapacity
-        ?? getResearchEffectFromTree(this.techTree, ResearchType.IronCapacity) * levelMultiplier,
-      researchSpeedFactor: bonuses?.researchSpeedFactor
-        ?? getTimeSpeedFactorFromTree(this.techTree, ResearchType.ArtificialIntelligence, levelMultiplier),
-      constructionSpeedFactor: bonuses?.constructionSpeedFactor
-        ?? getTimeSpeedFactorFromTree(this.techTree, ResearchType.ConstructionSpeed, levelMultiplier),
+      ironRate: !preferTreeDerivedResearchValues && bonuses?.ironRechargeRate !== undefined
+        ? bonuses.ironRechargeRate
+        : getResearchEffectFromTree(this.techTree, ResearchType.IronHarvesting) * levelMultiplier,
+      maxCapacity: !preferTreeDerivedResearchValues && bonuses?.ironStorageCapacity !== undefined
+        ? bonuses.ironStorageCapacity
+        : getResearchEffectFromTree(this.techTree, ResearchType.IronCapacity) * levelMultiplier,
+      researchSpeedFactor: !preferTreeDerivedResearchValues && bonuses?.researchSpeedFactor !== undefined
+        ? bonuses.researchSpeedFactor
+        : getTimeSpeedFactorFromTree(this.techTree, ResearchType.ArtificialIntelligence, levelMultiplier),
+      constructionSpeedFactor: !preferTreeDerivedResearchValues && bonuses?.constructionSpeedFactor !== undefined
+        ? bonuses.constructionSpeedFactor
+        : getTimeSpeedFactorFromTree(this.techTree, ResearchType.ConstructionSpeed, levelMultiplier),
     };
   }
 
@@ -427,14 +435,23 @@ class User {
           if (segmentResearchResult?.completed) {
             researchResult = segmentResearchResult;
             this.bonusCache.invalidateBonuses(this.id);
-            factors = this.getEconomyFactors(bonuses);
+            factors = this.getEconomyFactors(bonuses, { preferTreeDerivedResearchValues: true });
           }
         }
 
         cursor = nextEventTime;
       }
 
-      if (nextBuildTime !== null && nextBuildTime === cursor) {
+      if (nextResearchTime !== null && nextResearchTime <= cursor && this.techTree.activeResearch) {
+        const dueResearchResult = updateTechTree(this.techTree, this.techTree.activeResearch.remainingDuration);
+        if (dueResearchResult?.completed) {
+          researchResult = dueResearchResult;
+          this.bonusCache.invalidateBonuses(this.id);
+          factors = this.getEconomyFactors(bonuses, { preferTreeDerivedResearchValues: true });
+        }
+      }
+
+      if (nextBuildTime !== null && nextBuildTime <= cursor) {
         await techService.processCompletedBuilds(this.id, context, { now: cursor });
       }
 
