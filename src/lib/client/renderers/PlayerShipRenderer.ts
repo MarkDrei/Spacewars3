@@ -122,17 +122,12 @@ export class PlayerShipRenderer {
 
         // Draw afterburner exhaust *behind* the ship image (pre-effect)
         if (this.afterburnerIsActive) {
-            this.drawAfterburnerPlumes(ctx, width, height);
+            this.drawAfterburnerPlumes(ctx, width, height, this.getAfterburnerLengthMultiplier());
         }
         
         ctx.drawImage(shipImage, -width / 2, -height / 2, width, height);
 
         ctx.restore();
-
-        // Draw the launch-burst shockwave in un-rotated screen space (it expands outward)
-        if (this.afterburnerIsActive && this.afterburnerActivatedAt !== null) {
-            this.drawLaunchBurst(ctx, centerX, centerY);
-        }
     }
     
     /**
@@ -144,7 +139,7 @@ export class PlayerShipRenderer {
         ctx.rotate(ship.getAngleRadians() + Math.PI / 2);
 
         if (this.afterburnerIsActive) {
-            this.drawAfterburnerPlumes(ctx, 12, 20);
+            this.drawAfterburnerPlumes(ctx, 12, 20, this.getAfterburnerLengthMultiplier());
         }
         
         // Draw a simple triangle representing the ship
@@ -161,18 +156,28 @@ export class PlayerShipRenderer {
         ctx.stroke();
         
         ctx.restore();
+    }
 
-        if (this.afterburnerIsActive && this.afterburnerActivatedAt !== null) {
-            this.drawLaunchBurst(ctx, centerX, centerY);
-        }
+    /**
+     * Returns the current length multiplier for the afterburner plumes.
+     * On activation the tail is 4× normal and collapses linearly to 1× over 1 second.
+     */
+    private getAfterburnerLengthMultiplier(): number {
+        const BURST_DURATION = 1000; // ms
+        if (this.afterburnerActivatedAt === null) return 1;
+        const elapsed = Date.now() - this.afterburnerActivatedAt;
+        if (elapsed >= BURST_DURATION) return 1;
+        // Linear collapse: 4 → 1 over the burst duration
+        return 4 - 3 * (elapsed / BURST_DURATION);
     }
 
     /**
      * Draw multi-plume afterburner exhaust flames behind the ship.
      * ctx is already translated to ship center and rotated to ship heading.
      * In this coordinate system +Y is toward the back of the ship.
+     * lengthMultiplier scales the plume length (>1 during the activation burst).
      */
-    private drawAfterburnerPlumes(ctx: CanvasRenderingContext2D, shipWidth: number, shipHeight: number): void {
+    private drawAfterburnerPlumes(ctx: CanvasRenderingContext2D, shipWidth: number, shipHeight: number, lengthMultiplier: number = 1): void {
         const time = Date.now();
         const t = time / 1000;
 
@@ -183,42 +188,42 @@ export class PlayerShipRenderer {
 
         const backY = shipHeight / 2; // Y-coordinate of the ship's stern in local space
 
-        // --- Central mega-plume ---
-        this.drawPlume(ctx, 0, backY, 0, 90 * flicker0, 22 * flicker0, [
-            { stop: 0,   color: 'rgba(255, 255, 255, 1.0)' },
-            { stop: 0.2, color: 'rgba(180, 230, 255, 0.95)' },
-            { stop: 0.55, color: 'rgba(60, 120, 255, 0.85)' },
-            { stop: 0.85, color: 'rgba(20, 60, 200, 0.4)' },
-            { stop: 1,   color: 'rgba(0, 20, 150, 0)' },
+        // --- Central mega-plume: white-hot core → yellow → orange → red ---
+        this.drawPlume(ctx, 0, backY, 0, 90 * flicker0 * lengthMultiplier, 22 * flicker0, [
+            { stop: 0,    color: 'rgba(255, 255, 255, 1.0)' },
+            { stop: 0.15, color: 'rgba(255, 255, 180, 0.95)' },
+            { stop: 0.4,  color: 'rgba(255, 160, 20, 0.9)' },
+            { stop: 0.7,  color: 'rgba(220, 60, 10, 0.7)' },
+            { stop: 0.9,  color: 'rgba(150, 20, 0, 0.3)' },
+            { stop: 1,    color: 'rgba(80, 0, 0, 0)' },
         ]);
 
         // --- Left side plume ---
-        this.drawPlume(ctx, -shipWidth * 0.28, backY - 4, -8, 60 * flicker1, 11 * flicker1, [
-            { stop: 0,   color: 'rgba(200, 240, 255, 0.9)' },
-            { stop: 0.35, color: 'rgba(80, 160, 255, 0.8)' },
-            { stop: 0.75, color: 'rgba(30, 80, 220, 0.5)' },
-            { stop: 1,   color: 'rgba(0, 10, 160, 0)' },
+        this.drawPlume(ctx, -shipWidth * 0.28, backY - 4, -8, 60 * flicker1 * lengthMultiplier, 11 * flicker1, [
+            { stop: 0,    color: 'rgba(255, 240, 180, 0.9)' },
+            { stop: 0.3,  color: 'rgba(255, 120, 20, 0.8)' },
+            { stop: 0.7,  color: 'rgba(200, 50, 10, 0.5)' },
+            { stop: 1,    color: 'rgba(100, 10, 0, 0)' },
         ]);
 
         // --- Right side plume ---
-        this.drawPlume(ctx, shipWidth * 0.28, backY - 4, 8, 60 * flicker2, 11 * flicker2, [
-            { stop: 0,   color: 'rgba(200, 240, 255, 0.9)' },
-            { stop: 0.35, color: 'rgba(80, 160, 255, 0.8)' },
-            { stop: 0.75, color: 'rgba(30, 80, 220, 0.5)' },
-            { stop: 1,   color: 'rgba(0, 10, 160, 0)' },
+        this.drawPlume(ctx, shipWidth * 0.28, backY - 4, 8, 60 * flicker2 * lengthMultiplier, 11 * flicker2, [
+            { stop: 0,    color: 'rgba(255, 240, 180, 0.9)' },
+            { stop: 0.3,  color: 'rgba(255, 120, 20, 0.8)' },
+            { stop: 0.7,  color: 'rgba(200, 50, 10, 0.5)' },
+            { stop: 1,    color: 'rgba(100, 10, 0, 0)' },
         ]);
 
-        // --- Outer electric arcs (thin streaks) ---
+        // --- Outer fire sparks ---
         this.drawAfterburnerSparks(ctx, backY, shipWidth, time);
 
-        // Glow ring at the exhaust nozzle
+        // Glow ring at the exhaust nozzle — warm yellow/orange
         const glowPulse = 0.55 + 0.45 * Math.abs(Math.sin(t * 8.5));
         ctx.save();
-        ctx.shadowBlur = 0;
         const nozzleGradient = ctx.createRadialGradient(0, backY, 0, 0, backY, 18 * glowPulse);
-        nozzleGradient.addColorStop(0, 'rgba(200, 230, 255, 0.85)');
-        nozzleGradient.addColorStop(0.4, 'rgba(80, 150, 255, 0.5)');
-        nozzleGradient.addColorStop(1, 'rgba(20, 60, 200, 0)');
+        nozzleGradient.addColorStop(0, 'rgba(255, 255, 200, 0.9)');
+        nozzleGradient.addColorStop(0.4, 'rgba(255, 140, 30, 0.6)');
+        nozzleGradient.addColorStop(1, 'rgba(200, 50, 0, 0)');
         ctx.beginPath();
         ctx.arc(0, backY, 18 * glowPulse, 0, Math.PI * 2);
         ctx.fillStyle = nozzleGradient;
@@ -287,43 +292,12 @@ export class PlayerShipRenderer {
             ctx.beginPath();
             ctx.moveTo(0, 0);
             ctx.lineTo(0, len);
-            ctx.strokeStyle = `rgba(160, 210, 255, ${alpha.toFixed(2)})`;
+            ctx.strokeStyle = `rgba(255, ${Math.floor(100 + 80 * alpha)}, 20, ${alpha.toFixed(2)})`;
             ctx.lineWidth = 1.2;
             ctx.stroke();
             ctx.restore();
         }
     }
 
-    /**
-     * Draw an expanding shockwave ring that fades out after the afterburner ignites.
-     * Drawn in un-rotated screen space, centered on the ship.
-     */
-    private drawLaunchBurst(ctx: CanvasRenderingContext2D, centerX: number, centerY: number): void {
-        const BURST_DURATION = 650; // ms
-        // afterburnerActivatedAt is guaranteed non-null by the callers' guard
-        const elapsed = Date.now() - this.afterburnerActivatedAt!;
-        if (elapsed > BURST_DURATION) return;
-
-        const progress = elapsed / BURST_DURATION; // 0 → 1
-        const maxRadius = 80;
-        const radius = maxRadius * progress;
-        const alpha = (1 - progress) * 0.85;
-
-        ctx.save();
-        ctx.beginPath();
-        ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
-        ctx.strokeStyle = `rgba(140, 200, 255, ${alpha.toFixed(2)})`;
-        ctx.lineWidth = 3 * (1 - progress);
-        ctx.stroke();
-
-        // Inner brighter ring slightly smaller
-        const innerRadius = radius * 0.6;
-        ctx.beginPath();
-        ctx.arc(centerX, centerY, innerRadius, 0, Math.PI * 2);
-        ctx.strokeStyle = `rgba(220, 240, 255, ${(alpha * 0.7).toFixed(2)})`;
-        ctx.lineWidth = 2 * (1 - progress);
-        ctx.stroke();
-
-        ctx.restore();
-    }
 }
+
