@@ -46,7 +46,15 @@ export interface Research {
   baseUpgradeDuration: number; // in seconds
   baseValue: number; // base value for this research (e.g. iron/sec, speed)
   upgradeCostIncrease: number; // multiplier for cost increase per level
-  baseValueIncrease: { type: 'constant' | 'factor' | 'polynomial'; value: number }; // how the effect increases per level
+  baseValueIncrease: {
+    type:
+      | 'constant'
+      | 'factor'
+      | 'polynomial'
+      | 'valueExponent'
+      | 'valueQuadratic';
+    value: number;
+  }; // how the effect increases per level
   description: string;
   treeKey: keyof TechTree; // Add this property
   unit: string; // Unit for the research effect, e.g., 'iron/sec', '%'
@@ -224,7 +232,7 @@ export const AllResearches: Record<ResearchType, Research> = {
     baseUpgradeDuration: 60,
     baseValue: 0.1,
     upgradeCostIncrease: 2.0,
-    baseValueIncrease: { type: 'factor', value: 1.15 },
+    baseValueIncrease: { type: 'factor', value: 1.25 },
     description: 'Increases repair speed for hull, armor and engine. Repairs do not happen during combat.',
     treeKey: 'repairSpeed',
     unit: 'HP/sec',
@@ -689,11 +697,13 @@ export function getTimeSpeedFactorFromTree(
 
 /**
  * Returns the effect value for a given research and level.
- * Applies the baseValueIncrease logic (factor, constant, or polynomial) for each level above the research's starting level.
+ * Applies the baseValueIncrease logic for each level above the research's starting level.
  * Formulas:
  * - constant: baseValue + (constant * (level - 1))
  * - factor: baseValue * (factor ^ (level - 1))
  * - polynomial: baseValue + baseValue * (value * (1.5 * level - 1.5)) ^ 1.4
+ * - valueExponent: baseValue * (1 + value * (level - 1)) ^ (1 + value)
+ * - valueQuadratic: baseValue * (1 + value * (level - 1) + (value * (level - 1)) ^ 2)
  */
 export function getResearchEffect(research: Research, level: number): number {
   if (level === 0) return 0; // At level 0, the effect is always 0
@@ -704,12 +714,25 @@ export function getResearchEffect(research: Research, level: number): number {
   } else if (increase.type === 'constant') {
     // Effect = baseValue + (constant * (level - 1))
     return research.baseValue + increase.value * (level - 1);
-  } else {
+  } else if (increase.type === 'polynomial') {
     // polynomial: Effect = baseValue + baseValue * (value * (1.5 * level - 1.5)) ^ 1.4
     // This is the "in between" formula: 1 + (0.1 * (1.5x - 1.5)) ^ 1.4
     // For level 1: 1 + (0.1 * 0) ^ 1.4 = 1
     // For level 2: 1 + (0.1 * 1.5) ^ 1.4 = 1 + 0.15^1.4 ≈ 1.047
     const multiplier = 1 + Math.pow(increase.value * (1.5 * level - 1.5), 1.4);
+    return research.baseValue * multiplier;
+  } else if (increase.type === 'valueExponent') {
+    // valueExponent: Effect = baseValue * (1 + value * (level - 1)) ^ (1 + value)
+    // The value parameter influences both base growth and curve steepness (exponent).
+    const n = level - 1;
+    const multiplier = Math.pow(1 + increase.value * n, 1 + increase.value);
+    return research.baseValue * multiplier;
+  } else {
+    // valueQuadratic: Effect = baseValue * (1 + x + x^2), x = value * (level - 1)
+    // The value parameter controls both linear and quadratic terms, increasing acceleration influence.
+    const n = level - 1;
+    const x = increase.value * n;
+    const multiplier = 1 + x + x * x;
     return research.baseValue * multiplier;
   }
 }

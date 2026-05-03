@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760">
+  <rect x="0" y="0" width="1200" height="760" fill="#f7fafb" />
+  <rect x="120" y="80" width="920" height="600" fill="#ffffff" stroke="#cad3d8" />
+
+  <line x1="120" y1="680.00" x2="1040" y2="680.00" stroke="#d3d8db" stroke-width="1" />
+<line x1="120" y1="560.00" x2="1040" y2="560.00" stroke="#d3d8db" stroke-width="1" />
+<line x1="120" y1="440.00" x2="1040" y2="440.00" stroke="#d3d8db" stroke-width="1" />
+<line x1="120" y1="320.00" x2="1040" y2="320.00" stroke="#d3d8db" stroke-width="1" />
+<line x1="120" y1="200.00" x2="1040" y2="200.00" stroke="#d3d8db" stroke-width="1" />
+<line x1="120" y1="80.00" x2="1040" y2="80.00" stroke="#d3d8db" stroke-width="1" />
+  <line x1="120.00" y1="80" x2="120.00" y2="680" stroke="#eceff1" stroke-width="1" />
+<line x1="215.17" y1="80" x2="215.17" y2="680" stroke="#eceff1" stroke-width="1" />
+<line x1="310.34" y1="80" x2="310.34" y2="680" stroke="#eceff1" stroke-width="1" />
+<line x1="437.24" y1="80" x2="437.24" y2="680" stroke="#eceff1" stroke-width="1" />
+<line x1="532.41" y1="80" x2="532.41" y2="680" stroke="#eceff1" stroke-width="1" />
+<line x1="627.59" y1="80" x2="627.59" y2="680" stroke="#eceff1" stroke-width="1" />
+<line x1="722.76" y1="80" x2="722.76" y2="680" stroke="#eceff1" stroke-width="1" />
+<line x1="849.66" y1="80" x2="849.66" y2="680" stroke="#eceff1" stroke-width="1" />
+<line x1="944.83" y1="80" x2="944.83" y2="680" stroke="#eceff1" stroke-width="1" />
+<line x1="1040.00" y1="80" x2="1040.00" y2="680" stroke="#eceff1" stroke-width="1" />
+
+  <line x1="120" y1="680" x2="1040" y2="680" stroke="#24333b" stroke-width="2" />
+  <line x1="120" y1="80" x2="120" y2="680" stroke="#0d6e6e" stroke-width="2" />
+  
+
+  <path d="M 120.00 679.14 L 151.72 678.93 L 183.45 678.66 L 215.17 678.32 L 246.90 677.90 L 278.62 677.38 L 310.34 676.72 L 342.07 675.90 L 373.79 674.88 L 405.52 673.59 L 437.24 671.99 L 468.97 669.99 L 500.69 667.49 L 532.41 664.36 L 564.14 660.45 L 595.86 655.57 L 627.59 649.46 L 659.31 641.82 L 691.03 632.28 L 722.76 620.35 L 754.48 605.43 L 786.21 586.79 L 817.93 563.49 L 849.66 534.36 L 881.38 497.96 L 913.10 452.44 L 944.83 395.56 L 976.55 324.44 L 1008.28 235.56 L 1040.00 124.44" fill="none" stroke="#1b1b1b" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
+  <path d="M 120.00 679.14 L 151.72 679.05 L 183.45 678.96 L 215.17 678.86 L 246.90 678.74 L 278.62 678.62 L 310.34 678.48 L 342.07 678.32 L 373.79 678.16 L 405.52 677.97 L 437.24 677.77 L 468.97 677.55 L 500.69 677.30 L 532.41 677.03 L 564.14 676.74 L 595.86 676.41 L 627.59 676.05 L 659.31 675.65 L 691.03 675.22 L 722.76 674.74 L 754.48 674.22 L 786.21 673.64 L 817.93 673.00 L 849.66 672.30 L 881.38 671.53 L 913.10 670.69 L 944.83 669.75 L 976.55 668.73 L 1008.28 667.60 L 1040.00 666.36" fill="none" stroke="#0072B2" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="8 4" />
+<path d="M 120.00 679.14 L 151.72 678.97 L 183.45 678.76 L 215.17 678.51 L 246.90 678.22 L 278.62 677.86 L 310.34 677.43 L 342.07 676.92 L 373.79 676.30 L 405.52 675.56 L 437.24 674.68 L 468.97 673.61 L 500.69 672.34 L 532.41 670.80 L 564.14 668.96 L 595.86 666.75 L 627.59 664.11 L 659.31 660.93 L 691.03 657.11 L 722.76 652.53 L 754.48 647.04 L 786.21 640.45 L 817.93 632.54 L 849.66 623.05 L 881.38 611.66 L 913.10 597.99 L 944.83 581.59 L 976.55 561.91 L 1008.28 538.29 L 1040.00 509.94" fill="none" stroke="#D55E00" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="8 4" />
+<path d="M 120.00 679.14 L 151.72 678.86 L 183.45 678.40 L 215.17 677.83 L 246.90 677.18 L 278.62 676.46 L 310.34 675.69 L 342.07 674.86 L 373.79 673.97 L 405.52 673.05 L 437.24 672.08 L 468.97 671.07 L 500.69 670.03 L 532.41 668.95 L 564.14 667.83 L 595.86 666.68 L 627.59 665.51 L 659.31 664.30 L 691.03 663.06 L 722.76 661.80 L 754.48 660.51 L 786.21 659.19 L 817.93 657.85 L 849.66 656.48 L 881.38 655.09 L 913.10 653.67 L 944.83 652.24 L 976.55 650.78 L 1008.28 649.30 L 1040.00 647.79" fill="none" stroke="#009E73" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="8 4" />
+<path d="M 120.00 679.14 L 151.72 678.40 L 183.45 677.18 L 215.17 675.69 L 246.90 673.97 L 278.62 672.08 L 310.34 670.03 L 342.07 667.83 L 373.79 665.51 L 405.52 663.06 L 437.24 660.51 L 468.97 657.85 L 500.69 655.09 L 532.41 652.24 L 564.14 649.30 L 595.86 646.27 L 627.59 643.16 L 659.31 639.97 L 691.03 636.71 L 722.76 633.38 L 754.48 629.97 L 786.21 626.49 L 817.93 622.95 L 849.66 619.34 L 881.38 615.67 L 913.10 611.94 L 944.83 608.14 L 976.55 604.29 L 1008.28 600.38 L 1040.00 596.42" fill="none" stroke="#CC79A7" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="8 4" />
+<path d="M 120.00 679.14 L 151.72 677.83 L 183.45 675.69 L 215.17 673.05 L 246.90 670.03 L 278.62 666.68 L 310.34 663.06 L 342.07 659.19 L 373.79 655.09 L 405.52 650.78 L 437.24 646.27 L 468.97 641.58 L 500.69 636.71 L 532.41 631.68 L 564.14 626.49 L 595.86 621.15 L 627.59 615.67 L 659.31 610.05 L 691.03 604.29 L 722.76 598.41 L 754.48 592.39 L 786.21 586.26 L 817.93 580.01 L 849.66 573.65 L 881.38 567.17 L 913.10 560.59 L 944.83 553.89 L 976.55 547.10 L 1008.28 540.20 L 1040.00 533.20" fill="none" stroke="#E69F00" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="8 4" />
+<path d="M 120.00 679.14 L 151.72 677.62 L 183.45 675.14 L 215.17 672.08 L 246.90 668.58 L 278.62 664.71 L 310.34 660.51 L 342.07 656.02 L 373.79 651.27 L 405.52 646.27 L 437.24 641.05 L 468.97 635.61 L 500.69 629.97 L 532.41 624.14 L 564.14 618.12 L 595.86 611.94 L 627.59 605.58 L 659.31 599.07 L 691.03 592.39 L 722.76 585.57 L 754.48 578.61 L 786.21 571.50 L 817.93 564.26 L 849.66 556.88 L 881.38 549.37 L 913.10 541.74 L 944.83 533.99 L 976.55 526.11 L 1008.28 518.12 L 1040.00 510.01" fill="none" stroke="#56B4E9" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="8 4" />
+<path d="M 120.00 679.14 L 151.72 678.46 L 183.45 677.67 L 215.17 676.78 L 246.90 675.80 L 278.62 674.74 L 310.34 673.61 L 342.07 672.40 L 373.79 671.13 L 405.52 669.80 L 437.24 668.41 L 468.97 666.96 L 500.69 665.46 L 532.41 663.90 L 564.14 662.30 L 595.86 660.65 L 627.59 658.95 L 659.31 657.20 L 691.03 655.41 L 722.76 653.58 L 754.48 651.70 L 786.21 649.78 L 817.93 647.83 L 849.66 645.83 L 881.38 643.79 L 913.10 641.72 L 944.83 639.61 L 976.55 637.46 L 1008.28 635.28 L 1040.00 633.06" fill="none" stroke="#1b1b1b" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="8 4" />
+<path d="M 120.00 679.14 L 151.72 678.56 L 183.45 677.62 L 215.17 676.32 L 246.90 674.65 L 278.62 672.62 L 310.34 670.22 L 342.07 667.46 L 373.79 664.33 L 405.52 660.85 L 437.24 656.99 L 468.97 652.78 L 500.69 648.20 L 532.41 643.26 L 564.14 637.95 L 595.86 632.28 L 627.59 626.24 L 659.31 619.85 L 691.03 613.08 L 722.76 605.96 L 754.48 598.47 L 786.21 590.61 L 817.93 582.40 L 849.66 573.82 L 881.38 564.87 L 913.10 555.56 L 944.83 545.89 L 976.55 535.85 L 1008.28 525.45 L 1040.00 514.69" fill="none" stroke="#0072B2" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="8 4" />
+  <g>
+    <rect x="136" y="96" width="560" height="218" fill="#ffffff" fill-opacity="0.92" stroke="#b8c4cb" />
+    <g>
+      <line x1="146" y1="113" x2="170" y2="113" stroke="#1b1b1b" stroke-width="4" />
+      <text x="178" y="117" font-size="13" fill="#1f2d34">Repair Speed (baseline)</text>
+    </g>
+<g>
+      <line x1="146" y1="135" x2="170" y2="135" stroke="#0072B2" stroke-width="4" stroke-dasharray="8 4" />
+      <text x="178" y="139" font-size="13" fill="#1f2d34">Repair Speed factor 1.10</text>
+    </g>
+<g>
+      <line x1="146" y1="157" x2="170" y2="157" stroke="#D55E00" stroke-width="4" stroke-dasharray="8 4" />
+      <text x="178" y="161" font-size="13" fill="#1f2d34">Repair Speed factor 1.20</text>
+    </g>
+<g>
+      <line x1="146" y1="179" x2="170" y2="179" stroke="#009E73" stroke-width="4" stroke-dasharray="8 4" />
+      <text x="178" y="183" font-size="13" fill="#1f2d34">Repair Speed polynomial 0.3</text>
+    </g>
+<g>
+      <line x1="146" y1="201" x2="170" y2="201" stroke="#CC79A7" stroke-width="4" stroke-dasharray="8 4" />
+      <text x="178" y="205" font-size="13" fill="#1f2d34">Repair Speed polynomial 0.6</text>
+    </g>
+<g>
+      <line x1="146" y1="223" x2="170" y2="223" stroke="#E69F00" stroke-width="4" stroke-dasharray="8 4" />
+      <text x="178" y="227" font-size="13" fill="#1f2d34">Repair Speed polynomial 0.9</text>
+    </g>
+<g>
+      <line x1="146" y1="245" x2="170" y2="245" stroke="#56B4E9" stroke-width="4" stroke-dasharray="8 4" />
+      <text x="178" y="249" font-size="13" fill="#1f2d34">Repair Speed polynomial 1.0</text>
+    </g>
+<g>
+      <line x1="146" y1="267" x2="170" y2="267" stroke="#1b1b1b" stroke-width="4" stroke-dasharray="8 4" />
+      <text x="178" y="271" font-size="13" fill="#1f2d34">Repair Speed valueExponent 0.48</text>
+    </g>
+<g>
+      <line x1="146" y1="289" x2="170" y2="289" stroke="#0072B2" stroke-width="4" stroke-dasharray="8 4" />
+      <text x="178" y="293" font-size="13" fill="#1f2d34">Repair Speed valueQuadratic 0.46</text>
+    </g>
+  </g>
+
+  <text x="120.00" y="708" font-size="14" text-anchor="middle" fill="#24333b">1</text>
+<text x="215.17" y="708" font-size="14" text-anchor="middle" fill="#24333b">4</text>
+<text x="310.34" y="708" font-size="14" text-anchor="middle" fill="#24333b">7</text>
+<text x="437.24" y="708" font-size="14" text-anchor="middle" fill="#24333b">11</text>
+<text x="532.41" y="708" font-size="14" text-anchor="middle" fill="#24333b">14</text>
+<text x="627.59" y="708" font-size="14" text-anchor="middle" fill="#24333b">17</text>
+<text x="722.76" y="708" font-size="14" text-anchor="middle" fill="#24333b">20</text>
+<text x="849.66" y="708" font-size="14" text-anchor="middle" fill="#24333b">24</text>
+<text x="944.83" y="708" font-size="14" text-anchor="middle" fill="#24333b">27</text>
+<text x="1040.00" y="708" font-size="14" text-anchor="middle" fill="#24333b">30</text>
+  <text x="106" y="685.00" font-size="13" text-anchor="end" fill="#204f4f">0.00e+0</text>
+<text x="106" y="565.00" font-size="13" text-anchor="end" fill="#204f4f">13.959</text>
+<text x="106" y="445.00" font-size="13" text-anchor="end" fill="#204f4f">27.917</text>
+<text x="106" y="325.00" font-size="13" text-anchor="end" fill="#204f4f">41.876</text>
+<text x="106" y="205.00" font-size="13" text-anchor="end" fill="#204f4f">55.835</text>
+<text x="106" y="85.00" font-size="13" text-anchor="end" fill="#204f4f">69.793</text>
+  
+
+  <text x="600" y="34" font-size="24" text-anchor="middle" fill="#122028">Repair Speed (baseline) vs Repair Speed factor 1.10 vs Repair Speed factor 1.20 vs Repair Speed polynomial 0.3 vs Repair Speed polynomial 0.6 vs Repair Speed polynomial 0.9 vs Repair Speed polynomial 1.0 vs Repair Speed valueExponent 0.48 vs Repair Speed valueQuadratic 0.46 progression (L1..L30)</text>
+  <text x="600" y="58" font-size="14" text-anchor="middle" fill="#45606d">Variant comparison for Repair Speed (single axis)</text>
+
+  <text x="600" y="736" font-size="14" text-anchor="middle" fill="#24333b">Level</text>
+  <text x="45" y="60" font-size="13" text-anchor="middle" fill="#204f4f">Repair Speed (baseline) (HP/sec)</text>
+  
+
+</svg>
