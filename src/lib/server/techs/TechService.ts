@@ -218,12 +218,16 @@ export class TechService {
      * Process completed builds for a user
      * This should be called periodically or when checking status
      */
-    async processCompletedBuilds(userId: number, context: LockContext<LocksAtMostAndHas4>): Promise<{ completed: BuildQueueItem[] }> {
+    async processCompletedBuilds(
+        userId: number,
+        context: LockContext<LocksAtMostAndHas4>,
+        options: { now?: number } = {}
+    ): Promise<{ completed: BuildQueueItem[] }> {
         const user = await this.getUserCache().getUserByIdWithoutRefreshWithLock(context, userId);
 
         if (!user) return { completed: [] };
 
-        const now = Math.floor(Date.now() / 1000);
+        const now = options.now ?? Math.floor(Date.now() / 1000);
         const completedItems: BuildQueueItem[] = [];
         let queueChanged = false;
         const bonuses = await UserBonusCache.getInstance().getBonuses(context, userId);

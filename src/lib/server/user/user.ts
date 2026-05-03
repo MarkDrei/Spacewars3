@@ -3,7 +3,7 @@
 // ---
 
 import { TechTree, ResearchType, getResearchEffectFromTree, getTimeSpeedFactorFromTree, updateTechTree, AllResearches, getResearchUpgradeCost } from '../techs/techtree';
-import { TechCounts, BuildQueueItem } from '../techs/TechFactory';
+import { TechCounts, BuildQueueItem, TechFactory } from '../techs/TechFactory';
 import { TechService } from '../techs/TechService';
 import { TimeMultiplierService } from '../timeMultiplier';
 import { UserBonusCache } from '../bonus/UserBonusCache';
@@ -328,6 +328,75 @@ class User {
     this.score += amount;
   }
 
+  private getEconomyFactors(
+    bonuses?: UserBonuses,
+    options: { preferTreeDerivedResearchValues?: boolean } = {}
+  ): {
+    ironRate: number;
+    maxCapacity: number;
+    researchSpeedFactor: number;
+    constructionSpeedFactor: number;
+  } {
+    const levelMultiplier = bonuses?.levelMultiplier ?? this.getLevelMultiplier();
+    const preferTreeDerivedResearchValues = options.preferTreeDerivedResearchValues ?? false;
+
+    return {
+      ironRate: !preferTreeDerivedResearchValues && bonuses?.ironRechargeRate !== undefined
+        ? bonuses.ironRechargeRate
+        : getResearchEffectFromTree(this.techTree, ResearchType.IronHarvesting) * levelMultiplier,
+      maxCapacity: !preferTreeDerivedResearchValues && bonuses?.ironStorageCapacity !== undefined
+        ? bonuses.ironStorageCapacity
+        : getResearchEffectFromTree(this.techTree, ResearchType.IronCapacity) * levelMultiplier,
+      researchSpeedFactor: !preferTreeDerivedResearchValues && bonuses?.researchSpeedFactor !== undefined
+        ? bonuses.researchSpeedFactor
+        : getTimeSpeedFactorFromTree(this.techTree, ResearchType.ArtificialIntelligence, levelMultiplier),
+      constructionSpeedFactor: !preferTreeDerivedResearchValues && bonuses?.constructionSpeedFactor !== undefined
+        ? bonuses.constructionSpeedFactor
+        : getTimeSpeedFactorFromTree(this.techTree, ResearchType.ConstructionSpeed, levelMultiplier),
+    };
+  }
+
+  private getNextResearchCompletionTime(
+    currentTime: number,
+    timeMultiplier: number,
+    researchSpeedFactor: number
+  ): number | null {
+    const activeResearch = this.techTree.activeResearch;
+    if (!activeResearch) {
+      return null;
+    }
+
+    const researchProgressPerRealSecond = timeMultiplier * researchSpeedFactor;
+    if (researchProgressPerRealSecond <= 0) {
+      return null;
+    }
+
+    return currentTime + (activeResearch.remainingDuration / researchProgressPerRealSecond);
+  }
+
+  private getNextBuildEventTime(
+    currentTime: number,
+    timeMultiplier: number,
+    constructionSpeedFactor: number
+  ): number | null {
+    if (this.buildQueue.length === 0) {
+      return null;
+    }
+
+    if (this.buildStartSec === null) {
+      return currentTime;
+    }
+
+    const currentBuild = this.buildQueue[0];
+    const spec = TechFactory.getTechSpec(currentBuild.itemKey, currentBuild.itemType);
+    if (!spec) {
+      return currentTime;
+    }
+
+    const effectiveBuildTime = spec.buildDurationMinutes * 60 / timeMultiplier / constructionSpeedFactor;
+    return this.buildStartSec + effectiveBuildTime;
+  }
+
   /**
    * @param now Current timestamp in seconds
    * @param context Held user lock context used for build-queue refresh and bonus lookups.
@@ -335,63 +404,62 @@ class User {
    *   capacity are used. When omitted, falls back to direct tech-tree lookups (backward-compat).
    */
   async updateStats(now: number, context: LockContext<LocksAtMostAndHas4>, bonuses?: UserBonuses): Promise<{ researchCompleted?: { type: ResearchType; completedLevel: number; researchName: string; scoreReward: number } }> {
-    // Process any completed builds so tech counts are up-to-date
-    // (e.g., if this user was offline and builds completed in the DB)
-    const techService = TechService.getInstance();
-    await techService.processCompletedBuilds(this.id, context);
-
     const elapsed = now - this.last_updated;
-    if (elapsed <= 0) return {};
+    const techService = TechService.getInstance();
+    if (elapsed <= 0) {
+      await techService.processCompletedBuilds(this.id, context, { now });
+      return {};
+    }
 
-    // Apply time multiplier to accelerate game progression
-    const gameElapsed = elapsed * this.timeMultiplierService.getMultiplier();
-    const researchSpeedFactor = bonuses?.researchSpeedFactor
-      ?? getTimeSpeedFactorFromTree(this.techTree, ResearchType.ArtificialIntelligence, this.getLevelMultiplier());
-    const researchElapsed = gameElapsed * researchSpeedFactor;
-
-    // Determine the effective iron rate and max capacity from bonuses (if provided)
-    // or from tech tree directly (backward-compat fallback).
-    const ironRateFromBonuses = bonuses?.ironRechargeRate;
-    const maxCapacityFromBonuses = bonuses?.ironStorageCapacity;
-
-    let ironToAdd = 0;
+    const timeMultiplier = this.timeMultiplierService.getMultiplier();
+    let factors = this.getEconomyFactors(bonuses);
+    let cursor = this.last_updated;
     let researchResult: { completed: boolean; type: ResearchType; completedLevel: number } | undefined;
-    const techTree = this.techTree;
-    const active = techTree.activeResearch;
-    if (!active || active.type !== ResearchType.IronHarvesting) {
-      // No relevant research in progress, just award all time
-      const ironRate = ironRateFromBonuses ?? getResearchEffectFromTree(techTree, ResearchType.IronHarvesting);
-      ironToAdd += ironRate * gameElapsed;
-      researchResult = updateTechTree(techTree, researchElapsed);
-    } else {
-      const timeToComplete = active.remainingDuration;
-      const gameSecondsToComplete = timeToComplete / researchSpeedFactor;
-      if (gameElapsed < gameSecondsToComplete) {
-        // Research does not complete in this interval
-        const ironRate = ironRateFromBonuses ?? getResearchEffectFromTree(techTree, ResearchType.IronHarvesting);
-        ironToAdd += ironRate * gameElapsed;
-        researchResult = updateTechTree(techTree, researchElapsed);
-      } else {
-        // Research completes during this interval
-        // 1. Award up to research completion at old rate
-        const ironRateBefore = ironRateFromBonuses ?? getResearchEffectFromTree(techTree, ResearchType.IronHarvesting);
-        ironToAdd += ironRateBefore * gameSecondsToComplete;
-        researchResult = updateTechTree(techTree, timeToComplete);
-        // 2. After research completes, award remaining time at new rate (if any)
-        const remaining = gameElapsed - gameSecondsToComplete;
-        if (remaining > 0) {
-          // Bonuses are stale (computed before research completed).
-          // Re-compute the new iron rate from the updated tech tree, scaled by the cached level multiplier.
-          const ironRateAfter = bonuses
-            ? getResearchEffectFromTree(techTree, ResearchType.IronHarvesting) * bonuses.levelMultiplier
-            : getResearchEffectFromTree(techTree, ResearchType.IronHarvesting);
-          ironToAdd += ironRateAfter * remaining;
-          updateTechTree(techTree, remaining * researchSpeedFactor);
+
+    while (cursor < now) {
+      const nextBuildTime = this.getNextBuildEventTime(cursor, timeMultiplier, factors.constructionSpeedFactor);
+      const nextResearchTime = this.getNextResearchCompletionTime(cursor, timeMultiplier, factors.researchSpeedFactor);
+      const nextEventTime = Math.min(
+        ...[now, nextBuildTime, nextResearchTime].filter((time): time is number => time !== null)
+      );
+
+      if (nextEventTime > cursor) {
+        const realElapsed = nextEventTime - cursor;
+        const gameElapsed = realElapsed * timeMultiplier;
+
+        this.addIron(factors.ironRate * gameElapsed, factors.maxCapacity);
+
+        if (this.techTree.activeResearch) {
+          const researchElapsed = gameElapsed * factors.researchSpeedFactor;
+          const segmentResearchResult = updateTechTree(this.techTree, researchElapsed);
+          if (segmentResearchResult?.completed) {
+            researchResult = segmentResearchResult;
+            this.bonusCache.invalidateBonuses(this.id);
+            factors = this.getEconomyFactors(bonuses, { preferTreeDerivedResearchValues: true });
+          }
+        }
+
+        cursor = nextEventTime;
+      }
+
+      if (nextResearchTime !== null && nextResearchTime <= cursor && this.techTree.activeResearch) {
+        const dueResearchResult = updateTechTree(this.techTree, this.techTree.activeResearch.remainingDuration);
+        if (dueResearchResult?.completed) {
+          researchResult = dueResearchResult;
+          this.bonusCache.invalidateBonuses(this.id);
+          factors = this.getEconomyFactors(bonuses, { preferTreeDerivedResearchValues: true });
         }
       }
+
+      if (nextBuildTime !== null && nextBuildTime <= cursor) {
+        await techService.processCompletedBuilds(this.id, context, { now: cursor });
+      }
+
+      if (nextEventTime === now) {
+        break;
+      }
     }
-    // Use centralized addIron method which enforces capacity cap
-    this.addIron(ironToAdd, maxCapacityFromBonuses);
+
     this.last_updated = now;
 
     // Also update defense values (regeneration)

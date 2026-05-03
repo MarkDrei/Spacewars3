@@ -8,9 +8,10 @@ import {
   getResearchEffectFromTree,
   createInitialTechTree,
 } from '@/lib/server/techs/techtree';
+import { TechService } from '@/lib/server/techs/TechService';
 import { TechCounts } from '@/lib/server/techs/TechFactory';
 import { UserBonuses } from '@/lib/server/bonus/userBonusTypes';
-import { updateStatsWithMockedBuildRefresh } from '@/__tests__/helpers/updateStatsTestHelpers';
+import { updateStatsWithMockedBuildRefresh, withUserLock } from '@/__tests__/helpers/updateStatsTestHelpers';
 
 // The original integration version of this file exercised pure `User` logic
 // without touching the database.  All of those tests have been promoted to
@@ -229,6 +230,28 @@ describe('User.updateStats with IronHarvesting research progression', () => {
     );
   });
 
+  async function updateStatsWithMockedBuildProcessing(
+    now: number,
+    implementation: (
+      userId: number,
+      context: unknown,
+      options?: { now?: number }
+    ) => Promise<{ completed: { itemKey: string; itemType: 'weapon' | 'defense'; completionTime: number }[] }>
+  ) {
+    const processCompletedBuilds = vi.fn().mockImplementation(implementation);
+    const getInstanceSpy = vi.spyOn(TechService, 'getInstance').mockReturnValue({ processCompletedBuilds } as unknown as TechService);
+
+    try {
+      await withUserLock(async (context) => {
+        await user.updateStats(now, context);
+      });
+    } finally {
+      getInstanceSpy.mockRestore();
+    }
+
+    return processCompletedBuilds;
+  }
+
   test('updateStats_researchDoesNotComplete_awardsAllIronAtOldRate', async () => {
     // Start IronHarvesting research (duration 10s)
     triggerResearch(user.techTree, ResearchType.IronHarvesting);
@@ -248,6 +271,19 @@ describe('User.updateStats with IronHarvesting research progression', () => {
     expect(user.iron).toBeCloseTo(10 + 5 * 1.1, 5);
     expect(user.techTree.ironHarvesting).toBe(2); // upgraded
     expect(user.techTree.activeResearch).toBeUndefined();
+  });
+
+  test('updateStats_researchAlreadyDueAtIntervalStart_completesImmediatelyWithoutLooping', async () => {
+    triggerResearch(user.techTree, ResearchType.IronHarvesting);
+    expect(user.techTree.activeResearch).toBeDefined();
+
+    user.techTree.activeResearch!.remainingDuration = 0;
+
+    await updateStatsWithMockedBuildRefresh(user, 1005);
+
+    expect(user.techTree.ironHarvesting).toBe(2);
+    expect(user.techTree.activeResearch).toBeUndefined();
+    expect(user.iron).toBeCloseTo(5 * 1.1, 5);
   });
 
   test('updateStats_multipleResearchCompletionsAndFurtherResearch0_correctIronAndResearchState', async () => {
@@ -373,6 +409,82 @@ describe('User.updateStats with IronHarvesting research progression', () => {
     await updateStatsWithMockedBuildRefresh(user, 1010);
     expect(user.iron).toBeCloseTo(10);
     expect(user.techTree.activeResearch).toBeDefined();
+  });
+
+  test('updateStats_buildCompletesDuringInterval_awardsIronBeforeQueueAbortEvent', async () => {
+    user.iron = 0;
+    user.last_updated = 1000;
+    user.buildQueue = [
+      { itemKey: 'auto_turret', itemType: 'weapon', completionTime: 0 },
+      { itemKey: 'auto_turret', itemType: 'weapon', completionTime: 0 }
+    ];
+    user.buildStartSec = 1000;
+
+    const processCompletedBuilds = await updateStatsWithMockedBuildProcessing(1150, async (_userId, _context, options?: { now?: number }) => {
+      if (options?.now !== 1060) {
+        throw new Error(`Unexpected build processing time: ${options?.now}`);
+      }
+
+      expect(user.iron).toBeCloseTo(60);
+
+      user.techCounts.auto_turret += 1;
+      user.buildQueue = [];
+      user.buildStartSec = null;
+
+      return {
+        completed: [{ itemKey: 'auto_turret', itemType: 'weapon', completionTime: 1060 }]
+      };
+    });
+
+    expect(processCompletedBuilds).toHaveBeenCalledTimes(1);
+    expect(user.iron).toBeCloseTo(150);
+    expect(user.buildQueue).toEqual([]);
+    expect(user.last_updated).toBe(1150);
+  });
+
+  test('updateStats_buildCompletesDuringInterval_spendsOnlyIronAvailableAtBuildEvent', async () => {
+    user.iron = 50;
+    user.last_updated = 1000;
+    user.buildQueue = [
+      { itemKey: 'auto_turret', itemType: 'weapon', completionTime: 0 },
+      { itemKey: 'auto_turret', itemType: 'weapon', completionTime: 0 }
+    ];
+    user.buildStartSec = 1000;
+
+    const processCompletedBuilds = await updateStatsWithMockedBuildProcessing(1150, async (_userId, _context, options?: { now?: number }) => {
+      if (options?.now === 1060) {
+        expect(user.iron).toBeCloseTo(110);
+
+        user.techCounts.auto_turret += 1;
+        user.iron -= 100;
+        user.buildQueue = [{ itemKey: 'auto_turret', itemType: 'weapon', completionTime: 0 }];
+        user.buildStartSec = 1060;
+
+        return {
+          completed: [{ itemKey: 'auto_turret', itemType: 'weapon', completionTime: 1060 }]
+        };
+      }
+
+      if (options?.now === 1120) {
+        expect(user.iron).toBeCloseTo(70);
+
+        user.techCounts.auto_turret += 1;
+        user.buildQueue = [];
+        user.buildStartSec = null;
+
+        return {
+          completed: [{ itemKey: 'auto_turret', itemType: 'weapon', completionTime: 1120 }]
+        };
+      }
+
+      throw new Error(`Unexpected build processing time: ${options?.now}`);
+    });
+
+    expect(processCompletedBuilds).toHaveBeenCalledTimes(2);
+    expect(user.iron).toBeCloseTo(100);
+    expect(user.buildQueue).toEqual([]);
+    expect(user.buildStartSec).toBeNull();
+    expect(user.last_updated).toBe(1150);
   });
 
   test('updateStats_alsoUpdatesDefenseValues_regeneratesCorrectly', async () => {
