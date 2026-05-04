@@ -146,6 +146,15 @@ export const OrbitalCommandHub: React.FC<OrbitalCommandHubProps> = ({
       <clipPath id="ship-center-clip">
         <circle cx="0" cy="0" r="55" />
       </clipPath>
+      <clipPath id="shield-box-clip">
+        <path d={`M 0 -1000 L 1000 -1000 L 1000 1000 L 0 1000 Z M 0 -${rShield} A ${rShield} ${rShield} 0 0 1 0 ${rShield} A ${rShield} ${rShield} 0 0 1 0 -${rShield} Z`} fillRule="evenodd" />
+      </clipPath>
+      <clipPath id="armor-box-clip">
+        <path d={`M 0 -1000 L 1000 -1000 L 1000 1000 L 0 1000 Z M 0 -${rArmor} A ${rArmor} ${rArmor} 0 0 1 0 ${rArmor} A ${rArmor} ${rArmor} 0 0 1 0 -${rArmor} Z`} fillRule="evenodd" />
+      </clipPath>
+      <clipPath id="hull-box-clip">
+        <path d={`M 0 -1000 L 1000 -1000 L 1000 1000 L 0 1000 Z M 0 -${rHull} A ${rHull} ${rHull} 0 0 1 0 ${rHull} A ${rHull} ${rHull} 0 0 1 0 -${rHull} Z`} fillRule="evenodd" />
+      </clipPath>
     </defs>
   );
 
@@ -184,17 +193,43 @@ export const OrbitalCommandHub: React.FC<OrbitalCommandHubProps> = ({
       {/* Crosshairs */}
       <path d="M -260 0 L 260 0 M 0 -260 L 0 260" stroke="rgba(255,255,255,0.05)" strokeWidth="1" />
 
-      {/* Inner Red Ring (Hull) */}
-      <g transform="rotate(-90)">
-        <circle cx="0" cy="0" r={rHull} fill="none" stroke="#25050a" strokeWidth="32" />
-        <circle cx="0" cy="0" r={rHull} fill="none" stroke="#ff416c" strokeWidth="28" strokeDasharray="8 4" opacity="0.2" />
-        <circle cx="0" cy="0" r={rHull} fill="none" stroke="url(#hull-grad)" strokeWidth="28"
-          strokeDasharray={cHull} strokeDashoffset={cHull * (1 - fillHull)} filter="url(#glow-heavy)" strokeLinecap="round" />
+      {/* Shield Stats Box */}
+      <g clipPath="url(#shield-box-clip)">
+        <g transform="translate(190, -230)">
+          <rect x="-190" y="0" width="470" height="90" rx="6" fill="rgba(1, 52, 66, 0.8)" stroke="#00c6ff" strokeWidth="2" filter="url(#drop-shadow)" />
+          {/* left corner stroke removed so the box curves nicely along the shield circle */}
+          <path d="M 280 70 L 280 84 L 274 90 L 260 90" fill="none" stroke="#00c6ff" strokeWidth="6" />
+          <text x="25" y="35" className="box-label" fill="#00c6ff" style={{ fontSize: '16px' }}>{t('orbitalCurrent')}</text>
+          <text x="110" y="36" className="box-value" fill="#fff" style={{ fontSize: '20px' }}>{formatLocalizedNumber(shieldCurrent)}</text>
+          <text x="25" y="70" className="box-label" fill="#00c6ff" style={{ fontSize: '16px' }}>{t('orbitalMaximum')}</text>
+          <text x="110" y="71" className="box-value" fill="#a0c0d0" style={{ fontSize: '20px' }}>{formatLocalizedNumber(shieldMax)}</text>
+        </g>
       </g>
-      <path id="hull-curve" d={`M -${rHull + 25},0 A ${rHull + 25},${rHull + 25} 0 0,1 ${rHull + 25},0`} fill="none" />
-      <text className="ring-label" fill="#ff416c" filter="url(#glow-light)">
-        <textPath href="#hull-curve" startOffset="50%" textAnchor="middle">{t('orbitalHullIntegrity')}</textPath>
-      </text>
+
+      {/* Outer Blue Ring (Shield) */}
+      <g transform="rotate(-90)">
+        <circle cx="0" cy="0" r={rShield} fill="none" stroke="#051525" strokeWidth="40" />
+        <circle cx="0" cy="0" r={rShield} fill="none" stroke="#00c6ff" strokeWidth="36" strokeDasharray="40 10" opacity="0.2" />
+        <circle cx="0" cy="0" r={rShield} fill="none" stroke="url(#shield-grad)" strokeWidth="36"
+          strokeDasharray={cShield} strokeDashoffset={cShield * (1 - fillShield)} filter="url(#glow-heavy)" strokeLinecap="round" />
+        {/* Outer decorative thin ring */}
+        <circle cx="0" cy="0" r={rShield + 28} fill="none" stroke="#00c6ff" strokeWidth="2" opacity="0.5" strokeDasharray="10 20" />
+      </g>
+      <text x="0" y={-(rShield + 40)} className="ring-label" fill="#00c6ff" filter="url(#glow-light)">{t('orbitalShieldSystem')}</text>
+      <text x="0" y={rShield + 50} className="ring-label" fill="#00c6ff" filter="url(#glow-light)">{t('orbitalShield')}</text>
+
+      {/* Armor Stats Box */}
+      <g clipPath="url(#armor-box-clip)">
+        <g transform="translate(155, -110)">
+          <rect x="-155" y="0" width="435" height="90" rx="6" fill="rgba(56, 40, 6, 0.8)" stroke="#f5af19" strokeWidth="2" filter="url(#drop-shadow)" />
+          {/* left corner stroke removed so the box curves nicely along the armor circle */}
+          <path d="M 280 70 L 280 84 L 274 90 L 260 90" fill="none" stroke="#9b7013ff" strokeWidth="6" />
+          <text x="25" y="35" className="box-label" fill="#f5af19" style={{ fontSize: '16px' }}>{t('orbitalCurrent')}</text>
+          <text x="110" y="36" className="box-value" fill="#fff" style={{ fontSize: '20px' }}>{formatLocalizedNumber(armorCurrent)}</text>
+          <text x="25" y="70" className="box-label" fill="#f5af19" style={{ fontSize: '16px' }}>{t('orbitalMaximum')}</text>
+          <text x="110" y="71" className="box-value" fill="#a0c0d0" style={{ fontSize: '20px' }}>{formatLocalizedNumber(armorMax)}</text>
+        </g>
+      </g>
 
       {/* Middle Yellow Ring (Armor) */}
       <g transform="rotate(-90)">
@@ -209,17 +244,31 @@ export const OrbitalCommandHub: React.FC<OrbitalCommandHubProps> = ({
       </text>
       <text x="0" y={rArmor + 40} className="ring-label" fill="#f5af19" filter="url(#glow-light)">{t('orbitalArmor')}</text>
 
-      {/* Outer Blue Ring (Shield) */}
-      <g transform="rotate(-90)">
-        <circle cx="0" cy="0" r={rShield} fill="none" stroke="#051525" strokeWidth="40" />
-        <circle cx="0" cy="0" r={rShield} fill="none" stroke="#00c6ff" strokeWidth="36" strokeDasharray="40 10" opacity="0.2" />
-        <circle cx="0" cy="0" r={rShield} fill="none" stroke="url(#shield-grad)" strokeWidth="36"
-          strokeDasharray={cShield} strokeDashoffset={cShield * (1 - fillShield)} filter="url(#glow-heavy)" strokeLinecap="round" />
-        {/* Outer decorative thin ring */}
-        <circle cx="0" cy="0" r={rShield + 28} fill="none" stroke="#00c6ff" strokeWidth="2" opacity="0.5" strokeDasharray="10 20" />
+
+      {/* Hull Stats Box */}
+      <g clipPath="url(#hull-box-clip)">
+        <g transform="translate(80, 10)">
+          <rect x="-80" y="0" width="360" height="90" rx="6" fill="rgba(75, 19, 32, 0.8)" stroke="#ff416c" strokeWidth="2" filter="url(#drop-shadow)" />
+          {/* left corner stroke removed so the box curves nicely along the hull circle */}
+          <path d="M 280 70 L 280 84 L 274 90 L 260 90" fill="none" stroke="#ff416c" strokeWidth="6" />
+          <text x="25" y="35" className="box-label" fill="#ff416c" style={{ fontSize: '16px' }}>{t('orbitalCurrent')}</text>
+          <text x="110" y="36" className="box-value" fill="#fff" style={{ fontSize: '20px' }}>{formatLocalizedNumber(hullCurrent)}</text>
+          <text x="25" y="70" className="box-label" fill="#ff416c" style={{ fontSize: '16px' }}>{t('orbitalMaximum')}</text>
+          <text x="110" y="71" className="box-value" fill="#a0c0d0" style={{ fontSize: '20px' }}>{formatLocalizedNumber(hullMax)}</text>
+        </g>
       </g>
-      <text x="0" y={-(rShield + 40)} className="ring-label" fill="#00c6ff" filter="url(#glow-light)">{t('orbitalShieldSystem')}</text>
-      <text x="0" y={rShield + 50} className="ring-label" fill="#00c6ff" filter="url(#glow-light)">{t('orbitalShield')}</text>
+
+      {/* Inner Red Ring (Hull) */}
+      <g transform="rotate(-90)">
+        <circle cx="0" cy="0" r={rHull} fill="none" stroke="#25050a" strokeWidth="32" />
+        <circle cx="0" cy="0" r={rHull} fill="none" stroke="#ff416c" strokeWidth="28" strokeDasharray="8 4" opacity="0.2" />
+        <circle cx="0" cy="0" r={rHull} fill="none" stroke="url(#hull-grad)" strokeWidth="28"
+          strokeDasharray={cHull} strokeDashoffset={cHull * (1 - fillHull)} filter="url(#glow-heavy)" strokeLinecap="round" />
+      </g>
+      <path id="hull-curve" d={`M -${rHull + 25},0 A ${rHull + 25},${rHull + 25} 0 0,1 ${rHull + 25},0`} fill="none" />
+      <text className="ring-label" fill="#ff416c" filter="url(#glow-light)">
+        <textPath href="#hull-curve" startOffset="50%" textAnchor="middle">{t('orbitalHullIntegrity')}</textPath>
+      </text>
 
       {/* Connection Lines (commented out — kept as part of the unit) */}
       {/* Shield Line (Blue) */}
@@ -242,39 +291,6 @@ export const OrbitalCommandHub: React.FC<OrbitalCommandHubProps> = ({
         <circle cx={rArmor * Math.cos(65 * Math.PI / 180)} cy={rArmor * Math.sin(65 * Math.PI / 180)} r="4" fill="#f5af19" />
         <circle cx="95" cy="200" r="3" fill="#f5af19" />
       </g> */}
-
-      {/* Shield Stats Box */}
-      <g transform="translate(190, -230)">
-        <rect x="0" y="0" width="280" height="90" rx="6" fill="rgba(1, 52, 66, 0.8)" stroke="#00c6ff" strokeWidth="2" filter="url(#drop-shadow)" />
-        <path d="M 0 20 L 0 6 L 6 0 L 20 0" fill="none" stroke="#00c6ff" strokeWidth="6" />
-        <path d="M 280 70 L 280 84 L 274 90 L 260 90" fill="none" stroke="#00c6ff" strokeWidth="6" />
-        <text x="25" y="35" className="box-label" fill="#00c6ff" style={{ fontSize: '16px' }}>{t('orbitalCurrent')}</text>
-        <text x="110" y="36" className="box-value" fill="#fff" style={{ fontSize: '20px' }}>{formatLocalizedNumber(shieldCurrent)}</text>
-        <text x="25" y="70" className="box-label" fill="#00c6ff" style={{ fontSize: '16px' }}>{t('orbitalMaximum')}</text>
-        <text x="110" y="71" className="box-value" fill="#a0c0d0" style={{ fontSize: '20px' }}>{formatLocalizedNumber(shieldMax)}</text>
-      </g>
-
-      {/* Hull Stats Box */}
-      <g transform="translate(80, 10)">
-        <rect x="0" y="0" width="280" height="90" rx="6" fill="rgba(75, 19, 32, 0.8)" stroke="#ff416c" strokeWidth="2" filter="url(#drop-shadow)" />
-        <path d="M 0 20 L 0 6 L 6 0 L 20 0" fill="none" stroke="#ff416c" strokeWidth="6" />
-        <path d="M 280 70 L 280 84 L 274 90 L 260 90" fill="none" stroke="#ff416c" strokeWidth="6" />
-        <text x="25" y="35" className="box-label" fill="#ff416c" style={{ fontSize: '16px' }}>{t('orbitalCurrent')}</text>
-        <text x="110" y="36" className="box-value" fill="#fff" style={{ fontSize: '20px' }}>{formatLocalizedNumber(hullCurrent)}</text>
-        <text x="25" y="70" className="box-label" fill="#ff416c" style={{ fontSize: '16px' }}>{t('orbitalMaximum')}</text>
-        <text x="110" y="71" className="box-value" fill="#a0c0d0" style={{ fontSize: '20px' }}>{formatLocalizedNumber(hullMax)}</text>
-      </g>
-
-      {/* Armor Stats Box */}
-      <g transform="translate(130, -110)">
-        <rect x="0" y="0" width="280" height="90" rx="6" fill="rgba(56, 40, 6, 0.8)" stroke="#f5af19" strokeWidth="2" filter="url(#drop-shadow)" />
-        <path d="M 0 20 L 0 6 L 6 0 L 20 0" fill="none" stroke="#9b7013ff" strokeWidth="6" />
-        <path d="M 280 70 L 280 84 L 274 90 L 260 90" fill="none" stroke="#9b7013ff" strokeWidth="6" />
-        <text x="25" y="35" className="box-label" fill="#f5af19" style={{ fontSize: '16px' }}>{t('orbitalCurrent')}</text>
-        <text x="110" y="36" className="box-value" fill="#fff" style={{ fontSize: '20px' }}>{formatLocalizedNumber(armorCurrent)}</text>
-        <text x="25" y="70" className="box-label" fill="#f5af19" style={{ fontSize: '16px' }}>{t('orbitalMaximum')}</text>
-        <text x="110" y="71" className="box-value" fill="#a0c0d0" style={{ fontSize: '20px' }}>{formatLocalizedNumber(armorMax)}</text>
-      </g>
     </>
   );
 
