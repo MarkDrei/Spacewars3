@@ -98,6 +98,36 @@ describe('getResearchEffect', () => {
     expect(getResearchEffect(AllResearches[ResearchType.ProjectileAccuracy], 3)).toBeCloseTo(82.97, 1);
   });
 
+  test('getResearchEffect_valueExponentIncrease_appliesValueToCurveAndExponent', () => {
+    const research = {
+      ...AllResearches[ResearchType.RepairSpeed],
+      baseValue: 10,
+      baseValueIncrease: { type: 'valueExponent' as const, value: 0.2 },
+    };
+
+    // level 1: 10 * (1 + 0.2*0)^(1.2) = 10
+    expect(getResearchEffect(research, 1)).toBeCloseTo(10, 10);
+    // level 2: 10 * (1 + 0.2*1)^(1.2) ≈ 12.4456
+    expect(getResearchEffect(research, 2)).toBeCloseTo(12.4456, 4);
+    // level 5: 10 * (1 + 0.2*4)^(1.2) ≈ 20.2454
+    expect(getResearchEffect(research, 5)).toBeCloseTo(20.2454, 4);
+  });
+
+  test('getResearchEffect_valueQuadraticIncrease_appliesLinearAndQuadraticTerms', () => {
+    const research = {
+      ...AllResearches[ResearchType.RepairSpeed],
+      baseValue: 10,
+      baseValueIncrease: { type: 'valueQuadratic' as const, value: 0.2 },
+    };
+
+    // level 1: x=0 => 10 * (1 + 0 + 0) = 10
+    expect(getResearchEffect(research, 1)).toBeCloseTo(10, 10);
+    // level 2: x=0.2 => 10 * (1 + 0.2 + 0.04) = 12.4
+    expect(getResearchEffect(research, 2)).toBeCloseTo(12.4, 10);
+    // level 5: x=0.8 => 10 * (1 + 0.8 + 0.64) = 24.4
+    expect(getResearchEffect(research, 5)).toBeCloseTo(24.4, 10);
+  });
+
   test('getResearchEffect_newProjectileWeapons_calculatesCorrectly', () => {
     expect(getResearchEffect(AllResearches[ResearchType.ProjectileDamage], 1)).toBeCloseTo(50);
     expect(getResearchEffect(AllResearches[ResearchType.ProjectileDamage], 2)).toBeCloseTo(57.5);
@@ -116,7 +146,7 @@ describe('getResearchEffect', () => {
     expect(getResearchEffect(AllResearches[ResearchType.HullStrength], 1)).toBeCloseTo(100);
     expect(getResearchEffect(AllResearches[ResearchType.HullStrength], 2)).toBeCloseTo(107.02, 1);
     expect(getResearchEffect(AllResearches[ResearchType.RepairSpeed], 1)).toBeCloseTo(0.1, 10);
-    expect(getResearchEffect(AllResearches[ResearchType.RepairSpeed], 2)).toBeCloseTo(0.115, 10);
+    expect(getResearchEffect(AllResearches[ResearchType.RepairSpeed], 2)).toBeCloseTo(0.125, 10);
     expect(getResearchEffect(AllResearches[ResearchType.ShieldRechargeRate], 1)).toBeCloseTo(0.1, 10);
     expect(getResearchEffect(AllResearches[ResearchType.ShieldRechargeRate], 2)).toBeCloseTo(0.113, 10);
   });

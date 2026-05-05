@@ -1,0 +1,70 @@
+{
+  "research": "repairSpeed",
+  "includeBaseline": true,
+  "variants": [
+    {
+      "id": "factor-1.10",
+      "label": "Repair Speed factor 1.10",
+      "baseValueIncrease": {
+        "type": "factor",
+        "value": 1.1
+      }
+    },
+    {
+      "id": "factor-1.20",
+      "label": "Repair Speed factor 1.20",
+      "baseValueIncrease": {
+        "type": "factor",
+        "value": 1.2
+      }
+    },
+    {
+      "id": "polynomial-0.3",
+      "label": "Repair Speed polynomial 0.3",
+      "baseValueIncrease": {
+        "type": "polynomial",
+        "value": 0.3
+      }
+    },
+    {
+      "id": "polynomial-0.6",
+      "label": "Repair Speed polynomial 0.6",
+      "baseValueIncrease": {
+        "type": "polynomial",
+        "value": 0.6
+      }
+    },
+    {
+      "id": "polynomial-0.9",
+      "label": "Repair Speed polynomial 0.9",
+      "baseValueIncrease": {
+        "type": "polynomial",
+        "value": 0.9
+      }
+    },
+    {
+      "id": "polynomial-1.0",
+      "label": "Repair Speed polynomial 1.0",
+      "baseValueIncrease": {
+        "type": "polynomial",
+        "value": 1.0
+      }
+    },
+    {
+      "id": "value-exponent-0.48",
+      "label": "Repair Speed valueExponent 0.48",
+      "baseValueIncrease": {
+        "type": "valueExponent",
+        "value": 0.48
+      }
+    },
+    {
+      "id": "value-quadratic-0.46",
+      "label": "Repair Speed valueQuadratic 0.46",
+      "baseValueIncrease": {
+        "type": "valueQuadratic",
+        "value": 0.46
+      }
+    }
+]
+}

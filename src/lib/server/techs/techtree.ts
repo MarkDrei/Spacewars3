@@ -46,7 +46,15 @@ export interface Research {
   baseUpgradeDuration: number; // in seconds
   baseValue: number; // base value for this research (e.g. iron/sec, speed)
   upgradeCostIncrease: number; // multiplier for cost increase per level
-  baseValueIncrease: { type: 'constant' | 'factor' | 'polynomial'; value: number }; // how the effect increases per level
+  baseValueIncrease: {
+    type:
+      | 'constant'
+      | 'factor'
+      | 'polynomial'
+      | 'valueExponent'
+      | 'valueQuadratic';
+    value: number;
+  }; // how the effect increases per level
   description: string;
   treeKey: keyof TechTree; // Add this property
   unit: string; // Unit for the research effect, e.g., 'iron/sec', '%'
@@ -64,7 +72,7 @@ export const AllResearches: Record<ResearchType, Research> = {
     baseUpgradeDuration: 10,
     baseValue: 1,
     upgradeCostIncrease: 2,
-    baseValueIncrease: { type: 'factor', value: 1.1 },
+    baseValueIncrease: { type: 'valueQuadratic', value: 0.1 },
     description: 'Determines how much iron is harvested per second.',
     treeKey: 'ironHarvesting',
     unit: 'iron/sec',
@@ -91,7 +99,7 @@ export const AllResearches: Record<ResearchType, Research> = {
     baseUpgradeDuration: 120,
     baseValue: 100,
     upgradeCostIncrease: 1.5,
-    baseValueIncrease: { type: 'factor', value: 1.2 },
+    baseValueIncrease: { type: 'valueQuadratic', value: 0.3 },
     description: 'Legacy afterburner research entry kept for backward compatibility.',
     treeKey: 'afterburner',
     unit: '%',
@@ -105,7 +113,7 @@ export const AllResearches: Record<ResearchType, Research> = {
     baseUpgradeDuration: 60,
     baseValue: 50,
     upgradeCostIncrease: 2.0,
-    baseValueIncrease: { type: 'factor', value: 1.15 },
+    baseValueIncrease: { type: 'valueQuadratic', value: 0.15 },
     description: 'Increases damage output of projectile weapons.',
     treeKey: 'projectileDamage',
     unit: 'damage',
@@ -131,7 +139,7 @@ export const AllResearches: Record<ResearchType, Research> = {
     baseUpgradeDuration: 70,
     baseValue: 70,
     upgradeCostIncrease: 1.9,
-    baseValueIncrease: { type: 'polynomial', value: 0.1 },
+    baseValueIncrease: { type: 'valueQuadratic', value: 0.15 },
     description: 'Improves accuracy of projectile weapons.',
     treeKey: 'projectileAccuracy',
     unit: '%',
@@ -158,7 +166,7 @@ export const AllResearches: Record<ResearchType, Research> = {
     baseUpgradeDuration: 65,
     baseValue: 60,
     upgradeCostIncrease: 2.0,
-    baseValueIncrease: { type: 'factor', value: 1.15 },
+    baseValueIncrease: { type: 'valueQuadratic', value: 0.15 },
     description: 'Increases damage output of energy weapons.',
     treeKey: 'energyDamage',
     unit: 'damage',
@@ -171,7 +179,7 @@ export const AllResearches: Record<ResearchType, Research> = {
     baseUpgradeDuration: 55,
     baseValue: 15,
     upgradeCostIncrease: 1.8,
-    baseValueIncrease: { type: 'constant', value: 15 },
+    baseValueIncrease: { type: 'constant', value: 10 },
     description: 'Increases recharge rate of energy weapons.',
     treeKey: 'energyRechargeRate',
     unit: '%',
@@ -184,7 +192,7 @@ export const AllResearches: Record<ResearchType, Research> = {
     baseUpgradeDuration: 75,
     baseValue: 65,
     upgradeCostIncrease: 1.9,
-    baseValueIncrease: { type: 'polynomial', value: 0.1 },
+    baseValueIncrease: { type: 'valueQuadratic', value: 0.15 },
     description: 'Improves accuracy of energy weapons.',
     treeKey: 'energyAccuracy',
     unit: '%',
@@ -211,7 +219,7 @@ export const AllResearches: Record<ResearchType, Research> = {
     baseUpgradeDuration: 90,
     baseValue: 100,
     upgradeCostIncrease: 2.2,
-    baseValueIncrease: { type: 'polynomial', value: 0.1 },
+    baseValueIncrease: { type: 'valueQuadratic', value: 0.15 },
     description: 'Increases hull strength of your ship for each hull plate installed.',
     treeKey: 'hullStrength',
     unit: '%',
@@ -224,7 +232,7 @@ export const AllResearches: Record<ResearchType, Research> = {
     baseUpgradeDuration: 60,
     baseValue: 0.1,
     upgradeCostIncrease: 2.0,
-    baseValueIncrease: { type: 'factor', value: 1.15 },
+    baseValueIncrease: { type: 'valueQuadratic', value: 0.26 },
     description: 'Increases repair speed for hull, armor and engine. Repairs do not happen during combat.',
     treeKey: 'repairSpeed',
     unit: 'HP/sec',
@@ -237,7 +245,7 @@ export const AllResearches: Record<ResearchType, Research> = {
     baseUpgradeDuration: 100,
     baseValue: 100,
     upgradeCostIncrease: 2.1,
-    baseValueIncrease: { type: 'polynomial', value: 0.1 },
+    baseValueIncrease: { type: 'valueQuadratic', value: 0.18 },
     description: 'Increases additional armor value per armor plate.',
     treeKey: 'armorEffectiveness',
     unit: '%',
@@ -250,7 +258,7 @@ export const AllResearches: Record<ResearchType, Research> = {
     baseUpgradeDuration: 95,
     baseValue: 100,
     upgradeCostIncrease: 2.1,
-    baseValueIncrease: { type: 'polynomial', value: 0.1 },
+    baseValueIncrease: { type: 'valueQuadratic', value: 0.18 },
     description: 'Increases additional shield value per installed shield.',
     treeKey: 'shieldEffectiveness',
     unit: '%',
@@ -263,7 +271,7 @@ export const AllResearches: Record<ResearchType, Research> = {
     baseUpgradeDuration: 60,
     baseValue: 0.1,
     upgradeCostIncrease: 2.0,
-    baseValueIncrease: { type: 'factor', value: 1.13 },
+    baseValueIncrease: { type: 'valueQuadratic', value: 0.23 },
     description: 'Increases shield recharge rate. Shield regenerate per second and also during combat.',
     treeKey: 'shieldRechargeRate',
     unit: 'HP/sec',
@@ -303,7 +311,7 @@ export const AllResearches: Record<ResearchType, Research> = {
     baseUpgradeDuration: 45,
     baseValue: 3600,
     upgradeCostIncrease: 2.0,
-    baseValueIncrease: { type: 'factor', value: 0.9 },
+    baseValueIncrease: { type: 'valueQuadratic', value: 0.15 },
     description: 'Speeds up afterburner fuel recharge while the afterburner is disengaged.',
     treeKey: 'afterburnerCooldown',
     unit: 'seconds',
@@ -329,8 +337,8 @@ export const AllResearches: Record<ResearchType, Research> = {
     baseUpgradeDuration: 1800,
     baseValue: 86400,
     upgradeCostIncrease: 1.3,
-    baseValueIncrease: { type: 'factor', value: 0.9 },
-    description: 'Decreases teleport charge recharge time by 10% per level.',
+    baseValueIncrease: { type: 'valueQuadratic', value: 0.15 },
+    description: 'Decreases teleport charge recharge time.',
     treeKey: 'teleportRechargeSpeed',
     unit: 'seconds',
   },
@@ -342,7 +350,7 @@ export const AllResearches: Record<ResearchType, Research> = {
     baseUpgradeDuration: 45,
     baseValue: 5000,
     upgradeCostIncrease: 1.7,
-    baseValueIncrease: { type: 'factor', value: 2 },
+    baseValueIncrease: { type: 'valueQuadratic', value: 0.7 },
     description: 'Increases iron storage capacity.',
     treeKey: 'ironCapacity',
     unit: 'iron',
@@ -381,7 +389,7 @@ export const AllResearches: Record<ResearchType, Research> = {
     baseUpgradeDuration: 1800,
     baseValue: 10,
     upgradeCostIncrease: 1.9,
-    baseValueIncrease: { type: 'polynomial', value: 0.1 },
+    baseValueIncrease: { type: 'valueQuadratic', value: 0.15 },
     description: 'Reduces the build time for weapons, shields, armor, hull plates, and other tech items in the factory.',
     treeKey: 'constructionSpeed',
     unit: '%',
@@ -394,7 +402,7 @@ export const AllResearches: Record<ResearchType, Research> = {
     baseUpgradeDuration: 2400,
     baseValue: 10,
     upgradeCostIncrease: 2.0,
-    baseValueIncrease: { type: 'polynomial', value: 0.1 },
+    baseValueIncrease: { type: 'valueQuadratic', value: 0.15 },
     description: 'Reduces the time needed for researches.',
     treeKey: 'artificialIntelligence',
     unit: '%',
@@ -408,7 +416,7 @@ export const AllResearches: Record<ResearchType, Research> = {
     baseUpgradeDuration: 150,
     baseValue: 10,
     upgradeCostIncrease: 2.5,
-    baseValueIncrease: { type: 'polynomial', value: 0.1 },
+    baseValueIncrease: { type: 'valueQuadratic', value: 1 },
     description: 'Increases chance of successful spy missions.',
     treeKey: 'spyChance',
     unit: '%',
@@ -434,7 +442,7 @@ export const AllResearches: Record<ResearchType, Research> = {
     baseUpgradeDuration: 180,
     baseValue: 50,
     upgradeCostIncrease: 2.5,
-    baseValueIncrease: { type: 'factor', value: 1.25 },
+    baseValueIncrease: { type: 'valueQuadratic', value: 0.5 },
     description: 'Increases damage dealt by sabotage missions.',
     treeKey: 'spySabotageDamage',
     unit: 'damage',
@@ -447,7 +455,7 @@ export const AllResearches: Record<ResearchType, Research> = {
     baseUpgradeDuration: 160,
     baseValue: 15,
     upgradeCostIncrease: 2.5,
-    baseValueIncrease: { type: 'polynomial', value: 0.1 },
+    baseValueIncrease: { type: 'valueQuadratic', value: 1 },
     description: 'Reduces chance of enemy spy success.',
     treeKey: 'counterintelligence',
     unit: '%',
@@ -460,7 +468,7 @@ export const AllResearches: Record<ResearchType, Research> = {
     baseUpgradeDuration: 200,
     baseValue: 100,
     upgradeCostIncrease: 2.7,
-    baseValueIncrease: { type: 'factor', value: 1.3 },
+    baseValueIncrease: { type: 'valueQuadratic', value: 0.5 },
     description: 'Increases amount of iron stolen by spies.',
     treeKey: 'stealIron',
     unit: 'iron',
@@ -689,11 +697,13 @@ export function getTimeSpeedFactorFromTree(
 
 /**
  * Returns the effect value for a given research and level.
- * Applies the baseValueIncrease logic (factor, constant, or polynomial) for each level above the research's starting level.
+ * Applies the baseValueIncrease logic for each level above the research's starting level.
  * Formulas:
  * - constant: baseValue + (constant * (level - 1))
  * - factor: baseValue * (factor ^ (level - 1))
  * - polynomial: baseValue + baseValue * (value * (1.5 * level - 1.5)) ^ 1.4
+ * - valueExponent: baseValue * (1 + value * (level - 1)) ^ (1 + value)
+ * - valueQuadratic: baseValue * (1 + value * (level - 1) + (value * (level - 1)) ^ 2)
  */
 export function getResearchEffect(research: Research, level: number): number {
   if (level === 0) return 0; // At level 0, the effect is always 0
@@ -704,12 +714,25 @@ export function getResearchEffect(research: Research, level: number): number {
   } else if (increase.type === 'constant') {
     // Effect = baseValue + (constant * (level - 1))
     return research.baseValue + increase.value * (level - 1);
-  } else {
+  } else if (increase.type === 'polynomial') {
     // polynomial: Effect = baseValue + baseValue * (value * (1.5 * level - 1.5)) ^ 1.4
     // This is the "in between" formula: 1 + (0.1 * (1.5x - 1.5)) ^ 1.4
     // For level 1: 1 + (0.1 * 0) ^ 1.4 = 1
     // For level 2: 1 + (0.1 * 1.5) ^ 1.4 = 1 + 0.15^1.4 ≈ 1.047
     const multiplier = 1 + Math.pow(increase.value * (1.5 * level - 1.5), 1.4);
+    return research.baseValue * multiplier;
+  } else if (increase.type === 'valueExponent') {
+    // valueExponent: Effect = baseValue * (1 + value * (level - 1)) ^ (1 + value)
+    // The value parameter influences both base growth and curve steepness (exponent).
+    const n = level - 1;
+    const multiplier = Math.pow(1 + increase.value * n, 1 + increase.value);
+    return research.baseValue * multiplier;
+  } else {
+    // valueQuadratic: Effect = baseValue * (1 + x + x^2), x = value * (level - 1)
+    // The value parameter controls both linear and quadratic terms, increasing acceleration influence.
+    const n = level - 1;
+    const x = increase.value * n;
+    const multiplier = 1 + x + x * x;
     return research.baseValue * multiplier;
   }
 }

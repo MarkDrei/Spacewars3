@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760">
+  <rect x="0" y="0" width="1200" height="760" fill="#f7fafb" />
+  <rect x="120" y="80" width="920" height="600" fill="#ffffff" stroke="#cad3d8" />
+
+  <line x1="120" y1="680.00" x2="1040" y2="680.00" stroke="#d3d8db" stroke-width="1" />
+<line x1="120" y1="560.00" x2="1040" y2="560.00" stroke="#d3d8db" stroke-width="1" />
+<line x1="120" y1="440.00" x2="1040" y2="440.00" stroke="#d3d8db" stroke-width="1" />
+<line x1="120" y1="320.00" x2="1040" y2="320.00" stroke="#d3d8db" stroke-width="1" />
+<line x1="120" y1="200.00" x2="1040" y2="200.00" stroke="#d3d8db" stroke-width="1" />
+<line x1="120" y1="80.00" x2="1040" y2="80.00" stroke="#d3d8db" stroke-width="1" />
+  <line x1="120.00" y1="80" x2="120.00" y2="680" stroke="#eceff1" stroke-width="1" />
+<line x1="216.84" y1="80" x2="216.84" y2="680" stroke="#eceff1" stroke-width="1" />
+<line x1="313.68" y1="80" x2="313.68" y2="680" stroke="#eceff1" stroke-width="1" />
+<line x1="410.53" y1="80" x2="410.53" y2="680" stroke="#eceff1" stroke-width="1" />
+<line x1="507.37" y1="80" x2="507.37" y2="680" stroke="#eceff1" stroke-width="1" />
+<line x1="652.63" y1="80" x2="652.63" y2="680" stroke="#eceff1" stroke-width="1" />
+<line x1="749.47" y1="80" x2="749.47" y2="680" stroke="#eceff1" stroke-width="1" />
+<line x1="846.32" y1="80" x2="846.32" y2="680" stroke="#eceff1" stroke-width="1" />
+<line x1="943.16" y1="80" x2="943.16" y2="680" stroke="#eceff1" stroke-width="1" />
+<line x1="1040.00" y1="80" x2="1040.00" y2="680" stroke="#eceff1" stroke-width="1" />
+
+  <line x1="120" y1="680" x2="1040" y2="680" stroke="#24333b" stroke-width="2" />
+  <line x1="120" y1="80" x2="120" y2="680" stroke="#0d6e6e" stroke-width="2" />
+  
+
+  <path d="M 120.00 671.99 L 168.42 669.99 L 216.84 667.49 L 265.26 664.36 L 313.68 660.45 L 362.11 655.57 L 410.53 649.46 L 458.95 641.82 L 507.37 632.28 L 555.79 620.35 L 604.21 605.43 L 652.63 586.79 L 701.05 563.49 L 749.47 534.36 L 797.89 497.96 L 846.32 452.44 L 894.74 395.56 L 943.16 324.44 L 991.58 235.56 L 1040.00 124.44" fill="none" stroke="#1b1b1b" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
+  <path d="M 120.00 671.99 L 168.42 671.19 L 216.84 670.31 L 265.26 669.34 L 313.68 668.28 L 362.11 667.11 L 410.53 665.82 L 458.95 664.40 L 507.37 662.84 L 555.79 661.12 L 604.21 659.23 L 652.63 657.16 L 701.05 654.87 L 749.47 652.36 L 797.89 649.60 L 846.32 646.56 L 894.74 643.21 L 943.16 639.53 L 991.58 635.49 L 1040.00 631.03" fill="none" stroke="#0072B2" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="8 4" />
+<path d="M 120.00 671.99 L 168.42 670.39 L 216.84 668.47 L 265.26 666.16 L 313.68 663.40 L 362.11 660.08 L 410.53 656.09 L 458.95 651.31 L 507.37 645.57 L 555.79 638.69 L 604.21 630.43 L 652.63 620.51 L 701.05 608.61 L 749.47 594.34 L 797.89 577.20 L 846.32 556.65 L 894.74 531.97 L 943.16 502.37 L 991.58 466.84 L 1040.00 424.21" fill="none" stroke="#D55E00" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="8 4" />
+<path d="M 120.00 671.99 L 168.42 669.38 L 216.84 665.09 L 265.26 659.81 L 313.68 653.76 L 362.11 647.08 L 410.53 639.83 L 458.95 632.08 L 507.37 623.88 L 555.79 615.26 L 604.21 606.24 L 652.63 596.85 L 701.05 587.12 L 749.47 577.05 L 797.89 566.67 L 846.32 555.99 L 894.74 545.02 L 943.16 533.78 L 991.58 522.26 L 1040.00 510.49" fill="none" stroke="#009E73" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="8 4" />
+<path d="M 120.00 671.99 L 168.42 665.09 L 216.84 653.76 L 265.26 639.83 L 313.68 623.88 L 362.11 606.24 L 410.53 587.12 L 458.95 566.67 L 507.37 545.02 L 555.79 522.26 L 604.21 498.46 L 652.63 473.69 L 701.05 448.00 L 749.47 421.44 L 797.89 394.05 L 846.32 365.86 L 894.74 336.92 L 943.16 307.24 L 991.58 276.85 L 1040.00 245.78" fill="none" stroke="#CC79A7" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="8 4" />
+<path d="M 120.00 671.99 L 168.42 659.81 L 216.84 639.83 L 265.26 615.26 L 313.68 587.12 L 362.11 555.99 L 410.53 522.26 L 458.95 486.20 L 507.37 448.00 L 555.79 407.85 L 604.21 365.86 L 652.63 322.17 L 701.05 276.85 L 749.47 229.99 L 797.89 181.67 L 846.32 131.95 L 894.74 80.88 L 943.16 28.52 L 991.58 -25.09 L 1040.00 -79.91" fill="none" stroke="#E69F00" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="8 4" />
+<path d="M 120.00 671.99 L 168.42 657.87 L 216.84 634.72 L 265.26 606.24 L 313.68 573.63 L 362.11 537.56 L 410.53 498.46 L 458.95 456.66 L 507.37 412.40 L 555.79 365.86 L 604.21 317.21 L 652.63 266.56 L 701.05 214.04 L 749.47 159.74 L 797.89 103.74 L 846.32 46.11 L 894.74 -13.07 L 943.16 -73.76 L 991.58 -135.89 L 1040.00 -199.41" fill="none" stroke="#56B4E9" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="8 4" />
+<path d="M 120.00 671.99 L 168.42 665.70 L 216.84 658.32 L 265.26 650.02 L 313.68 640.90 L 362.11 631.02 L 410.53 620.45 L 458.95 609.23 L 507.37 597.39 L 555.79 584.99 L 604.21 572.03 L 652.63 558.54 L 701.05 544.56 L 749.47 530.08 L 797.89 515.14 L 846.32 499.75 L 894.74 483.91 L 943.16 467.65 L 991.58 450.98 L 1040.00 433.90" fill="none" stroke="#1b1b1b" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="8 4" />
+<path d="M 120.00 671.99 L 168.42 666.62 L 216.84 657.85 L 265.26 645.70 L 313.68 630.16 L 362.11 611.23 L 410.53 588.91 L 458.95 563.20 L 507.37 534.10 L 555.79 501.62 L 604.21 465.75 L 652.63 426.49 L 701.05 383.84 L 749.47 337.80 L 797.89 288.38 L 846.32 235.56 L 894.74 179.36 L 943.16 119.77 L 991.58 56.79 L 1040.00 -9.57" fill="none" stroke="#0072B2" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="8 4" />
+  <g>
+    <rect x="136" y="96" width="560" height="218" fill="#ffffff" fill-opacity="0.92" stroke="#b8c4cb" />
+    <g>
+      <line x1="146" y1="113" x2="170" y2="113" stroke="#1b1b1b" stroke-width="4" />
+      <text x="178" y="117" font-size="13" fill="#1f2d34">Repair Speed (baseline)</text>
+    </g>
+<g>
+      <line x1="146" y1="135" x2="170" y2="135" stroke="#0072B2" stroke-width="4" stroke-dasharray="8 4" />
+      <text x="178" y="139" font-size="13" fill="#1f2d34">Repair Speed factor 1.10</text>
+    </g>
+<g>
+      <line x1="146" y1="157" x2="170" y2="157" stroke="#D55E00" stroke-width="4" stroke-dasharray="8 4" />
+      <text x="178" y="161" font-size="13" fill="#1f2d34">Repair Speed factor 1.20</text>
+    </g>
+<g>
+      <line x1="146" y1="179" x2="170" y2="179" stroke="#009E73" stroke-width="4" stroke-dasharray="8 4" />
+      <text x="178" y="183" font-size="13" fill="#1f2d34">Repair Speed polynomial 0.3</text>
+    </g>
+<g>
+      <line x1="146" y1="201" x2="170" y2="201" stroke="#CC79A7" stroke-width="4" stroke-dasharray="8 4" />
+      <text x="178" y="205" font-size="13" fill="#1f2d34">Repair Speed polynomial 0.6</text>
+    </g>
+<g>
+      <line x1="146" y1="223" x2="170" y2="223" stroke="#E69F00" stroke-width="4" stroke-dasharray="8 4" />
+      <text x="178" y="227" font-size="13" fill="#1f2d34">Repair Speed polynomial 0.9</text>
+    </g>
+<g>
+      <line x1="146" y1="245" x2="170" y2="245" stroke="#56B4E9" stroke-width="4" stroke-dasharray="8 4" />
+      <text x="178" y="249" font-size="13" fill="#1f2d34">Repair Speed polynomial 1.0</text>
+    </g>
+<g>
+      <line x1="146" y1="267" x2="170" y2="267" stroke="#1b1b1b" stroke-width="4" stroke-dasharray="8 4" />
+      <text x="178" y="271" font-size="13" fill="#1f2d34">Repair Speed valueExponent 0.48</text>
+    </g>
+<g>
+      <line x1="146" y1="289" x2="170" y2="289" stroke="#0072B2" stroke-width="4" stroke-dasharray="8 4" />
+      <text x="178" y="293" font-size="13" fill="#1f2d34">Repair Speed valueQuadratic 0.46</text>
+    </g>
+  </g>
+
+  <text x="120.00" y="708" font-size="14" text-anchor="middle" fill="#24333b">1</text>
+<text x="216.84" y="708" font-size="14" text-anchor="middle" fill="#24333b">3</text>
+<text x="313.68" y="708" font-size="14" text-anchor="middle" fill="#24333b">5</text>
+<text x="410.53" y="708" font-size="14" text-anchor="middle" fill="#24333b">7</text>
+<text x="507.37" y="708" font-size="14" text-anchor="middle" fill="#24333b">9</text>
+<text x="652.63" y="708" font-size="14" text-anchor="middle" fill="#24333b">12</text>
+<text x="749.47" y="708" font-size="14" text-anchor="middle" fill="#24333b">14</text>
+<text x="846.32" y="708" font-size="14" text-anchor="middle" fill="#24333b">16</text>
+<text x="943.16" y="708" font-size="14" text-anchor="middle" fill="#24333b">18</text>
+<text x="1040.00" y="708" font-size="14" text-anchor="middle" fill="#24333b">20</text>
+  <text x="106" y="685.00" font-size="13" text-anchor="end" fill="#204f4f">0.00e+0</text>
+<text x="106" y="565.00" font-size="13" text-anchor="end" fill="#204f4f">1.499</text>
+<text x="106" y="445.00" font-size="13" text-anchor="end" fill="#204f4f">2.998</text>
+<text x="106" y="325.00" font-size="13" text-anchor="end" fill="#204f4f">4.496</text>
+<text x="106" y="205.00" font-size="13" text-anchor="end" fill="#204f4f">5.995</text>
+<text x="106" y="85.00" font-size="13" text-anchor="end" fill="#204f4f">7.494</text>
+  
+
+  <text x="600" y="34" font-size="24" text-anchor="middle" fill="#122028">Repair Speed (baseline) vs Repair Speed factor 1.10 vs Repair Speed factor 1.20 vs Repair Speed polynomial 0.3 vs Repair Speed polynomial 0.6 vs Repair Speed polynomial 0.9 vs Repair Speed polynomial 1.0 vs Repair Speed valueExponent 0.48 vs Repair Speed valueQuadratic 0.46 progression (L1..L20)</text>
+  <text x="600" y="58" font-size="14" text-anchor="middle" fill="#45606d">Variant comparison for Repair Speed (single axis)</text>
+
+  <text x="600" y="736" font-size="14" text-anchor="middle" fill="#24333b">Level</text>
+  <text x="45" y="60" font-size="13" text-anchor="middle" fill="#204f4f">Repair Speed (baseline) (HP/sec)</text>
+  
+
+</svg>
