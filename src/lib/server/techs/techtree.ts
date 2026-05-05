@@ -47,7 +47,7 @@ export interface Research {
   baseValue: number; // base value for this research (e.g. iron/sec, speed)
   upgradeCostIncrease: number; // multiplier for cost increase per level
   baseValueIncrease: {
-    type: 'constant' | 'factor' | 'valueQuadratic';
+    type: 'constant' | 'valueQuadratic';
     value: number;
   }; // how the effect increases per level
   description: string;
@@ -699,7 +699,6 @@ function usesRechargeSpeedAsDisplayedCooldown(type: ResearchType): boolean {
  * Applies the baseValueIncrease logic for each level above the research's starting level.
  * Formulas:
  * - constant: baseValue + (constant * (level - 1))
- * - factor: baseValue * (factor ^ (level - 1))
  * - valueQuadratic: baseValue * (1 + value * (level - 1) + (value * (level - 1)) ^ 2)
  *
  * For recharge-speed researches that are user-facing as cooldown time
@@ -711,10 +710,7 @@ export function getResearchEffect(research: Research, level: number): number {
   if (level === 0) return 0; // At level 0, the effect is always 0
   const increase = research.baseValueIncrease;
   let rawEffect: number;
-  if (increase.type === 'factor') {
-    // Effect = baseValue * (factor ^ (level - 1))
-    rawEffect = research.baseValue * Math.pow(increase.value, level - 1);
-  } else if (increase.type === 'constant') {
+  if (increase.type === 'constant') {
     // Effect = baseValue + (constant * (level - 1))
     rawEffect = research.baseValue + increase.value * (level - 1);
   } else {
