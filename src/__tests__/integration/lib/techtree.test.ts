@@ -75,11 +75,11 @@ describe('getResearchEffect', () => {
     expect(getResearchEffect(AllResearches[ResearchType.Afterburner], 1)).toBeCloseTo(100); // Added test for level 1
   });
 
-  test('getResearchEffect_factorIncrease_appliesExponent', () => {
-    expect(getResearchEffect(AllResearches[ResearchType.IronHarvesting], 2)).toBeCloseTo(1.1);
-    expect(getResearchEffect(AllResearches[ResearchType.IronHarvesting], 3)).toBeCloseTo(1.21);
-    expect(getResearchEffect(AllResearches[ResearchType.Afterburner], 2)).toBeCloseTo(120);
-    expect(getResearchEffect(AllResearches[ResearchType.Afterburner], 3)).toBeCloseTo(144);
+  test('getResearchEffect_activeValueQuadraticResearches_followUpdatedCurves', () => {
+    expect(getResearchEffect(AllResearches[ResearchType.IronHarvesting], 2)).toBeCloseTo(1.11);
+    expect(getResearchEffect(AllResearches[ResearchType.IronHarvesting], 3)).toBeCloseTo(1.24);
+    expect(getResearchEffect(AllResearches[ResearchType.Afterburner], 2)).toBeCloseTo(139);
+    expect(getResearchEffect(AllResearches[ResearchType.Afterburner], 3)).toBeCloseTo(196);
   });
 
   test('getResearchEffect_constantIncrease_appliesAddition', () => {
@@ -88,29 +88,10 @@ describe('getResearchEffect', () => {
     expect(getResearchEffect(AllResearches[ResearchType.ShipSpeed], 4)).toBeCloseTo(40);
   });
 
-  test('getResearchEffect_polynomialIncrease_appliesFormula', () => {
-    // Test polynomial growth formula: baseValue * (1 + (0.1 * (1.5 * level - 1.5)) ^ 1.4)
-    // For level 1: baseValue * 1 = baseValue
-    // For level 2: baseValue * (1 + (0.1 * 1.5) ^ 1.4) = baseValue * ~1.070
-    // For level 3: baseValue * (1 + (0.1 * 3.0) ^ 1.4) = baseValue * ~1.185
-    expect(getResearchEffect(AllResearches[ResearchType.ProjectileAccuracy], 1)).toBeCloseTo(70, 1);
-    expect(getResearchEffect(AllResearches[ResearchType.ProjectileAccuracy], 2)).toBeCloseTo(74.92, 1);
-    expect(getResearchEffect(AllResearches[ResearchType.ProjectileAccuracy], 3)).toBeCloseTo(82.97, 1);
-  });
-
-  test('getResearchEffect_valueExponentIncrease_appliesValueToCurveAndExponent', () => {
-    const research = {
-      ...AllResearches[ResearchType.RepairSpeed],
-      baseValue: 10,
-      baseValueIncrease: { type: 'valueExponent' as const, value: 0.2 },
-    };
-
-    // level 1: 10 * (1 + 0.2*0)^(1.2) = 10
-    expect(getResearchEffect(research, 1)).toBeCloseTo(10, 10);
-    // level 2: 10 * (1 + 0.2*1)^(1.2) ≈ 12.4456
-    expect(getResearchEffect(research, 2)).toBeCloseTo(12.4456, 4);
-    // level 5: 10 * (1 + 0.2*4)^(1.2) ≈ 20.2454
-    expect(getResearchEffect(research, 5)).toBeCloseTo(20.2454, 4);
+  test('getResearchEffect_valueQuadraticResearch_appliesFormula', () => {
+    expect(getResearchEffect(AllResearches[ResearchType.ProjectileAccuracy], 1)).toBeCloseTo(70, 10);
+    expect(getResearchEffect(AllResearches[ResearchType.ProjectileAccuracy], 2)).toBeCloseTo(82.075, 10);
+    expect(getResearchEffect(AllResearches[ResearchType.ProjectileAccuracy], 3)).toBeCloseTo(97.3, 10);
   });
 
   test('getResearchEffect_valueQuadraticIncrease_appliesLinearAndQuadraticTerms', () => {
@@ -130,25 +111,25 @@ describe('getResearchEffect', () => {
 
   test('getResearchEffect_newProjectileWeapons_calculatesCorrectly', () => {
     expect(getResearchEffect(AllResearches[ResearchType.ProjectileDamage], 1)).toBeCloseTo(50);
-    expect(getResearchEffect(AllResearches[ResearchType.ProjectileDamage], 2)).toBeCloseTo(57.5);
+    expect(getResearchEffect(AllResearches[ResearchType.ProjectileDamage], 2)).toBeCloseTo(58.625);
     expect(getResearchEffect(AllResearches[ResearchType.ProjectileReloadRate], 1)).toBeCloseTo(10);
     expect(getResearchEffect(AllResearches[ResearchType.ProjectileReloadRate], 2)).toBeCloseTo(20);
   });
 
   test('getResearchEffect_newEnergyWeapons_calculatesCorrectly', () => {
     expect(getResearchEffect(AllResearches[ResearchType.EnergyDamage], 1)).toBeCloseTo(60);
-    expect(getResearchEffect(AllResearches[ResearchType.EnergyDamage], 2)).toBeCloseTo(69);
+    expect(getResearchEffect(AllResearches[ResearchType.EnergyDamage], 2)).toBeCloseTo(70.35);
     expect(getResearchEffect(AllResearches[ResearchType.EnergyRechargeRate], 1)).toBeCloseTo(15);
-    expect(getResearchEffect(AllResearches[ResearchType.EnergyRechargeRate], 2)).toBeCloseTo(30);
+    expect(getResearchEffect(AllResearches[ResearchType.EnergyRechargeRate], 2)).toBeCloseTo(25);
   });
 
   test('getResearchEffect_newDefenseResearches_calculatesCorrectly', () => {
     expect(getResearchEffect(AllResearches[ResearchType.HullStrength], 1)).toBeCloseTo(100);
-    expect(getResearchEffect(AllResearches[ResearchType.HullStrength], 2)).toBeCloseTo(107.02, 1);
+    expect(getResearchEffect(AllResearches[ResearchType.HullStrength], 2)).toBeCloseTo(117.25, 10);
     expect(getResearchEffect(AllResearches[ResearchType.RepairSpeed], 1)).toBeCloseTo(0.1, 10);
-    expect(getResearchEffect(AllResearches[ResearchType.RepairSpeed], 2)).toBeCloseTo(0.125, 10);
+    expect(getResearchEffect(AllResearches[ResearchType.RepairSpeed], 2)).toBeCloseTo(0.13276, 10);
     expect(getResearchEffect(AllResearches[ResearchType.ShieldRechargeRate], 1)).toBeCloseTo(0.1, 10);
-    expect(getResearchEffect(AllResearches[ResearchType.ShieldRechargeRate], 2)).toBeCloseTo(0.113, 10);
+    expect(getResearchEffect(AllResearches[ResearchType.ShieldRechargeRate], 2)).toBeCloseTo(0.12829, 10);
   });
 
   test('repairAndShieldRecharge_haveIdenticalCostAndDurationCurves', () => {
@@ -164,9 +145,8 @@ describe('getResearchEffect', () => {
   });
 
   test('getResearchEffect_newShipResearches_calculatesCorrectly', () => {
-    // IronCapacity now has baseValue 5000 and doubles each level
     expect(getResearchEffect(AllResearches[ResearchType.IronCapacity], 1)).toBeCloseTo(5000);
-    expect(getResearchEffect(AllResearches[ResearchType.IronCapacity], 2)).toBeCloseTo(10000);
+    expect(getResearchEffect(AllResearches[ResearchType.IronCapacity], 2)).toBeCloseTo(10950);
     expect(getResearchEffect(AllResearches[ResearchType.ConstructionSpeed], 0)).toBeCloseTo(0);
     expect(getResearchEffect(AllResearches[ResearchType.ConstructionSpeed], 1)).toBeCloseTo(10);
     expect(getResearchEffect(AllResearches[ResearchType.ArtificialIntelligence], 0)).toBeCloseTo(0);
@@ -178,9 +158,9 @@ describe('getResearchEffect', () => {
   test('getResearchEffect_newSpyResearches_calculatesCorrectly', () => {
     expect(getResearchEffect(AllResearches[ResearchType.SpySabotageDamage], 0)).toBeCloseTo(0);
     expect(getResearchEffect(AllResearches[ResearchType.SpySabotageDamage], 1)).toBeCloseTo(50);
-    expect(getResearchEffect(AllResearches[ResearchType.SpySabotageDamage], 2)).toBeCloseTo(62.5);
+    expect(getResearchEffect(AllResearches[ResearchType.SpySabotageDamage], 2)).toBeCloseTo(87.5);
     expect(getResearchEffect(AllResearches[ResearchType.StealIron], 1)).toBeCloseTo(100);
-    expect(getResearchEffect(AllResearches[ResearchType.StealIron], 2)).toBeCloseTo(130);
+    expect(getResearchEffect(AllResearches[ResearchType.StealIron], 2)).toBeCloseTo(175);
   });
 });
 
@@ -218,7 +198,7 @@ describe('getResearchEffectFromTree', () => {
     tree.ironHarvesting = 3;
     tree.shipSpeed = 4;
     tree.afterburner = 2;
-    expect(getResearchEffectFromTree(tree, ResearchType.IronHarvesting)).toBeCloseTo(1.21);
+    expect(getResearchEffectFromTree(tree, ResearchType.IronHarvesting)).toBeCloseTo(1.24);
     expect(getResearchEffectFromTree(tree, ResearchType.ShipSpeed)).toBeCloseTo(40);
     // Afterburner is deprecated; getResearchLevelFromTree always returns 0
     expect(getResearchEffectFromTree(tree, ResearchType.Afterburner)).toBeCloseTo(0);
@@ -336,22 +316,19 @@ describe('getWeaponDamageModifierFromTree', () => {
   test('getWeaponDamageModifierFromTree_projectileWeaponAtLevel2_returns115Percent', () => {
     const tree = createInitialTechTree();
     tree.projectileDamage = 2;
-    // At level 2, effect = 50 * 1.15 = 57.5, modifier = 57.5/50 = 1.15
-    expect(getWeaponDamageModifierFromTree(tree, 'auto_turret')).toBeCloseTo(1.15);
+    expect(getWeaponDamageModifierFromTree(tree, 'auto_turret')).toBeCloseTo(1.1725);
   });
 
   test('getWeaponDamageModifierFromTree_energyWeaponAtLevel2_returns115Percent', () => {
     const tree = createInitialTechTree();
     tree.energyDamage = 2;
-    // At level 2, effect = 60 * 1.15 = 69, modifier = 69/60 = 1.15
-    expect(getWeaponDamageModifierFromTree(tree, 'pulse_laser')).toBeCloseTo(1.15);
+    expect(getWeaponDamageModifierFromTree(tree, 'pulse_laser')).toBeCloseTo(1.1725);
   });
 
   test('getWeaponDamageModifierFromTree_projectileWeaponAtLevel3_returnsScaledModifier', () => {
     const tree = createInitialTechTree();
     tree.projectileDamage = 3;
-    // At level 3, effect = 50 * 1.15^2 = 66.125, modifier = 66.125/50 = 1.3225
-    expect(getWeaponDamageModifierFromTree(tree, 'rocket_launcher')).toBeCloseTo(1.3225);
+    expect(getWeaponDamageModifierFromTree(tree, 'rocket_launcher')).toBeCloseTo(1.39);
   });
 
   test('getWeaponDamageModifierFromTree_unknownWeaponType_returns1', () => {
@@ -386,17 +363,15 @@ describe('getWeaponReloadTimeModifierFromTree', () => {
   test('getWeaponReloadTimeModifierFromTree_energyWeaponAtLevel4_returnsSpeedFactor', () => {
     const tree = createInitialTechTree();
     tree.energyRechargeRate = 4;
-    // At level 4, effect = 15 + 15 + 15 + 15 = 60%, speed factor = 1 + 60/100 = 1.60
     const modifier = getWeaponReloadTimeModifierFromTree(tree, 'plasma_lance');
-    expect(modifier).toBeCloseTo(1.60);
+    expect(modifier).toBeCloseTo(1.45);
   });
 
   test('getWeaponReloadTimeModifierFromTree_highResearchLevel_growsLinearly', () => {
     const tree = createInitialTechTree();
     tree.energyRechargeRate = 10;
-    // At level 10, effect = 15 * 10 = 150%, speed factor = 1 + 150/100 = 2.50
     const modifier = getWeaponReloadTimeModifierFromTree(tree, 'photon_torpedo');
-    expect(modifier).toBeCloseTo(2.50);
+    expect(modifier).toBeCloseTo(2.05);
   });
 
   test('getWeaponReloadTimeModifierFromTree_unknownWeaponType_returns1', () => {
@@ -454,18 +429,15 @@ describe('Teleport research', () => {
 
 describe('TeleportRechargeSpeed research', () => {
   test('teleportRechargeSpeed_atLevel1_returns86400Seconds', () => {
-    // factor: baseValue(86400) * 0.9^(1-1) = 86400 * 1 = 86400
     expect(getResearchEffect(AllResearches[ResearchType.TeleportRechargeSpeed], 1)).toBeCloseTo(86400);
   });
 
-  test('teleportRechargeSpeed_atLevel2_returns77760Seconds', () => {
-    // factor: 86400 * 0.9^(2-1) = 86400 * 0.9 = 77760
-    expect(getResearchEffect(AllResearches[ResearchType.TeleportRechargeSpeed], 2)).toBeCloseTo(77760);
+  test('teleportRechargeSpeed_atLevel2_returnsLowerCooldown', () => {
+    expect(getResearchEffect(AllResearches[ResearchType.TeleportRechargeSpeed], 2)).toBeCloseTo(73688.6994, 4);
   });
 
-  test('teleportRechargeSpeed_atLevel3_returns69984Seconds', () => {
-    // factor: 86400 * 0.9^(3-1) = 86400 * 0.81 = 69984
-    expect(getResearchEffect(AllResearches[ResearchType.TeleportRechargeSpeed], 3)).toBeCloseTo(69984);
+  test('teleportRechargeSpeed_atLevel3_returnsFurtherReducedCooldown', () => {
+    expect(getResearchEffect(AllResearches[ResearchType.TeleportRechargeSpeed], 3)).toBeCloseTo(62158.2734, 4);
   });
 
   test('teleportRechargeSpeed_atLevel0_returns0', () => {
@@ -507,7 +479,6 @@ describe('TeleportRechargeSpeed research', () => {
   test('teleportRechargeSpeed_effectFromTreeAtLevel3_returnsReducedValue', () => {
     const tree = createInitialTechTree();
     tree.teleportRechargeSpeed = 3;
-    // 86400 * 0.9^2 = 69984
-    expect(getResearchEffectFromTree(tree, ResearchType.TeleportRechargeSpeed)).toBeCloseTo(69984);
+    expect(getResearchEffectFromTree(tree, ResearchType.TeleportRechargeSpeed)).toBeCloseTo(62158.2734, 4);
   });
 });

@@ -22,7 +22,7 @@ describe('AfterburnerCooldown research definition', () => {
     expect(cooldownResearch.baseUpgradeDuration).toBe(45);
     expect(cooldownResearch.baseValue).toBe(3600);
     expect(cooldownResearch.upgradeCostIncrease).toBe(2.0);
-    expect(cooldownResearch.baseValueIncrease).toEqual({ type: 'factor', value: 0.9 });
+    expect(cooldownResearch.baseValueIncrease).toEqual({ type: 'valueQuadratic', value: 0.15 });
     expect(cooldownResearch.unit).toBe('seconds');
     expect(cooldownResearch.treeKey).toBe('afterburnerCooldown');
   });
@@ -72,19 +72,19 @@ describe('getResearchEffect for AfterburnerCooldown', () => {
     expect(getResearchEffect(cooldownResearch, 1)).toBeCloseTo(3600);
   });
 
-  test('level2_appliesFactor_3600times0point9', () => {
-    // 3600 × 0.9^(2-1) = 3600 × 0.9 = 3240
-    expect(getResearchEffect(cooldownResearch, 2)).toBeCloseTo(3240);
+  test('level2_returnsLowerCooldownFromHigherRechargeSpeed', () => {
+    // speed multiplier = 1 + 0.15 + 0.15² = 1.1725, displayed cooldown = 3600 / 1.1725
+    expect(getResearchEffect(cooldownResearch, 2)).toBeCloseTo(3070.3625, 4);
   });
 
-  test('level3_appliesFactor_3600times0point9squared', () => {
-    // 3600 × 0.9^(3-1) = 3600 × 0.81 = 2916
-    expect(getResearchEffect(cooldownResearch, 3)).toBeCloseTo(2916);
+  test('level3_returnsFurtherReducedCooldown', () => {
+    // speed multiplier = 1 + 0.3 + 0.3² = 1.39, displayed cooldown = 3600 / 1.39
+    expect(getResearchEffect(cooldownResearch, 3)).toBeCloseTo(2589.9281, 4);
   });
 
-  test('level5_appliesFactor_3600times0point9toThe4th', () => {
-    // 3600 × 0.9^4 = 3600 × 0.6561 = 2361.96
-    expect(getResearchEffect(cooldownResearch, 5)).toBeCloseTo(2361.96);
+  test('level5_keepsReducingCooldownAsSpeedGrows', () => {
+    // speed multiplier = 1 + 0.6 + 0.6² = 1.96, displayed cooldown = 3600 / 1.96
+    expect(getResearchEffect(cooldownResearch, 5)).toBeCloseTo(1836.7347, 4);
   });
 });
 

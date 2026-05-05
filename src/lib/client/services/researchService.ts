@@ -55,7 +55,7 @@ interface ResearchDef {
   baseUpgradeDuration: number;
   baseValue: number;
   upgradeCostIncrease: number;
-  baseValueIncrease: { type: 'constant' | 'factor' | 'polynomial'; value: number };
+  baseValueIncrease: { type: 'constant' | 'factor' | 'valueQuadratic'; value: number };
   description: string;
   nextUpgradeCost: number;
   nextUpgradeDuration: number;
