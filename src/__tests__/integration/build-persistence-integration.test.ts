@@ -180,7 +180,7 @@ describe('Build Persistence Integration', () => {
       expect(dbResult.rows[0].auto_turret).toBe(6); // 5 + 1
       expect(dbResult.rows[0].pulse_laser).toBe(6); // 5 + 1
       expect(dbResult.rows[0].ship_hull).toBe(6); // 5 + 1
-      expect(dbResult.rows[0].iron).toBe(49550); // 50000 - current build costs
+      expect(dbResult.rows[0].iron).toBe(49550); // 50000 - (100 + 150 + 200)
     });
   });
 });

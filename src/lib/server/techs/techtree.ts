@@ -690,7 +690,7 @@ export function getTimeSpeedFactorFromTree(
   return getTimeSpeedFactorFromEffect(getResearchEffectFromTree(tree, type)) * levelMultiplier;
 }
 
-function usesRechargeSpeedAsDisplayedCooldown(type: ResearchType): boolean {
+function shouldInvertRechargeSpeedToCooldown(type: ResearchType): boolean {
   return type === ResearchType.AfterburnerCooldown || type === ResearchType.TeleportRechargeSpeed;
 }
 
@@ -703,8 +703,11 @@ function usesRechargeSpeedAsDisplayedCooldown(type: ResearchType): boolean {
  *
  * For recharge-speed researches that are user-facing as cooldown time
  * (afterburner cooldown and teleport recharge), the stored progression now
- * represents recharge speed. This function converts that back into effective
- * cooldown seconds so higher levels still show and apply a lower time value.
+ * represents recharge speed. The stored effect is a multiplier relative to
+ * baseValue (for example, 1.1725× means 17.25% faster recharge), so this
+ * function converts it back into effective cooldown seconds via
+ * baseValue / speedMultiplier so higher levels still show and apply a lower
+ * time value.
  */
 export function getResearchEffect(research: Research, level: number): number {
   if (level === 0) return 0; // At level 0, the effect is always 0
@@ -722,7 +725,7 @@ export function getResearchEffect(research: Research, level: number): number {
     rawEffect = research.baseValue * multiplier;
   }
 
-  if (!usesRechargeSpeedAsDisplayedCooldown(research.type) || rawEffect <= 0) {
+  if (!shouldInvertRechargeSpeedToCooldown(research.type) || rawEffect <= 0) {
     return rawEffect;
   }
 
