@@ -133,14 +133,14 @@ describe('Battle Research Effects Integration', () => {
             attacker.techCounts.pulse_laser = 2;
             
             // Upgrade energy recharge rate research to level 4
-            // Level 4 = 15 + 15 + 15 + 15 = 60% bonus → factor = 1.60
+            // Level 4 = 45% bonus → factor = 1.45
             attacker.techTree.energyRechargeRate = 4;
             userCache.updateUserInCache(userCtx, attacker);
 
             // Calculate reload time with upgraded research
-            // pulse_laser: 12min * 60 = 720s base / 1.60 = 450s
+            // pulse_laser: 12min * 60 = 720s base / 1.45 ≈ 496.55s
             const upgradedReloadTime = TechFactory.calculateWeaponReloadTime('pulse_laser', attacker.techTree);
-            expect(upgradedReloadTime).toBeCloseTo(720 / 1.60, 1);
+            expect(upgradedReloadTime).toBeCloseTo(720 / 1.45, 1);
           });
 
           // === Phase 2: Create battle and verify cooldowns ===
@@ -182,7 +182,7 @@ describe('Battle Research Effects Integration', () => {
             return (await userCache.getUserByUsername(userCtx, 'a'))!;
           });
           const researchCooldown = TechFactory.calculateWeaponReloadTime('pulse_laser', attackerUser.techTree);
-          expect(researchCooldown).toBeCloseTo(720 / 1.60, 1);
+          expect(researchCooldown).toBeCloseTo(720 / 1.45, 1);
 
           // Verify it's much faster than base cooldown
           const baseCooldown = TechFactory.getBaseBattleCooldown(TechFactory.getWeaponSpec('pulse_laser')!);
@@ -249,9 +249,9 @@ describe('Battle Research Effects Integration', () => {
           attacker.techTree.projectileDamage = 2;
           userCache.updateUserInCache(userCtx, attacker);
 
-          // At level 2, modifier should be 1.15 (115%, +15% damage)
+          // At level 2, modifier should be 1.1725 (+17.25% damage)
           const upgradedDamageModifier = getWeaponDamageModifierFromTree(attacker.techTree, 'auto_turret');
-          expect(upgradedDamageModifier).toBeCloseTo(1.15);
+          expect(upgradedDamageModifier).toBeCloseTo(1.1725);
 
           // Verify damage calculation reflects the modifier
           // auto_turret with 1 weapon, no shields/armor, spread=1.0
@@ -271,12 +271,12 @@ describe('Battle Research Effects Integration', () => {
           const totalUpgraded = upgradedCalc.shieldDamage + upgradedCalc.armorDamage + upgradedCalc.hullDamage;
           expect(totalUpgraded).toBeGreaterThan(totalBase);
           // Allow for rounding from Math.round() in TechFactory
-          expect(totalUpgraded / totalBase).toBeCloseTo(1.15, 0);
+          expect(totalUpgraded / totalBase).toBeCloseTo(1.1725, 0);
         });
       });
     });
 
-    it('damageResearch_energyWeaponAtLevel3_increases3225Percent', async () => {
+    it('damageResearch_energyWeaponAtLevel3_increases39Percent', async () => {
       await withTransaction(async () => {
         await emptyCtx.useLockWithAcquire(USER_LOCK, async (userCtx) => {
           const attacker = (await userCache.getUserByUsername(userCtx, 'a'))!;
@@ -289,10 +289,10 @@ describe('Battle Research Effects Integration', () => {
           const baseDamageModifier = getWeaponDamageModifierFromTree(attacker.techTree, 'pulse_laser');
           expect(baseDamageModifier).toBeCloseTo(1.0);
 
-          // At level 3, energy damage: 60 * 1.15^2 = 79.35, modifier = 79.35/60 = 1.3225
+          // At level 3, energy damage: 60 * 1.39 = 83.4, modifier = 1.39
           attacker.techTree.energyDamage = 3;
           const upgradedDamageModifier = getWeaponDamageModifierFromTree(attacker.techTree, 'pulse_laser');
-          expect(upgradedDamageModifier).toBeCloseTo(1.3225);
+          expect(upgradedDamageModifier).toBeCloseTo(1.39);
 
           // Verify damage calculation uses the modifier
           const baseCalc = TechFactory.calculateWeaponDamage(
@@ -327,7 +327,7 @@ describe('Battle Research Effects Integration', () => {
           const energyDmgModifier = getWeaponDamageModifierFromTree(attacker.techTree, 'pulse_laser');
 
           // Projectile should be boosted, energy should be at base
-          expect(projectileDmgModifier).toBeCloseTo(1.15);
+          expect(projectileDmgModifier).toBeCloseTo(1.1725);
           expect(energyDmgModifier).toBeCloseTo(1.0);
         });
       });
@@ -358,10 +358,10 @@ describe('Battle Research Effects Integration', () => {
           const baseAccuracyModifier = getWeaponAccuracyModifierFromTree(attacker.techTree, 'auto_turret');
           expect(baseAccuracyModifier).toBeCloseTo(1.0);
 
-          // At level 2, accuracy multiplier = 74.916 / 70 ≈ 1.070 (new multiplicative formula)
+          // At level 2, accuracy multiplier = 82.075 / 70 = 1.1725
           attacker.techTree.projectileAccuracy = 2;
           const upgradedAccuracyModifier = getWeaponAccuracyModifierFromTree(attacker.techTree, 'auto_turret');
-          expect(upgradedAccuracyModifier).toBeCloseTo(1.070, 2);
+          expect(upgradedAccuracyModifier).toBeCloseTo(1.1725, 4);
 
           // Verify higher accuracy leads to more hits
           attacker.techCounts.auto_turret = 10;
