@@ -24,7 +24,7 @@
   <line x1="120" y1="80" x2="120" y2="680" stroke="#0d6e6e" stroke-width="2" />
   
 
-  <path d="M 120.00 652.68 L 154.48 634.46 L 188.97 616.25 L 223.45 598.03 L 257.93 579.82 L 292.41 561.60 L 326.90 543.39 L 361.38 525.17 L 395.86 506.96 L 430.34 488.74 L 464.83 470.53 L 499.31 452.31 L 533.79 434.10 L 568.28 415.88 L 602.76 397.67 L 637.24 379.45 L 671.72 361.24 L 706.21 343.02 L 740.69 324.81 L 775.17 306.59 L 809.66 288.38 L 844.14 270.16 L 878.62 251.95 L 913.10 233.73 L 947.59 215.52 L 982.07 197.30 L 1016.55 179.09 L 1051.03 160.87 L 1085.52 142.66 L 1120.00 124.44" fill="none" stroke="#1b1b1b" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
+  <path d="M 120.00 537.55 L 154.48 523.30 L 188.97 509.06 L 223.45 494.81 L 257.93 480.57 L 292.41 466.32 L 326.90 452.08 L 361.38 437.83 L 395.86 423.59 L 430.34 409.34 L 464.83 395.10 L 499.31 380.85 L 533.79 366.61 L 568.28 352.36 L 602.76 338.12 L 637.24 323.87 L 671.72 309.63 L 706.21 295.38 L 740.69 281.14 L 775.17 266.89 L 809.66 252.65 L 844.14 238.40 L 878.62 224.16 L 913.10 209.91 L 947.59 195.67 L 982.07 181.42 L 1016.55 167.18 L 1051.03 152.93 L 1085.52 138.69 L 1120.00 124.44" fill="none" stroke="#1b1b1b" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
   
   <g>
     <rect x="136" y="96" width="560" height="42" fill="#ffffff" fill-opacity="0.92" stroke="#b8c4cb" />
@@ -45,11 +45,11 @@
 <text x="1016.55" y="708" font-size="14" text-anchor="middle" fill="#24333b">27</text>
 <text x="1120.00" y="708" font-size="14" text-anchor="middle" fill="#24333b">30</text>
   <text x="106" y="685.00" font-size="13" text-anchor="end" fill="#204f4f">0.00e+0</text>
-<text x="106" y="565.00" font-size="13" text-anchor="end" fill="#204f4f">65.88</text>
-<text x="106" y="445.00" font-size="13" text-anchor="end" fill="#204f4f">131.76</text>
-<text x="106" y="325.00" font-size="13" text-anchor="end" fill="#204f4f">197.64</text>
-<text x="106" y="205.00" font-size="13" text-anchor="end" fill="#204f4f">263.52</text>
-<text x="106" y="85.00" font-size="13" text-anchor="end" fill="#204f4f">329.4</text>
+<text x="106" y="565.00" font-size="13" text-anchor="end" fill="#204f4f">84.24</text>
+<text x="106" y="445.00" font-size="13" text-anchor="end" fill="#204f4f">168.48</text>
+<text x="106" y="325.00" font-size="13" text-anchor="end" fill="#204f4f">252.72</text>
+<text x="106" y="205.00" font-size="13" text-anchor="end" fill="#204f4f">336.96</text>
+<text x="106" y="85.00" font-size="13" text-anchor="end" fill="#204f4f">421.2</text>
   
 
   <text x="600" y="34" font-size="24" text-anchor="middle" fill="#122028">Energy Recharge Rate progression (L1..L30)</text>

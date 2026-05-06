@@ -30,11 +30,11 @@
     <rect x="136" y="96" width="560" height="64" fill="#ffffff" fill-opacity="0.92" stroke="#b8c4cb" />
     <g>
       <line x1="146" y1="113" x2="170" y2="113" stroke="#1b1b1b" stroke-width="4" />
-      <text x="178" y="117" font-size="13" fill="#1f2d34">Energy Damage (damage)</text>
+      <text x="178" y="117" font-size="13" fill="#1f2d34">Energy Damage (%)</text>
     </g>
 <g>
       <line x1="146" y1="135" x2="170" y2="135" stroke="#0072B2" stroke-width="4" />
-      <text x="178" y="139" font-size="13" fill="#1f2d34">Projectile Damage (damage)</text>
+      <text x="178" y="139" font-size="13" fill="#1f2d34">Projectile Damage (%)</text>
     </g>
   </g>
 
@@ -49,11 +49,11 @@
 <text x="944.83" y="708" font-size="14" text-anchor="middle" fill="#24333b">27</text>
 <text x="1040.00" y="708" font-size="14" text-anchor="middle" fill="#24333b">30</text>
   <text x="106" y="685.00" font-size="13" text-anchor="end" fill="#204f4f">0.00e+0</text>
-<text x="106" y="565.00" font-size="13" text-anchor="end" fill="#204f4f">314.572</text>
-<text x="106" y="445.00" font-size="13" text-anchor="end" fill="#204f4f">629.143</text>
-<text x="106" y="325.00" font-size="13" text-anchor="end" fill="#204f4f">943.715</text>
-<text x="106" y="205.00" font-size="13" text-anchor="end" fill="#204f4f">1.26e+3</text>
-<text x="106" y="85.00" font-size="13" text-anchor="end" fill="#204f4f">1.57e+3</text>
+<text x="106" y="565.00" font-size="13" text-anchor="end" fill="#204f4f">524.286</text>
+<text x="106" y="445.00" font-size="13" text-anchor="end" fill="#204f4f">1.05e+3</text>
+<text x="106" y="325.00" font-size="13" text-anchor="end" fill="#204f4f">1.57e+3</text>
+<text x="106" y="205.00" font-size="13" text-anchor="end" fill="#204f4f">2.10e+3</text>
+<text x="106" y="85.00" font-size="13" text-anchor="end" fill="#204f4f">2.62e+3</text>
   <text x="1054" y="685.00" font-size="13" text-anchor="start" fill="#7b3527">0.00e+0x</text>
 <text x="1054" y="565.00" font-size="13" text-anchor="start" fill="#7b3527">5.243x</text>
 <text x="1054" y="445.00" font-size="13" text-anchor="start" fill="#7b3527">10.486x</text>
@@ -65,7 +65,7 @@
   <text x="600" y="58" font-size="14" text-anchor="middle" fill="#45606d">Dual axis: all secondary lines are scaled to intersect at level 1 (right axis = multiplier vs L1)</text>
 
   <text x="600" y="736" font-size="14" text-anchor="middle" fill="#24333b">Level</text>
-  <text x="45" y="60" font-size="13" text-anchor="middle" fill="#204f4f">Energy Damage (damage)</text>
+  <text x="45" y="60" font-size="13" text-anchor="middle" fill="#204f4f">Energy Damage (%)</text>
   <text x="1135" y="60" font-size="13" text-anchor="middle" fill="#7b3527">Relative Effect (x of level 1)</text>
 
 </svg>

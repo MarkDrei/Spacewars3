@@ -45,18 +45,18 @@
 <text x="1016.55" y="708" font-size="14" text-anchor="middle" fill="#24333b">27</text>
 <text x="1120.00" y="708" font-size="14" text-anchor="middle" fill="#24333b">30</text>
   <text x="106" y="685.00" font-size="13" text-anchor="end" fill="#204f4f">0.00e+0</text>
-<text x="106" y="565.00" font-size="13" text-anchor="end" fill="#204f4f">314.572</text>
-<text x="106" y="445.00" font-size="13" text-anchor="end" fill="#204f4f">629.143</text>
-<text x="106" y="325.00" font-size="13" text-anchor="end" fill="#204f4f">943.715</text>
-<text x="106" y="205.00" font-size="13" text-anchor="end" fill="#204f4f">1.26e+3</text>
-<text x="106" y="85.00" font-size="13" text-anchor="end" fill="#204f4f">1.57e+3</text>
+<text x="106" y="565.00" font-size="13" text-anchor="end" fill="#204f4f">524.286</text>
+<text x="106" y="445.00" font-size="13" text-anchor="end" fill="#204f4f">1.05e+3</text>
+<text x="106" y="325.00" font-size="13" text-anchor="end" fill="#204f4f">1.57e+3</text>
+<text x="106" y="205.00" font-size="13" text-anchor="end" fill="#204f4f">2.10e+3</text>
+<text x="106" y="85.00" font-size="13" text-anchor="end" fill="#204f4f">2.62e+3</text>
   
 
   <text x="600" y="34" font-size="24" text-anchor="middle" fill="#122028">Energy Damage progression (L1..L30)</text>
-  <text x="600" y="58" font-size="14" text-anchor="middle" fill="#45606d">Effect unit: damage</text>
+  <text x="600" y="58" font-size="14" text-anchor="middle" fill="#45606d">Effect unit: %</text>
 
   <text x="600" y="736" font-size="14" text-anchor="middle" fill="#24333b">Level</text>
-  <text x="45" y="60" font-size="13" text-anchor="middle" fill="#204f4f">Energy Damage (damage)</text>
+  <text x="45" y="60" font-size="13" text-anchor="middle" fill="#204f4f">Energy Damage (%)</text>
   
 
 </svg>

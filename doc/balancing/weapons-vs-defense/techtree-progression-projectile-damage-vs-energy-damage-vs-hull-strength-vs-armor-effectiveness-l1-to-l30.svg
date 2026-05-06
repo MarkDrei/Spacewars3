@@ -26,17 +26,17 @@
 
   <path d="M 120.00 657.11 L 151.72 653.16 L 183.45 648.19 L 215.17 642.18 L 246.90 635.14 L 278.62 627.07 L 310.34 617.97 L 342.07 607.84 L 373.79 596.69 L 405.52 584.50 L 437.24 571.28 L 468.97 557.03 L 500.69 541.75 L 532.41 525.45 L 564.14 508.11 L 595.86 489.74 L 627.59 470.34 L 659.31 449.92 L 691.03 428.46 L 722.76 405.97 L 754.48 382.45 L 786.21 357.90 L 817.93 332.33 L 849.66 305.72 L 881.38 278.08 L 913.10 249.41 L 944.83 219.72 L 976.55 188.99 L 1008.28 157.23 L 1040.00 124.44" fill="none" stroke="#1b1b1b" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
   <path d="M 120.00 657.11 L 151.72 653.16 L 183.45 648.19 L 215.17 642.18 L 246.90 635.14 L 278.62 627.07 L 310.34 617.97 L 342.07 607.84 L 373.79 596.69 L 405.52 584.50 L 437.24 571.28 L 468.97 557.03 L 500.69 541.75 L 532.41 525.45 L 564.14 508.11 L 595.86 489.74 L 627.59 470.34 L 659.31 449.92 L 691.03 428.46 L 722.76 405.97 L 754.48 382.45 L 786.21 357.90 L 817.93 332.33 L 849.66 305.72 L 881.38 278.08 L 913.10 249.41 L 944.83 219.72 L 976.55 188.99 L 1008.28 157.23 L 1040.00 124.44" fill="none" stroke="#0072B2" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
-<path d="M 120.00 657.11 L 151.72 653.16 L 183.45 648.19 L 215.17 642.18 L 246.90 635.14 L 278.62 627.07 L 310.34 617.97 L 342.07 607.84 L 373.79 596.69 L 405.52 584.50 L 437.24 571.28 L 468.97 557.03 L 500.69 541.75 L 532.41 525.45 L 564.14 508.11 L 595.86 489.74 L 627.59 470.34 L 659.31 449.92 L 691.03 428.46 L 722.76 405.97 L 754.48 382.45 L 786.21 357.90 L 817.93 332.33 L 849.66 305.72 L 881.38 278.08 L 913.10 249.41 L 944.83 219.72 L 976.55 188.99 L 1008.28 157.23 L 1040.00 124.44" fill="none" stroke="#D55E00" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
+<path d="M 120.00 657.11 L 151.72 652.25 L 183.45 645.91 L 215.17 638.08 L 246.90 628.77 L 278.62 617.97 L 310.34 605.70 L 342.07 591.94 L 373.79 576.69 L 405.52 559.96 L 437.24 541.75 L 468.97 522.06 L 500.69 500.89 L 532.41 478.23 L 564.14 454.08 L 595.86 428.46 L 627.59 401.35 L 659.31 372.76 L 691.03 342.68 L 722.76 311.12 L 754.48 278.08 L 786.21 243.56 L 817.93 207.55 L 849.66 170.06 L 881.38 131.08 L 913.10 90.63 L 944.83 48.69 L 976.55 5.26 L 1008.28 -39.64 L 1040.00 -86.03" fill="none" stroke="#D55E00" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
 <path d="M 120.00 657.11 L 151.72 652.25 L 183.45 645.91 L 215.17 638.08 L 246.90 628.77 L 278.62 617.97 L 310.34 605.70 L 342.07 591.94 L 373.79 576.69 L 405.52 559.96 L 437.24 541.75 L 468.97 522.06 L 500.69 500.89 L 532.41 478.23 L 564.14 454.08 L 595.86 428.46 L 627.59 401.35 L 659.31 372.76 L 691.03 342.68 L 722.76 311.12 L 754.48 278.08 L 786.21 243.56 L 817.93 207.55 L 849.66 170.06 L 881.38 131.08 L 913.10 90.63 L 944.83 48.69 L 976.55 5.26 L 1008.28 -39.64 L 1040.00 -86.03" fill="none" stroke="#009E73" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
   <g>
     <rect x="136" y="96" width="560" height="108" fill="#ffffff" fill-opacity="0.92" stroke="#b8c4cb" />
     <g>
       <line x1="146" y1="113" x2="170" y2="113" stroke="#1b1b1b" stroke-width="4" />
-      <text x="178" y="117" font-size="13" fill="#1f2d34">Projectile Damage (damage)</text>
+      <text x="178" y="117" font-size="13" fill="#1f2d34">Projectile Damage (%)</text>
     </g>
 <g>
       <line x1="146" y1="135" x2="170" y2="135" stroke="#0072B2" stroke-width="4" />
-      <text x="178" y="139" font-size="13" fill="#1f2d34">Energy Damage (damage)</text>
+      <text x="178" y="139" font-size="13" fill="#1f2d34">Energy Damage (%)</text>
     </g>
 <g>
       <line x1="146" y1="157" x2="170" y2="157" stroke="#D55E00" stroke-width="4" />
@@ -59,11 +59,11 @@
 <text x="944.83" y="708" font-size="14" text-anchor="middle" fill="#24333b">27</text>
 <text x="1040.00" y="708" font-size="14" text-anchor="middle" fill="#24333b">30</text>
   <text x="106" y="685.00" font-size="13" text-anchor="end" fill="#204f4f">0.00e+0</text>
-<text x="106" y="565.00" font-size="13" text-anchor="end" fill="#204f4f">262.143</text>
-<text x="106" y="445.00" font-size="13" text-anchor="end" fill="#204f4f">524.286</text>
-<text x="106" y="325.00" font-size="13" text-anchor="end" fill="#204f4f">786.429</text>
-<text x="106" y="205.00" font-size="13" text-anchor="end" fill="#204f4f">1.05e+3</text>
-<text x="106" y="85.00" font-size="13" text-anchor="end" fill="#204f4f">1.31e+3</text>
+<text x="106" y="565.00" font-size="13" text-anchor="end" fill="#204f4f">524.286</text>
+<text x="106" y="445.00" font-size="13" text-anchor="end" fill="#204f4f">1.05e+3</text>
+<text x="106" y="325.00" font-size="13" text-anchor="end" fill="#204f4f">1.57e+3</text>
+<text x="106" y="205.00" font-size="13" text-anchor="end" fill="#204f4f">2.10e+3</text>
+<text x="106" y="85.00" font-size="13" text-anchor="end" fill="#204f4f">2.62e+3</text>
   <text x="1054" y="685.00" font-size="13" text-anchor="start" fill="#7b3527">0.00e+0x</text>
 <text x="1054" y="565.00" font-size="13" text-anchor="start" fill="#7b3527">5.243x</text>
 <text x="1054" y="445.00" font-size="13" text-anchor="start" fill="#7b3527">10.486x</text>
@@ -75,7 +75,7 @@
   <text x="600" y="58" font-size="14" text-anchor="middle" fill="#45606d">Dual axis: all secondary lines are scaled to intersect at level 1 (right axis = multiplier vs L1)</text>
 
   <text x="600" y="736" font-size="14" text-anchor="middle" fill="#24333b">Level</text>
-  <text x="45" y="60" font-size="13" text-anchor="middle" fill="#204f4f">Projectile Damage (damage)</text>
+  <text x="45" y="60" font-size="13" text-anchor="middle" fill="#204f4f">Projectile Damage (%)</text>
   <text x="1135" y="60" font-size="13" text-anchor="middle" fill="#7b3527">Relative Effect (x of level 1)</text>
 
 </svg>

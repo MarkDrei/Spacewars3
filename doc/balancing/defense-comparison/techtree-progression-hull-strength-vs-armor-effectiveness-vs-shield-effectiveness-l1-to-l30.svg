@@ -24,9 +24,9 @@
   <line x1="120" y1="80" x2="120" y2="680" stroke="#0d6e6e" stroke-width="2" />
   <line x1="1040" y1="80" x2="1040" y2="680" stroke="#7b3527" stroke-width="2" />
 
-  <path d="M 120.00 657.11 L 151.72 653.16 L 183.45 648.19 L 215.17 642.18 L 246.90 635.14 L 278.62 627.07 L 310.34 617.97 L 342.07 607.84 L 373.79 596.69 L 405.52 584.50 L 437.24 571.28 L 468.97 557.03 L 500.69 541.75 L 532.41 525.45 L 564.14 508.11 L 595.86 489.74 L 627.59 470.34 L 659.31 449.92 L 691.03 428.46 L 722.76 405.97 L 754.48 382.45 L 786.21 357.90 L 817.93 332.33 L 849.66 305.72 L 881.38 278.08 L 913.10 249.41 L 944.83 219.72 L 976.55 188.99 L 1008.28 157.23 L 1040.00 124.44" fill="none" stroke="#1b1b1b" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
-  <path d="M 120.00 657.11 L 151.72 652.25 L 183.45 645.91 L 215.17 638.08 L 246.90 628.77 L 278.62 617.97 L 310.34 605.70 L 342.07 591.94 L 373.79 576.69 L 405.52 559.96 L 437.24 541.75 L 468.97 522.06 L 500.69 500.89 L 532.41 478.23 L 564.14 454.08 L 595.86 428.46 L 627.59 401.35 L 659.31 372.76 L 691.03 342.68 L 722.76 311.12 L 754.48 278.08 L 786.21 243.56 L 817.93 207.55 L 849.66 170.06 L 881.38 131.08 L 913.10 90.63 L 944.83 48.69 L 976.55 5.26 L 1008.28 -39.64 L 1040.00 -86.03" fill="none" stroke="#0072B2" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
-<path d="M 120.00 657.11 L 151.72 652.25 L 183.45 645.91 L 215.17 638.08 L 246.90 628.77 L 278.62 617.97 L 310.34 605.70 L 342.07 591.94 L 373.79 576.69 L 405.52 559.96 L 437.24 541.75 L 468.97 522.06 L 500.69 500.89 L 532.41 478.23 L 564.14 454.08 L 595.86 428.46 L 627.59 401.35 L 659.31 372.76 L 691.03 342.68 L 722.76 311.12 L 754.48 278.08 L 786.21 243.56 L 817.93 207.55 L 849.66 170.06 L 881.38 131.08 L 913.10 90.63 L 944.83 48.69 L 976.55 5.26 L 1008.28 -39.64 L 1040.00 -86.03" fill="none" stroke="#D55E00" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
+  <path d="M 120.00 663.40 L 151.72 659.87 L 183.45 655.27 L 215.17 649.60 L 246.90 642.84 L 278.62 635.02 L 310.34 626.11 L 342.07 616.13 L 373.79 605.08 L 405.52 592.95 L 437.24 579.74 L 468.97 565.46 L 500.69 550.10 L 532.41 533.67 L 564.14 516.16 L 595.86 497.57 L 627.59 477.91 L 659.31 457.18 L 691.03 435.36 L 722.76 412.48 L 754.48 388.51 L 786.21 363.48 L 817.93 337.36 L 849.66 310.17 L 881.38 281.91 L 913.10 252.57 L 944.83 222.15 L 976.55 190.66 L 1008.28 158.09 L 1040.00 124.44" fill="none" stroke="#1b1b1b" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
+  <path d="M 120.00 663.40 L 151.72 659.87 L 183.45 655.27 L 215.17 649.60 L 246.90 642.84 L 278.62 635.02 L 310.34 626.11 L 342.07 616.13 L 373.79 605.08 L 405.52 592.95 L 437.24 579.74 L 468.97 565.46 L 500.69 550.10 L 532.41 533.67 L 564.14 516.16 L 595.86 497.57 L 627.59 477.91 L 659.31 457.18 L 691.03 435.36 L 722.76 412.48 L 754.48 388.51 L 786.21 363.48 L 817.93 337.36 L 849.66 310.17 L 881.38 281.91 L 913.10 252.57 L 944.83 222.15 L 976.55 190.66 L 1008.28 158.09 L 1040.00 124.44" fill="none" stroke="#0072B2" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
+<path d="M 120.00 663.40 L 151.72 659.87 L 183.45 655.27 L 215.17 649.60 L 246.90 642.84 L 278.62 635.02 L 310.34 626.11 L 342.07 616.13 L 373.79 605.08 L 405.52 592.95 L 437.24 579.74 L 468.97 565.46 L 500.69 550.10 L 532.41 533.67 L 564.14 516.16 L 595.86 497.57 L 627.59 477.91 L 659.31 457.18 L 691.03 435.36 L 722.76 412.48 L 754.48 388.51 L 786.21 363.48 L 817.93 337.36 L 849.66 310.17 L 881.38 281.91 L 913.10 252.57 L 944.83 222.15 L 976.55 190.66 L 1008.28 158.09 L 1040.00 124.44" fill="none" stroke="#D55E00" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
   <g>
     <rect x="136" y="96" width="560" height="86" fill="#ffffff" fill-opacity="0.92" stroke="#b8c4cb" />
     <g>
@@ -54,17 +54,17 @@
 <text x="944.83" y="708" font-size="14" text-anchor="middle" fill="#24333b">27</text>
 <text x="1040.00" y="708" font-size="14" text-anchor="middle" fill="#24333b">30</text>
   <text x="106" y="685.00" font-size="13" text-anchor="end" fill="#204f4f">0.00e+0</text>
-<text x="106" y="565.00" font-size="13" text-anchor="end" fill="#204f4f">524.286</text>
-<text x="106" y="445.00" font-size="13" text-anchor="end" fill="#204f4f">1.05e+3</text>
-<text x="106" y="325.00" font-size="13" text-anchor="end" fill="#204f4f">1.57e+3</text>
-<text x="106" y="205.00" font-size="13" text-anchor="end" fill="#204f4f">2.10e+3</text>
-<text x="106" y="85.00" font-size="13" text-anchor="end" fill="#204f4f">2.62e+3</text>
+<text x="106" y="565.00" font-size="13" text-anchor="end" fill="#204f4f">722.917</text>
+<text x="106" y="445.00" font-size="13" text-anchor="end" fill="#204f4f">1.45e+3</text>
+<text x="106" y="325.00" font-size="13" text-anchor="end" fill="#204f4f">2.17e+3</text>
+<text x="106" y="205.00" font-size="13" text-anchor="end" fill="#204f4f">2.89e+3</text>
+<text x="106" y="85.00" font-size="13" text-anchor="end" fill="#204f4f">3.61e+3</text>
   <text x="1054" y="685.00" font-size="13" text-anchor="start" fill="#7b3527">0.00e+0x</text>
-<text x="1054" y="565.00" font-size="13" text-anchor="start" fill="#7b3527">5.243x</text>
-<text x="1054" y="445.00" font-size="13" text-anchor="start" fill="#7b3527">10.486x</text>
-<text x="1054" y="325.00" font-size="13" text-anchor="start" fill="#7b3527">15.729x</text>
-<text x="1054" y="205.00" font-size="13" text-anchor="start" fill="#7b3527">20.971x</text>
-<text x="1054" y="85.00" font-size="13" text-anchor="start" fill="#7b3527">26.214x</text>
+<text x="1054" y="565.00" font-size="13" text-anchor="start" fill="#7b3527">7.229x</text>
+<text x="1054" y="445.00" font-size="13" text-anchor="start" fill="#7b3527">14.458x</text>
+<text x="1054" y="325.00" font-size="13" text-anchor="start" fill="#7b3527">21.688x</text>
+<text x="1054" y="205.00" font-size="13" text-anchor="start" fill="#7b3527">28.917x</text>
+<text x="1054" y="85.00" font-size="13" text-anchor="start" fill="#7b3527">36.146x</text>
 
   <text x="600" y="34" font-size="24" text-anchor="middle" fill="#122028">Hull Strength vs Armor Effectiveness vs Shield Effectiveness progression (L1..L30)</text>
   <text x="600" y="58" font-size="14" text-anchor="middle" fill="#45606d">Dual axis: all secondary lines are scaled to intersect at level 1 (right axis = multiplier vs L1)</text>

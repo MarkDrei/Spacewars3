@@ -24,7 +24,7 @@
   <line x1="120" y1="80" x2="120" y2="680" stroke="#0d6e6e" stroke-width="2" />
   
 
-  <path d="M 120.00 657.11 L 154.48 653.16 L 188.97 648.19 L 223.45 642.18 L 257.93 635.14 L 292.41 627.07 L 326.90 617.97 L 361.38 607.84 L 395.86 596.69 L 430.34 584.50 L 464.83 571.28 L 499.31 557.03 L 533.79 541.75 L 568.28 525.45 L 602.76 508.11 L 637.24 489.74 L 671.72 470.34 L 706.21 449.92 L 740.69 428.46 L 775.17 405.97 L 809.66 382.45 L 844.14 357.90 L 878.62 332.33 L 913.10 305.72 L 947.59 278.08 L 982.07 249.41 L 1016.55 219.72 L 1051.03 188.99 L 1085.52 157.23 L 1120.00 124.44" fill="none" stroke="#1b1b1b" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
+  <path d="M 120.00 663.40 L 154.48 659.87 L 188.97 655.27 L 223.45 649.60 L 257.93 642.84 L 292.41 635.02 L 326.90 626.11 L 361.38 616.13 L 395.86 605.08 L 430.34 592.95 L 464.83 579.74 L 499.31 565.46 L 533.79 550.10 L 568.28 533.67 L 602.76 516.16 L 637.24 497.57 L 671.72 477.91 L 706.21 457.18 L 740.69 435.36 L 775.17 412.48 L 809.66 388.51 L 844.14 363.48 L 878.62 337.36 L 913.10 310.17 L 947.59 281.91 L 982.07 252.57 L 1016.55 222.15 L 1051.03 190.66 L 1085.52 158.09 L 1120.00 124.44" fill="none" stroke="#1b1b1b" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
   
   <g>
     <rect x="136" y="96" width="560" height="42" fill="#ffffff" fill-opacity="0.92" stroke="#b8c4cb" />
@@ -45,11 +45,11 @@
 <text x="1016.55" y="708" font-size="14" text-anchor="middle" fill="#24333b">27</text>
 <text x="1120.00" y="708" font-size="14" text-anchor="middle" fill="#24333b">30</text>
   <text x="106" y="685.00" font-size="13" text-anchor="end" fill="#204f4f">0.00e+0</text>
-<text x="106" y="565.00" font-size="13" text-anchor="end" fill="#204f4f">524.286</text>
-<text x="106" y="445.00" font-size="13" text-anchor="end" fill="#204f4f">1.05e+3</text>
-<text x="106" y="325.00" font-size="13" text-anchor="end" fill="#204f4f">1.57e+3</text>
-<text x="106" y="205.00" font-size="13" text-anchor="end" fill="#204f4f">2.10e+3</text>
-<text x="106" y="85.00" font-size="13" text-anchor="end" fill="#204f4f">2.62e+3</text>
+<text x="106" y="565.00" font-size="13" text-anchor="end" fill="#204f4f">722.917</text>
+<text x="106" y="445.00" font-size="13" text-anchor="end" fill="#204f4f">1.45e+3</text>
+<text x="106" y="325.00" font-size="13" text-anchor="end" fill="#204f4f">2.17e+3</text>
+<text x="106" y="205.00" font-size="13" text-anchor="end" fill="#204f4f">2.89e+3</text>
+<text x="106" y="85.00" font-size="13" text-anchor="end" fill="#204f4f">3.61e+3</text>
   
 
   <text x="600" y="34" font-size="24" text-anchor="middle" fill="#122028">Hull Strength progression (L1..L30)</text>

@@ -45,11 +45,11 @@
 <text x="1016.55" y="708" font-size="14" text-anchor="middle" fill="#24333b">27</text>
 <text x="1120.00" y="708" font-size="14" text-anchor="middle" fill="#24333b">30</text>
   <text x="106" y="685.00" font-size="13" text-anchor="end" fill="#204f4f">0.00e+0</text>
-<text x="106" y="565.00" font-size="13" text-anchor="end" fill="#204f4f">52.429</text>
-<text x="106" y="445.00" font-size="13" text-anchor="end" fill="#204f4f">104.857</text>
-<text x="106" y="325.00" font-size="13" text-anchor="end" fill="#204f4f">157.286</text>
-<text x="106" y="205.00" font-size="13" text-anchor="end" fill="#204f4f">209.714</text>
-<text x="106" y="85.00" font-size="13" text-anchor="end" fill="#204f4f">262.143</text>
+<text x="106" y="565.00" font-size="13" text-anchor="end" fill="#204f4f">524.286</text>
+<text x="106" y="445.00" font-size="13" text-anchor="end" fill="#204f4f">1.05e+3</text>
+<text x="106" y="325.00" font-size="13" text-anchor="end" fill="#204f4f">1.57e+3</text>
+<text x="106" y="205.00" font-size="13" text-anchor="end" fill="#204f4f">2.10e+3</text>
+<text x="106" y="85.00" font-size="13" text-anchor="end" fill="#204f4f">2.62e+3</text>
   
 
   <text x="600" y="34" font-size="24" text-anchor="middle" fill="#122028">Construction Speed progression (L1..L30)</text>

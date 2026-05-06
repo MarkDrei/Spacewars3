@@ -65,7 +65,7 @@ This document provides in-depth analysis of game balance, progression mechanics,
 
 2. **Difficulty Spectrum**:
    - **Same-level battles** (Lv±0): Reliable, moderate pace (5-28 battles per level)
-   - **One level difference** (Lv±1): 
+   - **One level difference** (Lv±1):
      - Lv+1 (harder): 2-3× fewer battles (2-20 battles)
      - Lv-1 (easier): 2-5× more battles (22-71 battles)
    - **Two level difference** (Lv±2):
@@ -111,44 +111,55 @@ All research progression curves are visualized in auto-generated SVG charts. See
 
 Charts showing effect progression for each of the 23 implemented researches (levels 1-30):
 
-- [Projectile Weapons](./balancing/individual-research/techtree-progression-projectile-damage-l1-to-l30.svg)
-- [Energy Weapons](./balancing/individual-research/techtree-progression-energy-damage-l1-to-l30.svg)
-- [Defense Systems](./balancing/individual-research/techtree-progression-hull-strength-l1-to-l30.svg)
-- [Economy](./balancing/individual-research/techtree-progression-iron-harvesting-l1-to-l30.svg)
+![Projectile Weapons](./balancing/individual-research/techtree-progression-projectile-damage-l1-to-l30.svg)
+
+![Energy Weapons](./balancing/individual-research/techtree-progression-energy-damage-l1-to-l30.svg)
+
+![Defense Systems](./balancing/individual-research/techtree-progression-hull-strength-l1-to-l30.svg)
+
+![Economy](./balancing/individual-research/techtree-progression-iron-harvesting-l1-to-l30.svg)
 
 ### Key Comparison Charts
 
 #### Weapons Balance
 
-- [Energy vs Projectile Damage](./balancing/weapons-comparison/techtree-progression-energy-damage-vs-projectile-damage-l1-to-l30.svg)
-- [Energy vs Projectile Reload](./balancing/weapons-comparison/techtree-progression-energy-recharge-rate-vs-projectile-reload-rate-l1-to-l30.svg)
-- [Energy vs Projectile Accuracy](./balancing/weapons-comparison/techtree-progression-energy-accuracy-vs-projectile-accuracy-l1-to-l30.svg)
+![Energy vs Projectile Damage](./balancing/weapons-comparison/techtree-progression-energy-damage-vs-projectile-damage-l1-to-l30.svg)
+
+![Energy vs Projectile Reload](./balancing/weapons-comparison/techtree-progression-energy-recharge-rate-vs-projectile-reload-rate-l1-to-l30.svg)
+
+![Energy vs Projectile Accuracy](./balancing/weapons-comparison/techtree-progression-energy-accuracy-vs-projectile-accuracy-l1-to-l30.svg)
 
 #### Defense Balance
 
-- [Defense Types](./balancing/defense-comparison/techtree-progression-hull-strength-vs-armor-effectiveness-vs-shield-effectiveness-l1-to-l30.svg)
-  - Shows Hull, Armor, and Shield effectiveness growth
-  - Helps identify if one defense type dominates
-- [Defense Regeneration](./balancing/defense-comparison/techtree-progression-repair-speed-vs-shield-recharge-rate-l1-to-l30.svg)
-  - Repair Speed (hull & armor, out-of-combat only)
-  - Shield Recharge Rate (continuous, including combat)
+![Defense Types](./balancing/defense-comparison/techtree-progression-hull-strength-vs-armor-effectiveness-vs-shield-effectiveness-l1-to-l30.svg)
+
+- Shows Hull, Armor, and Shield effectiveness growth
+- Helps identify if one defense type dominates
+
+![Defense Regeneration](./balancing/defense-comparison/techtree-progression-repair-speed-vs-shield-recharge-rate-l1-to-l30.svg)
+
+- Repair Speed (hull & armor, out-of-combat only)
+- Shield Recharge Rate (continuous, including combat)
 
 #### Offensive vs Defensive
 
-- [Weapons vs Defense](./balancing/weapons-vs-defense/techtree-progression-projectile-damage-vs-energy-damage-vs-hull-strength-vs-armor-effectiveness-l1-to-l30.svg)
-  - Compares offensive damage output against defensive scaling
-  - Critical for assessing overall game balance
+![Weapons vs Defense](./balancing/weapons-vs-defense/techtree-progression-projectile-damage-vs-energy-damage-vs-hull-strength-vs-armor-effectiveness-l1-to-l30.svg)
+
+- Compares offensive damage output against defensive scaling
+- Critical for assessing overall game balance
 
 #### Economy
 
-- [Iron Production vs Storage](./balancing/economy/techtree-progression-iron-harvesting-vs-iron-capacity-l1-to-l30.svg)
-  - Shows balance between iron generation and storage limits
-  - Identifies progression pacing and resource bottlenecks
+![Iron Production vs Storage](./balancing/economy/techtree-progression-iron-harvesting-vs-iron-capacity-l1-to-l30.svg)
+
+- Shows balance between iron generation and storage limits
+- Identifies progression pacing and resource bottlenecks
 
 #### Mobility
 
-- [Ship Speed vs Afterburner](./balancing/ship-mobility/techtree-progression-ship-speed-vs-afterburner-speed-increase-l1-to-l30.svg)
-- [Teleport System](./balancing/teleport/techtree-progression-teleport-vs-teleport-recharge-speed-l1-to-l30.svg)
+![Ship Speed vs Afterburner](./balancing/ship-mobility/techtree-progression-ship-speed-vs-afterburner-speed-increase-l1-to-l30.svg)
+
+![Teleport System](./balancing/teleport/techtree-progression-teleport-vs-teleport-recharge-speed-l1-to-l30.svg)
 
 ---
 

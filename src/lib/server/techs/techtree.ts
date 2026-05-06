@@ -214,7 +214,7 @@ export const AllResearches: Record<ResearchType, Research> = {
     baseUpgradeDuration: 90,
     baseValue: 100,
     upgradeCostIncrease: 2.2,
-    baseValueIncrease: { type: 'valueQuadratic', value: 0.15 },
+    baseValueIncrease: { type: 'valueQuadratic', value: 0.18 },
     description: 'Increases hull strength of your ship for each hull plate installed.',
     treeKey: 'hullStrength',
     unit: '%',

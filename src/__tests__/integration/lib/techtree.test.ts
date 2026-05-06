@@ -125,7 +125,7 @@ describe('getResearchEffect', () => {
 
   test('getResearchEffect_newDefenseResearches_calculatesCorrectly', () => {
     expect(getResearchEffect(AllResearches[ResearchType.HullStrength], 1)).toBeCloseTo(100);
-    expect(getResearchEffect(AllResearches[ResearchType.HullStrength], 2)).toBeCloseTo(117.25, 10);
+    expect(getResearchEffect(AllResearches[ResearchType.HullStrength], 2)).toBeCloseTo(121.24, 10);
     expect(getResearchEffect(AllResearches[ResearchType.RepairSpeed], 1)).toBeCloseTo(0.1, 10);
     expect(getResearchEffect(AllResearches[ResearchType.RepairSpeed], 2)).toBeCloseTo(0.13276, 10);
     expect(getResearchEffect(AllResearches[ResearchType.ShieldRechargeRate], 1)).toBeCloseTo(0.1, 10);

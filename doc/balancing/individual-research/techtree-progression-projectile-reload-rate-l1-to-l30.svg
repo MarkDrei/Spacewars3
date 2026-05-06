@@ -24,7 +24,7 @@
   <line x1="120" y1="80" x2="120" y2="680" stroke="#0d6e6e" stroke-width="2" />
   
 
-  <path d="M 120.00 661.48 L 154.48 642.96 L 188.97 624.44 L 223.45 605.93 L 257.93 587.41 L 292.41 568.89 L 326.90 550.37 L 361.38 531.85 L 395.86 513.33 L 430.34 494.81 L 464.83 476.30 L 499.31 457.78 L 533.79 439.26 L 568.28 420.74 L 602.76 402.22 L 637.24 383.70 L 671.72 365.19 L 706.21 346.67 L 740.69 328.15 L 775.17 309.63 L 809.66 291.11 L 844.14 272.59 L 878.62 254.07 L 913.10 235.56 L 947.59 217.04 L 982.07 198.52 L 1016.55 180.00 L 1051.03 161.48 L 1085.52 142.96 L 1120.00 124.44" fill="none" stroke="#1b1b1b" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
+  <path d="M 120.00 537.55 L 154.48 523.30 L 188.97 509.06 L 223.45 494.81 L 257.93 480.57 L 292.41 466.32 L 326.90 452.08 L 361.38 437.83 L 395.86 423.59 L 430.34 409.34 L 464.83 395.10 L 499.31 380.85 L 533.79 366.61 L 568.28 352.36 L 602.76 338.12 L 637.24 323.87 L 671.72 309.63 L 706.21 295.38 L 740.69 281.14 L 775.17 266.89 L 809.66 252.65 L 844.14 238.40 L 878.62 224.16 L 913.10 209.91 L 947.59 195.67 L 982.07 181.42 L 1016.55 167.18 L 1051.03 152.93 L 1085.52 138.69 L 1120.00 124.44" fill="none" stroke="#1b1b1b" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
   
   <g>
     <rect x="136" y="96" width="560" height="42" fill="#ffffff" fill-opacity="0.92" stroke="#b8c4cb" />
@@ -45,11 +45,11 @@
 <text x="1016.55" y="708" font-size="14" text-anchor="middle" fill="#24333b">27</text>
 <text x="1120.00" y="708" font-size="14" text-anchor="middle" fill="#24333b">30</text>
   <text x="106" y="685.00" font-size="13" text-anchor="end" fill="#204f4f">0.00e+0</text>
-<text x="106" y="565.00" font-size="13" text-anchor="end" fill="#204f4f">64.8</text>
-<text x="106" y="445.00" font-size="13" text-anchor="end" fill="#204f4f">129.6</text>
-<text x="106" y="325.00" font-size="13" text-anchor="end" fill="#204f4f">194.4</text>
-<text x="106" y="205.00" font-size="13" text-anchor="end" fill="#204f4f">259.2</text>
-<text x="106" y="85.00" font-size="13" text-anchor="end" fill="#204f4f">324</text>
+<text x="106" y="565.00" font-size="13" text-anchor="end" fill="#204f4f">84.24</text>
+<text x="106" y="445.00" font-size="13" text-anchor="end" fill="#204f4f">168.48</text>
+<text x="106" y="325.00" font-size="13" text-anchor="end" fill="#204f4f">252.72</text>
+<text x="106" y="205.00" font-size="13" text-anchor="end" fill="#204f4f">336.96</text>
+<text x="106" y="85.00" font-size="13" text-anchor="end" fill="#204f4f">421.2</text>
   
 
   <text x="600" y="34" font-size="24" text-anchor="middle" fill="#122028">Projectile Reload Rate progression (L1..L30)</text>

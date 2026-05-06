@@ -24,8 +24,8 @@
   <line x1="120" y1="80" x2="120" y2="680" stroke="#0d6e6e" stroke-width="2" />
   <line x1="1040" y1="80" x2="1040" y2="680" stroke="#7b3527" stroke-width="2" />
 
-  <path d="M 120.00 652.68 L 151.72 634.46 L 183.45 616.25 L 215.17 598.03 L 246.90 579.82 L 278.62 561.60 L 310.34 543.39 L 342.07 525.17 L 373.79 506.96 L 405.52 488.74 L 437.24 470.53 L 468.97 452.31 L 500.69 434.10 L 532.41 415.88 L 564.14 397.67 L 595.86 379.45 L 627.59 361.24 L 659.31 343.02 L 691.03 324.81 L 722.76 306.59 L 754.48 288.38 L 786.21 270.16 L 817.93 251.95 L 849.66 233.73 L 881.38 215.52 L 913.10 197.30 L 944.83 179.09 L 976.55 160.87 L 1008.28 142.66 L 1040.00 124.44" fill="none" stroke="#1b1b1b" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
-  <path d="M 120.00 652.68 L 151.72 625.36 L 183.45 598.03 L 215.17 570.71 L 246.90 543.39 L 278.62 516.07 L 310.34 488.74 L 342.07 461.42 L 373.79 434.10 L 405.52 406.78 L 437.24 379.45 L 468.97 352.13 L 500.69 324.81 L 532.41 297.49 L 564.14 270.16 L 595.86 242.84 L 627.59 215.52 L 659.31 188.20 L 691.03 160.87 L 722.76 133.55 L 754.48 106.23 L 786.21 78.91 L 817.93 51.58 L 849.66 24.26 L 881.38 -3.06 L 913.10 -30.38 L 944.83 -57.70 L 976.55 -85.03 L 1008.28 -112.35 L 1040.00 -139.67" fill="none" stroke="#0072B2" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
+  <path d="M 120.00 537.55 L 151.72 523.30 L 183.45 509.06 L 215.17 494.81 L 246.90 480.57 L 278.62 466.32 L 310.34 452.08 L 342.07 437.83 L 373.79 423.59 L 405.52 409.34 L 437.24 395.10 L 468.97 380.85 L 500.69 366.61 L 532.41 352.36 L 564.14 338.12 L 595.86 323.87 L 627.59 309.63 L 659.31 295.38 L 691.03 281.14 L 722.76 266.89 L 754.48 252.65 L 786.21 238.40 L 817.93 224.16 L 849.66 209.91 L 881.38 195.67 L 913.10 181.42 L 944.83 167.18 L 976.55 152.93 L 1008.28 138.69 L 1040.00 124.44" fill="none" stroke="#1b1b1b" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
+  <path d="M 120.00 537.55 L 151.72 523.30 L 183.45 509.06 L 215.17 494.81 L 246.90 480.57 L 278.62 466.32 L 310.34 452.08 L 342.07 437.83 L 373.79 423.59 L 405.52 409.34 L 437.24 395.10 L 468.97 380.85 L 500.69 366.61 L 532.41 352.36 L 564.14 338.12 L 595.86 323.87 L 627.59 309.63 L 659.31 295.38 L 691.03 281.14 L 722.76 266.89 L 754.48 252.65 L 786.21 238.40 L 817.93 224.16 L 849.66 209.91 L 881.38 195.67 L 913.10 181.42 L 944.83 167.18 L 976.55 152.93 L 1008.28 138.69 L 1040.00 124.44" fill="none" stroke="#0072B2" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
   <g>
     <rect x="136" y="96" width="560" height="64" fill="#ffffff" fill-opacity="0.92" stroke="#b8c4cb" />
     <g>
@@ -49,17 +49,17 @@
 <text x="944.83" y="708" font-size="14" text-anchor="middle" fill="#24333b">27</text>
 <text x="1040.00" y="708" font-size="14" text-anchor="middle" fill="#24333b">30</text>
   <text x="106" y="685.00" font-size="13" text-anchor="end" fill="#204f4f">0.00e+0</text>
-<text x="106" y="565.00" font-size="13" text-anchor="end" fill="#204f4f">65.88</text>
-<text x="106" y="445.00" font-size="13" text-anchor="end" fill="#204f4f">131.76</text>
-<text x="106" y="325.00" font-size="13" text-anchor="end" fill="#204f4f">197.64</text>
-<text x="106" y="205.00" font-size="13" text-anchor="end" fill="#204f4f">263.52</text>
-<text x="106" y="85.00" font-size="13" text-anchor="end" fill="#204f4f">329.4</text>
+<text x="106" y="565.00" font-size="13" text-anchor="end" fill="#204f4f">84.24</text>
+<text x="106" y="445.00" font-size="13" text-anchor="end" fill="#204f4f">168.48</text>
+<text x="106" y="325.00" font-size="13" text-anchor="end" fill="#204f4f">252.72</text>
+<text x="106" y="205.00" font-size="13" text-anchor="end" fill="#204f4f">336.96</text>
+<text x="106" y="85.00" font-size="13" text-anchor="end" fill="#204f4f">421.2</text>
   <text x="1054" y="685.00" font-size="13" text-anchor="start" fill="#7b3527">0.00e+0x</text>
-<text x="1054" y="565.00" font-size="13" text-anchor="start" fill="#7b3527">4.392x</text>
-<text x="1054" y="445.00" font-size="13" text-anchor="start" fill="#7b3527">8.784x</text>
-<text x="1054" y="325.00" font-size="13" text-anchor="start" fill="#7b3527">13.176x</text>
-<text x="1054" y="205.00" font-size="13" text-anchor="start" fill="#7b3527">17.568x</text>
-<text x="1054" y="85.00" font-size="13" text-anchor="start" fill="#7b3527">21.96x</text>
+<text x="1054" y="565.00" font-size="13" text-anchor="start" fill="#7b3527">0.842x</text>
+<text x="1054" y="445.00" font-size="13" text-anchor="start" fill="#7b3527">1.685x</text>
+<text x="1054" y="325.00" font-size="13" text-anchor="start" fill="#7b3527">2.527x</text>
+<text x="1054" y="205.00" font-size="13" text-anchor="start" fill="#7b3527">3.37x</text>
+<text x="1054" y="85.00" font-size="13" text-anchor="start" fill="#7b3527">4.212x</text>
 
   <text x="600" y="34" font-size="24" text-anchor="middle" fill="#122028">Energy Recharge Rate vs Projectile Reload Rate progression (L1..L30)</text>
   <text x="600" y="58" font-size="14" text-anchor="middle" fill="#45606d">Dual axis: all secondary lines are scaled to intersect at level 1 (right axis = multiplier vs L1)</text>
