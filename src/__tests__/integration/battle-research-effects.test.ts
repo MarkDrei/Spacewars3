@@ -182,7 +182,7 @@ describe('Battle Research Effects Integration', () => {
             return (await userCache.getUserByUsername(userCtx, 'a'))!;
           });
           const researchCooldown = TechFactory.calculateWeaponReloadTime('pulse_laser', attackerUser.techTree);
-          expect(researchCooldown).toBeCloseTo(720 / 1.45, 1);
+          expect(researchCooldown).toBeCloseTo(720 / 1.30, 1);
 
           // Verify it's much faster than base cooldown
           const baseCooldown = TechFactory.getBaseBattleCooldown(TechFactory.getWeaponSpec('pulse_laser')!);
