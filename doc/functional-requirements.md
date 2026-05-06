@@ -95,6 +95,7 @@ Spacewars Ironstrike is a browser-based multi-player 2D space exploration game. 
     - [Cap11_Feat002: Weapons & Defense Balance](#cap11_feat002-weapons--defense-balance)
     - [Cap11_Feat003: Economy & Resource Scaling](#cap11_feat003-economy--resource-scaling)
     - [Cap11_Feat004: Ship Mobility & Special Abilities](#cap11_feat004-ship-mobility--special-abilities)
+    - [Cap11_Feat005: Battle Progression & XP Requirements](#cap11_feat005-battle-progression--xp-requirements)
 - [Document Format & Templates](#document-format--templates)
 
 ## Capabilities
@@ -849,8 +850,8 @@ Individual research progression curves showing how each technology scales from l
 | ID                   | Requirement                                                                                                                                                   |
 | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Cap11_Feat001_Req001 | Individual progression charts exist for all 23 implemented researches (`doc/balancing/individual-research/`), showing effect curves from level 1 to level 30. |
-| Cap11_Feat001_Req002 | Each chart displays the research name, effect unit (e.g., iron/sec, HP, damage), and axis labels for easy interpretation.                                  |
-| Cap11_Feat001_Req003 | All individual charts follow the same visual style for consistency across the progression documentation.                                                    |
+| Cap11_Feat001_Req002 | Each chart displays the research name, effect unit (e.g., iron/sec, HP, damage), and axis labels for easy interpretation.                                     |
+| Cap11_Feat001_Req003 | All individual charts follow the same visual style for consistency across the progression documentation.                                                      |
 
 ---
 
@@ -860,12 +861,12 @@ Comparison charts analyzing offensive and defensive research progression to asse
 
 | ID                   | Requirement                                                                                                                                                                |
 | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Cap11_Feat002_Req001 | Energy vs Projectile damage chart compares `EnergyDamage` and `ProjectileDamage` progression side-by-side across levels 1–30 (`doc/balancing/weapons-comparison/`).       |
-| Cap11_Feat002_Req002 | Energy vs Projectile reload rate chart compares `EnergyRechargeRate` and `ProjectileReloadRate` side-by-side.                                                          |
-| Cap11_Feat002_Req003 | Energy vs Projectile accuracy chart compares `EnergyAccuracy` and `ProjectileAccuracy` side-by-side.                                                                   |
-| Cap11_Feat002_Req004 | Defense types comparison chart shows `HullStrength`, `ArmorEffectiveness`, and `ShieldEffectiveness` progression together (`doc/balancing/defense-comparison/`).        |
-| Cap11_Feat002_Req005 | Defense regeneration chart compares `RepairSpeed` (hull & armor) and `ShieldRechargeRate` (shield) to highlight different healing mechanics.                           |
-| Cap11_Feat002_Req006 | Weapons vs Defense chart compares offensive (`ProjectileDamage`, `EnergyDamage`) and defensive (`HullStrength`, `ArmorEffectiveness`) progression (`weapons-vs-defense/`).|
+| Cap11_Feat002_Req001 | Energy vs Projectile damage chart compares `EnergyDamage` and `ProjectileDamage` progression side-by-side across levels 1–30 (`doc/balancing/weapons-comparison/`).        |
+| Cap11_Feat002_Req002 | Energy vs Projectile reload rate chart compares `EnergyRechargeRate` and `ProjectileReloadRate` side-by-side.                                                              |
+| Cap11_Feat002_Req003 | Energy vs Projectile accuracy chart compares `EnergyAccuracy` and `ProjectileAccuracy` side-by-side.                                                                       |
+| Cap11_Feat002_Req004 | Defense types comparison chart shows `HullStrength`, `ArmorEffectiveness`, and `ShieldEffectiveness` progression together (`doc/balancing/defense-comparison/`).           |
+| Cap11_Feat002_Req005 | Defense regeneration chart compares `RepairSpeed` (hull & armor) and `ShieldRechargeRate` (shield) to highlight different healing mechanics.                               |
+| Cap11_Feat002_Req006 | Weapons vs Defense chart compares offensive (`ProjectileDamage`, `EnergyDamage`) and defensive (`HullStrength`, `ArmorEffectiveness`) progression (`weapons-vs-defense/`). |
 
 ---
 
@@ -873,10 +874,10 @@ Comparison charts analyzing offensive and defensive research progression to asse
 
 Charts documenting iron production and storage capacity to understand economic constraint and progression pacing.
 
-| ID                   | Requirement                                                                                                                                |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| Cap11_Feat003_Req001 | Iron economy chart compares `IronHarvesting` (production rate) and `IronCapacity` (storage) side-by-side (`doc/balancing/economy/`).      |
-| Cap11_Feat003_Req002 | Chart shows the relationship between iron production rate and storage limits to identify bottlenecks and progression pacing.               |
+| ID                   | Requirement                                                                                                                          |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Cap11_Feat003_Req001 | Iron economy chart compares `IronHarvesting` (production rate) and `IronCapacity` (storage) side-by-side (`doc/balancing/economy/`). |
+| Cap11_Feat003_Req002 | Chart shows the relationship between iron production rate and storage limits to identify bottlenecks and progression pacing.         |
 
 ---
 
@@ -884,11 +885,22 @@ Charts documenting iron production and storage capacity to understand economic c
 
 Charts for ship movement and special abilities progression.
 
-| ID                   | Requirement                                                                                                                                                   |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Cap11_Feat004_Req001 | Ship mobility chart compares `ShipSpeed` and `AfterburnerSpeedIncrease` progression side-by-side (`doc/balancing/ship-mobility/`).                         |
-| Cap11_Feat004_Req002 | Teleport progression chart shows `Teleport` (charge count) and `TeleportRechargeSpeed` (recharge time) growth together (`doc/balancing/teleport/`).        |
+| ID                   | Requirement                                                                                                                                                  |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Cap11_Feat004_Req001 | Ship mobility chart compares `ShipSpeed` and `AfterburnerSpeedIncrease` progression side-by-side (`doc/balancing/ship-mobility/`).                           |
+| Cap11_Feat004_Req002 | Teleport progression chart shows `Teleport` (charge count) and `TeleportRechargeSpeed` (recharge time) growth together (`doc/balancing/teleport/`).          |
 | Cap11_Feat004_Req003 | Afterburner research breakdown is visible in individual progression charts for `AfterburnerDuration`, `AfterburnerCooldown`, and `AfterburnerSpeedIncrease`. |
+
+#### Cap11_Feat005: Battle Progression & XP Requirements
+
+Comprehensive documentation on how many battles are needed to progress through levels, considering different opponent level scenarios.
+
+| ID                   | Requirement                                                                                                                                                               |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Cap11_Feat005_Req001 | Battle progression table documents XP requirements and battle counts for each level transition (1-10) under three opponent scenarios: same level, level -1, and level +1. |
+| Cap11_Feat005_Req002 | Level battle constraint is ±3 levels; table shows N/A for impossible matchups (e.g., level 1 cannot battle level 0).                                                      |
+| Cap11_Feat005_Req003 | XP reward formula and scaling by level difference is documented for player and designer reference. See [doc/balancing-analysis.md](./balancing-analysis.md).              |
+| Cap11_Feat005_Req004 | Progression analysis identifies strategic implications: skill-based early grinding, efficient mid-level farming, late-game trade-offs between safety and speed.           |
 
 ---
 
@@ -905,6 +917,8 @@ For manual generation of specific research charts, use:
 ```bash
 npm run techtree-chart -- --research <name> --min <n> --max <n>
 ```
+
+Comprehensive balancing analysis including battle progression requirements, XP scaling, and strategic implications is available in [doc/balancing-analysis.md](./balancing-analysis.md).
 
 ---
 
