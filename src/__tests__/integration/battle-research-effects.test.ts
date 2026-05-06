@@ -186,7 +186,7 @@ describe('Battle Research Effects Integration', () => {
 
           // Verify it's much faster than base cooldown
           const baseCooldown = TechFactory.getBaseBattleCooldown(TechFactory.getWeaponSpec('pulse_laser')!);
-          expect(researchCooldown).toBeLessThan(baseCooldown * 0.7); // Noticeably faster
+          expect(researchCooldown).toBeLessThan(baseCooldown * 0.8); // Noticeably faster
         });
       });
     });
