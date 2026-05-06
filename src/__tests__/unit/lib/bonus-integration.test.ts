@@ -199,9 +199,9 @@ describe('Task 5.1.1 — mid-tick IronHarvesting with bonuses', () => {
   test('midTick_researchCompletes_noBonuses_fallsBackToTechTree', async () => {
     const user = makeUser();
     triggerResearch(user.techTree, ResearchType.IronHarvesting);
-    // No bonuses — old behavior: pre: 1.0 * 10 = 10, post: 1.1 * 5 = 5.5
+    // No bonuses — old behavior: pre: 1.0 * 10 = 10, post: 1.11 * 5 = 5.55
     await updateStatsWithMockedBuildRefresh(user, 1015);
-    expect(user.iron).toBeCloseTo(10 + 5 * 1.1, 5);
+    expect(user.iron).toBeCloseTo(10 + 5 * 1.11, 5);
     expect(user.techTree.ironHarvesting).toBe(2);
   });
 });

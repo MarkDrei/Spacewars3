@@ -132,8 +132,8 @@ describe('User.updateStats with time multiplier', () => {
       // Research completes at 10s game time, then 5s at new rate (1.1/sec)
       await updateStatsWithMockedBuildRefresh(user, 1001.5);
 
-      // 10s at old rate (1/sec) + 5s at new rate (1.1/sec)
-      const expectedIron = 10 + 5 * 1.1;
+      // 10s at old rate (1/sec) + 5s at new rate (1.11/sec)
+      const expectedIron = 10 + 5 * 1.11;
       expect(user.iron).toBeCloseTo(expectedIron, 5);
       expect(user.techTree.ironHarvesting).toBe(2); // upgraded
       expect(user.techTree.activeResearch).toBeUndefined();
@@ -195,9 +195,9 @@ describe('User.updateStats with time multiplier', () => {
       // gameSecondsToComplete = 10 / 1.10 ≈ 9.0909s (real time until research finishes)
       // ironBefore = 9.0909 * 1 (level-1 rate = 1/s)
       // remaining = 10 - 9.0909 = 0.9091s
-      // ironAfter = 0.9091 * 1.1 (level-2 rate = 1.1/s) = 1.0
-      // total ≈ 10.0909
-      expect(user.iron).toBeCloseTo(10 / 1.10 + 1, 5);
+      // ironAfter = 0.9091 * 1.11 (level-2 rate = 1.11/s) ≈ 1.0091
+      // total ≈ 10.1
+      expect(user.iron).toBeCloseTo(10.1, 5);
     });
   });
 
@@ -306,8 +306,8 @@ describe('User.updateStats with time multiplier', () => {
       // Update stats after 1.5s real time = 15s game time
       await updateStatsWithMockedBuildRefresh(user, 1001.5);
 
-      // Iron: 10s at 1/sec + 5s at 1.1/sec (research completes)
-      const expectedIron = 10 + 5 * 1.1;
+      // Iron: 10s at 1/sec + 5s at 1.11/sec (research completes)
+      const expectedIron = 10 + 5 * 1.11;
       expect(user.iron).toBeCloseTo(expectedIron, 5);
 
       // Research completed

@@ -47,12 +47,7 @@ export interface Research {
   baseValue: number; // base value for this research (e.g. iron/sec, speed)
   upgradeCostIncrease: number; // multiplier for cost increase per level
   baseValueIncrease: {
-    type:
-      | 'constant'
-      | 'factor'
-      | 'polynomial'
-      | 'valueExponent'
-      | 'valueQuadratic';
+    type: 'constant' | 'valueQuadratic';
     value: number;
   }; // how the effect increases per level
   description: string;
@@ -695,46 +690,47 @@ export function getTimeSpeedFactorFromTree(
   return getTimeSpeedFactorFromEffect(getResearchEffectFromTree(tree, type)) * levelMultiplier;
 }
 
+function shouldInvertRechargeSpeedToCooldown(type: ResearchType): boolean {
+  return type === ResearchType.AfterburnerCooldown || type === ResearchType.TeleportRechargeSpeed;
+}
+
 /**
  * Returns the effect value for a given research and level.
  * Applies the baseValueIncrease logic for each level above the research's starting level.
  * Formulas:
  * - constant: baseValue + (constant * (level - 1))
- * - factor: baseValue * (factor ^ (level - 1))
- * - polynomial: baseValue + baseValue * (value * (1.5 * level - 1.5)) ^ 1.4
- * - valueExponent: baseValue * (1 + value * (level - 1)) ^ (1 + value)
  * - valueQuadratic: baseValue * (1 + value * (level - 1) + (value * (level - 1)) ^ 2)
+ *
+ * For recharge-speed researches that are user-facing as cooldown time
+ * (afterburner cooldown and teleport recharge), the stored progression now
+ * represents recharge speed. The stored effect is a multiplier relative to
+ * baseValue (for example, 1.1725× means 17.25% faster recharge), so this
+ * function converts it back into effective cooldown seconds via
+ * baseValue / speedMultiplier so higher levels still show and apply a lower
+ * time value.
  */
 export function getResearchEffect(research: Research, level: number): number {
   if (level === 0) return 0; // At level 0, the effect is always 0
   const increase = research.baseValueIncrease;
-  if (increase.type === 'factor') {
-    // Effect = baseValue * (factor ^ (level - 1))
-    return research.baseValue * Math.pow(increase.value, level - 1);
-  } else if (increase.type === 'constant') {
+  let rawEffect: number;
+  if (increase.type === 'constant') {
     // Effect = baseValue + (constant * (level - 1))
-    return research.baseValue + increase.value * (level - 1);
-  } else if (increase.type === 'polynomial') {
-    // polynomial: Effect = baseValue + baseValue * (value * (1.5 * level - 1.5)) ^ 1.4
-    // This is the "in between" formula: 1 + (0.1 * (1.5x - 1.5)) ^ 1.4
-    // For level 1: 1 + (0.1 * 0) ^ 1.4 = 1
-    // For level 2: 1 + (0.1 * 1.5) ^ 1.4 = 1 + 0.15^1.4 ≈ 1.047
-    const multiplier = 1 + Math.pow(increase.value * (1.5 * level - 1.5), 1.4);
-    return research.baseValue * multiplier;
-  } else if (increase.type === 'valueExponent') {
-    // valueExponent: Effect = baseValue * (1 + value * (level - 1)) ^ (1 + value)
-    // The value parameter influences both base growth and curve steepness (exponent).
-    const n = level - 1;
-    const multiplier = Math.pow(1 + increase.value * n, 1 + increase.value);
-    return research.baseValue * multiplier;
+    rawEffect = research.baseValue + increase.value * (level - 1);
   } else {
     // valueQuadratic: Effect = baseValue * (1 + x + x^2), x = value * (level - 1)
     // The value parameter controls both linear and quadratic terms, increasing acceleration influence.
     const n = level - 1;
     const x = increase.value * n;
     const multiplier = 1 + x + x * x;
-    return research.baseValue * multiplier;
+    rawEffect = research.baseValue * multiplier;
   }
+
+  if (!shouldInvertRechargeSpeedToCooldown(research.type) || rawEffect <= 0) {
+    return rawEffect;
+  }
+
+  const rechargeSpeedFactor = rawEffect / research.baseValue;
+  return research.baseValue / rechargeSpeedFactor;
 }
 
 /**

@@ -267,8 +267,7 @@ describe('User.updateStats with IronHarvesting research progression', () => {
     triggerResearch(user.techTree, ResearchType.IronHarvesting);
     // 15s pass, research completes at t+10, then 5s at new rate
     await updateStatsWithMockedBuildRefresh(user, 1015);
-    // 10s at old rate (1/sec), 5s at new rate (1.1/sec)
-    expect(user.iron).toBeCloseTo(10 + 5 * 1.1, 5);
+    expect(user.iron).toBeCloseTo(10 + 5 * 1.11, 5);
     expect(user.techTree.ironHarvesting).toBe(2); // upgraded
     expect(user.techTree.activeResearch).toBeUndefined();
   });
@@ -283,7 +282,7 @@ describe('User.updateStats with IronHarvesting research progression', () => {
 
     expect(user.techTree.ironHarvesting).toBe(2);
     expect(user.techTree.activeResearch).toBeUndefined();
-    expect(user.iron).toBeCloseTo(5 * 1.1, 5);
+    expect(user.iron).toBeCloseTo(5 * 1.11, 5);
   });
 
   test('updateStats_multipleResearchCompletionsAndFurtherResearch0_correctIronAndResearchState', async () => {
@@ -300,13 +299,12 @@ describe('User.updateStats with IronHarvesting research progression', () => {
     expect(user.techTree.activeResearch).toBeDefined();
     expect(user.techTree.activeResearch?.type).toBe(ResearchType.IronHarvesting);
     expect(user.techTree.activeResearch?.remainingDuration).toBe(20); // 20s for next level
-    // 15s pass: 15s at 1.1/sec (research in progress)
+    // 15s pass: 15s at 1.11/sec (research in progress)
     await updateStatsWithMockedBuildRefresh(user, 1025);
-    // 15s at 1.1/sec (until research completes), 5s at 1.21/sec (after upgrade)
-    expect(user.iron).toBeCloseTo(10 + 16.5, 5);
+    expect(user.iron).toBeCloseTo(10 + 15 * 1.11, 5);
     expect(user.techTree.ironHarvesting).toBe(2);
     await updateStatsWithMockedBuildRefresh(user, 1030); // complete the second research
-    expect(user.iron).toBeCloseTo(10 + 16.5 + 5.5, 5); // 5s at 1.1/sec
+    expect(user.iron).toBeCloseTo(10 + 20 * 1.11, 5);
     expect(user.techTree.ironHarvesting).toBe(3); // upgraded to level 3
     expect(user.techTree.activeResearch).toBeUndefined();
   });
@@ -321,10 +319,9 @@ describe('User.updateStats with IronHarvesting research progression', () => {
     expect(user.techTree.activeResearch).toBeUndefined();
     // Start another research
     triggerResearch(user.techTree, ResearchType.IronHarvesting);
-    // 30s pass: 20s at 1.1/sec (research in progress), 10s at 1.21/sec (after upgrade)
+    // 30s pass: 20s at 1.11/sec (research in progress), 10s at 1.24/sec (after upgrade)
     await updateStatsWithMockedBuildRefresh(user, 1040);
-    // 20s at 1.1/sec (until research completes), 10s at 1.21/sec (after upgrade)
-    expect(user.iron).toBeCloseTo(10 + 22 + 12.1, 5);
+    expect(user.iron).toBeCloseTo(10 + 20 * 1.11 + 10 * 1.24, 5);
     expect(user.techTree.ironHarvesting).toBe(3);
     expect(user.techTree.activeResearch).toBeUndefined();
   });
@@ -341,14 +338,14 @@ describe('User.updateStats with IronHarvesting research progression', () => {
     triggerResearch(user.techTree, ResearchType.IronHarvesting);
     // Complete second research in 20s, then immediately start another
     await updateStatsWithMockedBuildRefresh(user, 1030);
-    expect(user.iron).toBeCloseTo(10 + 20 * 1.1, 5); // 10 at 1/sec, 20 at 1.1/sec
+    expect(user.iron).toBeCloseTo(10 + 20 * 1.11, 5);
     expect(user.techTree.ironHarvesting).toBe(3);
     expect(user.techTree.activeResearch).toBeUndefined();
     // Start third research (duration 40s)
     triggerResearch(user.techTree, ResearchType.IronHarvesting);
     // Complete third research in 40s
     await updateStatsWithMockedBuildRefresh(user, 1070);
-    expect(user.iron).toBeCloseTo(10 + 22 + 40 * 1.21, 5); // 10 at 1/sec, 20 at 1.1/sec, 40 at 1.21/sec
+    expect(user.iron).toBeCloseTo(10 + 20 * 1.11 + 40 * 1.24, 5);
     expect(user.techTree.ironHarvesting).toBe(4);
     expect(user.techTree.activeResearch).toBeUndefined();
   });
@@ -367,31 +364,31 @@ describe('User.updateStats with IronHarvesting research progression', () => {
     // Start second research (duration 20s)
     triggerResearch(user.techTree, ResearchType.IronHarvesting);
     await updateStatsWithMockedBuildRefresh(user, 1022); // 12s pass, research not done
-    expect(user.iron).toBeCloseTo(10 + 12 * 1.1, 5);
+    expect(user.iron).toBeCloseTo(10 + 12 * 1.11, 5);
     expect(user.techTree.ironHarvesting).toBe(2);
     expect(user.techTree.activeResearch).toBeDefined();
     await updateStatsWithMockedBuildRefresh(user, 1030); // 8s pass, research completes
-    expect(user.iron).toBeCloseTo(10 + 20 * 1.1, 5);
+    expect(user.iron).toBeCloseTo(10 + 20 * 1.11, 5);
     expect(user.techTree.ironHarvesting).toBe(3);
     expect(user.techTree.activeResearch).toBeUndefined();
     // Start third research (duration 40s)
     triggerResearch(user.techTree, ResearchType.IronHarvesting);
     await updateStatsWithMockedBuildRefresh(user, 1050); // 20s pass, research not done
-    expect(user.iron).toBeCloseTo(10 + 22 + 20 * 1.21, 5);
+    expect(user.iron).toBeCloseTo(10 + 20 * 1.11 + 20 * 1.24, 5);
     expect(user.techTree.ironHarvesting).toBe(3);
     expect(user.techTree.activeResearch).toBeDefined();
     await updateStatsWithMockedBuildRefresh(user, 1070); // 20s pass, research completes
-    expect(user.iron).toBeCloseTo(10 + 22 + 40 * 1.21, 5);
+    expect(user.iron).toBeCloseTo(10 + 20 * 1.11 + 40 * 1.24, 5);
     expect(user.techTree.ironHarvesting).toBe(4);
     expect(user.techTree.activeResearch).toBeUndefined();
     // Start fourth research (duration 80s)
     triggerResearch(user.techTree, ResearchType.IronHarvesting);
     await updateStatsWithMockedBuildRefresh(user, 1110); // 40s pass, research not done
-    expect(user.iron).toBeCloseTo(10 + 22 + 48.4 + 40 * 1.331, 5); // 10+22+48.4+40*1.331
+    expect(user.iron).toBeCloseTo(10 + 20 * 1.11 + 40 * 1.24 + 40 * 1.39, 5);
     expect(user.techTree.ironHarvesting).toBe(4);
     expect(user.techTree.activeResearch).toBeDefined();
     await updateStatsWithMockedBuildRefresh(user, 1150); // 40s pass, research completes
-    expect(user.iron).toBeCloseTo(10 + 22 + 48.4 + 80 * 1.331, 5); // 10+22+48.4+80*1.331
+    expect(user.iron).toBeCloseTo(10 + 20 * 1.11 + 40 * 1.24 + 80 * 1.39, 5);
     expect(user.techTree.ironHarvesting).toBe(5);
     expect(user.techTree.activeResearch).toBeUndefined();
   });
@@ -571,14 +568,14 @@ describe('User getter methods', () => {
     // Manually upgrade iron harvesting to level 2
     user.techTree.ironHarvesting = 2;
     const ironPerSecond = user.getIronPerSecond();
-    expect(ironPerSecond).toBeCloseTo(1.1, 5); // Base rate * 1.1 factor
+    expect(ironPerSecond).toBeCloseTo(1.11, 5);
   });
 
   test('getIronPerSecond_afterMultipleIronHarvestingUpgrades_returnsCorrectScaledRate', () => {
     // Manually upgrade iron harvesting to level 3
     user.techTree.ironHarvesting = 3;
     const ironPerSecond = user.getIronPerSecond();
-    expect(ironPerSecond).toBeCloseTo(1.21, 5); // Base rate * 1.1^2
+    expect(ironPerSecond).toBeCloseTo(1.24, 5);
   });
 });
 
