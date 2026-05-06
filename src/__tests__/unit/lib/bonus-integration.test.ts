@@ -366,24 +366,24 @@ describe('Task 5.4.1 — calculateWeaponReloadTime() with totalReloadFactor', ()
 
   test('calculateWeaponReloadTime_noFactor_usesResearchFromTree', () => {
     // auto_turret: 12 min × 60 = 720s base, at base ProjectileReloadRate level 1,
-    // effect = 10% → speedFactor = 1 + 0.10 = 1.10 → 720 / 1.10 ≈ 654.55s
+    // effect = 100% (baseline) → speedFactor = 100/100 = 1.0 → 720 / 1.0 = 720s
     const result = TechFactory.calculateWeaponReloadTime('auto_turret', techTree);
-    // At ProjectileReloadRate level 1, effect = 10 → speedFactor = 1 + 10/100 = 1.10
-    const speedFactor = 1 + 10 / 100; // 1.10
+    // At ProjectileReloadRate level 1, effect = 100 → speedFactor = 1.0 (no speedup)
+    const speedFactor = 1.0;
     expect(result).toBeCloseTo(720 / speedFactor, 4);
   });
 
   test('calculateWeaponReloadTime_withResearchFactor_identicalToNone', () => {
     // When passing the same factor the tree produces, result should match
     const base = TechFactory.calculateWeaponReloadTime('auto_turret', techTree);
-    const speedFactor = 1 + 10 / 100; // research level 1 factor = 1.10
+    const speedFactor = 1.0; // research level 1 factor = 1.0 (100% baseline, no speedup)
     const withFactor = TechFactory.calculateWeaponReloadTime('auto_turret', techTree, speedFactor);
     expect(withFactor).toBeCloseTo(base, 4);
   });
 
   test('calculateWeaponReloadTime_withHigherFactor_producesFasterReload', () => {
     // Double the speed factor → half the cooldown
-    const speedFactor = 1 + 10 / 100; // research level 1 = 1.10
+    const speedFactor = 1.0; // research level 1 = 1.0 (baseline)
     const base = TechFactory.calculateWeaponReloadTime('auto_turret', techTree, speedFactor);
     const faster = TechFactory.calculateWeaponReloadTime('auto_turret', techTree, speedFactor * 2);
     expect(faster).toBeCloseTo(base / 2, 4);

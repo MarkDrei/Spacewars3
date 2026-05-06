@@ -251,7 +251,7 @@ describe('TimeMultiplier - Build Queue Integration', () => {
       await context.useLockWithAcquire(USER_LOCK, async (userContext) => {
         const user = await UserCache.getInstance2().getUserByIdWithLock(userContext, testUserId);
         if (user) {
-          user.techTree.constructionSpeed = 1;
+          user.techTree.constructionSpeed = 2;
           UserCache.getInstance2().updateUserInCache(userContext, user);
           UserBonusCache.getInstance().invalidateBonuses(testUserId);
         }
@@ -266,8 +266,9 @@ describe('TimeMultiplier - Build Queue Integration', () => {
 
       const queue = await getBuildQueue(testUserId);
 
+      // At level 2, effect = 100 * (1 + 0.15 + 0.0225) = 117.25, factor = 117.25/100 = 1.1725
       expect(queue.length).toBe(1);
-      expect(queue[0].completionTime).toBeCloseTo(now + (120 / 1.10), 5);
+      expect(queue[0].completionTime).toBeCloseTo(now + (120 / 1.1725), 5);
     });
   });
 

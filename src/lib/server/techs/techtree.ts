@@ -106,12 +106,12 @@ export const AllResearches: Record<ResearchType, Research> = {
     level: 1,
     baseUpgradeCost: 1000,
     baseUpgradeDuration: 60,
-    baseValue: 50,
+    baseValue: 100,
     upgradeCostIncrease: 2.0,
     baseValueIncrease: { type: 'valueQuadratic', value: 0.15 },
-    description: 'Increases damage output of projectile weapons.',
+    description: 'Increases damage output of projectile weapons. 100% is the base value.',
     treeKey: 'projectileDamage',
-    unit: 'damage',
+    unit: '%',
   },
   [ResearchType.ProjectileReloadRate]: {
     type: ResearchType.ProjectileReloadRate,
@@ -119,10 +119,10 @@ export const AllResearches: Record<ResearchType, Research> = {
     level: 1,
     baseUpgradeCost: 800,
     baseUpgradeDuration: 50,
-    baseValue: 10,
+    baseValue: 100,
     upgradeCostIncrease: 1.8,
     baseValueIncrease: { type: 'constant', value: 10 },
-    description: 'Reduces reload time for projectile weapons.',
+    description: 'Reduces reload time for projectile weapons. 100% is the base reload speed; higher values reload faster.',
     treeKey: 'projectileReloadRate',
     unit: '%',
   },
@@ -132,10 +132,10 @@ export const AllResearches: Record<ResearchType, Research> = {
     level: 1,
     baseUpgradeCost: 1200,
     baseUpgradeDuration: 70,
-    baseValue: 70,
+    baseValue: 100,
     upgradeCostIncrease: 1.9,
     baseValueIncrease: { type: 'valueQuadratic', value: 0.15 },
-    description: 'Improves accuracy of projectile weapons.',
+    description: 'Improves accuracy of projectile weapons. 100% is the base accuracy; actual hit chance depends on the weapon type.',
     treeKey: 'projectileAccuracy',
     unit: '%',
   },
@@ -159,12 +159,12 @@ export const AllResearches: Record<ResearchType, Research> = {
     level: 1,
     baseUpgradeCost: 1100,
     baseUpgradeDuration: 65,
-    baseValue: 60,
+    baseValue: 100,
     upgradeCostIncrease: 2.0,
     baseValueIncrease: { type: 'valueQuadratic', value: 0.15 },
-    description: 'Increases damage output of energy weapons.',
+    description: 'Increases damage output of energy weapons. 100% is the base value.',
     treeKey: 'energyDamage',
-    unit: 'damage',
+    unit: '%',
   },
   [ResearchType.EnergyRechargeRate]: {
     type: ResearchType.EnergyRechargeRate,
@@ -172,10 +172,10 @@ export const AllResearches: Record<ResearchType, Research> = {
     level: 1,
     baseUpgradeCost: 900,
     baseUpgradeDuration: 55,
-    baseValue: 15,
+    baseValue: 100,
     upgradeCostIncrease: 1.8,
     baseValueIncrease: { type: 'constant', value: 10 },
-    description: 'Increases recharge rate of energy weapons.',
+    description: 'Reduces reload time for energy weapons. 100% is the base reload speed; higher values reload faster.',
     treeKey: 'energyRechargeRate',
     unit: '%',
   },
@@ -185,10 +185,10 @@ export const AllResearches: Record<ResearchType, Research> = {
     level: 1,
     baseUpgradeCost: 1300,
     baseUpgradeDuration: 75,
-    baseValue: 65,
+    baseValue: 100,
     upgradeCostIncrease: 1.9,
     baseValueIncrease: { type: 'valueQuadratic', value: 0.15 },
-    description: 'Improves accuracy of energy weapons.',
+    description: 'Improves accuracy of energy weapons. 100% is the base accuracy; actual hit chance depends on the weapon type.',
     treeKey: 'energyAccuracy',
     unit: '%',
   },
@@ -379,26 +379,26 @@ export const AllResearches: Record<ResearchType, Research> = {
   [ResearchType.ConstructionSpeed]: {
     type: ResearchType.ConstructionSpeed,
     name: 'Construction Speed',
-    level: 0,
+    level: 1,
     baseUpgradeCost: 12000,
     baseUpgradeDuration: 1800,
-    baseValue: 10,
+    baseValue: 100,
     upgradeCostIncrease: 1.9,
     baseValueIncrease: { type: 'valueQuadratic', value: 0.15 },
-    description: 'Reduces the build time for weapons, shields, armor, hull plates, and other tech items in the factory.',
+    description: 'Reduces the build time for weapons, shields, armor, hull plates, and other tech items in the factory. 100% is the base speed; higher values build faster.',
     treeKey: 'constructionSpeed',
     unit: '%',
   },
   [ResearchType.ArtificialIntelligence]: {
     type: ResearchType.ArtificialIntelligence,
     name: 'Artificial Intelligence',
-    level: 0,
+    level: 1,
     baseUpgradeCost: 15000,
     baseUpgradeDuration: 2400,
-    baseValue: 10,
+    baseValue: 100,
     upgradeCostIncrease: 2.0,
     baseValueIncrease: { type: 'valueQuadratic', value: 0.15 },
-    description: 'Reduces the time needed for researches.',
+    description: 'Reduces the time needed for researches. 100% is the base speed; higher values research faster.',
     treeKey: 'artificialIntelligence',
     unit: '%',
   },
@@ -687,7 +687,12 @@ export function getTimeSpeedFactorFromTree(
   type: ResearchType.ConstructionSpeed | ResearchType.ArtificialIntelligence,
   levelMultiplier: number = 1
 ): number {
-  return getTimeSpeedFactorFromEffect(getResearchEffectFromTree(tree, type)) * levelMultiplier;
+  const effect = getResearchEffectFromTree(tree, type);
+  const baseValue = AllResearches[type].baseValue;
+  // Guard against level-0 fallback: effect 0 means no bonus (factor = 1.0).
+  if (effect === 0) return 1.0 * levelMultiplier;
+  // Factor = effect / baseValue: 100% (baseValue) = no speedup, >100% = faster build/research.
+  return (effect / baseValue) * levelMultiplier;
 }
 
 function shouldInvertRechargeSpeedToCooldown(type: ResearchType): boolean {
@@ -834,10 +839,12 @@ export function getWeaponReloadTimeModifierFromTree(tree: TechTree, weaponType: 
     return 1.0;
   }
 
+  const research = AllResearches[researchType];
   const effect = getResearchEffectFromTree(tree, researchType);
-  // Effect is a percentage (e.g., 10, 20, 30).
-  // Speed factor = 1 + effect/100 so that a stated "X%" bonus shows as "+X%" in the UI.
-  return getTimeSpeedFactorFromEffect(effect);
+  // Guard against level-0 fallback: effect 0 means no bonus.
+  if (effect === 0) return 1.0;
+  // Factor = effect / baseValue: 100% (baseValue) = no speedup, >100% = faster reload.
+  return effect / research.baseValue;
 }
 
 /**

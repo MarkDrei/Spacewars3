@@ -89,9 +89,9 @@ describe('getResearchEffect', () => {
   });
 
   test('getResearchEffect_valueQuadraticResearch_appliesFormula', () => {
-    expect(getResearchEffect(AllResearches[ResearchType.ProjectileAccuracy], 1)).toBeCloseTo(70, 10);
-    expect(getResearchEffect(AllResearches[ResearchType.ProjectileAccuracy], 2)).toBeCloseTo(82.075, 10);
-    expect(getResearchEffect(AllResearches[ResearchType.ProjectileAccuracy], 3)).toBeCloseTo(97.3, 10);
+    expect(getResearchEffect(AllResearches[ResearchType.ProjectileAccuracy], 1)).toBeCloseTo(100, 10);
+    expect(getResearchEffect(AllResearches[ResearchType.ProjectileAccuracy], 2)).toBeCloseTo(117.25, 10);
+    expect(getResearchEffect(AllResearches[ResearchType.ProjectileAccuracy], 3)).toBeCloseTo(139, 10);
   });
 
   test('getResearchEffect_valueQuadraticIncrease_appliesLinearAndQuadraticTerms', () => {
@@ -110,17 +110,17 @@ describe('getResearchEffect', () => {
   });
 
   test('getResearchEffect_newProjectileWeapons_calculatesCorrectly', () => {
-    expect(getResearchEffect(AllResearches[ResearchType.ProjectileDamage], 1)).toBeCloseTo(50);
-    expect(getResearchEffect(AllResearches[ResearchType.ProjectileDamage], 2)).toBeCloseTo(58.625);
-    expect(getResearchEffect(AllResearches[ResearchType.ProjectileReloadRate], 1)).toBeCloseTo(10);
-    expect(getResearchEffect(AllResearches[ResearchType.ProjectileReloadRate], 2)).toBeCloseTo(20);
+    expect(getResearchEffect(AllResearches[ResearchType.ProjectileDamage], 1)).toBeCloseTo(100);
+    expect(getResearchEffect(AllResearches[ResearchType.ProjectileDamage], 2)).toBeCloseTo(117.25);
+    expect(getResearchEffect(AllResearches[ResearchType.ProjectileReloadRate], 1)).toBeCloseTo(100);
+    expect(getResearchEffect(AllResearches[ResearchType.ProjectileReloadRate], 2)).toBeCloseTo(110);
   });
 
   test('getResearchEffect_newEnergyWeapons_calculatesCorrectly', () => {
-    expect(getResearchEffect(AllResearches[ResearchType.EnergyDamage], 1)).toBeCloseTo(60);
-    expect(getResearchEffect(AllResearches[ResearchType.EnergyDamage], 2)).toBeCloseTo(70.35);
-    expect(getResearchEffect(AllResearches[ResearchType.EnergyRechargeRate], 1)).toBeCloseTo(15);
-    expect(getResearchEffect(AllResearches[ResearchType.EnergyRechargeRate], 2)).toBeCloseTo(25);
+    expect(getResearchEffect(AllResearches[ResearchType.EnergyDamage], 1)).toBeCloseTo(100);
+    expect(getResearchEffect(AllResearches[ResearchType.EnergyDamage], 2)).toBeCloseTo(117.25);
+    expect(getResearchEffect(AllResearches[ResearchType.EnergyRechargeRate], 1)).toBeCloseTo(100);
+    expect(getResearchEffect(AllResearches[ResearchType.EnergyRechargeRate], 2)).toBeCloseTo(110);
   });
 
   test('getResearchEffect_newDefenseResearches_calculatesCorrectly', () => {
@@ -148,9 +148,9 @@ describe('getResearchEffect', () => {
     expect(getResearchEffect(AllResearches[ResearchType.IronCapacity], 1)).toBeCloseTo(5000);
     expect(getResearchEffect(AllResearches[ResearchType.IronCapacity], 2)).toBeCloseTo(10950);
     expect(getResearchEffect(AllResearches[ResearchType.ConstructionSpeed], 0)).toBeCloseTo(0);
-    expect(getResearchEffect(AllResearches[ResearchType.ConstructionSpeed], 1)).toBeCloseTo(10);
+    expect(getResearchEffect(AllResearches[ResearchType.ConstructionSpeed], 1)).toBeCloseTo(100);
     expect(getResearchEffect(AllResearches[ResearchType.ArtificialIntelligence], 0)).toBeCloseTo(0);
-    expect(getResearchEffect(AllResearches[ResearchType.ArtificialIntelligence], 1)).toBeCloseTo(10);
+    expect(getResearchEffect(AllResearches[ResearchType.ArtificialIntelligence], 1)).toBeCloseTo(100);
     expect(getResearchEffect(AllResearches[ResearchType.Teleport], 0)).toBeCloseTo(0);
     expect(getResearchEffect(AllResearches[ResearchType.Teleport], 1)).toBeCloseTo(1);
   });
@@ -268,7 +268,7 @@ describe('updateTechTree', () => {
     expect(duration).toBeDefined();
     updateTechTree(tree, duration!);
     expect(tree.activeResearch).toBeUndefined();
-    expect(tree.artificialIntelligence).toBe(1);
+    expect(tree.artificialIntelligence).toBe(2);
   });
 });
 
@@ -299,7 +299,7 @@ describe('getActiveResearch', () => {
 describe('getWeaponDamageModifierFromTree', () => {
   test('getWeaponDamageModifierFromTree_projectileWeaponAtLevel1_returns1', () => {
     const tree = createInitialTechTree();
-    // At level 1, effect = baseValue = 50, modifier = 50/50 = 1.0
+    // At level 1, effect = baseValue = 100, modifier = 100/100 = 1.0
     expect(getWeaponDamageModifierFromTree(tree, 'auto_turret')).toBeCloseTo(1.0);
     expect(getWeaponDamageModifierFromTree(tree, 'gauss_rifle')).toBeCloseTo(1.0);
     expect(getWeaponDamageModifierFromTree(tree, 'rocket_launcher')).toBeCloseTo(1.0);
@@ -307,7 +307,7 @@ describe('getWeaponDamageModifierFromTree', () => {
 
   test('getWeaponDamageModifierFromTree_energyWeaponAtLevel1_returns1', () => {
     const tree = createInitialTechTree();
-    // At level 1, effect = baseValue = 60, modifier = 60/60 = 1.0
+    // At level 1, effect = baseValue = 100, modifier = 100/100 = 1.0
     expect(getWeaponDamageModifierFromTree(tree, 'pulse_laser')).toBeCloseTo(1.0);
     expect(getWeaponDamageModifierFromTree(tree, 'plasma_lance')).toBeCloseTo(1.0);
     expect(getWeaponDamageModifierFromTree(tree, 'photon_torpedo')).toBeCloseTo(1.0);
@@ -338,40 +338,42 @@ describe('getWeaponDamageModifierFromTree', () => {
 });
 
 describe('getWeaponReloadTimeModifierFromTree', () => {
-  test('getWeaponReloadTimeModifierFromTree_projectileWeaponAtLevel1_returnsSpeedFactor', () => {
+  test('getWeaponReloadTimeModifierFromTree_projectileWeaponAtLevel1_returnsBaseFactor', () => {
     const tree = createInitialTechTree();
-    // At level 1, effect = 10%, speed factor = 1 + 10/100 = 1.10
+    // At level 1, effect = baseValue = 100, speed factor = 100/100 = 1.0 (no speedup)
     const modifier = getWeaponReloadTimeModifierFromTree(tree, 'auto_turret');
-    expect(modifier).toBeCloseTo(1.10);
+    expect(modifier).toBeCloseTo(1.0);
   });
 
-  test('getWeaponReloadTimeModifierFromTree_energyWeaponAtLevel1_returnsSpeedFactor', () => {
+  test('getWeaponReloadTimeModifierFromTree_energyWeaponAtLevel1_returnsBaseFactor', () => {
     const tree = createInitialTechTree();
-    // At level 1, effect = 15%, speed factor = 1 + 15/100 = 1.15
+    // At level 1, effect = baseValue = 100, speed factor = 100/100 = 1.0 (no speedup)
     const modifier = getWeaponReloadTimeModifierFromTree(tree, 'pulse_laser');
-    expect(modifier).toBeCloseTo(1.15);
+    expect(modifier).toBeCloseTo(1.0);
   });
 
   test('getWeaponReloadTimeModifierFromTree_projectileWeaponAtLevel3_returnsSpeedFactor', () => {
     const tree = createInitialTechTree();
     tree.projectileReloadRate = 3;
-    // At level 3, effect = 10 + 10 + 10 = 30%, speed factor = 1 + 30/100 = 1.30
+    // At level 3, effect = 100 + 10 + 10 = 120, speed factor = 120/100 = 1.20
     const modifier = getWeaponReloadTimeModifierFromTree(tree, 'gauss_rifle');
-    expect(modifier).toBeCloseTo(1.30);
+    expect(modifier).toBeCloseTo(1.20);
   });
 
   test('getWeaponReloadTimeModifierFromTree_energyWeaponAtLevel4_returnsSpeedFactor', () => {
     const tree = createInitialTechTree();
     tree.energyRechargeRate = 4;
+    // At level 4, effect = 100 + 10*3 = 130, speed factor = 130/100 = 1.30
     const modifier = getWeaponReloadTimeModifierFromTree(tree, 'plasma_lance');
-    expect(modifier).toBeCloseTo(1.45);
+    expect(modifier).toBeCloseTo(1.30);
   });
 
   test('getWeaponReloadTimeModifierFromTree_highResearchLevel_growsLinearly', () => {
     const tree = createInitialTechTree();
     tree.energyRechargeRate = 10;
+    // At level 10, effect = 100 + 10*9 = 190, speed factor = 190/100 = 1.90
     const modifier = getWeaponReloadTimeModifierFromTree(tree, 'photon_torpedo');
-    expect(modifier).toBeCloseTo(2.05);
+    expect(modifier).toBeCloseTo(1.90);
   });
 
   test('getWeaponReloadTimeModifierFromTree_unknownWeaponType_returns1', () => {

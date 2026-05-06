@@ -293,20 +293,20 @@ describe('TechFactory.calculateWeaponReloadTime', () => {
     const techTree = createInitialTechTree();
     
     // Auto turret: reloadTimeMinutes = 12, base cooldown = 720 seconds
-    // Level 1 research = 10% bonus → factor = 1.10
-    // Expected: 720 / 1.10 ≈ 654.55 seconds
+    // Level 1 research = 100% (base) → factor = 1.0 (no speedup)
+    // Expected: 720 / 1.0 = 720 seconds
     const reloadTime = TechFactory.calculateWeaponReloadTime('auto_turret', techTree);
-    expect(reloadTime).toBeCloseTo(720 / 1.10, 1);
+    expect(reloadTime).toBeCloseTo(720 / 1.0, 1);
   });
 
   test('calculateWeaponReloadTime_energyWeapon_baseLevel_returnsBaseCooldown', () => {
     const techTree = createInitialTechTree();
     
     // Pulse laser: reloadTimeMinutes = 12, base cooldown = 720 seconds
-    // Level 1 research = 15% bonus → factor = 1.15
-    // Expected: 720 / 1.15 ≈ 626.09 seconds
+    // Level 1 research = 100% (base) → factor = 1.0 (no speedup)
+    // Expected: 720 / 1.0 = 720 seconds
     const reloadTime = TechFactory.calculateWeaponReloadTime('pulse_laser', techTree);
-    expect(reloadTime).toBeCloseTo(720 / 1.15, 1);
+    expect(reloadTime).toBeCloseTo(720 / 1.0, 1);
   });
 
   test('calculateWeaponReloadTime_projectileWeapon_level3Research_appliesReduction', () => {
@@ -314,10 +314,10 @@ describe('TechFactory.calculateWeaponReloadTime', () => {
     techTree.projectileReloadRate = 3;
     
     // Gauss rifle: reloadTimeMinutes = 15, base cooldown = 900 seconds
-    // Level 3 research = 30% bonus → factor = 1.30
-    // Expected: 900 / 1.30 ≈ 692.31 seconds
+    // Level 3 research: effect = 100 + 10*2 = 120, factor = 120/100 = 1.20
+    // Expected: 900 / 1.20 = 750 seconds
     const reloadTime = TechFactory.calculateWeaponReloadTime('gauss_rifle', techTree);
-    expect(reloadTime).toBeCloseTo(900 / 1.30, 1);
+    expect(reloadTime).toBeCloseTo(900 / 1.20, 1);
   });
 
   test('calculateWeaponReloadTime_energyWeapon_level4Research_appliesReduction', () => {
@@ -325,10 +325,10 @@ describe('TechFactory.calculateWeaponReloadTime', () => {
     techTree.energyRechargeRate = 4;
     
     // Plasma lance: reloadTimeMinutes = 15, base cooldown = 900 seconds
-    // Level 4 research = 45% bonus → factor = 1.45
-    // Expected: 900 / 1.45 ≈ 620.69 seconds
+    // Level 4 research: effect = 100 + 10*3 = 130, factor = 130/100 = 1.30
+    // Expected: 900 / 1.30 ≈ 692.31 seconds
     const reloadTime = TechFactory.calculateWeaponReloadTime('plasma_lance', techTree);
-    expect(reloadTime).toBeCloseTo(900 / 1.45, 1);
+    expect(reloadTime).toBeCloseTo(900 / 1.30, 1);
   });
 
   test('calculateWeaponReloadTime_highResearchLevel_growsLinearly', () => {
@@ -336,10 +336,10 @@ describe('TechFactory.calculateWeaponReloadTime', () => {
     techTree.energyRechargeRate = 10;
     
     // Photon torpedo: reloadTimeMinutes = 20, base cooldown = 1200 seconds
-    // Level 10 research = 105% bonus → factor = 2.05
-    // Expected: 1200 / 2.05 ≈ 585.37 seconds
+    // Level 10 research: effect = 100 + 10*9 = 190, factor = 190/100 = 1.90
+    // Expected: 1200 / 1.90 ≈ 631.58 seconds
     const reloadTime = TechFactory.calculateWeaponReloadTime('photon_torpedo', techTree);
-    expect(reloadTime).toBeCloseTo(1200 / 2.05, 1);
+    expect(reloadTime).toBeCloseTo(1200 / 1.90, 1);
   });
 
   test('calculateWeaponReloadTime_level0Research_noEffect', () => {

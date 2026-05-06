@@ -1,26 +1,22 @@
 // ---
-// Before/after numeric equivalence tests for weapon modifier refactoring:
-// - Task 1.1: Accuracy modifier (additive → multiplicative)
-// - Task 1.2: Reload modifier (inverse multiplier → speed factor)
+// Numeric equivalence and API documentation tests for weapon modifier functions:
+// - Task 1.1: Accuracy modifier (additive → multiplicative, baseValue now 100 for all)
+// - Task 1.2: Reload modifier (speed factor = effect/baseValue, baseValue now 100 for all)
 //
-// These tests document the new API behaviour at research levels 1–10 and
-// verify numeric equivalence for the reload refactor (exact) and the
-// level-1 baseline for accuracy.
+// These tests document the API behaviour at research levels 1–10.
 //
-// ACCEPTED BALANCE CHANGE — Task 1.1 Accuracy (Projectile only):
+// ACCEPTED BALANCE CHANGE — Task 1.1 Accuracy:
+// Accuracy base values changed from (Projectile: 70, Energy: 65) to 100 for both.
 // The old additive formula (baseAccuracy + (effect - researchBaseValue)) and the
 // new multiplicative formula (baseAccuracy × effect/researchBaseValue) only coincide
-// when baseAccuracy === researchBaseValue. For auto_turret (baseAccuracy=50) with
-// ProjectileAccuracy research (researchBaseValue=70) they diverge at levels 2+:
-//   Level 2:  old=54.9pp, new=53.5pp, delta=−1.4pp
-//   Level 5:  old=84.2pp, new=74.5pp, delta=−9.8pp
-//   Level 10: old=156.6pp, new=126.1pp, delta=−30.4pp
-// This is an accepted trade-off to achieve consistent multiplicative semantics
-// required by the bonus system. See TechnicalDebt.md for the formal record.
+// at level 1 (where effect === baseValue). At levels 2+, the new formula gives lower
+// accuracy than the old additive formula. This delta is an accepted balance trade-off.
 //
-// NOTE — Energy Accuracy (pulse_laser baseAccuracy=65 = EnergyAccuracy researchBaseValue=65):
-// The two formulas are numerically identical at ALL levels for energy accuracy
-// because the weapon base accuracy equals the research base value.
+// ACCEPTED BALANCE CHANGE — Task 1.2 Reload:
+// Reload base values changed from (Projectile: 10, Energy: 15) to 100 for both.
+// The new formula is speedFactor = effect / baseValue (= effect / 100).
+// Level 1 now gives speedFactor = 1.0 (no speedup — 100% is the baseline).
+// Each subsequent level adds +10 to effect → +0.10 to speed factor.
 // ---
 
 import { describe, test, expect } from 'vitest';
@@ -53,7 +49,7 @@ function treeAt(projectileAccuracy: number, energyAccuracy: number, projectileRe
 
 describe('Task 1.1 – Accuracy modifier multiplicative refactor', () => {
   describe('projectile accuracy factor at levels 1–10', () => {
-    const projectileBaseValue = AllResearches[ResearchType.ProjectileAccuracy].baseValue; // 70
+    const projectileBaseValue = AllResearches[ResearchType.ProjectileAccuracy].baseValue; // 100
 
     for (let level = 1; level <= 10; level++) {
       test(`projectileAccuracy_level${level}_factorEqualsEffectDividedByBase`, () => {
@@ -97,7 +93,7 @@ describe('Task 1.1 – Accuracy modifier multiplicative refactor', () => {
   });
 
   describe('energy accuracy factor at levels 1–10', () => {
-    const energyBaseValue = AllResearches[ResearchType.EnergyAccuracy].baseValue; // 65
+    const energyBaseValue = AllResearches[ResearchType.EnergyAccuracy].baseValue; // 100
 
     for (let level = 1; level <= 10; level++) {
       test(`energyAccuracy_level${level}_factorEqualsEffectDividedByBase`, () => {
@@ -120,20 +116,20 @@ describe('Task 1.1 – Accuracy modifier multiplicative refactor', () => {
   });
 
   // ---------------------------------------------------------------------------
-  // Old-vs-new accuracy comparison at levels 2–10
+  // Old-vs-new accuracy comparison at levels 2–10 (projectile)
   //
-  // Explicitly documents the accepted balance divergence between:
+  // Documents the accepted balance divergence between:
   //   Old additive formula: finalAccuracy = baseAccuracy + (effect - researchBaseValue)
   //   New multiplicative formula: finalAccuracy = baseAccuracy × (effect / researchBaseValue)
   //
-  // These tests ASSERT the divergence is present (not hidden), satisfying the
-  // "levels 1–10 equivalence test" quality requirement by documenting deviation.
+  // For auto_turret (baseAccuracy=50) with ProjectileAccuracy baseValue=100:
+  //   Level 2:  old=67.25pp, new=58.625pp
+  //   Level 5:  old≈103pp,   new≈86pp
+  // These tests assert the divergence is present (not hidden).
   // ---------------------------------------------------------------------------
   describe('projectile accuracy old-vs-new comparison at levels 2–10 (accepted balance delta)', () => {
-    // auto_turret base accuracy = 50; ProjectileAccuracy research baseValue = 70
-    // These differ (50 ≠ 70), so the formulas diverge at levels 2+.
     const AUTO_TURRET_BASE_ACCURACY = 50;
-    const PROJ_RESEARCH_BASE_VALUE = AllResearches[ResearchType.ProjectileAccuracy].baseValue; // 70
+    const PROJ_RESEARCH_BASE_VALUE = AllResearches[ResearchType.ProjectileAccuracy].baseValue; // 100
 
     // Level 1: formulas coincide (both produce exactly baseAccuracy = 50)
     test('projectileAccuracy_level1_oldAndNewFormulasAreEqual', () => {
@@ -146,9 +142,6 @@ describe('Task 1.1 – Accuracy modifier multiplicative refactor', () => {
     });
 
     // Levels 2–10: new formula produces LOWER accuracy than the old additive formula.
-    // Accepted delta (pp = percentage-point) documented per level:
-    //   L2: ~1.4pp  L3: ~3.7pp  L4: ~6.5pp  L5: ~9.8pp
-    //   L6: ~13.4pp L7: ~17.3pp L8: ~21.4pp L9: ~25.8pp L10: ~30.4pp
     for (let level = 2; level <= 10; level++) {
       test(`projectileAccuracy_level${level}_newFormulaIsLowerThanOldAdditive`, () => {
         const effect = getResearchEffect(AllResearches[ResearchType.ProjectileAccuracy], level);
@@ -160,37 +153,37 @@ describe('Task 1.1 – Accuracy modifier multiplicative refactor', () => {
         const factor = effect / PROJ_RESEARCH_BASE_VALUE;
         const newFinalAccuracy = AUTO_TURRET_BASE_ACCURACY * factor;
 
-        // The new formula produces strictly lower accuracy at all levels 2+ — this
-        // divergence is intentional and accepted. Do NOT change these assertions
-        // without revisiting the balance trade-off.
+        // The new formula produces strictly lower accuracy at all levels 2+.
         expect(newFinalAccuracy).toBeLessThan(oldFinalAccuracy);
       });
     }
   });
 
-  describe('energy accuracy old-vs-new comparison at levels 1–10 (formulas are equivalent)', () => {
-    // pulse_laser base accuracy = 65; EnergyAccuracy research baseValue = 65
-    // These are EQUAL (65 === 65), so old and new formulas produce identical results
-    // at all levels. Energy accuracy has NO balance change from the refactor.
+  describe('energy accuracy old-vs-new comparison at levels 1–10 (accepted balance delta)', () => {
+    // pulse_laser base accuracy = 65; EnergyAccuracy research baseValue = 100
+    // These differ (65 ≠ 100), so old and new formulas diverge at levels 2+.
     const PULSE_LASER_BASE_ACCURACY = 65;
-    const ENERGY_RESEARCH_BASE_VALUE = AllResearches[ResearchType.EnergyAccuracy].baseValue; // 65
+    const ENERGY_RESEARCH_BASE_VALUE = AllResearches[ResearchType.EnergyAccuracy].baseValue; // 100
 
-    for (let level = 1; level <= 10; level++) {
-      test(`energyAccuracy_level${level}_oldAndNewFormulasAreNumericallyEqual`, () => {
+    // Level 1: formulas coincide (effect === baseValue)
+    test('energyAccuracy_level1_oldAndNewFormulasAreEqual', () => {
+      const effect = getResearchEffect(AllResearches[ResearchType.EnergyAccuracy], 1);
+      const oldFinalAccuracy = PULSE_LASER_BASE_ACCURACY + (effect - ENERGY_RESEARCH_BASE_VALUE);
+      const factor = effect / ENERGY_RESEARCH_BASE_VALUE;
+      const newFinalAccuracy = PULSE_LASER_BASE_ACCURACY * factor;
+      expect(oldFinalAccuracy).toBeCloseTo(newFinalAccuracy, 5);
+    });
+
+    // Levels 2–10: new formula produces LOWER accuracy than the old additive formula.
+    for (let level = 2; level <= 10; level++) {
+      test(`energyAccuracy_level${level}_newFormulaIsLowerThanOldAdditive`, () => {
         const effect = getResearchEffect(AllResearches[ResearchType.EnergyAccuracy], level);
 
-        // Old additive formula: baseAccuracy + (effect - baseValue)
-        // Since PULSE_LASER_BASE_ACCURACY === ENERGY_RESEARCH_BASE_VALUE === 65,
-        // this simplifies to: 65 + (effect - 65) = effect
         const oldFinalAccuracy = PULSE_LASER_BASE_ACCURACY + (effect - ENERGY_RESEARCH_BASE_VALUE);
-
-        // New multiplicative formula: baseAccuracy × (effect / baseValue)
-        // Simplifies to: 65 × (effect / 65) = effect
         const factor = effect / ENERGY_RESEARCH_BASE_VALUE;
         const newFinalAccuracy = PULSE_LASER_BASE_ACCURACY * factor;
 
-        // Exactly equivalent because weapon base accuracy === research base value
-        expect(newFinalAccuracy).toBeCloseTo(oldFinalAccuracy, 5);
+        expect(newFinalAccuracy).toBeLessThan(oldFinalAccuracy);
       });
     }
   });
@@ -230,36 +223,40 @@ describe('Task 1.1 – Accuracy modifier multiplicative refactor', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Task 1.2 — Reload modifier: new API returns speed factor = 1/(1 - effect/100)
+// Task 1.2 — Reload modifier: new API returns speed factor = effect / baseValue
 // ---------------------------------------------------------------------------
 
 describe('Task 1.2 – Reload modifier multiplicative refactor', () => {
   describe('projectile reload speed factor at levels 1–10', () => {
+    const projectileReloadBaseValue = AllResearches[ResearchType.ProjectileReloadRate].baseValue; // 100
+
     for (let level = 1; level <= 10; level++) {
-      test(`projectileReloadRate_level${level}_speedFactorIsOnePlusEffectPercent`, () => {
+      test(`projectileReloadRate_level${level}_speedFactorEqualsEffectDividedByBase`, () => {
         const tree = createInitialTechTree();
         tree.projectileReloadRate = level;
 
         const speedFactor = getWeaponReloadTimeModifierFromTree(tree, 'auto_turret');
         const effect = getResearchEffect(AllResearches[ResearchType.ProjectileReloadRate], level);
-        const expectedSpeedFactor = 1 + effect / 100;
+        const expectedSpeedFactor = effect / projectileReloadBaseValue;
 
         expect(speedFactor).toBeCloseTo(expectedSpeedFactor, 5);
-        // Speed factor is always ≥ 1.0
+        // Speed factor is always ≥ 1.0 for levels ≥ 1 (100% baseline)
         expect(speedFactor).toBeGreaterThanOrEqual(1.0);
       });
     }
   });
 
   describe('energy reload speed factor at levels 1–10', () => {
+    const energyRechargeBaseValue = AllResearches[ResearchType.EnergyRechargeRate].baseValue; // 100
+
     for (let level = 1; level <= 10; level++) {
-      test(`energyRechargeRate_level${level}_speedFactorIsOnePlusEffectPercent`, () => {
+      test(`energyRechargeRate_level${level}_speedFactorEqualsEffectDividedByBase`, () => {
         const tree = createInitialTechTree();
         tree.energyRechargeRate = level;
 
         const speedFactor = getWeaponReloadTimeModifierFromTree(tree, 'pulse_laser');
         const effect = getResearchEffect(AllResearches[ResearchType.EnergyRechargeRate], level);
-        const expectedSpeedFactor = 1 + effect / 100;
+        const expectedSpeedFactor = effect / energyRechargeBaseValue;
 
         expect(speedFactor).toBeCloseTo(expectedSpeedFactor, 5);
         expect(speedFactor).toBeGreaterThanOrEqual(1.0);
@@ -268,7 +265,7 @@ describe('Task 1.2 – Reload modifier multiplicative refactor', () => {
   });
 
   describe('calculateWeaponReloadTime numeric formula at levels 1–10', () => {
-    // For each level, verify: baseCooldown / speedFactor === baseCooldown / (1 + effect/100)
+    // For each level, verify: baseCooldown / speedFactor === baseCooldown / (effect / 100)
 
     const AUTO_TURRET_BASE_COOLDOWN = 720; // reloadTimeMinutes=12 → 12*60=720s
     const PULSE_LASER_BASE_COOLDOWN = 720; // same
@@ -279,7 +276,7 @@ describe('Task 1.2 – Reload modifier multiplicative refactor', () => {
         tree.projectileReloadRate = level;
 
         const effect = getResearchEffect(AllResearches[ResearchType.ProjectileReloadRate], level);
-        const expectedReloadTime = AUTO_TURRET_BASE_COOLDOWN / (1 + effect / 100);
+        const expectedReloadTime = AUTO_TURRET_BASE_COOLDOWN / (effect / 100);
 
         const newReloadTime = TechFactory.calculateWeaponReloadTime('auto_turret', tree);
 
@@ -293,7 +290,7 @@ describe('Task 1.2 – Reload modifier multiplicative refactor', () => {
         tree.energyRechargeRate = level;
 
         const effect = getResearchEffect(AllResearches[ResearchType.EnergyRechargeRate], level);
-        const expectedReloadTime = PULSE_LASER_BASE_COOLDOWN / (1 + effect / 100);
+        const expectedReloadTime = PULSE_LASER_BASE_COOLDOWN / (effect / 100);
 
         const newReloadTime = TechFactory.calculateWeaponReloadTime('pulse_laser', tree);
 
@@ -305,7 +302,7 @@ describe('Task 1.2 – Reload modifier multiplicative refactor', () => {
       const tree = createInitialTechTree();
       tree.projectileReloadRate = 0;
       const reloadTime = TechFactory.calculateWeaponReloadTime('auto_turret', tree);
-      // Level 0: effect=0, speedFactor=1.0, baseCooldown/1.0 = baseCooldown
+      // Level 0: effect=0, speedFactor=1.0 (guard), baseCooldown/1.0 = baseCooldown
       expect(reloadTime).toBe(AUTO_TURRET_BASE_COOLDOWN);
     });
 
