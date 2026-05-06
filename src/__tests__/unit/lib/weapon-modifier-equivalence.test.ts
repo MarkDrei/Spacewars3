@@ -123,8 +123,8 @@ describe('Task 1.1 – Accuracy modifier multiplicative refactor', () => {
   //   New multiplicative formula: finalAccuracy = baseAccuracy × (effect / researchBaseValue)
   //
   // For auto_turret (baseAccuracy=50) with ProjectileAccuracy baseValue=100:
-  //   Level 2:  old=67.25pp, new=58.625pp
-  //   Level 5:  old≈103pp,   new≈86pp
+  //   Level 2:  old=67.25pp,  new=58.625pp, delta=−8.625pp
+  //   Level 5:  old=146.00pp, new=98.000pp, delta=−48.000pp
   // These tests assert the divergence is present (not hidden).
   // ---------------------------------------------------------------------------
   describe('projectile accuracy old-vs-new comparison at levels 2–10 (accepted balance delta)', () => {

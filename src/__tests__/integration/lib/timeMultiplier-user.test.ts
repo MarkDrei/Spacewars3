@@ -199,7 +199,7 @@ describe('User.updateStats with time multiplier', () => {
       // remaining = 10 - 8.5306 ≈ 1.4694s
       // ironAfter = 1.4694 * 1.11 (level-2 rate = 1.11/s) ≈ 1.6310
       // total ≈ 10.162
-      expect(user.iron).toBeCloseTo(10.162, 2);
+      expect(user.iron).toBeCloseTo(10.162, 3);
     });
   });
 
