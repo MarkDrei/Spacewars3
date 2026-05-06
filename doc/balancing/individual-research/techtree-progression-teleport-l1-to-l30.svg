@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760">
+  <rect x="0" y="0" width="1200" height="760" fill="#f7fafb" />
+  <rect x="120" y="80" width="1000" height="600" fill="#ffffff" stroke="#cad3d8" />
+
+  <line x1="120" y1="680.00" x2="1120" y2="680.00" stroke="#d3d8db" stroke-width="1" />
+<line x1="120" y1="560.00" x2="1120" y2="560.00" stroke="#d3d8db" stroke-width="1" />
+<line x1="120" y1="440.00" x2="1120" y2="440.00" stroke="#d3d8db" stroke-width="1" />
+<line x1="120" y1="320.00" x2="1120" y2="320.00" stroke="#d3d8db" stroke-width="1" />
+<line x1="120" y1="200.00" x2="1120" y2="200.00" stroke="#d3d8db" stroke-width="1" />
+<line x1="120" y1="80.00" x2="1120" y2="80.00" stroke="#d3d8db" stroke-width="1" />
+  <line x1="120.00" y1="80" x2="120.00" y2="680" stroke="#eceff1" stroke-width="1" />
+<line x1="223.45" y1="80" x2="223.45" y2="680" stroke="#eceff1" stroke-width="1" />
+<line x1="326.90" y1="80" x2="326.90" y2="680" stroke="#eceff1" stroke-width="1" />
+<line x1="464.83" y1="80" x2="464.83" y2="680" stroke="#eceff1" stroke-width="1" />
+<line x1="568.28" y1="80" x2="568.28" y2="680" stroke="#eceff1" stroke-width="1" />
+<line x1="671.72" y1="80" x2="671.72" y2="680" stroke="#eceff1" stroke-width="1" />
+<line x1="775.17" y1="80" x2="775.17" y2="680" stroke="#eceff1" stroke-width="1" />
+<line x1="913.10" y1="80" x2="913.10" y2="680" stroke="#eceff1" stroke-width="1" />
+<line x1="1016.55" y1="80" x2="1016.55" y2="680" stroke="#eceff1" stroke-width="1" />
+<line x1="1120.00" y1="80" x2="1120.00" y2="680" stroke="#eceff1" stroke-width="1" />
+
+  <line x1="120" y1="680" x2="1120" y2="680" stroke="#24333b" stroke-width="2" />
+  <line x1="120" y1="80" x2="120" y2="680" stroke="#0d6e6e" stroke-width="2" />
+  
+
+  <path d="M 120.00 661.48 L 154.48 642.96 L 188.97 624.44 L 223.45 605.93 L 257.93 587.41 L 292.41 568.89 L 326.90 550.37 L 361.38 531.85 L 395.86 513.33 L 430.34 494.81 L 464.83 476.30 L 499.31 457.78 L 533.79 439.26 L 568.28 420.74 L 602.76 402.22 L 637.24 383.70 L 671.72 365.19 L 706.21 346.67 L 740.69 328.15 L 775.17 309.63 L 809.66 291.11 L 844.14 272.59 L 878.62 254.07 L 913.10 235.56 L 947.59 217.04 L 982.07 198.52 L 1016.55 180.00 L 1051.03 161.48 L 1085.52 142.96 L 1120.00 124.44" fill="none" stroke="#1b1b1b" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
+  
+  <g>
+    <rect x="136" y="96" width="560" height="42" fill="#ffffff" fill-opacity="0.92" stroke="#b8c4cb" />
+    <g>
+      <line x1="146" y1="113" x2="170" y2="113" stroke="#1b1b1b" stroke-width="4" />
+      <text x="178" y="117" font-size="13" fill="#1f2d34">Teleport</text>
+    </g>
+  </g>
+
+  <text x="120.00" y="708" font-size="14" text-anchor="middle" fill="#24333b">1</text>
+<text x="223.45" y="708" font-size="14" text-anchor="middle" fill="#24333b">4</text>
+<text x="326.90" y="708" font-size="14" text-anchor="middle" fill="#24333b">7</text>
+<text x="464.83" y="708" font-size="14" text-anchor="middle" fill="#24333b">11</text>
+<text x="568.28" y="708" font-size="14" text-anchor="middle" fill="#24333b">14</text>
+<text x="671.72" y="708" font-size="14" text-anchor="middle" fill="#24333b">17</text>
+<text x="775.17" y="708" font-size="14" text-anchor="middle" fill="#24333b">20</text>
+<text x="913.10" y="708" font-size="14" text-anchor="middle" fill="#24333b">24</text>
+<text x="1016.55" y="708" font-size="14" text-anchor="middle" fill="#24333b">27</text>
+<text x="1120.00" y="708" font-size="14" text-anchor="middle" fill="#24333b">30</text>
+  <text x="106" y="685.00" font-size="13" text-anchor="end" fill="#204f4f">0.00e+0</text>
+<text x="106" y="565.00" font-size="13" text-anchor="end" fill="#204f4f">6.48</text>
+<text x="106" y="445.00" font-size="13" text-anchor="end" fill="#204f4f">12.96</text>
+<text x="106" y="325.00" font-size="13" text-anchor="end" fill="#204f4f">19.44</text>
+<text x="106" y="205.00" font-size="13" text-anchor="end" fill="#204f4f">25.92</text>
+<text x="106" y="85.00" font-size="13" text-anchor="end" fill="#204f4f">32.4</text>
+  
+
+  <text x="600" y="34" font-size="24" text-anchor="middle" fill="#122028">Teleport progression (L1..L30)</text>
+  <text x="600" y="58" font-size="14" text-anchor="middle" fill="#45606d">Effect unit: charges</text>
+
+  <text x="600" y="736" font-size="14" text-anchor="middle" fill="#24333b">Level</text>
+  <text x="45" y="60" font-size="13" text-anchor="middle" fill="#204f4f">Teleport (charges)</text>
+  
+
+</svg>

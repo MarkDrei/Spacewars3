@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760">
+  <rect x="0" y="0" width="1200" height="760" fill="#f7fafb" />
+  <rect x="120" y="80" width="920" height="600" fill="#ffffff" stroke="#cad3d8" />
+
+  <line x1="120" y1="680.00" x2="1040" y2="680.00" stroke="#d3d8db" stroke-width="1" />
+<line x1="120" y1="560.00" x2="1040" y2="560.00" stroke="#d3d8db" stroke-width="1" />
+<line x1="120" y1="440.00" x2="1040" y2="440.00" stroke="#d3d8db" stroke-width="1" />
+<line x1="120" y1="320.00" x2="1040" y2="320.00" stroke="#d3d8db" stroke-width="1" />
+<line x1="120" y1="200.00" x2="1040" y2="200.00" stroke="#d3d8db" stroke-width="1" />
+<line x1="120" y1="80.00" x2="1040" y2="80.00" stroke="#d3d8db" stroke-width="1" />
+  <line x1="120.00" y1="80" x2="120.00" y2="680" stroke="#eceff1" stroke-width="1" />
+<line x1="215.17" y1="80" x2="215.17" y2="680" stroke="#eceff1" stroke-width="1" />
+<line x1="310.34" y1="80" x2="310.34" y2="680" stroke="#eceff1" stroke-width="1" />
+<line x1="437.24" y1="80" x2="437.24" y2="680" stroke="#eceff1" stroke-width="1" />
+<line x1="532.41" y1="80" x2="532.41" y2="680" stroke="#eceff1" stroke-width="1" />
+<line x1="627.59" y1="80" x2="627.59" y2="680" stroke="#eceff1" stroke-width="1" />
+<line x1="722.76" y1="80" x2="722.76" y2="680" stroke="#eceff1" stroke-width="1" />
+<line x1="849.66" y1="80" x2="849.66" y2="680" stroke="#eceff1" stroke-width="1" />
+<line x1="944.83" y1="80" x2="944.83" y2="680" stroke="#eceff1" stroke-width="1" />
+<line x1="1040.00" y1="80" x2="1040.00" y2="680" stroke="#eceff1" stroke-width="1" />
+
+  <line x1="120" y1="680" x2="1040" y2="680" stroke="#24333b" stroke-width="2" />
+  <line x1="120" y1="80" x2="120" y2="680" stroke="#0d6e6e" stroke-width="2" />
+  <line x1="1040" y1="80" x2="1040" y2="680" stroke="#7b3527" stroke-width="2" />
+
+  <path d="M 120.00 598.30 L 151.72 581.96 L 183.45 565.62 L 215.17 549.28 L 246.90 532.94 L 278.62 516.60 L 310.34 500.26 L 342.07 483.92 L 373.79 467.58 L 405.52 451.24 L 437.24 434.90 L 468.97 418.56 L 500.69 402.22 L 532.41 385.88 L 564.14 369.54 L 595.86 353.20 L 627.59 336.86 L 659.31 320.52 L 691.03 304.18 L 722.76 287.84 L 754.48 271.50 L 786.21 255.16 L 817.93 238.82 L 849.66 222.48 L 881.38 206.14 L 913.10 189.80 L 944.83 173.46 L 976.55 157.12 L 1008.28 140.78 L 1040.00 124.44" fill="none" stroke="#1b1b1b" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
+  <path d="M 120.00 598.30 L 151.72 557.45 L 183.45 516.60 L 215.17 475.75 L 246.90 434.90 L 278.62 394.05 L 310.34 353.20 L 342.07 312.35 L 373.79 271.50 L 405.52 230.65 L 437.24 189.80 L 468.97 148.95 L 500.69 108.10 L 532.41 67.25 L 564.14 26.41 L 595.86 -14.44 L 627.59 -55.29 L 659.31 -96.14 L 691.03 -136.99 L 722.76 -177.84 L 754.48 -218.69 L 786.21 -259.54 L 817.93 -300.39 L 849.66 -341.24 L 881.38 -382.09 L 913.10 -422.94 L 944.83 -463.79 L 976.55 -504.64 L 1008.28 -545.49 L 1040.00 -586.34" fill="none" stroke="#0072B2" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
+  <g>
+    <rect x="136" y="96" width="560" height="64" fill="#ffffff" fill-opacity="0.92" stroke="#b8c4cb" />
+    <g>
+      <line x1="146" y1="113" x2="170" y2="113" stroke="#1b1b1b" stroke-width="4" />
+      <text x="178" y="117" font-size="13" fill="#1f2d34">Ship Speed (units)</text>
+    </g>
+<g>
+      <line x1="146" y1="135" x2="170" y2="135" stroke="#0072B2" stroke-width="4" />
+      <text x="178" y="139" font-size="13" fill="#1f2d34">Afterburner Speed (%)</text>
+    </g>
+  </g>
+
+  <text x="120.00" y="708" font-size="14" text-anchor="middle" fill="#24333b">1</text>
+<text x="215.17" y="708" font-size="14" text-anchor="middle" fill="#24333b">4</text>
+<text x="310.34" y="708" font-size="14" text-anchor="middle" fill="#24333b">7</text>
+<text x="437.24" y="708" font-size="14" text-anchor="middle" fill="#24333b">11</text>
+<text x="532.41" y="708" font-size="14" text-anchor="middle" fill="#24333b">14</text>
+<text x="627.59" y="708" font-size="14" text-anchor="middle" fill="#24333b">17</text>
+<text x="722.76" y="708" font-size="14" text-anchor="middle" fill="#24333b">20</text>
+<text x="849.66" y="708" font-size="14" text-anchor="middle" fill="#24333b">24</text>
+<text x="944.83" y="708" font-size="14" text-anchor="middle" fill="#24333b">27</text>
+<text x="1040.00" y="708" font-size="14" text-anchor="middle" fill="#24333b">30</text>
+  <text x="106" y="685.00" font-size="13" text-anchor="end" fill="#204f4f">0.00e+0</text>
+<text x="106" y="565.00" font-size="13" text-anchor="end" fill="#204f4f">36.72</text>
+<text x="106" y="445.00" font-size="13" text-anchor="end" fill="#204f4f">73.44</text>
+<text x="106" y="325.00" font-size="13" text-anchor="end" fill="#204f4f">110.16</text>
+<text x="106" y="205.00" font-size="13" text-anchor="end" fill="#204f4f">146.88</text>
+<text x="106" y="85.00" font-size="13" text-anchor="end" fill="#204f4f">183.6</text>
+  <text x="1054" y="685.00" font-size="13" text-anchor="start" fill="#7b3527">0.00e+0x</text>
+<text x="1054" y="565.00" font-size="13" text-anchor="start" fill="#7b3527">1.469x</text>
+<text x="1054" y="445.00" font-size="13" text-anchor="start" fill="#7b3527">2.938x</text>
+<text x="1054" y="325.00" font-size="13" text-anchor="start" fill="#7b3527">4.406x</text>
+<text x="1054" y="205.00" font-size="13" text-anchor="start" fill="#7b3527">5.875x</text>
+<text x="1054" y="85.00" font-size="13" text-anchor="start" fill="#7b3527">7.344x</text>
+
+  <text x="600" y="34" font-size="24" text-anchor="middle" fill="#122028">Ship Speed vs Afterburner Speed progression (L1..L30)</text>
+  <text x="600" y="58" font-size="14" text-anchor="middle" fill="#45606d">Dual axis: all secondary lines are scaled to intersect at level 1 (right axis = multiplier vs L1)</text>
+
+  <text x="600" y="736" font-size="14" text-anchor="middle" fill="#24333b">Level</text>
+  <text x="45" y="60" font-size="13" text-anchor="middle" fill="#204f4f">Ship Speed (units)</text>
+  <text x="1135" y="60" font-size="13" text-anchor="middle" fill="#7b3527">Relative Effect (x of level 1)</text>
+
+</svg>

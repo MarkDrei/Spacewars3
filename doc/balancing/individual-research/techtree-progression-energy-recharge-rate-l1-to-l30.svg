@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760">
+  <rect x="0" y="0" width="1200" height="760" fill="#f7fafb" />
+  <rect x="120" y="80" width="1000" height="600" fill="#ffffff" stroke="#cad3d8" />
+
+  <line x1="120" y1="680.00" x2="1120" y2="680.00" stroke="#d3d8db" stroke-width="1" />
+<line x1="120" y1="560.00" x2="1120" y2="560.00" stroke="#d3d8db" stroke-width="1" />
+<line x1="120" y1="440.00" x2="1120" y2="440.00" stroke="#d3d8db" stroke-width="1" />
+<line x1="120" y1="320.00" x2="1120" y2="320.00" stroke="#d3d8db" stroke-width="1" />
+<line x1="120" y1="200.00" x2="1120" y2="200.00" stroke="#d3d8db" stroke-width="1" />
+<line x1="120" y1="80.00" x2="1120" y2="80.00" stroke="#d3d8db" stroke-width="1" />
+  <line x1="120.00" y1="80" x2="120.00" y2="680" stroke="#eceff1" stroke-width="1" />
+<line x1="223.45" y1="80" x2="223.45" y2="680" stroke="#eceff1" stroke-width="1" />
+<line x1="326.90" y1="80" x2="326.90" y2="680" stroke="#eceff1" stroke-width="1" />
+<line x1="464.83" y1="80" x2="464.83" y2="680" stroke="#eceff1" stroke-width="1" />
+<line x1="568.28" y1="80" x2="568.28" y2="680" stroke="#eceff1" stroke-width="1" />
+<line x1="671.72" y1="80" x2="671.72" y2="680" stroke="#eceff1" stroke-width="1" />
+<line x1="775.17" y1="80" x2="775.17" y2="680" stroke="#eceff1" stroke-width="1" />
+<line x1="913.10" y1="80" x2="913.10" y2="680" stroke="#eceff1" stroke-width="1" />
+<line x1="1016.55" y1="80" x2="1016.55" y2="680" stroke="#eceff1" stroke-width="1" />
+<line x1="1120.00" y1="80" x2="1120.00" y2="680" stroke="#eceff1" stroke-width="1" />
+
+  <line x1="120" y1="680" x2="1120" y2="680" stroke="#24333b" stroke-width="2" />
+  <line x1="120" y1="80" x2="120" y2="680" stroke="#0d6e6e" stroke-width="2" />
+  
+
+  <path d="M 120.00 652.68 L 154.48 634.46 L 188.97 616.25 L 223.45 598.03 L 257.93 579.82 L 292.41 561.60 L 326.90 543.39 L 361.38 525.17 L 395.86 506.96 L 430.34 488.74 L 464.83 470.53 L 499.31 452.31 L 533.79 434.10 L 568.28 415.88 L 602.76 397.67 L 637.24 379.45 L 671.72 361.24 L 706.21 343.02 L 740.69 324.81 L 775.17 306.59 L 809.66 288.38 L 844.14 270.16 L 878.62 251.95 L 913.10 233.73 L 947.59 215.52 L 982.07 197.30 L 1016.55 179.09 L 1051.03 160.87 L 1085.52 142.66 L 1120.00 124.44" fill="none" stroke="#1b1b1b" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
+  
+  <g>
+    <rect x="136" y="96" width="560" height="42" fill="#ffffff" fill-opacity="0.92" stroke="#b8c4cb" />
+    <g>
+      <line x1="146" y1="113" x2="170" y2="113" stroke="#1b1b1b" stroke-width="4" />
+      <text x="178" y="117" font-size="13" fill="#1f2d34">Energy Recharge Rate</text>
+    </g>
+  </g>
+
+  <text x="120.00" y="708" font-size="14" text-anchor="middle" fill="#24333b">1</text>
+<text x="223.45" y="708" font-size="14" text-anchor="middle" fill="#24333b">4</text>
+<text x="326.90" y="708" font-size="14" text-anchor="middle" fill="#24333b">7</text>
+<text x="464.83" y="708" font-size="14" text-anchor="middle" fill="#24333b">11</text>
+<text x="568.28" y="708" font-size="14" text-anchor="middle" fill="#24333b">14</text>
+<text x="671.72" y="708" font-size="14" text-anchor="middle" fill="#24333b">17</text>
+<text x="775.17" y="708" font-size="14" text-anchor="middle" fill="#24333b">20</text>
+<text x="913.10" y="708" font-size="14" text-anchor="middle" fill="#24333b">24</text>
+<text x="1016.55" y="708" font-size="14" text-anchor="middle" fill="#24333b">27</text>
+<text x="1120.00" y="708" font-size="14" text-anchor="middle" fill="#24333b">30</text>
+  <text x="106" y="685.00" font-size="13" text-anchor="end" fill="#204f4f">0.00e+0</text>
+<text x="106" y="565.00" font-size="13" text-anchor="end" fill="#204f4f">65.88</text>
+<text x="106" y="445.00" font-size="13" text-anchor="end" fill="#204f4f">131.76</text>
+<text x="106" y="325.00" font-size="13" text-anchor="end" fill="#204f4f">197.64</text>
+<text x="106" y="205.00" font-size="13" text-anchor="end" fill="#204f4f">263.52</text>
+<text x="106" y="85.00" font-size="13" text-anchor="end" fill="#204f4f">329.4</text>
+  
+
+  <text x="600" y="34" font-size="24" text-anchor="middle" fill="#122028">Energy Recharge Rate progression (L1..L30)</text>
+  <text x="600" y="58" font-size="14" text-anchor="middle" fill="#45606d">Effect unit: %</text>
+
+  <text x="600" y="736" font-size="14" text-anchor="middle" fill="#24333b">Level</text>
+  <text x="45" y="60" font-size="13" text-anchor="middle" fill="#204f4f">Energy Recharge Rate (%)</text>
+  
+
+</svg>

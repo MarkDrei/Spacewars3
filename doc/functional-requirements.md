@@ -90,6 +90,11 @@ Spacewars Ironstrike is a browser-based multi-player 2D space exploration game. 
     - [Cap10_Feat002: Notification Display](#cap10_feat002-notification-display)
     - [Cap10_Feat003: Notification Management](#cap10_feat003-notification-management)
     - [Cap10_Feat004: Notification Summarization](#cap10_feat004-notification-summarization)
+  - [Cap11: Balancing & Progression](#cap11-balancing--progression)
+    - [Cap11_Feat001: Research Progression Charts](#cap11_feat001-research-progression-charts)
+    - [Cap11_Feat002: Weapons & Defense Balance](#cap11_feat002-weapons--defense-balance)
+    - [Cap11_Feat003: Economy & Resource Scaling](#cap11_feat003-economy--resource-scaling)
+    - [Cap11_Feat004: Ship Mobility & Special Abilities](#cap11_feat004-ship-mobility--special-abilities)
 - [Document Format & Templates](#document-format--templates)
 
 ## Capabilities
@@ -821,6 +826,85 @@ Players can collapse all summarizable current notifications into a single summar
 | Cap10_Feat004_Req007 | The summary includes build completion stats: for each completed item type, the item name and count are listed.                                                                    |
 | Cap10_Feat004_Req008 | Notifications that cannot be parsed into a known stat category are preserved as individual notifications with their original timestamps after summarization.                      |
 | Cap10_Feat004_Req009 | If a previous summary notification exists, its stats are accumulated into the new summary (cumulative totals across multiple summarization actions).                              |
+
+---
+
+### Cap11: Balancing & Progression
+
+**Purpose**: Document research progression balance, technology effectiveness curves, and strategic trade-offs. Provides visual charts and analysis to understand how different research paths scale and compete.
+
+#### Contained Features
+
+- [Cap11_Feat001: Research Progression Charts](#cap11_feat001-research-progression-charts)
+- [Cap11_Feat002: Weapons & Defense Balance](#cap11_feat002-weapons--defense-balance)
+- [Cap11_Feat003: Economy & Resource Scaling](#cap11_feat003-economy--resource-scaling)
+- [Cap11_Feat004: Ship Mobility & Special Abilities](#cap11_feat004-ship-mobility--special-abilities)
+
+---
+
+#### Cap11_Feat001: Research Progression Charts
+
+Individual research progression curves showing how each technology scales from level 1 to level 30. These charts help players and designers understand technology effectiveness over time and plan research strategies.
+
+| ID                   | Requirement                                                                                                                                                   |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Cap11_Feat001_Req001 | Individual progression charts exist for all 23 implemented researches (`doc/balancing/individual-research/`), showing effect curves from level 1 to level 30. |
+| Cap11_Feat001_Req002 | Each chart displays the research name, effect unit (e.g., iron/sec, HP, damage), and axis labels for easy interpretation.                                  |
+| Cap11_Feat001_Req003 | All individual charts follow the same visual style for consistency across the progression documentation.                                                    |
+
+---
+
+#### Cap11_Feat002: Weapons & Defense Balance
+
+Comparison charts analyzing offensive and defensive research progression to assess balance and strategic viability of different weapon and defense choices.
+
+| ID                   | Requirement                                                                                                                                                                |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Cap11_Feat002_Req001 | Energy vs Projectile damage chart compares `EnergyDamage` and `ProjectileDamage` progression side-by-side across levels 1–30 (`doc/balancing/weapons-comparison/`).       |
+| Cap11_Feat002_Req002 | Energy vs Projectile reload rate chart compares `EnergyRechargeRate` and `ProjectileReloadRate` side-by-side.                                                          |
+| Cap11_Feat002_Req003 | Energy vs Projectile accuracy chart compares `EnergyAccuracy` and `ProjectileAccuracy` side-by-side.                                                                   |
+| Cap11_Feat002_Req004 | Defense types comparison chart shows `HullStrength`, `ArmorEffectiveness`, and `ShieldEffectiveness` progression together (`doc/balancing/defense-comparison/`).        |
+| Cap11_Feat002_Req005 | Defense regeneration chart compares `RepairSpeed` (hull & armor) and `ShieldRechargeRate` (shield) to highlight different healing mechanics.                           |
+| Cap11_Feat002_Req006 | Weapons vs Defense chart compares offensive (`ProjectileDamage`, `EnergyDamage`) and defensive (`HullStrength`, `ArmorEffectiveness`) progression (`weapons-vs-defense/`).|
+
+---
+
+#### Cap11_Feat003: Economy & Resource Scaling
+
+Charts documenting iron production and storage capacity to understand economic constraint and progression pacing.
+
+| ID                   | Requirement                                                                                                                                |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| Cap11_Feat003_Req001 | Iron economy chart compares `IronHarvesting` (production rate) and `IronCapacity` (storage) side-by-side (`doc/balancing/economy/`).      |
+| Cap11_Feat003_Req002 | Chart shows the relationship between iron production rate and storage limits to identify bottlenecks and progression pacing.               |
+
+---
+
+#### Cap11_Feat004: Ship Mobility & Special Abilities
+
+Charts for ship movement and special abilities progression.
+
+| ID                   | Requirement                                                                                                                                                   |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Cap11_Feat004_Req001 | Ship mobility chart compares `ShipSpeed` and `AfterburnerSpeedIncrease` progression side-by-side (`doc/balancing/ship-mobility/`).                         |
+| Cap11_Feat004_Req002 | Teleport progression chart shows `Teleport` (charge count) and `TeleportRechargeSpeed` (recharge time) growth together (`doc/balancing/teleport/`).        |
+| Cap11_Feat004_Req003 | Afterburner research breakdown is visible in individual progression charts for `AfterburnerDuration`, `AfterburnerCooldown`, and `AfterburnerSpeedIncrease`. |
+
+---
+
+### Cap11: Chart Index & Reference
+
+All auto-generated balancing charts are indexed and cross-linked in [doc/balancing/CHART-INDEX.md](./balancing/CHART-INDEX.md). Charts are regenerated by running:
+
+```bash
+npm run balancing-charts
+```
+
+For manual generation of specific research charts, use:
+
+```bash
+npm run techtree-chart -- --research <name> --min <n> --max <n>
+```
 
 ---
 
