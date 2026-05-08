@@ -132,8 +132,8 @@ describe('User.updateStats with time multiplier', () => {
       // Research completes at 10s game time, then 5s at new rate (1.1/sec)
       await updateStatsWithMockedBuildRefresh(user, 1001.5);
 
-      // 10s at old rate (1/sec) + 5s at new rate (1.1/sec)
-      const expectedIron = 10 + 5 * 1.1;
+      // 10s at old rate (1/sec) + 5s at new rate (1.11/sec)
+      const expectedIron = 10 + 5 * 1.11;
       expect(user.iron).toBeCloseTo(expectedIron, 5);
       expect(user.techTree.ironHarvesting).toBe(2); // upgraded
       expect(user.techTree.activeResearch).toBeUndefined();
@@ -171,33 +171,35 @@ describe('User.updateStats with time multiplier', () => {
     });
 
     test('updateStats_withArtificialIntelligence_progressesResearchFaster', async () => {
-      user.techTree.artificialIntelligence = 1;
+      user.techTree.artificialIntelligence = 2;
       triggerResearch(user.techTree, ResearchType.ShipSpeed);
 
       await updateStatsWithMockedBuildRefresh(user, 1020);
 
+      // At AI level 2: effect = 100 * (1 + 0.15 + 0.0225) = 117.25, factor = 1.1725
+      // remaining = 30 - (20 * 1.1725) = 6.55
       expect(user.techTree.activeResearch).toBeDefined();
       expect(user.techTree.activeResearch?.remainingDuration).toBeCloseTo(
-        30 - (20 * 1.10),
+        30 - (20 * 1.1725),
         5
       );
     });
 
     test('updateStats_withArtificialIntelligence_researchCompletesSoonerAndSplitsIronCorrectly', async () => {
-      user.techTree.artificialIntelligence = 1;
+      user.techTree.artificialIntelligence = 2;
       triggerResearch(user.techTree, ResearchType.IronHarvesting);
 
       await updateStatsWithMockedBuildRefresh(user, 1010);
 
       expect(user.techTree.ironHarvesting).toBe(2);
       expect(user.techTree.activeResearch).toBeUndefined();
-      // researchSpeedFactor = 1.10, researchDuration = 10s, gameElapsed = 10s
-      // gameSecondsToComplete = 10 / 1.10 ≈ 9.0909s (real time until research finishes)
-      // ironBefore = 9.0909 * 1 (level-1 rate = 1/s)
-      // remaining = 10 - 9.0909 = 0.9091s
-      // ironAfter = 0.9091 * 1.1 (level-2 rate = 1.1/s) = 1.0
-      // total ≈ 10.0909
-      expect(user.iron).toBeCloseTo(10 / 1.10 + 1, 5);
+      // At AI level 2: factor = 1.1725, researchDuration = 10s, gameElapsed = 10s
+      // gameSecondsToComplete = 10 / 1.1725 ≈ 8.5306s (real time until research finishes)
+      // ironBefore = 8.5306 * 1 (level-1 rate = 1/s) ≈ 8.5306
+      // remaining = 10 - 8.5306 ≈ 1.4694s
+      // ironAfter = 1.4694 * 1.11 (level-2 rate = 1.11/s) ≈ 1.6310
+      // total ≈ 10.162
+      expect(user.iron).toBeCloseTo(10.162, 3);
     });
   });
 
@@ -306,8 +308,8 @@ describe('User.updateStats with time multiplier', () => {
       // Update stats after 1.5s real time = 15s game time
       await updateStatsWithMockedBuildRefresh(user, 1001.5);
 
-      // Iron: 10s at 1/sec + 5s at 1.1/sec (research completes)
-      const expectedIron = 10 + 5 * 1.1;
+      // Iron: 10s at 1/sec + 5s at 1.11/sec (research completes)
+      const expectedIron = 10 + 5 * 1.11;
       expect(user.iron).toBeCloseTo(expectedIron, 5);
 
       // Research completed

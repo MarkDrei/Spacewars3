@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760">
+  <rect x="0" y="0" width="1200" height="760" fill="#f7fafb" />
+  <rect x="120" y="80" width="920" height="600" fill="#ffffff" stroke="#cad3d8" />
+
+  <line x1="120" y1="680.00" x2="1040" y2="680.00" stroke="#d3d8db" stroke-width="1" />
+<line x1="120" y1="560.00" x2="1040" y2="560.00" stroke="#d3d8db" stroke-width="1" />
+<line x1="120" y1="440.00" x2="1040" y2="440.00" stroke="#d3d8db" stroke-width="1" />
+<line x1="120" y1="320.00" x2="1040" y2="320.00" stroke="#d3d8db" stroke-width="1" />
+<line x1="120" y1="200.00" x2="1040" y2="200.00" stroke="#d3d8db" stroke-width="1" />
+<line x1="120" y1="80.00" x2="1040" y2="80.00" stroke="#d3d8db" stroke-width="1" />
+  <line x1="120.00" y1="80" x2="120.00" y2="680" stroke="#eceff1" stroke-width="1" />
+<line x1="215.17" y1="80" x2="215.17" y2="680" stroke="#eceff1" stroke-width="1" />
+<line x1="310.34" y1="80" x2="310.34" y2="680" stroke="#eceff1" stroke-width="1" />
+<line x1="437.24" y1="80" x2="437.24" y2="680" stroke="#eceff1" stroke-width="1" />
+<line x1="532.41" y1="80" x2="532.41" y2="680" stroke="#eceff1" stroke-width="1" />
+<line x1="627.59" y1="80" x2="627.59" y2="680" stroke="#eceff1" stroke-width="1" />
+<line x1="722.76" y1="80" x2="722.76" y2="680" stroke="#eceff1" stroke-width="1" />
+<line x1="849.66" y1="80" x2="849.66" y2="680" stroke="#eceff1" stroke-width="1" />
+<line x1="944.83" y1="80" x2="944.83" y2="680" stroke="#eceff1" stroke-width="1" />
+<line x1="1040.00" y1="80" x2="1040.00" y2="680" stroke="#eceff1" stroke-width="1" />
+
+  <line x1="120" y1="680" x2="1040" y2="680" stroke="#24333b" stroke-width="2" />
+  <line x1="120" y1="80" x2="120" y2="680" stroke="#0d6e6e" stroke-width="2" />
+  <line x1="1040" y1="80" x2="1040" y2="680" stroke="#7b3527" stroke-width="2" />
+
+  <path d="M 120.00 537.55 L 151.72 523.30 L 183.45 509.06 L 215.17 494.81 L 246.90 480.57 L 278.62 466.32 L 310.34 452.08 L 342.07 437.83 L 373.79 423.59 L 405.52 409.34 L 437.24 395.10 L 468.97 380.85 L 500.69 366.61 L 532.41 352.36 L 564.14 338.12 L 595.86 323.87 L 627.59 309.63 L 659.31 295.38 L 691.03 281.14 L 722.76 266.89 L 754.48 252.65 L 786.21 238.40 L 817.93 224.16 L 849.66 209.91 L 881.38 195.67 L 913.10 181.42 L 944.83 167.18 L 976.55 152.93 L 1008.28 138.69 L 1040.00 124.44" fill="none" stroke="#1b1b1b" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
+  <path d="M 120.00 537.55 L 151.72 523.30 L 183.45 509.06 L 215.17 494.81 L 246.90 480.57 L 278.62 466.32 L 310.34 452.08 L 342.07 437.83 L 373.79 423.59 L 405.52 409.34 L 437.24 395.10 L 468.97 380.85 L 500.69 366.61 L 532.41 352.36 L 564.14 338.12 L 595.86 323.87 L 627.59 309.63 L 659.31 295.38 L 691.03 281.14 L 722.76 266.89 L 754.48 252.65 L 786.21 238.40 L 817.93 224.16 L 849.66 209.91 L 881.38 195.67 L 913.10 181.42 L 944.83 167.18 L 976.55 152.93 L 1008.28 138.69 L 1040.00 124.44" fill="none" stroke="#0072B2" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
+  <g>
+    <rect x="136" y="96" width="560" height="64" fill="#ffffff" fill-opacity="0.92" stroke="#b8c4cb" />
+    <g>
+      <line x1="146" y1="113" x2="170" y2="113" stroke="#1b1b1b" stroke-width="4" />
+      <text x="178" y="117" font-size="13" fill="#1f2d34">Energy Recharge Rate (%)</text>
+    </g>
+<g>
+      <line x1="146" y1="135" x2="170" y2="135" stroke="#0072B2" stroke-width="4" />
+      <text x="178" y="139" font-size="13" fill="#1f2d34">Projectile Reload Rate (%)</text>
+    </g>
+  </g>
+
+  <text x="120.00" y="708" font-size="14" text-anchor="middle" fill="#24333b">1</text>
+<text x="215.17" y="708" font-size="14" text-anchor="middle" fill="#24333b">4</text>
+<text x="310.34" y="708" font-size="14" text-anchor="middle" fill="#24333b">7</text>
+<text x="437.24" y="708" font-size="14" text-anchor="middle" fill="#24333b">11</text>
+<text x="532.41" y="708" font-size="14" text-anchor="middle" fill="#24333b">14</text>
+<text x="627.59" y="708" font-size="14" text-anchor="middle" fill="#24333b">17</text>
+<text x="722.76" y="708" font-size="14" text-anchor="middle" fill="#24333b">20</text>
+<text x="849.66" y="708" font-size="14" text-anchor="middle" fill="#24333b">24</text>
+<text x="944.83" y="708" font-size="14" text-anchor="middle" fill="#24333b">27</text>
+<text x="1040.00" y="708" font-size="14" text-anchor="middle" fill="#24333b">30</text>
+  <text x="106" y="685.00" font-size="13" text-anchor="end" fill="#204f4f">0.00e+0</text>
+<text x="106" y="565.00" font-size="13" text-anchor="end" fill="#204f4f">84.24</text>
+<text x="106" y="445.00" font-size="13" text-anchor="end" fill="#204f4f">168.48</text>
+<text x="106" y="325.00" font-size="13" text-anchor="end" fill="#204f4f">252.72</text>
+<text x="106" y="205.00" font-size="13" text-anchor="end" fill="#204f4f">336.96</text>
+<text x="106" y="85.00" font-size="13" text-anchor="end" fill="#204f4f">421.2</text>
+  <text x="1054" y="685.00" font-size="13" text-anchor="start" fill="#7b3527">0.00e+0x</text>
+<text x="1054" y="565.00" font-size="13" text-anchor="start" fill="#7b3527">0.842x</text>
+<text x="1054" y="445.00" font-size="13" text-anchor="start" fill="#7b3527">1.685x</text>
+<text x="1054" y="325.00" font-size="13" text-anchor="start" fill="#7b3527">2.527x</text>
+<text x="1054" y="205.00" font-size="13" text-anchor="start" fill="#7b3527">3.37x</text>
+<text x="1054" y="85.00" font-size="13" text-anchor="start" fill="#7b3527">4.212x</text>
+
+  <text x="600" y="34" font-size="24" text-anchor="middle" fill="#122028">Energy Recharge Rate vs Projectile Reload Rate progression (L1..L30)</text>
+  <text x="600" y="58" font-size="14" text-anchor="middle" fill="#45606d">Dual axis: all secondary lines are scaled to intersect at level 1 (right axis = multiplier vs L1)</text>
+
+  <text x="600" y="736" font-size="14" text-anchor="middle" fill="#24333b">Level</text>
+  <text x="45" y="60" font-size="13" text-anchor="middle" fill="#204f4f">Energy Recharge Rate (%)</text>
+  <text x="1135" y="60" font-size="13" text-anchor="middle" fill="#7b3527">Relative Effect (x of level 1)</text>
+
+</svg>

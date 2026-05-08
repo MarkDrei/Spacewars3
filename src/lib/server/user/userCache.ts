@@ -242,6 +242,16 @@ export class UserCache extends Cache {
     console.log(`👤 User ${user.id} cached in memory`);
   }
 
+  /** Remove a user from the in-memory caches without touching the database. */
+  evictUserUnsafe<THeld extends IronLocks>(_context: HasLock4Context<THeld>, userId: number): void {
+    const user = this.users.get(userId);
+    if (user) {
+      this.usernameToUserId.delete(user.username);
+    }
+    this.users.delete(userId);
+    this.dirtyUsers.delete(userId);
+  }
+
 
   /**
    * Update user data in the cache, marking as dirty (requires user lock context)
@@ -590,7 +600,7 @@ export class UserCache extends Cache {
         user.inBattle ? 1 : 0,
         user.currentBattleId,
         JSON.stringify(user.buildQueue),
-        user.buildStartSec,
+        user.buildStartSec !== null ? Math.floor(user.buildStartSec) : null,
         user.teleportCharges,
         user.teleportLastRegen,
         user.score,
