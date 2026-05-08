@@ -8,7 +8,6 @@ import { getIronSession } from 'iron-session';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, ApiError, requireAuth } from '@/lib/server/errors';
 import { initiateBattle } from '@/lib/server/battle/battleService';
-import { getBattleCache } from '@/lib/server/battle/BattleCache';
 import { UserCache } from '@/lib/server/user/userCache';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 import { BATTLE_LOCK, USER_LOCK } from '@/lib/server/typedLocks';
@@ -78,13 +77,7 @@ export async function POST(request: NextRequest) {
               throw new ApiError(400, t('announcementAttackNpcInBattle'));
             }
 
-            const battleCache = getBattleCache();
-            if (battleCache) {
-              const recentVictims = await battleCache.getRecentAttackees(session.userId!, 3);
-              if (recentVictims.includes(targetUserId)) {
-                throw new ApiError(400, t('announcementAttackRecentlyAttacked'));
-              }
-            }
+
 
             // Upsert NPC user (idempotent — creates DB row & cache entry with randomised stats)
             npcUpsertResult = await upsertNpcUser(npc, userContext);

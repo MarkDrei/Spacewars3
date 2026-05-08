@@ -600,7 +600,7 @@ export class UserCache extends Cache {
         user.inBattle ? 1 : 0,
         user.currentBattleId,
         JSON.stringify(user.buildQueue),
-        user.buildStartSec,
+        user.buildStartSec !== null ? Math.floor(user.buildStartSec) : null,
         user.teleportCharges,
         user.teleportLastRegen,
         user.score,

@@ -24,10 +24,6 @@ vi.mock('@/lib/server/npc/npcCombat', () => ({
   rollbackNpcBattlePreparation: vi.fn(),
 }));
 
-vi.mock('@/lib/server/battle/BattleCache', () => ({
-  getBattleCache: vi.fn(),
-}));
-
 vi.mock('@/lib/server/battle/battleService', () => ({
   initiateBattle: vi.fn(),
 }));
@@ -48,7 +44,6 @@ vi.mock('@markdrei/ironguard-typescript-locks', async (importOriginal) => {
 import { getIronSession } from 'iron-session';
 import { UserCache } from '@/lib/server/user/userCache';
 import { NPCManager } from '@/lib/server/npc/NPCManager';
-import { getBattleCache } from '@/lib/server/battle/BattleCache';
 import { initiateBattle } from '@/lib/server/battle/battleService';
 import { upsertNpcUser, rollbackNpcBattlePreparation } from '@/lib/server/npc/npcCombat';
 import { POST } from '@/app/api/attack/route';
@@ -102,9 +97,6 @@ describe('attack route NPC cleanup', () => {
     makeSessionMock(ATTACKER_USER_ID);
     makeUserCacheMock();
     makeNpcManagerMock();
-    (getBattleCache as ReturnType<typeof vi.fn>).mockReturnValue({
-      getRecentAttackees: vi.fn().mockResolvedValue([]),
-    });
     (upsertNpcUser as ReturnType<typeof vi.fn>).mockResolvedValue({ existedBefore: false, createdNow: true });
     (rollbackNpcBattlePreparation as ReturnType<typeof vi.fn>).mockResolvedValue({ rolledBack: true, deletedUser: true });
   });
