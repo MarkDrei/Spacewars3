@@ -30,6 +30,11 @@ vi.mock('@/lib/server/npc/NPCManager', () => ({
 vi.mock('@/lib/server/npc/npcCombat', () => ({
   upsertNpcUser: vi.fn(),
   removeNpcSpaceObject: vi.fn(),
+  rollbackNpcBattlePreparation: vi.fn(),
+}));
+
+vi.mock('@/lib/server/battle/BattleCache', () => ({
+  getBattleCache: vi.fn(),
 }));
 
 vi.mock('@/lib/server/battle/battleService', () => ({
@@ -55,6 +60,7 @@ import { getIronSession } from 'iron-session';
 import { UserCache } from '@/lib/server/user/userCache';
 import { NPCManager } from '@/lib/server/npc/NPCManager';
 import { initiateBattle } from '@/lib/server/battle/battleService';
+import { getBattleCache } from '@/lib/server/battle/BattleCache';
 import { POST } from '@/app/api/attack/route';
 import { NPC_USER_ID_OFFSET } from '@/lib/server/npc/npcConstants';
 
@@ -86,6 +92,12 @@ function makeNpcManagerMock(npc: { defeated?: boolean; inBattle?: boolean } | nu
   (NPCManager.getInstance as ReturnType<typeof vi.fn>).mockReturnValue(mockNpcManager);
 }
 
+function makeBattleCacheMock(recentAttackees: number[] = []) {
+  (getBattleCache as ReturnType<typeof vi.fn>).mockReturnValue({
+    getRecentAttackees: vi.fn().mockResolvedValue(recentAttackees),
+  });
+}
+
 async function postAttack(targetUserId: number, locale: string): Promise<{ status: number; body: { error?: string } }> {
   const sessionCookie = await createMockSessionCookie(ATTACKER_USER_ID);
   // Pass the full cookie string (session + locale) via additionalHeaders only,
@@ -107,6 +119,7 @@ async function postAttack(targetUserId: number, locale: string): Promise<{ statu
 describe('attack route — localized error messages', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    makeBattleCacheMock();
   });
 
   describe('NPC defeated', () => {
@@ -144,6 +157,26 @@ describe('attack route — localized error messages', () => {
       const { status, body } = await postAttack(NPC_TARGET_ID, 'de');
       expect(status).toBe(400);
       expect(body.error).toBe('Dieser NPC befindet sich bereits in einem Kampf.');
+    });
+  });
+
+  describe('NPC recently attacked', () => {
+    beforeEach(() => {
+      makeSessionMock(ATTACKER_USER_ID);
+      makeNpcManagerMock({ defeated: false, inBattle: false });
+      makeBattleCacheMock([NPC_TARGET_ID]);
+    });
+
+    it('attackRoute_npcRecentlyAttacked_englishLocale_returnsEnglishError', async () => {
+      const { status, body } = await postAttack(NPC_TARGET_ID, 'en');
+      expect(status).toBe(400);
+      expect(body.error).toBe('You have attacked this player recently. Choose a different target.');
+    });
+
+    it('attackRoute_npcRecentlyAttacked_germanLocale_returnsGermanError', async () => {
+      const { status, body } = await postAttack(NPC_TARGET_ID, 'de');
+      expect(status).toBe(400);
+      expect(body.error).toBe('Du hast diesen Spieler kürzlich angegriffen. Wähle ein anderes Ziel.');
     });
   });
 
