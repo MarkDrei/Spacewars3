@@ -177,6 +177,16 @@ export const LoginPageComponent: React.FC<LoginPageComponentProps> = ({
 
   return (
     <div className="login-page">
+      <div className="alpha-banner">
+        <div className="alpha-banner-content">
+          <h2>{t('alphaBannerTitle')}</h2>
+          <p>{t('alphaBannerBody')}</p>
+          <p>
+            {t('alphaBannerFeedbackPrefix')}{' '}
+            <a href="mailto:spacewars@ironstrike.de">spacewars@ironstrike.de</a>
+          </p>
+        </div>
+      </div>
       <div className="login-container">
         <h1>{t('gameTitle')}</h1>
         <p>{t('welcomeSubtitle')}</p>

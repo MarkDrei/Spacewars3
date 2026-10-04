@@ -93,6 +93,11 @@ export function generateNpcTechCounts(npcIndex: number, npcLevel: number = 1): T
   return techCounts;
 }
 
+export interface NpcUserUpsertResult {
+  existedBefore: boolean;
+  createdNow: boolean;
+}
+
 // ---------------------------------------------------------------------------
 // Upsert NPC user
 // ---------------------------------------------------------------------------
@@ -110,7 +115,7 @@ export function generateNpcTechCounts(npcIndex: number, npcLevel: number = 1): T
 export async function upsertNpcUser(
   npc: NpcShip,
   context: LockContext<LocksAtMostAndHas4>,
-): Promise<void> {
+): Promise<NpcUserUpsertResult> {
   const npcId = npcUserId(npc.ownerId, npc.level);
   const username = npcDisplayName(npc.level);
   const now = Math.floor(Date.now() / 1000);
@@ -124,6 +129,11 @@ export async function upsertNpcUser(
 
   // 3. Upsert into DB (all columns, ON CONFLICT DO UPDATE)
   const db = await getDatabase();
+  const existingNpcResult = await db.query<{ exists: boolean }>(
+    'SELECT EXISTS(SELECT 1 FROM users WHERE id = $1) AS exists',
+    [npcId],
+  );
+  const existedBefore = existingNpcResult.rows[0]?.exists ?? false;
 
   await db.query(
     `INSERT INTO users (
@@ -205,6 +215,57 @@ export async function upsertNpcUser(
 
   // 7. Mark the NPC as having a user row
   npc.npcUserCreated = true;
+
+  return {
+    existedBefore,
+    createdNow: !existedBefore,
+  };
+}
+
+interface RollbackNpcBattlePreparationOptions {
+  deleteUserIfUnreferenced?: boolean;
+}
+
+interface RollbackNpcBattlePreparationResult {
+  rolledBack: boolean;
+  deletedUser: boolean;
+}
+
+/**
+ * Undo a failed NPC battle setup when no battle row ended up referencing the NPC.
+ */
+export async function rollbackNpcBattlePreparation(
+  npc: NpcShip,
+  context: LockContext<LocksAtMostAndHas4>,
+  options: RollbackNpcBattlePreparationOptions = {},
+): Promise<RollbackNpcBattlePreparationResult> {
+  const db = await getDatabase();
+  const battleReferenceResult = await db.query<{ exists: boolean }>(
+    `SELECT EXISTS(
+      SELECT 1
+      FROM battles
+      WHERE attacker_id = $1 OR attackee_id = $1 OR winner_id = $1 OR loser_id = $1
+    ) AS exists`,
+    [npc.id],
+  );
+
+  if (battleReferenceResult.rows[0]?.exists) {
+    return { rolledBack: false, deletedUser: false };
+  }
+
+  NPCManager.getInstance().setInBattle(npc.id, false);
+  await removeNpcSpaceObject(npc.id, context);
+
+  let deletedUser = false;
+  if (options.deleteUserIfUnreferenced) {
+    await db.query('DELETE FROM users WHERE id = $1', [npc.id]);
+    UserCache.getInstance2().evictUserUnsafe(context, npc.id);
+    UserBonusCache.getInstance().invalidateBonuses(npc.id);
+    npc.npcUserCreated = false;
+    deletedUser = true;
+  }
+
+  return { rolledBack: true, deletedUser };
 }
 
 // ---------------------------------------------------------------------------

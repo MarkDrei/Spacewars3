@@ -76,7 +76,10 @@
     "successResetLinkSent": "Falls diese E-Mail registriert ist, wurde ein Zurücksetzen-Link gesendet. Prüfe dein Postfach.",
     "bannerEmailVerified": "E-Mail bestätigt! Du kannst dich jetzt anmelden.",
     "bannerInvalidToken": "E-Mail-Bestätigungslink ist ungültig oder abgelaufen.",
-    "bannerPasswordReset": "Passwort aktualisiert! Du kannst dich jetzt mit deinem neuen Passwort anmelden."
+    "bannerPasswordReset": "Passwort aktualisiert! Du kannst dich jetzt mit deinem neuen Passwort anmelden.",
+    "alphaBannerTitle": "Willkommen zur Alpha-Reise!",
+    "alphaBannerBody": "Wir freuen uns, dass du da bist. Du erkundest Spacewars: Ironstrike, während es noch entwickelt wird. Das bedeutet spannende Entdeckungen, aber auch, dass es mal haken kann, sich Features ändern und Fortschritt gelegentlich zurückgesetzt werden muss.",
+    "alphaBannerFeedbackPrefix": "Fehler gefunden, Idee im Kopf oder etwas besonders gut? Schreib uns an"
   },
   "home": {
     "yourDamage": "Dein Schaden:",

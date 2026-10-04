@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760">
+  <rect x="0" y="0" width="1200" height="760" fill="#f7fafb" />
+  <rect x="120" y="80" width="920" height="600" fill="#ffffff" stroke="#cad3d8" />
+
+  <line x1="120" y1="680.00" x2="1040" y2="680.00" stroke="#d3d8db" stroke-width="1" />
+<line x1="120" y1="560.00" x2="1040" y2="560.00" stroke="#d3d8db" stroke-width="1" />
+<line x1="120" y1="440.00" x2="1040" y2="440.00" stroke="#d3d8db" stroke-width="1" />
+<line x1="120" y1="320.00" x2="1040" y2="320.00" stroke="#d3d8db" stroke-width="1" />
+<line x1="120" y1="200.00" x2="1040" y2="200.00" stroke="#d3d8db" stroke-width="1" />
+<line x1="120" y1="80.00" x2="1040" y2="80.00" stroke="#d3d8db" stroke-width="1" />
+  <line x1="120.00" y1="80" x2="120.00" y2="680" stroke="#eceff1" stroke-width="1" />
+<line x1="215.17" y1="80" x2="215.17" y2="680" stroke="#eceff1" stroke-width="1" />
+<line x1="310.34" y1="80" x2="310.34" y2="680" stroke="#eceff1" stroke-width="1" />
+<line x1="437.24" y1="80" x2="437.24" y2="680" stroke="#eceff1" stroke-width="1" />
+<line x1="532.41" y1="80" x2="532.41" y2="680" stroke="#eceff1" stroke-width="1" />
+<line x1="627.59" y1="80" x2="627.59" y2="680" stroke="#eceff1" stroke-width="1" />
+<line x1="722.76" y1="80" x2="722.76" y2="680" stroke="#eceff1" stroke-width="1" />
+<line x1="849.66" y1="80" x2="849.66" y2="680" stroke="#eceff1" stroke-width="1" />
+<line x1="944.83" y1="80" x2="944.83" y2="680" stroke="#eceff1" stroke-width="1" />
+<line x1="1040.00" y1="80" x2="1040.00" y2="680" stroke="#eceff1" stroke-width="1" />
+
+  <line x1="120" y1="680" x2="1040" y2="680" stroke="#24333b" stroke-width="2" />
+  <line x1="120" y1="80" x2="120" y2="680" stroke="#0d6e6e" stroke-width="2" />
+  <line x1="1040" y1="80" x2="1040" y2="680" stroke="#7b3527" stroke-width="2" />
+
+  <path d="M 120.00 663.40 L 151.72 659.87 L 183.45 655.27 L 215.17 649.60 L 246.90 642.84 L 278.62 635.02 L 310.34 626.11 L 342.07 616.13 L 373.79 605.08 L 405.52 592.95 L 437.24 579.74 L 468.97 565.46 L 500.69 550.10 L 532.41 533.67 L 564.14 516.16 L 595.86 497.57 L 627.59 477.91 L 659.31 457.18 L 691.03 435.36 L 722.76 412.48 L 754.48 388.51 L 786.21 363.48 L 817.93 337.36 L 849.66 310.17 L 881.38 281.91 L 913.10 252.57 L 944.83 222.15 L 976.55 190.66 L 1008.28 158.09 L 1040.00 124.44" fill="none" stroke="#1b1b1b" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
+  <path d="M 120.00 663.40 L 151.72 659.87 L 183.45 655.27 L 215.17 649.60 L 246.90 642.84 L 278.62 635.02 L 310.34 626.11 L 342.07 616.13 L 373.79 605.08 L 405.52 592.95 L 437.24 579.74 L 468.97 565.46 L 500.69 550.10 L 532.41 533.67 L 564.14 516.16 L 595.86 497.57 L 627.59 477.91 L 659.31 457.18 L 691.03 435.36 L 722.76 412.48 L 754.48 388.51 L 786.21 363.48 L 817.93 337.36 L 849.66 310.17 L 881.38 281.91 L 913.10 252.57 L 944.83 222.15 L 976.55 190.66 L 1008.28 158.09 L 1040.00 124.44" fill="none" stroke="#0072B2" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
+<path d="M 120.00 663.40 L 151.72 659.87 L 183.45 655.27 L 215.17 649.60 L 246.90 642.84 L 278.62 635.02 L 310.34 626.11 L 342.07 616.13 L 373.79 605.08 L 405.52 592.95 L 437.24 579.74 L 468.97 565.46 L 500.69 550.10 L 532.41 533.67 L 564.14 516.16 L 595.86 497.57 L 627.59 477.91 L 659.31 457.18 L 691.03 435.36 L 722.76 412.48 L 754.48 388.51 L 786.21 363.48 L 817.93 337.36 L 849.66 310.17 L 881.38 281.91 L 913.10 252.57 L 944.83 222.15 L 976.55 190.66 L 1008.28 158.09 L 1040.00 124.44" fill="none" stroke="#D55E00" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
+  <g>
+    <rect x="136" y="96" width="560" height="86" fill="#ffffff" fill-opacity="0.92" stroke="#b8c4cb" />
+    <g>
+      <line x1="146" y1="113" x2="170" y2="113" stroke="#1b1b1b" stroke-width="4" />
+      <text x="178" y="117" font-size="13" fill="#1f2d34">Hull Strength (%)</text>
+    </g>
+<g>
+      <line x1="146" y1="135" x2="170" y2="135" stroke="#0072B2" stroke-width="4" />
+      <text x="178" y="139" font-size="13" fill="#1f2d34">Armor Effectiveness (%)</text>
+    </g>
+<g>
+      <line x1="146" y1="157" x2="170" y2="157" stroke="#D55E00" stroke-width="4" />
+      <text x="178" y="161" font-size="13" fill="#1f2d34">Shield Effectiveness (%)</text>
+    </g>
+  </g>
+
+  <text x="120.00" y="708" font-size="14" text-anchor="middle" fill="#24333b">1</text>
+<text x="215.17" y="708" font-size="14" text-anchor="middle" fill="#24333b">4</text>
+<text x="310.34" y="708" font-size="14" text-anchor="middle" fill="#24333b">7</text>
+<text x="437.24" y="708" font-size="14" text-anchor="middle" fill="#24333b">11</text>
+<text x="532.41" y="708" font-size="14" text-anchor="middle" fill="#24333b">14</text>
+<text x="627.59" y="708" font-size="14" text-anchor="middle" fill="#24333b">17</text>
+<text x="722.76" y="708" font-size="14" text-anchor="middle" fill="#24333b">20</text>
+<text x="849.66" y="708" font-size="14" text-anchor="middle" fill="#24333b">24</text>
+<text x="944.83" y="708" font-size="14" text-anchor="middle" fill="#24333b">27</text>
+<text x="1040.00" y="708" font-size="14" text-anchor="middle" fill="#24333b">30</text>
+  <text x="106" y="685.00" font-size="13" text-anchor="end" fill="#204f4f">0.00e+0</text>
+<text x="106" y="565.00" font-size="13" text-anchor="end" fill="#204f4f">722.917</text>
+<text x="106" y="445.00" font-size="13" text-anchor="end" fill="#204f4f">1.45e+3</text>
+<text x="106" y="325.00" font-size="13" text-anchor="end" fill="#204f4f">2.17e+3</text>
+<text x="106" y="205.00" font-size="13" text-anchor="end" fill="#204f4f">2.89e+3</text>
+<text x="106" y="85.00" font-size="13" text-anchor="end" fill="#204f4f">3.61e+3</text>
+  <text x="1054" y="685.00" font-size="13" text-anchor="start" fill="#7b3527">0.00e+0x</text>
+<text x="1054" y="565.00" font-size="13" text-anchor="start" fill="#7b3527">7.229x</text>
+<text x="1054" y="445.00" font-size="13" text-anchor="start" fill="#7b3527">14.458x</text>
+<text x="1054" y="325.00" font-size="13" text-anchor="start" fill="#7b3527">21.688x</text>
+<text x="1054" y="205.00" font-size="13" text-anchor="start" fill="#7b3527">28.917x</text>
+<text x="1054" y="85.00" font-size="13" text-anchor="start" fill="#7b3527">36.146x</text>
+
+  <text x="600" y="34" font-size="24" text-anchor="middle" fill="#122028">Hull Strength vs Armor Effectiveness vs Shield Effectiveness progression (L1..L30)</text>
+  <text x="600" y="58" font-size="14" text-anchor="middle" fill="#45606d">Dual axis: all secondary lines are scaled to intersect at level 1 (right axis = multiplier vs L1)</text>
+
+  <text x="600" y="736" font-size="14" text-anchor="middle" fill="#24333b">Level</text>
+  <text x="45" y="60" font-size="13" text-anchor="middle" fill="#204f4f">Hull Strength (%)</text>
+  <text x="1135" y="60" font-size="13" text-anchor="middle" fill="#7b3527">Relative Effect (x of level 1)</text>
+
+</svg>

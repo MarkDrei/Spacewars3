@@ -282,7 +282,7 @@ export class TechService {
                         await this.abortQueueAndNotify(user, userId, spec.name, 1);
                     } else {
                         user.subtractIron(spec.baseCost);
-                        user.buildStartSec = calculatedCompletionTime;
+                        user.buildStartSec = Math.floor(calculatedCompletionTime);
                     }
                 } else {
                     // Remove from queue
@@ -301,7 +301,7 @@ export class TechService {
                         } else {
                             // Deduct iron for the next item and start it
                             user.subtractIron(nextSpec.baseCost);
-                            user.buildStartSec = calculatedCompletionTime;
+                            user.buildStartSec = Math.floor(calculatedCompletionTime);
                         }
                     } else {
                         user.buildStartSec = null;

@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760">
+  <rect x="0" y="0" width="1200" height="760" fill="#f7fafb" />
+  <rect x="120" y="80" width="1000" height="600" fill="#ffffff" stroke="#cad3d8" />
+
+  <line x1="120" y1="680.00" x2="1120" y2="680.00" stroke="#d3d8db" stroke-width="1" />
+<line x1="120" y1="560.00" x2="1120" y2="560.00" stroke="#d3d8db" stroke-width="1" />
+<line x1="120" y1="440.00" x2="1120" y2="440.00" stroke="#d3d8db" stroke-width="1" />
+<line x1="120" y1="320.00" x2="1120" y2="320.00" stroke="#d3d8db" stroke-width="1" />
+<line x1="120" y1="200.00" x2="1120" y2="200.00" stroke="#d3d8db" stroke-width="1" />
+<line x1="120" y1="80.00" x2="1120" y2="80.00" stroke="#d3d8db" stroke-width="1" />
+  <line x1="120.00" y1="80" x2="120.00" y2="680" stroke="#eceff1" stroke-width="1" />
+<line x1="223.45" y1="80" x2="223.45" y2="680" stroke="#eceff1" stroke-width="1" />
+<line x1="326.90" y1="80" x2="326.90" y2="680" stroke="#eceff1" stroke-width="1" />
+<line x1="464.83" y1="80" x2="464.83" y2="680" stroke="#eceff1" stroke-width="1" />
+<line x1="568.28" y1="80" x2="568.28" y2="680" stroke="#eceff1" stroke-width="1" />
+<line x1="671.72" y1="80" x2="671.72" y2="680" stroke="#eceff1" stroke-width="1" />
+<line x1="775.17" y1="80" x2="775.17" y2="680" stroke="#eceff1" stroke-width="1" />
+<line x1="913.10" y1="80" x2="913.10" y2="680" stroke="#eceff1" stroke-width="1" />
+<line x1="1016.55" y1="80" x2="1016.55" y2="680" stroke="#eceff1" stroke-width="1" />
+<line x1="1120.00" y1="80" x2="1120.00" y2="680" stroke="#eceff1" stroke-width="1" />
+
+  <line x1="120" y1="680" x2="1120" y2="680" stroke="#24333b" stroke-width="2" />
+  <line x1="120" y1="80" x2="120" y2="680" stroke="#0d6e6e" stroke-width="2" />
+  
+
+  <path d="M 120.00 663.40 L 154.48 659.87 L 188.97 655.27 L 223.45 649.60 L 257.93 642.84 L 292.41 635.02 L 326.90 626.11 L 361.38 616.13 L 395.86 605.08 L 430.34 592.95 L 464.83 579.74 L 499.31 565.46 L 533.79 550.10 L 568.28 533.67 L 602.76 516.16 L 637.24 497.57 L 671.72 477.91 L 706.21 457.18 L 740.69 435.36 L 775.17 412.48 L 809.66 388.51 L 844.14 363.48 L 878.62 337.36 L 913.10 310.17 L 947.59 281.91 L 982.07 252.57 L 1016.55 222.15 L 1051.03 190.66 L 1085.52 158.09 L 1120.00 124.44" fill="none" stroke="#1b1b1b" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
+  
+  <g>
+    <rect x="136" y="96" width="560" height="42" fill="#ffffff" fill-opacity="0.92" stroke="#b8c4cb" />
+    <g>
+      <line x1="146" y1="113" x2="170" y2="113" stroke="#1b1b1b" stroke-width="4" />
+      <text x="178" y="117" font-size="13" fill="#1f2d34">Armor Effectiveness</text>
+    </g>
+  </g>
+
+  <text x="120.00" y="708" font-size="14" text-anchor="middle" fill="#24333b">1</text>
+<text x="223.45" y="708" font-size="14" text-anchor="middle" fill="#24333b">4</text>
+<text x="326.90" y="708" font-size="14" text-anchor="middle" fill="#24333b">7</text>
+<text x="464.83" y="708" font-size="14" text-anchor="middle" fill="#24333b">11</text>
+<text x="568.28" y="708" font-size="14" text-anchor="middle" fill="#24333b">14</text>
+<text x="671.72" y="708" font-size="14" text-anchor="middle" fill="#24333b">17</text>
+<text x="775.17" y="708" font-size="14" text-anchor="middle" fill="#24333b">20</text>
+<text x="913.10" y="708" font-size="14" text-anchor="middle" fill="#24333b">24</text>
+<text x="1016.55" y="708" font-size="14" text-anchor="middle" fill="#24333b">27</text>
+<text x="1120.00" y="708" font-size="14" text-anchor="middle" fill="#24333b">30</text>
+  <text x="106" y="685.00" font-size="13" text-anchor="end" fill="#204f4f">0.00e+0</text>
+<text x="106" y="565.00" font-size="13" text-anchor="end" fill="#204f4f">722.917</text>
+<text x="106" y="445.00" font-size="13" text-anchor="end" fill="#204f4f">1.45e+3</text>
+<text x="106" y="325.00" font-size="13" text-anchor="end" fill="#204f4f">2.17e+3</text>
+<text x="106" y="205.00" font-size="13" text-anchor="end" fill="#204f4f">2.89e+3</text>
+<text x="106" y="85.00" font-size="13" text-anchor="end" fill="#204f4f">3.61e+3</text>
+  
+
+  <text x="600" y="34" font-size="24" text-anchor="middle" fill="#122028">Armor Effectiveness progression (L1..L30)</text>
+  <text x="600" y="58" font-size="14" text-anchor="middle" fill="#45606d">Effect unit: %</text>
+
+  <text x="600" y="736" font-size="14" text-anchor="middle" fill="#24333b">Level</text>
+  <text x="45" y="60" font-size="13" text-anchor="middle" fill="#204f4f">Armor Effectiveness (%)</text>
+  
+
+</svg>

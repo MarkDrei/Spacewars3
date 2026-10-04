@@ -11,7 +11,6 @@ import { UserBonusCache } from '@/lib/server/bonus/UserBonusCache';
 import {
   createInitialTechTree,
   getResearchEffectFromTree,
-  getTimeSpeedFactorFromEffect,
   getWeaponDamageModifierFromTree,
   getWeaponAccuracyModifierFromTree,
   getWeaponReloadTimeModifierFromTree,
@@ -604,30 +603,30 @@ describe('UserBonusCache maxShipSpeed', () => {
 });
 
 describe('UserBonusCache time speed factors', () => {
-  test('constructionSpeedFactor_level1_matchesConstructionResearchEffect', async () => {
-    const user = makeUser(0, { constructionSpeed: 1 });
+  test('constructionSpeedFactor_level2_matchesConstructionResearchEffect', async () => {
+    const user = makeUser(0, { constructionSpeed: 2 });
     const { userCacheMock, inventoryServiceMock } = makeMocks(user, emptyBridge());
     UserBonusCache.configureDependencies({ userCache: userCacheMock, inventoryService: inventoryServiceMock });
     const cache = UserBonusCache.getInstance();
 
     const bonuses = await withLock4(ctx => cache.getBonuses(ctx, 1));
-    const expected = getTimeSpeedFactorFromEffect(
-      getResearchEffectFromTree(user.techTree, ResearchType.ConstructionSpeed)
-    );
+    const effect = getResearchEffectFromTree(user.techTree, ResearchType.ConstructionSpeed);
+    const baseValue = AllResearches[ResearchType.ConstructionSpeed].baseValue;
+    const expected = effect / baseValue;
 
     expect(bonuses.constructionSpeedFactor).toBeCloseTo(expected, 6);
   });
 
   test('researchSpeedFactor_level2_scalesWithLevelMultiplier', async () => {
-    const user = makeUser(1000, { artificialIntelligence: 1 });
+    const user = makeUser(1000, { artificialIntelligence: 2 });
     const { userCacheMock, inventoryServiceMock } = makeMocks(user, emptyBridge());
     UserBonusCache.configureDependencies({ userCache: userCacheMock, inventoryService: inventoryServiceMock });
     const cache = UserBonusCache.getInstance();
 
     const bonuses = await withLock4(ctx => cache.getBonuses(ctx, 1));
-    const expected = getTimeSpeedFactorFromEffect(
-      getResearchEffectFromTree(user.techTree, ResearchType.ArtificialIntelligence)
-    ) * 1.15;
+    const effect = getResearchEffectFromTree(user.techTree, ResearchType.ArtificialIntelligence);
+    const baseValue = AllResearches[ResearchType.ArtificialIntelligence].baseValue;
+    const expected = (effect / baseValue) * 1.15;
 
     expect(bonuses.researchSpeedFactor).toBeCloseTo(expected, 6);
   });

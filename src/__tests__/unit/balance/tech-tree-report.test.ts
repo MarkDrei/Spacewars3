@@ -326,7 +326,7 @@ describe('Tech Tree Report Generation', () => {
         </div>
         <div class="stat-box">
           <div class="stat-label">Effect Increase</div>
-          <div class="stat-value">${tech.research.baseValueIncrease.type === 'factor' ? `×${tech.research.baseValueIncrease.value}` : `+${tech.research.baseValueIncrease.value}`}</div>
+          <div class="stat-value">+${tech.research.baseValueIncrease.value}</div>
         </div>
       </div>
 
