@@ -25,7 +25,7 @@ Spacewars is a browser-based game where players navigate a spaceship in a 2D tor
 - **Session Management**: iron-session with HTTP-only cookies
 - **Concurrency**: Typed lock system with compile-time deadlock prevention
 - **Caching**: In-memory cache with database persistence
-- **Testing**: Vitest with jsdom (196 tests, 100% passing)
+- **Testing**: Vitest with jsdom
 - **Database**: PostgreSQL with schema-first approach
 
 ## Architecture
@@ -47,14 +47,29 @@ The game uses Next.js fullstack architecture with clear separation between clien
 - **SpaceObject**: Base class for all game objects (Ship, Collectibles, etc.)
 - **InterceptCalculator**: Handles trajectory calculations for interception
 - **TypedCacheManager**: Manages in-memory cache with deadlock-free locks
-- **API Layer**: 7 endpoints with compile-time safe lock patterns
+- **API Layer**: 46 endpoints with compile-time safe lock patterns
+
+### API Endpoints
+
+All routes live under `src/app/api/` (46 in total).
+
+| Area | Endpoints |
+| ---- | --------- |
+| Auth & account | `POST /login`, `POST /logout`, `POST /register`, `GET /verify-email`, `POST /forgot-password`, `POST /reset-password`, `POST /change-password`, `GET /session`, `POST /set-locale` |
+| World & ships | `GET /world`, `GET /ships`, `GET /ship-stats`, `GET\|POST /update-ship-picture`, `POST /navigate`, `POST /harvest`, `POST /teleport`, `POST /afterburner` |
+| Battle | `POST /attack`, `GET /battle-status`, `GET /user-battles` |
+| Research & building | `GET /techtree`, `GET /tech-catalog`, `POST /trigger-research`, `POST /build-item`, `GET /build-status`, `POST /complete-build`, `POST /abort-build-queue` |
+| Inventory & bridge | `GET\|DELETE /inventory`, `POST /inventory/move`, `POST /inventory/reorder`, `GET\|DELETE /bridge`, `POST /bridge/move`, `POST /bridge/reorder`, `POST /bridge/transfer`, `POST /bridge/transfer/auto` |
+| Starbase | `GET /starbase/shop`, `POST /starbase/buy`, `POST /starbase/sell` |
+| Messages & stats | `GET /messages`, `POST /messages/mark-read`, `POST /messages/summarize`, `GET /leaderboard`, `GET /statistics`, `GET /user-stats` |
+| Admin | `GET /admin/database`, `POST /admin/spawn-objects`, `GET\|POST /admin/time-multiplier` |
 
 ### Project Structure
 
 ```
 src/
 ├── app/                    # Next.js App Router pages
-│   ├── api/               # API routes (7 endpoints with typed locks)
+│   ├── api/               # API routes (46 endpoints with typed locks)
 │   ├── game/              # Game page
 │   ├── login/             # Login page
 │   └── ...                # Other pages
@@ -231,7 +246,6 @@ Email is used for registration verification. If not configured, the game works w
 
 - **Test Structure**: Tests located in `src/__tests__/`
 - **Pattern**: `whatIsTested_scenario_expectedOutcome`
-- **Coverage**: **1000/1000 tests passing (100%)**
 - **Environment**: jsdom for React components, node for API routes
 - **Concurrency Testing**: Comprehensive tests for lock ordering and deadlock prevention
 
@@ -262,7 +276,7 @@ The application is production-ready with multiple deployment options, featuring 
 - **Zero Deadlock Potential**: Compile-time guaranteed deadlock prevention
 - **High Performance**: In-memory caching with optimized lock patterns
 - **Type Safety**: Complete TypeScript coverage with lock context validation
-- **Comprehensive Testing**: 196 automated tests covering all scenarios
+- **Comprehensive Testing**: Automated tests covering all scenarios
 - **Clean Architecture**: Zero technical debt, production-ready codebase
 
 ### Deployment Options
@@ -310,7 +324,7 @@ Required for production:
 
 - **Static pages**: Home, About, Login pages
 - **Dynamic pages**: Game, Research, Profile (require authentication)
-- **API routes**: 7 endpoints with typed lock system
+- **API routes**: 46 endpoints with typed lock system
 - **Optimized bundles**: ~100kB first load JS
 
 The application uses PostgreSQL database and features a mathematically deadlock-free architecture, making it ready for high-traffic production deployment.

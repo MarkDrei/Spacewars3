@@ -251,9 +251,10 @@ export async function initiateBattle<THeld extends IronLocks>(
     throw new ApiError(400, 'Both users must have ships to battle');
   }
 
-  // Validation: Check if target is one of the attacker's last 3 victims
+  // Validation: Check if target is one of the attacker's last 3 victims.
+  // NPCs are exempt: their IDs are reused across level-ups and they can always be attacked.
   const battleCache = getBattleCache();
-  if (battleCache) {
+  if (battleCache && !isNpcId(attackee.id)) {
     const recentVictims = await battleCache.getRecentAttackees(attacker.id, 3);
     if (recentVictims.includes(attackee.id)) {
       throw new ApiError(400, 'You have attacked this player recently. Choose a different target.');
