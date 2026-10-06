@@ -1,4 +1,4 @@
-import { describe, expect, test, beforeEach, vi } from 'vitest';
+import { describe, expect, test, beforeEach, afterEach, vi } from 'vitest';
 import { TargetingLineRenderer } from '@/lib/client/renderers/TargetingLineRenderer';
 import type { TargetingLine } from '@shared/types/gameTypes';
 
@@ -21,6 +21,10 @@ describe('TargetingLineRenderer', () => {
   let renderer: TargetingLineRenderer;
 
   beforeEach(() => {
+    // Freeze time so Date.now() in the test and in the renderer return the same value
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-01-01T00:00:00Z'));
+
     // Create mock canvas and context
     mockCanvas = {
       width: 800,
@@ -40,6 +44,10 @@ describe('TargetingLineRenderer', () => {
     } as unknown as CanvasRenderingContext2D;
 
     renderer = new TargetingLineRenderer(mockCtx);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   describe('drawTargetingLine', () => {

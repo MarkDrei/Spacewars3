@@ -127,7 +127,11 @@ export async function upsertNpcUser(
   const techTree = createInitialTechTree();
   const maxDef = TechService.calculateMaxDefense(techCounts, techTree);
 
-  // 3. Upsert into DB (all columns, ON CONFLICT DO UPDATE)
+  // 3. Evict any stale cached NPC user (same ID can be reused after a level-up).
+  //    Eviction also drops the dirty flag, so stale data cannot overwrite the upsert below.
+  UserCache.getInstance2().evictUserUnsafe(context, npcId);
+
+  // 4. Upsert into DB (all columns, ON CONFLICT DO UPDATE)
   const db = await getDatabase();
   const existingNpcResult = await db.query<{ exists: boolean }>(
     'SELECT EXISTS(SELECT 1 FROM users WHERE id = $1) AS exists',
@@ -202,18 +206,18 @@ export async function upsertNpcUser(
     ],
   );
 
-  // 4. Invalidate bonus cache (forces fresh computation on next access)
+  // 5. Invalidate bonus cache (forces fresh computation on next access)
   UserBonusCache.getInstance().invalidateBonuses(npcId);
 
-  // 5. Load NPC user into UserCache (forces DB→cache load)
+  // 6. Load NPC user into UserCache (forces DB→cache load)
   //    getUserByIdWithLock will load from DB, call setUserUnsafe, compute bonuses.
   await UserCache.getInstance2().getUserByIdWithLock(context, npcId);
 
-  // 6. Inject a temporary space object into WorldCache so the battle system
+  // 7. Inject a temporary space object into WorldCache so the battle system
   //    can resolve the NPC's ship position and stop the ship.
   await injectNpcSpaceObject(npc, context);
 
-  // 7. Mark the NPC as having a user row
+  // 8. Mark the NPC as having a user row
   npc.npcUserCreated = true;
 
   return {
