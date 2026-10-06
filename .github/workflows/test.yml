@@ -2,9 +2,9 @@ name: Tests
 
 on:
   push:
-    branches: [main, develop, "copilot/**", "feat/**"]
+    branches: [master, main, develop, "copilot/**", "feat/**", "claude/**"]
   pull_request:
-    branches: [main, develop]
+    branches: [master, main, develop]
   workflow_dispatch:
 
 jobs:
