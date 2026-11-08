@@ -32,6 +32,36 @@ single `typescript@^7` dependency and re-run `npm run ci`.
 
 - `package.json` — `typescript` / `typescript7` aliases, `typecheck` script
 
+## Build Statistics Record Orders, Not Charges
+
+**Priority**: Low
+**Added**: 2026-11-08
+**Component**: `src/app/api/build-item/route.ts`, `src/lib/server/techs/TechService.ts`
+
+### Context
+
+`POST /api/build-item` records one `tech_spent` event per order with `ironCost = spec.baseCost` and
+`count` items. Iron is, however, only charged when an item actually starts building: the first item
+when the queue was empty, every later item (and each repetition of a "forever" build) inside
+`TechService.processCompletedBuilds`. Those later charges emit no statistics event, and an order
+placed behind a running build records a cost although nothing was charged. Aborted queues still
+count as "builds completed".
+
+### Consequences
+
+`totalIronSpentOnBuilds` and `totalBuildsCompleted` on the statistics page are approximations.
+
+### Proper Solution
+
+Emit `tech_spent` from `TechService` at the moment iron is subtracted (one event per started item)
+and count completed builds in `applyCompletedBuild`. Remove the event from the build-item route.
+
+### Related Files
+
+- `src/app/api/build-item/route.ts` — records the event today
+- `src/lib/server/techs/TechService.ts` — `addTechItemToBuildQueue`, `processCompletedBuilds`
+- `src/lib/server/statistics/StatisticsCache.ts` — `tech_spent` aggregation
+
 ## Minor Balance Change: Multiplicative Accuracy Refactor (Task 1.1)
 
 **Priority**: Low  

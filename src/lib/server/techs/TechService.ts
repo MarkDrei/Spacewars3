@@ -84,58 +84,64 @@ export class TechService {
 
         if (!user) return null;
 
-        // Calculate actual completion times for each item in the queue
-        const queue = user.buildQueue;
-        if (queue.length === 0 || !user.buildStartSec) {
-            return queue;
-        }
-
-        let cumulativeTime = user.buildStartSec;
-        const multiplier = TimeMultiplierService.getInstance().getMultiplier();
         const bonuses = await UserBonusCache.getInstance().getBonuses(context, userId);
-        const constructionSpeedFactor = bonuses.constructionSpeedFactor;
-        
-        const queueWithTimes = queue.map(item => {
-            const spec = TechFactory.getTechSpec(item.itemKey, item.itemType);
-            if (!spec) {
-                return { ...item, completionTime: 0 };
-            }
-
-            const buildTime = spec.buildDurationMinutes * 60;
-            const effectiveBuildTime = buildTime / multiplier / constructionSpeedFactor;
-            const completionTime = cumulativeTime + effectiveBuildTime;
-            cumulativeTime = completionTime; // Next item starts after this one
-
-            return {
-                ...item,
-                completionTime
-            };
-        });
-
-        return queueWithTimes;
+        return this.calculateQueueCompletionTimes(user, bonuses.constructionSpeedFactor);
     }
 
     /**
      * Get estimated completion time for the current build
      */
     async getEstimatedCompletionTime(userId: number, context: LockContext<LocksAtMostAndHas4>): Promise<number | null> {
+        const status = await this.getBuildStatus(userId, context);
+        return status?.queueEstimatedCompletion ?? null;
+    }
+
+    /**
+     * Everything the factory page polls, computed from a single user refresh.
+     * The refresh (updateStats) accrues iron and processes due builds chronologically,
+     * so the follow-up item of a finished build is paid with the iron available at that time.
+     */
+    async getBuildStatus(userId: number, context: LockContext<LocksAtMostAndHas4>): Promise<{
+        techCounts: TechCounts;
+        buildQueue: BuildQueueItem[];
+        queueEstimatedCompletion: number | null;
+        analysis: ReturnType<typeof TechFactory.calculateTotalEffects>;
+    } | null> {
         const user = await this.getUserCache().getUserByIdWithLock(context, userId);
 
-        if (!user || user.buildQueue.length === 0) return null;
+        if (!user) return null;
 
-        // If we have a start time, calculate completion time
-        if (user.buildStartSec) {
-            const currentBuild = user.buildQueue[0];
-            const spec = TechFactory.getTechSpec(currentBuild.itemKey, currentBuild.itemType);
-            if (!spec) return null;
+        const bonuses = await UserBonusCache.getInstance().getBonuses(context, userId);
+        const buildQueue = this.calculateQueueCompletionTimes(user, bonuses.constructionSpeedFactor);
 
-            const buildTime = spec.buildDurationMinutes * 60;
-            const bonuses = await UserBonusCache.getInstance().getBonuses(context, userId);
-            const multiplier = TimeMultiplierService.getInstance().getMultiplier();
-            return user.buildStartSec + (buildTime / multiplier / bonuses.constructionSpeedFactor);
+        return {
+            techCounts: user.techCounts,
+            buildQueue,
+            queueEstimatedCompletion: user.buildStartSec ? buildQueue[0]?.completionTime || null : null,
+            analysis: TechFactory.calculateTotalEffects(user.techCounts),
+        };
+    }
+
+    /** Returns the queue with cumulative completion times (0 when the queue has no start time). */
+    private calculateQueueCompletionTimes(user: User, constructionSpeedFactor: number): BuildQueueItem[] {
+        const queue = user.buildQueue;
+        if (queue.length === 0 || !user.buildStartSec) {
+            return queue;
         }
 
-        return null;
+        const multiplier = TimeMultiplierService.getInstance().getMultiplier();
+        let cumulativeTime = user.buildStartSec;
+
+        return queue.map(item => {
+            const spec = TechFactory.getTechSpec(item.itemKey, item.itemType);
+            if (!spec) {
+                return { ...item, completionTime: 0 };
+            }
+
+            const effectiveBuildTime = spec.buildDurationMinutes * 60 / multiplier / constructionSpeedFactor;
+            cumulativeTime += effectiveBuildTime; // Next item starts after this one
+            return { ...item, completionTime: cumulativeTime };
+        });
     }
 
     /**

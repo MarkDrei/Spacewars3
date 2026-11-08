@@ -27,8 +27,6 @@ export async function GET(request: NextRequest) {
     const session = await getIronSession<SessionData>(request, NextResponse.json({}), sessionOptions);
     requireAuth(session.userId);
     
-    console.log(`🔍 Battle Status API: Checking battle for user ${session.userId}`);
-    
     // Get battle from cache
     const emptyCtx = createLockContext();
     return await emptyCtx.useLockWithAcquire(BATTLE_LOCK, async (context) => {
@@ -40,8 +38,6 @@ export async function GET(request: NextRequest) {
         });
       }
       
-      console.log(`⚔️ User ${session.userId} is in battle ${battle.id}`);
-      
       // Determine if user is attacker or attackee
       const isAttacker = battle.attackerId === session.userId;
       const opponentId = isAttacker ? battle.attackeeId : battle.attackerId;
@@ -51,10 +47,11 @@ export async function GET(request: NextRequest) {
       ? battle.attackerWeaponCooldowns 
       : battle.attackeeWeaponCooldowns;
 
-      // Fetch opponent name using USER_LOCK (valid: BATTLE_LOCK(2) → USER_LOCK(4))
+      // Fetch opponent name using USER_LOCK (valid: BATTLE_LOCK(2) → USER_LOCK(4)).
+      // Only the username is needed, so skip the stats refresh (iron, builds, research) of the opponent.
       const userWorldCache = UserCache.getInstance2();
       return await context.useLockWithAcquire(USER_LOCK, async (userContext) => {
-        const opponent = await userWorldCache.getUserByIdWithLock(userContext, opponentId);
+        const opponent = await userWorldCache.getUserByIdWithoutRefreshWithLock(userContext, opponentId);
         const opponentName = opponent?.username ?? 'Unknown';
 
         return NextResponse.json({
