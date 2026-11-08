@@ -21,6 +21,11 @@ export function handleApiError(error: unknown): NextResponse {
     );
   }
 
+  // request.json() throws a SyntaxError for a malformed body: a client error, not a server error
+  if (error instanceof SyntaxError) {
+    return NextResponse.json({ error: 'Invalid JSON in request body' }, { status: 400 });
+  }
+
   if (error instanceof Error) {
     // Handle SQLite constraint errors
     if (error.message.includes('UNIQUE constraint failed')) {

@@ -22,6 +22,7 @@ import {
 import { LONG_PRESS_INITIAL_DELAY_MS, getLongPressRepeatDelayMs } from '@/lib/client/factory/buildControlPress';
 import { ServerAuthState } from '@/lib/server/serverSession';
 import './FactoryPage.css';
+import { isAdminUsername } from '@/shared/adminAccess';
 
 interface FactoryPageClientProps {
   auth: ServerAuthState;
@@ -320,7 +321,7 @@ const FactoryPageClient: React.FC<FactoryPageClientProps> = ({ auth }) => {
               </div>
 
               {/* Cheat Mode Button - Only for test users 'a' and 'q' */}
-              {(auth.username === 'a' || auth.username === 'q') && (
+              {isAdminUsername(auth.username) && (
                 <div className="cheat-section">
                   <button
                     className="cheat-button"

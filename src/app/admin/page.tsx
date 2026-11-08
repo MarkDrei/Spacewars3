@@ -5,6 +5,7 @@ import AuthenticatedLayout from '@/components/Layout/AuthenticatedLayout';
 import { useAuth } from '@/lib/client/hooks/useAuth';
 import type { Battle } from '@/lib/server/battle/battleTypes';
 import './AdminPage.css';
+import { isAdminUsername } from '@/shared/adminAccess';
 
 interface UserData {
   id: number;
@@ -87,7 +88,6 @@ const requestMultiplierStatus = async (): Promise<MultiplierStatus | null> => {
   }
 };
 
-const ADMIN_USERNAMES = ['a', 'q'];
 
 const AdminPage: React.FC = () => {
   const { username, isLoggedIn, isLoading } = useAuth();
@@ -95,7 +95,7 @@ const AdminPage: React.FC = () => {
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [error, setError] = useState<string | null>(null);
   // Same rule as cheat mode: only developer accounts may open the admin page
-  const isAuthorized = !isLoading && isLoggedIn && !!username && ADMIN_USERNAMES.includes(username);
+  const isAuthorized = !isLoading && isLoggedIn && isAdminUsername(username);
 
   // Time multiplier state
   const [multiplierStatus, setMultiplierStatus] = useState<MultiplierStatus>({

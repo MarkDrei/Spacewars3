@@ -79,3 +79,27 @@ describe('handleApiError — unique constraint error mapping', () => {
     expect(response.status).toBe(500);
   });
 });
+
+describe('handleApiError — malformed request body', () => {
+  it('handleApiError_syntaxErrorFromRequestJson_returns400', async () => {
+    const response = handleApiError(new SyntaxError('Unexpected token } in JSON at position 1'));
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ error: 'Invalid JSON in request body' });
+  });
+
+  it('routeHandler_malformedJsonBody_returns400InsteadOf500', async () => {
+    const { POST: sellPOST } = await import('@/app/api/starbase/sell/route');
+    const { createMockSessionCookie } = await import('../../helpers/apiTestHelpers');
+    const { NextRequest } = await import('next/server');
+    const request = new NextRequest('http://localhost/api/starbase/sell', {
+      method: 'POST',
+      body: '{ "row": 0, ',
+      headers: { 'content-type': 'application/json', cookie: await createMockSessionCookie(1) },
+    });
+
+    const response = await sellPOST(request);
+
+    expect(response.status).toBe(400);
+  });
+});

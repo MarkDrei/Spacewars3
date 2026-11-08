@@ -7,6 +7,7 @@ import { useTranslations } from 'next-intl';
 import { useAuth } from '@/lib/client/hooks/useAuth';
 import NavigationIcon from './NavigationIcon';
 import './Navigation.css';
+import { isAdminUsername } from '@/shared/adminAccess';
 
 interface NavigationProps {
   onLogout: () => void;
@@ -43,7 +44,7 @@ const Navigation: React.FC<NavigationProps> = ({ onLogout }) => {
   };
 
   // Check if user has admin access
-  const hasAdminAccess = username === 'a' || username === 'q';
+  const hasAdminAccess = isAdminUsername(username);
 
   return (
     <nav className="navbar">

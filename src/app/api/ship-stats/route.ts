@@ -26,20 +26,17 @@ export async function GET(request: NextRequest) {
     const userWorldCache = UserCache.getInstance2();
 
     const worldCache = WorldCache.getInstance();
+    // USER_LOCK (4) → WORLD_LOCK (6): user and bonuses are resolved before WORLD_LOCK, which this
+    // frequently polled route then only holds for reading the ship
     return await emptyCtx.useLockWithAcquire(USER_LOCK, async (userContext) => {
+      const user = await userWorldCache.getUserByIdWithLock(userContext, session.userId!);
+      if (!user) {
+        throw new ApiError(404, 'User not found');
+      }
+      const bonuses = await userWorldCache.getBonusesByUserIdWithLock(userContext, user.id);
+
       return await userContext.useLockWithAcquire(WORLD_LOCK, async (worldContext) => {
-        // Get world and user data safely (we have both locks)
-        const user = await userWorldCache.getUserByIdWithLock(userContext, session.userId!);
         const world = worldCache.getWorldFromCache(worldContext);
-
-        if (!user) {
-          console.log(`❌ User not found: ${session.userId}`);
-          throw new ApiError(404, 'User not found');
-        }
-
-        const bonuses = await userWorldCache.getBonusesByUserIdWithLock(userContext, user.id);
-
-        // Continue with ship stats logic
         return await getShipStats(worldContext, world, user, bonuses);
       });
     });
@@ -54,10 +51,7 @@ async function getShipStats(
   user: User,
   bonuses: UserBonuses
 ): Promise<NextResponse> {
-  // Update physics for all objects first
-  const currentTime = Date.now();
-  world.updatePhysics(worldContext, currentTime);
-
+  // getWorldFromCache already advanced physics to "now"
   // Update defense values based on elapsed time since last regen (using bonused rates)
   const now = Math.floor(Date.now() / 1000);
   user.updateDefenseValues(now, bonuses);

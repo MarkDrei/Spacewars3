@@ -19,6 +19,7 @@ import { BattleCache } from '@/lib/server/battle/BattleCache';
 import type { Battle } from '@/lib/server/battle/battleTypes';
 import { createLockContext, IronGuardManager, LOCK_4 } from '@markdrei/ironguard-typescript-locks';
 import { UserCache } from '@/lib/server/user/userCache';
+import { isAdminUsername } from '@/shared/adminAccess';
 
 interface UserData {
   id: number;
@@ -85,7 +86,7 @@ export async function GET(request: NextRequest) {
       }
       
       // Admin access restricted to developers (users 'a' and 'q')
-      if (userData.username !== 'a' && userData.username !== 'q') {
+      if (!isAdminUsername(userData.username)) {
         throw new ApiError(403, 'Admin access restricted to developers');
       }
 

@@ -14,6 +14,7 @@ import { handleApiError, requireAuth, ApiError } from '@/lib/server/errors';
 import { UserCache } from '@/lib/server/user/userCache';
 import { WorldCache } from '@/lib/server/world/worldCache';
 import { createLockContext, LOCK_4, LOCK_6 } from '@markdrei/ironguard-typescript-locks';
+import { isAdminUsername } from '@/shared/adminAccess';
 
 /**
  * Request body interface for spawning objects
@@ -118,7 +119,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Check admin privileges (developer-only access)
-      if (userData.username !== 'a' && userData.username !== 'q') {
+      if (!isAdminUsername(userData.username)) {
         throw new ApiError(403, 'Admin access restricted to developers');
       }
 
