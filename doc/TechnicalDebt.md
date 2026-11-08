@@ -1,5 +1,42 @@
 # Technical Debt
 
+## Pending Major Upgrades: Next.js 16, ESLint 10, TypeScript 7
+
+**Priority**: Medium
+**Added**: 2026-11-08
+**Component**: `package.json`, `eslint.config.mjs`, `next.config.ts`
+
+### Context
+
+The dependency refresh on 2026-11-08 (Node 24, Vitest 5, iron-session 9, nodemailer 10, jsdom 31, …)
+deliberately left these majors out because each is a migration, not a drop-in update:
+
+- **next 15.5 → 16** and **eslint-config-next 15 → 16**: `npm run lint` uses `next lint`, which prints
+  "`next lint` is deprecated and will be removed in Next.js 16". Linting has to move to the ESLint CLI
+  first. The PWA plugin (`@ducanh2912/next-pwa`) and `src/middleware.ts` must be verified against Next 16.
+- **eslint 9 → 10**: npm marks `eslint@9.39.5` as "no longer supported". `eslint.config.mjs` uses
+  `FlatCompat` from `@eslint/eslintrc` to load `next/core-web-vitals`; best done together with
+  `eslint-config-next@16` (native flat config).
+- **typescript 5.9 → 7**: TypeScript 7 is the native (Go) compiler; the Next.js 15 TypeScript plugin
+  and build pipeline target the TS 5 API.
+
+### Consequences
+
+Lint runs on an ESLint major that no longer gets fixes, and the `next lint` deprecation warning
+appears in every CI run.
+
+### Proper Solution
+
+One dedicated branch: migrate `npm run lint` to `eslint .`, then upgrade next + eslint-config-next to 16
+and eslint to 10 together, run `npm run ci` and check the preview deploy (PWA service worker, middleware,
+i18n routing). Evaluate TypeScript 7 once Next.js documents support for it.
+
+### Related Files
+
+- `package.json` — `lint` script, versions
+- `eslint.config.mjs` — FlatCompat-based ESLint config
+- `next.config.ts` — next-pwa / next-intl plugins
+
 ## Minor Balance Change: Multiplicative Accuracy Refactor (Task 1.1)
 
 **Priority**: Low  
