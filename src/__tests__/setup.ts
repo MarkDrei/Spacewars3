@@ -1,4 +1,3 @@
-import '@testing-library/jest-dom';
 import { vi, beforeAll, afterEach } from 'vitest';
 import { createBcryptMock } from './helpers/bcryptMock';
 

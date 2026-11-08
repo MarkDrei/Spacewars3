@@ -149,7 +149,7 @@ This project is configured for GitHub Codespaces development:
 
 The Codespace includes:
 
-- Node.js 20 LTS
+- Node.js 24 LTS
 - Git and Bash
 - Pre-configured VSCode extensions (ESLint, Prettier, Tailwind CSS)
 - Automatic dependency installation

@@ -32,15 +32,15 @@
     "@markdrei/ironguard-typescript-locks": "0.2.3",
     "@tailwindcss/postcss": "^4",
     "@types/bcrypt": "^6.0.0",
-    "@types/node": "^20",
+    "@types/node": "^24.19.2",
     "@types/pg": "^8.11.10",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "bcrypt": "^6.0.0",
-    "iron-session": "^8.0.4",
+    "iron-session": "^9.0.1",
     "next": "^15.4.6",
     "next-intl": "^4.9.1",
-    "nodemailer": "^8.0.5",
+    "nodemailer": "^10.4.0",
     "pg": "^8.13.1",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
@@ -51,22 +51,24 @@
     "@eslint/eslintrc": "^3",
     "@playwright/test": "^1.58.2",
     "@testing-library/dom": "^10.4.1",
-    "@testing-library/jest-dom": "^6.6.4",
+    "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^14.6.1",
-    "@types/nodemailer": "^8.0.0",
-    "@vitest/coverage-v8": "^4.0.12",
-    "@vitest/ui": "^4.0.12",
+    "@vitest/coverage-v8": "^5.1.0",
+    "@vitest/ui": "^5.1.0",
     "eslint": "^9",
     "eslint-config-next": "15.5.29",
-    "jsdom": "^26.1.0",
+    "jsdom": "^31.0.0",
     "tsx": "^4.21.0",
-    "vitest": "^4.0.12"
+    "vitest": "^5.1.0"
   },
   "allowScripts": {
     "bcrypt@6.0.0": true,
     "@parcel/watcher@2.6.0": true,
     "@swc/core@1.16.22": true,
     "esbuild@0.28.2": true
+  },
+  "engines": {
+    "node": ">=24"
   }
 }
