@@ -672,7 +672,7 @@ graph TB
 - **Battle System:** `battleScheduler.fireWeapon()` - Weapon cooldown calculations
 - **Physics:** `updateObjectPosition()` and variants in `shared/physics.ts` - Object movement speed
 - **Admin API:** `/api/admin/time-multiplier` (GET/POST) - Status retrieval and activation (admin-only: users 'a' and 'q')
-- **Client Hooks:** `useIron`, `useDefenseValues`, `useWorldData` - Client-side prediction and interpolation
+- **Client Hooks:** `useUserStats`, `useDefenseValues`, `projectWorldData` (game render loop) - Client-side prediction and interpolation (see [8.7](#87-client-data-synchronization-polling))
 
 **Behavioral Characteristics:**
 
@@ -782,6 +782,33 @@ Only `RadarRenderer` needs the safe-area offset because it is the only renderer 
 - UI pages and server-generated notifications stay synchronized to the same locale source.
 - Language changes do not alter URLs because routing remains locale-neutral.
 - Missing locale files or keys fall back to English instead of failing the request path.
+
+### 8.7 Client Data Synchronization (Polling)
+
+The client polls REST endpoints; there is no push channel. Rules that keep the request rate and
+React render work low:
+
+- **Shared stores, one poll per endpoint:** data used by several components is held in a
+  module-level store read with `useSyncExternalStore` — `userStatsStore` (`/api/user-stats`) and
+  `useFactoryDataCache` (`/api/build-status`). `createSharedPoller` (`src/lib/client/polling/`)
+  runs one poll loop per store at the shortest interval any mounted consumer requested and stops
+  when the last consumer unmounts. Concurrent refreshes share one request.
+- **Hidden pages do not poll:** every server poll uses `startVisibilityAwarePolling`; ticks are
+  skipped while `document.hidden` is true and data is refreshed immediately when the page becomes
+  visible again.
+- **Static data is loaded once:** the tech catalog (`/api/tech-catalog`) changes only with a
+  deployment.
+- **Adaptive intervals:** afterburner status every 1 s while burning, 10 s while refuelling;
+  home-page defense values every 2 s during a battle, 10 s otherwise (values are extrapolated
+  client-side in between).
+- **Canvas animation without React:** `useWorldData` stores the server snapshot (every 3 s). The
+  `Game` render loop projects it to the current time in each animation frame
+  (`projectWorldData`, shared physics, always from the snapshot so no drift accumulates); React
+  state changes only when server data arrives. NPC ships are interpolated by their renderer.
+
+Measured on the preview deployment with Playwright (logged-in player, 2026-11-08): visible tab —
+home 48, factory 30, game 38 API requests/min, 60 fps, 0 DOM mutations/s on the game page; hidden
+tab — 0 requests in 30 s, all stores refresh immediately when the tab becomes visible again.
 
 ---
 
