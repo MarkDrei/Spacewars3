@@ -10,6 +10,9 @@ import { User } from '@/lib/server/user/user';
 import { createInitialTechTree, getResearchEffectFromTree, ResearchType } from '@/lib/server/techs/techtree';
 import { commanderBuyPrice, commanderSellPrice } from '@/lib/server/starbase/commanderPrice';
 import { TimeMultiplierService } from '@/lib/server/timeMultiplier';
+import { StarbaseShop } from '@/lib/server/starbase/StarbaseShop';
+import { USER_LOCK } from '@/lib/server/typedLocks';
+import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 import type { UserBonusCache } from '@/lib/server/bonus/UserBonusCache';
 import type { UserBonuses } from '@/lib/server/bonus/userBonusTypes';
 import type { TechCounts } from '@/lib/server/techs/TechFactory';
@@ -64,10 +67,15 @@ describe('starbase buy / sell', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+    StarbaseShop.resetInstance();
   });
 
-  const buy = async (slotIndex: number, shop: (CommanderData | null)[]) => {
-    const cookie = await sessionCookie({ starbaseShop: shop });
+  const openShop = (offers: (CommanderData | null)[]) =>
+    createLockContext().useLockWithAcquire(USER_LOCK, async (ctx) => StarbaseShop.getInstance().setOffers(ctx, 1, offers));
+
+  const buy = async (slotIndex: number, shop?: (CommanderData | null)[]) => {
+    if (shop) await openShop(shop);
+    const cookie = await sessionCookie({});
     const response = await buyPOST(createRequest('http://localhost/api/starbase/buy', 'POST', { slotIndex }, cookie));
     return { status: response.status, data: await response.json() };
   };
@@ -98,6 +106,38 @@ describe('starbase buy / sell', () => {
 
     expect(status).toBe(400);
     expect(user.iron).toBe(commanderBuyPrice(offer) + 10);
+  });
+
+  test('buy_sameOfferTwice_secondPurchaseFailsAndChargesOnce', async () => {
+    const offer = commander('Offer');
+    user.iron = 3 * commanderBuyPrice(offer);
+
+    expect((await buy(0, [offer])).status).toBe(200);
+    // A replayed request (formerly possible with the old shop cookie) finds the slot empty
+    const second = await buy(0);
+
+    expect(second.status).toBe(400);
+    expect(user.iron).toBe(2 * commanderBuyPrice(offer));
+    expect(storedInventory.flat().filter(Boolean)).toHaveLength(1);
+  });
+
+  test('buy_withoutOpeningShop_returns400', async () => {
+    const { status, data } = await buy(0);
+    expect(status).toBe(400);
+    expect(data.error).toBe('No shop available. Visit the shop first.');
+  });
+
+  test('buy_inventoryFull_offerStaysAvailable', async () => {
+    const offer = commander('Offer');
+    user.iron = commanderBuyPrice(offer);
+    storedInventory = storedInventory.map((row) => row.map(() => commander('Owned')));
+    await buy(0, [offer]);
+
+    storedInventory = emptyInventory();
+    const retry = await buy(0);
+
+    expect(retry.status).toBe(200);
+    expect(storedInventory[0][0]).toMatchObject({ name: 'Offer' });
   });
 
   test('sell_ironAboveResearchCapacityButBelowBonusedCapacity_addsFullPrice', async () => {

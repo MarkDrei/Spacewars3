@@ -8,6 +8,7 @@ import { TechService } from '@/lib/server/techs/TechService';
 import { TimeMultiplierService } from '@/lib/server/timeMultiplier';
 import { AfterburnerService } from '@/lib/server/afterburner/AfterburnerService';
 import { NPCManager } from '@/lib/server/npc/NPCManager';
+import { StarbaseShop } from '@/lib/server/starbase/StarbaseShop';
 import { StatisticsCache } from '@/lib/server/statistics/StatisticsCache';
 import { getTransactionContext, withTransaction } from './transactionHelper';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
@@ -101,6 +102,7 @@ export async function initializeIntegrationTestServer(): Promise<void> {
   TimeMultiplierService.resetInstance();
   AfterburnerService.resetInstance();
   NPCManager.resetInstance();
+  StarbaseShop.resetInstance();
   
   // Initialize server (this will reinitialize caches)
   // No database cleanup - tests use withTransaction() for isolation
@@ -143,4 +145,5 @@ async function shutdownCaches(): Promise<void> {
   TimeMultiplierService.resetInstance();
   AfterburnerService.resetInstance();
   NPCManager.resetInstance();
+  StarbaseShop.resetInstance();
 }

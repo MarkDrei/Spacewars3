@@ -62,34 +62,34 @@ and count completed builds in `applyCompletedBuild`. Remove the event from the b
 - `src/lib/server/techs/TechService.ts` — `addTechItemToBuildQueue`, `processCompletedBuilds`
 - `src/lib/server/statistics/StatisticsCache.ts` — `tech_spent` aggregation
 
-## Starbase Shop Offers Live in the Session Cookie (Replayable)
+## Admin Access by Username (Resolve Before Going Live)
 
-**Priority**: Medium
+**Priority**: High (before production use) — currently accepted for the test phase
 **Added**: 2026-11-08
-**Component**: `src/app/api/starbase/shop/route.ts`, `src/app/api/starbase/buy/route.ts`
+**Component**: `src/shared/adminAccess.ts`, `src/lib/server/seedData.ts`
 
 ### Context
 
-`GET /api/starbase/shop` stores the ten generated commanders in the sealed iron-session cookie;
-`POST /api/starbase/buy` reads the offer from the cookie and returns a new cookie with the bought
-slot set to null. The cookie cannot be forged, but it can be replayed: sending the old cookie
-again buys the same commander a second time (at full price).
+Admin/developer access (admin APIs, admin page, build cheat mode) is granted to the usernames
+`a` and `q` (`isAdminUsername`). `a` is seeded with password `a` in every environment; `q` is not
+seeded, so whoever registers `q` first becomes admin. Decision (2026-11-08): keep this during the
+test phase, fix before going live.
 
 ### Consequences
 
-Players can buy copies of a particularly strong commander as long as they have iron.
+On a public deployment anyone could gain admin rights (`q`) or log in as `a`/`a`, read all user
+data from `/api/admin/database`, spawn objects and change the time multiplier.
 
 ### Proper Solution
 
-Keep the current shop per user on the server (in-memory map keyed by user id, regenerated on
-`GET /api/starbase/shop`, slot cleared on purchase under USER_INVENTORY_LOCK) and stop trusting
-the cookie for offers.
+Grant admin rights explicitly (DB flag or environment variable), reserve the admin names at
+registration, and do not seed `a`/`a` outside development and test.
 
 ### Related Files
 
-- `src/app/api/starbase/shop/route.ts` — generates the offers
-- `src/app/api/starbase/buy/route.ts` — consumes them
-- `src/lib/server/session.ts` — `SessionData.starbaseShop`
+- `src/shared/adminAccess.ts` — single place of the check
+- `src/lib/server/seedData.ts` — seeds user `a`
+- `src/lib/server/user/usernameValidation.ts` — registration rules
 
 ## Minor Balance Change: Multiplicative Accuracy Refactor (Task 1.1)
 
