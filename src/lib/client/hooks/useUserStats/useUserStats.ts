@@ -58,12 +58,12 @@ interface UseUserStatsReturn {
 }
 
 export const useUserStats = (pollInterval: number = 5000): UseUserStatsReturn => {
-  const [ironData, setIronData] = useState<IronData>({
+  const [ironData, setIronData] = useState<IronData>(() => ({
     serverAmount: 0,
     ironPerSecond: 0,
     lastUpdateTime: Date.now(),
     maxCapacity: 5000 // Default to base capacity
-  });
+  }));
   const [displayIronAmount, setDisplayIronAmount] = useState<number>(0);
   const [xpData, setXpData] = useState({ xp: 0, level: 1, xpForNextLevel: 1000, score: 0 });
   const [currentTimeMultiplier, setCurrentTimeMultiplier] = useState<number>(1);
@@ -77,83 +77,86 @@ export const useUserStats = (pollInterval: number = 5000): UseUserStatsReturn =>
   // Use ref to track if display interval is already started
   const displayIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  const fetchUserStats = useCallback(async (retryCount: number = 0) => {
-    try {
-      setError(null);
-      const result = await userStatsService.getUserStats();
-      
-      if (!isMountedRef.current) return; // Component unmounted
-      
-      if ('error' in result) {
-        // Check if we should retry
-        const retryDecision = shouldRetryFetch(result.error, retryCount, DEFAULT_RETRY_CONFIG);
+  const fetchUserStats = useCallback((initialRetryCount: number = 0) => {
+    const attempt = async (retryCount: number): Promise<void> => {
+      try {
+        setError(null);
+        const result = await userStatsService.getUserStats();
         
-        if (retryDecision.shouldRetry) {
-          console.log(`Retrying user-stats fetch (attempt ${retryDecision.nextRetryCount}/${DEFAULT_RETRY_CONFIG.maxRetries})...`);
-          scheduleRetry(() => fetchUserStats(retryDecision.nextRetryCount), DEFAULT_RETRY_CONFIG.retryDelay);
+        if (!isMountedRef.current) return; // Component unmounted
+        
+        if ('error' in result) {
+          // Check if we should retry
+          const retryDecision = shouldRetryFetch(result.error, retryCount, DEFAULT_RETRY_CONFIG);
+          
+          if (retryDecision.shouldRetry) {
+            console.log(`Retrying user-stats fetch (attempt ${retryDecision.nextRetryCount}/${DEFAULT_RETRY_CONFIG.maxRetries})...`);
+            scheduleRetry(() => attempt(retryDecision.nextRetryCount), DEFAULT_RETRY_CONFIG.retryDelay);
+            return;
+          }
+          
+          setError(result.error);
+          setIsLoading(false);
           return;
         }
         
-        setError(result.error);
-        setIsLoading(false);
-        return;
-      }
-      
-      // Update server data
-      const newData: IronData = {
-        serverAmount: result.iron,
-        ironPerSecond: result.ironPerSecond,
-        lastUpdateTime: Date.now(),
-        maxCapacity: result.maxIronCapacity
-      };
-      
-      // Store time multiplier in module-level state for other hooks to use
-      const multiplier = result.timeMultiplier ?? 1;
-      setTimeMultiplier(multiplier);
-      setCurrentTimeMultiplier(multiplier);
-      
-      setIronData(newData);
-      setDisplayIronAmount(Math.floor(result.iron));
-      setXpData({
-        xp: result.xp,
-        level: result.level,
-        xpForNextLevel: result.xpForNextLevel,
-        score: result.score ?? 0
-      });
-      const repairRate = result.repairRate ?? DEFAULT_DEFENSE_REGEN_RATE;
-      setBonusData({
-        levelMultiplier: result.levelMultiplier ?? 1.0,
-        ironRechargeRate: result.ironPerSecond ?? 1.0,
-        ironStorageCapacity: result.maxIronCapacity ?? 5000,
-        maxShipSpeed: result.maxShipSpeed ?? 0,
-        currentMaxShipSpeed: result.currentMaxShipSpeed ?? 0,
-        repairRate,
-        shieldRechargeRate: result.shieldRechargeRate ?? DEFAULT_DEFENSE_REGEN_RATE,
-        projectileWeaponDamageFactor: result.projectileWeaponDamageFactor ?? 1.0,
-        projectileWeaponReloadFactor: result.projectileWeaponReloadFactor ?? 1.0,
-        projectileWeaponAccuracyFactor: result.projectileWeaponAccuracyFactor ?? 1.0,
-        energyWeaponDamageFactor: result.energyWeaponDamageFactor ?? 1.0,
-        energyWeaponReloadFactor: result.energyWeaponReloadFactor ?? 1.0,
-        energyWeaponAccuracyFactor: result.energyWeaponAccuracyFactor ?? 1.0,
-        constructionSpeedFactor: result.constructionSpeedFactor ?? 1.0,
-        researchSpeedFactor: result.researchSpeedFactor ?? 1.0,
-      });
-      setIsLoading(false);
-    } catch (err) {
-      if (isMountedRef.current) {
-        // Check if we should retry on exception
-        const retryDecision = shouldRetryFetch('Network error', retryCount, DEFAULT_RETRY_CONFIG);
+        // Update server data
+        const newData: IronData = {
+          serverAmount: result.iron,
+          ironPerSecond: result.ironPerSecond,
+          lastUpdateTime: Date.now(),
+          maxCapacity: result.maxIronCapacity
+        };
         
-        if (retryDecision.shouldRetry) {
-          console.log(`Retrying user-stats fetch (attempt ${retryDecision.nextRetryCount}/${DEFAULT_RETRY_CONFIG.maxRetries})...`);
-          scheduleRetry(() => fetchUserStats(retryDecision.nextRetryCount), DEFAULT_RETRY_CONFIG.retryDelay);
-          return;
+        // Store time multiplier in module-level state for other hooks to use
+        const multiplier = result.timeMultiplier ?? 1;
+        setTimeMultiplier(multiplier);
+        setCurrentTimeMultiplier(multiplier);
+        
+        setIronData(newData);
+        setDisplayIronAmount(Math.floor(result.iron));
+        setXpData({
+          xp: result.xp,
+          level: result.level,
+          xpForNextLevel: result.xpForNextLevel,
+          score: result.score ?? 0
+        });
+        const repairRate = result.repairRate ?? DEFAULT_DEFENSE_REGEN_RATE;
+        setBonusData({
+          levelMultiplier: result.levelMultiplier ?? 1.0,
+          ironRechargeRate: result.ironPerSecond ?? 1.0,
+          ironStorageCapacity: result.maxIronCapacity ?? 5000,
+          maxShipSpeed: result.maxShipSpeed ?? 0,
+          currentMaxShipSpeed: result.currentMaxShipSpeed ?? 0,
+          repairRate,
+          shieldRechargeRate: result.shieldRechargeRate ?? DEFAULT_DEFENSE_REGEN_RATE,
+          projectileWeaponDamageFactor: result.projectileWeaponDamageFactor ?? 1.0,
+          projectileWeaponReloadFactor: result.projectileWeaponReloadFactor ?? 1.0,
+          projectileWeaponAccuracyFactor: result.projectileWeaponAccuracyFactor ?? 1.0,
+          energyWeaponDamageFactor: result.energyWeaponDamageFactor ?? 1.0,
+          energyWeaponReloadFactor: result.energyWeaponReloadFactor ?? 1.0,
+          energyWeaponAccuracyFactor: result.energyWeaponAccuracyFactor ?? 1.0,
+          constructionSpeedFactor: result.constructionSpeedFactor ?? 1.0,
+          researchSpeedFactor: result.researchSpeedFactor ?? 1.0,
+        });
+        setIsLoading(false);
+      } catch (err) {
+        if (isMountedRef.current) {
+          // Check if we should retry on exception
+          const retryDecision = shouldRetryFetch('Network error', retryCount, DEFAULT_RETRY_CONFIG);
+          
+          if (retryDecision.shouldRetry) {
+            console.log(`Retrying user-stats fetch (attempt ${retryDecision.nextRetryCount}/${DEFAULT_RETRY_CONFIG.maxRetries})...`);
+            scheduleRetry(() => attempt(retryDecision.nextRetryCount), DEFAULT_RETRY_CONFIG.retryDelay);
+            return;
+          }
+          
+          setError('Failed to fetch iron amount: ' + (err as Error).message);
+          setIsLoading(false);
         }
-        
-        setError('Failed to fetch iron amount: ' + (err as Error).message);
-        setIsLoading(false);
       }
-    }
+    };
+    return attempt(initialRetryCount);
   }, []); // Empty dependency array since fetchUserStats doesn't depend on any changing values
 
   // Update displayed iron amount based on time elapsed and iron per second

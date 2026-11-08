@@ -82,7 +82,7 @@ async function getTableCount(db: Pool, tableName: string): Promise<number> {
 /**
  * Format a value for display
  */
-function formatValue(value: any, maxLength: number = 100): string {
+function formatValue(value: unknown, maxLength: number = 100): string {
   if (value === null || value === undefined) {
     return '<span class="null">NULL</span>';
   }
@@ -95,8 +95,7 @@ function formatValue(value: any, maxLength: number = 100): string {
     return `<span class="number">${value}</span>`;
   }
   
-  let str = String(value);
-  const originalStr = str;
+  const str = String(value);
   
   // Try to parse as JSON for pretty printing
   if (str.startsWith('{') || str.startsWith('[')) {
@@ -113,7 +112,7 @@ function formatValue(value: any, maxLength: number = 100): string {
       } else {
         return `<pre class="json">${escapeHtml(prettyJson)}</pre>`;
       }
-    } catch (e) {
+    } catch {
       // Not valid JSON, continue with string handling
     }
   }
@@ -121,7 +120,7 @@ function formatValue(value: any, maxLength: number = 100): string {
   // Handle long strings
   if (str.length > maxLength) {
     const truncated = str.substring(0, maxLength) + '...';
-    const fullContent = escapeHtml(originalStr);
+    const fullContent = escapeHtml(str);
     const truncatedContent = escapeHtml(truncated);
     return `<span class="string expandable" onclick="showModal('${escapeForAttribute(fullContent)}')" title="Click to view full content">${truncatedContent}</span>`;
   }

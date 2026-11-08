@@ -79,14 +79,17 @@ const FactoryPageClient: React.FC<FactoryPageClientProps> = ({ auth }) => {
   }, []);
 
   const scheduleLongPressStep = useCallback((key: string, delta: number) => {
-    const startedAt = longPressStartedAtRef.current;
-    if (startedAt === null) return;
+    const step = () => {
+      const startedAt = longPressStartedAtRef.current;
+      if (startedAt === null) return;
 
-    const elapsedMs = Date.now() - startedAt;
-    longPressTimeoutRef.current = setTimeout(() => {
-      changeBuildCount(key, delta);
-      scheduleLongPressStep(key, delta);
-    }, getLongPressRepeatDelayMs(elapsedMs));
+      const elapsedMs = Date.now() - startedAt;
+      longPressTimeoutRef.current = setTimeout(() => {
+        changeBuildCount(key, delta);
+        step();
+      }, getLongPressRepeatDelayMs(elapsedMs));
+    };
+    step();
   }, [changeBuildCount]);
 
   const startLongPress = useCallback((key: string, delta: number) => {

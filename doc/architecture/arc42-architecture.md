@@ -33,7 +33,7 @@ Status: Work in Progress
 > **[doc/functional-requirements.md](../functional-requirements.md)**.
 > The arc42 sections below summarise the most architecturally relevant aspects only.
 
-Spacewars Ironstrike is a 2D space exploration game built with Next.js 15, TypeScript, and React. Players navigate space, collect resources, upgrade their ships through a technology tree, and engage in battles.
+Spacewars Ironstrike is a 2D space exploration game built with Next.js 16, TypeScript, and React. Players navigate space, collect resources, upgrade their ships through a technology tree, and engage in battles.
 
 **Key Features:**
 
@@ -69,7 +69,7 @@ Spacewars Ironstrike is a 2D space exploration game built with Next.js 15, TypeS
 
 ### 2.1 Technical Constraints
 
-- **Platform:** Next.js 15 with App Router
+- **Platform:** Next.js 16 with App Router
 - **Language:** TypeScript (strict mode)
 - **Database:** PostgreSQL (relational, ACID-compliant)
 - **Lock System:** IronGuard TypeScript Locks for compile-time deadlock prevention
@@ -126,7 +126,7 @@ graph TB
 
 | Layer          | Technology            | Purpose             |
 | -------------- | --------------------- | ------------------- |
-| Frontend       | React 19 + Next.js 15 | UI framework        |
+| Frontend       | React 19 + Next.js 16 | UI framework        |
 | Backend        | Next.js API Routes    | RESTful endpoints   |
 | Database       | PostgreSQL            | Persistent storage  |
 | Internationalization | next-intl        | UI and server-side localization |
@@ -771,7 +771,7 @@ Only `RadarRenderer` needs the safe-area offset because it is the only renderer 
 - `next.config.ts` enables `next-intl` through `createNextIntlPlugin("./src/i18n/request.ts")`.
 - `src/i18n/routing.ts` defines the supported locales `en` and `de` with `localePrefix: 'never'`.
 - `src/i18n/request.ts` resolves the active locale from the `NEXT_LOCALE` cookie, loads `src/locales/{locale}.json`, and `src/app/layout.tsx` injects the messages via `NextIntlClientProvider`.
-- `src/middleware.ts` intentionally stays pass-through because locale resolution is cookie-based; route rewriting would require locale-segmented routes that this app does not use.
+- The app defines no Next.js proxy (formerly middleware): locale resolution is cookie-based, and next-intl's proxy-based routing would require locale-segmented routes that this app does not use.
 - `src/components/Navigation/LocaleSwitcher.tsx` and `src/app/profile/ProfilePageClient.tsx` expose the language switcher in the Profile page.
 - `POST /api/set-locale` updates the `NEXT_LOCALE` cookie and persists the authenticated player's `preferred_locale` in the `users` table.
 - `src/lib/server/i18n/serverTranslations.ts` provides locale-aware translations for API routes and server-side services such as harvest messages, battle messages, build completions, and message summaries.

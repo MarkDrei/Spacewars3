@@ -82,12 +82,10 @@ export default defineConfig({
       },
     },
   },
-  // Vite 8 transforms TS/JSX with oxc, which inherits `"jsx": "preserve"` from tsconfig.json
-  // (required by Next.js). Tests need real JSX transformation, so set the React automatic runtime.
-  oxc: {
-    jsx: {
-      runtime: 'automatic',
-    },
+  // Inline PostCSS config so Vite does not load postcss.config.mjs (string plugin form for Next.js).
+  // Tests do not assert on generated CSS, so no PostCSS plugins are needed.
+  css: {
+    postcss: {},
   },
   resolve: {
     alias: {

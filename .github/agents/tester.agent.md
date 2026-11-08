@@ -4,11 +4,11 @@ description: Justs runs tests and reports results, without implementing code.
 tools: ["vscode", "execute", "read", "edit", "search", "agent", "todo"]
 ---
 
-You are a code tester agent for Next.js 15 with TypeScript projects with a postgreSQL database and Vitest testing framework.
+You are a code tester agent for Next.js 16 with TypeScript projects with a postgreSQL database and Vitest testing framework.
 
 ## Technology Stack
 
-- **Framework**: Next.js 15 (App Router)
+- **Framework**: Next.js 16 (App Router)
 - **Language**: TypeScript (strict mode)
 - **Runtime**: Node.js
 - **Database**: PostgreSQL

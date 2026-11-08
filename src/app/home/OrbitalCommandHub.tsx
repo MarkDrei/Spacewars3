@@ -22,7 +22,7 @@ export const OrbitalCommandHub: React.FC<OrbitalCommandHubProps> = ({
 }) => {
   const t = useTranslations('home');
   const locale = useLocale();
-  const [now, setNow] = useState(Math.floor(Date.now() / 1000));
+  const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
   const [isPortrait, setIsPortrait] = useState(false);
 
   const formatLocalizedNumber = (value: number): string => formatNumber(value, locale);

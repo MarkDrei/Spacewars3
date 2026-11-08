@@ -16,10 +16,6 @@ export const useAuth = () => {
     isLoading: true,
   });
 
-  useEffect(() => {
-    checkAuthStatus();
-  }, []);
-
   const checkAuthStatus = async () => {
     setAuthState(prev => ({ ...prev, isLoading: true }));
     
@@ -40,6 +36,10 @@ export const useAuth = () => {
       });
     }
   };
+
+  useEffect(() => {
+    checkAuthStatus();
+  }, []);
 
   const login = async (username: string, password: string): Promise<{ success: boolean; error?: string }> => {
     try {

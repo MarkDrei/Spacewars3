@@ -4,9 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build --webpack",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint .",
     "test": "vitest run",
     "test:ci": "vitest run",
     "test:local": "docker compose up --wait db && vitest run",
@@ -38,7 +38,7 @@
     "@types/react-dom": "^19",
     "bcrypt": "^6.0.0",
     "iron-session": "^9.0.1",
-    "next": "^15.4.6",
+    "next": "^16.4.5",
     "next-intl": "^4.9.1",
     "nodemailer": "^10.4.0",
     "pg": "^8.13.1",
@@ -48,7 +48,6 @@
     "typescript": "^5"
   },
   "devDependencies": {
-    "@eslint/eslintrc": "^3",
     "@playwright/test": "^1.58.2",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^7.0.1",
@@ -56,8 +55,8 @@
     "@testing-library/user-event": "^14.6.1",
     "@vitest/coverage-v8": "^5.1.0",
     "@vitest/ui": "^5.1.0",
-    "eslint": "^9",
-    "eslint-config-next": "15.5.29",
+    "eslint": "^10.14.0",
+    "eslint-config-next": "16.4.5",
     "jsdom": "^31.0.0",
     "tsx": "^4.21.0",
     "vitest": "^5.1.0"

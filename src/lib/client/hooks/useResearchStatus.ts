@@ -16,53 +16,59 @@ export const useResearchStatus = (pollInterval: number = 5000): UseResearchStatu
   const isMountedRef = useRef<boolean>(true);
   const pollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const fetchTechTree = useCallback(async (retryCount: number = 0) => {
-    try {
-      setError(null);
-      const result = await researchService.getTechTree();
-      
-      if (!isMountedRef.current) return;
+  const fetchTechTree = useCallback((initialRetryCount: number = 0) => {
+    const attempt = async (retryCount: number): Promise<void> => {
+      try {
+        setError(null);
+        const result = await researchService.getTechTree();
+        
+        if (!isMountedRef.current) return;
 
-      if ('error' in result) {
+        if ('error' in result) {
+          if (retryCount < 3) {
+            console.log(`Retrying tech tree fetch (attempt ${retryCount + 1}/3)...`);
+            setTimeout(() => attempt(retryCount + 1), 2000);
+            return;
+          }
+          setError(result.error);
+          setTechTree(null);
+        } else {
+          setTechTree(result.techTree);
+          setError(null);
+        }
+        
+        setIsLoading(false);
+        
+      } catch (error) {
+        console.error('Network error during getTechTree:', error);
+        if (!isMountedRef.current) return;
+        
         if (retryCount < 3) {
           console.log(`Retrying tech tree fetch (attempt ${retryCount + 1}/3)...`);
-          setTimeout(() => fetchTechTree(retryCount + 1), 2000);
+          setTimeout(() => attempt(retryCount + 1), 2000);
           return;
         }
-        setError(result.error);
+        
+        setError('Failed to fetch research status');
         setTechTree(null);
-      } else {
-        setTechTree(result.techTree);
-        setError(null);
+        setIsLoading(false);
       }
-      
-      setIsLoading(false);
-      
-    } catch (error) {
-      console.error('Network error during getTechTree:', error);
-      if (!isMountedRef.current) return;
-      
-      if (retryCount < 3) {
-        console.log(`Retrying tech tree fetch (attempt ${retryCount + 1}/3)...`);
-        setTimeout(() => fetchTechTree(retryCount + 1), 2000);
-        return;
-      }
-      
-      setError('Failed to fetch research status');
-      setTechTree(null);
-      setIsLoading(false);
-    }
+    };
+    return attempt(initialRetryCount);
   }, []); // Empty dependency array since it doesn't depend on changing values
 
   const startPolling = useCallback(() => {
-    if (!isMountedRef.current) return;
-    
-    pollTimeoutRef.current = setTimeout(() => {
-      if (isMountedRef.current) {
-        fetchTechTree();
-        startPolling(); // Schedule next poll
-      }
-    }, pollInterval);
+    const scheduleNextPoll = () => {
+      if (!isMountedRef.current) return;
+
+      pollTimeoutRef.current = setTimeout(() => {
+        if (isMountedRef.current) {
+          fetchTechTree();
+          scheduleNextPoll();
+        }
+      }, pollInterval);
+    };
+    scheduleNextPoll();
   }, [pollInterval, fetchTechTree]);
 
   const refetch = () => {

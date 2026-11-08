@@ -56,69 +56,72 @@ export const useWorldData = (pollInterval: number = 3000): UseWorldDataReturn =>
     };
   }, []);
 
-  const fetchWorldData = useCallback(async (retryCount: number = 0) => {
-    try {
-      setError(null);
-      const result = await worldDataService.getWorldData();
-      
-      if (!isMountedRef.current) return;
-      
-      if (!result.success) {
-        if (result.error.includes('Network error') && retryCount < 3) {
-          console.log(`Retrying world data fetch (attempt ${retryCount + 1}/3)...`);
-          setTimeout(() => fetchWorldData(retryCount + 1), 2000);
+  const fetchWorldData = useCallback((initialRetryCount: number = 0) => {
+    const attempt = async (retryCount: number): Promise<void> => {
+      try {
+        setError(null);
+        const result = await worldDataService.getWorldData();
+        
+        if (!isMountedRef.current) return;
+        
+        if (!result.success) {
+          if (result.error.includes('Network error') && retryCount < 3) {
+            console.log(`Retrying world data fetch (attempt ${retryCount + 1}/3)...`);
+            setTimeout(() => attempt(retryCount + 1), 2000);
+            return;
+          }
+          setError(result.error);
+          setIsLoading(false);
           return;
         }
-        setError(result.error);
+        
+        // Apply time correction to server data to account for network latency and clock drift
+        // This ensures the positions are accurate for the current moment.
+        // NPC ships are excluded — they use renderer-side orbit interpolation.
+        const allObjects = result.data.data.spaceObjects;
+        const npcObjects = allObjects.filter(obj => obj.type === 'npc_ship');
+        const nonNpcObjects = allObjects.filter(obj => obj.type !== 'npc_ship');
+        const correctedNonNpc = updateAllObjectPositionsWithTimeCorrection(
+          nonNpcObjects,
+          Date.now(),
+          result.data.responseReceivedAt,
+          result.data.roundTripTime,
+          result.data.data.worldSize,
+          50,
+          getTimeMultiplier()
+        );
+        
+        // Extract timing information and merge with corrected world data
+        const worldDataWithTiming: WorldDataState = {
+          ...result.data.data,
+          spaceObjects: [...correctedNonNpc, ...npcObjects],
+          responseReceivedAt: result.data.responseReceivedAt,
+          roundTripTime: result.data.roundTripTime
+        };
+        
+        setWorldData(worldDataWithTiming);
+        setLastUpdateTime(result.data.responseReceivedAt);
         setIsLoading(false);
-        return;
-      }
-      
-      // Apply time correction to server data to account for network latency and clock drift
-      // This ensures the positions are accurate for the current moment.
-      // NPC ships are excluded — they use renderer-side orbit interpolation.
-      const allObjects = result.data.data.spaceObjects;
-      const npcObjects = allObjects.filter(obj => obj.type === 'npc_ship');
-      const nonNpcObjects = allObjects.filter(obj => obj.type !== 'npc_ship');
-      const correctedNonNpc = updateAllObjectPositionsWithTimeCorrection(
-        nonNpcObjects,
-        Date.now(),
-        result.data.responseReceivedAt,
-        result.data.roundTripTime,
-        result.data.data.worldSize,
-        50,
-        getTimeMultiplier()
-      );
-      
-      // Extract timing information and merge with corrected world data
-      const worldDataWithTiming: WorldDataState = {
-        ...result.data.data,
-        spaceObjects: [...correctedNonNpc, ...npcObjects],
-        responseReceivedAt: result.data.responseReceivedAt,
-        roundTripTime: result.data.roundTripTime
-      };
-      
-      setWorldData(worldDataWithTiming);
-      setLastUpdateTime(result.data.responseReceivedAt);
-      setIsLoading(false);
-      
-      // console.log('🌍 World data updated:', {
-      //   objects: correctedObjects.length,
-      //   worldSize: result.data.data.worldSize,
-      //   receivedAt: new Date().toISOString(),
-      //   roundTripTime: result.data.roundTripTime
-      // });
-    } catch {
-      if (isMountedRef.current) {
-        if (retryCount < 3) {
-          console.log(`Retrying world data fetch (attempt ${retryCount + 1}/3)...`);
-          setTimeout(() => fetchWorldData(retryCount + 1), 2000);
-          return;
+        
+        // console.log('🌍 World data updated:', {
+        //   objects: correctedObjects.length,
+        //   worldSize: result.data.data.worldSize,
+        //   receivedAt: new Date().toISOString(),
+        //   roundTripTime: result.data.roundTripTime
+        // });
+      } catch {
+        if (isMountedRef.current) {
+          if (retryCount < 3) {
+            console.log(`Retrying world data fetch (attempt ${retryCount + 1}/3)...`);
+            setTimeout(() => attempt(retryCount + 1), 2000);
+            return;
+          }
+          setError('Failed to fetch world data');
+          setIsLoading(false);
         }
-        setError('Failed to fetch world data');
-        setIsLoading(false);
       }
-    }
+    };
+    return attempt(initialRetryCount);
   }, []);
 
   // Set up optimistic updates for smooth animation between server updates

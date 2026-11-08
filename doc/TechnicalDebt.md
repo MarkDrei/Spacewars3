@@ -1,41 +1,79 @@
 # Technical Debt
 
-## Pending Major Upgrades: Next.js 16, ESLint 10, TypeScript 7
+## PWA Service Worker Requires Webpack Build
 
 **Priority**: Medium
 **Added**: 2026-11-08
-**Component**: `package.json`, `eslint.config.mjs`, `next.config.ts`
+**Component**: `package.json` (`build` script), `next.config.ts`
 
 ### Context
 
-The dependency refresh on 2026-11-08 (Node 24, Vitest 5, iron-session 9, nodemailer 10, jsdom 31, …)
-deliberately left these majors out because each is a migration, not a drop-in update:
-
-- **next 15.5 → 16** and **eslint-config-next 15 → 16**: `npm run lint` uses `next lint`, which prints
-  "`next lint` is deprecated and will be removed in Next.js 16". Linting has to move to the ESLint CLI
-  first. The PWA plugin (`@ducanh2912/next-pwa`) and `src/middleware.ts` must be verified against Next 16.
-- **eslint 9 → 10**: npm marks `eslint@9.39.5` as "no longer supported". `eslint.config.mjs` uses
-  `FlatCompat` from `@eslint/eslintrc` to load `next/core-web-vitals`; best done together with
-  `eslint-config-next@16` (native flat config).
-- **typescript 5.9 → 7**: TypeScript 7 is the native (Go) compiler; the Next.js 15 TypeScript plugin
-  and build pipeline target the TS 5 API.
+Next.js 16 builds with Turbopack by default. `@ducanh2912/next-pwa` (10.2.9, latest) is a webpack plugin:
+with Turbopack the build succeeds but silently produces no `public/sw.js`. The `build` script therefore
+runs `next build --webpack`. `next dev` uses Turbopack; PWA is disabled in development anyway.
 
 ### Consequences
 
-Lint runs on an ESLint major that no longer gets fixes, and the `next lint` deprecation warning
-appears in every CI run.
+Production builds do not benefit from Turbopack build speed, and the PWA depends on Next.js keeping
+webpack builds available.
 
 ### Proper Solution
 
-One dedicated branch: migrate `npm run lint` to `eslint .`, then upgrade next + eslint-config-next to 16
-and eslint to 10 together, run `npm run ci` and check the preview deploy (PWA service worker, middleware,
-i18n routing). Evaluate TypeScript 7 once Next.js documents support for it.
+Migrate the service worker to a Turbopack-compatible solution (e.g. Serwist), verify `public/sw.js`
+generation and offline behaviour on a preview deploy, then drop `--webpack`.
 
 ### Related Files
 
-- `package.json` — `lint` script, versions
-- `eslint.config.mjs` — FlatCompat-based ESLint config
-- `next.config.ts` — next-pwa / next-intl plugins
+- `package.json` — `build` script
+- `next.config.ts` — `withPWA` wrapper
+
+## React Compiler Lint Rule `set-state-in-effect` Downgraded to Warning
+
+**Priority**: Low
+**Added**: 2026-11-08
+**Component**: Client hooks and page components (`src/lib/client/hooks/`, `src/app/**/**Client.tsx`, `src/components/Inventory/`)
+
+### Context
+
+`eslint-config-next@16` ships `eslint-plugin-react-hooks@7` with React Compiler rules. The
+`react-hooks/purity` and `react-hooks/immutability` findings were fixed during the upgrade.
+`react-hooks/set-state-in-effect` reports 19 places that call `setState` synchronously inside an effect
+(fetch-on-mount helpers that set loading state, media-query sync, state derived from props/cache).
+The rule is set to `warn` in `eslint.config.mjs`.
+
+### Consequences
+
+Extra renders on mount/updates; code is not React-Compiler friendly yet. Warnings show up in every lint run.
+
+### Proper Solution
+
+Per component: derive state during render instead of syncing it, use `useSyncExternalStore` for
+media queries/shared caches, and move fetch-start state changes into the async callbacks. Then set the
+rule back to `error`.
+
+### Related Files
+
+- `eslint.config.mjs` — rule override
+- Output of `npm run lint` — current list of locations
+
+## Pending Major Upgrade: TypeScript 7
+
+**Priority**: Low
+**Added**: 2026-11-08
+**Component**: `package.json`
+
+### Context
+
+TypeScript 7 is the native (Go) compiler. Not yet evaluated against Next.js 16 build, Vitest and
+typescript-eslint.
+
+### Proper Solution
+
+Upgrade on a branch, run `npm run ci` and a preview deploy.
+
+### Related Files
+
+- `package.json` — `typescript` version
 
 ## Minor Balance Change: Multiplicative Accuracy Refactor (Task 1.1)
 

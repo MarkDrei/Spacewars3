@@ -188,7 +188,7 @@ export const useDefenseValues = (pollInterval: number = 2000): UseDefenseValuesR
   // Interpolated values displayed to user (updated multiple times per second)
   const [displayDefenseValues, setDisplayDefenseValues] = useState<DefenseValues | null>(null);
   const [recoveryTimers, setRecoveryTimers] = useState<DefenseRecoveryTimers | null>(null);
-  const [lastServerUpdate, setLastServerUpdate] = useState<number>(Date.now());
+  const [lastServerUpdate, setLastServerUpdate] = useState<number>(() => Date.now());
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [shipPictureId, setShipPictureId] = useState<number | null>(null);
@@ -197,46 +197,49 @@ export const useDefenseValues = (pollInterval: number = 2000): UseDefenseValuesR
   const isMountedRef = useRef<boolean>(true);
   const interpolationIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  const fetchDefenseValues = useCallback(async (retryCount: number = 0) => {
-    try {
-      setError(null);
-      const result = await getShipStats();
-      
-      if (!isMountedRef.current) return; // Component unmounted
-      
-      if ('error' in result) {
-        // If it's a connection error and we haven't retried too much, retry
-        if (result.error.includes('Network error') && retryCount < 3) {
-          console.log(`Retrying defense values fetch (attempt ${retryCount + 1}/3)...`);
-          setTimeout(() => fetchDefenseValues(retryCount + 1), 2000); // Retry after 2 seconds
+  const fetchDefenseValues = useCallback((initialRetryCount: number = 0) => {
+    const attempt = async (retryCount: number): Promise<void> => {
+      try {
+        setError(null);
+        const result = await getShipStats();
+        
+        if (!isMountedRef.current) return; // Component unmounted
+        
+        if ('error' in result) {
+          // If it's a connection error and we haven't retried too much, retry
+          if (result.error.includes('Network error') && retryCount < 3) {
+            console.log(`Retrying defense values fetch (attempt ${retryCount + 1}/3)...`);
+            setTimeout(() => attempt(retryCount + 1), 2000); // Retry after 2 seconds
+            return;
+          }
+          setError(result.error);
+          setIsLoading(false);
           return;
         }
-        setError(result.error);
-        setIsLoading(false);
-        return;
-      }
-      
-      // Update server defense values and timestamp
-      setServerDefenseValues(result.defenseValues);
-      setDisplayDefenseValues(result.defenseValues);
-      setRecoveryTimers(calculateDefenseRecoveryTimers(result.defenseValues, 0, getTimeMultiplier()));
-      setLastServerUpdate(Date.now());
-      if (result.shipPictureId !== undefined) {
-        setShipPictureId(result.shipPictureId);
-      }
-      setIsLoading(false);
-    } catch {
-      if (isMountedRef.current) {
-        // If it's initial load and we haven't retried much, retry
-        if (retryCount < 3) {
-          console.log(`Retrying defense values fetch (attempt ${retryCount + 1}/3)...`);
-          setTimeout(() => fetchDefenseValues(retryCount + 1), 2000); // Retry after 2 seconds
-          return;
+        
+        // Update server defense values and timestamp
+        setServerDefenseValues(result.defenseValues);
+        setDisplayDefenseValues(result.defenseValues);
+        setRecoveryTimers(calculateDefenseRecoveryTimers(result.defenseValues, 0, getTimeMultiplier()));
+        setLastServerUpdate(Date.now());
+        if (result.shipPictureId !== undefined) {
+          setShipPictureId(result.shipPictureId);
         }
-        setError('Failed to fetch defense values');
         setIsLoading(false);
+      } catch {
+        if (isMountedRef.current) {
+          // If it's initial load and we haven't retried much, retry
+          if (retryCount < 3) {
+            console.log(`Retrying defense values fetch (attempt ${retryCount + 1}/3)...`);
+            setTimeout(() => attempt(retryCount + 1), 2000); // Retry after 2 seconds
+            return;
+          }
+          setError('Failed to fetch defense values');
+          setIsLoading(false);
+        }
       }
-    }
+    };
+    return attempt(initialRetryCount);
   }, []); // Empty dependency array since fetchDefenseValues doesn't depend on any changing values
 
   // Interpolation function to smoothly update display values between server polls

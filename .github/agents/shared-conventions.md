@@ -105,7 +105,7 @@ All TypeScript code in this project follows these standards:
 - Use **const assertions** for literal types
 - Use **utility types** (`Partial`, `Pick`, `Omit`, `Record`, etc.)
 
-### Next.js 15 Conventions
+### Next.js 16 Conventions
 
 - **App Router** for all routing (`src/app/` directory)
 - **Server Components** by default, use `'use client'` only when needed

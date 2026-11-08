@@ -551,6 +551,26 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
     }
   }, [afterburnerStatus?.isActive]);
 
+  const updateInputFieldsFromShip = (navigation?: Pick<NavigateResponse, 'angle' | 'speed'>) => {
+    if (navigation) {
+      if (typeof navigation.angle === 'number') {
+        setAngleInput(navigation.angle.toFixed(1));
+      }
+      if (typeof navigation.speed === 'number') {
+        setSpeedInput(navigation.speed.toFixed(1));
+      }
+      return;
+    }
+
+    if (gameInstanceRef.current) {
+      const ship = gameInstanceRef.current.getWorld().getShip();
+      if (ship) {
+        setAngleInput(ship.getAngleDegrees().toFixed(1));
+        setSpeedInput(ship.getSpeed().toFixed(1));
+      }
+    }
+  };
+
   // Update game world when server data changes
   useEffect(() => {
     if (worldData && gameInstanceRef.current && auth.shipId) {
@@ -583,25 +603,6 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
     }
   }, [worldData, auth.shipId, angleInput, speedInput]);
 
-  const updateInputFieldsFromShip = (navigation?: Pick<NavigateResponse, 'angle' | 'speed'>) => {
-    if (navigation) {
-      if (typeof navigation.angle === 'number') {
-        setAngleInput(navigation.angle.toFixed(1));
-      }
-      if (typeof navigation.speed === 'number') {
-        setSpeedInput(navigation.speed.toFixed(1));
-      }
-      return;
-    }
-
-    if (gameInstanceRef.current) {
-      const ship = gameInstanceRef.current.getWorld().getShip();
-      if (ship) {
-        setAngleInput(ship.getAngleDegrees().toFixed(1));
-        setSpeedInput(ship.getSpeed().toFixed(1));
-      }
-    }
-  };
 
   const handleSpeedSliderChange = (rawValue: string) => {
     const parsedPosition = parseFloat(rawValue);

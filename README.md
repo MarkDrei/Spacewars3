@@ -19,7 +19,7 @@ Spacewars is a browser-based game where players navigate a spaceship in a 2D tor
 
 ## Technical Stack
 
-- **Framework**: Next.js 15 (App Router)
+- **Framework**: Next.js 16 (App Router)
 - **Frontend**: TypeScript, React, HTML5 Canvas
 - **Backend**: Next.js API Routes, PostgreSQL, bcrypt authentication
 - **Session Management**: iron-session with HTTP-only cookies
