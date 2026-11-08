@@ -82,6 +82,13 @@ export default defineConfig({
       },
     },
   },
+  // Vite 8 transforms TS/JSX with oxc, which inherits `"jsx": "preserve"` from tsconfig.json
+  // (required by Next.js). Tests need real JSX transformation, so set the React automatic runtime.
+  oxc: {
+    jsx: {
+      runtime: 'automatic',
+    },
+  },
   resolve: {
     alias: {
       '@': resolve(__dirname, './src'),
