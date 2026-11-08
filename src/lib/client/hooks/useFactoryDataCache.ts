@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useSyncExternalStore } from 'react';
 import { factoryService, BuildQueueItem, WeaponSpec, DefenseSpec, TechCounts } from '../services/factoryService';
+import { createSharedPoller } from '../polling/sharedPoller';
 
 interface FactoryDataCache {
   buildQueue: BuildQueueItem[];
@@ -35,6 +36,7 @@ export const resetFactoryDataCache = () => {
   cacheSubscribers.clear();
   isCurrentlyFetching = false;
   fetchPromise = null;
+  factoryPoller.reset();
 };
 
 const setCacheState = (next: FactoryCacheState) => {
@@ -141,6 +143,10 @@ const refreshFactoryCache = async (): Promise<void> => {
   }
 };
 
+const factoryPoller = createSharedPoller(() => {
+  void refreshFactoryCache();
+});
+
 export const useFactoryDataCache = (pollInterval: number = 5000): UseFactoryDataCacheReturn => {
   // Auth is guaranteed by server component, so we assume authenticated
   const { data, error } = useSyncExternalStore(subscribeToCache, getCacheSnapshot, getServerCacheSnapshot);
@@ -155,11 +161,12 @@ export const useFactoryDataCache = (pollInterval: number = 5000): UseFactoryData
       void refreshFactoryCache();
     }
 
-    const interval = setInterval(refreshFactoryCache, pollInterval);
+    // One poll loop for all hook instances (build queue, tech counts), paused while hidden
+    const unregister = factoryPoller.register(pollInterval);
 
     return () => {
       isMountedRef.current = false;
-      clearInterval(interval);
+      unregister();
     };
   }, [pollInterval]);
 

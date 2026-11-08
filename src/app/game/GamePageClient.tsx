@@ -19,6 +19,10 @@ import { DEFAULT_ZOOM, MIN_ZOOM, MAX_ZOOM } from '@shared/viewportConstants';
 import { useGameUiPreferences, updateGameUiPreferences } from '@/lib/client/hooks/useGameUiPreferences';
 import { useMediaQuery } from '@/lib/client/hooks/useMediaQuery';
 import { CanvasStrings, defaultCanvasStrings } from '@/lib/client/game/canvasStrings';
+import { startVisibilityAwarePolling } from '@/lib/client/polling/visibilityPolling';
+
+const AFTERBURNER_ACTIVE_POLL_MS = 1000;
+const AFTERBURNER_REFUEL_POLL_MS = 10_000;
 
 interface GamePageClientProps {
   auth: ServerAuthState;
@@ -674,9 +678,12 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
     // start of the current polling period, not a stale value from a prior period.
     const wasActive = afterburnerStatus?.isActive ?? false;
 
-    const interval = setInterval(async () => {
-      try {
-        const stats = await getShipStats();
+    // While burning, fuel and speed change quickly: refresh every second. While refuelling (up to an
+    // hour) the rounded fuel percentage changes slowly, so a slower refresh is enough.
+    const intervalMs = wasActive ? AFTERBURNER_ACTIVE_POLL_MS : AFTERBURNER_REFUEL_POLL_MS;
+
+    return startVisibilityAwarePolling(() => {
+      void getShipStats().then(stats => {
         if (stats && !('error' in stats) && stats.afterburner) {
           setAfterburnerStatus(stats.afterburner);
           setMaxSpeed(stats.maxSpeed);
@@ -684,10 +691,8 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
             setSpeedInput(stats.speed.toFixed(1));
           }
         }
-      } catch { /* ignore polling errors */ }
-    }, 1000);
-
-    return () => clearInterval(interval);
+      }, () => { /* ignore polling errors */ });
+    }, intervalMs);
   }, [afterburnerStatus]);
 
   const handleActivateAfterburner = async () => {

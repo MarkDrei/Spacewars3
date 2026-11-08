@@ -3,6 +3,7 @@ import { WorldData } from '@shared/types/gameTypes';
 import { updateAllObjectPositions, updateAllObjectPositionsWithTimeCorrection } from '@shared/physics';
 import { worldDataService } from '../services/worldDataService';
 import { getTimeMultiplier } from '../timeMultiplier';
+import { startVisibilityAwarePolling } from '../polling/visibilityPolling';
 
 interface UseWorldDataReturn {
   worldData: WorldData | null;
@@ -25,7 +26,6 @@ export const useWorldData = (pollInterval: number = 3000): UseWorldDataReturn =>
   
   // Use ref to track if component is mounted (for cleanup)
   const isMountedRef = useRef<boolean>(true);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Optimistic position updates for smooth animation using shared physics logic
   const updateOptimisticPositions = useCallback((data: WorldDataState): WorldDataState => {
@@ -146,16 +146,13 @@ export const useWorldData = (pollInterval: number = 3000): UseWorldDataReturn =>
     // Initial fetch (auth guaranteed by server component)
     void fetchWorldData();
     
-    // Set up server polling
-    intervalRef.current = setInterval(fetchWorldData, pollInterval);
+    // Server polling, paused while the page is hidden
+    const stopPolling = startVisibilityAwarePolling(() => void fetchWorldData(), pollInterval);
     
     // Cleanup
     return () => {
       isMountedRef.current = false;
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
+      stopPolling();
     };
   }, [pollInterval, fetchWorldData]);
 

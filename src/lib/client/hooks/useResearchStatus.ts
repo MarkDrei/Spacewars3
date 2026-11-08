@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { researchService, TechTree } from '../services/researchService';
+import { startVisibilityAwarePolling } from '../polling/visibilityPolling';
 
 interface UseResearchStatusResult {
   techTree: TechTree | null;
@@ -65,11 +66,11 @@ export const useResearchStatus = (pollInterval: number = 5000): UseResearchStatu
   useEffect(() => {
     isMountedRef.current = true;
     void loadTechTree();
-    const interval = setInterval(loadTechTree, pollInterval);
+    const stopPolling = startVisibilityAwarePolling(() => void loadTechTree(), pollInterval);
 
     return () => {
       isMountedRef.current = false;
-      clearInterval(interval);
+      stopPolling();
     };
   }, [pollInterval, loadTechTree]);
 

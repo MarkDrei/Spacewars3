@@ -3,6 +3,7 @@ import { getShipStats } from '../services/shipStatsService';
 import { DefenseValues } from '@/shared/defenseValues';
 import { globalEvents, EVENTS } from '../services/eventService';
 import { getTimeMultiplier } from '../timeMultiplier';
+import { startVisibilityAwarePolling } from '../polling/visibilityPolling';
 
 export interface DefenseRecoveryTimers {
   repairs: number | null;
@@ -260,7 +261,7 @@ export const useDefenseValues = (pollInterval: number = 2000): UseDefenseValuesR
     void fetchDefenseValues();
     
     // Set up server polling to get authoritative values
-    const serverInterval = setInterval(fetchDefenseValues, pollInterval);
+    const stopServerPolling = startVisibilityAwarePolling(() => void fetchDefenseValues(), pollInterval);
     
     // Listen for build completion events to refresh defense values
     const handleBuildCompleted = () => {
@@ -274,7 +275,7 @@ export const useDefenseValues = (pollInterval: number = 2000): UseDefenseValuesR
     // Cleanup
     return () => {
       isMountedRef.current = false;
-      clearInterval(serverInterval);
+      stopServerPolling();
       globalEvents.off(EVENTS.BUILD_ITEM_COMPLETED, handleBuildCompleted);
       globalEvents.off(EVENTS.BUILD_QUEUE_COMPLETED, handleBuildCompleted);
     };

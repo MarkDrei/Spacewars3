@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/client/hooks/useAuth';
 import type { Battle } from '@/lib/server/battle/battleTypes';
 import './AdminPage.css';
 import { isAdminUsername } from '@/shared/adminAccess';
+import { startVisibilityAwarePolling } from '@/lib/client/polling/visibilityPolling';
 
 interface UserData {
   id: number;
@@ -284,10 +285,10 @@ const AdminPage: React.FC = () => {
       });
     };
     poll();
-    const interval = setInterval(poll, 5000);
+    const stopPolling = startVisibilityAwarePolling(poll, 5000);
     return () => {
       active = false;
-      clearInterval(interval);
+      stopPolling();
     };
   }, [isAuthorized]);
 

@@ -8,6 +8,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import type { WeaponCooldowns, BattleEvent } from '@/lib/server/battle/battleTypes';
+import { startVisibilityAwarePolling } from '../polling/visibilityPolling';
 
 export interface BattleStatus {
   inBattle: boolean;
@@ -66,11 +67,11 @@ export function useBattleStatus(refreshInterval: number = 5000) {
     };
 
     poll();
-    const interval = setInterval(poll, refreshInterval);
+    const stopPolling = startVisibilityAwarePolling(poll, refreshInterval);
 
     return () => {
       active = false;
-      clearInterval(interval);
+      stopPolling();
     };
   }, [refreshInterval, applyResult, applyError]);
 
