@@ -26,6 +26,7 @@ import {
   BRIDGE_COLS,
   getInventoryRows,
   getBridgeRows,
+  isGridRearrangement,
 } from './inventoryTypes';
 
 export class InventorySlotOccupiedError extends Error {
@@ -88,6 +89,13 @@ export class BridgeItemIncompatibleError extends Error {
   constructor() {
     super('This item cannot be assigned to the bridge');
     this.name = 'BridgeItemIncompatibleError';
+  }
+}
+
+export class InventoryReorderMismatchError extends Error {
+  constructor() {
+    super('Reordered grid must contain exactly the current items');
+    this.name = 'InventoryReorderMismatchError';
   }
 }
 
@@ -531,28 +539,33 @@ export class InventoryService {
   // ---------------------------------------------------------------------------
 
   /**
-   * Replace the entire inventory grid with the provided layout.
-   * All items in newGrid must already exist in the current inventory;
-   * this just persists a reordering. No items are created or destroyed.
+   * Replace the inventory grid with a rearrangement of the current one.
+   * The new grid must have the current shape and contain exactly the current items;
+   * otherwise InventoryReorderMismatchError is thrown and nothing is saved.
    */
-  async reorderInventory(userId: number, newGrid: InventoryGrid, maxSlots: number): Promise<void> {
+  async reorderInventory(userId: number, newGrid: unknown, maxSlots: number): Promise<void> {
     const ctx = createLockContext();
     await ctx.useLockWithAcquire(USER_INVENTORY_LOCK, async (lockCtx) => {
-      const sized = ensureGridSize(newGrid, maxSlots);
-      await this.repo.saveInventory(lockCtx, userId, sized);
+      const current = await this.loadOrCreate(lockCtx, userId, maxSlots);
+      if (!isGridRearrangement(current, newGrid, INVENTORY_COLS)) {
+        throw new InventoryReorderMismatchError();
+      }
+      await this.repo.saveInventory(lockCtx, userId, newGrid);
     });
   }
 
   /**
-   * Replace the entire bridge grid with the provided layout.
-   * All items in newGrid must already exist in the current bridge;
-   * this just persists a reordering. No items are created or destroyed.
+   * Replace the bridge grid with a rearrangement of the current one.
+   * Same rules as reorderInventory; the set of bridge commanders (and thus bonuses) is unchanged.
    */
-  async reorderBridge(userId: number, newGrid: BridgeGrid, maxBridgeSlots: number): Promise<void> {
+  async reorderBridge(userId: number, newGrid: unknown, maxBridgeSlots: number): Promise<void> {
     const ctx = createLockContext();
     await ctx.useLockWithAcquire(USER_INVENTORY_LOCK, async (lockCtx) => {
-      const sized = ensureBridgeGridSize(newGrid, maxBridgeSlots);
-      await this.repo.saveBridge(lockCtx, userId, sized);
+      const current = await this.loadOrCreateBridge(lockCtx, userId, maxBridgeSlots);
+      if (!isGridRearrangement(current, newGrid, BRIDGE_COLS)) {
+        throw new InventoryReorderMismatchError();
+      }
+      await this.repo.saveBridge(lockCtx, userId, newGrid);
     });
   }
 
