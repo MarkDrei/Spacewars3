@@ -1,34 +1,5 @@
 # Technical Debt
 
-## React Compiler Lint Rule `set-state-in-effect` Downgraded to Warning
-
-**Priority**: Low
-**Added**: 2026-11-08
-**Component**: Client hooks and page components (`src/lib/client/hooks/`, `src/app/**/**Client.tsx`, `src/components/Inventory/`)
-
-### Context
-
-`eslint-config-next@16` ships `eslint-plugin-react-hooks@7` with React Compiler rules. The
-`react-hooks/purity` and `react-hooks/immutability` findings were fixed during the upgrade.
-`react-hooks/set-state-in-effect` reports 19 places that call `setState` synchronously inside an effect
-(fetch-on-mount helpers that set loading state, media-query sync, state derived from props/cache).
-The rule is set to `warn` in `eslint.config.mjs`.
-
-### Consequences
-
-Extra renders on mount/updates; code is not React-Compiler friendly yet. Warnings show up in every lint run.
-
-### Proper Solution
-
-Per component: derive state during render instead of syncing it, use `useSyncExternalStore` for
-media queries/shared caches, and move fetch-start state changes into the async callbacks. Then set the
-rule back to `error`.
-
-### Related Files
-
-- `eslint.config.mjs` — rule override
-- Output of `npm run lint` — current list of locations
-
 ## TypeScript 6 Kept Alongside TypeScript 7 for Tooling API
 
 **Priority**: Low

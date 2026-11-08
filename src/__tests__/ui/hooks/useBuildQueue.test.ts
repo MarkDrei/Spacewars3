@@ -1,4 +1,4 @@
-import { describe, expect, test, beforeEach, vi } from 'vitest';
+import { describe, expect, test, beforeEach, afterEach, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useBuildQueue } from '@/lib/client/hooks/useBuildQueue';
 import { useFactoryDataCache } from '@/lib/client/hooks/useFactoryDataCache';
@@ -210,4 +210,80 @@ describe('useBuildQueue', () => {
     expect(mockRefetch).toHaveBeenCalled();
   });
 
+  describe('countdown', () => {
+    const START_MS = 1_700_000_000_000;
+    const START_S = START_MS / 1000;
+
+    beforeEach(() => {
+      vi.useFakeTimers();
+      vi.setSystemTime(START_MS);
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    test('useBuildQueue_secondsElapse_remainingSecondsCountsDown', () => {
+      const mockRefetch = vi.fn();
+      mockUseFactoryDataCache.mockReturnValue({
+        data: {
+          ...mockFactoryData,
+          buildQueue: [{ itemKey: 'pulse_laser', itemType: 'weapon', completionTime: START_S + 10, remainingSeconds: 10 }]
+        },
+        isLoading: false,
+        error: null,
+        refetch: mockRefetch
+      });
+
+      const { result } = renderHook(() => useBuildQueue());
+      expect(result.current.buildQueue[0].remainingSeconds).toBe(10);
+
+      act(() => {
+        vi.advanceTimersByTime(3000);
+      });
+
+      expect(result.current.buildQueue[0].remainingSeconds).toBe(7);
+      expect(mockRefetch).not.toHaveBeenCalled();
+    });
+
+    test('useBuildQueue_completionTimeReached_refetchesFromServer', () => {
+      const mockRefetch = vi.fn();
+      mockUseFactoryDataCache.mockReturnValue({
+        data: {
+          ...mockFactoryData,
+          buildQueue: [{ itemKey: 'pulse_laser', itemType: 'weapon', completionTime: START_S + 2, remainingSeconds: 2 }]
+        },
+        isLoading: false,
+        error: null,
+        refetch: mockRefetch
+      });
+
+      const { result } = renderHook(() => useBuildQueue());
+
+      act(() => {
+        vi.advanceTimersByTime(2000);
+      });
+
+      expect(result.current.buildQueue[0].remainingSeconds).toBe(0);
+      expect(mockRefetch).toHaveBeenCalled();
+    });
+
+    test('useBuildQueue_emptyQueue_doesNotTick', () => {
+      const mockRefetch = vi.fn();
+      mockUseFactoryDataCache.mockReturnValue({
+        data: { ...mockFactoryData, buildQueue: [] },
+        isLoading: false,
+        error: null,
+        refetch: mockRefetch
+      });
+
+      const { result } = renderHook(() => useBuildQueue());
+      act(() => {
+        vi.advanceTimersByTime(5000);
+      });
+
+      expect(result.current.buildQueue).toEqual([]);
+      expect(mockRefetch).not.toHaveBeenCalled();
+    });
+  });
 });

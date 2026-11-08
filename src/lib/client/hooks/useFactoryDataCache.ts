@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useSyncExternalStore } from 'react';
 import { factoryService, BuildQueueItem, WeaponSpec, DefenseSpec, TechCounts } from '../services/factoryService';
 
 interface FactoryDataCache {
@@ -16,23 +16,41 @@ interface UseFactoryDataCacheReturn {
   refetch: () => void;
 }
 
-// Singleton cache to share data between hooks
-let sharedCache: FactoryDataCache | null = null;
+// Singleton store shared by all hook instances (external store for useSyncExternalStore)
+interface FactoryCacheState {
+  data: FactoryDataCache | null;
+  error: string | null;
+}
+
+const INITIAL_CACHE_STATE: FactoryCacheState = { data: null, error: null };
+
+let cacheState: FactoryCacheState = INITIAL_CACHE_STATE;
 const cacheSubscribers: Set<() => void> = new Set();
 let isCurrentlyFetching = false;
 let fetchPromise: Promise<void> | null = null;
 
 // Test utility function to reset singleton state
 export const resetFactoryDataCache = () => {
-  sharedCache = null;
+  cacheState = INITIAL_CACHE_STATE;
   cacheSubscribers.clear();
   isCurrentlyFetching = false;
   fetchPromise = null;
 };
 
-const notifySubscribers = () => {
+const setCacheState = (next: FactoryCacheState) => {
+  cacheState = next;
   cacheSubscribers.forEach(callback => callback());
 };
+
+const subscribeToCache = (callback: () => void): (() => void) => {
+  cacheSubscribers.add(callback);
+  return () => {
+    cacheSubscribers.delete(callback);
+  };
+};
+
+const getCacheSnapshot = (): FactoryCacheState => cacheState;
+const getServerCacheSnapshot = (): FactoryCacheState => INITIAL_CACHE_STATE;
 
 const fetchFactoryData = async (retryCount: number = 0): Promise<void> => {
   // Only prevent concurrent fetches on the initial call (retryCount === 0)
@@ -67,17 +85,17 @@ const fetchFactoryData = async (retryCount: number = 0): Promise<void> => {
         remainingSeconds: Math.max(0, item.completionTime - now)
       }));
 
-      // Update shared cache
-      sharedCache = {
-        buildQueue: buildQueueWithCountdown,
-        techCounts: statusResult.techCounts,
-        weapons: catalogResult.weapons,
-        defenses: catalogResult.defenses,
-        lastUpdated: Date.now()
-      };
-
-      // Notify all subscribers
-      notifySubscribers();
+      // Update shared cache and notify all subscribed hook instances
+      setCacheState({
+        data: {
+          buildQueue: buildQueueWithCountdown,
+          techCounts: statusResult.techCounts,
+          weapons: catalogResult.weapons,
+          defenses: catalogResult.defenses,
+          lastUpdated: Date.now()
+        },
+        error: null
+      });
       
     } catch (error) {
       // Retry logic for network errors only
@@ -108,74 +126,55 @@ const fetchFactoryData = async (retryCount: number = 0): Promise<void> => {
   }
 };
 
+/**
+ * Fetches factory data into the shared store and records a failure as store error.
+ * Never throws and never touches React state directly.
+ */
+const refreshFactoryCache = async (): Promise<void> => {
+  try {
+    await fetchFactoryData();
+  } catch (err) {
+    setCacheState({
+      ...cacheState,
+      error: err instanceof Error ? err.message : 'Failed to fetch factory data'
+    });
+  }
+};
+
 export const useFactoryDataCache = (pollInterval: number = 5000): UseFactoryDataCacheReturn => {
   // Auth is guaranteed by server component, so we assume authenticated
-  const [data, setData] = useState<FactoryDataCache | null>(sharedCache);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data, error } = useSyncExternalStore(subscribeToCache, getCacheSnapshot, getServerCacheSnapshot);
+  const [isRefetching, setIsRefetching] = useState<boolean>(false);
   const isMountedRef = useRef<boolean>(true);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
-
-  const updateLocalState = useCallback(() => {
-    if (isMountedRef.current) {
-      setData(sharedCache);
-      setIsLoading(false);
-    }
-  }, []);
-
-  const fetchData = useCallback(async () => {
-    try {
-      setError(null);
-      await fetchFactoryData();
-      updateLocalState();
-    } catch (err) {
-      if (isMountedRef.current) {
-        setError(err instanceof Error ? err.message : 'Failed to fetch factory data');
-        setIsLoading(false);
-      }
-    }
-  }, [updateLocalState]);
 
   useEffect(() => {
     isMountedRef.current = true;
 
-    // Subscribe to cache updates
-    cacheSubscribers.add(updateLocalState);
-
-    // If we already have cached data, use it immediately
-    if (sharedCache) {
-      setData(sharedCache);
-      setIsLoading(false);
-    } else {
-      // Initial fetch
-      fetchData();
+    // Initial fetch only if no other hook instance has populated the cache yet
+    if (!cacheState.data) {
+      void refreshFactoryCache();
     }
 
-    // Set up polling interval (only one active interval across all hooks)
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-    }
-    intervalRef.current = setInterval(fetchData, pollInterval);
+    const interval = setInterval(refreshFactoryCache, pollInterval);
 
-    // Cleanup
     return () => {
       isMountedRef.current = false;
-      cacheSubscribers.delete(updateLocalState);
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
+      clearInterval(interval);
     };
-  }, [pollInterval, fetchData, updateLocalState]);
+  }, [pollInterval]);
 
   const refetch = useCallback(async () => {
-    setIsLoading(true);
-    await fetchData();
-  }, [fetchData]);
+    setIsRefetching(true);
+    await refreshFactoryCache();
+    if (isMountedRef.current) {
+      setIsRefetching(false);
+    }
+  }, []);
 
   return {
     data,
-    isLoading,
+    // Loading until the first result (data or error) arrives, and while an explicit refetch runs
+    isLoading: isRefetching || (data === null && error === null),
     error,
     refetch
   };

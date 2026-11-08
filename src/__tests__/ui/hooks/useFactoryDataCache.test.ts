@@ -1,5 +1,5 @@
 import { describe, expect, test, beforeEach, vi } from 'vitest';
-import { renderHook, waitFor } from '@testing-library/react';
+import { renderHook, waitFor, act } from '@testing-library/react';
 import { useFactoryDataCache, resetFactoryDataCache } from '@/lib/client/hooks/useFactoryDataCache';
 import { factoryService } from '@/lib/client/services/factoryService';
 
@@ -148,4 +148,38 @@ describe('useFactoryDataCache', () => {
     expect(result.current.data).toBeNull();
   });
 
+  test('useFactoryDataCache_twoInstances_shareOneFetchAndSameData', async () => {
+    mockFactoryService.getTechCatalog.mockResolvedValue(mockTechCatalog);
+    mockFactoryService.getBuildStatus.mockResolvedValue(mockBuildStatus);
+
+    const first = renderHook(() => useFactoryDataCache(60_000));
+    const second = renderHook(() => useFactoryDataCache(60_000));
+
+    await waitFor(() => {
+      expect(first.result.current.data).not.toBeNull();
+      expect(second.result.current.data).not.toBeNull();
+    });
+
+    expect(second.result.current.data).toBe(first.result.current.data);
+    expect(mockFactoryService.getBuildStatus).toHaveBeenCalledOnce();
+  });
+
+  test('useFactoryDataCache_errorThenSuccessfulRefetch_clearsError', async () => {
+    mockFactoryService.getTechCatalog.mockResolvedValue({ error: 'Temporary failure' });
+    mockFactoryService.getBuildStatus.mockResolvedValue(mockBuildStatus);
+
+    const { result } = renderHook(() => useFactoryDataCache(60_000));
+    await waitFor(() => {
+      expect(result.current.error).toBe('Temporary failure');
+    });
+
+    mockFactoryService.getTechCatalog.mockResolvedValue(mockTechCatalog);
+    await act(async () => {
+      await result.current.refetch();
+    });
+
+    expect(result.current.error).toBeNull();
+    expect(result.current.isLoading).toBe(false);
+    expect(result.current.data?.weapons).toEqual(mockTechCatalog.weapons);
+  });
 });

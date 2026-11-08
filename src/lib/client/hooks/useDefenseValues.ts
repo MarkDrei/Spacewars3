@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { getShipStats } from '../services/shipStatsService';
 import { DefenseValues } from '@/shared/defenseValues';
 import { globalEvents, EVENTS } from '../services/eventService';
@@ -186,8 +186,8 @@ export const useDefenseValues = (pollInterval: number = 2000): UseDefenseValuesR
   // Server values fetched from API
   const [serverDefenseValues, setServerDefenseValues] = useState<DefenseValues | null>(null);
   // Interpolated values displayed to user (updated multiple times per second)
-  const [displayDefenseValues, setDisplayDefenseValues] = useState<DefenseValues | null>(null);
-  const [recoveryTimers, setRecoveryTimers] = useState<DefenseRecoveryTimers | null>(null);
+  // Interpolation clock, advanced 10x per second while values are shown (multiplier sampled per tick)
+  const [clock, setClock] = useState<{ now: number; multiplier: number } | null>(null);
   const [lastServerUpdate, setLastServerUpdate] = useState<number>(() => Date.now());
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -195,7 +195,6 @@ export const useDefenseValues = (pollInterval: number = 2000): UseDefenseValuesR
   
   // Use ref to track if component is mounted (for cleanup)
   const isMountedRef = useRef<boolean>(true);
-  const interpolationIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const fetchDefenseValues = useCallback((initialRetryCount: number = 0) => {
     const attempt = async (retryCount: number): Promise<void> => {
@@ -218,10 +217,10 @@ export const useDefenseValues = (pollInterval: number = 2000): UseDefenseValuesR
         }
         
         // Update server defense values and timestamp
+        const receivedAt = Date.now();
         setServerDefenseValues(result.defenseValues);
-        setDisplayDefenseValues(result.defenseValues);
-        setRecoveryTimers(calculateDefenseRecoveryTimers(result.defenseValues, 0, getTimeMultiplier()));
-        setLastServerUpdate(Date.now());
+        setLastServerUpdate(receivedAt);
+        setClock({ now: receivedAt, multiplier: getTimeMultiplier() });
         if (result.shipPictureId !== undefined) {
           setShipPictureId(result.shipPictureId);
         }
@@ -242,17 +241,17 @@ export const useDefenseValues = (pollInterval: number = 2000): UseDefenseValuesR
     return attempt(initialRetryCount);
   }, []); // Empty dependency array since fetchDefenseValues doesn't depend on any changing values
 
-  // Interpolation function to smoothly update display values between server polls
-  const updateDisplayValues = useCallback(() => {
-    if (!serverDefenseValues || error) return;
-
-    const now = Date.now();
-    const secondsElapsed = (now - lastServerUpdate) / 1000;
-    const multiplier = getTimeMultiplier();
-
-    setDisplayDefenseValues(projectDefenseValues(serverDefenseValues, secondsElapsed, multiplier));
-    setRecoveryTimers(calculateDefenseRecoveryTimers(serverDefenseValues, secondsElapsed, multiplier));
-  }, [serverDefenseValues, lastServerUpdate, error]);
+  // Display values are projected from the last server values by the elapsed (game) time
+  const { displayDefenseValues, recoveryTimers } = useMemo(() => {
+    if (!serverDefenseValues || !clock) {
+      return { displayDefenseValues: serverDefenseValues, recoveryTimers: null };
+    }
+    const secondsElapsed = Math.max(0, (clock.now - lastServerUpdate) / 1000);
+    return {
+      displayDefenseValues: projectDefenseValues(serverDefenseValues, secondsElapsed, clock.multiplier),
+      recoveryTimers: calculateDefenseRecoveryTimers(serverDefenseValues, secondsElapsed, clock.multiplier),
+    };
+  }, [serverDefenseValues, lastServerUpdate, clock]);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -276,35 +275,20 @@ export const useDefenseValues = (pollInterval: number = 2000): UseDefenseValuesR
     return () => {
       isMountedRef.current = false;
       clearInterval(serverInterval);
-      if (interpolationIntervalRef.current) {
-        clearInterval(interpolationIntervalRef.current);
-      }
       globalEvents.off(EVENTS.BUILD_ITEM_COMPLETED, handleBuildCompleted);
       globalEvents.off(EVENTS.BUILD_QUEUE_COMPLETED, handleBuildCompleted);
     };
   }, [pollInterval, fetchDefenseValues]);
 
-  // Set up smooth interpolation updates (multiple times per second)
+  // Advance the interpolation clock 10 times per second while valid server values are shown
+  const isInterpolating = !isLoading && !error && serverDefenseValues !== null;
   useEffect(() => {
-    if (isLoading || error || !serverDefenseValues) {
-      return;
-    }
-
-    // Update display values immediately
-    updateDisplayValues();
-
-    // Set up interval to update display values smoothly (10 times per second)
-    if (!interpolationIntervalRef.current) {
-      interpolationIntervalRef.current = setInterval(updateDisplayValues, 100);
-    }
-
-    return () => {
-      if (interpolationIntervalRef.current) {
-        clearInterval(interpolationIntervalRef.current);
-        interpolationIntervalRef.current = null;
-      }
-    };
-  }, [isLoading, error, serverDefenseValues, updateDisplayValues]);
+    if (!isInterpolating) return;
+    const interval = setInterval(() => {
+      setClock({ now: Date.now(), multiplier: getTimeMultiplier() });
+    }, 100);
+    return () => clearInterval(interval);
+  }, [isInterpolating]);
 
   return {
     defenseValues: displayDefenseValues,

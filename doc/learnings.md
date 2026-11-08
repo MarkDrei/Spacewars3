@@ -488,3 +488,18 @@ Helper functions `isNpcId()` and `parseNpcId()` in `src/lib/server/npc/npcConsta
 3. In `GamePageClient.tsx`, use `useTranslations('game')` to build the `CanvasStrings` object and pass it when constructing or updating the Game instance
 
 This cleanly separates the i18n concern (React layer) from the rendering concern (canvas layer). ~12 static strings in `TooltipRenderer.ts` need this treatment.
+
+## React Compiler Lint Rules (react-hooks v7): Patterns That Pass
+
+**Discovered by**: Claude Code
+**Context**: Next.js 16 upgrade — `eslint-config-next@16` enables `react-hooks/set-state-in-effect`, `purity` and `immutability` as errors
+
+**Details**: `set-state-in-effect` flags any *call* in an effect body to a function that contains a `setState`, even if the `setState` only runs after an `await`. Patterns used in this codebase instead:
+
+- **Fetch on mount / poll**: keep a pure module-level `requestX()` that returns data or `{ error }` and apply the result in a `.then` callback guarded by an `ignore`/`active` flag (`useBattleStatus`, `useResearchStatus`, `BridgeSection`, admin page). Handler-triggered reloads may still `await` and set state directly.
+- **Shared singleton caches and browser APIs**: use `useSyncExternalStore` — `useFactoryDataCache` (module cache + error in the store), `useGameUiPreferences` (localStorage as store, server snapshot = defaults, `isHydrated` replaces "loaded" flags), `useMediaQuery` (matchMedia).
+- **Values copied from other state/props**: derive during render (`useTechCounts`, effective `mobileTapInfoMode = isMobileMode && preference`, admin `isAuthorized`).
+- **Countdowns/interpolation**: tick only a clock (`now`) in the interval callback and derive remaining time / projected values with `useMemo` (`useBuildQueue`, `useDefenseValues`, research countdown).
+- **Reset state when a prop changes** (e.g. `clearSortTrigger`): store the previous prop value in state and compare during render.
+- `purity`: `Date.now()` in `useState(...)` → lazy initialiser `useState(() => Date.now())`.
+- `immutability`: no self-recursive `useCallback`s — use an inner named function (`attempt`, `scheduleNextPoll`); declare functions before effects that use them.

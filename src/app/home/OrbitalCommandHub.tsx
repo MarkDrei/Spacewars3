@@ -4,6 +4,7 @@ import { formatNumber } from '@/shared/numberFormat';
 import type { DefenseValues } from '@/shared/defenseValues';
 import type { BattleStatus } from '@/lib/client/hooks/useBattleStatus';
 import type { TechCounts, WeaponSpec } from '@/lib/client/services/factoryService';
+import { useMediaQuery } from '@/lib/client/hooks/useMediaQuery';
 
 export interface OrbitalCommandHubProps {
   defenseValues?: DefenseValues | null;
@@ -23,21 +24,13 @@ export const OrbitalCommandHub: React.FC<OrbitalCommandHubProps> = ({
   const t = useTranslations('home');
   const locale = useLocale();
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
-  const [isPortrait, setIsPortrait] = useState(false);
+  const isPortrait = useMediaQuery('(orientation: portrait)');
 
   const formatLocalizedNumber = (value: number): string => formatNumber(value, locale);
 
   useEffect(() => {
     const interval = setInterval(() => setNow(Math.floor(Date.now() / 1000)), 1000);
     return () => clearInterval(interval);
-  }, []);
-
-  useEffect(() => {
-    const mq = window.matchMedia('(orientation: portrait)');
-    setIsPortrait(mq.matches);
-    const handler = (e: MediaQueryListEvent) => setIsPortrait(e.matches);
-    mq.addEventListener('change', handler);
-    return () => mq.removeEventListener('change', handler);
   }, []);
 
   // Damage stats

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { authService, SessionResponse } from '../services/authService';
 
 export interface AuthState {
@@ -8,6 +8,13 @@ export interface AuthState {
   isLoading: boolean;
 }
 
+const LOGGED_OUT_STATE: AuthState = {
+  isLoggedIn: false,
+  username: null,
+  shipId: null,
+  isLoading: false,
+};
+
 export const useAuth = () => {
   const [authState, setAuthState] = useState<AuthState>({
     isLoggedIn: false,
@@ -16,30 +23,36 @@ export const useAuth = () => {
     isLoading: true,
   });
 
+  const applySession = useCallback((session: SessionResponse) => {
+    setAuthState({
+      isLoggedIn: session.loggedIn,
+      username: session.username || null,
+      shipId: session.shipId || null,
+      isLoading: false,
+    });
+  }, []);
+
+  /** Re-checks the session (e.g. after login/register); shows the loading state meanwhile. */
   const checkAuthStatus = async () => {
     setAuthState(prev => ({ ...prev, isLoading: true }));
-    
     try {
-      const session: SessionResponse = await authService.checkSession();
-      setAuthState({
-        isLoggedIn: session.loggedIn,
-        username: session.username || null,
-        shipId: session.shipId || null,
-        isLoading: false,
-      });
+      applySession(await authService.checkSession());
     } catch {
-      setAuthState({
-        isLoggedIn: false,
-        username: null,
-        shipId: null,
-        isLoading: false,
-      });
+      setAuthState(LOGGED_OUT_STATE);
     }
   };
 
+  // Initial session check; the result is applied in a callback and ignored after unmount
   useEffect(() => {
-    checkAuthStatus();
-  }, []);
+    let ignore = false;
+    authService.checkSession().then(
+      session => { if (!ignore) applySession(session); },
+      () => { if (!ignore) setAuthState(LOGGED_OUT_STATE); }
+    );
+    return () => {
+      ignore = true;
+    };
+  }, [applySession]);
 
   const login = async (username: string, password: string): Promise<{ success: boolean; error?: string }> => {
     try {
@@ -80,12 +93,7 @@ export const useAuth = () => {
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
-      setAuthState({
-        isLoggedIn: false,
-        username: null,
-        shipId: null,
-        isLoading: false,
-      });
+      setAuthState(LOGGED_OUT_STATE);
     }
   };
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { factoryService, BuildQueueItem } from '../services/factoryService';
 import { globalEvents, EVENTS } from '../services/eventService';
 import { useFactoryDataCache } from './useFactoryDataCache';
@@ -16,9 +16,12 @@ interface UseBuildQueueReturn {
   refetch: () => void;
 }
 
+const EMPTY_QUEUE: BuildQueueItem[] = [];
+
 export const useBuildQueue = (pollInterval: number = 5000): UseBuildQueueReturn => {
   // Auth is guaranteed by server component, so we can directly use the factory data cache
-  const [buildQueue, setBuildQueue] = useState<BuildQueueItem[]>([]);
+  // Current time in seconds, advanced by the countdown interval (null until the first tick)
+  const [nowSeconds, setNowSeconds] = useState<number | null>(null);
   const [isBuilding, setIsBuilding] = useState<boolean>(false);
   const [isCompletingBuild, setIsCompletingBuild] = useState<boolean>(false);
   const [isAbortingQueue, setIsAbortingQueue] = useState<boolean>(false);
@@ -35,21 +38,29 @@ export const useBuildQueue = (pollInterval: number = 5000): UseBuildQueueReturn 
   // Use ref to track if component is mounted (for cleanup)
   const isMountedRef = useRef<boolean>(true);
   
-  // Use ref to track countdown interval
-  const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  
   // Track previous queue length to detect events
   const previousQueueLengthRef = useRef<number>(0);
 
-  // Update build queue from cache data and emit events
+  const serverQueue = factoryData?.buildQueue ?? EMPTY_QUEUE;
+  const serverQueueRef = useRef<BuildQueueItem[]>(serverQueue);
+
+  // Remaining time is derived from the server queue and the ticking clock. The server value
+  // (computed at fetch time) caps it, so a clock tick older than the fetch never shows more time.
+  const buildQueue = useMemo<BuildQueueItem[]>(() => {
+    if (nowSeconds === null) return serverQueue;
+    return serverQueue.map(item => ({
+      ...item,
+      remainingSeconds: Math.min(item.remainingSeconds, Math.max(0, item.completionTime - nowSeconds))
+    }));
+  }, [serverQueue, nowSeconds]);
+
+  // Emit build events when the server-confirmed queue changes
   useEffect(() => {
+    serverQueueRef.current = serverQueue;
     if (!factoryData) return;
 
     const newQueue = factoryData.buildQueue;
     const previousLength = previousQueueLengthRef.current;
-
-    // Update local build queue state
-    setBuildQueue(newQueue);
 
     // Emit events based on queue changes (only after server confirmation)
     if (previousLength === 0 && newQueue.length > 0) {
@@ -69,32 +80,10 @@ export const useBuildQueue = (pollInterval: number = 5000): UseBuildQueueReturn 
 
     // Update previous queue length for next comparison
     previousQueueLengthRef.current = newQueue.length;
-  }, [factoryData]);
+  }, [factoryData, serverQueue]);
 
   // Combine cache error with local error
   const combinedError = error || cacheError;
-
-  // Update countdown timer for build queue
-  const updateCountdown = useCallback(() => {
-    setBuildQueue(prevQueue => {
-      if (prevQueue.length === 0) return prevQueue;
-      
-      const now = Math.floor(Date.now() / 1000);
-      const updatedQueue = prevQueue.map(item => ({
-        ...item,
-        remainingSeconds: Math.max(0, item.completionTime - now)
-      }));
-
-      // Check if any builds completed
-      const hasCompleted = updatedQueue.some(item => item.remainingSeconds <= 0);
-      if (hasCompleted) {
-        // Refresh data to get updated queue from server
-        refetchCache();
-      }
-
-      return updatedQueue;
-    });
-  }, [refetchCache]);
 
   // Build item function
   const buildItem = useCallback(async (
@@ -203,40 +192,28 @@ export const useBuildQueue = (pollInterval: number = 5000): UseBuildQueueReturn 
   // Initialize mounted ref
   useEffect(() => {
     isMountedRef.current = true;
-    
-    // Cleanup
     return () => {
       isMountedRef.current = false;
-      if (countdownIntervalRef.current) {
-        clearInterval(countdownIntervalRef.current);
-        countdownIntervalRef.current = null;
-      }
     };
   }, []);
 
-  // Start countdown interval after data is loaded
+  // Tick the countdown once per second while a queue is active
+  const hasActiveQueue = !cacheLoading && !combinedError && serverQueue.length > 0;
   useEffect(() => {
-    if (cacheLoading || combinedError || buildQueue.length === 0) {
-      // Clear countdown if no queue or error
-      if (countdownIntervalRef.current) {
-        clearInterval(countdownIntervalRef.current);
-        countdownIntervalRef.current = null;
+    if (!hasActiveQueue) return;
+
+    const interval = setInterval(() => {
+      const now = Math.floor(Date.now() / 1000);
+      setNowSeconds(now);
+
+      // A build finished locally: refresh to get the updated queue from the server
+      if (serverQueueRef.current.some(item => item.completionTime <= now)) {
+        refetchCache();
       }
-      return;
-    }
-    
-    // Only start countdown interval if not already started
-    if (!countdownIntervalRef.current) {
-      countdownIntervalRef.current = setInterval(updateCountdown, 1000);
-    }
-    
-    return () => {
-      if (countdownIntervalRef.current) {
-        clearInterval(countdownIntervalRef.current);
-        countdownIntervalRef.current = null;
-      }
-    };
-  }, [cacheLoading, combinedError, buildQueue.length, updateCountdown]);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [hasActiveQueue, refetchCache]);
 
   // Refetch function
   const refetch = useCallback(() => {

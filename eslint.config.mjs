@@ -14,13 +14,6 @@ export default defineConfig([
     "next-env.d.ts",
   ]),
   {
-    rules: {
-      // New React Compiler rule (react-hooks v7, Next 16). Client hooks still load data and sync state
-      // inside effects; migrating them is tracked in doc/TechnicalDebt.md. Keep it visible as a warning.
-      "react-hooks/set-state-in-effect": "warn",
-    },
-  },
-  {
     files: ["src/lib/server/typedLocks.ts"],
     rules: {
       // Disable 'any' errors where it's required for the type system

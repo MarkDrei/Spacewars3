@@ -55,12 +55,47 @@ interface MultiplierStatus {
   remainingSeconds: number;
 }
 
+type AdminDataResult = { data: AdminData } | { error: string };
+
+// Loads the admin database overview; never rejects
+const requestAdminData = async (): Promise<AdminDataResult> => {
+  try {
+    const response = await fetch('/api/admin/database');
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+    }
+    return { data: await response.json() };
+  } catch (err) {
+    console.error('Failed to fetch admin data:', err);
+    return { error: err instanceof Error ? err.message : 'Failed to fetch database data' };
+  }
+};
+
+// Loads the time multiplier status; resolves to null on failure
+const requestMultiplierStatus = async (): Promise<MultiplierStatus | null> => {
+  try {
+    const response = await fetch('/api/admin/time-multiplier');
+    if (!response.ok) {
+      console.error('Failed to fetch multiplier status:', response.statusText);
+      return null;
+    }
+    return await response.json();
+  } catch (err) {
+    console.error('Failed to fetch multiplier status:', err);
+    return null;
+  }
+};
+
+const ADMIN_USERNAMES = ['a', 'q'];
+
 const AdminPage: React.FC = () => {
   const { username, isLoggedIn, isLoading } = useAuth();
   const [adminData, setAdminData] = useState<AdminData | null>(null);
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isAuthorized, setIsAuthorized] = useState(false);
+  // Same rule as cheat mode: only developer accounts may open the admin page
+  const isAuthorized = !isLoading && isLoggedIn && !!username && ADMIN_USERNAMES.includes(username);
 
   // Time multiplier state
   const [multiplierStatus, setMultiplierStatus] = useState<MultiplierStatus>({
@@ -72,7 +107,6 @@ const AdminPage: React.FC = () => {
   const [customMultiplier, setCustomMultiplier] = useState<number>(10);
   const [customDuration, setCustomDuration] = useState<number>(5);
   const [isLoadingMultiplier, setIsLoadingMultiplier] = useState(false);
-  const multiplierIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Space object spawning state
@@ -87,42 +121,27 @@ const AdminPage: React.FC = () => {
   const [objectsTableOpen, setObjectsTableOpen] = useState(false);
   const [battlesTableOpen, setBattlesTableOpen] = useState(false);
 
-  // Fetch admin data
-  const fetchAdminData = async () => {
-    try {
-      setIsLoadingData(true);
-      const response = await fetch('/api/admin/database');
-      
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      setAdminData(data);
+  const applyAdminData = useCallback((result: AdminDataResult) => {
+    if ('error' in result) {
+      setError(result.error);
+    } else {
+      setAdminData(result.data);
       setError(null);
-    } catch (err) {
-      console.error('Failed to fetch admin data:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch database data');
-    } finally {
-      setIsLoadingData(false);
     }
+    setIsLoadingData(false);
+  }, []);
+
+  // Reload admin data (retry/refresh buttons, after spawning objects)
+  const fetchAdminData = async () => {
+    setIsLoadingData(true);
+    applyAdminData(await requestAdminData());
   };
 
-  // Fetch time multiplier status
+  // Reload time multiplier status (after changing it)
   const fetchMultiplierStatus = useCallback(async () => {
-    try {
-      const response = await fetch('/api/admin/time-multiplier');
-      
-      if (!response.ok) {
-        console.error('Failed to fetch multiplier status:', response.statusText);
-        return;
-      }
-
-      const data = await response.json();
-      setMultiplierStatus(data);
-    } catch (err) {
-      console.error('Failed to fetch multiplier status:', err);
+    const status = await requestMultiplierStatus();
+    if (status) {
+      setMultiplierStatus(status);
     }
   }, []);
 
@@ -243,44 +262,43 @@ const AdminPage: React.FC = () => {
     return new Date(timestamp).toLocaleTimeString();
   };
 
+  // Load admin data once authorized
   useEffect(() => {
-    if (isLoading) return;
-    
-    // Check if user is authorized (same as cheat mode)
-    if (!isLoggedIn || !username || (username !== 'a' && username !== 'q')) {
-      setError('Access denied. Admin access required.');
-      setIsLoadingData(false);
-      return;
-    }
+    if (!isAuthorized) return;
+    let ignore = false;
+    requestAdminData().then(result => {
+      if (!ignore) applyAdminData(result);
+    });
+    return () => {
+      ignore = true;
+    };
+  }, [isAuthorized, applyAdminData]);
 
-    setIsAuthorized(true);
-    fetchAdminData();
-    fetchMultiplierStatus();
+  // Load the multiplier status once authorized, then poll every 5 seconds
+  useEffect(() => {
+    if (!isAuthorized) return;
+    let active = true;
+    const poll = () => {
+      requestMultiplierStatus().then(status => {
+        if (active && status) setMultiplierStatus(status);
+      });
+    };
+    poll();
+    const interval = setInterval(poll, 5000);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, [isAuthorized]);
 
-    // Cleanup spawn message timeout on unmount
+  // Clear a pending spawn message timeout on unmount
+  useEffect(() => {
     return () => {
       if (spawnMessageTimeoutRef.current) {
         clearTimeout(spawnMessageTimeoutRef.current);
       }
     };
-  }, [username, isLoggedIn, isLoading, fetchMultiplierStatus]);
-
-  // Poll multiplier status every 5 seconds when active
-  useEffect(() => {
-    if (!isAuthorized) return;
-
-    // Initial fetch is done in the main useEffect
-    // Start polling
-    multiplierIntervalRef.current = setInterval(() => {
-      fetchMultiplierStatus();
-    }, 5000);
-
-    return () => {
-      if (multiplierIntervalRef.current) {
-        clearInterval(multiplierIntervalRef.current);
-      }
-    };
-  }, [isAuthorized, fetchMultiplierStatus]);
+  }, []);
 
   // Local countdown timer (updates every second)
   useEffect(() => {
@@ -305,7 +323,7 @@ const AdminPage: React.FC = () => {
     };
   }, [multiplierStatus.remainingSeconds]);
 
-  if (isLoading || isLoadingData) {
+  if (isLoading || (isAuthorized && isLoadingData)) {
     return (
       <AuthenticatedLayout>
         <div className="admin-page">
