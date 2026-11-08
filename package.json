@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build --webpack",
+    "build": "next build",
     "start": "next start",
     "lint": "eslint .",
     "test": "vitest run",
@@ -28,7 +28,6 @@
     "test:local": "Runs tests locally outside devcontainer (starts db Docker service, connects on localhost:5432)"
   },
   "dependencies": {
-    "@ducanh2912/next-pwa": "^10.2.9",
     "@markdrei/ironguard-typescript-locks": "0.2.3",
     "@tailwindcss/postcss": "^4",
     "@types/bcrypt": "^6.0.0",
@@ -49,15 +48,18 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.58.2",
+    "@serwist/turbopack": "^9.5.13",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^14.6.1",
     "@vitest/coverage-v8": "^5.1.0",
     "@vitest/ui": "^5.1.0",
+    "esbuild": "^0.28.2",
     "eslint": "^10.14.0",
     "eslint-config-next": "16.4.5",
     "jsdom": "^31.0.0",
+    "serwist": "^9.5.13",
     "tsx": "^4.21.0",
     "typescript7": "npm:typescript@^7.0.2",
     "vitest": "^5.1.0"
@@ -66,7 +68,8 @@
     "bcrypt@6.0.0": true,
     "@parcel/watcher@2.6.0": true,
     "@swc/core@1.16.22": true,
-    "esbuild@0.28.2": true
+    "esbuild@0.28.2": true,
+    "@swc/core@1.16.13": true
   },
   "engines": {
     "node": ">=24"

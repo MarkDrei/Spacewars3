@@ -1,32 +1,5 @@
 # Technical Debt
 
-## PWA Service Worker Requires Webpack Build
-
-**Priority**: Medium
-**Added**: 2026-11-08
-**Component**: `package.json` (`build` script), `next.config.ts`
-
-### Context
-
-Next.js 16 builds with Turbopack by default. `@ducanh2912/next-pwa` (10.2.9, latest) is a webpack plugin:
-with Turbopack the build succeeds but silently produces no `public/sw.js`. The `build` script therefore
-runs `next build --webpack`. `next dev` uses Turbopack; PWA is disabled in development anyway.
-
-### Consequences
-
-Production builds do not benefit from Turbopack build speed, and the PWA depends on Next.js keeping
-webpack builds available.
-
-### Proper Solution
-
-Migrate the service worker to a Turbopack-compatible solution (e.g. Serwist), verify `public/sw.js`
-generation and offline behaviour on a preview deploy, then drop `--webpack`.
-
-### Related Files
-
-- `package.json` — `build` script
-- `next.config.ts` — `withPWA` wrapper
-
 ## React Compiler Lint Rule `set-state-in-effect` Downgraded to Warning
 
 **Priority**: Low

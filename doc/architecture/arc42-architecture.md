@@ -73,7 +73,7 @@ Spacewars Ironstrike is a 2D space exploration game built with Next.js 16, TypeS
 - **Language:** TypeScript (strict mode)
 - **Database:** PostgreSQL (relational, ACID-compliant)
 - **Lock System:** IronGuard TypeScript Locks for compile-time deadlock prevention
-- **Runtime:** Node.js v22.17.0
+- **Runtime:** Node.js 24 LTS (`engines.node >= 24`, Docker `node:24-alpine`)
 - **Deployment:** Docker, Vercel, Render (see configuration files)
 
 ### 2.2 Organizational Constraints
@@ -133,6 +133,7 @@ graph TB
 | Lock System    | IronGuard             | Deadlock prevention |
 | Canvas         | HTML5 Canvas API      | Game rendering      |
 | Authentication | iron-session          | Secure sessions     |
+| PWA / Offline  | Serwist (`@serwist/turbopack`) | Service worker: precache build assets, runtime caching |
 
 ### 4.3 Responsive Navigation Strategy
 
