@@ -36,8 +36,8 @@ export async function POST(request: NextRequest) {
     const locale = request.cookies.get('NEXT_LOCALE')?.value ?? 'en';
     const t = await getServerT(locale, 'game');
     
-    const body = await request.json();
-    const { targetUserId } = body;
+    const body = await request.json().catch(() => null);
+    const targetUserId: unknown = body?.targetUserId;
     
     // Validate target user ID
     if (!targetUserId || typeof targetUserId !== 'number') {
@@ -67,7 +67,8 @@ export async function POST(request: NextRequest) {
             const npcManager = NPCManager.getInstance();
             npc = npcManager.getNpcById(targetUserId);
 
-            if (!npc) {
+            // NPCs are per player: only the owner sees (and may attack) them
+            if (!npc || npc.ownerId !== session.userId) {
               throw new ApiError(404, 'NPC not found');
             }
             if (npc.defeated) {

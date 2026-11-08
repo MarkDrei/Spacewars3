@@ -4,122 +4,74 @@ import { UserCache } from '@/lib/server/user/userCache';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth, ApiError } from '@/lib/server/errors';
 import { USER_LOCK, WORLD_LOCK } from '@/lib/server/typedLocks';
-import { User } from '@/lib/server/user/user';
-import { World } from '@/lib/server/world/world';
-import { createLockContext, LockContext, LocksAtMostAndHas4, LocksAtMostAndHas6 } from '@markdrei/ironguard-typescript-locks';
+import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 import { WorldCache } from '@/lib/server/world/worldCache';
 import { calculateTeleportChargeCost } from '@/lib/server/teleport/teleportCharges';
 
+/**
+ * POST /api/teleport
+ * Moves the player's ship to (x, y), consuming teleport charge proportional to the jump distance.
+ *
+ * Locking: USER_LOCK (4) → WORLD_LOCK (6). Input validation happens before any lock, the user is
+ * resolved and checked (battle, charges) before WORLD_LOCK, which only covers the ship update.
+ */
 export async function POST(request: NextRequest) {
   try {
     const session = await getIronSession<SessionData>(request, NextResponse.json({}), sessionOptions);
     requireAuth(session.userId);
+    const userId = session.userId!;
 
-    const body = await request.json();
-    const { x, y, preserveVelocity } = body;
+    const body = await request.json().catch(() => null);
+    const { x, y, preserveVelocity } = (body ?? {}) as Record<string, unknown>;
+    if (typeof x !== 'number' || typeof y !== 'number' || !Number.isFinite(x) || !Number.isFinite(y)) {
+      throw new ApiError(400, 'x and y must be valid numbers');
+    }
 
-    const emptyCtx = createLockContext();
-    const userWorldCache = UserCache.getInstance2();
+    const userCache = UserCache.getInstance2();
     const worldCache = WorldCache.getInstance();
 
-    return await emptyCtx.useLockWithAcquire(USER_LOCK, async (userContext) => {
-      return await userContext.useLockWithAcquire(WORLD_LOCK, async (worldContext) => {
-        const world = worldCache.getWorldFromCache(worldContext);
-        const user = await userWorldCache.getUserByIdWithLock(userContext, session.userId!);
+    return await createLockContext().useLockWithAcquire(USER_LOCK, async (userContext) => {
+      const user = await userCache.getUserByIdWithLock(userContext, userId);
+      if (!user) {
+        throw new ApiError(404, 'User not found');
+      }
+      if (user.inBattle) {
+        throw new ApiError(400, 'Cannot teleport while in battle');
+      }
+      if (Math.floor(user.teleportCharges) < 1) {
+        throw new ApiError(400, 'No teleport charges available');
+      }
 
-        if (!user) {
-          console.log(`❌ User not found: ${session.userId}`);
-          throw new ApiError(404, 'User not found');
+      const ship = await userContext.useLockWithAcquire(WORLD_LOCK, async (worldContext) => {
+        // getWorldFromCache advances physics to "now"
+        const world = worldCache.getWorldFromCache(worldContext);
+        const { width, height } = world.worldSize;
+        if (x < 0 || x > width || y < 0 || y > height) {
+          throw new ApiError(400, `Coordinates must be in range [0, ${width}] x [0, ${height}]`);
         }
 
-        return await performTeleportLogic(worldContext, userContext, world, user, x, y, preserveVelocity);
+        const playerShip = world.getSpaceObject(worldContext, user.ship_id ?? -1);
+        if (!playerShip || playerShip.type !== 'player_ship') {
+          throw new ApiError(404, 'Player ship not found');
+        }
+
+        user.teleportCharges -= calculateTeleportChargeCost(playerShip.x, playerShip.y, x, y);
+        playerShip.x = x;
+        playerShip.y = y;
+        if (!preserveVelocity) {
+          playerShip.speed = 0;
+        }
+        playerShip.last_position_update_ms = Date.now();
+
+        await worldCache.updateWorldUnsafe(worldContext, world);
+        return { x: playerShip.x, y: playerShip.y, speed: playerShip.speed, angle: playerShip.angle };
       });
+
+      await userCache.updateUserInCache(userContext, user);
+
+      return NextResponse.json({ success: true, ship, remainingCharges: user.teleportCharges });
     });
   } catch (error) {
     return handleApiError(error);
   }
-}
-
-/**
- * Perform the actual teleport logic with proper lock context.
- * Requires world write lock and user lock to be held.
- */
-async function performTeleportLogic(
-  worldContext: LockContext<LocksAtMostAndHas6>,
-  userCtx: LockContext<LocksAtMostAndHas4>,
-  world: World,
-  user: User,
-  x: unknown,
-  y: unknown,
-  preserveVelocity: unknown
-): Promise<NextResponse> {
-  const worldCache = WorldCache.getInstance();
-  const userWorldCache = UserCache.getInstance2();
-
-  // Validate coordinates
-  if (typeof x !== 'number' || typeof y !== 'number' || !isFinite(x) || !isFinite(y)) {
-    throw new ApiError(400, 'x and y must be valid numbers');
-  }
-
-  const worldWidth = world.worldSize.width;
-  const worldHeight = world.worldSize.height;
-
-  if (x < 0 || x > worldWidth || y < 0 || y > worldHeight) {
-    throw new ApiError(400, `Coordinates must be in range [0, ${worldWidth}] x [0, ${worldHeight}]`);
-  }
-
-  // Check if user is in battle - cannot teleport while in battle
-  if (user.inBattle) {
-    throw new ApiError(400, 'Cannot teleport while in battle');
-  }
-
-  // Check teleport charges
-  if (Math.floor(user.teleportCharges) < 1) {
-    throw new ApiError(400, 'No teleport charges available');
-  }
-
-  // Update physics for all objects
-  const currentTime = Date.now();
-  world.updatePhysics(worldContext, currentTime);
-
-  // Find player's ship in the world
-  const playerShips = world.getSpaceObjectsByType(worldContext, 'player_ship');
-  const playerShip = playerShips.find((ship) => ship.id === user.ship_id);
-
-  if (!playerShip) {
-    throw new ApiError(404, 'Player ship not found');
-  }
-
-  // Calculate charge cost based on jump distance
-  const chargeCost = calculateTeleportChargeCost(playerShip.x, playerShip.y, x, y);
-
-  // Teleport ship to new position
-  playerShip.x = x;
-  playerShip.y = y;
-
-  // Optionally zero out velocity
-  if (!preserveVelocity) {
-    playerShip.speed = 0;
-  }
-
-  // Deduct charge proportional to jump distance
-  user.teleportCharges -= chargeCost;
-
-  // Update last position update timestamp
-  playerShip.last_position_update_ms = currentTime;
-
-  // Save world and user
-  await worldCache.updateWorldUnsafe(worldContext, world);
-  await userWorldCache.updateUserInCache(userCtx, user);
-
-  return NextResponse.json({
-    success: true,
-    ship: {
-      x: playerShip.x,
-      y: playerShip.y,
-      speed: playerShip.speed,
-      angle: playerShip.angle,
-    },
-    remainingCharges: user.teleportCharges,
-  });
 }

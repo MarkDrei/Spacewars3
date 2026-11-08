@@ -26,7 +26,7 @@ import { getBattleCache } from './BattleCache';
 import { HasLock2Context, IronLocks, LockContext, LocksAtMost4, LocksAtMostAndHas2, LocksAtMostAndHas4 } from '@markdrei/ironguard-typescript-locks';
 import { WORLD_LOCK, USER_LOCK } from '../typedLocks';
 import { WorldCache } from '../world/worldCache';
-import { DEFAULT_WORLD_WIDTH, DEFAULT_WORLD_HEIGHT } from '@shared/worldConstants';
+import { calculateToroidalDistance, type WorldBounds } from '@shared/physics';
 import { sendMessageToUser } from '../messages/MessageCache';
 import { getServerT } from '../i18n/serverTranslations';
 import { StatisticsCache } from '../statistics/StatisticsCache';
@@ -108,23 +108,22 @@ function createBattleStats(user: User): BattleStats {
 /**
  * Calculate distance between two positions
  */
-function calculateDistance(x1: number, y1: number, x2: number, y2: number): number {
-  const dx = x2 - x1;
-  const dy = y2 - y1;
-  return Math.sqrt(dx * dx + dy * dy);
-}
-
 /**
  * Get ship position from World cache
  * Helper function that delegates to TypeduserWorldCache
  */
-async function getShipPosition(context: LockContext<LocksAtMost4>, shipId: number): Promise<{ x: number; y: number } | null> {
+async function getShipPositions(
+  context: LockContext<LocksAtMost4>,
+  shipIds: number[]
+): Promise<{ positions: ({ x: number; y: number } | null)[]; worldSize: WorldBounds }> {
   const worldCache = WorldCache.getInstance();
   return await context.useLockWithAcquire(WORLD_LOCK, async (worldContext) => {
     const world = worldCache.getWorldFromCache(worldContext);
-    const ship = world.spaceObjects.find(obj => obj.id === shipId);
-    return ship ? { x: ship.x, y: ship.y } : null;
-
+    const positions = shipIds.map((shipId) => {
+      const ship = world.spaceObjects.find(obj => obj.id === shipId);
+      return ship ? { x: ship.x, y: ship.y } : null;
+    });
+    return { positions, worldSize: world.worldSize };
   });
 }
 
@@ -158,30 +157,27 @@ async function updateUserBattleState(context: LockContext<LocksAtMostAndHas4>, u
 }
 
 /**
- * Generate random position with minimum distance from a point
+ * Generate a random position at least `minDistance` away from a point (toroidal distance,
+ * the world wraps at its edges).
  */
-function generateTeleportPosition(
-  fromX: number,
-  fromY: number,
-  minDistance: number
+export function generateTeleportPosition(
+  from: { x: number; y: number },
+  minDistance: number,
+  worldSize: WorldBounds,
+  random: () => number = Math.random
 ): { x: number; y: number } {
-  let x: number, y: number, distance: number;
-
   // Try up to 100 times to find a valid position
   for (let i = 0; i < 100; i++) {
-    x = Math.random() * DEFAULT_WORLD_WIDTH;
-    y = Math.random() * DEFAULT_WORLD_HEIGHT;
-    distance = calculateDistance(fromX, fromY, x, y);
-
-    if (distance >= minDistance) {
-      return { x, y };
+    const candidate = { x: random() * worldSize.width, y: random() * worldSize.height };
+    if (calculateToroidalDistance(from, candidate, worldSize) >= minDistance) {
+      return candidate;
     }
   }
 
-  // Fallback: place at opposite corner
+  // Fallback: the point with the largest toroidal distance (half a world away on both axes)
   return {
-    x: fromX > DEFAULT_WORLD_WIDTH / 2 ? 0 : DEFAULT_WORLD_WIDTH,
-    y: fromY > DEFAULT_WORLD_HEIGHT / 2 ? 0 : DEFAULT_WORLD_HEIGHT
+    x: (from.x + worldSize.width / 2) % worldSize.width,
+    y: (from.y + worldSize.height / 2) % worldSize.height,
   };
 }
 
@@ -263,19 +259,15 @@ export async function initiateBattle<THeld extends IronLocks>(
 
   console.log(`⚔️ initiateBattle: Getting ship positions...`);
   // Validation: Check distance
-  const attackerPos = await getShipPosition(contextUser, attacker.ship_id);
-  const attackeePos = await getShipPosition(contextUser, attackee.ship_id);
+  const { positions: [attackerPos, attackeePos], worldSize } =
+    await getShipPositions(contextUser, [attacker.ship_id, attackee.ship_id]);
 
   if (!attackerPos || !attackeePos) {
     throw new ApiError(500, 'Could not determine ship positions');
   }
 
-  const distance = calculateDistance(
-    attackerPos.x,
-    attackerPos.y,
-    attackeePos.x,
-    attackeePos.y
-  );
+  // The world wraps at its edges, so ships close to opposite edges are close to each other
+  const distance = calculateToroidalDistance(attackerPos, attackeePos, worldSize);
 
   if (distance > BATTLE_RANGE) {
     throw new ApiError(400, `Target is too far away (${distance.toFixed(1)} units, max ${BATTLE_RANGE})`);
@@ -617,15 +609,11 @@ export async function resolveBattle(
       const winnerShipId = await getUserShipId(userContext, winnerId);
       const loserShipId = await getUserShipId(userContext, loserId);
 
-      const winnerPos = await getShipPosition(userContext, winnerShipId);
+      const { positions: [winnerPos], worldSize } = await getShipPositions(userContext, [winnerShipId]);
 
       if (winnerPos) {
         // Teleport loser to random position (minimum distance away)
-        const teleportPos = generateTeleportPosition(
-          winnerPos.x,
-          winnerPos.y,
-          MIN_TELEPORT_DISTANCE
-        );
+        const teleportPos = generateTeleportPosition(winnerPos, MIN_TELEPORT_DISTANCE, worldSize);
 
         await teleportShip(userContext, loserShipId, teleportPos.x, teleportPos.y);
 

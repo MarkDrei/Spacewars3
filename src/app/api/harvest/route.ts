@@ -7,223 +7,175 @@ import { getServerT } from '@/lib/server/i18n/serverTranslations';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth, ApiError } from '@/lib/server/errors';
 import { USER_INVENTORY_LOCK, USER_LOCK, WORLD_LOCK } from '@/lib/server/typedLocks';
-import { User } from '@/lib/server/user/user';
-import { World } from '@/lib/server/world/world';
 import { WorldCache } from '@/lib/server/world/worldCache';
-import { createLockContext, LockContext, LocksAtMostAndHas4, LocksAtMostAndHas6 } from '@markdrei/ironguard-typescript-locks';
+import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 import { Commander } from '@/lib/server/inventory/Commander';
 import { InventoryService, InventoryFullError } from '@/lib/server/inventory/InventoryService';
 import { getResearchEffectFromTree, ResearchType } from '@/lib/server/techs/techtree';
 import { StatisticsCache } from '@/lib/server/statistics/StatisticsCache';
 
+/** Maximum toroidal distance (world units) between ship and object for a harvest. */
+const HARVEST_RANGE = 125;
+
+type CollectibleType = 'asteroid' | 'shipwreck' | 'escape_pod';
+
+interface CollectionResult {
+  objectType: CollectibleType;
+  distance: number;
+  ironReward: number;
+  totalIron: number;
+  locale: string;
+  maxInventorySlots: number;
+}
+
+async function parseObjectId(request: NextRequest): Promise<number> {
+  const rawBody = await request.text();
+  if (!rawBody || rawBody.trim() === '') {
+    throw new ApiError(400, 'Invalid JSON in request body');
+  }
+  let body: unknown;
+  try {
+    body = JSON.parse(rawBody);
+  } catch {
+    throw new ApiError(400, 'Invalid JSON in request body');
+  }
+  const objectId = (body as { objectId?: unknown } | null)?.objectId;
+  if (!objectId || typeof objectId !== 'number') {
+    throw new ApiError(400, 'Missing or invalid object ID');
+  }
+  return objectId;
+}
+
+/**
+ * Collects the object: USER_LOCK (4) → WORLD_LOCK (6).
+ * User and bonuses are resolved before WORLD_LOCK, so the world lock only covers the
+ * range check, the collection and the respawn of a replacement object.
+ */
+async function collectObject(userId: number, objectId: number): Promise<CollectionResult> {
+  const userCache = UserCache.getInstance2();
+  const worldCache = WorldCache.getInstance();
+
+  return createLockContext().useLockWithAcquire(USER_LOCK, async (userContext) => {
+    const user = await userCache.getUserByIdWithLock(userContext, userId);
+    if (!user) {
+      throw new ApiError(404, 'User not found');
+    }
+    if (user.inBattle) {
+      throw new ApiError(400, 'Cannot collect while in battle');
+    }
+    const bonuses = await userCache.getBonusesByUserIdWithLock(userContext, user.id);
+
+    const collected = await userContext.useLockWithAcquire(WORLD_LOCK, async (worldContext) => {
+      // getWorldFromCache advances physics to "now"
+      const world = worldCache.getWorldFromCache(worldContext);
+
+      const targetObject = world.getSpaceObject(worldContext, objectId);
+      if (!targetObject) {
+        throw new ApiError(404, 'Object not found');
+      }
+      if (targetObject.type === 'player_ship') {
+        throw new ApiError(400, 'Cannot collect player ships');
+      }
+
+      const playerShip = world.getSpaceObject(worldContext, user.ship_id ?? -1);
+      if (!playerShip || playerShip.type !== 'player_ship') {
+        throw new ApiError(404, 'Player ship not found');
+      }
+
+      const distance = calculateToroidalDistance(playerShip, targetObject, world.worldSize);
+      if (distance > HARVEST_RANGE) {
+        throw new ApiError(400, 'Object too far away');
+      }
+
+      const ironBefore = user.iron;
+      user.collected(targetObject.type, bonuses.ironStorageCapacity);
+      await world.collected(worldContext, objectId);
+      await worldCache.updateWorldUnsafe(worldContext, world);
+
+      return { objectType: targetObject.type, distance, ironReward: user.iron - ironBefore };
+    });
+
+    await userCache.updateUserInCache(userContext, user);
+
+    return {
+      ...collected,
+      totalIron: user.iron,
+      locale: user.preferredLocale ?? 'en',
+      maxInventorySlots: Math.floor(getResearchEffectFromTree(user.techTree, ResearchType.InventorySlots)),
+    };
+  });
+}
+
+/**
+ * Escape pod reward: a random commander in the first free inventory slot.
+ * Runs after USER_LOCK/WORLD_LOCK are released; only USER_INVENTORY_LOCK (5) is held.
+ */
+async function rescueCommander(userId: number, result: CollectionResult): Promise<string> {
+  const commander = Commander.random();
+  const bonusDesc = commander.statBonuses.map(b => `${b.stat} +${b.value}%`).join(', ');
+  const tMsg = await getServerT(result.locale, 'messages');
+
+  return createLockContext().useLockWithAcquire(USER_INVENTORY_LOCK, async (inventoryContext) => {
+    try {
+      await new InventoryService().addItemToFirstFreeSlotWithLock(
+        inventoryContext, userId, commander.toJSON(), result.maxInventorySlots
+      );
+      return tMsg('escapePodRescued', { commander: commander.name, bonuses: bonusDesc });
+    } catch (err) {
+      if (err instanceof InventoryFullError) {
+        return tMsg('escapePodFull', { commander: commander.name, bonuses: bonusDesc });
+      }
+      throw err;
+    }
+  });
+}
+
+async function collectionMessage(result: CollectionResult): Promise<string> {
+  const tMsg = await getServerT(result.locale, 'messages');
+  const objectLabel = result.objectType.replace('_', ' ');
+  return result.ironReward > 0
+    ? tMsg('harvestCollected', { type: objectLabel, iron: result.ironReward })
+    : tMsg('harvestCollectedNoIron', { type: objectLabel });
+}
+
+/**
+ * POST /api/harvest
+ * Collects an asteroid, shipwreck or escape pod within range of the player's ship.
+ */
 export async function POST(request: NextRequest) {
   try {
     const session = await getIronSession<SessionData>(request, NextResponse.json({}), sessionOptions);
     requireAuth(session.userId);
-    
-    // Try to parse JSON body with proper error handling
-    let body;
-    try {
-      const rawBody = await request.text();
-      
-      if (!rawBody || rawBody.trim() === '') {
-        throw new ApiError(400, 'Request body is empty');
-      }
-      
-      body = JSON.parse(rawBody);
-    } catch (jsonError) {
-      console.log(`❌ JSON parsing error:`, jsonError);
-      throw new ApiError(400, 'Invalid JSON in request body');
-    }
-    
-    const { objectId } = body;
-    
-    console.log(`🎯 Collection API called for object ID: ${objectId} by user: ${session.userId}`);
-    
-    if (!objectId || typeof objectId !== 'number') {
-      console.log(`❌ Invalid object ID: ${objectId}`);
-      throw new ApiError(400, 'Missing or invalid object ID');
-    }
-    
-    const emptyCtx = createLockContext();
-    // Get typed cache manager singleton
-    const userWorldCache = UserCache.getInstance2();
+    const userId = session.userId!;
 
-    const worldCache = WorldCache.getInstance();
+    const objectId = await parseObjectId(request);
+    const result = await collectObject(userId, objectId);
 
-    // Step 1: Collect the object under USER + WORLD locks.
-    // InventoryService acquires LOCK_5 internally via a fresh context, so it
-    // must NOT be called while USER_LOCK (4) or WORLD_LOCK (6) are held.
-    const collectionResult = await emptyCtx.useLockWithAcquire(USER_LOCK, async (userContext) => {
-      return await userContext.useLockWithAcquire(WORLD_LOCK, async (worldContext) => {
-        // Get world data safely (we have world write lock)
-        const world = worldCache.getWorldFromCache(worldContext);
-        
-        // Get user data safely (we have user lock)  
-        const user = await userWorldCache.getUserByIdWithLock(userContext, session.userId!);
-
-        if (!user) {
-          console.log(`❌ User not found: ${session.userId}`);
-          throw new ApiError(404, 'User not found');
-        }
-        
-        // Continue with collection logic
-        return await performCollectionLogic(worldContext, userContext, world, user, objectId, userWorldCache);
-      });
-    });
-
-    // Step 2: If an escape pod was collected, handle commander inventory logic
-    // (outside USER/WORLD locks since InventoryService acquires LOCK_5 internally)
-    await emptyCtx.useLockWithAcquire(USER_INVENTORY_LOCK, async (inventoryContext) => {
-      if (collectionResult.escapePodCollected) {
-        const inventoryService = new InventoryService();
-        const commander = Commander.random();
-        // Look up user's locale for localized messages
-        const userLocale = await emptyCtx.useLockWithAcquire(USER_LOCK, async (localeCtx) => {
-          const u = await userWorldCache.getUserByIdWithLock(localeCtx, session.userId!);
-          return u?.preferredLocale ?? 'en';
-        });
-        const tMsg = await getServerT(userLocale, 'messages');
-        let notificationMessage: string;
-        try {
-          await inventoryService.addItemToFirstFreeSlotWithLock(inventoryContext, session.userId!, commander.toJSON(), collectionResult.maxInventorySlots);
-          const bonusDesc = commander.statBonuses
-            .map(b => `${b.stat} +${b.value}%`)
-            .join(', ');
-          notificationMessage = tMsg('escapePodRescued', { commander: commander.name, bonuses: bonusDesc });
-        } catch (err) {
-          if (err instanceof InventoryFullError) {
-            const bonusDesc = commander.statBonuses
-              .map(b => `${b.stat} +${b.value}%`)
-              .join(', ');
-            notificationMessage = tMsg('escapePodFull', { commander: commander.name, bonuses: bonusDesc });
-          } else {
-            throw err;
-          }
-        }
-        sendMessageToUser(inventoryContext, session.userId!, notificationMessage).catch((error: Error) => {
-          console.error('❌ Failed to send commander notification:', error);
-        });
-      }
-    });
-
-    return collectionResult.response;
-
-  } catch (error) {
-    console.log(`❌ Collection API error:`, error);
-    return handleApiError(error);
-  }
-}
-
-/**
- * Perform the actual collection logic with proper lock context
- * This function requires world write and user locks to be held
- */
-async function performCollectionLogic(
-  worldContext: LockContext<LocksAtMostAndHas6>,
-  userCtx: LockContext<LocksAtMostAndHas4>,
-  world: World,
-  user: User, 
-  objectId: number,
-  userWorldCache: UserCache,
-): Promise<{ response: NextResponse; escapePodCollected: boolean; maxInventorySlots: number }> {
-  const worldCache = WorldCache.getInstance();
-  // Update physics for all objects first
-  const currentTime = Date.now();
-  world.updatePhysics(worldContext, currentTime);
-  
-  // Find the object to collect
-  const targetObject = world.getSpaceObject(worldContext, objectId);
-  if (!targetObject) {
-    throw new ApiError(404, 'Object not found');
-  }
-  
-  // Check if object is collectible
-  if (targetObject.type === 'player_ship') {
-    throw new ApiError(400, 'Cannot collect player ships');
-  }
-  
-  // Find player's ship in the world
-  const playerShips = world.getSpaceObjectsByType(worldContext, 'player_ship');
-  const playerShip = playerShips.find((ship) => ship.id === user.ship_id);
-  
-  if (!playerShip) {
-    throw new ApiError(404, 'Player ship not found');
-  }
-  
-  // Calculate distance between player ship and target object using toroidal distance
-  const distance = calculateToroidalDistance(
-    playerShip,
-    targetObject,
-    world.worldSize
-  );
-  
-  // Check if within collection range (125 units)
-  if (distance > 125) {
-    throw new ApiError(400, 'Object too far away');
-  }
-  
-  // Capture iron before collection
-  const ironBefore = user.iron;
-
-  // Get bonuses so the iron cap includes the user-level multiplier
-  const bonuses = await userWorldCache.getBonusesByUserIdWithLock(userCtx, user.id);
-
-  // Collect the object using the bonused iron capacity
-  user.collected(targetObject.type, bonuses.ironStorageCapacity);
-  await world.collected(worldContext, objectId);
-  
-  // Calculate iron reward
-  const ironReward = user.iron - ironBefore;
-  
-  // Update cache with new data (using unsafe methods because we have proper locks)
-  await userWorldCache.updateUserInCache(userCtx, user);
-  await worldCache.updateWorldUnsafe(worldContext, world);
-  
-  const escapePodCollected = targetObject.type === 'escape_pod';
-  const maxInventorySlots = Math.floor(getResearchEffectFromTree(user.techTree, ResearchType.InventorySlots));
-
-  // For non-escape-pod objects send the standard collection notification now.
-  // Escape pod commander notification is sent after locks are released (in POST handler).
-  if (!escapePodCollected) {
-    const locale = user.preferredLocale ?? 'en';
-    const tMsg = await getServerT(locale, 'messages');
-    const objectLabel = targetObject.type.replace('_', ' ');
-    let notificationMessage: string;
-    if (ironReward > 0) {
-      notificationMessage = tMsg('harvestCollected', { type: objectLabel, iron: ironReward });
-    } else {
-      notificationMessage = tMsg('harvestCollectedNoIron', { type: objectLabel });
-    }
-    console.log(`📝 Creating notification for user ${user.id}: "${notificationMessage}"`);
-    sendMessageToUser(worldContext, user.id, notificationMessage).catch((error: Error) => {
+    const notification = result.objectType === 'escape_pod'
+      ? await rescueCommander(userId, result)
+      : await collectionMessage(result);
+    sendMessageToUser(createLockContext(), userId, notification).catch((error: Error) => {
       console.error('❌ Failed to send collection notification:', error);
     });
-  }
 
-  // Emit statistics event (fire-and-forget)
-  if (targetObject.type === 'asteroid' || targetObject.type === 'shipwreck' || targetObject.type === 'escape_pod') {
     try {
-      const statisticsCache = StatisticsCache.getInstance();
-      void statisticsCache.recordEvent(user.id, 'item_collected', {
-        objectType: targetObject.type,
-        ironAwarded: ironReward,
+      void StatisticsCache.getInstance().recordEvent(userId, 'item_collected', {
+        objectType: result.objectType,
+        ironAwarded: result.ironReward,
       });
     } catch (statsErr) {
       console.error('⚠️ Failed to emit collection statistics event:', statsErr);
     }
-  }
 
-  return {
-    escapePodCollected,
-    maxInventorySlots,
-    response: NextResponse.json({
+    return NextResponse.json({
       success: true,
-      distance,
-      ironReward,
-      totalIron: user.iron,
-      objectType: targetObject.type,
-      message: 'Collection completed successfully'
-    }),
-  };
+      distance: result.distance,
+      ironReward: result.ironReward,
+      totalIron: result.totalIron,
+      objectType: result.objectType,
+      message: 'Collection completed successfully',
+    });
+  } catch (error) {
+    return handleApiError(error);
+  }
 }
