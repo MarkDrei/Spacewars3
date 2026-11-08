@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { WorldData } from '@shared/types/gameTypes';
-import { updateAllObjectPositions, updateAllObjectPositionsWithTimeCorrection } from '@shared/physics';
+import { updateAllObjectPositionsWithTimeCorrection } from '@shared/physics';
 import { worldDataService } from '../services/worldDataService';
 import { getTimeMultiplier } from '../timeMultiplier';
 import { startVisibilityAwarePolling } from '../polling/visibilityPolling';
@@ -26,35 +26,6 @@ export const useWorldData = (pollInterval: number = 3000): UseWorldDataReturn =>
   
   // Use ref to track if component is mounted (for cleanup)
   const isMountedRef = useRef<boolean>(true);
-
-  // Optimistic position updates for smooth animation using shared physics logic
-  const updateOptimisticPositions = useCallback((data: WorldDataState): WorldDataState => {
-    if (!data) return data;
-    
-    const now = Date.now();
-
-    // NPC ships use client-side orbit interpolation in their renderer and must NOT
-    // be processed by the physics engine. Advancing last_position_update_ms for NPCs
-    // would reset the elapsed-time window used by NPCShipRenderer, making them appear
-    // stationary between server polls.
-    const npcObjects = data.spaceObjects.filter(obj => obj.type === 'npc_ship');
-    const nonNpcObjects = data.spaceObjects.filter(obj => obj.type !== 'npc_ship');
-
-    // Always use standard incremental physics for optimistic updates
-    // The time correction is only applied when receiving fresh server data
-    const updatedObjects = updateAllObjectPositions(
-      nonNpcObjects,
-      now,
-      data.worldSize,
-      50,
-      getTimeMultiplier()
-    );
-    
-    return {
-      ...data,
-      spaceObjects: [...updatedObjects, ...npcObjects],
-    };
-  }, []);
 
   const fetchWorldData = useCallback((initialRetryCount: number = 0) => {
     const attempt = async (retryCount: number): Promise<void> => {
@@ -124,22 +95,6 @@ export const useWorldData = (pollInterval: number = 3000): UseWorldDataReturn =>
     return attempt(initialRetryCount);
   }, []);
 
-  // Set up optimistic updates for smooth animation between server updates
-  useEffect(() => {
-    if (!worldData) return;
-    
-    const optimisticUpdateInterval = setInterval(() => {
-      setWorldData(currentData => {
-        if (!currentData) return currentData;
-        return updateOptimisticPositions(currentData);
-      });
-    }, 16); // Update positions every 16ms (60fps) for smooth animation
-
-    return () => {
-      clearInterval(optimisticUpdateInterval);
-    };
-  }, [worldData, updateOptimisticPositions]);
-
   useEffect(() => {
     isMountedRef.current = true;
     
@@ -157,7 +112,7 @@ export const useWorldData = (pollInterval: number = 3000): UseWorldDataReturn =>
   }, [pollInterval, fetchWorldData]);
 
   return {
-    worldData, // Return worldData directly - optimistic updates are already applied in setInterval
+    worldData, // Latest server snapshot; the game projects positions per animation frame (worldProjection)
     isLoading,
     error,
     refetch: fetchWorldData,
