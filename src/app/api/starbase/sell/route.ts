@@ -46,12 +46,13 @@ export async function POST(request: NextRequest) {
         throw new ApiError(400, 'Item is not a commander');
       }
 
-      const price = commanderSellPrice(item);
-
-      user.addIron(price);
+      // Same capacity as every other iron source: research capacity including the level bonus.
+      // Iron beyond the cap is discarded (Cap04_Feat003_Req002).
+      const bonuses = await userCache.getBonusesByUserIdWithLock(userContext, userId);
+      const ironEarned = user.addIron(commanderSellPrice(item), bonuses.ironStorageCapacity);
       await userCache.updateUserInCache(userContext, user);
 
-      return { newIron: user.iron, ironEarned: price };
+      return { newIron: user.iron, ironEarned };
     });
 
     return NextResponse.json({ success: true, newIron, ironEarned });

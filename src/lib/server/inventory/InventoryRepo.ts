@@ -120,6 +120,26 @@ export class InventoryRepo {
   }
 
   /**
+   * Persist inventory and bridge grid in one statement (both live in the same row), so an
+   * item moved between them can never be lost or duplicated by a partially applied save.
+   */
+  async saveInventoryAndBridge<THeld extends readonly LockLevel[]>(
+    _context: HasLock5Context<THeld>,
+    userId: number,
+    inventory: InventoryGrid,
+    bridge: BridgeGrid
+  ): Promise<void> {
+    const db = await getDatabase();
+    await db.query(
+      `INSERT INTO inventories (user_id, inventory_data, bridge_data)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (user_id) DO UPDATE
+         SET inventory_data = EXCLUDED.inventory_data, bridge_data = EXCLUDED.bridge_data`,
+      [userId, JSON.stringify(inventory), JSON.stringify(bridge)]
+    );
+  }
+
+  /**
    * Delete the inventory row for a user (e.g. on account deletion).
    * Also deletes bridge data since it is stored in the same row.
    */

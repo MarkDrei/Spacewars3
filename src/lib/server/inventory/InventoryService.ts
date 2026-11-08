@@ -434,8 +434,7 @@ export class InventoryService {
       inventory[from.row][from.col] = null;
       bridge[to.row][to.col] = item;
 
-      await this.repo.saveInventory(lockCtx, userId, inventory);
-      await this.repo.saveBridge(lockCtx, userId, bridge);
+      await this.repo.saveInventoryAndBridge(lockCtx, userId, inventory, bridge);
     });
   }
 
@@ -466,8 +465,7 @@ export class InventoryService {
 
       inventory[from.row][from.col] = null;
       bridge[slot.row][slot.col] = item;
-      await this.repo.saveInventory(lockCtx, userId, inventory);
-      await this.repo.saveBridge(lockCtx, userId, bridge);
+      await this.repo.saveInventoryAndBridge(lockCtx, userId, inventory, bridge);
       return slot;
     });
   }
@@ -498,8 +496,7 @@ export class InventoryService {
 
       bridge[from.row][from.col] = null;
       inventory[slot.row][slot.col] = item;
-      await this.repo.saveBridge(lockCtx, userId, bridge);
-      await this.repo.saveInventory(lockCtx, userId, inventory);
+      await this.repo.saveInventoryAndBridge(lockCtx, userId, inventory, bridge);
       return slot;
     });
   }
@@ -529,8 +526,7 @@ export class InventoryService {
       bridge[from.row][from.col] = null;
       inventory[to.row][to.col] = item;
 
-      await this.repo.saveBridge(lockCtx, userId, bridge);
-      await this.repo.saveInventory(lockCtx, userId, inventory);
+      await this.repo.saveInventoryAndBridge(lockCtx, userId, inventory, bridge);
     });
   }
 

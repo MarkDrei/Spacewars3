@@ -62,6 +62,35 @@ and count completed builds in `applyCompletedBuild`. Remove the event from the b
 - `src/lib/server/techs/TechService.ts` — `addTechItemToBuildQueue`, `processCompletedBuilds`
 - `src/lib/server/statistics/StatisticsCache.ts` — `tech_spent` aggregation
 
+## Starbase Shop Offers Live in the Session Cookie (Replayable)
+
+**Priority**: Medium
+**Added**: 2026-11-08
+**Component**: `src/app/api/starbase/shop/route.ts`, `src/app/api/starbase/buy/route.ts`
+
+### Context
+
+`GET /api/starbase/shop` stores the ten generated commanders in the sealed iron-session cookie;
+`POST /api/starbase/buy` reads the offer from the cookie and returns a new cookie with the bought
+slot set to null. The cookie cannot be forged, but it can be replayed: sending the old cookie
+again buys the same commander a second time (at full price).
+
+### Consequences
+
+Players can buy copies of a particularly strong commander as long as they have iron.
+
+### Proper Solution
+
+Keep the current shop per user on the server (in-memory map keyed by user id, regenerated on
+`GET /api/starbase/shop`, slot cleared on purchase under USER_INVENTORY_LOCK) and stop trusting
+the cookie for offers.
+
+### Related Files
+
+- `src/app/api/starbase/shop/route.ts` — generates the offers
+- `src/app/api/starbase/buy/route.ts` — consumes them
+- `src/lib/server/session.ts` — `SessionData.starbaseShop`
+
 ## Minor Balance Change: Multiplicative Accuracy Refactor (Task 1.1)
 
 **Priority**: Low  

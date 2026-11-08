@@ -4,7 +4,7 @@ import { getIronSession } from 'iron-session';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth, ApiError } from '@/lib/server/errors';
 import { UserCache } from '@/lib/server/user/userCache';
-import { InventoryService } from '@/lib/server/inventory/InventoryService';
+import { InventoryService, InventoryFullError } from '@/lib/server/inventory/InventoryService';
 import { USER_LOCK } from '@/lib/server/typedLocks';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 import { commanderBuyPrice } from '@/lib/server/starbase/commanderPrice';
@@ -51,14 +51,14 @@ export async function POST(request: NextRequest) {
         throw new ApiError(400, `Insufficient iron. Need ${price}, have ${user.iron}`);
       }
 
-      user.subtractIron(price);
-
-      await userCache.updateUserInCache(userContext, user);
-
       const maxSlots = Math.floor(getResearchEffectFromTree(user.techTree, ResearchType.InventorySlots));
 
-      // Add to inventory (USER_INVENTORY_LOCK acquired internally — safe to nest under USER_LOCK)
+      // Place the commander first: if the inventory is full this throws and no iron is charged.
+      // (USER_INVENTORY_LOCK (5) is acquired internally - valid order under USER_LOCK (4).)
       await inventoryService.addItemToFirstFreeSlotWithoutLock(userId, commander, maxSlots);
+
+      user.subtractIron(price);
+      await userCache.updateUserInCache(userContext, user);
 
       return user.iron;
     });
@@ -72,6 +72,9 @@ export async function POST(request: NextRequest) {
 
     return response;
   } catch (error) {
+    if (error instanceof InventoryFullError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
     return handleApiError(error);
   }
 }
