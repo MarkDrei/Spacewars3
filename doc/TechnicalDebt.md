@@ -56,24 +56,37 @@ rule back to `error`.
 - `eslint.config.mjs` — rule override
 - Output of `npm run lint` — current list of locations
 
-## Pending Major Upgrade: TypeScript 7
+## TypeScript 6 Kept Alongside TypeScript 7 for Tooling API
 
 **Priority**: Low
 **Added**: 2026-11-08
-**Component**: `package.json`
+**Component**: `package.json` (`typescript`, `typescript7`)
 
 ### Context
 
-TypeScript 7 is the native (Go) compiler. Not yet evaluated against Next.js 16 build, Vitest and
-typescript-eslint.
+TypeScript 7 (native Go compiler) ships no stable JavaScript API. `typescript-eslint` (used by
+`eslint-config-next/typescript`) loads `require("typescript")` and supports only `typescript < 6.1`.
+The project therefore installs both:
+
+- `typescript` → `npm:@typescript/typescript6` (6.0, JS API + `tsc6` bin) — used by ESLint and by
+  `next build`, which type-checks via the package's `tsc6` CLI (`experimental.useTypeScriptCli`, default in Next 16.4).
+- `typescript7` → `npm:typescript@7` — provides the `tsc` bin used by `npm run typecheck`.
+
+CI therefore type-checks with both compilers. `src/__tests__/unit/lib/typedLocks-order.test.ts` guards
+that the IronGuard lock order is still enforced at compile time.
+
+### Consequences
+
+Two TypeScript versions to keep in sync; editor/IDE language service and `next build` use TypeScript 6.
 
 ### Proper Solution
 
-Upgrade on a branch, run `npm run ci` and a preview deploy.
+When TypeScript 7.1 ships a stable API and `typescript-eslint` supports it, replace both entries with a
+single `typescript@^7` dependency and re-run `npm run ci`.
 
 ### Related Files
 
-- `package.json` — `typescript` version
+- `package.json` — `typescript` / `typescript7` aliases, `typecheck` script
 
 ## Minor Balance Change: Multiplicative Accuracy Refactor (Task 1.1)
 

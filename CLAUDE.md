@@ -32,6 +32,7 @@ npm run ci         # same, when Postgres already runs on localhost:5432 (VPS: co
 - Code quality standards, review criteria and the `doc/learnings.md` knowledge base are described in `.github/agents/shared-conventions.md`. Read it when doing larger features or reviews.
 - `.github/agents/*.agent.md` describe a Copilot multi-agent workflow (planning, implementation, review). They are reference material, not mandatory steps for Claude Code.
 - Concurrency: server caches use IronGuard TypeScript Locks with a fixed lock hierarchy — read `doc/architecture/building-blocks-cache-systems.md` before touching caches or locks.
+- Toolchain: Next.js 16 (`next build --webpack` because of the PWA plugin), ESLint 10 via `eslint .`, TypeScript 7 for `npm run typecheck` (`tsc`) plus TypeScript 6 as `typescript` package (API for typescript-eslint, `tsc6` for `next build`). This is intentional — see `doc/TechnicalDebt.md`.
 - Before larger work, skim `doc/learnings.md` (shared knowledge base) and `doc/TechnicalDebt.md`.
 
 ## Claude Code skills (`.claude/skills/`)
