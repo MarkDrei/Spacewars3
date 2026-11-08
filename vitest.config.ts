@@ -89,8 +89,8 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@': resolve(__dirname, './src'),
-      '@shared': resolve(__dirname, './src/shared/src'),
+      '@': resolve(import.meta.dirname, './src'),
+      '@shared': resolve(import.meta.dirname, './src/shared/src'),
     },
   },
 })
