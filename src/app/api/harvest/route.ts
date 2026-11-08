@@ -205,7 +205,7 @@ async function performCollectionLogic(
   if (targetObject.type === 'asteroid' || targetObject.type === 'shipwreck' || targetObject.type === 'escape_pod') {
     try {
       const statisticsCache = StatisticsCache.getInstance();
-      statisticsCache.recordEvent(user.id, 'item_collected', {
+      void statisticsCache.recordEvent(user.id, 'item_collected', {
         objectType: targetObject.type,
         ironAwarded: ironReward,
       });

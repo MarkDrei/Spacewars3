@@ -99,7 +99,7 @@ Note for Codespaces / Devcontainers:
 
 - All business logic must be covered by unit tests
 - Tests located in `src/__tests__/` directory
-- Test environment: Vitest with jsdom for React components, node for API routes
+- Test environment: Vitest with happy-dom for React components, node for API routes
 - Test database: PostgreSQL test database (POSTGRES_TEST_DB, defaults to 'spacewars_test')
 - Test naming convention: whatIsTested_scenario_expectedOutcome
   - Example: `updateStats_researchDoesNotComplete_awardsAllIronAtOldRate`

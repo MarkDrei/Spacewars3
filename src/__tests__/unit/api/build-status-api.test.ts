@@ -96,8 +96,7 @@ describe('build status / abort build queue API', () => {
   afterEach(() => {
     vi.useRealTimers();
     vi.restoreAllMocks();
-    TechService.getInstance().setUserCacheForTesting(null as unknown as UserCache);
-    TechService.getInstance().setMessageCacheForTesting(null as unknown as MessageCache);
+    TechService.resetInstance();
   });
 
   test('buildStatus_notAuthenticated_returns401', async () => {

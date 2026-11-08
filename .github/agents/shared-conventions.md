@@ -140,7 +140,7 @@ All TypeScript code in this project follows these standards:
 ### Testing Standards
 
 - **Vitest** as the testing framework
-- **jsdom** for React component testing
+- **happy-dom** for React component testing
 - **Comprehensive coverage** - aim for >80% code coverage
 - **Test structure**: Arrange, Act, Assert pattern
 - **Test naming**: `whatIsTested_scenario_expectedOutcome`

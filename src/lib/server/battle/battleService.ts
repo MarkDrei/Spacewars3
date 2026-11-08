@@ -153,7 +153,7 @@ async function updateUserBattleState(context: LockContext<LocksAtMostAndHas4>, u
   if (user) {
     user.inBattle = inBattle;
     user.currentBattleId = battleId;
-    userWorldCache.updateUserInCache(context, user);
+    await userWorldCache.updateUserInCache(context, user);
   }
 }
 
@@ -702,7 +702,7 @@ export async function resolveBattle(
       : 0;
     // Winner event (skip if winner is NPC)
     if (!winnerIsNpc) {
-      statisticsCache.recordEvent(winnerId, 'battle_completed', {
+      void statisticsCache.recordEvent(winnerId, 'battle_completed', {
         battleId: battle.id,
         opponentId: loserId,
         won: true,
@@ -715,7 +715,7 @@ export async function resolveBattle(
     }
     // Loser event (skip if loser is NPC)
     if (!loserIsNpc) {
-      statisticsCache.recordEvent(loserId, 'battle_completed', {
+      void statisticsCache.recordEvent(loserId, 'battle_completed', {
         battleId: battle.id,
         opponentId: winnerId,
         won: false,

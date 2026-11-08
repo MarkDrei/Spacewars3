@@ -78,7 +78,7 @@ describe('TimeMultiplier - Build Queue Integration', () => {
       if (user) {
         user.buildQueue = queue;
         user.buildStartSec = startSec;
-        cache.updateUserInCache(userContext, user);
+        await cache.updateUserInCache(userContext, user);
       }
     });
   }
@@ -252,7 +252,7 @@ describe('TimeMultiplier - Build Queue Integration', () => {
         const user = await UserCache.getInstance2().getUserByIdWithLock(userContext, testUserId);
         if (user) {
           user.techTree.constructionSpeed = 2;
-          UserCache.getInstance2().updateUserInCache(userContext, user);
+          await UserCache.getInstance2().updateUserInCache(userContext, user);
           UserBonusCache.getInstance().invalidateBonuses(testUserId);
         }
       });

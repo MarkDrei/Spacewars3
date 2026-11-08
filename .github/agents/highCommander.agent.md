@@ -25,7 +25,7 @@ You communicate with the user and delegate the actual work to the other agents u
 - **Language**: TypeScript (strict mode)
 - **Runtime**: Node.js
 - **Database**: PostgreSQL
-- **Testing**: Vitest with jsdom
+- **Testing**: Vitest with happy-dom
 - **Session**: iron-session with HTTP-only cookies
 - **Module System**: ES Modules exclusively (`import`/`export` only, no CommonJS)
 - **Lock System**: IronGuard TypeScript Locks for compile-time deadlock prevention

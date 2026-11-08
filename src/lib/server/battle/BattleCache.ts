@@ -98,8 +98,12 @@ export class BattleCache extends Cache {
       await BattleCache.instance.loadActiveBattlesFromDb();
     }
     
-    // Start background tasks
-    startBattleScheduler();
+    // Start background tasks. In test mode the scheduler stays off (like background persistence):
+    // its timer callbacks run outside the test transaction and would commit battle results.
+    // Tests drive battles explicitly via processActiveBattles() or startBattleScheduler().
+    if (process.env.NODE_ENV !== 'test') {
+      startBattleScheduler();
+    }
     BattleCache.instance.startBackgroundPersistence();
   }
 

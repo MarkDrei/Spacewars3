@@ -138,7 +138,7 @@ async function applyDamageWithLock(
   user.hullCurrent = Math.max(0, user.hullCurrent - hullDamage);
 
   // Update user in cache (marks as dirty for persistence)
-  userWorldCache.updateUserInCache(context, user);
+  await userWorldCache.updateUserInCache(context, user);
 
   return {
     remainingShield: user.shieldCurrent,

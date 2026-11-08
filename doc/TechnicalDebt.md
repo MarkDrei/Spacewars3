@@ -62,6 +62,24 @@ and count completed builds in `applyCompletedBuild`. Remove the event from the b
 - `src/lib/server/techs/TechService.ts` — `addTechItemToBuildQueue`, `processCompletedBuilds`
 - `src/lib/server/statistics/StatisticsCache.ts` — `tech_spent` aggregation
 
+## Rare Flake: defense-value-persistence Under Full-Suite Load
+
+**Priority**: Low
+**Added**: 2026-11-08
+**Component**: `src/__tests__/integration/defense-value-persistence.test.ts`
+
+### Context
+
+`defenseValues_afterBattleResolution_persistCorrectly` failed once in about 20 full `npx vitest run`
+passes (never when run alone). The assertion details were not captured. The test compares the
+persisted `hull_current` with the battle end stats with a tolerance below 1; a likely cause is
+defense regeneration when more than a second passes between battle end and the cache flush.
+
+### Proper Solution
+
+Reproduce under load (e.g. loop the full suite), capture the failing assertion, then pin the clock
+(`vi.setSystemTime`) around battle resolution and flush, or compare against the regenerated value.
+
 ## Minor Balance Change: Multiplicative Accuracy Refactor (Task 1.1)
 
 **Priority**: Low  

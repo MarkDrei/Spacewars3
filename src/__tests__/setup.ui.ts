@@ -1,6 +1,6 @@
 import '@testing-library/jest-dom/vitest';
 
-// Mock ResizeObserver which is not available in jsdom
+// Mock ResizeObserver which is not available in the DOM test environment
 global.ResizeObserver = class ResizeObserver {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   constructor(_callback: ResizeObserverCallback) {}

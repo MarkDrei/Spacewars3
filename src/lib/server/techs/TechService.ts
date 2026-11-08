@@ -10,9 +10,11 @@ import { UserBonusCache } from '../bonus/UserBonusCache';
 import { getServerT } from '../i18n/serverTranslations';
 
 export class TechService {
-    private static instance: TechService;
-    private userCacheInstance: UserCache | null = null;
-    private messageCacheInstance: MessageCache | null = null;
+    private static instance: TechService | null = null;
+    // Test overrides only. Production code resolves the cache singletons on every access, so a
+    // reset/re-initialised cache is never shadowed by a stale reference.
+    private userCacheOverride: UserCache | null = null;
+    private messageCacheOverride: MessageCache | null = null;
 
     private constructor() {}
 
@@ -23,35 +25,31 @@ export class TechService {
         return TechService.instance;
     }
 
-    /**
-     * Set user cache instance for testing
-     */
-    public setUserCacheForTesting(cache: UserCache): void {
-        this.userCacheInstance = cache;
+    /** Drop the singleton (and any test overrides). For tests. */
+    public static resetInstance(): void {
+        TechService.instance = null;
     }
 
     /**
-     * Set message cache instance for testing
+     * Set user cache instance for testing (null restores the default singleton lookup)
      */
-    public setMessageCacheForTesting(cache: MessageCache): void {
-        this.messageCacheInstance = cache;
+    public setUserCacheForTesting(cache: UserCache | null): void {
+        this.userCacheOverride = cache;
+    }
+
+    /**
+     * Set message cache instance for testing (null restores the default singleton lookup)
+     */
+    public setMessageCacheForTesting(cache: MessageCache | null): void {
+        this.messageCacheOverride = cache;
     }
 
     private getUserCache(): UserCache {
-        if (!this.userCacheInstance) {
-            this.userCacheInstance = UserCache.getInstance2();
-        }
-
-        return this.userCacheInstance;
+        return this.userCacheOverride ?? UserCache.getInstance2();
     }
 
     private getMessageCache(): MessageCache {
-        if (this.messageCacheInstance) {
-            return this.messageCacheInstance;
-        }
-
-        this.messageCacheInstance = MessageCache.getInstance();
-        return this.messageCacheInstance;
+        return this.messageCacheOverride ?? MessageCache.getInstance();
     }
 
     /**

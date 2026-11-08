@@ -5,7 +5,7 @@ import { render, screen, fireEvent, act } from '@testing-library/react';
 
 // ─────────── Module mocks ────────────────────────────────────────────────────
 
-// Mock CSS import so jsdom doesn't choke on it
+// Mock CSS import so the DOM test environment does not choke on it
 vi.mock('@/app/login/LoginPage.css', () => ({}));
 
 // Mock next-intl so components using useTranslations work without a provider

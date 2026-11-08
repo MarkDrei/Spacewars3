@@ -39,7 +39,7 @@ async function processUserStats(user: User, userWorldCache: UserCache, userCtx: 
   const bonuses = await userWorldCache.getBonusesByUserIdWithLock(userCtx, user.id);
   
   // Update cache with new data (using unsafe methods because we have proper locks)
-  userWorldCache.updateUserInCache(userCtx, user);
+  await userWorldCache.updateUserInCache(userCtx, user);
   
   const responseData = { 
     iron: user.iron, 

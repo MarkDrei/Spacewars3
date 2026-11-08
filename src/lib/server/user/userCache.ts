@@ -624,7 +624,7 @@ export class UserCache extends Cache {
     this.persistenceTimer = setInterval(async () => {
       try {
         const ctx = createLockContext();
-        ctx.useLockWithAcquire(USER_LOCK, async (userContext) => {
+        await ctx.useLockWithAcquire(USER_LOCK, async (userContext) => {
           await this.backgroundPersist(userContext);
         });
       } catch (error) {

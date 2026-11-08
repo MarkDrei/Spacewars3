@@ -76,12 +76,12 @@ async function performResearchTrigger(
   triggerResearch(user.techTree, researchType);
   
   // Update cache with new data (using unsafe methods because we have proper locks)
-  userWorldCache.updateUserInCache(userCtx, user);
+  await userWorldCache.updateUserInCache(userCtx, user);
   
   // Emit statistics event (fire-and-forget)
   try {
     const statisticsCache = StatisticsCache.getInstance();
-    statisticsCache.recordEvent(user.id, 'research_spent', {
+    void statisticsCache.recordEvent(user.id, 'research_spent', {
       researchType,
       level: currentLevel + 1,
       ironCost: cost,
