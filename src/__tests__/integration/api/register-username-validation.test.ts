@@ -13,6 +13,20 @@ describe('register – username validation', () => {
     await shutdownIntegrationTestServer();
   });
 
+  // ── concurrency ─────────────────────────────────────────────────────────
+
+  it('register_sameUsernameConcurrently_onlyOneSucceeds', async () => {
+    await withTransaction(async () => {
+      const username = randomUsername('race');
+      const register = () =>
+        registerPOST(createRequest('http://localhost:3000/api/register', 'POST', { username, password: 'testpass' }));
+
+      const statuses = (await Promise.all([register(), register(), register()])).map((res) => res.status).sort();
+
+      expect(statuses).toEqual([200, 400, 400]);
+    });
+  });
+
   // ── valid lengths ───────────────────────────────────────────────────────
 
   it('register_singleCharUsername_success', async () => {
