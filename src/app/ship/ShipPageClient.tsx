@@ -104,7 +104,7 @@ const ShipPageClient: React.FC<ShipPageClientProps> = () => {
         setMessage(t('successShipSelected', { shipNumber }));
       } else {
         const error = await response.json();
-        setMessage(t('errorUpdateShip', { message: error.message || 'Unknown error' }));
+        setMessage(t('errorUpdateShip', { message: error.error || 'Unknown error' }));
         setSelectedShip(currentShip); // Revert selection on error
       }
     } catch (error) {
