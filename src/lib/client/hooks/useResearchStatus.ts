@@ -64,7 +64,7 @@ export const useResearchStatus = (pollInterval: number = 5000): UseResearchStatu
   // Initial fetch + polling (auth guaranteed by server component)
   useEffect(() => {
     isMountedRef.current = true;
-    loadTechTree();
+    void loadTechTree();
     const interval = setInterval(loadTechTree, pollInterval);
 
     return () => {
@@ -75,7 +75,7 @@ export const useResearchStatus = (pollInterval: number = 5000): UseResearchStatu
 
   const refetch = useCallback(() => {
     setIsLoading(true);
-    loadTechTree();
+    void loadTechTree();
   }, [loadTechTree]);
 
   const isResearchActive = techTree ? researchService.isResearchActive(techTree) : false;

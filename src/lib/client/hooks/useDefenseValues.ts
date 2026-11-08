@@ -257,7 +257,7 @@ export const useDefenseValues = (pollInterval: number = 2000): UseDefenseValuesR
     isMountedRef.current = true;
     
     // Initial fetch (auth guaranteed by server component)
-    fetchDefenseValues();
+    void fetchDefenseValues();
     
     // Set up server polling to get authoritative values
     const serverInterval = setInterval(fetchDefenseValues, pollInterval);
@@ -265,7 +265,7 @@ export const useDefenseValues = (pollInterval: number = 2000): UseDefenseValuesR
     // Listen for build completion events to refresh defense values
     const handleBuildCompleted = () => {
       console.log('Build completed, refreshing defense values...');
-      fetchDefenseValues();
+      void fetchDefenseValues();
     };
     
     globalEvents.on(EVENTS.BUILD_ITEM_COMPLETED, handleBuildCompleted);

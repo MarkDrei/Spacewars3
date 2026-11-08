@@ -144,7 +144,7 @@ export const useWorldData = (pollInterval: number = 3000): UseWorldDataReturn =>
     isMountedRef.current = true;
     
     // Initial fetch (auth guaranteed by server component)
-    fetchWorldData();
+    void fetchWorldData();
     
     // Set up server polling
     intervalRef.current = setInterval(fetchWorldData, pollInterval);

@@ -155,8 +155,8 @@ const ProfilePageClient: React.FC<ProfilePageClientProps> = ({ auth }) => {
       }
     };
     
-    fetchBattles();
-    fetchStats();
+    void fetchBattles();
+    void fetchStats();
   }, []);
 
   return (

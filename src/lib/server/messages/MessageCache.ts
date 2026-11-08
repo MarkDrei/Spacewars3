@@ -92,10 +92,12 @@ export class MessageCache extends Cache {
     if (MessageCache.instance) {
       // Note: shutdown() is async but we can't await in a sync method
       // Callers MUST call shutdown() before resetInstance()
-      context.useLockWithAcquire(DATABASE_LOCK_MESSAGES, async (ctx) => {
+      void context.useLockWithAcquire(DATABASE_LOCK_MESSAGES, async (ctx) => {
         if (MessageCache.instance) {
           await MessageCache.instance.shutdown(ctx);
         }
+      }).catch((error: unknown) => {
+        console.error('❌ MessageCache shutdown during reset failed:', error);
       });
     }
     this.instance = null;

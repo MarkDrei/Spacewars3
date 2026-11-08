@@ -62,6 +62,7 @@
 - Do not delete the DB unless asked to.
 - The dev environment with Next.js is usually up and running. Don't start a new one unless necessary.
 - Use TypeScript features like interfaces and type definitions to ensure type safety.
+- Every promise is awaited, handled (`.catch`) or explicitly marked as fire-and-forget with `void` (enforced by `@typescript-eslint/no-floating-promises`). A promise left floating runs detached: the caller continues before it finishes and `try/catch` does not see its errors.
 - Maintain the separation between client-side game logic, server-side business logic, and React UI.
 - All canvas rendering logic should go in the appropriate renderer class in `src/lib/client/renderers/`.
 - All UI components should be implemented as React components in `src/components/`.

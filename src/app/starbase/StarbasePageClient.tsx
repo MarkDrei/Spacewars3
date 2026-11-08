@@ -79,7 +79,7 @@ const StarbasePageClient: React.FC<StarbasePageClientProps> = () => {
       await Promise.all([fetchShop(), fetchInventory(), fetchIron()]);
       setIsLoading(false);
     };
-    init();
+    void init();
   }, [fetchShop, fetchInventory, fetchIron]);
 
   const handleSell = useCallback(async (row: number, col: number) => {

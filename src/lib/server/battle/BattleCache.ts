@@ -76,7 +76,10 @@ export class BattleCache extends Cache {
    */
   static resetInstance(): void {
     if (BattleCache.instance) {
-      BattleCache.instance.shutdown();
+      // Synchronous reset: callers that need a completed flush await shutdown() first
+      void BattleCache.instance.shutdown().catch((error: unknown) => {
+        console.error('❌ BattleCache shutdown during reset failed:', error);
+      });
       BattleCache.instance = null;
     }
   }

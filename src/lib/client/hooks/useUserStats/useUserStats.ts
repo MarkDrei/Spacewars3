@@ -175,14 +175,14 @@ export const useUserStats = (pollInterval: number = 5000): UseUserStatsReturn =>
     isMountedRef.current = true;
     
     // Initial fetch (auth guaranteed by server component)
-    fetchUserStats();
+    void fetchUserStats();
     
     // Set up server polling
     const serverInterval = setupPolling(fetchUserStats, pollInterval);
     
 // Listen for user‑stats update events (e.g., after research trigger)
     const handleUserStatsUpdate = () => {
-      fetchUserStats();
+      void fetchUserStats();
     };
     
     globalEvents.on(EVENTS.IRON_UPDATED, handleUserStatsUpdate);

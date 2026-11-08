@@ -266,7 +266,7 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
         console.warn('Failed to fetch max speed:', err);
       }
     };
-    fetchMaxSpeed();
+    void fetchMaxSpeed();
   }, []);
 
   const handleDebugToggle = (enabled: boolean) => {
@@ -549,14 +549,14 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
 
   const handleAngleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
-      handleSetAngle();
+      void handleSetAngle();
     }
   };
 
   // Load teleport data (and level/time multiplier) on mount; applied in a callback
   useEffect(() => {
     let ignore = false;
-    userStatsService.getUserStats().then(stats => {
+    void userStatsService.getUserStats().then(stats => {
       if (ignore || 'error' in stats) return;
       setTeleportCharges(stats.teleportCharges);
       setTeleportMaxCharges(stats.teleportMaxCharges);

@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
           throw new ApiError(404, 'Player ship not found');
         }
 
-        user.teleportCharges -= calculateTeleportChargeCost(playerShip.x, playerShip.y, x, y);
+        user.teleportCharges -= calculateTeleportChargeCost(playerShip, { x, y }, world.worldSize);
         playerShip.x = x;
         playerShip.y = y;
         if (!preserveVelocity) {

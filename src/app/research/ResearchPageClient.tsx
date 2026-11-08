@@ -422,7 +422,7 @@ const ResearchPageClient: React.FC<ResearchPageClientProps> = () => {
   // Initial load
   useEffect(() => {
     let ignore = false;
-    requestResearchData().then(result => {
+    void requestResearchData().then(result => {
       if (!ignore) applyResearchData(result);
     });
     return () => {
@@ -435,7 +435,7 @@ const ResearchPageClient: React.FC<ResearchPageClientProps> = () => {
   useEffect(() => {
     if (!researchCompleted) return;
     let ignore = false;
-    requestResearchData().then(result => {
+    void requestResearchData().then(result => {
       if (!ignore) applyResearchData(result);
     });
     return () => {

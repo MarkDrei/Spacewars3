@@ -208,22 +208,22 @@ export class Game {
 
       if (hoveredObject.getType() === 'player_ship' || hoveredObject.getType() === 'npc_ship') {
         if (this.attackClickMode && distance <= 100) {
-          this.handleAttack(hoveredObject);
+          void this.handleAttack(hoveredObject);
         } else {
-          this.handleInterception(hoveredObject);
+          void this.handleInterception(hoveredObject);
         }
       } else if (hoveredObject.getType() === 'starbase') {
         if (this.attackClickMode) {
           if (distance <= STARBASE_DOCK_RANGE) {
             this.onStarbaseEntryCallback?.(hoveredObject.getId());
           } else {
-            this.handleInterception(hoveredObject);
+            void this.handleInterception(hoveredObject);
           }
         }
       } else if (distance <= 125) {
-        this.handleCollection(hoveredObject);
+        void this.handleCollection(hoveredObject);
       } else {
-        this.handleInterception(hoveredObject);
+        void this.handleInterception(hoveredObject);
       }
 
       return;
@@ -248,7 +248,7 @@ export class Game {
     const worldTargetX = ship.getX() + dx;
     const worldTargetY = ship.getY() + dy;
     
-    this.handleDirectionChange(angleDegrees, worldTargetX, worldTargetY);
+    void this.handleDirectionChange(angleDegrees, worldTargetX, worldTargetY);
   }
 
   // Handle direction change when clicking on empty space

@@ -14,6 +14,21 @@ export default defineConfig([
     "next-env.d.ts",
   ]),
   {
+    // Type-aware rules: a promise must be awaited, handled (.catch / .then with rejection
+    // handler) or explicitly marked as fire-and-forget with `void`. An un-awaited promise runs
+    // detached: callers continue before it finishes and try/catch does not see its errors.
+    files: ["src/**/*.ts", "src/**/*.tsx"],
+    languageOptions: {
+      parserOptions: {
+        projectService: true,
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
+    rules: {
+      "@typescript-eslint/no-floating-promises": "error",
+    },
+  },
+  {
     files: ["src/lib/server/typedLocks.ts"],
     rules: {
       // Disable 'any' errors where it's required for the type system

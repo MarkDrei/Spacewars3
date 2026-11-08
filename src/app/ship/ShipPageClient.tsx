@@ -52,7 +52,7 @@ const ShipPageClient: React.FC<ShipPageClientProps> = () => {
       }
     };
 
-    detectShips();
+    void detectShips();
   }, []);
 
   useEffect(() => {
@@ -70,7 +70,7 @@ const ShipPageClient: React.FC<ShipPageClientProps> = () => {
       }
     };
 
-    loadCurrentShip();
+    void loadCurrentShip();
   }, []);
 
   useEffect(() => {

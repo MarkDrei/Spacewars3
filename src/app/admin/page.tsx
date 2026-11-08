@@ -172,14 +172,14 @@ const AdminPage: React.FC = () => {
 
   // Handle preset button clicks
   const handlePresetClick = (multiplier: number, durationMinutes: number) => {
-    setTimeMultiplier(multiplier, durationMinutes);
+    void setTimeMultiplier(multiplier, durationMinutes);
   };
 
   // Handle custom form submission
   const handleCustomSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (customMultiplier >= 1 && customDuration > 0) {
-      setTimeMultiplier(customMultiplier, customDuration);
+      void setTimeMultiplier(customMultiplier, customDuration);
     } else {
       alert('Multiplier must be >= 1 and duration must be > 0');
     }
@@ -187,7 +187,7 @@ const AdminPage: React.FC = () => {
 
   // Handle reset to 1x
   const handleReset = () => {
-    setTimeMultiplier(1, 0.01); // Set to 1x with minimal duration (auto-expires immediately)
+    void setTimeMultiplier(1, 0.01); // Set to 1x with minimal duration (auto-expires immediately)
   };
 
   // Handle space object spawning
@@ -240,7 +240,7 @@ const AdminPage: React.FC = () => {
   const handleCustomSpawn = (e: React.FormEvent) => {
     e.preventDefault();
     if (customSpawnQuantity >= 1 && customSpawnQuantity <= 50) {
-      handleSpawn(customSpawnType, customSpawnQuantity);
+      void handleSpawn(customSpawnType, customSpawnQuantity);
     } else {
       setSpawnMessage('❌ Quantity must be between 1 and 50');
       spawnMessageTimeoutRef.current = setTimeout(() => {
@@ -266,7 +266,7 @@ const AdminPage: React.FC = () => {
   useEffect(() => {
     if (!isAuthorized) return;
     let ignore = false;
-    requestAdminData().then(result => {
+    void requestAdminData().then(result => {
       if (!ignore) applyAdminData(result);
     });
     return () => {
@@ -279,7 +279,7 @@ const AdminPage: React.FC = () => {
     if (!isAuthorized) return;
     let active = true;
     const poll = () => {
-      requestMultiplierStatus().then(status => {
+      void requestMultiplierStatus().then(status => {
         if (active && status) setMultiplierStatus(status);
       });
     };
