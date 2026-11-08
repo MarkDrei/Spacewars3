@@ -110,6 +110,40 @@ describe('useFactoryDataCache', () => {
     expect(mockFactoryService.getBuildStatus).toHaveBeenCalledOnce();
   });
 
+  test('useFactoryDataCache_repeatedRefreshes_loadCatalogOnlyOnce', async () => {
+    mockFactoryService.getTechCatalog.mockResolvedValue(mockTechCatalog);
+    mockFactoryService.getBuildStatus.mockResolvedValue(mockBuildStatus);
+    const { result } = renderHook(() => useFactoryDataCache(1000));
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    await act(async () => {
+      await result.current.refetch();
+    });
+    await act(async () => {
+      await result.current.refetch();
+    });
+
+    expect(mockFactoryService.getBuildStatus).toHaveBeenCalledTimes(3);
+    expect(mockFactoryService.getTechCatalog).toHaveBeenCalledOnce();
+    expect(result.current.data?.weapons).toEqual(mockTechCatalog.weapons);
+  });
+
+  test('useFactoryDataCache_catalogFailedOnce_retriedOnNextRefresh', async () => {
+    mockFactoryService.getTechCatalog
+      .mockResolvedValueOnce({ error: 'Failed to fetch tech catalog' })
+      .mockResolvedValue(mockTechCatalog);
+    mockFactoryService.getBuildStatus.mockResolvedValue(mockBuildStatus);
+    const { result } = renderHook(() => useFactoryDataCache(1000));
+    await waitFor(() => expect(result.current.error).toBe('Failed to fetch tech catalog'));
+
+    await act(async () => {
+      await result.current.refetch();
+    });
+
+    expect(result.current.error).toBeNull();
+    expect(result.current.data?.weapons).toEqual(mockTechCatalog.weapons);
+  });
+
   test('useFactoryDataCache_catalogError_setsErrorState', async () => {
     // Arrange
     const errorResponse = { error: 'Failed to fetch tech catalog' };

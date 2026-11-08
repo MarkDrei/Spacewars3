@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useSyncExternalStore } from 'react';
-import { factoryService, BuildQueueItem, WeaponSpec, DefenseSpec, TechCounts } from '../services/factoryService';
+import { factoryService, BuildQueueItem, WeaponSpec, DefenseSpec, TechCounts, type TechCatalogResponse } from '../services/factoryService';
 import { createSharedPoller } from '../polling/sharedPoller';
 
 interface FactoryDataCache {
@@ -27,6 +27,8 @@ const INITIAL_CACHE_STATE: FactoryCacheState = { data: null, error: null };
 
 let cacheState: FactoryCacheState = INITIAL_CACHE_STATE;
 const cacheSubscribers: Set<() => void> = new Set();
+/** Tech catalog from the first successful load; it only changes with a new deployment. */
+let cachedCatalog: TechCatalogResponse | null = null;
 let isCurrentlyFetching = false;
 let fetchPromise: Promise<void> | null = null;
 
@@ -36,6 +38,7 @@ export const resetFactoryDataCache = () => {
   cacheSubscribers.clear();
   isCurrentlyFetching = false;
   fetchPromise = null;
+  cachedCatalog = null;
   factoryPoller.reset();
 };
 
@@ -66,15 +69,16 @@ const fetchFactoryData = async (retryCount: number = 0): Promise<void> => {
   
   const currentPromise = (async (): Promise<void> => {
     try {
-      // Fetch both API endpoints in parallel
+      // The catalog (static tech specs) is loaded once; only the build status is polled
       const [catalogResult, statusResult] = await Promise.all([
-        factoryService.getTechCatalog(),
+        cachedCatalog ?? factoryService.getTechCatalog(),
         factoryService.getBuildStatus()
       ]);
 
       if ('error' in catalogResult) {
         throw new Error(catalogResult.error);
       }
+      cachedCatalog = catalogResult;
 
       if ('error' in statusResult) {
         throw new Error(statusResult.error);
