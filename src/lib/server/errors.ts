@@ -4,7 +4,9 @@ export class ApiError extends Error {
   constructor(
     public statusCode: number,
     message: string,
-    public code?: string
+    public code?: string,
+    /** Sent as `Retry-After` header (429 responses). */
+    public retryAfterSeconds?: number
   ) {
     super(message);
     this.name = 'ApiError';
@@ -17,7 +19,10 @@ export function handleApiError(error: unknown): NextResponse {
   if (error instanceof ApiError) {
     return NextResponse.json(
       { error: error.message, code: error.code },
-      { status: error.statusCode }
+      {
+        status: error.statusCode,
+        headers: error.retryAfterSeconds ? { 'Retry-After': String(error.retryAfterSeconds) } : undefined,
+      }
     );
   }
 

@@ -1,7 +1,8 @@
 // ---
 // POST /api/forgot-password
 // Initiates password reset: if the email is registered, sends a reset link.
-// Always responds with 200 to avoid leaking whether an email exists.
+// Always responds with 200 to avoid leaking whether an email exists
+// (429 when the client address sends too many requests).
 // ---
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -12,6 +13,7 @@ import { isEmailEnabled, getEmailLinkBaseUrl } from '@/lib/server/email/emailCon
 import { sendEmail } from '@/lib/server/email/emailService';
 import { buildPasswordResetEmail } from '@/lib/server/email/emailTemplates';
 import { handleApiError } from '@/lib/server/errors';
+import { getAuthRateLimits, getClientIp, consumeRateLimit } from '@/lib/server/rateLimit';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -20,6 +22,9 @@ const RESET_TOKEN_TTL_MS = 60 * 60 * 1000;
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
+    const rateLimits = getAuthRateLimits();
+    consumeRateLimit(rateLimits.passwordResetByIp, getClientIp(request.headers));
+
     const body = await request.json();
     const email: unknown = body?.email;
 
@@ -42,6 +47,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     if (baseUrl === null) {
       return NextResponse.json({ success: true });
     }
+
+    // Per mailbox limit: answered like a sent mail, so the response reveals nothing about the address
+    if (rateLimits.passwordResetByEmail.retryAfterSeconds(normalizedEmail) > 0) {
+      return NextResponse.json({ success: true });
+    }
+    rateLimits.passwordResetByEmail.hit(normalizedEmail);
 
     const token = randomBytes(32).toString('hex');
     const expiresAt = Date.now() + RESET_TOKEN_TTL_MS;

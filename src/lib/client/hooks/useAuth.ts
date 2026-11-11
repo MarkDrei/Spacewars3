@@ -54,7 +54,7 @@ export const useAuth = () => {
     };
   }, [applySession]);
 
-  const login = async (username: string, password: string): Promise<{ success: boolean; error?: string }> => {
+  const login = async (username: string, password: string): Promise<{ success: boolean; error?: string; code?: string }> => {
     try {
       const result = await authService.login({ username, password });
       
@@ -63,14 +63,14 @@ export const useAuth = () => {
         await checkAuthStatus();
         return { success: true };
       } else {
-        return { success: false, error: result.error || 'Login failed' };
+        return { success: false, error: result.error || 'Login failed', code: result.code };
       }
     } catch {
       return { success: false, error: 'Network error' };
     }
   };
 
-  const register = async (username: string, password: string, email?: string): Promise<{ success: boolean; error?: string; emailSent?: boolean }> => {
+  const register = async (username: string, password: string, email?: string): Promise<{ success: boolean; error?: string; code?: string; emailSent?: boolean }> => {
     try {
       const credentials = email && email.trim() ? { username, password, email: email.trim() } : { username, password };
       const result = await authService.register(credentials);
@@ -80,7 +80,7 @@ export const useAuth = () => {
         await checkAuthStatus();
         return { success: true, emailSent: result.emailSent };
       } else {
-        return { success: false, error: result.error || 'Registration failed' };
+        return { success: false, error: result.error || 'Registration failed', code: result.code };
       }
     } catch {
       return { success: false, error: 'Network error' };

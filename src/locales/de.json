@@ -72,6 +72,7 @@
     "errorUnexpected": "Ein unerwarteter Fehler ist aufgetreten",
     "errorEnterEmail": "Bitte E-Mail-Adresse eingeben.",
     "errorUnexpectedRetry": "Ein unerwarteter Fehler ist aufgetreten. Bitte erneut versuchen.",
+    "errorTooManyAttempts": "Zu viele Versuche. Bitte später erneut versuchen.",
     "successAccountCreated": "Konto erstellt! Prüfe deine E-Mail zur Verifizierung. Weiterleitung…",
     "successResetLinkSent": "Falls diese E-Mail registriert ist, wurde ein Zurücksetzen-Link gesendet. Prüfe dein Postfach.",
     "bannerEmailVerified": "E-Mail bestätigt! Du kannst dich jetzt anmelden.",
@@ -247,6 +248,7 @@
     "errorFillPasswordFields": "Bitte alle Passwortfelder ausfüllen",
     "errorNewPasswordsNoMatch": "Neue Passwörter stimmen nicht überein",
     "errorChangePasswordFailed": "Passwort konnte nicht geändert werden",
+    "errorTooManyAttempts": "Zu viele Versuche. Bitte später erneut versuchen.",
     "successPasswordChanged": "Passwort erfolgreich geändert"
   },
   "ship": {

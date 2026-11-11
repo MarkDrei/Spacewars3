@@ -4,22 +4,30 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useAuth } from '@/lib/client/hooks/useAuth';
+import { RATE_LIMITED_CODE } from '@/shared/apiErrorCodes';
 import '../app/login/LoginPage.css';
 
-async function defaultForgotPassword(email: string): Promise<{ success: boolean; error?: string }> {
+interface AuthActionResult {
+  success: boolean;
+  error?: string;
+  /** Machine-readable error code of the server, see `@/shared/apiErrorCodes` */
+  code?: string;
+}
+
+async function defaultForgotPassword(email: string): Promise<AuthActionResult> {
   const response = await fetch('/api/forgot-password', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email }),
   });
-  const data = await response.json() as { success?: boolean; error?: string };
-  return { success: response.ok && !!data.success, error: data.error };
+  const data = await response.json() as { success?: boolean; error?: string; code?: string };
+  return { success: response.ok && !!data.success, error: data.error, code: data.code };
 }
 
 export interface LoginPageComponentProps {
-  onLogin?: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  onRegister?: (username: string, password: string, email?: string) => Promise<{ success: boolean; error?: string; emailSent?: boolean }>;
-  onForgotPassword?: (email: string) => Promise<{ success: boolean; error?: string }>;
+  onLogin?: (username: string, password: string) => Promise<AuthActionResult>;
+  onRegister?: (username: string, password: string, email?: string) => Promise<AuthActionResult & { emailSent?: boolean }>;
+  onForgotPassword?: (email: string) => Promise<AuthActionResult>;
   /** Passed from the page's searchParams when email has been verified */
   verifiedParam?: string | null;
   /** Passed from the page's searchParams when token was invalid */
@@ -82,6 +90,10 @@ export const LoginPageComponent: React.FC<LoginPageComponentProps> = ({
     return true;
   };
 
+  /** Server errors are English only; a rate limit is common enough to deserve a translated text. */
+  const describeFailure = (result: AuthActionResult, fallback: string): string =>
+    result.code === RATE_LIMITED_CODE ? t('errorTooManyAttempts') : result.error || fallback;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -102,14 +114,14 @@ export const LoginPageComponent: React.FC<LoginPageComponentProps> = ({
             router.push('/game');
           }
         } else {
-          setError(result.error || t('errorRegistrationFailed'));
+          setError(describeFailure(result, t('errorRegistrationFailed')));
         }
       } else {
         const result = await login(formData.username, formData.password);
         if (result.success) {
           router.push('/game');
         } else {
-          setError(result.error || t('errorAuthFailed'));
+          setError(describeFailure(result, t('errorAuthFailed')));
         }
       }
     } catch {
@@ -156,7 +168,12 @@ export const LoginPageComponent: React.FC<LoginPageComponentProps> = ({
     }
     setIsLoading(true);
     try {
-      await forgotPasswordFn(forgotEmail.trim());
+      const result = await forgotPasswordFn(forgotEmail.trim());
+      if (result.code === RATE_LIMITED_CODE) {
+        // Depends on the number of requests only, so it reveals nothing about the address
+        setError(t('errorTooManyAttempts'));
+        return;
+      }
       // Always show the same message — no leakage of whether email exists
       setSuccessMessage(t('successResetLinkSent'));
     } catch {

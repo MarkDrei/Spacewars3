@@ -828,6 +828,23 @@ tab — 0 requests in 30 s, all stores refresh immediately when the tab becomes 
 | `sameSite` | `lax` | Not sent with cross-site POST/fetch requests. API routes parse the request body as JSON regardless of its `Content-Type`, so without this any website could trigger game or admin actions for a logged-in visitor (CSRF) |
 | secret | `SESSION_SECRET` | `getSessionSecret()` rejects a missing, short (< 32 characters) or published placeholder secret in production; `initializeServer()` calls it, so a misconfigured server fails at startup. Development and tests fall back to a fixed development secret |
 
+**Rate limits of the authentication endpoints** (`src/lib/server/rateLimit.ts`): fixed-window counters in the memory of the server process (`getAuthRateLimits()`, on `globalThis` like the caches). They are lost on restart and are not shared between processes; the application runs as one process, see [7. Deployment View](#7-deployment-view).
+
+| Limiter | Key | Limit | Applied in |
+| --- | --- | --- | --- |
+| `loginByIp` | client address | 20 attempts / 5 min | `POST /api/login`, before the body is read |
+| `loginFailuresByUsername` | username (lower case) | 100 failed attempts / 15 min, cleared by a successful login | `POST /api/login` |
+| `registerByIp` | client address | 20 attempts / 60 min | `POST /api/register`, after input validation and before the bcrypt hash |
+| `passwordResetByIp` | client address | 10 requests / 15 min | `POST /api/forgot-password`, `POST /api/reset-password` |
+| `passwordResetByEmail` | email address (lower case) | 3 mails / 60 min, exceeded requests are answered with the normal success response | `POST /api/forgot-password` |
+| `changePasswordFailuresByUser` | user id | 10 wrong current passwords / 15 min | `POST /api/change-password` |
+
+- An exceeded limit throws `RateLimitError`; `handleApiError()` turns it into HTTP 429 with `code: RATE_LIMITED` (`src/shared/apiErrorCodes.ts`) and a `Retry-After` header. The login and profile pages show a translated message for this code.
+- All checks run before the first cache or database access, so a limited request costs neither a lock nor a bcrypt comparison.
+- **Client address:** `getClientIp()` uses the last entry of `X-Forwarded-For`. Traefik is the only proxy in front of the application and appends the address of its peer; earlier entries can be sent by the client and are ignored. Requests without the header (local development, tests) share the key `unknown`. Precondition: Traefik sees the real client address. This holds for IPv4. The Docker network of Traefik has no IPv6, so if the domain ever gets an AAAA record, all IPv6 clients arrive through Docker's userland proxy with the address of the bridge gateway and share one counter.
+- **Trade-off of the limit per username:** it bounds password guessing from many addresses (at most 9 600 guesses per account and day), but several addresses together can lock a player out for up to 15 minutes. The limit is higher than what one address can reach within the window (60 attempts), so a single address cannot do that.
+- Each limiter holds at most 10 000 keys of at most 100 characters; when it is full, expired entries and then the oldest entry are dropped.
+
 ---
 
 ## 9. Architecture Decisions

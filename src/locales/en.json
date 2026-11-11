@@ -72,6 +72,7 @@
     "errorUnexpected": "An unexpected error occurred",
     "errorEnterEmail": "Please enter your email address.",
     "errorUnexpectedRetry": "An unexpected error occurred. Please try again.",
+    "errorTooManyAttempts": "Too many attempts. Please try again later.",
     "successAccountCreated": "Account created! Check your email to verify your address. Redirecting…",
     "successResetLinkSent": "If that email is registered, a reset link has been sent. Check your inbox.",
     "bannerEmailVerified": "Email verified! You can now sign in.",
@@ -247,6 +248,7 @@
     "errorFillPasswordFields": "Please fill in all password fields",
     "errorNewPasswordsNoMatch": "New passwords do not match",
     "errorChangePasswordFailed": "Failed to change password",
+    "errorTooManyAttempts": "Too many attempts. Please try again later.",
     "successPasswordChanged": "Password changed successfully"
   },
   "ship": {

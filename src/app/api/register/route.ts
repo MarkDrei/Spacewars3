@@ -16,6 +16,7 @@ import { sendEmail } from '@/lib/server/email/emailService';
 import { buildVerificationEmail } from '@/lib/server/email/emailTemplates';
 import { calculateLevelFromXp } from '@shared/utils/levelUtils';
 import { validateUsername } from '@/lib/server/user/usernameValidation';
+import { getAuthRateLimits, getClientIp, consumeRateLimit } from '@/lib/server/rateLimit';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -38,6 +39,9 @@ export async function POST(request: NextRequest) {
       }
     }
     
+    // Counted after validation: every request from here on costs a bcrypt hash and may create an account
+    consumeRateLimit(getAuthRateLimits().registerByIp, getClientIp(request.headers));
+
     const db = await getDatabase();
 
     // Hash password with automatic salt generation (slow by design, so before taking any lock)

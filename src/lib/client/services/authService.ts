@@ -4,6 +4,8 @@ const API_BASE = '/api';
 export interface AuthResponse {
   success?: boolean;
   error?: string;
+  /** Machine-readable error code of the server, see `@/shared/apiErrorCodes` */
+  code?: string;
   emailSent?: boolean;
 }
 
@@ -39,7 +41,7 @@ export const authService = {
       const data = await response.json();
       
       if (!response.ok) {
-        return { error: data.error || `Server error: ${response.status}` };
+        return { error: data.error || `Server error: ${response.status}`, code: data.code };
       }
       
       return data;
@@ -63,7 +65,7 @@ export const authService = {
       const data = await response.json();
       
       if (!response.ok) {
-        return { error: data.error || `Server error: ${response.status}` };
+        return { error: data.error || `Server error: ${response.status}`, code: data.code };
       }
       
       return data;

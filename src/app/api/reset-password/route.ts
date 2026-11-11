@@ -11,9 +11,12 @@ import { handleApiError, ApiError } from '@/lib/server/errors';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 import { UserCache } from '@/lib/server/user/userCache';
 import { USER_LOCK } from '@/lib/server/typedLocks';
+import { getAuthRateLimits, getClientIp, consumeRateLimit } from '@/lib/server/rateLimit';
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
+    consumeRateLimit(getAuthRateLimits().passwordResetByIp, getClientIp(request.headers));
+
     const body = await request.json();
     const { token, password } = body;
 

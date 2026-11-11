@@ -129,6 +129,7 @@ Players create a new account with a unique username and password. A ship is prov
 | Cap01_Feat001_Req004 | On successful registration, a welcome notification is sent to the new player. See [Cap10: Notifications](#cap10-notifications).                                                                                                                                  |
 | Cap01_Feat001_Req005 | A session cookie is created on successful registration, logging the player in immediately without a separate login step.                                                                                                                                         |
 | Cap01_Feat001_Req006 | If an email address was provided and the server has email enabled, a verification email is sent with a 24-hour verification link. Registration always succeeds even if email delivery fails; the `emailSent` flag in the response indicates whether it was sent. |
+| Cap01_Feat001_Req007 | Registration attempts are limited to 20 per hour and client address, including rejected attempts such as an already taken username. Further attempts are rejected with HTTP 429 (`code: RATE_LIMITED`, `Retry-After` header) and the login page shows a translated "too many attempts" message (`registerByIp` in `src/lib/server/rateLimit.ts`, tested in `src/__tests__/unit/api/auth-rate-limit.test.ts`). |
 
 ---
 
@@ -144,6 +145,7 @@ Players log in with their username and password. Sessions are maintained via enc
 | Cap01_Feat002_Req004 | Player can log out (`POST /api/logout`), which destroys the session cookie and ends the session immediately.                                                                                                                                       |
 | Cap01_Feat002_Req005 | All protected pages and API routes redirect unauthenticated requests to the login page. The session is validated server-side on every protected request via the encrypted cookie.                                                                  |
 | Cap01_Feat002_Req006 | Session cookies are HTTP-only (preventing JavaScript access), `SameSite=Lax` (not sent with cross-site POST requests, which prevents other websites from triggering game actions for a logged-in player) and `secure` in production (HTTPS only). Session data is encrypted with the `SESSION_SECRET` environment variable; in production the server refuses to start when it is missing, shorter than 32 characters or one of the published placeholder values (`getSessionSecret()` in `src/lib/server/session.ts`, tested in `src/__tests__/unit/lib/session-config.test.ts`). |
+| Cap01_Feat002_Req007 | Login attempts are limited: 20 attempts per 5 minutes and client address, and 100 failed attempts per 15 minutes and username (counted across all addresses, cleared by a successful login). While a limit is exceeded, logins are rejected with HTTP 429 (`code: RATE_LIMITED`, `Retry-After` header) even with the correct password, and the login page shows a translated "too many attempts" message (`src/app/api/login/route.ts`, `src/lib/server/rateLimit.ts`; tested in `src/__tests__/unit/api/auth-rate-limit.test.ts` and `src/__tests__/integration/api/auth-api.test.ts`). |
 
 ---
 
@@ -158,6 +160,8 @@ Logged-in players can change their password. Players who have registered with an
 | Cap01_Feat003_Req003 | Player can request a password reset email (`POST /api/forgot-password`) by providing their registered email address. The endpoint always returns success to prevent email enumeration, whether or not the address is on file.      |
 | Cap01_Feat003_Req004 | When a password-reset email is sent, a single-use token with a 1-hour expiry is generated and stored. The email contains a link to the reset page (`/reset-password?token=…`).                                                     |
 | Cap01_Feat003_Req005 | Player can set a new password via the reset link (`POST /api/reset-password`) by providing the token, a new password, and a confirmation. The token is consumed on use; expired or already-used tokens are rejected with an error. |
+| Cap01_Feat003_Req006 | Password changes are limited to 10 wrong current passwords per 15 minutes and player; after that, change requests are rejected with HTTP 429 until the window ends, so a stolen session cannot be used to guess the password (`src/app/api/change-password/route.ts`, tested in `src/__tests__/integration/api/auth-api.test.ts`). |
+| Cap01_Feat003_Req007 | Password reset requests and reset attempts (`POST /api/forgot-password`, `POST /api/reset-password`) are limited to 10 per 15 minutes and client address (HTTP 429 beyond that). At most 3 reset emails per hour are sent to one mailbox; further requests for that mailbox are answered with the usual success response without sending an email, so the response still reveals nothing about the address (`src/app/api/forgot-password/route.ts`, tested in `src/__tests__/unit/api/forgot-password-mail-limit.test.ts`). |
 
 ---
 
