@@ -32,10 +32,9 @@ export async function POST(request: NextRequest) {
     }
     rateLimits.loginFailuresByUsername.reset(username);
     
-    // Note: updateStats() was already called inside getUserByUsername → getUserByUsernameInternal
-    // (with bonuses). The call here would be a no-op (elapsed ≈ 0), so it is intentionally omitted.
-    await user.save();
-    
+    // No explicit save: getUserByUsername already ran updateStats() and marked the user dirty,
+    // the cache persists it.
+
     // Create response
     const response = NextResponse.json({ success: true });
     

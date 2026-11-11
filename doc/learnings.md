@@ -70,7 +70,7 @@ const multiplier = TimeMultiplierService.getInstance().getMultiplier();
 - `build_queue TEXT` — serialized `BuildQueueItem[]` array
 - `inventory TEXT` — (planned) serialized 2D array for inventory grid
 
-**Pattern**: In `userRepo.ts`, `userFromRow()` deserializes JSON with `JSON.parse()` and fallback defaults. `saveUserToDb()` serializes with `JSON.stringify()`. The data is always loaded/saved with the user, flowing through `UserCache` write-behind persistence. No separate cache needed for JSON-column data.
+**Pattern**: In `userRepo.ts`, `userFromRow()` deserializes JSON with `JSON.parse()` and fallback defaults. `persistUserToDb()` serializes with `JSON.stringify()`. The data is always loaded/saved with the user, flowing through `UserCache` write-behind persistence. No separate cache needed for JSON-column data.
 
 **When to use**: When adding structured data that is always accessed alongside the user record and doesn't need independent queries. For data that needs querying independently of users, use a separate table.
 
@@ -84,10 +84,10 @@ const multiplier = TimeMultiplierService.getInstance().getMultiplier();
 1. `src/lib/server/schema.ts` — add column(s) to `CREATE_USERS_TABLE`, increment `SCHEMA_VERSION`
 2. `src/lib/server/migrations.ts` — add new migration version with `ALTER TABLE ADD COLUMN IF NOT EXISTS`
 3. `src/lib/server/user/user.ts` — add fields + constructor parameters (currently 18 params)
-4. `src/lib/server/user/userRepo.ts` — update `UserRow` interface, `userFromRow()` deserialization (with fallback defaults), `saveUserToDb()` UPDATE query (currently $1-$24), and `createUser()` INSERT
+4. `src/lib/server/user/userRepo.ts` — update `UserRow` interface, `userFromRow()` deserialization (with fallback defaults), the `persistUserToDb()` UPDATE query, and `createUser()` INSERT
 5. No separate cache wiring needed — all data flows through `UserCache` write-behind persistence automatically
 
-The `saveUserToDb` UPDATE uses positional `$N` params; the WHERE clause param number must be incremented when adding new columns. Currently WHERE uses `$24`; after adding 2 columns it would be `$26`.
+`persistUserToDb` is the only UPDATE for a user's game state (the user cache and `user.save()` both call it). It uses positional `$N` params; the WHERE clause param number must be incremented when adding new columns. Until 2026-11 the user cache had its own copy of this statement; the copies drifted apart, so locale changes were never persisted and a login could reset `email_verified`. Columns owned by the auth routes (password hash, email, verification state, link tokens) must not be added to it: a cached user object would overwrite them with stale values.
 
 ## Research System Extension Pattern
 

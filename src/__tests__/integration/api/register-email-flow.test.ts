@@ -2,6 +2,7 @@ import { describe, expect, test, beforeEach, afterEach, vi } from 'vitest';
 
 import { POST as registerPOST } from '@/app/api/register/route';
 import { GET as verifyEmailGET } from '@/app/api/verify-email/route';
+import { POST as loginPOST } from '@/app/api/login/route';
 import { createRequest, randomUsername } from '../../helpers/apiTestHelpers';
 import { initializeIntegrationTestServer, shutdownIntegrationTestServer } from '../../helpers/testServer';
 import { withTransaction } from '../../helpers/transactionHelper';
@@ -133,6 +134,37 @@ describe('Register with email flow', () => {
       const result = await db.query('SELECT email_verified, email_verification_token FROM users WHERE username = $1', [username]);
       expect(result.rows[0].email_verified).toBe(true);
       expect(result.rows[0].email_verification_token).toBeNull();
+    });
+  });
+
+  test('login_afterEmailVerification_keepsEmailVerified', async () => {
+    await withTransaction(async () => {
+      const username = randomUsername('verifylogin');
+      const email = `${username}@example.com`;
+      const db = await getDatabase();
+
+      await registerPOST(createRequest('http://localhost:3000/api/register', 'POST', {
+        username,
+        password: 'testpass',
+        email,
+      }));
+
+      const token = 'test-verification-token-login';
+      const user = await getUserByEmail(db, email);
+      await setEmailVerificationToken(db, user!.id, token, Date.now() + 60_000);
+      const verifyRequest = new Request(`http://localhost:3000/api/verify-email?token=${token}`);
+      await verifyEmailGET(verifyRequest as Parameters<typeof verifyEmailGET>[0]);
+
+      // The player follows the redirect to the login page and logs in
+      const loginResponse = await loginPOST(createRequest('http://localhost:3000/api/login', 'POST', {
+        username,
+        password: 'testpass',
+      }));
+      expect(loginResponse.status).toBe(200);
+
+      const result = await db.query('SELECT email, email_verified FROM users WHERE username = $1', [username]);
+      expect(result.rows[0].email).toBe(email);
+      expect(result.rows[0].email_verified).toBe(true);
     });
   });
 

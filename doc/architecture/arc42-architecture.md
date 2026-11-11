@@ -444,9 +444,7 @@ sequenceDiagram
     Cache-->>API: User with hashed password
     API->>API: bcrypt.compare(password)
     alt Valid credentials
-        API->>API: user.updateStats(now)
-        API->>Cache: user.save()
-        Cache->>Cache: Mark user as dirty
+        Note over Cache: getUserByUsername() already ran updateStats(now)<br/>and marked the user dirty (write-behind persistence)
         API->>Session: Set userId in session
         Session->>Session: Encrypt session cookie
         API-->>Player: 200 OK + session cookie

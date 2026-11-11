@@ -143,10 +143,6 @@ function userFromRow(row: UserRow, saveCallback: SaveUserCallback): User {
   // Set score from DB row (defaults to 0 if column not present, e.g. before migration)
   user.score = row.score ?? 0;
 
-  // Set email fields from DB row
-  user.email = row.email ?? null;
-  user.emailVerified = row.email_verified ?? false;
-
   // Set locale preference from DB row
   user.preferredLocale = row.preferred_locale ?? 'en';
 
@@ -217,7 +213,6 @@ async function createUserWithShip(db: DatabaseConnection, username: string, pass
     const initialMaxStats = TechService.calculateMaxDefense(defaultTechCounts, techTree);
 
     const user = User.create(userId, username, password_hash, 0.0, 0, now, techTree, saveCallback, defaultTechCounts, initialMaxStats.hull, initialMaxStats.armor, initialMaxStats.shield, now, false, null, [], null, 0, 0, shipId);
-    user.email = email ?? null;
 
     // Send welcome message to new user
     const ctx = createLockContext();
@@ -251,82 +246,87 @@ async function createUserWithShip(db: DatabaseConnection, username: string, pass
     const initialMaxStats = TechService.calculateMaxDefense(defaultTechCounts, techTree);
 
     const user = User.create(id, username, password_hash, 0.0, 0, now, techTree, saveCallback, defaultTechCounts, initialMaxStats.hull, initialMaxStats.armor, initialMaxStats.shield, now, false, null, [], null, 0, 0);
-    user.email = email ?? null;
 
     return user;
   }
 }
 
-export function saveUserToDb(db: DatabaseConnection): SaveUserCallback {
-  return async (user: User) => {
-    const persistedShipId = getPersistedShipId(user.ship_id);
+/**
+ * Writes the game state of a user. This is the only UPDATE for these columns: the user cache
+ * (background persistence) and `user.save()` both end up here.
+ *
+ * Not written: username, password_hash, email, email_verified and the link tokens. Registration,
+ * email verification and the password routes change them with their own statements; writing them
+ * from a cached user object would overwrite those changes with stale values.
+ */
+export async function persistUserToDb(db: DatabaseConnection, user: User): Promise<void> {
+  await db.query(
+    `UPDATE users SET 
+      iron = $1, 
+      xp = $2,
+      last_updated = $3, 
+      tech_tree = $4, 
+      ship_id = $5,
+      pulse_laser = $6,
+      auto_turret = $7,
+      plasma_lance = $8,
+      gauss_rifle = $9,
+      photon_torpedo = $10,
+      rocket_launcher = $11,
+      ship_hull = $12,
+      kinetic_armor = $13,
+      energy_shield = $14,
+      missile_jammer = $15,
+      hull_current = $16,
+      armor_current = $17,
+      shield_current = $18,
+      defense_last_regen = $19,
+      in_battle = $20,
+      current_battle_id = $21,
+      build_queue = $22,
+      build_start_sec = $23,
+      teleport_charges = $24,
+      teleport_last_regen = $25,
+      score = $26,
+      preferred_locale = $27
+    WHERE id = $28`,
+    [
+      user.iron,
+      user.xp,
+      user.last_updated,
+      JSON.stringify(user.techTree),
+      getPersistedShipId(user.ship_id),
+      user.techCounts.pulse_laser,
+      user.techCounts.auto_turret,
+      user.techCounts.plasma_lance,
+      user.techCounts.gauss_rifle,
+      user.techCounts.photon_torpedo,
+      user.techCounts.rocket_launcher,
+      user.techCounts.ship_hull,
+      user.techCounts.kinetic_armor,
+      user.techCounts.energy_shield,
+      user.techCounts.missile_jammer,
+      user.hullCurrent,
+      user.armorCurrent,
+      user.shieldCurrent,
+      user.defenseLastRegen,
+      user.inBattle ? 1 : 0,
+      user.currentBattleId,
+      JSON.stringify(user.buildQueue),
+      // INTEGER column: a fractional value would be rejected
+      user.buildStartSec !== null ? Math.floor(user.buildStartSec) : null,
+      user.teleportCharges,
+      user.teleportLastRegen,
+      user.score,
+      user.preferredLocale,
+      user.id
+    ]
+  );
+}
 
-    await db.query(
-      `UPDATE users SET 
-        iron = $1, 
-        xp = $2,
-        last_updated = $3, 
-        tech_tree = $4, 
-        ship_id = $5,
-        pulse_laser = $6,
-        auto_turret = $7,
-        plasma_lance = $8,
-        gauss_rifle = $9,
-        photon_torpedo = $10,
-        rocket_launcher = $11,
-        ship_hull = $12,
-        kinetic_armor = $13,
-        energy_shield = $14,
-        missile_jammer = $15,
-        hull_current = $16,
-        armor_current = $17,
-        shield_current = $18,
-        defense_last_regen = $19,
-        in_battle = $20,
-        current_battle_id = $21,
-        build_queue = $22,
-        build_start_sec = $23,
-        teleport_charges = $24,
-        teleport_last_regen = $25,
-        score = $26,
-        email = $27,
-        email_verified = $28,
-        preferred_locale = $29
-      WHERE id = $30`,
-      [
-        user.iron,
-        user.xp,
-        user.last_updated,
-        JSON.stringify(user.techTree),
-        persistedShipId,
-        user.techCounts.pulse_laser,
-        user.techCounts.auto_turret,
-        user.techCounts.plasma_lance,
-        user.techCounts.gauss_rifle,
-        user.techCounts.photon_torpedo,
-        user.techCounts.rocket_launcher,
-        user.techCounts.ship_hull,
-        user.techCounts.kinetic_armor,
-        user.techCounts.energy_shield,
-        user.techCounts.missile_jammer,
-        user.hullCurrent,
-        user.armorCurrent,
-        user.shieldCurrent,
-        user.defenseLastRegen,
-        user.inBattle ? 1 : 0,
-        user.currentBattleId,
-        JSON.stringify(user.buildQueue),
-        user.buildStartSec,
-        user.teleportCharges,
-        user.teleportLastRegen,
-        user.score,
-        user.email,
-        user.emailVerified,
-        user.preferredLocale,
-        user.id
-      ]
-    );
-  };
+/** Save callback for `User` objects that are not managed by the user cache (registration, tests). */
+export function saveUserToDb(db: DatabaseConnection): SaveUserCallback {
+  return (user: User) => persistUserToDb(db, user);
 }
 
 // Add 'export' at the top to make this file a module

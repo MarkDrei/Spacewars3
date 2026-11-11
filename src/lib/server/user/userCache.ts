@@ -11,12 +11,11 @@ import {
   DATABASE_LOCK_MESSAGES,
 } from '../typedLocks';
 import { User } from './user';
-import { getUserByIdFromDb, getUserByUsernameFromDb } from './userRepo';
+import { getUserByIdFromDb, getUserByUsernameFromDb, persistUserToDb } from './userRepo';
 import { WorldCache } from '../world/worldCache';
 import { Cache } from '../caches/Cache';
 import { UserBonusCache } from '../bonus/UserBonusCache';
 import type { UserBonuses } from '../bonus/userBonusTypes';
-import { isNpcId } from '../npc/npcConstants';
 
 type userCacheDependencies = {
   worldCache?: WorldCache;
@@ -44,14 +43,6 @@ export interface TypedCacheStats {
 
 declare global {
   var userWorldCacheInstance: UserCache | null;
-}
-
-function getPersistedShipId(shipId?: number): number | null {
-  if (shipId === undefined || isNpcId(shipId)) {
-    return null;
-  }
-
-  return shipId;
 }
 
 /**
@@ -519,6 +510,7 @@ export class UserCache extends Cache {
    */
   private async persistDirtyUsers(context: LockContext<LocksAtMost4>): Promise<void> {
     await context.useLockWithAcquire(LOCK_10, async () => {
+      if (!this.db) throw new Error('Database not initialized');
       const dirtyUserIds = Array.from(this.dirtyUsers);
 
       if (dirtyUserIds.length === 0) {
@@ -530,7 +522,7 @@ export class UserCache extends Cache {
       for (const userId of dirtyUserIds) {
         const user = this.users.get(userId);
         if (user) {
-          await this.persistUserToDb(user);
+          await persistUserToDb(this.db, user);
         }
       }
 
@@ -539,76 +531,6 @@ export class UserCache extends Cache {
     });
 
   }
-
-  /**
-   * Persist a single user to database
-   */
-  private async persistUserToDb(user: User): Promise<void> {
-    if (!this.db) throw new Error('Database not initialized');
-
-    const persistedShipId = getPersistedShipId(user.ship_id);
-
-    await this.db.query(
-      `UPDATE users SET 
-        iron = $1, 
-        xp = $2,
-        last_updated = $3, 
-        tech_tree = $4, 
-        ship_id = $5,
-        pulse_laser = $6,
-        auto_turret = $7,
-        plasma_lance = $8,
-        gauss_rifle = $9,
-        photon_torpedo = $10,
-        rocket_launcher = $11,
-        ship_hull = $12,
-        kinetic_armor = $13,
-        energy_shield = $14,
-        missile_jammer = $15,
-        hull_current = $16,
-        armor_current = $17,
-        shield_current = $18,
-        defense_last_regen = $19,
-        in_battle = $20,
-        current_battle_id = $21,
-        build_queue = $22,
-        build_start_sec = $23,
-        teleport_charges = $24,
-        teleport_last_regen = $25,
-        score = $26
-      WHERE id = $27`,
-      [
-        user.iron,
-        user.xp,
-        user.last_updated,
-        JSON.stringify(user.techTree),
-        persistedShipId,
-        user.techCounts.pulse_laser,
-        user.techCounts.auto_turret,
-        user.techCounts.plasma_lance,
-        user.techCounts.gauss_rifle,
-        user.techCounts.photon_torpedo,
-        user.techCounts.rocket_launcher,
-        user.techCounts.ship_hull,
-        user.techCounts.kinetic_armor,
-        user.techCounts.energy_shield,
-        user.techCounts.missile_jammer,
-        user.hullCurrent,
-        user.armorCurrent,
-        user.shieldCurrent,
-        user.defenseLastRegen,
-        user.inBattle ? 1 : 0,
-        user.currentBattleId,
-        JSON.stringify(user.buildQueue),
-        user.buildStartSec !== null ? Math.floor(user.buildStartSec) : null,
-        user.teleportCharges,
-        user.teleportLastRegen,
-        user.score,
-        user.id
-      ]
-    );
-  }
-
 
   /**
    * Start background persistence timer (implements abstract method from Cache)
