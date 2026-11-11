@@ -50,6 +50,9 @@ EXPOSE 3000
 
 # Set hostname to listen on all interfaces
 ENV HOSTNAME="0.0.0.0"
+# Leave SIGTERM/SIGINT to the application: it writes the cached game state to the database
+# before exiting (src/lib/server/shutdown.ts). Next.js itself would exit before that is done.
+ENV NEXT_MANUAL_SIG_HANDLE=true
 ENV PORT=3000
 
 # Start the application

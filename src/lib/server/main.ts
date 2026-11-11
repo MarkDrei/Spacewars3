@@ -12,6 +12,9 @@ import { UserBonusCache } from "./bonus/UserBonusCache";
 import { InventoryService } from "./inventory/InventoryService";
 import { StatisticsCache } from "./statistics/StatisticsCache";
 import { getSessionSecret } from "./session";
+import { stopBattleScheduler } from "./battle/battleScheduler";
+import { BATTLE_LOCK } from "./typedLocks";
+import { registerShutdownHandlers, type ShutdownStep } from "./shutdown";
 
 export async function initializeServer() {
 
@@ -40,49 +43,93 @@ export async function initializeServer() {
 
         console.log('🌱🪴 Application startup - locks acquired');
 
-        const db = await getDatabase();
-        const world = await loadWorldFromDb(db, async () => {
-            console.warn('⚠️ Save world callback invoked - but no save is happening');
-        });
+        try {
+            const db = await getDatabase();
+            const world = await loadWorldFromDb(db, async () => {
+                console.warn('⚠️ Save world callback invoked - but no save is happening');
+            });
 
-        await MessageCache.initialize(ctx12);
-        const messageCache = MessageCache.getInstance();
+            await MessageCache.initialize(ctx12);
+            const messageCache = MessageCache.getInstance();
 
-        WorldCache.configureDependencies({ messageCache });
-        WorldCache.initializeWithWorld(world, db);
+            WorldCache.configureDependencies({ messageCache });
+            WorldCache.initializeWithWorld(world, db);
 
-        await UserCache.intialize2(db, {
-            worldCache: WorldCache.getInstance(),
-            messageCache
-        });
+            await UserCache.intialize2(db, {
+                worldCache: WorldCache.getInstance(),
+                messageCache
+            });
 
-        // Initialize UserBonusCache
-        UserBonusCache.configureDependencies({
-            userCache: UserCache.getInstance2(),
-            inventoryService: new InventoryService(),
-        });
-        UserBonusCache.getInstance();
-        console.log('🌱🪴 Application startup - ✅ UserBonusCache initialized');
+            // Initialize UserBonusCache
+            UserBonusCache.configureDependencies({
+                userCache: UserCache.getInstance2(),
+                inventoryService: new InventoryService(),
+            });
+            UserBonusCache.getInstance();
+            console.log('🌱🪴 Application startup - ✅ UserBonusCache initialized');
 
-        // Initialize BattleCache
-        console.log('🌱🪴 Application startup - ⚔️ Initializing BattleCache...');
-        await BattleCache.initialize(db, {
-            userCache: UserCache.getInstance2(),
-            worldCache: WorldCache.getInstance(),
-            messageCache
-        });
-        console.log('🌱🪴 Application startup - ✅ BattleCache initialized');
+            // Initialize BattleCache
+            console.log('🌱🪴 Application startup - ⚔️ Initializing BattleCache...');
+            await BattleCache.initialize(db, {
+                userCache: UserCache.getInstance2(),
+                worldCache: WorldCache.getInstance(),
+                messageCache
+            });
+            console.log('🌱🪴 Application startup - ✅ BattleCache initialized');
 
-        // Initialize StatisticsCache
-        console.log('🌱🪴 Application startup - 📊 Initializing StatisticsCache...');
-        await StatisticsCache.initialize(db, (userId) => {
-            const userCache = UserCache.getInstance2();
-            const user = userCache.getUserByIdFromCache(ctx15, userId);
-            return user?.username;
-        });
-        console.log('🌱🪴 Application startup - ✅ StatisticsCache initialized');
+            // Initialize StatisticsCache
+            console.log('🌱🪴 Application startup - 📊 Initializing StatisticsCache...');
+            await StatisticsCache.initialize(db, (userId) => {
+                const userCache = UserCache.getInstance2();
+                const user = userCache.getUserByIdFromCache(ctx15, userId);
+                return user?.username;
+            });
+            console.log('🌱🪴 Application startup - ✅ StatisticsCache initialized');
 
-        console.log('🌱🪴 Application startup complete');
+            console.log('🌱🪴 Application startup complete');
+        } finally {
+            ctx15.dispose(); // release all locks, also when the startup fails
+        }
+}
 
-        ctx15.dispose(); // release all locks
+/**
+ * Steps that write all cached state to the database, in dependency order: the last battle round
+ * can still change users and messages, statistics events can come from all of them.
+ */
+export function cacheShutdownSteps(): ShutdownStep[] {
+    return [
+        {
+            name: 'battles',
+            run: async () => {
+                stopBattleScheduler();
+                // BATTLE_LOCK: wait for a battle round that is still being processed
+                await createLockContext().useLockWithAcquire(BATTLE_LOCK, async () => {
+                    await BattleCache.getInstance().shutdown();
+                });
+            },
+        },
+        { name: 'users, world, messages', run: () => UserCache.getInstance2().shutdown() },
+        { name: 'statistics', run: () => StatisticsCache.getInstance().shutdown() },
+    ];
+}
+
+/**
+ * Entry point of the server process (`src/instrumentation.ts`): initializes the caches and
+ * registers the graceful shutdown.
+ *
+ * A failed startup ends a production process. Next.js would keep it alive and answer every
+ * request with 500; ending it lets the process manager (Docker `restart: unless-stopped`) retry,
+ * e.g. until the database is reachable.
+ */
+export async function startServer(): Promise<void> {
+    try {
+        await initializeServer();
+    } catch (error) {
+        if (process.env.NODE_ENV !== 'production') {
+            throw error;
+        }
+        console.error('❌ Application startup failed - exiting:', error);
+        process.exit(1);
+    }
+    registerShutdownHandlers(cacheShutdownSteps());
 }

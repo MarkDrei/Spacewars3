@@ -541,6 +541,12 @@ graph TB
 - **Render**: Container-based deployment with managed PostgreSQL
 - **Self-hosted**: Any Node.js host with PostgreSQL access
 
+**Process lifecycle** (`startServer()` in `src/lib/server/main.ts`, called from `src/instrumentation.ts`):
+
+- **Startup:** `initializeServer()` checks the session secret and loads the caches while holding all locks. If it fails in production the process exits with code 1, so the process manager (Docker `restart: unless-stopped`) retries; Next.js would otherwise keep a server alive that answers every request with 500.
+- **Shutdown:** on `SIGTERM`/`SIGINT` the handler from `src/lib/server/shutdown.ts` stops the battle scheduler and writes all cached state to the database (battles → users, world, messages → statistics), then exits with 0. A failed step does not stop the following steps; a failed step or a run longer than 8 s (Docker sends `SIGKILL` after 10 s) exits with 1. Each deployment recreates the container, so without this flush every deployment lost the changes since the last background persist (up to 30 s, statistics 60 s).
+- **`NEXT_MANUAL_SIG_HANDLE=true`** (set in the `Dockerfile`): Next.js registers its own signal handlers that exit as soon as the HTTP server is closed, usually before the flush is done. The variable leaves signal handling to the application. Without it (`next dev`, `next start`) the flush is best effort. The HTTP server keeps accepting requests during the flush (a few ten milliseconds); changes made in that window are lost.
+
 ---
 
 ## 8. Crosscutting Concepts
@@ -599,6 +605,7 @@ graph TD
 
 - **Write-Through:** Updates go to cache immediately, marked as dirty
 - **Write-Behind:** Background persistence flushes dirty data every 30s
+- **Flush on Shutdown:** `SIGTERM`/`SIGINT` write all dirty data before the process exits (see [Deployment View](#7-deployment-view))
 - **Cache Invalidation:** Clear cache on schema changes or manual flush
 - **TTL:** No time-based expiration (session-based lifecycle)
 - **No-Cache (Direct DB):** Inventory data is read and written directly on every operation via `InventoryService → InventoryRepo`. No in-memory cache is maintained because inventory access frequency is low and strong consistency is preferred over latency.
