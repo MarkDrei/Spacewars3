@@ -123,4 +123,4 @@ jobs:
           POSTGRES_DB: spacewars
           POSTGRES_USER: spacewars
           POSTGRES_PASSWORD: spacewars
-          SESSION_SECRET: test-secret-for-ci
+          SESSION_SECRET: test-secret-for-ci-0123456789-abcdefghijkl

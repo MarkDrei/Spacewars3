@@ -209,7 +209,7 @@ npm run test
 | `POSTGRES_TEST_HOST` | Test DB host           | `localhost`                        |
 | `POSTGRES_TEST_PORT` | Test DB port           | `5432`                             |
 | `POSTGRES_TEST_DB`   | Test database name     | `spacewars_test`                   |
-| `SESSION_SECRET`     | Session encryption key | -                                  |
+| `SESSION_SECRET`     | Session encryption key (production: required, at least 32 random characters) | -            |
 
 **Note**: Copy `.env.example` to `.env` for local development outside devcontainer.
 
@@ -313,7 +313,7 @@ docker run -p 3000:3000 \
 Required for production:
 
 - `NODE_ENV`: `production`
-- `SESSION_SECRET`: Random secret for session encryption
+- `SESSION_SECRET`: Random secret for session encryption, at least 32 characters (e.g. `openssl rand -base64 48`); the server refuses to start in production without it
 - `POSTGRES_HOST`: PostgreSQL host
 - `POSTGRES_PORT`: PostgreSQL port (default: 5432)
 - `POSTGRES_DB`: Database name

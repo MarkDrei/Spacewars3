@@ -810,6 +810,17 @@ Measured on the preview deployment with Playwright (logged-in player, 2026-11-08
 home 48, factory 30, game 38 API requests/min, 60 fps, 0 DOM mutations/s on the game page; hidden
 tab — 0 requests in 30 s, all stores refresh immediately when the tab becomes visible again.
 
+### 8.8 Security
+
+**Session cookie** (`src/lib/server/session.ts`): the session is a stateless iron-session cookie (`spacewars-session`, 24 h) that contains only the user id. There is no server-side session store, so the cookie and its secret are the only proof of identity.
+
+| Property | Value | Reason |
+| --- | --- | --- |
+| `httpOnly` | always | Not readable by scripts (XSS cannot steal it) |
+| `secure` | production | HTTPS only |
+| `sameSite` | `lax` | Not sent with cross-site POST/fetch requests. API routes parse the request body as JSON regardless of its `Content-Type`, so without this any website could trigger game or admin actions for a logged-in visitor (CSRF) |
+| secret | `SESSION_SECRET` | `getSessionSecret()` rejects a missing, short (< 32 characters) or published placeholder secret in production; `initializeServer()` calls it, so a misconfigured server fails at startup. Development and tests fall back to a fixed development secret |
+
 ---
 
 ## 9. Architecture Decisions

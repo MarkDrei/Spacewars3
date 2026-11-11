@@ -11,8 +11,12 @@ import { WorldCache } from "./world/worldCache";
 import { UserBonusCache } from "./bonus/UserBonusCache";
 import { InventoryService } from "./inventory/InventoryService";
 import { StatisticsCache } from "./statistics/StatisticsCache";
+import { getSessionSecret } from "./session";
 
 export async function initializeServer() {
+
+        // Fail at startup (instead of on the first login) when production runs without a private session secret
+        getSessionSecret();
 
         console.log('🌱🪴 Application startup - acquiring locks');
 

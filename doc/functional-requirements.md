@@ -143,7 +143,7 @@ Players log in with their username and password. Sessions are maintained via enc
 | Cap01_Feat002_Req003 | Player can check their current session state (`GET /api/session`). The response indicates whether the player is logged in, and if so, returns their username and ship ID.                                                                          |
 | Cap01_Feat002_Req004 | Player can log out (`POST /api/logout`), which destroys the session cookie and ends the session immediately.                                                                                                                                       |
 | Cap01_Feat002_Req005 | All protected pages and API routes redirect unauthenticated requests to the login page. The session is validated server-side on every protected request via the encrypted cookie.                                                                  |
-| Cap01_Feat002_Req006 | Session cookies are HTTP-only (preventing JavaScript access) and are `secure` in production (HTTPS only). Session data is encrypted using a server-side secret of at least 32 characters configured via the `SESSION_SECRET` environment variable. |
+| Cap01_Feat002_Req006 | Session cookies are HTTP-only (preventing JavaScript access), `SameSite=Lax` (not sent with cross-site POST requests, which prevents other websites from triggering game actions for a logged-in player) and `secure` in production (HTTPS only). Session data is encrypted with the `SESSION_SECRET` environment variable; in production the server refuses to start when it is missing, shorter than 32 characters or one of the published placeholder values (`getSessionSecret()` in `src/lib/server/session.ts`, tested in `src/__tests__/unit/lib/session-config.test.ts`). |
 
 ---
 
