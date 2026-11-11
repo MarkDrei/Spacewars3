@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcrypt';
-import { randomBytes } from 'crypto';
 import { getIronSession } from 'iron-session';
 import { getDatabase } from '@/lib/server/database';
 import { createUser, saveUserToDb, getUserByEmail, setEmailVerificationToken, getUserByUsername } from '@/lib/server/user/userRepo';
@@ -16,6 +15,7 @@ import { sendEmail } from '@/lib/server/email/emailService';
 import { buildVerificationEmail } from '@/lib/server/email/emailTemplates';
 import { calculateLevelFromXp } from '@shared/utils/levelUtils';
 import { validateUsername } from '@/lib/server/user/usernameValidation';
+import { createLinkToken } from '@/lib/server/user/linkToken';
 import { getAuthRateLimits, getClientIp, consumeRateLimit } from '@/lib/server/rateLimit';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -100,7 +100,7 @@ export async function POST(request: NextRequest) {
     let emailSent = false;
     if (normalizedEmail !== null && isEmailEnabled()) {
       try {
-        const token = randomBytes(32).toString('hex');
+        const token = createLinkToken();
         const expiresAt = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
         await setEmailVerificationToken(db, user.id, token, expiresAt);
 

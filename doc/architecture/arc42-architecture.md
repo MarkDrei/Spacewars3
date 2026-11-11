@@ -845,6 +845,8 @@ tab — 0 requests in 30 s, all stores refresh immediately when the tab becomes 
 - **Trade-off of the limit per username:** it bounds password guessing from many addresses (at most 9 600 guesses per account and day), but several addresses together can lock a player out for up to 15 minutes. The limit is higher than what one address can reach within the window (60 attempts), so a single address cannot do that.
 - Each limiter holds at most 10 000 keys of at most 100 characters; when it is full, expired entries and then the oldest entry are dropped.
 
+**Tokens in emailed links** (`src/lib/server/user/linkToken.ts`): password reset and email verification tokens are 256 random bits. The token is only part of the link in the email; `users.password_reset_token` and `users.email_verification_token` hold its SHA-256 hash (`setPasswordResetToken()`, `setEmailVerificationToken()` hash before storing, the `consume…Token()` functions hash before comparing). Read access to the database (backup, dump) therefore does not allow taking over accounts. A fast hash is sufficient because the token cannot be guessed. Tokens are single-use and expire after 1 hour (reset) or 24 hours (verification).
+
 ---
 
 ## 9. Architecture Decisions

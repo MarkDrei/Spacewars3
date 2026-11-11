@@ -11,6 +11,7 @@ import { TechService } from '../techs/TechService';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 import { DEFAULT_SHIP_START_X, DEFAULT_SHIP_START_Y, DEFAULT_SHIP_START_SPEED, DEFAULT_SHIP_START_ANGLE } from '../constants';
 import { isNpcId } from '../npc/npcConstants';
+import { hashLinkToken } from './linkToken';
 
 interface UserRow {
   id: number;
@@ -334,10 +335,10 @@ export { };
 // --- Email verification token helpers ---
 
 /**
- * Stores an email verification token for the given user.
+ * Stores an email verification token for the given user (as hash, see linkToken.ts).
  * @param db Database connection
  * @param userId User ID
- * @param token Verification token (hex string)
+ * @param token Verification token as sent in the email
  * @param expiresAt Expiry timestamp in milliseconds
  */
 export async function setEmailVerificationToken(
@@ -348,7 +349,7 @@ export async function setEmailVerificationToken(
 ): Promise<void> {
   await db.query(
     'UPDATE users SET email_verification_token = $1, email_verification_expires = $2 WHERE id = $3',
-    [token, expiresAt, userId]
+    [hashLinkToken(token), expiresAt, userId]
   );
 }
 
@@ -370,7 +371,7 @@ export async function consumeEmailVerificationToken(
      WHERE email_verification_token = $1
        AND email_verification_expires > $2
      RETURNING id`,
-    [token, nowMs]
+    [hashLinkToken(token), nowMs]
   );
   if (result.rows.length === 0) return null;
   return (result.rows[0] as { id: number }).id;
@@ -412,7 +413,7 @@ export async function getUserByEmail(
 // --- Password reset token helpers ---
 
 /**
- * Stores a password reset token for the given user.
+ * Stores a password reset token for the given user (as hash, see linkToken.ts).
  */
 export async function setPasswordResetToken(
   db: DatabaseConnection,
@@ -422,7 +423,7 @@ export async function setPasswordResetToken(
 ): Promise<void> {
   await db.query(
     'UPDATE users SET password_reset_token = $1, password_reset_expires = $2 WHERE id = $3',
-    [token, expiresAt, userId]
+    [hashLinkToken(token), expiresAt, userId]
   );
 }
 
@@ -443,7 +444,7 @@ export async function consumePasswordResetToken(
      WHERE password_reset_token = $1
        AND password_reset_expires > $2
      RETURNING id`,
-    [token, nowMs]
+    [hashLinkToken(token), nowMs]
   );
   if (result.rows.length === 0) return null;
   return (result.rows[0] as { id: number }).id;

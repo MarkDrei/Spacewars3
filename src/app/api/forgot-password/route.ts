@@ -6,9 +6,9 @@
 // ---
 
 import { NextRequest, NextResponse } from 'next/server';
-import { randomBytes } from 'crypto';
 import { getDatabase } from '@/lib/server/database';
 import { getUserByEmail, setPasswordResetToken } from '@/lib/server/user/userRepo';
+import { createLinkToken } from '@/lib/server/user/linkToken';
 import { isEmailEnabled, getEmailLinkBaseUrl } from '@/lib/server/email/emailConfig';
 import { sendEmail } from '@/lib/server/email/emailService';
 import { buildPasswordResetEmail } from '@/lib/server/email/emailTemplates';
@@ -54,7 +54,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
     rateLimits.passwordResetByEmail.hit(normalizedEmail);
 
-    const token = randomBytes(32).toString('hex');
+    const token = createLinkToken();
     const expiresAt = Date.now() + RESET_TOKEN_TTL_MS;
 
     await setPasswordResetToken(db, user.id, token, expiresAt);

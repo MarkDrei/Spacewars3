@@ -6,6 +6,7 @@ import { createRequest, randomUsername } from '../../helpers/apiTestHelpers';
 import { initializeIntegrationTestServer, shutdownIntegrationTestServer } from '../../helpers/testServer';
 import { withTransaction } from '../../helpers/transactionHelper';
 import { getDatabase } from '@/lib/server/database';
+import { getUserByEmail, setEmailVerificationToken } from '@/lib/server/user/userRepo';
 
 describe('Register with email flow', () => {
   beforeEach(async () => {
@@ -116,10 +117,8 @@ describe('Register with email flow', () => {
       // Manually set a verification token
       const token = 'test-verification-token-abc123';
       const expiresAt = Date.now() + 60_000;
-      await db.query(
-        'UPDATE users SET email_verification_token = $1, email_verification_expires = $2, email_verified = FALSE WHERE username = $3',
-        [token, expiresAt, username]
-      );
+      const user = await getUserByEmail(db, email);
+      await setEmailVerificationToken(db, user!.id, token, expiresAt);
 
       // Call verify-email endpoint
       const verifyRequest = new Request(`http://localhost:3000/api/verify-email?token=${token}`);
