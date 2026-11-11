@@ -91,6 +91,38 @@ registration, and do not seed `a`/`a` outside development and test.
 - `src/lib/server/seedData.ts` — seeds user `a`
 - `src/lib/server/user/usernameValidation.ts` — registration rules
 
+## Content Security Policy Without Script and Connection Rules
+
+**Priority**: Medium
+**Added**: 2026-11-11
+**Component**: `src/shared/securityHeaders.ts`, `next.config.ts`
+
+### Context
+
+The Content Security Policy only contains directives that cannot break rendering
+(`frame-ancestors`, `base-uri`, `form-action`, `object-src`). It has no `script-src`, `style-src`
+or `connect-src`. Next.js renders inline scripts for hydration, so a useful `script-src` needs a
+nonce per request (set in a Next.js proxy/middleware file, which does not exist yet), and the policy has to be checked in a real
+browser on all pages (canvas game, service worker, PWA manifest). No browser is available on the
+development VPS.
+
+### Consequences
+
+If a cross-site scripting bug is ever introduced, the browser does not stop the injected script
+from running or from sending data to other servers. React escapes all rendered text and the code
+uses no `dangerouslySetInnerHTML`, so there is no known injection point today.
+
+### Proper Solution
+
+Add a nonce-based policy (`default-src 'self'; script-src 'self' 'nonce-…' 'strict-dynamic'; …`)
+following the Next.js CSP guide, first as `Content-Security-Policy-Report-Only`, check the browser
+console on every page (e.g. in the Playwright screenshot workflow), then enforce it.
+
+### Related Files
+
+- `src/shared/securityHeaders.ts` — current headers
+- `.github/workflows/screenshots.yml` — Playwright run that could assert "no CSP violations"
+
 ## Minor Balance Change: Multiplicative Accuracy Refactor (Task 1.1)
 
 **Priority**: Low  
