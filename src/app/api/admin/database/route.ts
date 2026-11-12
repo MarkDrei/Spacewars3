@@ -17,7 +17,7 @@ import { handleApiError, requireAuth, ApiError } from '@/lib/server/errors';
 import { getDatabase } from '@/lib/server/database';
 import { BattleCache } from '@/lib/server/battle/BattleCache';
 import type { Battle } from '@/lib/server/battle/battleTypes';
-import { createLockContext, IronGuardManager, LOCK_4 } from '@markdrei/ironguard-typescript-locks';
+import { createLockContext, LOCK_4 } from '@markdrei/ironguard-typescript-locks';
 import { UserCache } from '@/lib/server/user/userCache';
 import { isAdminUsername } from '@/shared/adminAccess';
 
@@ -64,14 +64,6 @@ interface AdminData {
 }
 
 export async function GET(request: NextRequest) {
-
-  const debugInfo = IronGuardManager.getInstance().getGlobalLocks();
-
-  console.log('🔒🔒🔒🔒 Active writers:', debugInfo.writers);
-  console.log('🔒🔒🔒🔒 Active readers:', debugInfo.readers);
-  console.log('🔒🔒🔒🔒 Pending writers:', debugInfo.pendingWriters);
-  console.log('🔒🔒🔒🔒 Full debug info:', debugInfo);
-
   try {
     const session = await getIronSession<SessionData>(request, NextResponse.json({}), sessionOptions);
     requireAuth(session.userId);
@@ -90,15 +82,7 @@ export async function GET(request: NextRequest) {
         throw new ApiError(403, 'Admin access restricted to developers');
       }
 
-      if (userData.username == 'a') {
-        IronGuardManager.getInstance().enableDebugMode();
-        console.log('🔒🔒 Active writers:', debugInfo.writers);
-        console.log('🔒🔒 Active readers:', debugInfo.readers);
-        console.log('🔒🔒 Pending writers:', debugInfo.pendingWriters);
-        console.log('🔒🔒 Full debug info:', debugInfo);
-      }
 
-      
       // CRITICAL: Flush all cache data to database before reading
       // This ensures the admin page shows current values, not stale cached data
       // TODO: should probably also flush other caches (e.g. battle cache) if they exist

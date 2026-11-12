@@ -517,8 +517,6 @@ export class UserCache extends Cache {
         return;
       }
 
-      console.log(`💾 Persisting ${dirtyUserIds.length} dirty user(s) to database...`);
-
       for (const userId of dirtyUserIds) {
         const user = this.users.get(userId);
         if (user) {
@@ -527,7 +525,6 @@ export class UserCache extends Cache {
       }
 
       this.dirtyUsers.clear();
-      console.log('✅ Dirty users persisted to database');
     });
 
   }
@@ -565,7 +562,6 @@ export class UserCache extends Cache {
   private async backgroundPersist(context: LockContext<LocksAtMostAndHas4>): Promise<void> {
     // Persist dirty users
     if (this.dirtyUsers.size > 0) {
-      console.log(`💾 Background persisting ${this.dirtyUsers.size} dirty user(s)`);
       await this.persistDirtyUsers(context);
     }
     // Note: Messages and world data are handled by their own caches

@@ -13,10 +13,18 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * Turns an error thrown in a route handler into the JSON error response.
+ *
+ * Only unexpected errors are logged. A rejected request (401 of a logged-out tab that keeps
+ * polling, 400, 429 of the rate limiter, malformed JSON) is normal operation and is caused by the
+ * client: logging it with a stack trace would let anyone fill the log without being logged in.
+ */
 export function handleApiError(error: unknown): NextResponse {
-  console.error('API Error:', error);
-
   if (error instanceof ApiError) {
+    if (error.statusCode >= 500) {
+      console.error('API Error:', error);
+    }
     return NextResponse.json(
       { error: error.message, code: error.code },
       {
@@ -31,38 +39,26 @@ export function handleApiError(error: unknown): NextResponse {
     return NextResponse.json({ error: 'Invalid JSON in request body' }, { status: 400 });
   }
 
-  if (error instanceof Error) {
-    // Handle SQLite constraint errors
-    if (error.message.includes('UNIQUE constraint failed')) {
-      const isEmailConstraint = error.message.toLowerCase().includes('email');
-      return NextResponse.json(
-        { error: isEmailConstraint ? 'Email already in use' : 'Username taken' },
-        { status: 400 }
-      );
-    }
-
-    // Handle PostgreSQL unique constraint errors (error code 23505)
-    if (error.message.includes('duplicate key value violates unique constraint') || 
-        error.message.includes('username') && error.message.includes('already exists')) {
-      const isEmailConstraint = error.message.toLowerCase().includes('email');
-      return NextResponse.json(
-        { error: isEmailConstraint ? 'Email already in use' : 'Username taken' },
-        { status: 400 }
-      );
-    }
-
-    // Handle other known errors
-    return NextResponse.json(
-      { error: 'Server error' },
-      { status: 500 }
-    );
+  // Backstop for the check in the register route (two requests with the same address at once)
+  if (isEmailUniqueViolation(error)) {
+    return NextResponse.json({ error: 'Email already in use' }, { status: 400 });
   }
 
-  // Unknown error type
-  return NextResponse.json(
-    { error: 'Internal server error' },
-    { status: 500 }
-  );
+  console.error('API Error:', error);
+  return NextResponse.json({ error: 'Server error' }, { status: 500 });
+}
+
+/** PostgreSQL error code of a unique violation. */
+const PG_UNIQUE_VIOLATION = '23505';
+/** Partial unique index on `users.email` (see `schema.ts`). */
+const EMAIL_UNIQUE_INDEX = 'idx_users_email';
+
+function isEmailUniqueViolation(error: unknown): boolean {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+  const { code, constraint } = error as Error & { code?: unknown; constraint?: unknown };
+  return code === PG_UNIQUE_VIOLATION && constraint === EMAIL_UNIQUE_INDEX;
 }
 
 export function requireAuth(userId?: number): asserts userId is number {

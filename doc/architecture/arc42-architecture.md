@@ -611,6 +611,8 @@ graph TD
 ### 8.3 Error Handling
 
 - Database errors: Logged and propagated to API layer
+- API routes: `handleApiError()` (`src/lib/server/errors.ts`) turns a thrown error into the JSON response. It logs only unexpected errors (non-`ApiError`, or `ApiError` with status ≥ 500). Rejected requests (401, 400, 429, malformed JSON) are not logged, so a client without a session cannot fill the log. A unique violation of the email index (`23505` on `idx_users_email`) is answered with 400 "Email already in use".
+- Logging: no log line per request on polled endpoints and none per background persistence cycle; start, shutdown and errors are logged.
 - Lock acquisition: Guaranteed by IronGuard (no deadlocks)
 - Async failures: Message creation errors logged, message removed from cache
 
@@ -1015,6 +1017,8 @@ tab — 0 requests in 30 s, all stores refresh immediately when the tab becomes 
 | Message creation      | < 1ms   | ~0.5ms                     |
 | User data load        | < 50ms  | ~10-20ms (cache hit: ~1ms) |
 | Game action (harvest) | < 100ms | ~30-50ms                   |
+
+**Lookup indexes** (`LOOKUP_INDEXES` in `src/lib/server/schema.ts`, created for existing databases by `applyLookupIndexMigration()`): `users (username)` for login and registration, `messages (recipient_id, created_at)` for the notification list, `battles (attacker_id, battle_start_time)` and `battles (attackee_id, battle_start_time)` for battle history and attack cooldowns. Without them these queries scan the whole table.
 
 ### 10.2 Reliability
 

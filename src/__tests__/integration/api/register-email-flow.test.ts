@@ -7,7 +7,8 @@ import { createRequest, randomUsername } from '../../helpers/apiTestHelpers';
 import { initializeIntegrationTestServer, shutdownIntegrationTestServer } from '../../helpers/testServer';
 import { withTransaction } from '../../helpers/transactionHelper';
 import { getDatabase } from '@/lib/server/database';
-import { getUserByEmail, setEmailVerificationToken } from '@/lib/server/user/userRepo';
+import { createUserWithoutShip, getUserByEmail, saveUserToDb, setEmailVerificationToken } from '@/lib/server/user/userRepo';
+import { handleApiError } from '@/lib/server/errors';
 
 describe('Register with email flow', () => {
   beforeEach(async () => {
@@ -235,6 +236,22 @@ describe('Register with email flow', () => {
 
       expect(res2.status).toBe(400);
       expect(data2.error).toContain('Email already in use');
+    });
+  });
+
+  test('handleApiError_duplicateEmailRejectedByDatabase_returnsEmailAlreadyInUse', async () => {
+    await withTransaction(async () => {
+      // The route checks the address under USER_LOCK; the unique index is the backstop behind it
+      const db = await getDatabase();
+      const email = `${randomUsername('dup')}@example.com`;
+      await createUserWithoutShip(db, randomUsername('dup1'), 'hash', saveUserToDb(db), email);
+
+      const error = await createUserWithoutShip(db, randomUsername('dup2'), 'hash', saveUserToDb(db), email)
+        .then(() => null, (e: unknown) => e);
+
+      const response = handleApiError(error);
+      expect(response.status).toBe(400);
+      expect(await response.json()).toEqual({ error: 'Email already in use' });
     });
   });
 

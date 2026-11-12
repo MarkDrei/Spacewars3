@@ -228,8 +228,6 @@ export async function processActiveBattles(context: LockContext<LocksAtMostAndHa
         return;
       }
       
-      console.log(`⚔️ Processing ${activeBattles.length} active battle(s)...`);
-      
       for (const battle of activeBattles) {
         try {
           await processBattleRoundInternal(context, battle.id);

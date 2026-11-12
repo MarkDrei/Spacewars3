@@ -737,14 +737,11 @@ export class MessageCache extends Cache {
       return;
     }
 
-    console.log(`📬 Persisting messages for ${dirtyUserIds.length} user(s) to database...`);
-
     for (const userId of dirtyUserIds) {
       await this.persistMessagesForUser(context, userId);
     }
 
     this.dirtyUsers.clear();
-    console.log('✅ Message persistence complete');
   }
 
   /**
@@ -935,7 +932,6 @@ export class MessageCache extends Cache {
         const context = createLockContext();
         await context.useLockWithAcquire(DATABASE_LOCK_MESSAGES, async (messageContext) => {
           if (this.dirtyUsers.size > 0) {
-            console.log(`📬 Background persisting messages for ${this.dirtyUsers.size} user(s) in Message Cache`);
             await this.flushToDatabaseWithLock(messageContext);
           }
         });
