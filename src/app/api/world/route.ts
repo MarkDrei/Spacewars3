@@ -56,21 +56,16 @@ export async function GET(request: NextRequest) {
     const timeMultiplier = TimeMultiplierService.getInstance().getMultiplier();
     const npcObjects = activeNpcs.map((npc) => npcToSpaceObject(npc, timeMultiplier, nowMs));
 
-    const emptyCtx = createLockContext();
-    // Get typed cache manager singleton
-    
     const worldCache = WorldCache.getInstance();
-    return await emptyCtx.useLockWithAcquire(WORLD_LOCK, async (worldContext) => {
-      // Get world data safely (we have world write lock)
+    return await createLockContext().useLockWithAcquire(WORLD_LOCK, async (worldContext) => {
+      // getWorldFromCache advances physics to "now"
       const world = worldCache.getWorldFromCache(worldContext);
-      
-      // Update physics for all objects
-      const currentTime = Date.now();
-      world.updatePhysics(worldContext, currentTime);
-      
-      // Mark world as dirty for persistence (critical fix!)
+
+      // Mark the advanced positions for the next background write. A restart could recompute them
+      // from an older snapshot, but only with the time multiplier of that moment, not with the one
+      // that was active while the ships moved.
       await worldCache.updateWorldUnsafe(worldContext, world);
-      
+
       // Return world data with starbases and NPCs appended
       const worldData = world.getWorldData(worldContext);
       return NextResponse.json({
