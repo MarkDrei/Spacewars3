@@ -92,10 +92,12 @@ export class MessageCache extends Cache {
     if (MessageCache.instance) {
       // Note: shutdown() is async but we can't await in a sync method
       // Callers MUST call shutdown() before resetInstance()
-      context.useLockWithAcquire(DATABASE_LOCK_MESSAGES, async (ctx) => {
+      void context.useLockWithAcquire(DATABASE_LOCK_MESSAGES, async (ctx) => {
         if (MessageCache.instance) {
           await MessageCache.instance.shutdown(ctx);
         }
+      }).catch((error: unknown) => {
+        console.error('❌ MessageCache shutdown during reset failed:', error);
       });
     }
     this.instance = null;
@@ -735,14 +737,11 @@ export class MessageCache extends Cache {
       return;
     }
 
-    console.log(`📬 Persisting messages for ${dirtyUserIds.length} user(s) to database...`);
-
     for (const userId of dirtyUserIds) {
       await this.persistMessagesForUser(context, userId);
     }
 
     this.dirtyUsers.clear();
-    console.log('✅ Message persistence complete');
   }
 
   /**
@@ -933,7 +932,6 @@ export class MessageCache extends Cache {
         const context = createLockContext();
         await context.useLockWithAcquire(DATABASE_LOCK_MESSAGES, async (messageContext) => {
           if (this.dirtyUsers.size > 0) {
-            console.log(`📬 Background persisting messages for ${this.dirtyUsers.size} user(s) in Message Cache`);
             await this.flushToDatabaseWithLock(messageContext);
           }
         });

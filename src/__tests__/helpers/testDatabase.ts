@@ -32,22 +32,6 @@ export async function getTestDatabase(): Promise<DatabaseConnection> {
  * The database connection is shared across all tests for performance
  */
 export async function closeTestDatabase(): Promise<void> {
-  // Don't reset or close the database here - it's shared across tests
-  // Each test should clean up its own data using clearTestDatabase()
-}
-
-/**
- * Clears test data from database tables (messages and battles only, preserves seed data)
- * This allows tests to run with fresh data while keeping required seed users/space_objects
- */
-export async function clearTestDatabase(): Promise<void> {
-  const db = await getTestDatabase();
-  
-  // Only clear messages and battles - users and space_objects contain seed data
-  // that other tests depend on (foreign keys)
-  const tables = ['messages', 'battles'];
-  
-  for (const table of tables) {
-    await db.query(`DELETE FROM ${table}`, []);
-  }
+  // Don't reset or close the database here - it's shared across tests.
+  // Tests isolate their data with withTransaction().
 }

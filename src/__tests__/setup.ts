@@ -1,5 +1,4 @@
-import '@testing-library/jest-dom';
-import { vi, beforeAll, afterEach } from 'vitest';
+import { vi, beforeAll, beforeEach, afterEach } from 'vitest';
 import { createBcryptMock } from './helpers/bcryptMock';
 
 // Mock bcrypt globally for all tests to use precomputed hashes
@@ -45,6 +44,12 @@ beforeAll(async () => {
   } finally {
     client.release();
   }
+});
+
+// Rate limit counters live on globalThis (one set per server process) and would otherwise carry
+// over between tests: requests without X-Forwarded-For all count for the same client address.
+beforeEach(() => {
+  globalThis.authRateLimitsInstance = undefined;
 });
 
 // Global cleanup after each test to prevent async operations from leaking

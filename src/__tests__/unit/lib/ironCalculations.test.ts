@@ -1,14 +1,17 @@
 import { describe, expect, test } from 'vitest';
+
+// Fixed clock: two Date.now() calls could differ by a millisecond under load
+const NOW = 1_800_000_000_000;
 // Test the smooth update calculation logic in isolation
 describe('Iron Display Time Calculations', () => {
   test('ironCalculation_timeElapsed_calculatesCorrectAmount', () => {
     // Arrange
     const serverIronAmount = 1000;
     const ironPerSecond = 2.5;
-    const lastServerUpdate = Date.now() - 4000; // 4 seconds ago
+    const lastServerUpdate = NOW - 4000; // 4 seconds ago
     
     // Act - Simulate the calculation from useIron hook
-    const now = Date.now();
+    const now = NOW;
     const secondsElapsed = (now - lastServerUpdate) / 1000;
     const predictedIron = Math.floor(serverIronAmount + (secondsElapsed * ironPerSecond));
     
@@ -21,10 +24,10 @@ describe('Iron Display Time Calculations', () => {
     // Arrange
     const serverIronAmount = 1500;
     const ironPerSecond = 3;
-    const lastServerUpdate = Date.now(); // Just now
+    const lastServerUpdate = NOW; // Just now
     
     // Act
-    const now = Date.now();
+    const now = NOW;
     const secondsElapsed = (now - lastServerUpdate) / 1000;
     const predictedIron = Math.floor(serverIronAmount + (secondsElapsed * ironPerSecond));
     
@@ -37,10 +40,10 @@ describe('Iron Display Time Calculations', () => {
     // Arrange
     const serverIronAmount = 500;
     const ironPerSecond = 0;
-    const lastServerUpdate = Date.now() - 10000; // 10 seconds ago
+    const lastServerUpdate = NOW - 10000; // 10 seconds ago
     
     // Act
-    const now = Date.now();
+    const now = NOW;
     const secondsElapsed = (now - lastServerUpdate) / 1000;
     const predictedIron = Math.floor(serverIronAmount + (secondsElapsed * ironPerSecond));
     
@@ -52,10 +55,10 @@ describe('Iron Display Time Calculations', () => {
     // Arrange
     const serverIronAmount = 1000;
     const ironPerSecond = 1.7;
-    const lastServerUpdate = Date.now() - 3000; // 3 seconds ago
+    const lastServerUpdate = NOW - 3000; // 3 seconds ago
     
     // Act
-    const now = Date.now();
+    const now = NOW;
     const secondsElapsed = (now - lastServerUpdate) / 1000;
     const predictedIron = Math.floor(serverIronAmount + (secondsElapsed * ironPerSecond));
     
@@ -68,10 +71,10 @@ describe('Iron Display Time Calculations', () => {
     // Arrange
     const serverIronAmount = 1000000;
     const ironPerSecond = 100;
-    const lastServerUpdate = Date.now() - 60000; // 1 minute ago
+    const lastServerUpdate = NOW - 60000; // 1 minute ago
     
     // Act
-    const now = Date.now();
+    const now = NOW;
     const secondsElapsed = (now - lastServerUpdate) / 1000;
     const predictedIron = Math.floor(serverIronAmount + (secondsElapsed * ironPerSecond));
     

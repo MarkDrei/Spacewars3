@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcrypt';
-import { randomBytes } from 'crypto';
 import { getIronSession } from 'iron-session';
 import { getDatabase } from '@/lib/server/database';
 import { createUser, saveUserToDb, getUserByEmail, setEmailVerificationToken, getUserByUsername } from '@/lib/server/user/userRepo';
@@ -11,18 +10,20 @@ import { WorldCache } from '@/lib/server/world/worldCache';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 import { USER_LOCK, WORLD_LOCK } from '@/lib/server/typedLocks';
 import { DEFAULT_SHIP_START_X, DEFAULT_SHIP_START_Y, DEFAULT_SHIP_START_SPEED, DEFAULT_SHIP_START_ANGLE } from '@/lib/server/constants';
-import { isEmailEnabled } from '@/lib/server/email/emailConfig';
+import { isEmailEnabled, getEmailLinkBaseUrl } from '@/lib/server/email/emailConfig';
 import { sendEmail } from '@/lib/server/email/emailService';
 import { buildVerificationEmail } from '@/lib/server/email/emailTemplates';
 import { calculateLevelFromXp } from '@shared/utils/levelUtils';
 import { validateUsername } from '@/lib/server/user/usernameValidation';
+import { createLinkToken } from '@/lib/server/user/linkToken';
+import { getAuthRateLimits, getClientIp, consumeRateLimit } from '@/lib/server/rateLimit';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { username, password, email } = body;
+    const body = await request.json().catch(() => null);
+    const { username, password, email } = (body ?? {}) as Record<string, unknown>;
     
     validateRequired(username, 'username');
     validateRequired(password, 'password');
@@ -38,56 +39,44 @@ export async function POST(request: NextRequest) {
       }
     }
     
+    // Counted after validation: every request from here on costs a bcrypt hash and may create an account
+    consumeRateLimit(getAuthRateLimits().registerByIp, getClientIp(request.headers));
+
     const db = await getDatabase();
 
-    // Check username uniqueness at application level (DB no longer enforces UNIQUE)
-    const existingByUsername = await getUserByUsername(db, username);
-    if (existingByUsername) {
-      throw new ApiError(400, 'Username already taken');
-    }
-
-    // Check email uniqueness before creating user
-    if (normalizedEmail !== null) {
-      const existing = await getUserByEmail(db, normalizedEmail);
-      if (existing) {
-        throw new ApiError(400, 'Email already in use');
-      }
-    }
-    
-    // Hash password with automatic salt generation
+    // Hash password with automatic salt generation (slow by design, so before taking any lock)
     const hash = await bcrypt.hash(password, 10);
-    
+
     // Determine preferred locale from Accept-Language header
     const acceptLanguage = request.headers.get('accept-language') ?? '';
     const preferredLocale = acceptLanguage.toLowerCase().includes('de') ? 'de' : 'en';
 
-    const user = await createUser(db, username, hash, saveUserToDb(db), normalizedEmail);
+    // Uniqueness check and creation run under USER_LOCK so concurrent registrations of the same
+    // username are serialized. The database has no UNIQUE constraint on username (NPC users share
+    // display names), so this check is the only guard.
+    const user = await createLockContext().useLockWithAcquire(USER_LOCK, async (userContext) => {
+      if (await getUserByUsername(db, username)) {
+        throw new ApiError(400, 'Username already taken');
+      }
+      if (normalizedEmail !== null && await getUserByEmail(db, normalizedEmail)) {
+        throw new ApiError(400, 'Email already in use');
+      }
 
-    // Set preferred locale on new user based on Accept-Language header
-    user.preferredLocale = preferredLocale;
-    // Persist the locale to the DB immediately
-    // Note: /api/set-locale route (Goal 7, Task 7.2) also handles DB sync for locale changes
-    await user.save();
-    
-    // Add user and ship to cache immediately after creation
-    const ctx = createLockContext();
-    await ctx.useLockWithAcquire(USER_LOCK, async (userContext) => {
-      // Add user to cache
-      const userCache = UserCache.getInstance2();
-      userCache.setUserUnsafe(userContext, user);
-      
-      // Add ship to world cache if user has a ship
-      if (user.ship_id) {
+      const newUser = await createUser(db, username, hash, saveUserToDb(db), normalizedEmail);
+      newUser.preferredLocale = preferredLocale;
+      await newUser.save();
+
+      UserCache.getInstance2().setUserUnsafe(userContext, newUser);
+
+      // Add the new ship to the world cache
+      if (newUser.ship_id) {
+        const shipId = newUser.ship_id;
         await userContext.useLockWithAcquire(WORLD_LOCK, async (worldContext) => {
-          const worldCache = WorldCache.getInstance();
-          const world = worldCache.getWorldFromCache(worldContext);
-          
-          // Check if ship already exists in world
-          const existingShip = world.getSpaceObject(worldContext, user.ship_id!);
-          if (!existingShip) {
-            // Add the new ship to the world's space objects
+          const world = WorldCache.getInstance().getWorldFromCache(worldContext);
+          if (!world.getSpaceObject(worldContext, shipId)) {
+            // username/userId/level are render metadata, as attached by loadWorldFromDb
             const newShip = {
-              id: user.ship_id!,
+              id: shipId,
               type: 'player_ship' as const,
               x: DEFAULT_SHIP_START_X,
               y: DEFAULT_SHIP_START_Y,
@@ -95,29 +84,30 @@ export async function POST(request: NextRequest) {
               angle: DEFAULT_SHIP_START_ANGLE,
               last_position_update_ms: Date.now(),
               picture_id: 1, // Default ship picture
-              username: user.username,
-              userId: user.id,
-              level: calculateLevelFromXp(user.xp),
+              username: newUser.username,
+              userId: newUser.id,
+              level: calculateLevelFromXp(newUser.xp),
             };
             world.spaceObjects.push(newShip);
-            console.log(`🚀 Added ship ${user.ship_id} for user ${user.username} to world cache`);
           }
         });
       }
+
+      return newUser;
     });
 
     // Send verification email if email was provided and email is enabled
     let emailSent = false;
     if (normalizedEmail !== null && isEmailEnabled()) {
       try {
-        const token = randomBytes(32).toString('hex');
+        const token = createLinkToken();
         const expiresAt = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
         await setEmailVerificationToken(db, user.id, token, expiresAt);
 
-        // Build verification URL
-        const baseUrl =
-          process.env.NEXT_PUBLIC_BASE_URL ??
-          `${request.headers.get('x-forwarded-proto') ?? 'http'}://${request.headers.get('host') ?? 'localhost:3000'}`;
+        const baseUrl = getEmailLinkBaseUrl(request.headers);
+        if (baseUrl === null) {
+          throw new Error('Email link base URL not configured');
+        }
         const verificationUrl = `${baseUrl}/api/verify-email?token=${token}`;
 
         const { subject, html, text } = await buildVerificationEmail(username, verificationUrl, preferredLocale);
@@ -146,8 +136,6 @@ export async function POST(request: NextRequest) {
     const session = await getIronSession<SessionData>(request, response, sessionOptions);
     session.userId = user.id;
     await session.save();
-    
-    console.log(`🔐 Register - Setting session userId: ${user.id} for user: ${username}`);
     
     return response;
   } catch (error) {

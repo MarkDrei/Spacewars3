@@ -6,6 +6,7 @@ import { TechService } from '@/lib/server/techs/TechService';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 import { USER_LOCK } from '@/lib/server/typedLocks';
 import { UserCache } from '@/lib/server/user/userCache';
+import { isAdminUsername } from '@/shared/adminAccess';
 
 /**
  * POST /api/complete-build
@@ -33,7 +34,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Check if user is authorized for cheat mode
-      if (userData.username !== 'a' && userData.username !== 'q') {
+      if (!isAdminUsername(userData.username)) {
         console.log(`❌ Cheat mode denied for user: ${userData.username}`);
         throw new ApiError(403, 'Cheat mode only available for developers');
       }

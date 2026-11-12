@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { getEmailLinkBaseUrl } from '@/lib/server/email/emailConfig';
 
 describe('emailConfig', () => {
   const savedEnv = { ...process.env };
@@ -84,5 +85,33 @@ describe('emailConfig', () => {
 
       expect(cfg.from).toBe('sender@example.com');
     });
+  });
+});
+
+describe('getEmailLinkBaseUrl', () => {
+  const headers = (host: string | null, proto: string | null = null) => ({
+    get: (name: string) => (name === 'host' ? host : name === 'x-forwarded-proto' ? proto : null),
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('getEmailLinkBaseUrl_configured_ignoresHostHeaderAndTrimsSlash', () => {
+    vi.stubEnv('NEXT_PUBLIC_BASE_URL', 'https://game.example/');
+    expect(getEmailLinkBaseUrl(headers('evil.example', 'https'))).toBe('https://game.example');
+  });
+
+  it('getEmailLinkBaseUrl_productionWithoutConfig_returnsNullInsteadOfHostHeader', () => {
+    vi.stubEnv('NEXT_PUBLIC_BASE_URL', '');
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    expect(getEmailLinkBaseUrl(headers('evil.example', 'https'))).toBeNull();
+  });
+
+  it('getEmailLinkBaseUrl_developmentWithoutConfig_usesRequestHost', () => {
+    vi.stubEnv('NEXT_PUBLIC_BASE_URL', '');
+    vi.stubEnv('NODE_ENV', 'development');
+    expect(getEmailLinkBaseUrl(headers('localhost:3000'))).toBe('http://localhost:3000');
   });
 });

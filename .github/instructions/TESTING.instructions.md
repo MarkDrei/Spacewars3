@@ -8,7 +8,7 @@ applyTo: "src/__tests__/**"
 
 ```
         ▲  integration  (slow — spin up DB + caches)
-       ▲▲▲  ui           (medium — jsdom, React)
+       ▲▲▲  ui           (medium — happy-dom, React)
       ▲▲▲▲▲  unit         (fast — pure logic, no I/O)  ← default choice
 ```
 
@@ -29,7 +29,7 @@ Tests are split into three folders, each mapped to a separate vitest project:
 | ---------------------------- | -------------- | ----------- | ----------------------------- | ------------------------------------- |
 | `src/__tests__/unit/`        | `unit`         | node        | none                          | Pure logic, no DB or network          |
 | `src/__tests__/integration/` | `integration`  | node        | `setup.ts` (PostgreSQL)       | API routes, caches, DB logic          |
-| `src/__tests__/ui/`          | `ui`           | jsdom       | `setup.ui.ts` (jest-dom only) | React components, hooks               |
+| `src/__tests__/ui/`          | `ui`           | happy-dom   | `setup.ui.ts` (jest-dom only) | React components, hooks               |
 | `src/__tests__/helpers/`     | —              | —           | —                             | Shared test utilities, not test files |
 
 **Place every new test file in the correct folder.** The vitest project is determined solely by folder location.
@@ -89,9 +89,22 @@ it("myTest_scenario_expectedOutcome", async () => {
 
 ### Background Persistence
 
-- Disabled in test mode (`NODE_ENV === 'test'`)
+- Disabled in test mode (`NODE_ENV === 'test'`), and so is the battle scheduler (tests call `processActiveBattles()` or `startBattleScheduler()` explicitly)
 - Cache mutations trigger immediate synchronous persistence instead
 - This ensures all database writes happen within the transaction boundary
+
+### Rules That Keep the Shared Test Database Clean
+
+The `unit` and `integration` projects run with `isolate: false` (modules, singletons and the pg pool are shared between the test files of a worker — about 3–4x faster). A write that escapes a transaction is committed to `spacewars_test` and breaks later runs, so:
+
+- **Never write outside `withTransaction()`** — no `DELETE`/`UPDATE` cleanup in `beforeEach`/`afterEach`; the rollback is the cleanup.
+- **Await every async cache call** (`await userCache.updateUserInCache(...)`). In test mode it persists immediately; an un-awaited call can run after the rollback and commit.
+- **No timers that touch the database** (`setInterval`, schedulers) outside a test transaction.
+- Reset singletons through `initializeIntegrationTestServer()` / `shutdownIntegrationTestServer()`; the shutdown flushes caches inside a rolled-back transaction when called outside one.
+- Unit tests run `vi.resetModules()` per file (`setup.unit.ts`), so `vi.mock()` keeps working without isolation.
+- Use a fixed clock (`const NOW = ...` or `vi.setSystemTime`) instead of comparing two `Date.now()` calls.
+
+If integration tests start failing on seed data (iron, positions, tech levels of users `a`/`dummy`), the test database was polluted. Empty it with `TRUNCATE space_objects, users, messages, battles, inventories, user_events RESTART IDENTITY CASCADE` on `spacewars_test` (e.g. `docker compose exec db psql -U spacewars -d spacewars_test -c "..."`); the next run reseeds it.
 
 ## Integration Test Bootstrapping
 

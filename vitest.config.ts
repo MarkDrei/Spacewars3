@@ -16,7 +16,10 @@ export default defineConfig({
             'src/__tests__/unit/**/*.test.tsx',
           ],
           exclude: [],
-          setupFiles: [], // No database setup for unit tests
+          // No per-file isolation: external packages stay loaded across files (≈4x faster).
+          // setup.unit.ts resets project modules per file so vi.mock() and singletons stay per file.
+          isolate: false,
+          setupFiles: ['./src/__tests__/setup.unit.ts'], // No database setup for unit tests
         },
       },
       {
@@ -29,6 +32,10 @@ export default defineConfig({
             'src/__tests__/integration/**/*.test.tsx',
           ],
           exclude: [],
+          // No per-file isolation: modules and the pg pool are shared across files (≈3x faster).
+          // Requires every DB write to run inside withTransaction() and singletons to be reset by
+          // initializeIntegrationTestServer()/shutdownIntegrationTestServer().
+          isolate: false,
           setupFiles: ['./src/__tests__/setup.ts'], // Database setup for integration tests
         },
       },
@@ -36,7 +43,7 @@ export default defineConfig({
         extends: true,
         test: {
           name: 'ui',
-          environment: 'jsdom',
+          environment: 'happy-dom',
           include: [
             'src/__tests__/ui/**/*.test.ts',
             'src/__tests__/ui/**/*.test.tsx',
@@ -82,10 +89,15 @@ export default defineConfig({
       },
     },
   },
+  // Inline PostCSS config so Vite does not load postcss.config.mjs (string plugin form for Next.js).
+  // Tests do not assert on generated CSS, so no PostCSS plugins are needed.
+  css: {
+    postcss: {},
+  },
   resolve: {
     alias: {
-      '@': resolve(__dirname, './src'),
-      '@shared': resolve(__dirname, './src/shared/src'),
+      '@': resolve(import.meta.dirname, './src'),
+      '@shared': resolve(import.meta.dirname, './src/shared/src'),
     },
   },
 })

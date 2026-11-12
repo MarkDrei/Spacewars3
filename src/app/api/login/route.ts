@@ -6,14 +6,19 @@ import { handleApiError, validateRequired, ApiError } from '@/lib/server/errors'
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 import { UserCache } from '@/lib/server/user/userCache';
 import { USER_LOCK } from '@/lib/server/typedLocks';
+import { getAuthRateLimits, getClientIp, consumeRateLimit, assertNotRateLimited } from '@/lib/server/rateLimit';
 
 export async function POST(request: NextRequest) {
   try {
+    const rateLimits = getAuthRateLimits();
+    consumeRateLimit(rateLimits.loginByIp, getClientIp(request.headers));
+
     const body = await request.json();
     const { username, password } = body;
     
     validateRequired(username, 'username');
     validateRequired(password, 'password');
+    assertNotRateLimited(rateLimits.loginFailuresByUsername, username);
     
     const emptyCtx = createLockContext();
     const cache = UserCache.getInstance2();
@@ -21,20 +26,15 @@ export async function POST(request: NextRequest) {
       return await cache.getUserByUsername(userCtx, username);
     });
     
-    if (!user) {
+    if (!user || !(await bcrypt.compare(password, user.password_hash))) {
+      rateLimits.loginFailuresByUsername.hit(username);
       throw new ApiError(400, 'Invalid credentials');
     }
+    rateLimits.loginFailuresByUsername.reset(username);
     
-    const isPasswordValid = await bcrypt.compare(password, user.password_hash);
-    
-    if (!isPasswordValid) {
-      throw new ApiError(400, 'Invalid credentials');
-    }
-    
-    // Note: updateStats() was already called inside getUserByUsername → getUserByUsernameInternal
-    // (with bonuses). The call here would be a no-op (elapsed ≈ 0), so it is intentionally omitted.
-    await user.save();
-    
+    // No explicit save: getUserByUsername already ran updateStats() and marked the user dirty,
+    // the cache persists it.
+
     // Create response
     const response = NextResponse.json({ success: true });
     

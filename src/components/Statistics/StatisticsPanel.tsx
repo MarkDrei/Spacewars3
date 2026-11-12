@@ -112,7 +112,7 @@ const StatisticsPanel: React.FC = () => {
       }
     };
 
-    fetchStats();
+    void fetchStats();
   }, []);
 
   if (isLoading) {

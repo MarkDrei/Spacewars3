@@ -70,7 +70,7 @@ const multiplier = TimeMultiplierService.getInstance().getMultiplier();
 - `build_queue TEXT` — serialized `BuildQueueItem[]` array
 - `inventory TEXT` — (planned) serialized 2D array for inventory grid
 
-**Pattern**: In `userRepo.ts`, `userFromRow()` deserializes JSON with `JSON.parse()` and fallback defaults. `saveUserToDb()` serializes with `JSON.stringify()`. The data is always loaded/saved with the user, flowing through `UserCache` write-behind persistence. No separate cache needed for JSON-column data.
+**Pattern**: In `userRepo.ts`, `userFromRow()` deserializes JSON with `JSON.parse()` and fallback defaults. `persistUserToDb()` serializes with `JSON.stringify()`. The data is always loaded/saved with the user, flowing through `UserCache` write-behind persistence. No separate cache needed for JSON-column data.
 
 **When to use**: When adding structured data that is always accessed alongside the user record and doesn't need independent queries. For data that needs querying independently of users, use a separate table.
 
@@ -84,10 +84,10 @@ const multiplier = TimeMultiplierService.getInstance().getMultiplier();
 1. `src/lib/server/schema.ts` — add column(s) to `CREATE_USERS_TABLE`, increment `SCHEMA_VERSION`
 2. `src/lib/server/migrations.ts` — add new migration version with `ALTER TABLE ADD COLUMN IF NOT EXISTS`
 3. `src/lib/server/user/user.ts` — add fields + constructor parameters (currently 18 params)
-4. `src/lib/server/user/userRepo.ts` — update `UserRow` interface, `userFromRow()` deserialization (with fallback defaults), `saveUserToDb()` UPDATE query (currently $1-$24), and `createUser()` INSERT
+4. `src/lib/server/user/userRepo.ts` — update `UserRow` interface, `userFromRow()` deserialization (with fallback defaults), the `persistUserToDb()` UPDATE query, and `createUser()` INSERT
 5. No separate cache wiring needed — all data flows through `UserCache` write-behind persistence automatically
 
-The `saveUserToDb` UPDATE uses positional `$N` params; the WHERE clause param number must be incremented when adding new columns. Currently WHERE uses `$24`; after adding 2 columns it would be `$26`.
+`persistUserToDb` is the only UPDATE for a user's game state (the user cache and `user.save()` both call it). It uses positional `$N` params; the WHERE clause param number must be incremented when adding new columns. Until 2026-11 the user cache had its own copy of this statement; the copies drifted apart, so locale changes were never persisted and a login could reset `email_verified`. Columns owned by the auth routes (password hash, email, verification state, link tokens) must not be added to it: a cached user object would overwrite them with stale values.
 
 ## Research System Extension Pattern
 
@@ -488,3 +488,18 @@ Helper functions `isNpcId()` and `parseNpcId()` in `src/lib/server/npc/npcConsta
 3. In `GamePageClient.tsx`, use `useTranslations('game')` to build the `CanvasStrings` object and pass it when constructing or updating the Game instance
 
 This cleanly separates the i18n concern (React layer) from the rendering concern (canvas layer). ~12 static strings in `TooltipRenderer.ts` need this treatment.
+
+## React Compiler Lint Rules (react-hooks v7): Patterns That Pass
+
+**Discovered by**: Claude Code
+**Context**: Next.js 16 upgrade — `eslint-config-next@16` enables `react-hooks/set-state-in-effect`, `purity` and `immutability` as errors
+
+**Details**: `set-state-in-effect` flags any *call* in an effect body to a function that contains a `setState`, even if the `setState` only runs after an `await`. Patterns used in this codebase instead:
+
+- **Fetch on mount / poll**: keep a pure module-level `requestX()` that returns data or `{ error }` and apply the result in a `.then` callback guarded by an `ignore`/`active` flag (`useBattleStatus`, `useResearchStatus`, `BridgeSection`, admin page). Handler-triggered reloads may still `await` and set state directly.
+- **Shared singleton caches and browser APIs**: use `useSyncExternalStore` — `useFactoryDataCache` (module cache + error in the store), `useGameUiPreferences` (localStorage as store, server snapshot = defaults, `isHydrated` replaces "loaded" flags), `useMediaQuery` (matchMedia).
+- **Values copied from other state/props**: derive during render (`useTechCounts`, effective `mobileTapInfoMode = isMobileMode && preference`, admin `isAuthorized`).
+- **Countdowns/interpolation**: tick only a clock (`now`) in the interval callback and derive remaining time / projected values with `useMemo` (`useBuildQueue`, `useDefenseValues`, research countdown).
+- **Reset state when a prop changes** (e.g. `clearSortTrigger`): store the previous prop value in state and compare during render.
+- `purity`: `Date.now()` in `useState(...)` → lazy initialiser `useState(() => Date.now())`.
+- `immutability`: no self-recursive `useCallback`s — use an inner named function (`attempt`, `scheduleNextPoll`); declare functions before effects that use them.

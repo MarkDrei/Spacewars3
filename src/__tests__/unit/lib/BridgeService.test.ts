@@ -42,6 +42,10 @@ function makeMockRepo(initialInventory?: InventoryGrid, initialBridge?: BridgeGr
     saveBridge: vi.fn(async (...args: unknown[]) => {
       storedBridge = args[2] as BridgeGrid;
     }),
+    saveInventoryAndBridge: vi.fn(async (...args: unknown[]) => {
+      storedInventory = args[2] as InventoryGrid;
+      storedBridge = args[3] as BridgeGrid;
+    }),
     deleteInventory: vi.fn(async () => {}),
     _getStoredInventory: () => storedInventory,
     _getStoredBridge: () => storedBridge,
@@ -301,8 +305,7 @@ describe('InventoryService – Bridge', () => {
 
       expect(repo._getStoredInventory()![0][0]).toBeNull();
       expect(repo._getStoredBridge()![0][0]).toEqual(item);
-      expect(repo.saveInventory).toHaveBeenCalledOnce();
-      expect(repo.saveBridge).toHaveBeenCalledOnce();
+      expect(repo.saveInventoryAndBridge).toHaveBeenCalledOnce();
     });
 
     test('moveInventoryToBridge_emptyInventorySlot_throwsInventorySlotEmptyError', async () => {
@@ -478,8 +481,7 @@ describe('InventoryService – Bridge', () => {
 
       expect(repo._getStoredBridge()![0][0]).toBeNull();
       expect(repo._getStoredInventory()![0][0]).toEqual(item);
-      expect(repo.saveBridge).toHaveBeenCalledOnce();
-      expect(repo.saveInventory).toHaveBeenCalledOnce();
+      expect(repo.saveInventoryAndBridge).toHaveBeenCalledOnce();
     });
 
     test('moveBridgeToInventory_emptyBridgeSlot_throwsBridgeSlotEmptyError', async () => {

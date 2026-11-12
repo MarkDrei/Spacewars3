@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { WorldData } from '@shared/types/gameTypes';
-import { updateAllObjectPositions, updateAllObjectPositionsWithTimeCorrection } from '@shared/physics';
+import { updateAllObjectPositionsWithTimeCorrection } from '@shared/physics';
 import { worldDataService } from '../services/worldDataService';
 import { getTimeMultiplier } from '../timeMultiplier';
+import { startVisibilityAwarePolling } from '../polling/visibilityPolling';
 
 interface UseWorldDataReturn {
   worldData: WorldData | null;
@@ -25,139 +26,93 @@ export const useWorldData = (pollInterval: number = 3000): UseWorldDataReturn =>
   
   // Use ref to track if component is mounted (for cleanup)
   const isMountedRef = useRef<boolean>(true);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Optimistic position updates for smooth animation using shared physics logic
-  const updateOptimisticPositions = useCallback((data: WorldDataState): WorldDataState => {
-    if (!data) return data;
-    
-    const now = Date.now();
-
-    // NPC ships use client-side orbit interpolation in their renderer and must NOT
-    // be processed by the physics engine. Advancing last_position_update_ms for NPCs
-    // would reset the elapsed-time window used by NPCShipRenderer, making them appear
-    // stationary between server polls.
-    const npcObjects = data.spaceObjects.filter(obj => obj.type === 'npc_ship');
-    const nonNpcObjects = data.spaceObjects.filter(obj => obj.type !== 'npc_ship');
-
-    // Always use standard incremental physics for optimistic updates
-    // The time correction is only applied when receiving fresh server data
-    const updatedObjects = updateAllObjectPositions(
-      nonNpcObjects,
-      now,
-      data.worldSize,
-      50,
-      getTimeMultiplier()
-    );
-    
-    return {
-      ...data,
-      spaceObjects: [...updatedObjects, ...npcObjects],
-    };
-  }, []);
-
-  const fetchWorldData = useCallback(async (retryCount: number = 0) => {
-    try {
-      setError(null);
-      const result = await worldDataService.getWorldData();
-      
-      if (!isMountedRef.current) return;
-      
-      if (!result.success) {
-        if (result.error.includes('Network error') && retryCount < 3) {
-          console.log(`Retrying world data fetch (attempt ${retryCount + 1}/3)...`);
-          setTimeout(() => fetchWorldData(retryCount + 1), 2000);
+  const fetchWorldData = useCallback((initialRetryCount: number = 0) => {
+    const attempt = async (retryCount: number): Promise<void> => {
+      try {
+        setError(null);
+        const result = await worldDataService.getWorldData();
+        
+        if (!isMountedRef.current) return;
+        
+        if (!result.success) {
+          if (result.error.includes('Network error') && retryCount < 3) {
+            console.log(`Retrying world data fetch (attempt ${retryCount + 1}/3)...`);
+            setTimeout(() => attempt(retryCount + 1), 2000);
+            return;
+          }
+          setError(result.error);
+          setIsLoading(false);
           return;
         }
-        setError(result.error);
+        
+        // Apply time correction to server data to account for network latency and clock drift
+        // This ensures the positions are accurate for the current moment.
+        // NPC ships are excluded — they use renderer-side orbit interpolation.
+        const allObjects = result.data.data.spaceObjects;
+        const npcObjects = allObjects.filter(obj => obj.type === 'npc_ship');
+        const nonNpcObjects = allObjects.filter(obj => obj.type !== 'npc_ship');
+        const correctedNonNpc = updateAllObjectPositionsWithTimeCorrection(
+          nonNpcObjects,
+          Date.now(),
+          result.data.responseReceivedAt,
+          result.data.roundTripTime,
+          result.data.data.worldSize,
+          50,
+          getTimeMultiplier()
+        );
+        
+        // Extract timing information and merge with corrected world data
+        const worldDataWithTiming: WorldDataState = {
+          ...result.data.data,
+          spaceObjects: [...correctedNonNpc, ...npcObjects],
+          responseReceivedAt: result.data.responseReceivedAt,
+          roundTripTime: result.data.roundTripTime
+        };
+        
+        setWorldData(worldDataWithTiming);
+        setLastUpdateTime(result.data.responseReceivedAt);
         setIsLoading(false);
-        return;
-      }
-      
-      // Apply time correction to server data to account for network latency and clock drift
-      // This ensures the positions are accurate for the current moment.
-      // NPC ships are excluded — they use renderer-side orbit interpolation.
-      const allObjects = result.data.data.spaceObjects;
-      const npcObjects = allObjects.filter(obj => obj.type === 'npc_ship');
-      const nonNpcObjects = allObjects.filter(obj => obj.type !== 'npc_ship');
-      const correctedNonNpc = updateAllObjectPositionsWithTimeCorrection(
-        nonNpcObjects,
-        Date.now(),
-        result.data.responseReceivedAt,
-        result.data.roundTripTime,
-        result.data.data.worldSize,
-        50,
-        getTimeMultiplier()
-      );
-      
-      // Extract timing information and merge with corrected world data
-      const worldDataWithTiming: WorldDataState = {
-        ...result.data.data,
-        spaceObjects: [...correctedNonNpc, ...npcObjects],
-        responseReceivedAt: result.data.responseReceivedAt,
-        roundTripTime: result.data.roundTripTime
-      };
-      
-      setWorldData(worldDataWithTiming);
-      setLastUpdateTime(result.data.responseReceivedAt);
-      setIsLoading(false);
-      
-      // console.log('🌍 World data updated:', {
-      //   objects: correctedObjects.length,
-      //   worldSize: result.data.data.worldSize,
-      //   receivedAt: new Date().toISOString(),
-      //   roundTripTime: result.data.roundTripTime
-      // });
-    } catch {
-      if (isMountedRef.current) {
-        if (retryCount < 3) {
-          console.log(`Retrying world data fetch (attempt ${retryCount + 1}/3)...`);
-          setTimeout(() => fetchWorldData(retryCount + 1), 2000);
-          return;
+        
+        // console.log('🌍 World data updated:', {
+        //   objects: correctedObjects.length,
+        //   worldSize: result.data.data.worldSize,
+        //   receivedAt: new Date().toISOString(),
+        //   roundTripTime: result.data.roundTripTime
+        // });
+      } catch {
+        if (isMountedRef.current) {
+          if (retryCount < 3) {
+            console.log(`Retrying world data fetch (attempt ${retryCount + 1}/3)...`);
+            setTimeout(() => attempt(retryCount + 1), 2000);
+            return;
+          }
+          setError('Failed to fetch world data');
+          setIsLoading(false);
         }
-        setError('Failed to fetch world data');
-        setIsLoading(false);
       }
-    }
-  }, []);
-
-  // Set up optimistic updates for smooth animation between server updates
-  useEffect(() => {
-    if (!worldData) return;
-    
-    const optimisticUpdateInterval = setInterval(() => {
-      setWorldData(currentData => {
-        if (!currentData) return currentData;
-        return updateOptimisticPositions(currentData);
-      });
-    }, 16); // Update positions every 16ms (60fps) for smooth animation
-
-    return () => {
-      clearInterval(optimisticUpdateInterval);
     };
-  }, [worldData, updateOptimisticPositions]);
+    return attempt(initialRetryCount);
+  }, []);
 
   useEffect(() => {
     isMountedRef.current = true;
     
     // Initial fetch (auth guaranteed by server component)
-    fetchWorldData();
+    void fetchWorldData();
     
-    // Set up server polling
-    intervalRef.current = setInterval(fetchWorldData, pollInterval);
+    // Server polling, paused while the page is hidden
+    const stopPolling = startVisibilityAwarePolling(() => void fetchWorldData(), pollInterval);
     
     // Cleanup
     return () => {
       isMountedRef.current = false;
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
+      stopPolling();
     };
   }, [pollInterval, fetchWorldData]);
 
   return {
-    worldData, // Return worldData directly - optimistic updates are already applied in setInterval
+    worldData, // Latest server snapshot; the game projects positions per animation frame (worldProjection)
     isLoading,
     error,
     refetch: fetchWorldData,

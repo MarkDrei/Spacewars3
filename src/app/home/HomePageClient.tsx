@@ -13,6 +13,9 @@ import { formatNumber } from '@/shared/numberFormat';
 import './HomePage.css';
 import { OrbitalCommandHub } from './OrbitalCommandHub';
 
+const DEFENSE_POLL_IN_BATTLE_MS = 2000;
+const DEFENSE_POLL_IDLE_MS = 10_000;
+
 interface HomePageClientProps {
   auth: ServerAuthState;
   initialMessages: UnreadMessage[];
@@ -81,8 +84,11 @@ const HomePageClient: React.FC<HomePageClientProps> = ({ initialMessages }) => {
   const t = useTranslations('home');
 
   const { techCounts, weapons, defenses, isLoading: techLoading, error: techError } = useTechCounts();
-  const { defenseValues, recoveryTimers, isLoading: defenseLoading, error: defenseError, shipPictureId } = useDefenseValues();
   const { battleStatus } = useBattleStatus();
+  // Defense values are extrapolated client-side between server updates; they only change
+  // unpredictably during a battle, so poll the server often only then.
+  const { defenseValues, recoveryTimers, isLoading: defenseLoading, error: defenseError, shipPictureId } =
+    useDefenseValues(battleStatus?.inBattle ? DEFENSE_POLL_IN_BATTLE_MS : DEFENSE_POLL_IDLE_MS);
   const { xp, level, xpForNextLevel, score, isLoading: xpLoading, bonuses } = useUserStats(5000);
 
   // Handler for refreshing messages

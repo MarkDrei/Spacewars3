@@ -33,7 +33,7 @@ Status: Work in Progress
 > **[doc/functional-requirements.md](../functional-requirements.md)**.
 > The arc42 sections below summarise the most architecturally relevant aspects only.
 
-Spacewars Ironstrike is a 2D space exploration game built with Next.js 15, TypeScript, and React. Players navigate space, collect resources, upgrade their ships through a technology tree, and engage in battles.
+Spacewars Ironstrike is a 2D space exploration game built with Next.js 16, TypeScript, and React. Players navigate space, collect resources, upgrade their ships through a technology tree, and engage in battles.
 
 **Key Features:**
 
@@ -69,11 +69,11 @@ Spacewars Ironstrike is a 2D space exploration game built with Next.js 15, TypeS
 
 ### 2.1 Technical Constraints
 
-- **Platform:** Next.js 15 with App Router
+- **Platform:** Next.js 16 with App Router
 - **Language:** TypeScript (strict mode)
 - **Database:** PostgreSQL (relational, ACID-compliant)
 - **Lock System:** IronGuard TypeScript Locks for compile-time deadlock prevention
-- **Runtime:** Node.js v22.17.0
+- **Runtime:** Node.js 24 LTS (`engines.node >= 24`, Docker `node:24-alpine`)
 - **Deployment:** Docker, Vercel, Render (see configuration files)
 
 ### 2.2 Organizational Constraints
@@ -126,13 +126,14 @@ graph TB
 
 | Layer          | Technology            | Purpose             |
 | -------------- | --------------------- | ------------------- |
-| Frontend       | React 19 + Next.js 15 | UI framework        |
+| Frontend       | React 19 + Next.js 16 | UI framework        |
 | Backend        | Next.js API Routes    | RESTful endpoints   |
 | Database       | PostgreSQL            | Persistent storage  |
 | Internationalization | next-intl        | UI and server-side localization |
 | Lock System    | IronGuard             | Deadlock prevention |
 | Canvas         | HTML5 Canvas API      | Game rendering      |
 | Authentication | iron-session          | Secure sessions     |
+| PWA / Offline  | Serwist (`@serwist/turbopack`) | Service worker: precache build assets, runtime caching |
 
 ### 4.3 Responsive Navigation Strategy
 
@@ -443,9 +444,7 @@ sequenceDiagram
     Cache-->>API: User with hashed password
     API->>API: bcrypt.compare(password)
     alt Valid credentials
-        API->>API: user.updateStats(now)
-        API->>Cache: user.save()
-        Cache->>Cache: Mark user as dirty
+        Note over Cache: getUserByUsername() already ran updateStats(now)<br/>and marked the user dirty (write-behind persistence)
         API->>Session: Set userId in session
         Session->>Session: Encrypt session cookie
         API-->>Player: 200 OK + session cookie
@@ -540,6 +539,12 @@ graph TB
 - **Render**: Container-based deployment with managed PostgreSQL
 - **Self-hosted**: Any Node.js host with PostgreSQL access
 
+**Process lifecycle** (`startServer()` in `src/lib/server/main.ts`, called from `src/instrumentation.ts`):
+
+- **Startup:** `initializeServer()` checks the session secret and loads the caches while holding all locks. If it fails in production the process exits with code 1, so the process manager (Docker `restart: unless-stopped`) retries; Next.js would otherwise keep a server alive that answers every request with 500.
+- **Shutdown:** on `SIGTERM`/`SIGINT` the handler from `src/lib/server/shutdown.ts` stops the battle scheduler and writes all cached state to the database (battles → users, world, messages → statistics), then exits with 0. A failed step does not stop the following steps; a failed step or a run longer than 8 s (Docker sends `SIGKILL` after 10 s) exits with 1. Each deployment recreates the container, so without this flush every deployment lost the changes since the last background persist (up to 30 s, statistics 60 s).
+- **`NEXT_MANUAL_SIG_HANDLE=true`** (set in the `Dockerfile`): Next.js registers its own signal handlers that exit as soon as the HTTP server is closed, usually before the flush is done. The variable leaves signal handling to the application. Without it (`next dev`, `next start`) the flush is best effort. The HTTP server keeps accepting requests during the flush (a few ten milliseconds); changes made in that window are lost.
+
 ---
 
 ## 8. Crosscutting Concepts
@@ -598,6 +603,7 @@ graph TD
 
 - **Write-Through:** Updates go to cache immediately, marked as dirty
 - **Write-Behind:** Background persistence flushes dirty data every 30s
+- **Flush on Shutdown:** `SIGTERM`/`SIGINT` write all dirty data before the process exits (see [Deployment View](#7-deployment-view))
 - **Cache Invalidation:** Clear cache on schema changes or manual flush
 - **TTL:** No time-based expiration (session-based lifecycle)
 - **No-Cache (Direct DB):** Inventory data is read and written directly on every operation via `InventoryService → InventoryRepo`. No in-memory cache is maintained because inventory access frequency is low and strong consistency is preferred over latency.
@@ -605,6 +611,8 @@ graph TD
 ### 8.3 Error Handling
 
 - Database errors: Logged and propagated to API layer
+- API routes: `handleApiError()` (`src/lib/server/errors.ts`) turns a thrown error into the JSON response. It logs only unexpected errors (non-`ApiError`, or `ApiError` with status ≥ 500). Rejected requests (401, 400, 429, malformed JSON) are not logged, so a client without a session cannot fill the log. A unique violation of the email index (`23505` on `idx_users_email`) is answered with 400 "Email already in use".
+- Logging: no log line per request on polled endpoints and none per background persistence cycle; start, shutdown and errors are logged.
 - Lock acquisition: Guaranteed by IronGuard (no deadlocks)
 - Async failures: Message creation errors logged, message removed from cache
 
@@ -671,7 +679,7 @@ graph TB
 - **Battle System:** `battleScheduler.fireWeapon()` - Weapon cooldown calculations
 - **Physics:** `updateObjectPosition()` and variants in `shared/physics.ts` - Object movement speed
 - **Admin API:** `/api/admin/time-multiplier` (GET/POST) - Status retrieval and activation (admin-only: users 'a' and 'q')
-- **Client Hooks:** `useIron`, `useDefenseValues`, `useWorldData` - Client-side prediction and interpolation
+- **Client Hooks:** `useUserStats`, `useDefenseValues`, `projectWorldData` (game render loop) - Client-side prediction and interpolation (see [8.7](#87-client-data-synchronization-polling))
 
 **Behavioral Characteristics:**
 
@@ -771,7 +779,7 @@ Only `RadarRenderer` needs the safe-area offset because it is the only renderer 
 - `next.config.ts` enables `next-intl` through `createNextIntlPlugin("./src/i18n/request.ts")`.
 - `src/i18n/routing.ts` defines the supported locales `en` and `de` with `localePrefix: 'never'`.
 - `src/i18n/request.ts` resolves the active locale from the `NEXT_LOCALE` cookie, loads `src/locales/{locale}.json`, and `src/app/layout.tsx` injects the messages via `NextIntlClientProvider`.
-- `src/middleware.ts` intentionally stays pass-through because locale resolution is cookie-based; route rewriting would require locale-segmented routes that this app does not use.
+- The app defines no Next.js proxy (formerly middleware): locale resolution is cookie-based, and next-intl's proxy-based routing would require locale-segmented routes that this app does not use.
 - `src/components/Navigation/LocaleSwitcher.tsx` and `src/app/profile/ProfilePageClient.tsx` expose the language switcher in the Profile page.
 - `POST /api/set-locale` updates the `NEXT_LOCALE` cookie and persists the authenticated player's `preferred_locale` in the `users` table.
 - `src/lib/server/i18n/serverTranslations.ts` provides locale-aware translations for API routes and server-side services such as harvest messages, battle messages, build completions, and message summaries.
@@ -781,6 +789,74 @@ Only `RadarRenderer` needs the safe-area offset because it is the only renderer 
 - UI pages and server-generated notifications stay synchronized to the same locale source.
 - Language changes do not alter URLs because routing remains locale-neutral.
 - Missing locale files or keys fall back to English instead of failing the request path.
+
+### 8.7 Client Data Synchronization (Polling)
+
+The client polls REST endpoints; there is no push channel. Rules that keep the request rate and
+React render work low:
+
+- **Shared stores, one poll per endpoint:** data used by several components is held in a
+  module-level store read with `useSyncExternalStore` — `userStatsStore` (`/api/user-stats`) and
+  `useFactoryDataCache` (`/api/build-status`). `createSharedPoller` (`src/lib/client/polling/`)
+  runs one poll loop per store at the shortest interval any mounted consumer requested and stops
+  when the last consumer unmounts. Concurrent refreshes share one request.
+- **Hidden pages do not poll:** every server poll uses `startVisibilityAwarePolling`; ticks are
+  skipped while `document.hidden` is true and data is refreshed immediately when the page becomes
+  visible again.
+- **Static data is loaded once:** the tech catalog (`/api/tech-catalog`) changes only with a
+  deployment.
+- **Adaptive intervals:** afterburner status every 1 s while burning, 10 s while refuelling;
+  home-page defense values every 2 s during a battle, 10 s otherwise (values are extrapolated
+  client-side in between).
+- **Canvas animation without React:** `useWorldData` stores the server snapshot (every 3 s). The
+  `Game` render loop projects it to the current time in each animation frame
+  (`projectWorldData`, shared physics, always from the snapshot so no drift accumulates); React
+  state changes only when server data arrives. NPC ships are interpolated by their renderer.
+
+Measured on the preview deployment with Playwright (logged-in player, 2026-11-08): visible tab —
+home 48, factory 30, game 38 API requests/min, 60 fps, 0 DOM mutations/s on the game page; hidden
+tab — 0 requests in 30 s, all stores refresh immediately when the tab becomes visible again.
+
+### 8.8 Security
+
+**Session cookie** (`src/lib/server/session.ts`): the session is a stateless iron-session cookie (`spacewars-session`, 24 h) that contains only the user id. There is no server-side session store, so the cookie and its secret are the only proof of identity.
+
+| Property | Value | Reason |
+| --- | --- | --- |
+| `httpOnly` | always | Not readable by scripts (XSS cannot steal it) |
+| `secure` | production | HTTPS only |
+| `sameSite` | `lax` | Not sent with cross-site POST/fetch requests. API routes parse the request body as JSON regardless of its `Content-Type`, so without this any website could trigger game or admin actions for a logged-in visitor (CSRF) |
+| secret | `SESSION_SECRET` | `getSessionSecret()` rejects a missing, short (< 32 characters) or published placeholder secret in production; `initializeServer()` calls it, so a misconfigured server fails at startup. Development and tests fall back to a fixed development secret |
+
+**Rate limits of the authentication endpoints** (`src/lib/server/rateLimit.ts`): fixed-window counters in the memory of the server process (`getAuthRateLimits()`, on `globalThis` like the caches). They are lost on restart and are not shared between processes; the application runs as one process, see [7. Deployment View](#7-deployment-view).
+
+| Limiter | Key | Limit | Applied in |
+| --- | --- | --- | --- |
+| `loginByIp` | client address | 20 attempts / 5 min | `POST /api/login`, before the body is read |
+| `loginFailuresByUsername` | username (lower case) | 100 failed attempts / 15 min, cleared by a successful login | `POST /api/login` |
+| `registerByIp` | client address | 20 attempts / 60 min | `POST /api/register`, after input validation and before the bcrypt hash |
+| `passwordResetByIp` | client address | 10 requests / 15 min | `POST /api/forgot-password`, `POST /api/reset-password` |
+| `passwordResetByEmail` | email address (lower case) | 3 mails / 60 min, exceeded requests are answered with the normal success response | `POST /api/forgot-password` |
+| `changePasswordFailuresByUser` | user id | 10 wrong current passwords / 15 min | `POST /api/change-password` |
+
+- An exceeded limit throws `RateLimitError`; `handleApiError()` turns it into HTTP 429 with `code: RATE_LIMITED` (`src/shared/apiErrorCodes.ts`) and a `Retry-After` header. The login and profile pages show a translated message for this code.
+- All checks run before the first cache or database access, so a limited request costs neither a lock nor a bcrypt comparison.
+- **Client address:** `getClientIp()` uses the last entry of `X-Forwarded-For`. Traefik is the only proxy in front of the application and appends the address of its peer; earlier entries can be sent by the client and are ignored. Requests without the header (local development, tests) share the key `unknown`. Precondition: Traefik sees the real client address. This holds for IPv4. The Docker network of Traefik has no IPv6, so if the domain ever gets an AAAA record, all IPv6 clients arrive through Docker's userland proxy with the address of the bridge gateway and share one counter.
+- **Trade-off of the limit per username:** it bounds password guessing from many addresses (at most 9 600 guesses per account and day), but several addresses together can lock a player out for up to 15 minutes. The limit is higher than what one address can reach within the window (60 attempts), so a single address cannot do that.
+- Each limiter holds at most 10 000 keys of at most 100 characters; when it is full, expired entries and then the oldest entry are dropped.
+
+**HTTP response headers** (`buildSecurityHeaders()` in `src/shared/securityHeaders.ts`, applied to all paths by `headers()` in `next.config.ts`; `X-Powered-By` is switched off):
+
+| Header | Value | Reason |
+| --- | --- | --- |
+| `Content-Security-Policy` | `frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'` | The game cannot be embedded in other websites (clickjacking: a hidden frame could make a visitor click "attack" or "sell"); no `<base>` or form redirection, no plugins. Script and connection rules are missing, see `doc/TechnicalDebt.md` |
+| `X-Frame-Options` | `DENY` | Same as `frame-ancestors` for older browsers |
+| `X-Content-Type-Options` | `nosniff` | Responses are only used as their declared type |
+| `Referrer-Policy` | `strict-origin-when-cross-origin` | Other websites learn the origin, not the path or query (e.g. a reset token) |
+| `Permissions-Policy` | camera, microphone, geolocation and payment disabled | The game uses none of them |
+| `Strict-Transport-Security` | `max-age=15552000` (180 days), production builds only | Browsers use HTTPS only after the first visit. No `includeSubDomains`, so preview deployments and other services on subdomains are not affected |
+
+**Tokens in emailed links** (`src/lib/server/user/linkToken.ts`): password reset and email verification tokens are 256 random bits. The token is only part of the link in the email; `users.password_reset_token` and `users.email_verification_token` hold its SHA-256 hash (`setPasswordResetToken()`, `setEmailVerificationToken()` hash before storing, the `consume…Token()` functions hash before comparing). Read access to the database (backup, dump) therefore does not allow taking over accounts. A fast hash is sufficient because the token cannot be guessed. Tokens are single-use and expire after 1 hour (reset) or 24 hours (verification).
 
 ---
 
@@ -941,6 +1017,8 @@ Only `RadarRenderer` needs the safe-area offset because it is the only renderer 
 | Message creation      | < 1ms   | ~0.5ms                     |
 | User data load        | < 50ms  | ~10-20ms (cache hit: ~1ms) |
 | Game action (harvest) | < 100ms | ~30-50ms                   |
+
+**Lookup indexes** (`LOOKUP_INDEXES` in `src/lib/server/schema.ts`, created for existing databases by `applyLookupIndexMigration()`): `users (username)` for login and registration, `messages (recipient_id, created_at)` for the notification list, `battles (attacker_id, battle_start_time)` and `battles (attackee_id, battle_start_time)` for battle history and attack cooldowns. Without them these queries scan the whole table.
 
 ### 10.2 Reliability
 

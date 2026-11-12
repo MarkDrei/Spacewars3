@@ -88,6 +88,26 @@ describe('Afterburner API', () => {
     });
   });
 
+  test('afterburner_activateWhileInBattle_returns400', async () => {
+    await withTransaction(async () => {
+      const { sessionCookie, username } = await createAuthenticatedSessionWithUser('ab_battle');
+      await grantAfterburnerResearch(username, 1, 1, 1);
+      await createLockContext().useLockWithAcquire(USER_LOCK, async (userCtx) => {
+        const user = await UserCache.getInstance2().getUserByUsername(userCtx, username);
+        user!.inBattle = true;
+        await UserCache.getInstance2().updateUserInCache(userCtx, user!);
+      });
+
+      const response = await afterburnerPOST(
+        createRequest('http://localhost:3000/api/afterburner', 'POST', { action: 'activate' }, sessionCookie),
+      );
+      const data = await response.json();
+
+      expect(response.status).toBe(400);
+      expect(data.error).toBe('Cannot activate afterburner while in battle');
+    });
+  });
+
   test('afterburner_activateWhileActive_returns400', async () => {
     await withTransaction(async () => {
       const { sessionCookie, username } = await createAuthenticatedSessionWithUser('ab_active');

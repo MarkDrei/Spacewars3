@@ -135,3 +135,50 @@ export function isBridgeCompatible(_item: InventoryItemData): boolean {
   void _item;
   return true;
 }
+
+// ---------------------------------------------------------------------------
+// Reorder validation
+// ---------------------------------------------------------------------------
+
+/** JSON with sorted object keys, so equal items compare equal regardless of key order. */
+function canonicalJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`;
+  if (value !== null && typeof value === 'object') {
+    const entries = Object.keys(value as Record<string, unknown>)
+      .sort()
+      .map(key => `${JSON.stringify(key)}:${canonicalJson((value as Record<string, unknown>)[key])}`);
+    return `{${entries.join(',')}}`;
+  }
+  return JSON.stringify(value) ?? 'undefined';
+}
+
+/**
+ * True when `candidate` has the same shape as `current` (rows × cols) and contains exactly the
+ * same items (as a multiset), only in different slots. Used to make reorder requests unable to
+ * create, duplicate, alter or drop items.
+ */
+export function isGridRearrangement(
+  current: InventorySlot[][],
+  candidate: unknown,
+  cols: number
+): candidate is InventorySlot[][] {
+  if (!Array.isArray(candidate) || candidate.length !== current.length) return false;
+  if (!candidate.every(row => Array.isArray(row) && row.length === cols)) return false;
+
+  const remaining = new Map<string, number>();
+  for (const item of current.flat()) {
+    if (item === null) continue;
+    const key = canonicalJson(item);
+    remaining.set(key, (remaining.get(key) ?? 0) + 1);
+  }
+
+  for (const item of (candidate as unknown[][]).flat()) {
+    if (item === null) continue;
+    const key = canonicalJson(item);
+    const count = remaining.get(key);
+    if (!count) return false;
+    remaining.set(key, count - 1);
+  }
+
+  return [...remaining.values()].every(count => count === 0);
+}

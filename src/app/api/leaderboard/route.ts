@@ -80,6 +80,17 @@ function topUsername(rows: UserRow[], getValue: (r: UserRow) => number): string 
   return getValue(best) > 0 ? best.username : null;
 }
 
+/** Ship speed research effect of a user row; 0 for an unparsable tech tree. */
+function getShipSpeed(row: UserRow): number {
+  try {
+    const initialTree = createInitialTechTree();
+    const parsedTree = row.tech_tree ? JSON.parse(row.tech_tree) : initialTree;
+    return getResearchEffectFromTree({ ...initialTree, ...parsedTree }, ResearchType.ShipSpeed);
+  } catch {
+    return 0;
+  }
+}
+
 function topByField(rows: UserRow[], field: keyof UserRow): string | null {
   return topUsername(rows, (r) => (r[field] as number) ?? 0);
 }
@@ -119,56 +130,46 @@ export async function GET(request: NextRequest) {
       isCurrentUser: row.id === currentUserId,
     }));
 
-    // ── 3. Best-in from StatisticsCache ─────────────────────────────────────
+    // ── 3. Best-in from DB user rows (no lock needed) ──────────────────────
+    const shipSpeedByUserId = new Map(userRows.map((row) => [row.id, getShipSpeed(row)]));
+    const userBestIn = {
+      xp: topByField(userRows, 'xp'),
+      shipSpeed: topUsername(userRows, (r) => shipSpeedByUserId.get(r.id) ?? 0),
+      hullStrength: topByField(userRows, 'ship_hull'),
+      shield: topByField(userRows, 'energy_shield'),
+      armor: topByField(userRows, 'kinetic_armor'),
+      pulseLaser: topByField(userRows, 'pulse_laser'),
+      autoTurret: topByField(userRows, 'auto_turret'),
+      plasmaLance: topByField(userRows, 'plasma_lance'),
+      gaussRifle: topByField(userRows, 'gauss_rifle'),
+      photonTorpedo: topByField(userRows, 'photon_torpedo'),
+      rocketLauncher: topByField(userRows, 'rocket_launcher'),
+    };
+
+    // ── 4. Best-in from StatisticsCache ─────────────────────────────────────
     const statisticsCache = StatisticsCache.getInstance();
-    const ctx = createLockContext();
-    const bestIn = await ctx.useLockWithAcquire(STATISTICS_LOCK, async (lockCtx) => {
-      const global = statisticsCache.getGlobalStats(lockCtx);
-      const t = global.top5;
-      const top1 = (list: { username: string }[]) => (list.length > 0 ? list[0].username : null);
+    const top5 = await createLockContext().useLockWithAcquire(STATISTICS_LOCK, async (lockCtx) =>
+      statisticsCache.getGlobalStats(lockCtx).top5
+    );
+    const top1 = (list: { username: string }[]) => (list.length > 0 ? list[0].username : null);
 
-      // ── 4. Best-in from DB user rows ──────────────────────────────────────
-      const shipSpeedBest = topUsername(userRows, (r) => {
-        try {
-          const initialTree = createInitialTechTree();
-          const parsedTree = r.tech_tree ? JSON.parse(r.tech_tree) : initialTree;
-          const tree = { ...initialTree, ...parsedTree };
-          return getResearchEffectFromTree(tree, ResearchType.ShipSpeed);
-        } catch {
-          return 0;
-        }
-      });
-
-      return {
-        // Battle / collection / economy
-        battlesWon: top1(t.battlesWon),
-        battlesLost: top1(t.battlesLost),
-        totalDamageDealt: top1(t.totalDamageDealt),
-        totalDamageReceived: top1(t.totalDamageReceived),
-        totalIronTransferred: top1(t.totalIronTransferred),
-        totalXpAwarded: top1(t.totalXpAwarded),
-        asteroidsCollected: top1(t.asteroidsCollected),
-        shipwrecksCollected: top1(t.shipwrecksCollected),
-        escapePodsCollected: top1(t.escapePodsCollected),
-        totalIronFromCollection: top1(t.totalIronFromCollection),
-        totalIronSpentOnResearch: top1(t.totalIronSpentOnResearch),
-        researchCount: top1(t.researchCount),
-        totalIronSpentOnBuilds: top1(t.totalIronSpentOnBuilds),
-        totalBuildsCompleted: top1(t.totalBuildsCompleted),
-        // User-level fields
-        xp: topByField(userRows, 'xp'),
-        shipSpeed: shipSpeedBest,
-        hullStrength: topByField(userRows, 'ship_hull'),
-        shield: topByField(userRows, 'energy_shield'),
-        armor: topByField(userRows, 'kinetic_armor'),
-        pulseLaser: topByField(userRows, 'pulse_laser'),
-        autoTurret: topByField(userRows, 'auto_turret'),
-        plasmaLance: topByField(userRows, 'plasma_lance'),
-        gaussRifle: topByField(userRows, 'gauss_rifle'),
-        photonTorpedo: topByField(userRows, 'photon_torpedo'),
-        rocketLauncher: topByField(userRows, 'rocket_launcher'),
-      } satisfies BestInData;
-    });
+    const bestIn = {
+      battlesWon: top1(top5.battlesWon),
+      battlesLost: top1(top5.battlesLost),
+      totalDamageDealt: top1(top5.totalDamageDealt),
+      totalDamageReceived: top1(top5.totalDamageReceived),
+      totalIronTransferred: top1(top5.totalIronTransferred),
+      totalXpAwarded: top1(top5.totalXpAwarded),
+      asteroidsCollected: top1(top5.asteroidsCollected),
+      shipwrecksCollected: top1(top5.shipwrecksCollected),
+      escapePodsCollected: top1(top5.escapePodsCollected),
+      totalIronFromCollection: top1(top5.totalIronFromCollection),
+      totalIronSpentOnResearch: top1(top5.totalIronSpentOnResearch),
+      researchCount: top1(top5.researchCount),
+      totalIronSpentOnBuilds: top1(top5.totalIronSpentOnBuilds),
+      totalBuildsCompleted: top1(top5.totalBuildsCompleted),
+      ...userBestIn,
+    } satisfies BestInData;
 
     return NextResponse.json({ leaderboard, bestIn } satisfies LeaderboardResponse);
   } catch (error) {

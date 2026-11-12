@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Image from 'next/image';
 import { useLocale, useTranslations } from 'next-intl';
 import AuthenticatedLayout from '@/components/Layout/AuthenticatedLayout';
@@ -269,6 +269,30 @@ const CostTooltip: React.FC<{ research: ResearchDef; currentLevel: number }> = (
   );
 };
 
+type ResearchDataResult =
+  | { techTree: TechTree; researches: Record<ResearchType, ResearchDef>; iron: number }
+  | { error: string };
+
+// Loads tech tree and user stats in parallel; never rejects
+const requestResearchData = async (): Promise<ResearchDataResult> => {
+  try {
+    const [techTreeResult, userStatsResult] = await Promise.all([
+      researchService.getTechTree(),
+      userStatsService.getUserStats()
+    ]);
+    if ('error' in techTreeResult) return { error: techTreeResult.error };
+    if ('error' in userStatsResult) return { error: userStatsResult.error };
+    return {
+      techTree: techTreeResult.techTree,
+      researches: techTreeResult.researches,
+      iron: userStatsResult.iron
+    };
+  } catch (err) {
+    console.error('Error fetching research data:', err);
+    return { error: 'Failed to load research data' };
+  }
+};
+
 const ResearchPageClient: React.FC<ResearchPageClientProps> = () => {
   const t = useTranslations('research');
   const locale = useLocale();
@@ -281,7 +305,6 @@ const ResearchPageClient: React.FC<ResearchPageClientProps> = () => {
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
   
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Helper function to get research image name
   const getResearchImageName = (type: ResearchType): string => {
@@ -328,44 +351,27 @@ const ResearchPageClient: React.FC<ResearchPageClientProps> = () => {
     return types;
   };
 
-  // Fetch initial data
-  const fetchData = async () => {
-    try {
+  // Applies a loaded result (or error) to component state (only uses stable setters)
+  const applyResearchData = useCallback((result: ResearchDataResult) => {
+    if ('error' in result) {
+      setError(result.error);
+    } else {
       setError(null);
-      
-      // Fetch tech tree and user stats in parallel
-      const [techTreeResult, userStatsResult] = await Promise.all([
-        researchService.getTechTree(),
-        userStatsService.getUserStats()
-      ]);
-
-      if ('error' in techTreeResult) {
-        setError(techTreeResult.error);
-        return;
-      }
-
-      if ('error' in userStatsResult) {
-        setError(userStatsResult.error);
-        return;
-      }
-
-      setTechTree(techTreeResult.techTree);
-      setResearches(techTreeResult.researches);
-      setCurrentIron(userStatsResult.iron);
-
+      setTechTree(result.techTree);
+      setResearches(result.researches);
+      setCurrentIron(result.iron);
       // Set countdown if research is active
-      if (techTreeResult.techTree.activeResearch) {
-        setRemaining(Math.max(0, Math.round(techTreeResult.techTree.activeResearch.remainingDuration)));
-      } else {
-        setRemaining(null);
-      }
-
-    } catch (err) {
-      setError('Failed to load research data');
-      console.error('Error fetching research data:', err);
-    } finally {
-      setIsLoading(false);
+      setRemaining(result.techTree.activeResearch
+        ? Math.max(0, Math.round(result.techTree.activeResearch.remainingDuration))
+        : null);
     }
+    setIsLoading(false);
+  }, []);
+
+  // Reload data (retry button, after triggering research)
+  const fetchData = async () => {
+    setError(null);
+    applyResearchData(await requestResearchData());
   };
 
   // Trigger research
@@ -403,48 +409,39 @@ const ResearchPageClient: React.FC<ResearchPageClientProps> = () => {
     }
   };
 
-  // Set up countdown timer
+  // Count down once per second while a research is running
+  const isCountingDown = remaining !== null && remaining > 0;
   useEffect(() => {
-    if (remaining === null || remaining <= 0) {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-      return;
-    }
-
-    intervalRef.current = setInterval(() => {
-      setRemaining(prev => {
-        if (prev === null) return null;
-        const next = prev - getTimeMultiplier();
-        if (next <= 0) {
-          // Research completed, refresh data
-          fetchData();
-          return null;
-        }
-        return next;
-      });
+    if (!isCountingDown) return;
+    const interval = setInterval(() => {
+      setRemaining(prev => (prev === null ? null : Math.max(0, prev - getTimeMultiplier())));
     }, 1000);
+    return () => clearInterval(interval);
+  }, [isCountingDown]);
 
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-    };
-  }, [remaining]);
-
-  // Initial data fetch
+  // Initial load
   useEffect(() => {
-    fetchData();
-    
-    // Cleanup on unmount
+    let ignore = false;
+    void requestResearchData().then(result => {
+      if (!ignore) applyResearchData(result);
+    });
     return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
+      ignore = true;
     };
-  }, []);
+  }, [applyResearchData]);
+
+  // Reload once the local countdown reaches zero (research completed)
+  const researchCompleted = remaining === 0;
+  useEffect(() => {
+    if (!researchCompleted) return;
+    let ignore = false;
+    void requestResearchData().then(result => {
+      if (!ignore) applyResearchData(result);
+    });
+    return () => {
+      ignore = true;
+    };
+  }, [researchCompleted, applyResearchData]);
 
   if (isLoading) {
     return (

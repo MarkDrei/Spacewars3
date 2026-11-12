@@ -1,28 +1,37 @@
-import { dirname } from "path";
-import { fileURLToPath } from "url";
-import { FlatCompat } from "@eslint/eslintrc";
+import { defineConfig, globalIgnores } from "eslint/config";
+import nextCoreWebVitals from "eslint-config-next/core-web-vitals";
+import nextTypescript from "eslint-config-next/typescript";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-const compat = new FlatCompat({
-  baseDirectory: __dirname,
-});
-
-const eslintConfig = [
-  ...compat.extends("next/core-web-vitals", "next/typescript"),
+export default defineConfig([
+  ...nextCoreWebVitals,
+  ...nextTypescript,
+  globalIgnores([
+    ".next/**",
+    "out/**",
+    "build/**",
+    "coverage/**",
+    "test-output/**",
+    "next-env.d.ts",
+  ]),
   {
-    files: [
-      "src/lib/server/typedLocks.ts",
-      "src/lib/server/typedCacheManager.ts", 
-      "src/__tests__/lib/typedLocks.test.ts",
-      "src/__tests__/lib/typedCacheManager.test.ts",
-      "src/__tests__/api/typedEndpoints.test.ts",
-      "src/__tests__/lib/cacheManager.test.ts",
-      "src/__tests__/lib/memoryCache.test.ts",
-    ],
+    // Type-aware rules: a promise must be awaited, handled (.catch / .then with rejection
+    // handler) or explicitly marked as fire-and-forget with `void`. An un-awaited promise runs
+    // detached: callers continue before it finishes and try/catch does not see its errors.
+    files: ["src/**/*.ts", "src/**/*.tsx"],
+    languageOptions: {
+      parserOptions: {
+        projectService: true,
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
     rules: {
-      // Disable 'any' errors for files where it's required for the type system
+      "@typescript-eslint/no-floating-promises": "error",
+    },
+  },
+  {
+    files: ["src/lib/server/typedLocks.ts"],
+    rules: {
+      // Disable 'any' errors where it's required for the type system
       "@typescript-eslint/no-explicit-any": "off",
       // Allow unused variables with underscore prefix
       "@typescript-eslint/no-unused-vars": [
@@ -41,6 +50,4 @@ const eslintConfig = [
       "prefer-const": "warn",
     },
   },
-];
-
-export default eslintConfig;
+]);

@@ -42,7 +42,4 @@ database/*.db
 database/*.db-journal
 database/*.db-wal
 
-# PWA generated files (service worker, workbox)
-/public/sw.js
-/public/workbox-*.js
 database/*.db-shm

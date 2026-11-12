@@ -1,7 +1,6 @@
 /**
  * Battle Scheduler Utilities
  * Provides injectable abstractions for better testability
- * Pattern based on pollingUtils.ts
  */
 
 import type { MessageCache } from '../messages/MessageCache';

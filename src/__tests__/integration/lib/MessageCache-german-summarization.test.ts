@@ -8,8 +8,6 @@ describe('MessageCache - German Summarization', () => {
   let messageCache: MessageCache;
 
   beforeEach(async () => {
-    const { clearTestDatabase } = await import('../../helpers/testDatabase');
-    await clearTestDatabase();
 
     const ctx = createLockContext();
     MessageCache.resetInstance(ctx);

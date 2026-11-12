@@ -1,6 +1,6 @@
 # Spacewars Ironstrike
 
-- This project is a 2D space exploration game built with Next.js 15, TypeScript, and React.
+- This project is a 2D space exploration game built with Next.js 16, TypeScript, and React.
 - The game uses HTML5 Canvas for rendering within a React application.
 - The project follows Next.js App Router architecture with clear separation between client, server, and shared code.
 - The application supports multilingual UI and locale-aware server text in English and German via `next-intl`.
@@ -62,6 +62,7 @@
 - Do not delete the DB unless asked to.
 - The dev environment with Next.js is usually up and running. Don't start a new one unless necessary.
 - Use TypeScript features like interfaces and type definitions to ensure type safety.
+- Every promise is awaited, handled (`.catch`) or explicitly marked as fire-and-forget with `void` (enforced by `@typescript-eslint/no-floating-promises`). A promise left floating runs detached: the caller continues before it finishes and `try/catch` does not see its errors.
 - Maintain the separation between client-side game logic, server-side business logic, and React UI.
 - All canvas rendering logic should go in the appropriate renderer class in `src/lib/client/renderers/`.
 - All UI components should be implemented as React components in `src/components/`.
@@ -99,7 +100,7 @@ Note for Codespaces / Devcontainers:
 
 - All business logic must be covered by unit tests
 - Tests located in `src/__tests__/` directory
-- Test environment: Vitest with jsdom for React components, node for API routes
+- Test environment: Vitest with happy-dom for React components, node for API routes
 - Test database: PostgreSQL test database (POSTGRES_TEST_DB, defaults to 'spacewars_test')
 - Test naming convention: whatIsTested_scenario_expectedOutcome
   - Example: `updateStats_researchDoesNotComplete_awardsAllIronAtOldRate`

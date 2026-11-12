@@ -138,7 +138,7 @@ async function applyDamageWithLock(
   user.hullCurrent = Math.max(0, user.hullCurrent - hullDamage);
 
   // Update user in cache (marks as dirty for persistence)
-  userWorldCache.updateUserInCache(context, user);
+  await userWorldCache.updateUserInCache(context, user);
 
   return {
     remainingShield: user.shieldCurrent,
@@ -227,8 +227,6 @@ export async function processActiveBattles(context: LockContext<LocksAtMostAndHa
       if (activeBattles.length === 0) {
         return;
       }
-      
-      console.log(`⚔️ Processing ${activeBattles.length} active battle(s)...`);
       
       for (const battle of activeBattles) {
         try {

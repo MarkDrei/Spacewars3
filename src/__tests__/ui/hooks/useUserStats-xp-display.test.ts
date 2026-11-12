@@ -3,6 +3,7 @@ import { Mocked } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { useUserStats } from '@/lib/client/hooks/useUserStats/useUserStats';
 import { userStatsService } from '@/lib/client/services/userStatsService';
+import { resetUserStatsStore } from '@/lib/client/hooks/useUserStats/userStatsStore';
 
 // Mock the userStatsService
 vi.mock('@/lib/client/services/userStatsService');
@@ -10,6 +11,7 @@ const mockUserStatsService = userStatsService as Mocked<typeof userStatsService>
 
 describe('useUserStats - XP and Level Display', () => {
   beforeEach(() => {
+    resetUserStatsStore();
     vi.clearAllMocks();
   });
 

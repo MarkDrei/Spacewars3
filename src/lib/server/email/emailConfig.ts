@@ -33,3 +33,23 @@ export function getSmtpConfig(): SmtpConfig {
 
   return { host, port, secure, user, pass, from };
 }
+
+/**
+ * Base URL for links in emails (verification, password reset).
+ *
+ * Uses NEXT_PUBLIC_BASE_URL. Outside production it falls back to the request's Host header for
+ * local development. In production the Host header is attacker-controlled (a password reset
+ * requested with a forged Host would mail a valid token pointing to another domain), so without
+ * NEXT_PUBLIC_BASE_URL this returns null and callers must not send the link.
+ */
+export function getEmailLinkBaseUrl(headers: { get(name: string): string | null }): string | null {
+  const configured = process.env.NEXT_PUBLIC_BASE_URL?.trim();
+  if (configured) {
+    return configured.replace(/\/+$/, '');
+  }
+  if (process.env.NODE_ENV === 'production') {
+    console.error('❌ NEXT_PUBLIC_BASE_URL is not set; email links are disabled in production');
+    return null;
+  }
+  return `${headers.get('x-forwarded-proto') ?? 'http'}://${headers.get('host') ?? 'localhost:3000'}`;
+}

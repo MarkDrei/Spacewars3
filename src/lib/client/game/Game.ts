@@ -14,6 +14,8 @@ import { debugState } from '../debug/debugState';
 import { InterceptionLineRenderer } from '../renderers/InterceptionLineRenderer';
 import { isAttackAllowed } from '@shared/utils/levelUtils';
 import { CanvasStrings, defaultCanvasStrings } from './canvasStrings';
+import { projectWorldData } from './worldProjection';
+import { getTimeMultiplier } from '../timeMultiplier';
 
 export class Game {
   private world: World;
@@ -21,6 +23,11 @@ export class Game {
   private interceptionRenderer: InterceptionLineRenderer;
   // private lastTimestamp: number = 0; // REMOVED: No longer needed without client physics
   private running: boolean = false;
+  /** Pending animation frame; cancelled in stop() so a quick stop()/start() never runs two loops. */
+  private frameId: number | null = null;
+  private readonly loop = () => this.gameLoop();
+  /** Last server snapshot; projected to the current time in every frame. */
+  private serverWorld: { data: WorldData; playerShipId?: number } | null = null;
   private ctx: CanvasRenderingContext2D;
   private ship: Ship;
   private refetchWorldData?: () => void; // Function to refresh world data from server
@@ -208,22 +215,22 @@ export class Game {
 
       if (hoveredObject.getType() === 'player_ship' || hoveredObject.getType() === 'npc_ship') {
         if (this.attackClickMode && distance <= 100) {
-          this.handleAttack(hoveredObject);
+          void this.handleAttack(hoveredObject);
         } else {
-          this.handleInterception(hoveredObject);
+          void this.handleInterception(hoveredObject);
         }
       } else if (hoveredObject.getType() === 'starbase') {
         if (this.attackClickMode) {
           if (distance <= STARBASE_DOCK_RANGE) {
             this.onStarbaseEntryCallback?.(hoveredObject.getId());
           } else {
-            this.handleInterception(hoveredObject);
+            void this.handleInterception(hoveredObject);
           }
         }
       } else if (distance <= 125) {
-        this.handleCollection(hoveredObject);
+        void this.handleCollection(hoveredObject);
       } else {
-        this.handleInterception(hoveredObject);
+        void this.handleInterception(hoveredObject);
       }
 
       return;
@@ -248,7 +255,7 @@ export class Game {
     const worldTargetX = ship.getX() + dx;
     const worldTargetY = ship.getY() + dy;
     
-    this.handleDirectionChange(angleDegrees, worldTargetX, worldTargetY);
+    void this.handleDirectionChange(angleDegrees, worldTargetX, worldTargetY);
   }
 
   // Handle direction change when clicking on empty space
@@ -260,7 +267,7 @@ export class Game {
       }
       
       // Apply immediate local update for visual feedback
-      this.world.setShipAngle(angleDegrees);
+      this.setLocalShipAngle(angleDegrees);
       
       // Then update via API
       const navigationResult = await setShipDirection(angleDegrees);
@@ -444,7 +451,37 @@ export class Game {
   /**
    * Update the game world with server data
    */
+  /**
+   * New world snapshot from the server. It is shown immediately and then projected forward in
+   * every animation frame (see gameLoop), so objects move smoothly between server updates without
+   * re-rendering React.
+   */
   public updateWorldData(worldData: WorldData, playerShipId?: number): void {
+    this.serverWorld = { data: worldData, playerShipId };
+    this.applyWorldData(worldData, playerShipId);
+  }
+
+  /**
+   * Turns the own ship locally until the server confirms the new course: the snapshot is rebased
+   * to "now" (current projected positions) with the new heading, so the per-frame projection
+   * continues from here instead of snapping back to the old course.
+   */
+  private setLocalShipAngle(angleDegrees: number): void {
+    this.world.setShipAngle(angleDegrees);
+    if (!this.serverWorld) return;
+
+    const { playerShipId } = this.serverWorld;
+    const rebased = projectWorldData(this.serverWorld.data, Date.now(), getTimeMultiplier());
+    this.serverWorld = {
+      playerShipId,
+      data: {
+        ...rebased,
+        spaceObjects: rebased.spaceObjects.map(obj => (obj.id === playerShipId ? { ...obj, angle: angleDegrees } : obj)),
+      },
+    };
+  }
+
+  private applyWorldData(worldData: WorldData, playerShipId?: number): void {
     this.world.updateFromServerData(worldData, playerShipId);
     // Update the local player ship reference
     this.ship = this.world.getShip();
@@ -598,13 +635,16 @@ export class Game {
   public start(): void {
     if (!this.running) {
       this.running = true;
-      // this.lastTimestamp = performance.now(); // REMOVED: No longer needed
-      requestAnimationFrame(this.gameLoop.bind(this));
+      this.frameId = requestAnimationFrame(this.loop);
     }
   }
 
   public stop(): void {
     this.running = false;
+    if (this.frameId !== null) {
+      cancelAnimationFrame(this.frameId);
+      this.frameId = null;
+    }
     this.clearTargetingLine(); // Clean up targeting line when game stops
   }
 
@@ -613,10 +653,16 @@ export class Game {
     
     // Don't render if we don't have any space objects yet (waiting for server data)
     if (this.world.getSpaceObjects().length === 0) {
-      requestAnimationFrame(this.gameLoop.bind(this));
+      this.frameId = requestAnimationFrame(this.loop);
       return;
     }
     
+    // Advance moving objects from the last server snapshot to "now"
+    if (this.serverWorld) {
+      const projected = projectWorldData(this.serverWorld.data, Date.now(), getTimeMultiplier());
+      this.applyWorldData(projected, this.serverWorld.playerShipId);
+    }
+
     // Update hover states
     this.updateHoverStates();
     
@@ -644,7 +690,7 @@ export class Game {
     // this.drawInterceptionPoint(this.ctx);
     
     // Continue the loop
-    requestAnimationFrame(this.gameLoop.bind(this));
+    this.frameId = requestAnimationFrame(this.loop);
   }
 
   // Targeting line management methods

@@ -47,6 +47,23 @@ describe('Email token helpers', () => {
     });
   });
 
+  test('setEmailVerificationToken_storedValue_isNotTheTokenAndCannotBeUsedAsToken', async () => {
+    await withTransaction(async () => {
+      const db = await getDatabase();
+      const user = await makeUser('verify-hash@example.com');
+      const token = randomBytes(32).toString('hex');
+      await setEmailVerificationToken(db, user.id, token, Date.now() + 60_000);
+
+      const stored = await db.query('SELECT email_verification_token FROM users WHERE id = $1', [user.id]);
+      const storedValue = (stored.rows[0] as { email_verification_token: string }).email_verification_token;
+
+      // Whoever reads the database (backup, dump) must not be able to verify or reset with it
+      expect(storedValue).not.toBe(token);
+      expect(await consumeEmailVerificationToken(db, storedValue)).toBeNull();
+      expect(await consumeEmailVerificationToken(db, token)).toBe(user.id);
+    });
+  });
+
   test('consumeEmailVerificationToken returns null for unknown token', async () => {
     await withTransaction(async () => {
       const db = await getDatabase();

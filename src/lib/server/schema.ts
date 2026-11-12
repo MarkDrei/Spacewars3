@@ -131,6 +131,27 @@ CREATE INDEX IF NOT EXISTS idx_user_events_user_id ON user_events (user_id);
 CREATE INDEX IF NOT EXISTS idx_user_events_type ON user_events (event_type);
 `;
 
+/**
+ * Indexes for the per-player lookups that no primary key covers. Without them every such query
+ * reads the whole table, and `messages` and `battles` grow with every played hour.
+ *
+ * New databases get them through CREATE_TABLES, existing ones through
+ * `applyLookupIndexMigration` at startup.
+ */
+export const LOOKUP_INDEXES = [
+  // Login, registration and player lookup by name (not unique: NPC opponents share display names)
+  { name: 'idx_users_username', on: 'users (username)' },
+  // Notifications of one player in time order, read or unread (messagesRepo)
+  { name: 'idx_messages_recipient_created', on: 'messages (recipient_id, created_at)' },
+  // Battle history, active battle and attack restrictions of one player (battleRepo)
+  { name: 'idx_battles_attacker_start', on: 'battles (attacker_id, battle_start_time)' },
+  { name: 'idx_battles_attackee_start', on: 'battles (attackee_id, battle_start_time)' },
+] as const;
+
+export function createLookupIndexStatement(index: { name: string; on: string }): string {
+  return `CREATE INDEX IF NOT EXISTS ${index.name} ON ${index.on}`;
+}
+
 export const CREATE_TABLES = [
   CREATE_SPACE_OBJECTS_TABLE,
   CREATE_USERS_TABLE,
@@ -139,7 +160,8 @@ export const CREATE_TABLES = [
   CREATE_MESSAGES_TABLE,
   CREATE_BATTLES_TABLE,
   CREATE_INVENTORIES_TABLE,
-  CREATE_USER_EVENTS_TABLE
+  CREATE_USER_EVENTS_TABLE,
+  ...LOOKUP_INDEXES.map(createLookupIndexStatement),
 ];
 
 // Migration to rename column (PostgreSQL syntax)

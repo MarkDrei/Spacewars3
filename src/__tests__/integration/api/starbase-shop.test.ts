@@ -1,15 +1,14 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { POST as buyPOST } from '@/app/api/starbase/buy/route';
 import { POST as sellPOST } from '@/app/api/starbase/sell/route';
-import { createRequest, createAuthenticatedSession, extractSessionCookie } from '../../helpers/apiTestHelpers';
+import { createRequest, createAuthenticatedSession, createMockSessionCookie } from '../../helpers/apiTestHelpers';
 import { initializeIntegrationTestServer, shutdownIntegrationTestServer } from '../../helpers/testServer';
 import { withTransaction } from '../../helpers/transactionHelper';
 import { Commander } from '@/lib/server/inventory/Commander';
 import { createEmptyInventoryGrid, DEFAULT_INVENTORY_SLOTS } from '@/lib/server/inventory/inventoryTypes';
 import { getDatabase } from '@/lib/server/database';
 import { commanderBuyPrice } from '@/lib/server/starbase/commanderPrice';
-import { sessionOptions } from '@/lib/server/session';
-import { sealData } from 'iron-session';
+import { StarbaseShop } from '@/lib/server/starbase/StarbaseShop';
 import { UserCache } from '@/lib/server/user/userCache';
 import { USER_LOCK } from '@/lib/server/typedLocks';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
@@ -82,12 +81,12 @@ async function seedFullDefaultInventory(userId: number): Promise<void> {
   );
 }
 
-/** Create a session cookie that includes both userId and starbaseShop. */
-async function createShopSessionCookie(userId: number, shopCommanders: ReturnType<Commander['toJSON']>[]): Promise<string> {
-  const password = sessionOptions.password as string;
-  const ttl = (sessionOptions.cookieOptions?.maxAge as number | undefined) ?? 86400;
-  const sealed = await sealData({ userId, starbaseShop: shopCommanders }, { password, ttl });
-  return `spacewars-session=${sealed}`;
+/** Store the given offers in the user's server-side shop and return a session cookie for the user. */
+async function openShopWithOffers(userId: number, shopCommanders: ReturnType<Commander['toJSON']>[]): Promise<string> {
+  await createLockContext().useLockWithAcquire(USER_LOCK, async (userCtx) => {
+    StarbaseShop.getInstance().setOffers(userCtx, userId, shopCommanders);
+  });
+  return createMockSessionCookie(userId);
 }
 
 describe('Starbase Shop API', () => {
@@ -110,7 +109,7 @@ describe('Starbase Shop API', () => {
 
         await setUserIronAndEvictCache(userId, price);
 
-        const shopCookie = await createShopSessionCookie(userId, shopCommanders);
+        const shopCookie = await openShopWithOffers(userId, shopCommanders);
 
         const buyReq = createRequest('http://localhost:3000/api/starbase/buy', 'POST', { slotIndex: 0 }, shopCookie);
         const buyRes = await buyPOST(buyReq);
@@ -131,7 +130,7 @@ describe('Starbase Shop API', () => {
 
         await setUserIronAndEvictCache(userId, 0);
 
-        const shopCookie = await createShopSessionCookie(userId, shopCommanders);
+        const shopCookie = await openShopWithOffers(userId, shopCommanders);
 
         const buyReq = createRequest('http://localhost:3000/api/starbase/buy', 'POST', { slotIndex: 0 }, shopCookie);
         const buyRes = await buyPOST(buyReq);
@@ -146,7 +145,7 @@ describe('Starbase Shop API', () => {
         const userId = await getLatestUserId();
 
         const shopCommanders = Array.from({ length: 10 }, () => Commander.random().toJSON());
-        const shopCookie = await createShopSessionCookie(userId, shopCommanders);
+        const shopCookie = await openShopWithOffers(userId, shopCommanders);
 
         const buyReq = createRequest('http://localhost:3000/api/starbase/buy', 'POST', { slotIndex: 15 }, shopCookie);
         const buyRes = await buyPOST(buyReq);
@@ -168,7 +167,7 @@ describe('Starbase Shop API', () => {
         const price = commanderBuyPrice(shopCommanders[0]);
         await setUserIronAndEvictCache(userId, price);
 
-        const shopCookie = await createShopSessionCookie(userId, shopCommanders);
+        const shopCookie = await openShopWithOffers(userId, shopCommanders);
 
         const buyReq = createRequest('http://localhost:3000/api/starbase/buy', 'POST', { slotIndex: 0 }, shopCookie);
         const buyRes = await buyPOST(buyReq);
@@ -191,19 +190,15 @@ describe('Starbase Shop API', () => {
         // Give enough iron for two purchases to confirm the second is rejected by slot, not iron
         await setUserIronAndEvictCache(userId, price * 2);
 
-        const shopCookie = await createShopSessionCookie(userId, shopCommanders);
+        const shopCookie = await openShopWithOffers(userId, shopCommanders);
 
         // First purchase — should succeed
         const firstReq = createRequest('http://localhost:3000/api/starbase/buy', 'POST', { slotIndex: 0 }, shopCookie);
         const firstRes = await buyPOST(firstReq);
         expect(firstRes.status).toBe(200);
 
-        // Extract the updated session cookie that has slot 0 nulled out
-        const updatedCookie = extractSessionCookie(firstRes);
-        expect(updatedCookie).toBeTruthy();
-
-        // Second purchase with the same slot using the updated cookie — should fail
-        const secondReq = createRequest('http://localhost:3000/api/starbase/buy', 'POST', { slotIndex: 0 }, updatedCookie!);
+        // Second purchase of the same slot (e.g. a replayed request) — the offer is gone on the server
+        const secondReq = createRequest('http://localhost:3000/api/starbase/buy', 'POST', { slotIndex: 0 }, shopCookie);
         const secondRes = await buyPOST(secondReq);
         expect(secondRes.status).toBe(400);
       });

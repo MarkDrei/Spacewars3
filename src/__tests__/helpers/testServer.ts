@@ -4,7 +4,13 @@ import { UserCache } from '@/lib/server/user/userCache';
 import { WorldCache } from '@/lib/server/world/worldCache';
 import { MessageCache } from '@/lib/server/messages/MessageCache';
 import { UserBonusCache } from '@/lib/server/bonus/UserBonusCache';
+import { TechService } from '@/lib/server/techs/TechService';
+import { TimeMultiplierService } from '@/lib/server/timeMultiplier';
+import { AfterburnerService } from '@/lib/server/afterburner/AfterburnerService';
+import { NPCManager } from '@/lib/server/npc/NPCManager';
+import { StarbaseShop } from '@/lib/server/starbase/StarbaseShop';
 import { StatisticsCache } from '@/lib/server/statistics/StatisticsCache';
+import { getTransactionContext, withTransaction } from './transactionHelper';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 import { DATABASE_LOCK_MESSAGES } from '@/lib/server/typedLocks';
 
@@ -92,6 +98,11 @@ export async function initializeIntegrationTestServer(): Promise<void> {
   MessageCache.resetInstance(ctx);
   UserCache.resetInstance();
   UserBonusCache.resetInstance();
+  TechService.resetInstance();
+  TimeMultiplierService.resetInstance();
+  AfterburnerService.resetInstance();
+  NPCManager.resetInstance();
+  StarbaseShop.resetInstance();
   
   // Initialize server (this will reinitialize caches)
   // No database cleanup - tests use withTransaction() for isolation
@@ -102,6 +113,18 @@ export async function initializeIntegrationTestServer(): Promise<void> {
  * Shutdown integration test server and clean up resources.
  */
 export async function shutdownIntegrationTestServer(): Promise<void> {
+  // Shutting down flushes dirty cache data to the database. Inside a test transaction that is
+  // intended (restart simulations) and rolled back with the test. Outside of one (typically
+  // afterEach) the flush would be committed and leak into later tests, so it runs inside a
+  // throwaway transaction that is rolled back.
+  if (getTransactionContext()) {
+    await shutdownCaches();
+  } else {
+    await withTransaction(shutdownCaches);
+  }
+}
+
+async function shutdownCaches(): Promise<void> {
   // Shutdown in reverse dependency order:
   // Statistics → Battle → Message → User → World
   await shutdownStatisticsCache();
@@ -118,4 +141,9 @@ export async function shutdownIntegrationTestServer(): Promise<void> {
   MessageCache.resetInstance(ctx);
   UserCache.resetInstance();
   UserBonusCache.resetInstance();
+  TechService.resetInstance();
+  TimeMultiplierService.resetInstance();
+  AfterburnerService.resetInstance();
+  NPCManager.resetInstance();
+  StarbaseShop.resetInstance();
 }

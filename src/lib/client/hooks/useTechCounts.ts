@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useEffect, useCallback } from 'react';
 import { 
   WeaponSpec, 
   DefenseSpec, 
@@ -16,12 +16,11 @@ interface UseTechCountsReturn {
   refetch: () => void;
 }
 
-export const useTechCounts = (pollInterval: number = 5000): UseTechCountsReturn => {
-  // Auth is guaranteed by server component, so we can directly use the factory data cache
-  const [techCounts, setTechCounts] = useState<TechCounts | null>(null);
-  const [weapons, setWeapons] = useState<Record<string, WeaponSpec>>({});
-  const [defenses, setDefenses] = useState<Record<string, DefenseSpec>>({});
+// Stable empty defaults so consumers' memo/effect dependencies don't change on every render
+const EMPTY_WEAPONS: Record<string, WeaponSpec> = {};
+const EMPTY_DEFENSES: Record<string, DefenseSpec> = {};
 
+export const useTechCounts = (pollInterval: number = 5000): UseTechCountsReturn => {
   // Use shared factory data cache
   const { 
     data: factoryData, 
@@ -30,24 +29,12 @@ export const useTechCounts = (pollInterval: number = 5000): UseTechCountsReturn 
     refetch: refetchCache
   } = useFactoryDataCache(pollInterval);
 
-  // Use ref to track if component is mounted (for cleanup)
-  const isMountedRef = useRef<boolean>(true);
-
-  // Update local state from cache data
-  useEffect(() => {
-    if (!factoryData) {
-      return;
-    }
-
-    // Update all data from cache
-    setTechCounts(factoryData.techCounts);
-    setWeapons(factoryData.weapons);
-    setDefenses(factoryData.defenses);
-  }, [factoryData]);
+  // Derived directly from the shared cache (auth is guaranteed by the server component)
+  const techCounts: TechCounts | null = factoryData?.techCounts ?? null;
+  const weapons: Record<string, WeaponSpec> = factoryData?.weapons ?? EMPTY_WEAPONS;
+  const defenses: Record<string, DefenseSpec> = factoryData?.defenses ?? EMPTY_DEFENSES;
 
   useEffect(() => {
-    isMountedRef.current = true;
-    
     // Listen for build completion events to refresh tech counts
     const handleBuildItemCompleted = () => {
       console.log('Build item completed, refreshing tech counts...');
@@ -64,7 +51,6 @@ export const useTechCounts = (pollInterval: number = 5000): UseTechCountsReturn 
     
     // Cleanup
     return () => {
-      isMountedRef.current = false;
       globalEvents.off(EVENTS.BUILD_ITEM_COMPLETED, handleBuildItemCompleted);
       globalEvents.off(EVENTS.BUILD_QUEUE_COMPLETED, handleBuildQueueCompleted);
     };

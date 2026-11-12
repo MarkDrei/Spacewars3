@@ -60,7 +60,7 @@ describe('Battle Research Effects Integration', () => {
             // Upgrade projectile reload rate research to level 3
             // Level 3: effect = 100 + 10*2 = 120, factor = 1.20
             attacker.techTree.projectileReloadRate = 3;
-            userCache.updateUserInCache(userCtx, attacker);
+            await userCache.updateUserInCache(userCtx, attacker);
 
             // Recalculate reload time with upgraded research
             // auto_turret: 720s base / 1.20 = 600s
@@ -135,7 +135,7 @@ describe('Battle Research Effects Integration', () => {
             // Upgrade energy recharge rate research to level 4
             // Level 4: effect = 100 + 10*3 = 130, factor = 1.30
             attacker.techTree.energyRechargeRate = 4;
-            userCache.updateUserInCache(userCtx, attacker);
+            await userCache.updateUserInCache(userCtx, attacker);
 
             // Calculate reload time with upgraded research
             // pulse_laser: 12min * 60 = 720s base / 1.30 ≈ 553.85s
@@ -206,7 +206,7 @@ describe('Battle Research Effects Integration', () => {
             attacker.techTree.projectileReloadRate = 2;
             // Keep energy at level 1 (default = 100% base, no speedup)
             attacker.techTree.energyRechargeRate = 1;
-            userCache.updateUserInCache(userCtx, attacker);
+            await userCache.updateUserInCache(userCtx, attacker);
           });
 
           // === Phase 2: Calculate expected reload times ===
@@ -239,7 +239,7 @@ describe('Battle Research Effects Integration', () => {
 
           // Set projectile damage research to level 1 (default base)
           attacker.techTree.projectileDamage = 1;
-          userCache.updateUserInCache(userCtx, attacker);
+          await userCache.updateUserInCache(userCtx, attacker);
 
           // At level 1, modifier should be 1.0 (100%, no bonus)
           const baseDamageModifier = getWeaponDamageModifierFromTree(attacker.techTree, 'auto_turret');
@@ -247,7 +247,7 @@ describe('Battle Research Effects Integration', () => {
 
           // Upgrade to level 2
           attacker.techTree.projectileDamage = 2;
-          userCache.updateUserInCache(userCtx, attacker);
+          await userCache.updateUserInCache(userCtx, attacker);
 
           // At level 2, modifier should be 1.1725 (+17.25% damage)
           const upgradedDamageModifier = getWeaponDamageModifierFromTree(attacker.techTree, 'auto_turret');
@@ -321,7 +321,7 @@ describe('Battle Research Effects Integration', () => {
           // Upgrade only projectile damage to level 2
           attacker.techTree.projectileDamage = 2;
           attacker.techTree.energyDamage = 1;
-          userCache.updateUserInCache(userCtx, attacker);
+          await userCache.updateUserInCache(userCtx, attacker);
 
           const projectileDmgModifier = getWeaponDamageModifierFromTree(attacker.techTree, 'auto_turret');
           const energyDmgModifier = getWeaponDamageModifierFromTree(attacker.techTree, 'pulse_laser');
@@ -408,7 +408,7 @@ describe('Battle Research Effects Integration', () => {
           // Upgrade only projectile accuracy to level 2
           attacker.techTree.projectileAccuracy = 2;
           attacker.techTree.energyAccuracy = 1;
-          userCache.updateUserInCache(userCtx, attacker);
+          await userCache.updateUserInCache(userCtx, attacker);
 
           const projectileAccuracyModifier = getWeaponAccuracyModifierFromTree(attacker.techTree, 'auto_turret');
           const energyAccuracyModifier = getWeaponAccuracyModifierFromTree(attacker.techTree, 'pulse_laser');

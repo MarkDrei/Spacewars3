@@ -2,10 +2,13 @@ import { describe, expect, test, beforeEach, afterEach, vi } from 'vitest';
 
 import { POST as registerPOST } from '@/app/api/register/route';
 import { GET as verifyEmailGET } from '@/app/api/verify-email/route';
+import { POST as loginPOST } from '@/app/api/login/route';
 import { createRequest, randomUsername } from '../../helpers/apiTestHelpers';
 import { initializeIntegrationTestServer, shutdownIntegrationTestServer } from '../../helpers/testServer';
 import { withTransaction } from '../../helpers/transactionHelper';
 import { getDatabase } from '@/lib/server/database';
+import { createUserWithoutShip, getUserByEmail, saveUserToDb, setEmailVerificationToken } from '@/lib/server/user/userRepo';
+import { handleApiError } from '@/lib/server/errors';
 
 describe('Register with email flow', () => {
   beforeEach(async () => {
@@ -116,10 +119,8 @@ describe('Register with email flow', () => {
       // Manually set a verification token
       const token = 'test-verification-token-abc123';
       const expiresAt = Date.now() + 60_000;
-      await db.query(
-        'UPDATE users SET email_verification_token = $1, email_verification_expires = $2, email_verified = FALSE WHERE username = $3',
-        [token, expiresAt, username]
-      );
+      const user = await getUserByEmail(db, email);
+      await setEmailVerificationToken(db, user!.id, token, expiresAt);
 
       // Call verify-email endpoint
       const verifyRequest = new Request(`http://localhost:3000/api/verify-email?token=${token}`);
@@ -134,6 +135,37 @@ describe('Register with email flow', () => {
       const result = await db.query('SELECT email_verified, email_verification_token FROM users WHERE username = $1', [username]);
       expect(result.rows[0].email_verified).toBe(true);
       expect(result.rows[0].email_verification_token).toBeNull();
+    });
+  });
+
+  test('login_afterEmailVerification_keepsEmailVerified', async () => {
+    await withTransaction(async () => {
+      const username = randomUsername('verifylogin');
+      const email = `${username}@example.com`;
+      const db = await getDatabase();
+
+      await registerPOST(createRequest('http://localhost:3000/api/register', 'POST', {
+        username,
+        password: 'testpass',
+        email,
+      }));
+
+      const token = 'test-verification-token-login';
+      const user = await getUserByEmail(db, email);
+      await setEmailVerificationToken(db, user!.id, token, Date.now() + 60_000);
+      const verifyRequest = new Request(`http://localhost:3000/api/verify-email?token=${token}`);
+      await verifyEmailGET(verifyRequest as Parameters<typeof verifyEmailGET>[0]);
+
+      // The player follows the redirect to the login page and logs in
+      const loginResponse = await loginPOST(createRequest('http://localhost:3000/api/login', 'POST', {
+        username,
+        password: 'testpass',
+      }));
+      expect(loginResponse.status).toBe(200);
+
+      const result = await db.query('SELECT email, email_verified FROM users WHERE username = $1', [username]);
+      expect(result.rows[0].email).toBe(email);
+      expect(result.rows[0].email_verified).toBe(true);
     });
   });
 
@@ -204,6 +236,22 @@ describe('Register with email flow', () => {
 
       expect(res2.status).toBe(400);
       expect(data2.error).toContain('Email already in use');
+    });
+  });
+
+  test('handleApiError_duplicateEmailRejectedByDatabase_returnsEmailAlreadyInUse', async () => {
+    await withTransaction(async () => {
+      // The route checks the address under USER_LOCK; the unique index is the backstop behind it
+      const db = await getDatabase();
+      const email = `${randomUsername('dup')}@example.com`;
+      await createUserWithoutShip(db, randomUsername('dup1'), 'hash', saveUserToDb(db), email);
+
+      const error = await createUserWithoutShip(db, randomUsername('dup2'), 'hash', saveUserToDb(db), email)
+        .then(() => null, (e: unknown) => e);
+
+      const response = handleApiError(error);
+      expect(response.status).toBe(400);
+      expect(await response.json()).toEqual({ error: 'Email already in use' });
     });
   });
 

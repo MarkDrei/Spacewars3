@@ -6,6 +6,7 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { useUserStats } from '@/lib/client/hooks/useUserStats/useUserStats';
 import { userStatsService } from '@/lib/client/services/userStatsService';
 import { getTimeMultiplier, resetTimeMultiplier } from '@/lib/client/timeMultiplier';
+import { resetUserStatsStore } from '@/lib/client/hooks/useUserStats/userStatsStore';
 
 // Mock the userStatsService
 vi.mock('@/lib/client/services/userStatsService');
@@ -13,6 +14,7 @@ const mockUserStatsService = vi.mocked(userStatsService);
 
 describe('useUserStats hook - time multiplier integration', () => {
   beforeEach(() => {
+    resetUserStatsStore();
     vi.clearAllMocks();
     resetTimeMultiplier();
   });

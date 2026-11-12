@@ -88,7 +88,8 @@ function makeUserCacheMock(attackerLevel: number, targetLevel: number) {
 
 function makeNpcManagerMock(npc: { defeated?: boolean; inBattle?: boolean } | null) {
   const mockNpcManager = {
-    getNpcById: vi.fn().mockReturnValue(npc),
+    // NPCs belong to the player who sees them (the attacker in these tests)
+    getNpcById: vi.fn().mockReturnValue(npc ? { ownerId: ATTACKER_USER_ID, ...npc } : null),
     setInBattle: vi.fn(),
   };
   (NPCManager.getInstance as ReturnType<typeof vi.fn>).mockReturnValue(mockNpcManager);

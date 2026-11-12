@@ -101,6 +101,18 @@ describe('attack route NPC cleanup', () => {
     (rollbackNpcBattlePreparation as ReturnType<typeof vi.fn>).mockResolvedValue({ rolledBack: true, deletedUser: true });
   });
 
+  it('attackRoute_npcOfAnotherPlayer_returns404WithoutTouchingNpc', async () => {
+    const npc = makeNpcManagerMock();
+    npc.ownerId = ATTACKER_USER_ID + 1;
+
+    const { status, body } = await postAttack();
+
+    expect(status).toBe(404);
+    expect(body.error).toBe('NPC not found');
+    expect(upsertNpcUser).not.toHaveBeenCalled();
+    expect(initiateBattle).not.toHaveBeenCalled();
+  });
+
   it('attackRoute_npcBattleStartFails_rollsBackNpcPreparation', async () => {
     (initiateBattle as ReturnType<typeof vi.fn>).mockRejectedValue(new ApiError(400, 'Target is too far away (150.0 units, max 100)'));
 

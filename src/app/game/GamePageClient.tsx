@@ -16,7 +16,13 @@ import { ServerAuthState } from '@/lib/server/serverSession';
 import DataAgeIndicator from '@/components/DataAgeIndicator/DataAgeIndicator';
 import { formatNumber } from '@/shared/numberFormat';
 import { DEFAULT_ZOOM, MIN_ZOOM, MAX_ZOOM } from '@shared/viewportConstants';
+import { useGameUiPreferences, updateGameUiPreferences } from '@/lib/client/hooks/useGameUiPreferences';
+import { useMediaQuery } from '@/lib/client/hooks/useMediaQuery';
 import { CanvasStrings, defaultCanvasStrings } from '@/lib/client/game/canvasStrings';
+import { startVisibilityAwarePolling } from '@/lib/client/polling/visibilityPolling';
+
+const AFTERBURNER_ACTIVE_POLL_MS = 1000;
+const AFTERBURNER_REFUEL_POLL_MS = 10_000;
 
 interface GamePageClientProps {
   auth: ServerAuthState;
@@ -27,59 +33,15 @@ const SPEED_SLIDER_SNAP_ZONE_PERCENT = 12;
 const SPEED_SLIDER_ACTIVE_TRACK_START = SPEED_SLIDER_SNAP_ZONE_PERCENT;
 const SPEED_SLIDER_ACTIVE_TRACK_END = SPEED_SLIDER_RANGE_MAX - SPEED_SLIDER_SNAP_ZONE_PERCENT;
 const MOBILE_GAME_MEDIA_QUERY = '(max-width: 768px), (hover: none) and (pointer: coarse)';
-const GAME_UI_PREFERENCES_STORAGE_KEY = 'game-ui-preferences';
-const LEGACY_GAME_UI_DEBUG_STORAGE_KEY = 'game-ui-debug-enabled';
-const LEGACY_GAME_UI_ZOOM_STORAGE_KEY = 'game-ui-zoom';
-
-type GameUiPreferences = {
-  debugDrawingsEnabled: boolean;
-  zoom: number;
-  navOpen: boolean;
-  teleportOpen: boolean;
-  afterburnerOpen: boolean;
-  mobileTapInfoMode: boolean;
-  teleportClickMode: boolean;
-  attackClickMode: boolean;
-};
-
-const parseStoredBoolean = (value: unknown) => typeof value === 'boolean' ? value : undefined;
-
-const parseStoredZoom = (value: unknown) => {
-  if (typeof value !== 'number' || !Number.isFinite(value)) {
-    return undefined;
-  }
-
-  return Math.min(Math.max(value, MIN_ZOOM), MAX_ZOOM);
-};
-
-const readLegacyStorageValue = (storageKey: string) => {
-  const rawValue = localStorage.getItem(storageKey);
-  if (rawValue === null) {
-    return undefined;
-  }
-
-  return JSON.parse(rawValue) as unknown;
-};
-
-const loadGameUiPreferences = (): Partial<GameUiPreferences> => {
-  const defaults: Partial<GameUiPreferences> = {};
-
-  const rawPreferences = localStorage.getItem(GAME_UI_PREFERENCES_STORAGE_KEY);
-  const parsedPreferences = rawPreferences ? JSON.parse(rawPreferences) as unknown : null;
-  const storedPreferences = parsedPreferences && typeof parsedPreferences === 'object' ? parsedPreferences as Record<string, unknown> : null;
-
-  return {
-    debugDrawingsEnabled: parseStoredBoolean(storedPreferences?.debugDrawingsEnabled) ?? parseStoredBoolean(readLegacyStorageValue(LEGACY_GAME_UI_DEBUG_STORAGE_KEY)),
-    zoom: parseStoredZoom(storedPreferences?.zoom) ?? parseStoredZoom(readLegacyStorageValue(LEGACY_GAME_UI_ZOOM_STORAGE_KEY)),
-    navOpen: parseStoredBoolean(storedPreferences?.navOpen),
-    teleportOpen: parseStoredBoolean(storedPreferences?.teleportOpen),
-    afterburnerOpen: parseStoredBoolean(storedPreferences?.afterburnerOpen),
-    mobileTapInfoMode: parseStoredBoolean(storedPreferences?.mobileTapInfoMode),
-    teleportClickMode: parseStoredBoolean(storedPreferences?.teleportClickMode),
-    attackClickMode: parseStoredBoolean(storedPreferences?.attackClickMode),
-    ...defaults,
-  };
-};
+// Preference setters write through to the localStorage-backed store (stable module-level functions)
+const setZoom = (zoom: number) => updateGameUiPreferences({ zoom });
+const setDebugDrawingsEnabled = (debugDrawingsEnabled: boolean) => updateGameUiPreferences({ debugDrawingsEnabled });
+const setNavOpen = (navOpen: boolean) => updateGameUiPreferences({ navOpen });
+const setTeleportOpen = (teleportOpen: boolean) => updateGameUiPreferences({ teleportOpen });
+const setAfterburnerOpen = (afterburnerOpen: boolean) => updateGameUiPreferences({ afterburnerOpen });
+const setMobileTapInfoMode = (mobileTapInfoMode: boolean) => updateGameUiPreferences({ mobileTapInfoMode });
+const setTeleportClickMode = (teleportClickMode: boolean) => updateGameUiPreferences({ teleportClickMode });
+const setAttackClickMode = (attackClickMode: boolean) => updateGameUiPreferences({ attackClickMode });
 
 const clampSpeedValue = (value: number, speedLimit: number) => {
   if (Number.isNaN(value)) {
@@ -146,7 +108,6 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
   const debugDrawingsEnabledRef = useRef(false);
   const zoomRef = useRef(DEFAULT_ZOOM);
   const canvasStringsRef = useRef<CanvasStrings>(defaultCanvasStrings);
-  const [debugDrawingsEnabled, setDebugDrawingsEnabled] = useState(false);
   const [angleInput, setAngleInput] = useState<string>('0');
   const [speedInput, setSpeedInput] = useState<string>('0');
   const [maxSpeed, setMaxSpeed] = useState<number>(100);
@@ -157,23 +118,20 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
   const [teleportX, setTeleportX] = useState<string>('0');
   const [teleportY, setTeleportY] = useState<string>('0');
   const [isTeleporting, setIsTeleporting] = useState(false);
-  const [teleportClickMode, setTeleportClickMode] = useState(false);
   const [showTeleportCoordModal, setShowTeleportCoordModal] = useState(false);
-  const [attackClickMode, setAttackClickMode] = useState(false);
-  const [isMobileMode, setIsMobileMode] = useState(false);
-  const [mobileTapInfoMode, setMobileTapInfoMode] = useState(false);
+  const isMobileMode = useMediaQuery(MOBILE_GAME_MEDIA_QUERY);
   const [teleportRechargeTimeSec, setTeleportRechargeTimeSec] = useState(0);
   const [timeMultiplier, setTimeMultiplier] = useState(1);
-  const [zoom, setZoom] = useState(DEFAULT_ZOOM);
-  const [navOpen, setNavOpen] = useState(false);
-  const [teleportOpen, setTeleportOpen] = useState(false);
-  const [afterburnerOpen, setAfterburnerOpen] = useState(false);
-  const [uiPreferencesLoaded, setUiPreferencesLoaded] = useState(false);
   const [afterburnerStatus, setAfterburnerStatus] = useState<AfterburnerStatus | null>(null);
   const [announcement, setAnnouncement] = useState<{ text: string; key: number; variant?: 'orange' } | null>(null);
   const announcementTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isUpdatingAfterburner, setIsUpdatingAfterburner] = useState(false);
   const [playerLevel, setPlayerLevel] = useState(1);
+  // UI preferences live in localStorage (external store); available once the client has hydrated
+  const { preferences: uiPreferences, isHydrated: uiPreferencesLoaded } = useGameUiPreferences();
+  const { zoom, navOpen, teleportOpen, afterburnerOpen, teleportClickMode, attackClickMode, debugDrawingsEnabled } = uiPreferences;
+  // Tap-info mode only applies on mobile layouts; the stored preference is kept for mobile use
+  const mobileTapInfoMode = isMobileMode && uiPreferences.mobileTapInfoMode;
   // Auth is guaranteed by server, so pass true and use auth.shipId
   const { worldData, isLoading, error, refetch, lastUpdateTime } = useWorldData(3000);
   const currentSpeedLimit = afterburnerStatus?.isActive && afterburnerStatus.boostedSpeed > 0 ? afterburnerStatus.boostedSpeed : maxSpeed;
@@ -225,31 +183,6 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
   }, []);
 
   useEffect(() => {
-    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
-      return;
-    }
-
-    const mediaQuery = window.matchMedia(MOBILE_GAME_MEDIA_QUERY);
-    const updateMobileMode = () => setIsMobileMode(mediaQuery.matches);
-
-    updateMobileMode();
-
-    if (typeof mediaQuery.addEventListener === 'function') {
-      mediaQuery.addEventListener('change', updateMobileMode);
-      return () => mediaQuery.removeEventListener('change', updateMobileMode);
-    }
-
-    mediaQuery.addListener(updateMobileMode);
-    return () => mediaQuery.removeListener(updateMobileMode);
-  }, []);
-
-  useEffect(() => {
-    if (!isMobileMode) {
-      setMobileTapInfoMode(false);
-    }
-  }, [isMobileMode]);
-
-  useEffect(() => {
     debugDrawingsEnabledRef.current = debugDrawingsEnabled;
   }, [debugDrawingsEnabled]);
 
@@ -272,79 +205,6 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
   useEffect(() => {
     attackClickModeRef.current = attackClickMode;
   }, [attackClickMode]);
-
-  // Load UI preferences from localStorage on mount.
-  // Keep legacy zoom/debug keys readable so existing players retain their settings.
-  useEffect(() => {
-    try {
-      const savedPreferences = loadGameUiPreferences();
-
-      if (typeof savedPreferences.debugDrawingsEnabled === 'boolean') {
-        setDebugDrawingsEnabled(savedPreferences.debugDrawingsEnabled);
-      }
-      if (typeof savedPreferences.zoom === 'number') {
-        setZoom(savedPreferences.zoom);
-      }
-      if (typeof savedPreferences.navOpen === 'boolean') {
-        setNavOpen(savedPreferences.navOpen);
-      }
-      if (typeof savedPreferences.teleportOpen === 'boolean') {
-        setTeleportOpen(savedPreferences.teleportOpen);
-      }
-      if (typeof savedPreferences.afterburnerOpen === 'boolean') {
-        setAfterburnerOpen(savedPreferences.afterburnerOpen);
-      }
-      if (typeof savedPreferences.mobileTapInfoMode === 'boolean') {
-        setMobileTapInfoMode(savedPreferences.mobileTapInfoMode);
-      }
-      if (typeof savedPreferences.teleportClickMode === 'boolean') {
-        setTeleportClickMode(savedPreferences.teleportClickMode);
-      }
-      if (typeof savedPreferences.attackClickMode === 'boolean') {
-        setAttackClickMode(savedPreferences.attackClickMode);
-      }
-    } catch (err) {
-      console.warn('Failed to load UI preferences from localStorage:', err);
-    } finally {
-      setUiPreferencesLoaded(true);
-    }
-  }, []);
-
-  // Persist UI preferences together so controls restore consistently between sessions.
-  useEffect(() => {
-    if (!uiPreferencesLoaded) {
-      return;
-    }
-
-    try {
-      const preferences: GameUiPreferences = {
-        debugDrawingsEnabled,
-        zoom,
-        navOpen,
-        teleportOpen,
-        afterburnerOpen,
-        mobileTapInfoMode,
-        teleportClickMode,
-        attackClickMode,
-      };
-
-      localStorage.setItem(GAME_UI_PREFERENCES_STORAGE_KEY, JSON.stringify(preferences));
-      localStorage.setItem(LEGACY_GAME_UI_DEBUG_STORAGE_KEY, JSON.stringify(debugDrawingsEnabled));
-      localStorage.setItem(LEGACY_GAME_UI_ZOOM_STORAGE_KEY, JSON.stringify(zoom));
-    } catch (err) {
-      console.warn('Failed to save UI preferences:', err);
-    }
-  }, [
-    afterburnerOpen,
-    attackClickMode,
-    debugDrawingsEnabled,
-    mobileTapInfoMode,
-    navOpen,
-    teleportClickMode,
-    teleportOpen,
-    uiPreferencesLoaded,
-    zoom,
-  ]);
 
   // Resize canvas buffer to match physical pixel count: reads rendered CSS dimensions,
   // multiplies by devicePixelRatio to get the buffer size, and re-runs when isLoading
@@ -410,7 +270,7 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
         console.warn('Failed to fetch max speed:', err);
       }
     };
-    fetchMaxSpeed();
+    void fetchMaxSpeed();
   }, []);
 
   const handleDebugToggle = (enabled: boolean) => {
@@ -551,6 +411,26 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
     }
   }, [afterburnerStatus?.isActive]);
 
+  const updateInputFieldsFromShip = (navigation?: Pick<NavigateResponse, 'angle' | 'speed'>) => {
+    if (navigation) {
+      if (typeof navigation.angle === 'number') {
+        setAngleInput(navigation.angle.toFixed(1));
+      }
+      if (typeof navigation.speed === 'number') {
+        setSpeedInput(navigation.speed.toFixed(1));
+      }
+      return;
+    }
+
+    if (gameInstanceRef.current) {
+      const ship = gameInstanceRef.current.getWorld().getShip();
+      if (ship) {
+        setAngleInput(ship.getAngleDegrees().toFixed(1));
+        setSpeedInput(ship.getSpeed().toFixed(1));
+      }
+    }
+  };
+
   // Update game world when server data changes
   useEffect(() => {
     if (worldData && gameInstanceRef.current && auth.shipId) {
@@ -583,25 +463,6 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
     }
   }, [worldData, auth.shipId, angleInput, speedInput]);
 
-  const updateInputFieldsFromShip = (navigation?: Pick<NavigateResponse, 'angle' | 'speed'>) => {
-    if (navigation) {
-      if (typeof navigation.angle === 'number') {
-        setAngleInput(navigation.angle.toFixed(1));
-      }
-      if (typeof navigation.speed === 'number') {
-        setSpeedInput(navigation.speed.toFixed(1));
-      }
-      return;
-    }
-
-    if (gameInstanceRef.current) {
-      const ship = gameInstanceRef.current.getWorld().getShip();
-      if (ship) {
-        setAngleInput(ship.getAngleDegrees().toFixed(1));
-        setSpeedInput(ship.getSpeed().toFixed(1));
-      }
-    }
-  };
 
   const handleSpeedSliderChange = (rawValue: string) => {
     const parsedPosition = parseFloat(rawValue);
@@ -692,25 +553,25 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
 
   const handleAngleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
-      handleSetAngle();
+      void handleSetAngle();
     }
   };
 
-  const fetchTeleportData = useCallback(async () => {
-    const stats = await userStatsService.getUserStats();
-    if (!('error' in stats)) {
+  // Load teleport data (and level/time multiplier) on mount; applied in a callback
+  useEffect(() => {
+    let ignore = false;
+    void userStatsService.getUserStats().then(stats => {
+      if (ignore || 'error' in stats) return;
       setTeleportCharges(stats.teleportCharges);
       setTeleportMaxCharges(stats.teleportMaxCharges);
       setTeleportRechargeTimeSec(stats.teleportRechargeTimeSec);
       setTimeMultiplier(stats.timeMultiplier);
       setPlayerLevel(stats.level);
-    }
+    });
+    return () => {
+      ignore = true;
+    };
   }, []);
-
-  // Load teleport data on mount
-  useEffect(() => {
-    fetchTeleportData();
-  }, [fetchTeleportData]);
 
   // Sync teleportClickMode with game instance
   useEffect(() => {
@@ -817,9 +678,12 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
     // start of the current polling period, not a stale value from a prior period.
     const wasActive = afterburnerStatus?.isActive ?? false;
 
-    const interval = setInterval(async () => {
-      try {
-        const stats = await getShipStats();
+    // While burning, fuel and speed change quickly: refresh every second. While refuelling (up to an
+    // hour) the rounded fuel percentage changes slowly, so a slower refresh is enough.
+    const intervalMs = wasActive ? AFTERBURNER_ACTIVE_POLL_MS : AFTERBURNER_REFUEL_POLL_MS;
+
+    return startVisibilityAwarePolling(() => {
+      void getShipStats().then(stats => {
         if (stats && !('error' in stats) && stats.afterburner) {
           setAfterburnerStatus(stats.afterburner);
           setMaxSpeed(stats.maxSpeed);
@@ -827,10 +691,8 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
             setSpeedInput(stats.speed.toFixed(1));
           }
         }
-      } catch { /* ignore polling errors */ }
-    }, 1000);
-
-    return () => clearInterval(interval);
+      }, () => { /* ignore polling errors */ });
+    }, intervalMs);
   }, [afterburnerStatus]);
 
   const handleActivateAfterburner = async () => {
