@@ -6,6 +6,7 @@ import { UserCache } from '@/lib/server/user/userCache';
 import { NPCManager } from '@/lib/server/npc/NPCManager';
 import { StatisticsCache } from '@/lib/server/statistics/StatisticsCache';
 import { InventoryRepo } from '@/lib/server/inventory/InventoryRepo';
+import { QuestService } from '@/lib/server/quests/QuestService';
 import { World, type SpaceObject } from '@/lib/server/world/world';
 import { User } from '@/lib/server/user/user';
 import { createInitialTechTree } from '@/lib/server/techs/techtree';
@@ -44,6 +45,7 @@ describe('POST /api/harvest', () => {
   let world: World;
   let user: User;
   let storedInventory: InventorySlot[][];
+  let recordQuestEvent: ReturnType<typeof vi.fn>;
 
   const harvest = async (objectId: unknown) => {
     const cookie = await createMockSessionCookie(1);
@@ -94,6 +96,8 @@ describe('POST /api/harvest', () => {
     vi.spyOn(StatisticsCache, 'getInstance').mockReturnValue({
       recordEvent: vi.fn().mockResolvedValue(undefined),
     } as unknown as StatisticsCache);
+    recordQuestEvent = vi.fn().mockResolvedValue({ notifications: [], revision: 0 });
+    vi.spyOn(QuestService, 'getInstance').mockReturnValue({ recordEvent: recordQuestEvent } as unknown as QuestService);
     sendMessageToUser.mockReset().mockResolvedValue(1);
   });
 
@@ -177,6 +181,29 @@ describe('POST /api/harvest', () => {
     expect(has(ESCAPE_POD_ID)).toBe(false);
     expect(storedInventory.flat().every((slot) => (slot as { name: string }).name === 'X')).toBe(true);
     expect(sendMessageToUser).toHaveBeenCalledTimes(1);
+  });
+
+  test('harvest_collectedObject_isReportedToTheMissionSystem', async () => {
+    await harvest(ASTEROID_ID);
+
+    expect(recordQuestEvent).toHaveBeenCalledTimes(1);
+    expect(recordQuestEvent).toHaveBeenCalledWith(expect.anything(), 1, { type: 'object_collected', objectType: 'asteroid' });
+  });
+
+  test('harvest_missionSystemFails_collectionStillSucceeds', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    recordQuestEvent.mockRejectedValue(new Error('quest storage down'));
+
+    const { status } = await harvest(ASTEROID_ID);
+
+    expect(status).toBe(200);
+    expect(has(ASTEROID_ID)).toBe(false);
+  });
+
+  test('harvest_rejectedCollection_isNotReportedToTheMissionSystem', async () => {
+    await harvest(FAR_ASTEROID_ID);
+
+    expect(recordQuestEvent).not.toHaveBeenCalled();
   });
 
   test('harvest_emptyBody_returns400', async () => {

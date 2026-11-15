@@ -12,6 +12,7 @@
   "nav": {
     "home": "Home",
     "game": "Game",
+    "missions": "Missions",
     "factory": "Factory",
     "research": "Research",
     "ship": "Ship",
@@ -278,6 +279,10 @@
     "crewBonusesHeading": "Crew Bonuses",
     "selectedItemHeading": "Selected Item",
     "commanderType": "Commander",
+    "cargoType": "Mission cargo",
+    "cargoQuantity": "Quantity",
+    "cargoMission": "Mission",
+    "cargoKeepHint": "Mission cargo is handed over when you report to the contact. It cannot be discarded, sold or assigned to the bridge.",
     "sortLabel": "Sort:",
     "commanderStats": {
       "shipSpeed": "Ship Speed",
@@ -349,7 +354,18 @@
     "announcementAttackTooFar": "Target is too far away.",
     "announcementAttackNoWeapon": "You need at least one weapon to attack.",
     "announcementAttackNpcDefeated": "This NPC has already been defeated.",
-    "announcementAttackNpcInBattle": "This NPC is already in battle."
+    "announcementAttackNpcInBattle": "This NPC is already in battle.",
+    "tooltipFriendlyShip": "Friendly contact",
+    "tooltipAggressiveShip": "Attacks on sight",
+    "tooltipActionHail": "Action: tap again to hail",
+    "tooltipHailTooFar": "Fly closer to hail",
+    "announcementAmbushed": "Ambush! {enemy} attacks you!",
+    "trackerHeading": "Missions",
+    "trackerEmpty": "No active missions",
+    "trackerOpen": "Open mission log",
+    "trackerHail": "📡 Hail {contact}",
+    "trackerReady": "Report to {contact}",
+    "trackerToggle": "Show or hide missions"
   },
   "statistics": {
     "playerStatsHeading": "Player Statistics",
@@ -439,5 +455,471 @@
     "summaryIronCollected": "💎 **Iron Collected:** {iron}",
     "summaryBuildsCompleted": "🏭 **Builds Completed:** {text}",
     "summaryBuildItem": "{n} {name}(s)"
+  },
+  "quests": {
+    "ui": {
+      "pageHeading": "📜 Missions",
+      "loading": "Loading missions…",
+      "loadError": "Missions could not be loaded.",
+      "retry": "Retry",
+      "returnToGame": "← Return to Game",
+      "summaryLevel": "Level {level}",
+      "summaryMissions": "Missions {done}/{total}",
+      "summaryLocations": "Locations {done}/{total}",
+      "summaryAchievements": "Achievements {done}/{total}",
+      "tabActive": "Active ({count})",
+      "tabAvailable": "Available ({count})",
+      "tabStory": "Story",
+      "tabAchievements": "Achievements",
+      "tabSector": "Sector",
+      "noActive": "No active missions. Fly to a contact ship and hail it to pick one up.",
+      "noAvailable": "No missions on offer right now. Finish active missions or gain levels to unlock more.",
+      "chapterLabel": "Chapter {number}",
+      "chapterProgress": "{done} of {total} completed",
+      "sideQuests": "Side missions",
+      "sideQuestsSummary": "Old Tam of Drifter’s Rock has work that has nothing to do with the war.",
+      "contracts": "Contracts",
+      "contractsSummary": "Repeatable work for iron and experience. A contract can be accepted again as soon as it is completed.",
+      "statusLocked": "Locked",
+      "statusAvailable": "Available",
+      "statusActive": "Active",
+      "statusReady": "Ready to report",
+      "statusCompleted": "Completed",
+      "tagStory": "Chapter {number}",
+      "tagSide": "Side mission",
+      "tagContract": "Contract",
+      "offeredBy": "Offered by {contact}",
+      "reportTo": "Report to {contact}",
+      "contactWhere": "{ship}, near {location} ({x}, {y})",
+      "stageOf": "Step {current} of {total}",
+      "rewards": "Reward",
+      "rewardXp": "{xp} XP",
+      "rewardIron": "{iron} iron",
+      "rewardCommander": "a commander",
+      "rewardCommanderHint": "The commander needs a free inventory slot when you report.",
+      "accept": "Accept mission",
+      "report": "Report in",
+      "abandon": "Abandon",
+      "abandonConfirm": "Abandon “{quest}”? Progress and mission cargo of this mission are lost.",
+      "acceptOutOfRange": "Fly within hailing range of the {ship} to accept.",
+      "reportOutOfRange": "Fly within hailing range of the {ship} to report.",
+      "requires": "Requires:",
+      "requiresQuest": "mission “{quest}”",
+      "requiresLevel": "level {level}",
+      "completedTimes": "Completed {count}×",
+      "hailHeading": "📡 In hailing range",
+      "hailNothing": "Nothing to discuss right now. Safe flight, pilot.",
+      "hailOffers": "Missions on offer",
+      "hailReports": "Waiting for your report",
+      "dialogueClose": "Close",
+      "tierLabel": "Tier {tier}",
+      "achievementProgress": "{value} / {target}",
+      "achievementMaxed": "All tiers unlocked ({value})",
+      "achievementTierXp": "{threshold}: +{xp} XP",
+      "sectorContacts": "Contacts",
+      "sectorLocations": "Locations",
+      "sectorHostiles": "Hostile ships",
+      "sectorDiscovered": "Discovered",
+      "sectorUndiscovered": "Not yet visited",
+      "sectorDiscoveryHint": "Flying to a location for the first time is worth {xp} XP.",
+      "sectorCoordinates": "({x}, {y})",
+      "sectorInRange": "In hailing range",
+      "admin": {
+        "heading": "🛠 Test tools (developers only)",
+        "hint": "Shortcuts for testing missions without playing everything before them. See doc/quests.md.",
+        "reset": "Reset all mission progress",
+        "resetConfirm": "Delete all mission progress, achievements and mission cargo of this account?",
+        "respawnNpcs": "Respawn hostile ships",
+        "jumpTo": "Jump to:",
+        "forceAccept": "Force accept",
+        "fulfil": "Fulfil step",
+        "forceReport": "Force report",
+        "done": "Done."
+      }
+    },
+    "objectives": {
+      "collect": {
+        "asteroid": "Collect asteroids",
+        "shipwreck": "Salvage shipwrecks",
+        "escape_pod": "Recover escape pods"
+      },
+      "defeat": "Defeat: {target}",
+      "defeatAny": "Defeat hostile ships of any kind",
+      "visit": "Fly to {location} ({x}, {y})",
+      "gather": "Have aboard: {cargo}",
+      "reportOnly": "Report to {contact}"
+    },
+    "cargoSource": {
+      "granted": "Handed over when the mission step starts.",
+      "collect": {
+        "asteroid": "Found when collecting asteroids ({chance}% chance each).",
+        "shipwreck": "Found when salvaging shipwrecks ({chance}% chance each).",
+        "escape_pod": "Found when recovering escape pods ({chance}% chance each)."
+      },
+      "defeat": "Dropped by: {target} ({chance}% chance each).",
+      "defeatAny": "Dropped by any hostile ship ({chance}% chance each)."
+    },
+    "notifications": {
+      "questAccepted": "P: 📜 Mission accepted: **{quest}**",
+      "questAbandoned": "N: 📜 Mission abandoned: **{quest}**",
+      "readyToReport": "P: 📜 **{quest}**: objectives fulfilled. Report to **{contact}**.",
+      "stageAdvanced": "P: 📜 **{quest}** — next step: {objective}",
+      "questCompleted": "P: 🏅 Mission completed: **{quest}**! Reward: {xp} XP and {iron} iron.",
+      "questCompletedCommander": "P: 🏅 Mission completed: **{quest}**! Reward: {xp} XP, {iron} iron and a new commander.",
+      "questCompletedNoIron": "P: 🏅 Mission completed: **{quest}**! Reward: {xp} XP.",
+      "questCompletedCommanderNoIron": "P: 🏅 Mission completed: **{quest}**! Reward: {xp} XP and a new commander.",
+      "cargoFound": "P: 📦 Mission cargo found: **{cargo}** ({current}/{required}).",
+      "cargoHoldFull": "A: 📦 You found **{cargo}**, but your inventory is full. Free a slot — the next find will be stored.",
+      "locationDiscovered": "P: 🧭 Location discovered: **{location}** (+{xp} XP).",
+      "achievementUnlocked": "P: 🏆 Achievement unlocked: **{achievement}**, tier {tier} (+{xp} XP).",
+      "commanderJoined": "P: 👤 Commander **{commander}** joined your crew. Bonuses: {bonuses}.",
+      "ambushed": "A: ⚠️ Ambush! **{enemy}** opened fire on you."
+    },
+    "errors": {
+      "unknownQuest": "Unknown mission.",
+      "notAvailable": "This mission is not available.",
+      "alreadyActive": "This mission is already active.",
+      "notActive": "This mission is not active.",
+      "contactOutOfRange": "The contact is out of hailing range.",
+      "wrongContact": "This contact is not waiting for your report.",
+      "objectivesIncomplete": "The objectives are not fulfilled yet.",
+      "cargoHoldFull": "Your inventory is full. Free a slot first."
+    },
+    "chapters": {
+      "1": {
+        "title": "Dockside Work",
+        "summary": "Earn your place on the dock ledger of Ironstrike Station — and find out who keeps circling it."
+      },
+      "2": {
+        "title": "Eyes in the Dark",
+        "summary": "Professor Quill of Meridian Observatory follows strange signals to the hiding place of the Iron Horde."
+      },
+      "3": {
+        "title": "The Bastion Line",
+        "summary": "Captain Halden of Bastion Outpost takes the fight to the Horde’s raiders, marauders and hijacked drones."
+      },
+      "4": {
+        "title": "Breaking the Horde",
+        "summary": "Unite the sector, hunt down Warlord Krag and bring quiet back to the sky."
+      }
+    },
+    "contacts": {
+      "vess": {
+        "name": "Quartermaster Vess",
+        "role": "Dock quartermaster of Ironstrike Station",
+        "greeting": "Ledger’s open, pilot. What can the docks do for you?"
+      },
+      "quill": {
+        "name": "Professor Quill",
+        "role": "Head of research at Meridian Observatory",
+        "greeting": "Ah, a visitor! Mind the antennas. What have you brought me?"
+      },
+      "halden": {
+        "name": "Captain Halden",
+        "role": "Commander of the Bastion Outpost patrol",
+        "greeting": "Bastion Vigil here. Make it quick, pilot — the line does not hold itself."
+      },
+      "tam": {
+        "name": "Old Tam",
+        "role": "Prospector, hermit and owner of Drifter’s Rock",
+        "greeting": "Heh! Company! Don’t scratch the Rustbucket, she’s older than you."
+      }
+    },
+    "locations": {
+      "ironstrike_station": {
+        "name": "Ironstrike Station",
+        "description": "Trade hub of the sector. Its docks buy and sell commanders; Iron Horde pirates circle it."
+      },
+      "meridian_observatory": {
+        "name": "Meridian Observatory",
+        "description": "Research station in the north-west that listens to everything that moves in the sector."
+      },
+      "bastion_outpost": {
+        "name": "Bastion Outpost",
+        "description": "Fortified patrol base in the south-west, the last line against the Iron Horde."
+      },
+      "hordes_reach": {
+        "name": "Horde’s Reach",
+        "description": "Hideout of the Iron Horde. Marauders patrol it and attack every ship that comes too close."
+      },
+      "anvil_graveyard": {
+        "name": "Anvil Graveyard",
+        "description": "Wreck field of a forgotten battle in the heart of the sector, still guarded by rogue sentry drones."
+      },
+      "azure_drift": {
+        "name": "Azure Drift",
+        "description": "A cloud of cold blue ice crystals at the western edge. Beautiful and harmless."
+      },
+      "listening_post_tau": {
+        "name": "Listening Post Tau",
+        "description": "An abandoned relay station that sometimes transmits although nobody lives there."
+      },
+      "drifters_rock": {
+        "name": "Drifter’s Rock",
+        "description": "A hollowed-out asteroid in the north-east, home of Old Tam."
+      }
+    },
+    "hostiles": {
+      "pirate": {
+        "name": "Iron Horde Pirate",
+        "description": "Raiders circling Ironstrike Station. They never shoot first. Defeated pirates return at midnight (UTC)."
+      },
+      "marauder": {
+        "name": "Iron Horde Marauder",
+        "description": "Guards of Horde’s Reach. They attack every ship that enters their patrol line."
+      },
+      "drone": {
+        "name": "Rogue Sentry Drone",
+        "description": "Automated guards of the Anvil Graveyard. Lightly armed, but they attack on sight."
+      },
+      "warlord": {
+        "name": "Warlord Krag",
+        "description": "Leader of the Iron Horde. His flagship only shows itself to pilots who are hunting him."
+      }
+    },
+    "cargo": {
+      "hull_plating": {
+        "name": "Hull Plating",
+        "description": "Reusable armour plates cut out of a shipwreck."
+      },
+      "sealed_dispatch": {
+        "name": "Sealed Dispatch",
+        "description": "A sealed data cylinder from Quartermaster Vess, addressed to Professor Quill."
+      },
+      "flight_recorder": {
+        "name": "Flight Recorder",
+        "description": "The black box of a destroyed ship."
+      },
+      "decoded_coordinates": {
+        "name": "Decoded Coordinates",
+        "description": "Professor Quill’s analysis: the position of the Iron Horde’s hideout."
+      },
+      "horde_insignia": {
+        "name": "Horde Insignia",
+        "description": "The warlord’s emblem, cut from the hull of a marauder."
+      },
+      "drone_core": {
+        "name": "Drone Core",
+        "description": "The control core of a rogue sentry drone."
+      },
+      "battle_plans": {
+        "name": "Battle Plans",
+        "description": "Captain Halden’s plan for the strike on Horde’s Reach."
+      },
+      "warlord_cipher": {
+        "name": "Warlord’s Cipher",
+        "description": "Krag’s command cipher, the key to the comm network of the Horde."
+      },
+      "ore_sample": {
+        "name": "Ore Sample",
+        "description": "A lump of bluish iron ore from an asteroid."
+      }
+    },
+    "achievements": {
+      "rock_breaker": {
+        "name": "Rock Breaker",
+        "description": "Collect asteroids."
+      },
+      "wreck_diver": {
+        "name": "Wreck Diver",
+        "description": "Salvage shipwrecks."
+      },
+      "lifeline": {
+        "name": "Lifeline",
+        "description": "Recover escape pods."
+      },
+      "horde_hunter": {
+        "name": "Horde Hunter",
+        "description": "Defeat hostile NPC ships."
+      },
+      "ambush_breaker": {
+        "name": "Ambush Breaker",
+        "description": "Defeat ships that attack on sight (marauders and sentry drones)."
+      },
+      "kingslayer": {
+        "name": "Kingslayer",
+        "description": "Defeat Warlord Krag."
+      },
+      "duelist": {
+        "name": "Duelist",
+        "description": "Win battles against other players."
+      },
+      "trusted_hand": {
+        "name": "Trusted Hand",
+        "description": "Complete different missions."
+      },
+      "contractor": {
+        "name": "Contractor",
+        "description": "Complete contracts."
+      },
+      "saga": {
+        "name": "Saga",
+        "description": "Complete story chapters."
+      },
+      "pathfinder": {
+        "name": "Pathfinder",
+        "description": "Discover locations."
+      }
+    },
+    "quest": {
+      "c1_first_haul": {
+        "title": "First Haul",
+        "offer": "New in the sector? Then show me you can fly. The smelters of the station are running dry — bring in three asteroids and I will put your name on the dock ledger.",
+        "stages": {
+          "1": "Collect 3 asteroids, then report to Quartermaster Vess."
+        },
+        "completion": "Three rocks and not a dent in your hull. You are on the ledger, pilot. There is more work where that came from."
+      },
+      "c1_salvage_rights": {
+        "title": "Salvage Rights",
+        "offer": "The wrecks drifting out there still carry good plating. Cut two hull plates out of shipwrecks and the docks will pay for them — legally, for once.",
+        "stages": {
+          "1": "Salvage shipwrecks until you have 2 hull plates, then bring them to Quartermaster Vess."
+        },
+        "completion": "Solid plating, the repair crews will bless you. The salvage rights are yours — from now on I have regular scrap runs for you."
+      },
+      "c1_pirate_trouble": {
+        "title": "Pirate Trouble",
+        "offer": "See the ships circling the station? Iron Horde. They pick off everybody who leaves with a full hold. Take one of them down and show them that this dock is defended.",
+        "stages": {
+          "1": "Defeat 1 Iron Horde Pirate near Ironstrike Station, then report to Quartermaster Vess."
+        },
+        "completion": "One vulture less above my docks. They will be back at midnight, they always are — but now they know your name."
+      },
+      "c1_dispatch_to_meridian": {
+        "title": "Dispatch to Meridian",
+        "offer": "The Horde has never been this organised, and I want to know why. Professor Quill at Meridian Observatory listens to everything that moves out here. Take this sealed dispatch to the Meridian Lantern — and do not open it.",
+        "stages": {
+          "1": "Carry the sealed dispatch to Professor Quill at Meridian Observatory."
+        },
+        "completion": "A dispatch from Vess? Hm. Pirate sightings, lost convoys… this matches my readings uncomfortably well. Stay a while, pilot. I have work for a curious ship."
+      },
+      "c2_charting_the_dark": {
+        "title": "Charting the Dark",
+        "offer": "My instruments show two anomalies I cannot explain from here: a cold blue cloud in the west and a dead transmitter that is occasionally not dead at all. Fly to the Azure Drift and to Listening Post Tau and let your sensors do the rest.",
+        "stages": {
+          "1": "Fly to the Azure Drift and to Listening Post Tau, then report to Professor Quill."
+        },
+        "completion": "Splendid data! The Drift is harmless — beautiful, but harmless. Tau, however, has been relaying signals for somebody. Somebody who did not build it."
+      },
+      "c2_lost_and_found": {
+        "title": "Lost and Found",
+        "offer": "Every week another crew ends up in an escape pod. They are the only witnesses we have. Recover two pods and bring me what the survivors saw.",
+        "stages": {
+          "1": "Recover 2 escape pods, then report to Professor Quill."
+        },
+        "completion": "They all tell the same story: ships with red prows, striking from the north-east. Thank you — the crews are in good hands now."
+      },
+      "c2_voices_of_the_dead": {
+        "title": "Voices of the Dead",
+        "offer": "The relayed signals point to the Anvil Graveyard, the wreck field in the heart of the sector. Old sentry drones still guard it and they shoot at everything. Scout the field first, then pull three flight recorders out of shipwrecks.",
+        "stages": {
+          "1": "Scout the Anvil Graveyard.",
+          "2": "Salvage shipwrecks until you have 3 flight recorders, then bring them to Professor Quill."
+        },
+        "completion": "Listen to this… the last entries all mention one name: Krag. A warlord who is forging the pirate clans into a single Iron Horde. We have to find out where he sits."
+      },
+      "c2_the_trail": {
+        "title": "The Trail",
+        "offer": "The recorders give me a bearing, north-east of the Graveyard. If the Horde has a hideout, it is there. Get close enough for a sensor sweep — and no closer. Their marauders attack on sight.",
+        "stages": {
+          "1": "Scout Horde’s Reach, then report to Professor Quill.",
+          "2": "Carry the decoded coordinates to Captain Halden at Bastion Outpost."
+        },
+        "completion": "So that is where they have been hiding. The professor does good work, and so do you. Bastion has been waiting for a pilot who does not run. Welcome to the line."
+      },
+      "c3_thin_the_herd": {
+        "title": "Thin the Herd",
+        "offer": "Before we can touch their hideout, the raiders around Ironstrike have to learn fear. Destroy three Iron Horde pirates. Take your time — they return every midnight, and so can you.",
+        "stages": {
+          "1": "Defeat 3 Iron Horde Pirates, then report to Captain Halden."
+        },
+        "completion": "Three confirmed. The raids on the station are getting thinner already. Now we go after the ones who matter."
+      },
+      "c3_colours_of_the_horde": {
+        "title": "Colours of the Horde",
+        "offer": "The marauders guarding Horde’s Reach wear the insignia of the warlord. Bring me two of them. They will come for you the moment you cross their patrol line, so be ready when you do.",
+        "stages": {
+          "1": "Defeat Iron Horde Marauders at Horde’s Reach until you have 2 Horde insignia, then bring them to Captain Halden."
+        },
+        "completion": "Krag’s own colours. Each of these opens a door in their comm network. Good fighting, pilot."
+      },
+      "c3_rogue_signals": {
+        "title": "Rogue Signals",
+        "offer": "The sentry drones of the Anvil Graveyard have started relaying for the Horde. Quill believes their cores can be turned against them. Take down drones and bring two cores to the professor.",
+        "stages": {
+          "1": "Defeat Rogue Sentry Drones at the Anvil Graveyard until you have 2 drone cores, then bring them to Professor Quill."
+        },
+        "completion": "Intact cores! With these I can read the patrol schedule of the Horde like a timetable. Tell Halden that the Observatory is ready."
+      },
+      "c4_war_council": {
+        "title": "War Council",
+        "offer": "We have their colours, their schedule and their hideout. Now I need the sector behind me. Take these battle plans to Vess — the station has to supply the strike — and then to Quill for the timing. Bring them back countersigned.",
+        "stages": {
+          "1": "Take the battle plans to Quartermaster Vess at Ironstrike Station.",
+          "2": "Take the battle plans to Professor Quill at Meridian Observatory.",
+          "3": "Return the countersigned battle plans to Captain Halden at Bastion Outpost."
+        },
+        "completion": "Station and Observatory are both in. Then it is decided: we cut off the head of the serpent."
+      },
+      "c4_head_of_the_serpent": {
+        "title": "Head of the Serpent",
+        "offer": "Warlord Krag has come out of hiding. His flagship circles the centre of Horde’s Reach, inside the marauder patrols. Destroy it and bring me his command cipher — without it the Horde falls apart.",
+        "stages": {
+          "1": "Defeat Warlord Krag at Horde’s Reach, take his cipher and bring it to Captain Halden."
+        },
+        "completion": "Krag’s cipher. Without it the clans cannot talk to each other, and a Horde that cannot talk is a handful of thieves. One of my best officers has asked to fly with you — you have earned a crew like that."
+      },
+      "c4_a_quiet_sky": {
+        "title": "A Quiet Sky",
+        "offer": "It is over, and the docks have not been this calm in years. Do me one last favour: fly the round, Meridian and Bastion, and tell them that Ironstrike keeps its ledger open for them. Then come home.",
+        "stages": {
+          "1": "Visit Meridian Observatory and Bastion Outpost, then return to Quartermaster Vess."
+        },
+        "completion": "So that is the sector, safe for now. You started with three rocks, pilot. The ledger says you finished with a war. There will always be a contract here for you."
+      },
+      "side_tams_ore": {
+        "title": "Tam’s Ore",
+        "offer": "Old Tam smells blue iron in these asteroids, but his drill arm is not what it used to be. Crack rocks for me — about every second one carries a sample. Three samples and I pay honest.",
+        "stages": {
+          "1": "Collect asteroids until you have 3 ore samples, then bring them to Old Tam at Drifter’s Rock."
+        },
+        "completion": "Blue iron! Told them, I did, told them all. Here is your share. And maybe Tam has something better than iron for a pilot who keeps their word."
+      },
+      "side_tams_stash": {
+        "title": "Tam’s Stash",
+        "offer": "Years back I flew with a partner. We hid our best find where no pirate ever looks: follow the cold light first, then the dead ear. That is all the map I ever needed. Go and look, then come and tell old Tam what you saw.",
+        "stages": {
+          "1": "Follow the cold light: fly to the Azure Drift.",
+          "2": "Find the dead ear: fly to Listening Post Tau.",
+          "3": "Return to Old Tam at Drifter’s Rock."
+        },
+        "completion": "You found the pod? Still sealed? Ha! That is no treasure, pilot, that is my old partner in cold sleep — the best navigator who ever lived. Wake them gently. They fly with you now."
+      },
+      "contract_scrap_run": {
+        "title": "Contract: Scrap Run",
+        "offer": "The smelters never stop. Five asteroids and two shipwrecks, usual rate.",
+        "stages": {
+          "1": "Collect 5 asteroids and 2 shipwrecks, then report to Quartermaster Vess."
+        },
+        "completion": "Weighed and paid. Come back whenever you need the work."
+      },
+      "contract_search_and_rescue": {
+        "title": "Contract: Search and Rescue",
+        "offer": "There are always more pods than rescuers. Recover three and the Observatory covers your fuel — and then some.",
+        "stages": {
+          "1": "Recover 3 escape pods, then report to Professor Quill."
+        },
+        "completion": "Three more crews breathing station air. Thank you, pilot."
+      },
+      "contract_standing_bounty": {
+        "title": "Contract: Standing Bounty",
+        "offer": "Bastion pays for every hostile hull. Pirates, marauders, drones — I do not care which. Three kills, one bounty.",
+        "stages": {
+          "1": "Defeat 3 hostile ships of any kind, then report to Captain Halden."
+        },
+        "completion": "Confirmed, the bounty is transferred. The line holds because of pilots like you."
+      }
+    }
   }
 }

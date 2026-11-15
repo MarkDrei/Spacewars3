@@ -26,6 +26,28 @@ describe('serverTranslations', () => {
       expect(t('nonExistentKey_abc123')).toBe('nonExistentKey_abc123');
     });
 
+    it('getServerT_dottedKey_descendsIntoNestedObjects', async () => {
+      const { getServerT } = await import('@/lib/server/i18n/serverTranslations');
+      const t = await getServerT('en', 'quests');
+      expect(t('quest.c1_first_haul.title')).toBe('First Haul');
+      expect(t('contacts.vess.name')).toBe('Quartermaster Vess');
+    });
+
+    it('getServerT_dottedKeyPointingToAnObject_returnsKeyName', async () => {
+      const { getServerT } = await import('@/lib/server/i18n/serverTranslations');
+      const t = await getServerT('en', 'quests');
+      expect(t('quest.c1_first_haul')).toBe('quest.c1_first_haul');
+      expect(t('quest.c1_first_haul.title.deeper')).toBe('quest.c1_first_haul.title.deeper');
+    });
+
+    it('getServerT_parameterUsedTwice_replacesEveryOccurrence', async () => {
+      const { getServerT } = await import('@/lib/server/i18n/serverTranslations');
+      const t = await getServerT('en', 'quests');
+      expect(t('ui.contactWhere', { ship: 'ISV Ledger', location: 'Ironstrike Station', x: 1, y: 2 })).toBe(
+        'ISV Ledger, near Ironstrike Station (1, 2)'
+      );
+    });
+
     it('getServerT_withParams_interpolatesValues', async () => {
       const { getServerT } = await import('@/lib/server/i18n/serverTranslations');
       const t = await getServerT('en', 'messages');

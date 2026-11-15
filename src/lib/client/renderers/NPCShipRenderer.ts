@@ -1,10 +1,16 @@
 import { SpaceObject } from '@shared/types';
 import { SpaceObjectRendererBase } from './SpaceObjectRendererBase';
 import { getShipNameColor } from '@shared/utils/levelUtils';
-import { NPC_ORBIT_RADIUS, NPC_ORBIT_CENTER_X, NPC_ORBIT_CENTER_Y } from '@shared/npcOrbit';
+import { HOSTILE_ARCHETYPES } from '@/shared/quests/npcArchetypes';
 
 /** Hostile red color used for NPC fallback shape */
 const NPC_HOSTILE_COLOR = '#ff4444';
+
+/** Colour of friendly contacts (fallback shape and name label) */
+const NPC_FRIENDLY_COLOR = '#7fd6ff';
+
+/** Ring around aggressive ships: entering it triggers an attack */
+const AGGRO_RING_COLOR = 'rgba(255, 68, 68, 0.35)';
 
 /** Label font for NPC name display */
 const LABEL_FONT = '12px Arial';
@@ -22,11 +28,10 @@ const LABEL_TEXT_HEIGHT = 14;
 const LABEL_Y_OFFSET = 35;
 
 /**
- * Renderer for NPC ships ("Iron Horde Pirates").
+ * Renderer for NPC ships: hostile and aggressive ships (attackable) and friendly contacts.
  *
- * Loads images `npc1.png` … `npc4.png` based on the NPC's `picture_id`.
- * Performs client-side orbit interpolation between server polls so NPC
- * movement appears smooth.
+ * Loads images `npc1.png` … `npc4.png` based on the NPC's `picture_id`. The position on the
+ * orbit is projected before rendering (see `projectNpcShip`).
  */
 export class NPCShipRenderer extends SpaceObjectRendererBase {
     private npcImages: Map<number, HTMLImageElement> = new Map();
@@ -42,13 +47,7 @@ export class NPCShipRenderer extends SpaceObjectRendererBase {
 
     // ------- public API -------
 
-    /**
-     * Draw an NPC ship with client-side orbit interpolation.
-     *
-     * Before delegating to the base class renderer, we advance the NPC's
-     * orbit angle by the time elapsed since the server last computed the
-     * position and update x, y, and facing angle accordingly.
-     */
+    /** Draw an NPC ship at its (already projected) position. */
     public drawNpcShip(
         ctx: CanvasRenderingContext2D,
         centerX: number,
@@ -60,9 +59,6 @@ export class NPCShipRenderer extends SpaceObjectRendererBase {
     ): void {
         this.currentNpc = npc;
         this.playerLevel = playerLevel;
-
-        // --- Client-side orbit interpolation ---
-        this.interpolateOrbitPosition(npc);
 
         this.drawSpaceObject(ctx, centerX, centerY, viewportX, viewportY, npc);
         this.currentNpc = null;
@@ -82,7 +78,27 @@ export class NPCShipRenderer extends SpaceObjectRendererBase {
     }
 
     protected getFallbackColor(): string {
-        return NPC_HOSTILE_COLOR;
+        return this.currentNpc?.npcDisposition === 'friendly' ? NPC_FRIENDLY_COLOR : NPC_HOSTILE_COLOR;
+    }
+
+    /** The aggro ring stays visible while the ship itself is outside the view. */
+    protected override getVisibilityMargin(spaceObject: SpaceObject): number {
+        return Math.max(100, aggroRadiusOf(spaceObject) + 10);
+    }
+
+    /** Aggressive ships show the range within which they attack. */
+    protected override drawPreEffects(ctx: CanvasRenderingContext2D, spaceObject: SpaceObject): void {
+        const aggroRadius = aggroRadiusOf(spaceObject);
+        if (aggroRadius <= 0) return;
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(0, 0, aggroRadius, 0, Math.PI * 2);
+        ctx.setLineDash([10, 8]);
+        ctx.strokeStyle = AGGRO_RING_COLOR;
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        ctx.restore();
     }
 
     /**
@@ -103,7 +119,8 @@ export class NPCShipRenderer extends SpaceObjectRendererBase {
     }
 
     /**
-     * Draw the NPC name label below the ship with level-based coloring.
+     * Draw the NPC name label below the ship: friendly contacts in their own colour, all other
+     * ships coloured by level difference like player ships.
      */
     protected override drawPostEffects(ctx: CanvasRenderingContext2D, spaceObject: SpaceObject): void {
         if (!spaceObject.username) return;
@@ -113,9 +130,10 @@ export class NPCShipRenderer extends SpaceObjectRendererBase {
         // Counter-rotate so text is drawn horizontally
         ctx.rotate(-spaceObject.angle * (Math.PI / 180));
 
-        // Determine name color based on level difference (same as player ships)
-        const npcLevel = spaceObject.level ?? 1;
-        const nameColor = getShipNameColor(this.playerLevel, npcLevel);
+        const nameColor =
+            spaceObject.npcDisposition === 'friendly'
+                ? NPC_FRIENDLY_COLOR
+                : getShipNameColor(this.playerLevel, spaceObject.level ?? 1);
 
         ctx.font = LABEL_FONT;
         ctx.textAlign = 'center';
@@ -141,38 +159,6 @@ export class NPCShipRenderer extends SpaceObjectRendererBase {
     }
 
     // ------- private helpers -------
-
-    /**
-     * Advance the NPC's orbit position based on elapsed time since the
-     * server last computed the angle.
-     *
-     * The server sends `orbitAngleDeg` (the angle at `last_position_update_ms`)
-     * and `angularVelocityDegPerSec` (already multiplied by the time multiplier).
-     * We extrapolate forward to get smooth motion between polls.
-     *
-     * The server increases the angle over time (counter-clockwise in standard
-     * math coordinates), so the client must also add.
-     */
-    private interpolateOrbitPosition(npc: SpaceObject): void {
-        if (
-            npc.orbitAngleDeg === undefined ||
-            npc.angularVelocityDegPerSec === undefined ||
-            !npc.last_position_update_ms
-        ) {
-            return; // no orbit data — render at server position
-        }
-
-        const elapsedSec = (Date.now() - npc.last_position_update_ms) / 1000;
-        // Server adds deltaAngle to orbitAngleDeg, so client must also add
-        const currentAngleDeg = npc.orbitAngleDeg + npc.angularVelocityDegPerSec * elapsedSec;
-
-        const rad = (currentAngleDeg * Math.PI) / 180;
-        npc.x = NPC_ORBIT_CENTER_X + NPC_ORBIT_RADIUS * Math.cos(rad);
-        npc.y = NPC_ORBIT_CENTER_Y + NPC_ORBIT_RADIUS * Math.sin(rad);
-
-        // Facing direction = tangent to the circle (counter-clockwise motion)
-        npc.angle = currentAngleDeg + 90;
-    }
 
     /**
      * Load an NPC ship image by picture ID (1-4).
@@ -218,4 +204,10 @@ export class NPCShipRenderer extends SpaceObjectRendererBase {
 
         return null;
     }
+}
+
+/** Attack range of an aggressive NPC ship, 0 for all other ships. */
+function aggroRadiusOf(npc: SpaceObject): number {
+    if (npc.npcDisposition !== 'aggressive' || !npc.npcArchetype) return 0;
+    return HOSTILE_ARCHETYPES[npc.npcArchetype].aggroRadius;
 }

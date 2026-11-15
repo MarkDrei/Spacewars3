@@ -3,12 +3,14 @@
 // ---
 
 import { CommanderData } from './Commander';
+import type { CargoItemData } from '@/shared/inventoryShared';
 
 // ---------------------------------------------------------------------------
 // Item union type – extend here when new item types are added
 // ---------------------------------------------------------------------------
 
-export type InventoryItemData = CommanderData;
+export type { CargoItemData };
+export type InventoryItemData = CommanderData | CargoItemData;
 
 // ---------------------------------------------------------------------------
 // Slot coordinates
@@ -125,15 +127,14 @@ export function isValidBridgeSlot(slot: SlotCoordinate, maxSlots: number): boole
   );
 }
 
-/**
- * Returns true if the given item is allowed on the bridge.
- * Currently all items are bridge-compatible, but this will be extended in the future
- * when new item types that cannot be assigned to the bridge are introduced.
- */
-export function isBridgeCompatible(_item: InventoryItemData): boolean {
-  // parameter intentionally unused until new item types are added
-  void _item;
-  return true;
+/** Only commanders can be assigned to the bridge; mission cargo stays in the inventory. */
+export function isBridgeCompatible(item: InventoryItemData): boolean {
+  return item.itemType === 'commander';
+}
+
+/** Mission cargo belongs to a mission: the player can neither discard nor sell it. */
+export function isRemovableByPlayer(item: InventoryItemData): boolean {
+  return item.itemType !== 'cargo';
 }
 
 // ---------------------------------------------------------------------------

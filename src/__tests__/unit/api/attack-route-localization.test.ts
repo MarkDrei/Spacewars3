@@ -24,7 +24,15 @@ vi.mock('@/lib/server/user/userCache', () => ({
 }));
 
 vi.mock('@/lib/server/npc/NPCManager', () => ({
-  NPCManager: { getInstance: vi.fn() },
+  NPCManager: { getInstance: vi.fn(), isPresent: vi.fn().mockReturnValue(true) },
+}));
+
+vi.mock('@/lib/server/quests/QuestService', () => ({
+  QuestService: {
+    getInstance: () => ({
+      getState: vi.fn().mockResolvedValue({ quests: {}, counters: {}, achievements: {}, discovered: [], revision: 0 }),
+    }),
+  },
 }));
 
 vi.mock('@/lib/server/npc/npcCombat', () => ({

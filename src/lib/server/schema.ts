@@ -131,6 +131,13 @@ CREATE INDEX IF NOT EXISTS idx_user_events_user_id ON user_events (user_id);
 CREATE INDEX IF NOT EXISTS idx_user_events_type ON user_events (event_type);
 `;
 
+/** Mission progress, achievements and discoveries of a player (PlayerQuestState as JSON). */
+export const CREATE_QUEST_PROGRESS_TABLE = `
+CREATE TABLE IF NOT EXISTS quest_progress (
+  user_id INTEGER PRIMARY KEY REFERENCES users (id) ON DELETE CASCADE,
+  data JSONB NOT NULL
+)`;
+
 /**
  * Indexes for the per-player lookups that no primary key covers. Without them every such query
  * reads the whole table, and `messages` and `battles` grow with every played hour.
@@ -161,6 +168,7 @@ export const CREATE_TABLES = [
   CREATE_BATTLES_TABLE,
   CREATE_INVENTORIES_TABLE,
   CREATE_USER_EVENTS_TABLE,
+  CREATE_QUEST_PROGRESS_TABLE,
   ...LOOKUP_INDEXES.map(createLookupIndexStatement),
 ];
 
@@ -260,4 +268,4 @@ export const MIGRATE_ADD_PREFERRED_LOCALE = [
 ];
 
 // Optional: Version management for migrations
-export const SCHEMA_VERSION = 18;
+export const SCHEMA_VERSION = 19;

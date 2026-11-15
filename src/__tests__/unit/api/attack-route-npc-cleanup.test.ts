@@ -15,7 +15,15 @@ vi.mock('@/lib/server/user/userCache', () => ({
 }));
 
 vi.mock('@/lib/server/npc/NPCManager', () => ({
-  NPCManager: { getInstance: vi.fn() },
+  NPCManager: { getInstance: vi.fn(), isPresent: vi.fn().mockReturnValue(true) },
+}));
+
+vi.mock('@/lib/server/quests/QuestService', () => ({
+  QuestService: {
+    getInstance: () => ({
+      getState: vi.fn().mockResolvedValue({ quests: {}, counters: {}, achievements: {}, discovered: [], revision: 0 }),
+    }),
+  },
 }));
 
 vi.mock('@/lib/server/npc/npcCombat', () => ({
@@ -68,7 +76,7 @@ function makeUserCacheMock() {
 }
 
 function makeNpcManagerMock() {
-  const npc = { id: NPC_TARGET_ID, ownerId: ATTACKER_USER_ID, npcIndex: 0, level: 1, orbitAngleDeg: 0, defeated: false, defeatTime: null, npcUserCreated: false, inBattle: false, lastUpdateMs: Date.now() };
+  const npc = { id: NPC_TARGET_ID, ownerId: ATTACKER_USER_ID, archetype: 'pirate', level: 1, orbitAngleDeg: 0, defeated: false, defeatTime: null, npcUserCreated: false, inBattle: false, lastUpdateMs: Date.now() };
   const mockNpcManager = {
     getNpcById: vi.fn().mockReturnValue(npc),
     setInBattle: vi.fn(),
@@ -104,6 +112,17 @@ describe('attack route NPC cleanup', () => {
   it('attackRoute_npcOfAnotherPlayer_returns404WithoutTouchingNpc', async () => {
     const npc = makeNpcManagerMock();
     npc.ownerId = ATTACKER_USER_ID + 1;
+
+    const { status, body } = await postAttack();
+
+    expect(status).toBe(404);
+    expect(body.error).toBe('NPC not found');
+    expect(upsertNpcUser).not.toHaveBeenCalled();
+    expect(initiateBattle).not.toHaveBeenCalled();
+  });
+
+  it('attackRoute_questBoundNpcNotWantedByAMission_returns404WithoutTouchingNpc', async () => {
+    (NPCManager.isPresent as ReturnType<typeof vi.fn>).mockReturnValueOnce(false);
 
     const { status, body } = await postAttack();
 

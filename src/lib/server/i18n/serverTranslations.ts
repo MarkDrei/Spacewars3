@@ -25,6 +25,16 @@ async function getMessages(locale: string): Promise<Messages> {
   return cache[locale]!;
 }
 
+/** Resolves a key inside a namespace; dots descend into nested objects (`quest.c1_first_haul.title`). */
+function lookup(namespace: unknown, key: string): string | undefined {
+  let node: unknown = namespace;
+  for (const part of key.split('.')) {
+    if (node === null || typeof node !== 'object') return undefined;
+    node = (node as Record<string, unknown>)[part];
+  }
+  return typeof node === 'string' ? node : undefined;
+}
+
 /**
  * Returns a translation function `t(key, params?)` for the given locale and
  * namespace.  Unresolved keys fall back to English; if the key is still
@@ -40,11 +50,8 @@ export async function getServerT(
   const messages = await getMessages(locale);
   const fallback = await getMessages('en');
 
-  const ns = (messages[namespace] ?? fallback[namespace] ?? {}) as Record<string, string>;
-  const fallbackNs = (fallback[namespace] ?? {}) as Record<string, string>;
-
   return (key: string, params?: Record<string, string | number>): string => {
-    let msg: string = ns[key] ?? fallbackNs[key] ?? key;
+    let msg: string = lookup(messages[namespace], key) ?? lookup(fallback[namespace], key) ?? key;
 
     if (params) {
       for (const [k, v] of Object.entries(params)) {

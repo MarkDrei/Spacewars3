@@ -23,6 +23,8 @@ export type GameUiPreferences = {
   mobileTapInfoMode: boolean;
   teleportClickMode: boolean;
   attackClickMode: boolean;
+  /** Mission tracker on the map expanded (true) or reduced to its header. */
+  questTrackerOpen: boolean;
 };
 
 export const DEFAULT_GAME_UI_PREFERENCES: GameUiPreferences = {
@@ -34,6 +36,7 @@ export const DEFAULT_GAME_UI_PREFERENCES: GameUiPreferences = {
   mobileTapInfoMode: false,
   teleportClickMode: false,
   attackClickMode: false,
+  questTrackerOpen: true,
 };
 
 const parseStoredBoolean = (value: unknown) => (typeof value === 'boolean' ? value : undefined);
@@ -67,6 +70,7 @@ export const parseGameUiPreferences = (
     mobileTapInfoMode: parseStoredBoolean(stored?.mobileTapInfoMode) ?? defaults.mobileTapInfoMode,
     teleportClickMode: parseStoredBoolean(stored?.teleportClickMode) ?? defaults.teleportClickMode,
     attackClickMode: parseStoredBoolean(stored?.attackClickMode) ?? defaults.attackClickMode,
+    questTrackerOpen: parseStoredBoolean(stored?.questTrackerOpen) ?? defaults.questTrackerOpen,
   };
 };
 

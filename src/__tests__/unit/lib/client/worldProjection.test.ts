@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { projectWorldData } from '@/lib/client/game/worldProjection';
+import { projectNpcShip, projectWorldData } from '@/lib/client/game/worldProjection';
 import type { WorldData, SpaceObject } from '@shared/types/gameTypes';
 
 const T0 = 1_800_000_000_000;
@@ -13,6 +13,55 @@ const snapshot = (...objects: SpaceObject[]): WorldData => ({
   worldSize: { width: 5000, height: 5000 },
   spaceObjects: objects,
   currentTime: T0,
+});
+
+/** NPC ship at angle 0 of a circle with radius 100 around (1000, 1000). */
+const orbitingNpc = (angularVelocityDegPerSec: number): SpaceObject =>
+  object({
+    id: 2, type: 'npc_ship', x: 1100, y: 1000, speed: 0,
+    orbitAngleDeg: 0, angularVelocityDegPerSec, orbitCenterX: 1000, orbitCenterY: 1000, orbitRadius: 100,
+  });
+
+describe('projectNpcShip', () => {
+  it('projectNpcShip_counterClockwiseOrbit_advancesAngleAndHeadsAlongTheTangent', () => {
+    const projected = projectNpcShip(orbitingNpc(45), T0 + 2000, 1);
+
+    expect(projected.x).toBeCloseTo(1000);
+    expect(projected.y).toBeCloseTo(1100);
+    expect(projected.angle).toBeCloseTo(180);
+  });
+
+  it('projectNpcShip_clockwiseOrbit_movesTheOtherWayAndHeadsBackwardsAlongTheTangent', () => {
+    const projected = projectNpcShip(orbitingNpc(-45), T0 + 2000, 1);
+
+    expect(projected.x).toBeCloseTo(1000);
+    expect(projected.y).toBeCloseTo(900);
+    expect(projected.angle).toBeCloseTo(-180);
+  });
+
+  it('projectNpcShip_speed_isTangentialSpeedInShipSpeedUnits', () => {
+    // 90°/s on radius 100 = 157.08 world units per second; one speed unit = 50/60 units per second
+    const expectedSpeed = (Math.PI / 2) * 100 / (50 / 60);
+
+    expect(projectNpcShip(orbitingNpc(90), T0, 1).speed).toBeCloseTo(expectedSpeed, 5);
+    expect(projectNpcShip(orbitingNpc(-90), T0, 1).speed).toBeCloseTo(expectedSpeed, 5);
+  });
+
+  it('projectNpcShip_timeMultiplier_keepsSpeedUnitsComparableToOtherShips', () => {
+    // The angular velocity of the snapshot already contains the multiplier
+    const projected = projectNpcShip(orbitingNpc(900), T0, 10);
+
+    expect(projected.speed).toBeCloseTo((Math.PI / 2) * 100 / (50 / 60), 5);
+  });
+
+  it('projectNpcShip_keepsOrbitFieldsOfTheSnapshot', () => {
+    const npc = orbitingNpc(45);
+    const projected = projectNpcShip(npc, T0 + 2000, 1);
+
+    expect(projected.orbitAngleDeg).toBe(0);
+    expect(projected.last_position_update_ms).toBe(T0);
+    expect(npc.x).toBe(1100);
+  });
 });
 
 describe('projectWorldData', () => {
@@ -34,7 +83,14 @@ describe('projectWorldData', () => {
     expect(projected.spaceObjects[0].x).toBeCloseTo(600);
   });
 
-  it('projectWorldData_npcShip_keepsSnapshotTimestampForOrbitInterpolation', () => {
+  it('projectWorldData_npcShip_movesAlongItsOrbitInsteadOfItsHeading', () => {
+    const projected = projectWorldData(snapshot(orbitingNpc(90)), T0 + 1000, 1);
+
+    expect(projected.spaceObjects[0].x).toBeCloseTo(1000);
+    expect(projected.spaceObjects[0].y).toBeCloseTo(1100);
+  });
+
+  it('projectWorldData_npcShipWithoutOrbitData_staysUnchanged', () => {
     const npc = object({ id: 2, type: 'npc_ship' });
     const projected = projectWorldData(snapshot(npc), T0 + 5000, 1);
     expect(projected.spaceObjects[0]).toEqual(npc);

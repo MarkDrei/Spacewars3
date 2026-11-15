@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="Mission cargo">
+  <defs>
+    <linearGradient id="top" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffe082"/>
+      <stop offset="1" stop-color="#ffb300"/>
+    </linearGradient>
+    <linearGradient id="left" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#b9770e"/>
+      <stop offset="1" stop-color="#7a4d08"/>
+    </linearGradient>
+    <linearGradient id="right" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#d99a1c"/>
+      <stop offset="1" stop-color="#996309"/>
+    </linearGradient>
+  </defs>
+  <!-- Cargo crate, isometric -->
+  <polygon points="60,18 104,40 60,62 16,40" fill="url(#top)" stroke="#3b2503" stroke-width="2" stroke-linejoin="round"/>
+  <polygon points="16,40 60,62 60,106 16,84" fill="url(#left)" stroke="#3b2503" stroke-width="2" stroke-linejoin="round"/>
+  <polygon points="104,40 60,62 60,106 104,84" fill="url(#right)" stroke="#3b2503" stroke-width="2" stroke-linejoin="round"/>
+  <!-- Straps -->
+  <polygon points="35,27.5 45,22.5 89,44.5 79,49.5" fill="#3b2503" opacity="0.55"/>
+  <polygon points="79,52.5 89,47.5 89,91.5 79,96.5" fill="#3b2503" opacity="0.55"/>
+  <!-- Mission seal -->
+  <circle cx="38" cy="73" r="10" fill="#7fd6ff" stroke="#04202e" stroke-width="2"/>
+  <path d="M33 73l4 4 7-8" fill="none" stroke="#04202e" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

@@ -1,14 +1,18 @@
+import type { HostileArchetypeId, HostileSpawn } from '@/shared/quests/npcArchetypes';
+
 /**
- * NPC ship type — in-memory representation of an NPC orbiting a starbase.
+ * Hostile NPC ship — in-memory representation of an NPC orbiting its home location.
  * Not persisted to the database; regenerated on server restart.
  */
 export interface NpcShip {
-  /** Same as NPC user ID: NPC_USER_ID_OFFSET + ownerId * NPC_IDS_PER_USER + level */
+  /** Same as NPC user ID, see `npcUserId` */
   id: number;
   /** Player who sees this NPC */
   ownerId: number;
-  /** Index within the player's NPC set (0–3) */
-  npcIndex: number;
+  /** Kind of ship: name, behaviour, home, strength, rewards */
+  archetype: HostileArchetypeId;
+  /** Spawn definition: ID slot, start angle, picture, number of weapon types */
+  spawn: HostileSpawn;
   /** NPC combat level */
   level: number;
   /** Current orbit angle in degrees */

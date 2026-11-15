@@ -7,6 +7,12 @@ import { Starbase } from '../game/Starbase';
 import { World } from '../game/World';
 import { formatNumber } from '@/shared/numberFormat';
 import { CanvasStrings, defaultCanvasStrings } from '../game/canvasStrings';
+import { HAIL_RANGE } from '@/shared/quests/npcArchetypes';
+import { stationKeyForId } from '@/shared/starbases';
+
+const TITLE_FONT = '700 12px "Geist", "Arial", sans-serif';
+const TEXT_FONT = '400 10px "Geist", "Arial", sans-serif';
+const ACTION_FONT = '600 10px "Geist Mono", "Courier New", monospace';
 
 export class TooltipRenderer {
     private ctx: CanvasRenderingContext2D;
@@ -23,11 +29,17 @@ export class TooltipRenderer {
         this.canvasStrings = strings;
     }
 
+    /** Action hints are compared with the translated texts, so they work in every language. */
+    private isActionLine(line: string): boolean {
+        return line === this.canvasStrings.actionTapToDock || line === this.canvasStrings.actionTapToHail;
+    }
+
     private calculateDistanceToShip(object: SpaceObjectOld, ship: Ship): number {
         if (object === ship) return 0;
-        
-        const dx = object.getX() - ship.getX();
-        const dy = object.getY() - ship.getY();
+
+        // Shortest way in the wrapping world, as used by the server for all range checks
+        const dx = this.getClosestToroidalOffset(object.getX() - ship.getX(), World.WIDTH);
+        const dy = this.getClosestToroidalOffset(object.getY() - ship.getY(), World.HEIGHT);
         return Math.sqrt(dx * dx + dy * dy);
     }
 
@@ -77,7 +89,16 @@ export class TooltipRenderer {
         const paddingX = 14;
         const paddingY = 10;
         const lineHeight = 16;
-        const tooltipWidth = 160;
+        const fontFor = (index: number, line: string): string => {
+            if (index === 0) return TITLE_FONT;
+            return this.isActionLine(line) ? ACTION_FONT : TEXT_FONT;
+        };
+        // Wide enough for the longest line (names, translated action texts)
+        const tooltipWidth = tooltipText.reduce((width, line, index) => {
+            this.ctx.font = fontFor(index, line);
+            const text = index === 0 ? line.toUpperCase() : line;
+            return Math.max(width, Math.ceil(this.ctx.measureText(text).width) + paddingX * 2);
+        }, 160);
         const tooltipHeight = tooltipText.length * lineHeight + paddingY * 2 + 6;
         
         // Position tooltip to avoid going off-screen
@@ -120,17 +141,17 @@ export class TooltipRenderer {
         this.ctx.fillRect(tooltipX + tooltipWidth / 2 - 12, tooltipY, 24, 1.5);
         
         // Draw tooltip text
-        this.ctx.font = '500 11px "Geist", "Arial", sans-serif';
         this.ctx.textAlign = 'left';
         this.ctx.textBaseline = 'top';
         
         tooltipText.forEach((line, index) => {
             const isTitle = index === 0;
-            const isAction = line.startsWith('Action:');
+            const isAction = this.isActionLine(line);
+            const isWarning = line === this.canvasStrings.aggressiveShip;
 
             if (isTitle) {
                 this.ctx.fillStyle = '#4caf50'; // Green theme color for heading
-                this.ctx.font = '700 12px "Geist", "Arial", sans-serif';
+                this.ctx.font = TITLE_FONT;
                 this.ctx.fillText(
                     line.toUpperCase(), 
                     tooltipX + paddingX,
@@ -144,8 +165,8 @@ export class TooltipRenderer {
                 this.ctx.lineTo(tooltipX + tooltipWidth - paddingX, tooltipY + paddingY + lineHeight + 2);
                 this.ctx.stroke();
             } else {
-                this.ctx.fillStyle = isAction ? '#81c784' : 'rgba(232, 245, 233, 0.75)';
-                this.ctx.font = isAction ? '600 10px "Geist Mono", "Courier New", monospace' : '400 10px "Geist", "Arial", sans-serif';
+                this.ctx.fillStyle = isAction ? '#81c784' : isWarning ? '#ff8a80' : 'rgba(232, 245, 233, 0.75)';
+                this.ctx.font = fontFor(index, line);
                 
                 const yOffset = isTitle ? 0 : 6; // Extra padding after title
                 this.ctx.fillText(
@@ -178,10 +199,25 @@ export class TooltipRenderer {
         }
 
         if (object instanceof Starbase || objectType === 'starbase') {
+            const stationKey = stationKeyForId(object.getId());
+            const stationName = stationKey ? this.canvasStrings.locationNames[stationKey] : undefined;
             return [
                 this.canvasStrings.starbase,
+                ...(stationName ? [stationName] : []),
                 `${this.canvasStrings.distance}: ${formatNumber(distance)}`,
                 this.canvasStrings.actionTapToDock,
+            ];
+        }
+
+        const data = object.getServerData();
+        if (objectType === 'npc_ship' && data.npcDisposition === 'friendly') {
+            const contactName = data.contactId ? this.canvasStrings.contactNames[data.contactId] : undefined;
+            return [
+                this.canvasStrings.friendlyShip,
+                ...(contactName ? [contactName] : []),
+                ...(data.username ? [data.username] : []),
+                `${this.canvasStrings.distance}: ${formatNumber(distance)}`,
+                distance <= HAIL_RANGE ? this.canvasStrings.actionTapToHail : this.canvasStrings.hailTooFar,
             ];
         }
 
@@ -196,6 +232,12 @@ export class TooltipRenderer {
 
             if (typeof objectLevel === 'number') {
                 shipLines.splice(1, 0, `${this.canvasStrings.level}: ${formatNumber(objectLevel)}`);
+            }
+            if (objectType === 'npc_ship' && data.username) {
+                shipLines.splice(1, 0, data.username);
+            }
+            if (data.npcDisposition === 'aggressive') {
+                shipLines.push(this.canvasStrings.aggressiveShip);
             }
 
             return shipLines;

@@ -10,6 +10,7 @@ import { SpaceObjectOld } from './SpaceObject';
 import { collectionService } from '../services/collectionService';
 import { calculateToroidalDistance } from '@shared/physics';
 import { STARBASE_DOCK_RANGE } from '@/shared/starbases';
+import { HAIL_RANGE, type ContactId } from '@/shared/quests/npcArchetypes';
 import { debugState } from '../debug/debugState';
 import { InterceptionLineRenderer } from '../renderers/InterceptionLineRenderer';
 import { isAttackAllowed } from '@shared/utils/levelUtils';
@@ -45,6 +46,7 @@ export class Game {
   private selectedMobileObjectId?: number;
   private onTeleportClickCallback: ((x: number, y: number) => void) | null = null;
   private onStarbaseEntryCallback: ((starbaseId: number) => void) | null = null;
+  private onContactHailCallback: ((contactId: ContactId) => void) | null = null;
   private playerLevel: number = 1;
 
   constructor(canvas: HTMLCanvasElement) {
@@ -213,7 +215,15 @@ export class Game {
         { width: this.world.getWidth(), height: this.world.getHeight() }
       );
 
-      if (hoveredObject.getType() === 'player_ship' || hoveredObject.getType() === 'npc_ship') {
+      const { npcDisposition, contactId } = hoveredObject.getServerData();
+      if (npcDisposition === 'friendly') {
+        // Friendly contacts are never attacked: hail them in range, otherwise fly to them
+        if (contactId && distance <= HAIL_RANGE) {
+          this.onContactHailCallback?.(contactId);
+        } else {
+          void this.handleInterception(hoveredObject);
+        }
+      } else if (hoveredObject.getType() === 'player_ship' || hoveredObject.getType() === 'npc_ship') {
         if (this.attackClickMode && distance <= 100) {
           void this.handleAttack(hoveredObject);
         } else {
@@ -584,6 +594,11 @@ export class Game {
    */
   public setStarbaseEntryCallback(fn: (starbaseId: number) => void): void {
     this.onStarbaseEntryCallback = fn;
+  }
+
+  /** Called when the player taps a friendly contact ship within hail range. */
+  public setContactHailCallback(fn: (contactId: ContactId) => void): void {
+    this.onContactHailCallback = fn;
   }
 
   /**

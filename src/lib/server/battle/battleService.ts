@@ -32,6 +32,9 @@ import { getServerT } from '../i18n/serverTranslations';
 import { StatisticsCache } from '../statistics/StatisticsCache';
 import { isNpcId } from '../npc/npcConstants';
 import { NPCManager } from '../npc/NPCManager';
+import { QuestService } from '../quests/QuestService';
+import type { QuestEvent } from '@/shared/quests/questTypes';
+import { AMBUSH_GRACE_MS, hostileDisplayName } from '@/shared/quests/npcArchetypes';
 import { calculateNpcIronReward, removeNpcSpaceObject } from '../npc/npcCombat';
 
 /**
@@ -248,9 +251,10 @@ export async function initiateBattle<THeld extends IronLocks>(
   }
 
   // Validation: Check if target is one of the attacker's last 3 victims.
-  // NPCs are exempt: their IDs are reused across level-ups and they can always be attacked.
+  // NPCs are exempt: their IDs are reused across level-ups and they can always be attacked;
+  // an NPC that ambushes a player is not bound by the rule either.
   const battleCache = getBattleCache();
-  if (battleCache && !isNpcId(attackee.id)) {
+  if (battleCache && !isNpcId(attackee.id) && !isNpcId(attacker.id)) {
     const recentVictims = await battleCache.getRecentAttackees(attacker.id, 3);
     if (recentVictims.includes(attackee.id)) {
       throw new ApiError(400, 'You have attacked this player recently. Choose a different target.');
@@ -556,22 +560,21 @@ export async function resolveBattle(
   const winnerIsNpc = isNpcId(winnerId);
   const loserIsNpc = isNpcId(loserId);
   const npcInvolved = winnerIsNpc || loserIsNpc;
+  const npc = npcInvolved ? NPCManager.getInstance().getNpcById(loserIsNpc ? loserId : winnerId) : null;
+  const npcName = npc ? hostileDisplayName(npc.archetype, npc.level) : 'NPC';
 
   await context.useLockWithAcquire(USER_LOCK, async (userContext) => {
     // --- Iron transfer ---
     if (loserIsNpc) {
       // Player wins vs NPC: award fixed iron reward to player (not loser-to-winner transfer)
-      const npc = NPCManager.getInstance().getNpcById(loserId);
-      const npcLevel = npc?.level ?? 1;
-      const reward = calculateNpcIronReward(npcLevel);
+      const reward = calculateNpcIronReward(npc?.level ?? 1, npc?.archetype);
       const userWorldCache = UserCache.getInstance2();
       const winner = await userWorldCache.getUserByIdWithLock(userContext, winnerId);
-      const loser = userWorldCache.getUserByIdFromCache(userContext, loserId);
       if (winner) {
         const winnerBonuses = await userWorldCache.getBonusesByUserIdWithLock(userContext, winnerId);
         const added = winner.addIron(reward, winnerBonuses.ironStorageCapacity);
         await userWorldCache.updateUserInCache(userContext, winner);
-        ironResult = { amount: added, winnerName: winner.username, loserName: loser?.username ?? 'NPC' };
+        ironResult = { amount: added, winnerName: winner.username, loserName: npcName };
       }
     } else if (winnerIsNpc) {
       // NPC wins vs Player: the player loses all iron and it is destroyed.
@@ -650,12 +653,12 @@ export async function resolveBattle(
   // send victory/defeat messages to users (skip NPCs — they don't receive messages)
   try {
     if (!winnerIsNpc) {
-      const npcLabel = loserIsNpc ? 'an Iron Horde Pirate' : ironResult.loserName;
+      const enemy = loserIsNpc ? npcName : ironResult.loserName;
       const tWinner = await getServerT(winnerLocale, 'messages');
       await sendMessageToUser(
         context,
         winnerId,
-        tWinner('battleVictory', { iron: ironResult.amount, xp: xpAwarded, score: scoreAwarded, enemy: npcLabel })
+        tWinner('battleVictory', { iron: ironResult.amount, xp: xpAwarded, score: scoreAwarded, enemy })
       );
 
       // Send level-up notification if winner leveled up
@@ -669,17 +672,38 @@ export async function resolveBattle(
     }
 
     if (!loserIsNpc) {
-      const npcLabel = winnerIsNpc ? 'an Iron Horde Pirate' : ironResult.winnerName;
+      const enemy = winnerIsNpc ? npcName : ironResult.winnerName;
       const tLoser = await getServerT(loserLocale, 'messages');
       await sendMessageToUser(
         context,
         loserId,
-        tLoser('battleDefeat', { enemy: npcLabel, iron: ironResult.amount })
+        tLoser('battleDefeat', { enemy, iron: ironResult.amount })
       );
     }
   } catch (msgErr) {
     // logging only; don't abort resolution if message sending fails
     console.error('⚠️ Failed to send battle outcome messages:', msgErr);
+  }
+
+  // Missions and achievements of the winner; aggressive ships leave the player alone for a while
+  try {
+    if (npcInvolved) {
+      NPCManager.getInstance().setAmbushGrace(loserIsNpc ? winnerId : loserId, Date.now() + AMBUSH_GRACE_MS);
+    }
+    if (!winnerIsNpc) {
+      // A defeated NPC ship that the manager no longer knows counts for nothing (and is no PvP win)
+      const event: QuestEvent | null = !loserIsNpc
+        ? { type: 'pvp_won' }
+        : npc
+          ? { type: 'npc_defeated', archetype: npc.archetype }
+          : null;
+      if (event) {
+        await QuestService.getInstance().recordEvent(context, winnerId, event);
+      }
+    }
+  } catch (questErr) {
+    // logging only; the battle is resolved
+    console.error('⚠️ Failed to record battle outcome for missions:', questErr);
   }
 
   // Emit statistics events (fire-and-forget, skip for NPC participants)

@@ -13,6 +13,7 @@ import { Commander } from '@/lib/server/inventory/Commander';
 import { InventoryService, InventoryFullError } from '@/lib/server/inventory/InventoryService';
 import { getResearchEffectFromTree, ResearchType } from '@/lib/server/techs/techtree';
 import { StatisticsCache } from '@/lib/server/statistics/StatisticsCache';
+import { QuestService } from '@/lib/server/quests/QuestService';
 
 /** Maximum toroidal distance (world units) between ship and object for a harvest. */
 const HARVEST_RANGE = 125;
@@ -157,6 +158,16 @@ export async function POST(request: NextRequest) {
     sendMessageToUser(createLockContext(), userId, notification).catch((error: Error) => {
       console.error('❌ Failed to send collection notification:', error);
     });
+
+    // Missions and achievements; the collection itself is done and must not fail on them
+    try {
+      await QuestService.getInstance().recordEvent(createLockContext(), userId, {
+        type: 'object_collected',
+        objectType: result.objectType,
+      });
+    } catch (questErr) {
+      console.error('❌ Failed to record collection for missions:', questErr);
+    }
 
     try {
       void StatisticsCache.getInstance().recordEvent(userId, 'item_collected', {

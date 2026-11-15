@@ -48,9 +48,13 @@ export const useWorldData = (pollInterval: number = 3000): UseWorldDataReturn =>
         
         // Apply time correction to server data to account for network latency and clock drift
         // This ensures the positions are accurate for the current moment.
-        // NPC ships are excluded — they use renderer-side orbit interpolation.
+        // NPC ships move on an orbit that is projected per frame (projectNpcShip); their orbit angle
+        // is the one at the server's "now", which is translated to the client clock here.
         const allObjects = result.data.data.spaceObjects;
-        const npcObjects = allObjects.filter(obj => obj.type === 'npc_ship');
+        const serverNowOnClientClock = result.data.responseReceivedAt - result.data.roundTripTime / 2;
+        const npcObjects = allObjects
+          .filter(obj => obj.type === 'npc_ship')
+          .map(obj => ({ ...obj, last_position_update_ms: serverNowOnClientClock }));
         const nonNpcObjects = allObjects.filter(obj => obj.type !== 'npc_ship');
         const correctedNonNpc = updateAllObjectPositionsWithTimeCorrection(
           nonNpcObjects,

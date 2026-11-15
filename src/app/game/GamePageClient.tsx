@@ -20,6 +20,11 @@ import { useGameUiPreferences, updateGameUiPreferences } from '@/lib/client/hook
 import { useMediaQuery } from '@/lib/client/hooks/useMediaQuery';
 import { CanvasStrings, defaultCanvasStrings } from '@/lib/client/game/canvasStrings';
 import { startVisibilityAwarePolling } from '@/lib/client/polling/visibilityPolling';
+import { useQuests } from '@/lib/client/hooks/useQuests';
+import { contactsInHailRange } from '@/lib/client/game/contactsInRange';
+import QuestTracker from '@/components/QuestTracker/QuestTracker';
+import { CONTACTS, type ContactId } from '@/shared/quests/npcArchetypes';
+import { LOCATIONS } from '@/shared/quests/locations';
 
 const AFTERBURNER_ACTIVE_POLL_MS = 1000;
 const AFTERBURNER_REFUEL_POLL_MS = 10_000;
@@ -42,6 +47,9 @@ const setAfterburnerOpen = (afterburnerOpen: boolean) => updateGameUiPreferences
 const setMobileTapInfoMode = (mobileTapInfoMode: boolean) => updateGameUiPreferences({ mobileTapInfoMode });
 const setTeleportClickMode = (teleportClickMode: boolean) => updateGameUiPreferences({ teleportClickMode });
 const setAttackClickMode = (attackClickMode: boolean) => updateGameUiPreferences({ attackClickMode });
+const setQuestTrackerOpen = (questTrackerOpen: boolean) => updateGameUiPreferences({ questTrackerOpen });
+/** Time the ambush announcement stays on the map before the battle view opens. */
+const AMBUSH_REDIRECT_DELAY_MS = 2000;
 
 const clampSpeedValue = (value: number, speedLimit: number) => {
   if (Number.isNaN(value)) {
@@ -95,6 +103,7 @@ const speedToSliderPosition = (speed: number, speedLimit: number) => {
 const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
   const router = useRouter();
   const t = useTranslations('game');
+  const tQuests = useTranslations('quests');
   const gameInitializedRef = useRef(false);
   const gameInstanceRef = useRef<Game | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -129,11 +138,14 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
   const [playerLevel, setPlayerLevel] = useState(1);
   // UI preferences live in localStorage (external store); available once the client has hydrated
   const { preferences: uiPreferences, isHydrated: uiPreferencesLoaded } = useGameUiPreferences();
-  const { zoom, navOpen, teleportOpen, afterburnerOpen, teleportClickMode, attackClickMode, debugDrawingsEnabled } = uiPreferences;
+  const { zoom, navOpen, teleportOpen, afterburnerOpen, teleportClickMode, attackClickMode, debugDrawingsEnabled, questTrackerOpen } = uiPreferences;
   // Tap-info mode only applies on mobile layouts; the stored preference is kept for mobile use
   const mobileTapInfoMode = isMobileMode && uiPreferences.mobileTapInfoMode;
   // Auth is guaranteed by server, so pass true and use auth.shipId
   const { worldData, isLoading, error, refetch, lastUpdateTime } = useWorldData(3000);
+  // Missions for the tracker; reloaded whenever the world poll reports a change
+  const { overview: questOverview } = useQuests({ revision: worldData?.questRevision });
+  const contactsInRange = useMemo(() => contactsInHailRange(worldData, auth.shipId), [worldData, auth.shipId]);
   const currentSpeedLimit = afterburnerStatus?.isActive && afterburnerStatus.boostedSpeed > 0 ? afterburnerStatus.boostedSpeed : maxSpeed;
   const currentSpeedValue = parseFloat(speedInput) || 0;
   const speedSliderPosition = speedToSliderPosition(currentSpeedValue, currentSpeedLimit);
@@ -160,10 +172,16 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
       angle: extractLabel('tooltipAngle'),
       distance: extractLabel('tooltipDistance'),
       level: extractLabel('tooltipLevel'),
+      friendlyShip: t('tooltipFriendlyShip'),
       actionTapToDock: t('tooltipActionDock'),
+      actionTapToHail: t('tooltipActionHail'),
+      hailTooFar: t('tooltipHailTooFar'),
+      aggressiveShip: t('tooltipAggressiveShip'),
       levelTooFarToAttack: t('announcementLevelTooFarToAttack'),
+      contactNames: Object.fromEntries(CONTACTS.map(contact => [contact.id, tQuests(`contacts.${contact.id}.name`)])),
+      locationNames: Object.fromEntries(LOCATIONS.map(location => [location.id, tQuests(`locations.${location.id}.name`)])),
     };
-  }, [t]);
+  }, [t, tQuests]);
 
   // Prevent page scrolling while on the game page
   useEffect(() => {
@@ -323,6 +341,23 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
     router.push('/starbase');
   }, [router]);
 
+  // Opens the mission log; with a contact, their conversation is shown first
+  const openMissions = useCallback((contactId?: ContactId) => {
+    router.push(contactId ? `/missions?contact=${contactId}` : '/missions');
+  }, [router]);
+
+  // An aggressive NPC ship opened fire: tell the player, then show the battle (home page)
+  const ambushEnemy = worldData?.ambush?.enemyName;
+  useEffect(() => {
+    if (!ambushEnemy) return;
+    const redirectTimer = setTimeout(() => router.push('/'), AMBUSH_REDIRECT_DELAY_MS);
+    return () => clearTimeout(redirectTimer);
+  }, [ambushEnemy, router]);
+  // The ambush warning takes precedence over any other announcement
+  const visibleAnnouncement = ambushEnemy
+    ? { text: t('announcementAmbushed', { enemy: ambushEnemy }), key: 'ambush', variant: 'orange' as const }
+    : announcement;
+
   // Memoize canvas teleport callback - called from Game when click-to-teleport mode is active
   const handleCanvasTeleport = useCallback(async (worldX: number, worldY: number) => {
     setTeleportClickMode(false);
@@ -449,8 +484,10 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
       gameInstanceRef.current.setTeleportClickCallback?.(handleCanvasTeleport);
       // Set the starbase entry callback to redirect to starbase page
       gameInstanceRef.current.setStarbaseEntryCallback(handleStarbaseEntry);
+      // Set the hail callback to open the conversation with a mission contact
+      gameInstanceRef.current.setContactHailCallback(openMissions);
     }
-  }, [worldData, auth.shipId, refetch, handleAttackSuccess, handleAttackFailed, handleHarvestResult, handleCanvasTeleport, handleStarbaseEntry]);
+  }, [worldData, auth.shipId, refetch, handleAttackSuccess, handleAttackFailed, handleHarvestResult, handleCanvasTeleport, handleStarbaseEntry, openMissions]);
 
   // Initialize input fields with current ship state only once when game starts
   useEffect(() => {
@@ -805,10 +842,18 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
             </div>
           )}
 
+          <QuestTracker
+            overview={questOverview}
+            contactsInRange={contactsInRange}
+            open={questTrackerOpen}
+            onToggle={() => setQuestTrackerOpen(!questTrackerOpen)}
+            onOpenMissions={openMissions}
+          />
+
           {/* Announcement overlay — fades out after display */}
-          {announcement && (
-            <div key={announcement.key} className={`announcement-overlay${announcement.variant ? ` announcement-overlay--${announcement.variant}` : ''}`}>
-              {announcement.text}
+          {visibleAnnouncement && (
+            <div key={visibleAnnouncement.key} className={`announcement-overlay${visibleAnnouncement.variant ? ` announcement-overlay--${visibleAnnouncement.variant}` : ''}`}>
+              {visibleAnnouncement.text}
             </div>
           )}
 

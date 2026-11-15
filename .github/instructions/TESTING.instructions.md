@@ -104,7 +104,7 @@ The `unit` and `integration` projects run with `isolate: false` (modules, single
 - Unit tests run `vi.resetModules()` per file (`setup.unit.ts`), so `vi.mock()` keeps working without isolation.
 - Use a fixed clock (`const NOW = ...` or `vi.setSystemTime`) instead of comparing two `Date.now()` calls.
 
-If integration tests start failing on seed data (iron, positions, tech levels of users `a`/`dummy`), the test database was polluted. Empty it with `TRUNCATE space_objects, users, messages, battles, inventories, user_events RESTART IDENTITY CASCADE` on `spacewars_test` (e.g. `docker compose exec db psql -U spacewars -d spacewars_test -c "..."`); the next run reseeds it.
+If integration tests start failing on seed data (iron, positions, tech levels of users `a`/`dummy`), the test database was polluted. Empty it with `TRUNCATE space_objects, users, messages, battles, inventories, user_events, quest_progress RESTART IDENTITY CASCADE` on `spacewars_test` (e.g. `docker compose exec db psql -U spacewars -d spacewars_test -c "..."`); the next run reseeds it.
 
 ## Integration Test Bootstrapping
 

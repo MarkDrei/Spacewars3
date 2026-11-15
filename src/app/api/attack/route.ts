@@ -16,6 +16,8 @@ import { isNpcId } from '@/lib/server/npc/npcConstants';
 import { NPCManager } from '@/lib/server/npc/NPCManager';
 import { upsertNpcUser, removeNpcSpaceObject, rollbackNpcBattlePreparation } from '@/lib/server/npc/npcCombat';
 import { getServerT } from '@/lib/server/i18n/serverTranslations';
+import { QuestService } from '@/lib/server/quests/QuestService';
+import { getWantedArchetypes } from '@/shared/quests/questEngine';
 
 // Force dynamic rendering for this route
 export const dynamic = 'force-dynamic';
@@ -55,6 +57,10 @@ export async function POST(request: NextRequest) {
     
     const context = createLockContext();
     const userWorldCache = UserCache.getInstance2();
+    // Quest-bound NPC ships exist only while a mission asks for them
+    const wantedArchetypes = targetIsNpc
+      ? getWantedArchetypes(await QuestService.getInstance().getState(context, session.userId!))
+      : [];
 
     return await context.useLockWithAcquire(BATTLE_LOCK, async (battleContext) => {
       return await battleContext.useLockWithAcquire(USER_LOCK, async (userContext) => {
@@ -77,8 +83,9 @@ export async function POST(request: NextRequest) {
             if (npc.inBattle) {
               throw new ApiError(400, t('announcementAttackNpcInBattle'));
             }
-
-
+            if (!NPCManager.isPresent(npc, wantedArchetypes)) {
+              throw new ApiError(404, 'NPC not found');
+            }
 
             // Upsert NPC user (idempotent — creates DB row & cache entry with randomised stats)
             npcUpsertResult = await upsertNpcUser(npc, userContext);

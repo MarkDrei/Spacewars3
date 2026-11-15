@@ -116,7 +116,7 @@ describe('InventoryService – Bridge', () => {
       const grid = await service.getBridge(USER_ID, MAX_BRIDGE_SLOTS_2);
 
       expect(grid[0][2]).not.toBeNull();
-      expect(grid[0][2]!.name).toBe('Zara');
+      expect(grid[0][2]).toMatchObject({ name: 'Zara' });
       expect(repo.saveBridge).not.toHaveBeenCalled();
     });
 
@@ -130,7 +130,7 @@ describe('InventoryService – Bridge', () => {
       const grid = await service.getBridge(USER_ID, MAX_BRIDGE_SLOTS_2);
 
       expect(grid).toHaveLength(2);
-      expect(grid[0][0]?.name).toBe('Old');
+      expect(grid[0][0]).toMatchObject({ name: 'Old' });
       expect(grid[1][0]).toBeNull();
       expect(repo.saveBridge).toHaveBeenCalledOnce();
     });

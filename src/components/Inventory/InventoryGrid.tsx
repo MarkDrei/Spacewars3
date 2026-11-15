@@ -2,7 +2,8 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
-import { InventoryGrid as InventoryGridType, InventorySlot, SlotCoordinate, INVENTORY_COLS, DEFAULT_INVENTORY_SLOTS } from '@/shared/inventoryShared';
+import { useTranslations } from 'next-intl';
+import { InventoryGrid as InventoryGridType, InventoryItemData, InventorySlot, SlotCoordinate, INVENTORY_COLS, DEFAULT_INVENTORY_SLOTS } from '@/shared/inventoryShared';
 
 const GRID_GAP_PX = 3;
 const MAX_SLOT_SIZE_PX = 130;
@@ -57,6 +58,7 @@ const InventoryGridComponent: React.FC<InventoryGridProps> = ({
   resolveOriginalCoord,
   fallbackCols: fallbackColsProp,
 }) => {
+  const tQuests = useTranslations('quests');
   const cols = colsProp ?? INVENTORY_COLS;
   const fallbackCols = Math.max(1, Math.min(fallbackColsProp ?? cols, cols));
   const [dragSource, setDragSource] = useState<SlotCoordinate | null>(null);
@@ -215,6 +217,10 @@ const InventoryGridComponent: React.FC<InventoryGridProps> = ({
     onSelectSlot({ row, col });
   };
 
+  /** Name of an item: the commander's name, or the name of the mission cargo. */
+  const itemLabel = (item: InventoryItemData): string =>
+    item.itemType === 'commander' ? item.name : tQuests(`cargo.${item.cargoId}.name`);
+
   const getSlotClassName = (row: number, col: number): string => {
     const classes = ['inv-slot'];
     const item = grid[row]?.[col];
@@ -245,28 +251,36 @@ const InventoryGridComponent: React.FC<InventoryGridProps> = ({
             onDragLeave={handleDragLeave}
             onDrop={(e) => handleDrop(e, row, col)}
             onDragEnd={handleDragEnd}
-            title={item ? (item.itemType === 'commander' ? item.name : item.itemType) : ''}
+            title={item ? itemLabel(item) : ''}
           >
             {item !== null ? (
-              <Image
-                src={
-                  item.itemType === 'commander'
-                    ? `/assets/images/inventory/commander${item.imageId}.png`
-                    : `/assets/images/inventory/${item.itemType}.png`
-                }
-                alt={item.itemType === 'commander' ? item.name : item.itemType}
-                width={120}
-                height={120}
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  maxWidth: '120px',
-                  maxHeight: '120px',
-                  objectFit: 'contain',
-                  pointerEvents: 'none',
-                }}
-                unoptimized
-              />
+              <>
+                <Image
+                  src={
+                    item.itemType === 'commander'
+                      ? `/assets/images/inventory/commander${item.imageId}.png`
+                      : '/assets/images/inventory/cargo.svg'
+                  }
+                  alt={itemLabel(item)}
+                  width={120}
+                  height={120}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    maxWidth: '120px',
+                    maxHeight: '120px',
+                    objectFit: 'contain',
+                    pointerEvents: 'none',
+                  }}
+                  unoptimized
+                />
+                {item.itemType === 'cargo' && (
+                  <>
+                    <span className="inv-slot__label">{itemLabel(item)}</span>
+                    <span className="inv-slot__quantity">×{item.quantity}</span>
+                  </>
+                )}
+              </>
             ) : (
               <Image
                 src="/assets/images/inventory/empty.png"

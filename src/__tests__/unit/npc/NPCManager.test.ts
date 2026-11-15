@@ -1,19 +1,18 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { NPCManager } from '@/lib/server/npc/NPCManager';
 import {
-  NPC_USER_ID_OFFSET,
+  NPC_IDS_PER_SLOT,
   NPC_IDS_PER_USER,
-  NPC_COUNT,
-  ORBIT_RADIUS,
-  STARBASE_X,
-  STARBASE_Y,
-  BASE_ANGULAR_VELOCITY_DEG_PER_SEC,
-  NPC_START_ANGLES,
-  npcUserId,
+  NPC_MAX_LEVEL,
+  NPC_USER_ID_OFFSET,
   isNpcId,
+  npcUserId,
   parseNpcId,
 } from '@/lib/server/npc/npcConstants';
+import type { NpcShip } from '@/lib/server/npc/npcTypes';
 import { TimeMultiplierService } from '@/lib/server/timeMultiplier';
+import { AMBUSH_GRACE_MS, HOSTILE_ARCHETYPES, type HostileArchetypeId } from '@/shared/quests/npcArchetypes';
+import { getLocation } from '@/shared/quests/locations';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -24,13 +23,30 @@ function freezeTime(ms: number): void {
   vi.spyOn(Date, 'now').mockReturnValue(ms);
 }
 
+/** Start of a fixed day (UTC), so the tests do not depend on the wall clock. */
+const MIDNIGHT = Date.UTC(2026, 0, 15);
+const HOUR = 3_600_000;
+const MINUTE = 60_000;
+
+const PIRATE = HOSTILE_ARCHETYPES.pirate;
+const MARAUDER = HOSTILE_ARCHETYPES.marauder;
+const DRONE = HOSTILE_ARCHETYPES.drone;
+const WARLORD = HOSTILE_ARCHETYPES.warlord;
+
+/** Ships that are in the world without a mission asking for them. */
+const FREE_SHIP_COUNT = PIRATE.spawns.length + MARAUDER.spawns.length + DRONE.spawns.length;
+
+function ofArchetype(npcs: readonly NpcShip[], archetype: HostileArchetypeId): NpcShip[] {
+  return npcs.filter((npc) => npc.archetype === archetype);
+}
+
 // ---------------------------------------------------------------------------
 // Tests for npcConstants utility functions
 // ---------------------------------------------------------------------------
 
 describe('npcConstants helpers', () => {
   describe('npcUserId', () => {
-    it('npcUserId_zeroOwnerIndex0_returnsOffset', () => {
+    it('npcUserId_zeroOwnerLevel0_returnsOffset', () => {
       expect(npcUserId(0, 0)).toBe(NPC_USER_ID_OFFSET);
     });
 
@@ -42,8 +58,12 @@ describe('npcConstants helpers', () => {
       expect(npcUserId(1, 3)).toBe(NPC_USER_ID_OFFSET + NPC_IDS_PER_USER + 3);
     });
 
-    it('npcUserId_largeOwner_staysInRange', () => {
-      const id = npcUserId(999_999, 999);
+    it('npcUserId_withSlot_addsSlotBlock', () => {
+      expect(npcUserId(1, 3, 4)).toBe(NPC_USER_ID_OFFSET + NPC_IDS_PER_USER + 4 * NPC_IDS_PER_SLOT + 3);
+    });
+
+    it('npcUserId_largeOwnerHighestSlotAndLevel_staysInRange', () => {
+      const id = npcUserId(999_999, NPC_MAX_LEVEL, 9);
       expect(id).toBeLessThan(2_000_000_000);
       expect(id).toBeGreaterThanOrEqual(NPC_USER_ID_OFFSET);
     });
@@ -72,9 +92,12 @@ describe('npcConstants helpers', () => {
   });
 
   describe('parseNpcId', () => {
-    it('parseNpcId_validId_returnsOwnerAndLevel', () => {
-      const id = npcUserId(7, 2);
-      expect(parseNpcId(id)).toEqual({ ownerId: 7, npcLevel: 2 });
+    it('parseNpcId_slotZero_returnsOwnerSlotAndLevel', () => {
+      expect(parseNpcId(npcUserId(7, 2))).toEqual({ ownerId: 7, slot: 0, npcLevel: 2 });
+    });
+
+    it('parseNpcId_otherSlot_returnsOwnerSlotAndLevel', () => {
+      expect(parseNpcId(npcUserId(7, 12, 6))).toEqual({ ownerId: 7, slot: 6, npcLevel: 12 });
     });
 
     it('parseNpcId_nonNpcId_returnsNull', () => {
@@ -123,46 +146,69 @@ describe('NPCManager', () => {
   // ---------- getNpcsForPlayer ----------
 
   describe('getNpcsForPlayer', () => {
-    it('getNpcsForPlayer_firstCall_generates4Npcs', () => {
-      freezeTime(1_000_000);
-      const mgr = NPCManager.getInstance();
-      const npcs = mgr.getNpcsForPlayer(1, 5);
+    it('getNpcsForPlayer_firstCall_generatesAllFreeArchetypes', () => {
+      freezeTime(MIDNIGHT);
+      const npcs = NPCManager.getInstance().getNpcsForPlayer(1, 5);
 
-      expect(npcs).toHaveLength(NPC_COUNT);
+      expect(npcs).toHaveLength(FREE_SHIP_COUNT);
+      expect(ofArchetype(npcs, 'pirate')).toHaveLength(4);
+      expect(ofArchetype(npcs, 'marauder')).toHaveLength(3);
+      expect(ofArchetype(npcs, 'drone')).toHaveLength(2);
     });
 
-    it('getNpcsForPlayer_firstCall_npcLevelsMatchPlayerLevelPlusIndex', () => {
-      freezeTime(1_000_000);
-      const mgr = NPCManager.getInstance();
-      const npcs = mgr.getNpcsForPlayer(1, 5);
+    it('getNpcsForPlayer_firstCall_levelsFollowPlayerLevelAndSpawnOffset', () => {
+      freezeTime(MIDNIGHT);
+      const npcs = NPCManager.getInstance().getNpcsForPlayer(1, 5);
 
-      expect(npcs.map((n) => n.level)).toEqual([5, 6, 7, 8]);
+      expect(ofArchetype(npcs, 'pirate').map((n) => n.level)).toEqual([5, 6, 7, 8]);
+      expect(ofArchetype(npcs, 'marauder').map((n) => n.level)).toEqual([4, 5, 6]);
+      expect(ofArchetype(npcs, 'drone').map((n) => n.level)).toEqual([4, 5]);
     });
 
-    it('getNpcsForPlayer_firstCall_npcsHaveCorrectOwnerAndIds', () => {
-      freezeTime(1_000_000);
-      const mgr = NPCManager.getInstance();
-      const npcs = mgr.getNpcsForPlayer(42, 1);
+    it('getNpcsForPlayer_levelOnePlayer_npcLevelIsAtLeastOne', () => {
+      freezeTime(MIDNIGHT);
+      const npcs = NPCManager.getInstance().getNpcsForPlayer(1, 1);
 
-      for (let i = 0; i < NPC_COUNT; i++) {
-        expect(npcs[i].ownerId).toBe(42);
-        expect(npcs[i].npcIndex).toBe(i);
-        expect(npcs[i].id).toBe(npcUserId(42, 1 + i)); // playerLevel=1, so level = 1+i
+      expect(ofArchetype(npcs, 'marauder').map((n) => n.level)).toEqual([1, 1, 2]);
+      expect(ofArchetype(npcs, 'drone').map((n) => n.level)).toEqual([1, 1]);
+    });
+
+    it('getNpcsForPlayer_firstCall_npcsHaveOwnerAndUniqueIdsFromSlotAndLevel', () => {
+      freezeTime(MIDNIGHT);
+      const npcs = NPCManager.getInstance().getNpcsForPlayer(42, 1);
+
+      for (const npc of npcs) {
+        expect(npc.ownerId).toBe(42);
+        expect(npc.id).toBe(npcUserId(42, npc.level, npc.spawn.slot));
       }
+      expect(new Set(npcs.map((n) => n.id)).size).toBe(npcs.length);
     });
 
-    it('getNpcsForPlayer_firstCall_npcsStartAtQuadrantAngles', () => {
-      freezeTime(1_000_000);
-      const mgr = NPCManager.getInstance();
-      const npcs = mgr.getNpcsForPlayer(1, 1);
+    it('getNpcsForPlayer_levelAtCap_spawnsOfOneSlotCollapse', () => {
+      freezeTime(MIDNIGHT);
+      const npcs = NPCManager.getInstance().getNpcsForPlayer(1, NPC_MAX_LEVEL);
 
-      expect(npcs.map((n) => n.orbitAngleDeg)).toEqual([...NPC_START_ANGLES]);
+      // The four pirates share slot 0; all would be level 99, so only one ID remains
+      expect(ofArchetype(npcs, 'pirate')).toHaveLength(1);
+      expect(new Set(npcs.map((n) => n.id)).size).toBe(npcs.length);
+      expect(Math.max(...npcs.map((n) => n.level))).toBe(NPC_MAX_LEVEL);
+    });
+
+    it('getNpcsForPlayer_firstCall_npcsStartAtSpawnAngles', () => {
+      freezeTime(MIDNIGHT);
+      const npcs = NPCManager.getInstance().getNpcsForPlayer(1, 1);
+
+      expect(ofArchetype(npcs, 'pirate').map((n) => n.orbitAngleDeg)).toEqual(
+        PIRATE.spawns.map((spawn) => spawn.startAngleDeg),
+      );
+      expect(ofArchetype(npcs, 'marauder').map((n) => n.orbitAngleDeg)).toEqual(
+        MARAUDER.spawns.map((spawn) => spawn.startAngleDeg),
+      );
     });
 
     it('getNpcsForPlayer_firstCall_npcsAreNotDefeated', () => {
-      freezeTime(1_000_000);
-      const mgr = NPCManager.getInstance();
-      const npcs = mgr.getNpcsForPlayer(1, 1);
+      freezeTime(MIDNIGHT);
+      const npcs = NPCManager.getInstance().getNpcsForPlayer(1, 1);
 
       for (const npc of npcs) {
         expect(npc.defeated).toBe(false);
@@ -173,55 +219,43 @@ describe('NPCManager', () => {
     });
 
     it('getNpcsForPlayer_defeatedNpc_excludedFromResult', () => {
-      freezeTime(1_000_000);
+      freezeTime(MIDNIGHT);
       const mgr = NPCManager.getInstance();
-
-      // First call generates NPCs
       const npcs = mgr.getNpcsForPlayer(1, 1);
-      expect(npcs).toHaveLength(4);
 
-      // Defeat one NPC
       mgr.markDefeated(npcs[0].id);
 
-      // Fetch again — only 3 returned
       const npcs2 = mgr.getNpcsForPlayer(1, 1);
-      expect(npcs2).toHaveLength(3);
+      expect(npcs2).toHaveLength(FREE_SHIP_COUNT - 1);
       expect(npcs2.find((n) => n.id === npcs[0].id)).toBeUndefined();
     });
 
     it('getNpcsForPlayer_inBattleNpc_excludedFromResult', () => {
-      freezeTime(1_000_000);
+      freezeTime(MIDNIGHT);
       const mgr = NPCManager.getInstance();
-
-      // First call generates NPCs
       const npcs = mgr.getNpcsForPlayer(1, 1);
-      expect(npcs).toHaveLength(4);
 
-      // Mark one NPC as in battle
       mgr.setInBattle(npcs[1].id, true);
 
-      // Fetch again — only 3 returned (in-battle NPC excluded)
       const npcs2 = mgr.getNpcsForPlayer(1, 1);
-      expect(npcs2).toHaveLength(3);
+      expect(npcs2).toHaveLength(FREE_SHIP_COUNT - 1);
       expect(npcs2.find((n) => n.id === npcs[1].id)).toBeUndefined();
     });
 
     it('getNpcsForPlayer_inBattleClearedNpc_includedInResult', () => {
-      freezeTime(1_000_000);
+      freezeTime(MIDNIGHT);
       const mgr = NPCManager.getInstance();
-
       mgr.getNpcsForPlayer(1, 1);
 
-      // Mark NPC as in battle then clear
-      mgr.setInBattle(npcUserId(1, 2), true); // player level=1, level=2 = index 1
-      expect(mgr.getNpcsForPlayer(1, 1)).toHaveLength(3);
+      mgr.setInBattle(npcUserId(1, 2), true);
+      expect(mgr.getNpcsForPlayer(1, 1)).toHaveLength(FREE_SHIP_COUNT - 1);
 
       mgr.setInBattle(npcUserId(1, 2), false);
-      expect(mgr.getNpcsForPlayer(1, 1)).toHaveLength(4);
+      expect(mgr.getNpcsForPlayer(1, 1)).toHaveLength(FREE_SHIP_COUNT);
     });
 
     it('getNpcsForPlayer_secondCallSameLevel_returnsCachedNpcs', () => {
-      freezeTime(1_000_000);
+      freezeTime(MIDNIGHT);
       const mgr = NPCManager.getInstance();
       const first = mgr.getNpcsForPlayer(1, 5);
       const second = mgr.getNpcsForPlayer(1, 5);
@@ -231,7 +265,7 @@ describe('NPCManager', () => {
     });
 
     it('getNpcsForPlayer_differentPlayers_independentNpcs', () => {
-      freezeTime(1_000_000);
+      freezeTime(MIDNIGHT);
       const mgr = NPCManager.getInstance();
       const player1Npcs = mgr.getNpcsForPlayer(1, 3);
       const player2Npcs = mgr.getNpcsForPlayer(2, 7);
@@ -243,87 +277,137 @@ describe('NPCManager', () => {
     });
   });
 
+  // ---------- quest-bound ships ----------
+
+  describe('quest-bound ships', () => {
+    it('getNpcsForPlayer_noMissionWantsWarlord_warlordIsHidden', () => {
+      freezeTime(MIDNIGHT);
+      const npcs = NPCManager.getInstance().getNpcsForPlayer(1, 5);
+
+      expect(ofArchetype(npcs, 'warlord')).toHaveLength(0);
+    });
+
+    it('getNpcsForPlayer_missionWantsWarlord_warlordIsVisible', () => {
+      freezeTime(MIDNIGHT);
+      const npcs = NPCManager.getInstance().getNpcsForPlayer(1, 5, ['warlord']);
+
+      const warlords = ofArchetype(npcs, 'warlord');
+      expect(warlords).toHaveLength(1);
+      expect(warlords[0].level).toBe(5 + WARLORD.spawns[0].levelOffset);
+      expect(npcs).toHaveLength(FREE_SHIP_COUNT + 1);
+    });
+
+    it('getNpcsForPlayer_missionNoLongerWantsWarlord_warlordIsHiddenAgain', () => {
+      freezeTime(MIDNIGHT);
+      const mgr = NPCManager.getInstance();
+      mgr.getNpcsForPlayer(1, 5, ['warlord']);
+
+      expect(ofArchetype(mgr.getNpcsForPlayer(1, 5), 'warlord')).toHaveLength(0);
+    });
+
+    it('isPresent_freeArchetype_trueWithoutMission', () => {
+      freezeTime(MIDNIGHT);
+      const pirate = NPCManager.getInstance().getNpcsForPlayer(1, 5)[0];
+
+      expect(NPCManager.isPresent(pirate, [])).toBe(true);
+    });
+  });
+
   // ---------- level refresh ----------
 
   describe('level refresh', () => {
     it('getNpcsForPlayer_levelChanged_regeneratesNpcs', () => {
-      freezeTime(1_000_000);
+      freezeTime(MIDNIGHT);
       const mgr = NPCManager.getInstance();
       const old = mgr.getNpcsForPlayer(1, 3);
       expect(old[0].level).toBe(3);
 
-      // Player levels up
       const fresh = mgr.getNpcsForPlayer(1, 5);
-      expect(fresh).toHaveLength(4);
+      expect(fresh).toHaveLength(FREE_SHIP_COUNT);
       expect(fresh[0].level).toBe(5);
     });
 
     it('getNpcsForPlayer_levelChanged_resetsDefeatedStatus', () => {
-      freezeTime(1_000_000);
+      freezeTime(MIDNIGHT);
       const mgr = NPCManager.getInstance();
       const npcs = mgr.getNpcsForPlayer(1, 3);
       mgr.markDefeated(npcs[0].id);
 
-      // Level change triggers full regeneration
       const fresh = mgr.getNpcsForPlayer(1, 5);
-      expect(fresh).toHaveLength(4);
+      expect(fresh).toHaveLength(FREE_SHIP_COUNT);
       for (const npc of fresh) {
         expect(npc.defeated).toBe(false);
       }
     });
+
+    it('getNpcsForPlayer_levelChangedDuringBattle_keepsNpcsUntilBattleEnds', () => {
+      freezeTime(MIDNIGHT);
+      const mgr = NPCManager.getInstance();
+      const npcs = mgr.getNpcsForPlayer(1, 3);
+      const fighting = npcs[0];
+      mgr.setInBattle(fighting.id, true);
+
+      // The battle's NPC must stay addressable by its ID
+      mgr.getNpcsForPlayer(1, 4);
+      expect(mgr.getNpcById(fighting.id)).toBe(fighting);
+
+      mgr.setInBattle(fighting.id, false);
+      const fresh = mgr.getNpcsForPlayer(1, 4);
+      expect(fresh[0].level).toBe(4);
+    });
   });
 
-  // ---------- midnight respawn ----------
+  // ---------- respawn ----------
 
-  describe('midnight respawn', () => {
-    it('getNpcsForPlayer_defeatedBeforeMidnight_respawnsAfterMidnight', () => {
+  describe('respawn', () => {
+    it('getNpcsForPlayer_pirateDefeatedBeforeMidnight_respawnsAfterMidnight', () => {
       const mgr = NPCManager.getInstance();
 
-      // Defeat at 11pm yesterday
-      const yesterday11pm = getMidnightUtcMs() - 3_600_000; // 1h before midnight
-      freezeTime(yesterday11pm);
+      freezeTime(MIDNIGHT - HOUR);
       mgr.getNpcsForPlayer(1, 1);
-      mgr.markDefeated(npcUserId(1, 1)); // player level=1, level=1=index 0
+      mgr.markDefeated(npcUserId(1, 1));
 
-      // Now it's after midnight
-      const todayNoon = getMidnightUtcMs() + 12 * 3_600_000;
-      freezeTime(todayNoon);
-
-      const npcs = mgr.getNpcsForPlayer(1, 1);
-      expect(npcs).toHaveLength(4); // All 4 back, including the one defeated yesterday
+      freezeTime(MIDNIGHT + 12 * HOUR);
+      expect(mgr.getNpcsForPlayer(1, 1)).toHaveLength(FREE_SHIP_COUNT);
     });
 
-    it('getNpcsForPlayer_defeatedAfterMidnight_remainsDefeated', () => {
+    it('getNpcsForPlayer_pirateDefeatedAfterMidnight_remainsDefeated', () => {
       const mgr = NPCManager.getInstance();
 
-      // Defeat at 1am today
-      const today1am = getMidnightUtcMs() + 3_600_000;
-      freezeTime(today1am);
+      freezeTime(MIDNIGHT + HOUR);
       mgr.getNpcsForPlayer(1, 1);
-      mgr.markDefeated(npcUserId(1, 1)); // player level=1, level=1=index 0
+      mgr.markDefeated(npcUserId(1, 1));
 
-      // Still today, 2pm
-      const today2pm = getMidnightUtcMs() + 14 * 3_600_000;
-      freezeTime(today2pm);
+      freezeTime(MIDNIGHT + 14 * HOUR);
+      expect(mgr.getNpcsForPlayer(1, 1)).toHaveLength(FREE_SHIP_COUNT - 1);
+    });
 
-      const npcs = mgr.getNpcsForPlayer(1, 1);
-      expect(npcs).toHaveLength(3); // Still defeated
+    it('getNpcsForPlayer_marauderDefeated_respawnsAfterItsRespawnTime', () => {
+      const mgr = NPCManager.getInstance();
+
+      freezeTime(MIDNIGHT + HOUR);
+      const marauder = ofArchetype(mgr.getNpcsForPlayer(1, 5), 'marauder')[0];
+      mgr.markDefeated(marauder.id);
+
+      freezeTime(MIDNIGHT + HOUR + MARAUDER.respawnMinutes! * MINUTE - 1);
+      expect(ofArchetype(mgr.getNpcsForPlayer(1, 5), 'marauder')).toHaveLength(2);
+
+      freezeTime(MIDNIGHT + HOUR + MARAUDER.respawnMinutes! * MINUTE);
+      expect(ofArchetype(mgr.getNpcsForPlayer(1, 5), 'marauder')).toHaveLength(3);
     });
 
     it('getNpcsForPlayer_respawnedNpc_resetsNpcUserCreated', () => {
       const mgr = NPCManager.getInstance();
 
-      const yesterday = getMidnightUtcMs() - 3_600_000;
-      freezeTime(yesterday);
+      freezeTime(MIDNIGHT - HOUR);
       mgr.getNpcsForPlayer(1, 1);
 
       // Simulate having a DB user and then defeating
-      const npc = mgr.getNpcById(npcUserId(1, 1))!; // player level=1, level=1=index 0
+      const npc = mgr.getNpcById(npcUserId(1, 1))!;
       npc.npcUserCreated = true;
       mgr.markDefeated(npc.id);
 
-      // After midnight
-      freezeTime(getMidnightUtcMs() + 3_600_000);
+      freezeTime(MIDNIGHT + HOUR);
       mgr.getNpcsForPlayer(1, 1);
 
       const respawned = mgr.getNpcById(npcUserId(1, 1))!;
@@ -334,105 +418,94 @@ describe('NPCManager', () => {
     it('getNpcsForPlayer_respawnedNpc_resetsToStartAngle', () => {
       const mgr = NPCManager.getInstance();
 
-      const yesterday = getMidnightUtcMs() - 3_600_000;
-      freezeTime(yesterday);
+      freezeTime(MIDNIGHT - HOUR);
       mgr.getNpcsForPlayer(1, 1);
 
       // Move angle away from start
-      const npc = mgr.getNpcById(npcUserId(1, 2))!; // player level=1, level=2=index 1
+      const npc = mgr.getNpcById(npcUserId(1, 2))!;
       npc.orbitAngleDeg = 123.456;
       mgr.markDefeated(npc.id);
 
-      // After midnight
-      freezeTime(getMidnightUtcMs() + 3_600_000);
+      freezeTime(MIDNIGHT + HOUR);
       mgr.getNpcsForPlayer(1, 1);
 
-      const respawned = mgr.getNpcById(npcUserId(1, 2))!;
-      expect(respawned.orbitAngleDeg).toBe(NPC_START_ANGLES[1]);
+      expect(mgr.getNpcById(npcUserId(1, 2))!.orbitAngleDeg).toBe(PIRATE.spawns[1].startAngleDeg);
     });
   });
 
   // ---------- updateNpcPositions ----------
 
   describe('updateNpcPositions', () => {
-    it('updateNpcPositions_elapsedTime_advancesAngle', () => {
-      const baseTime = 1_000_000;
-      freezeTime(baseTime);
+    it('updateNpcPositions_elapsedTime_advancesAngleByArchetypeVelocity', () => {
+      freezeTime(MIDNIGHT);
       const mgr = NPCManager.getInstance();
-      mgr.getNpcsForPlayer(1, 1);
+      const npcs = mgr.getNpcsForPlayer(1, 5);
 
-      // Advance 10 seconds with multiplier = 1
-      const futureMs = baseTime + 10_000;
-      mgr.updateNpcPositions(1, futureMs);
+      mgr.updateNpcPositions(1, MIDNIGHT + 10_000);
 
-      const npc = mgr.getNpcById(npcUserId(1, 1))!; // player level=1, level=1=index 0
-      const expectedAngle = (NPC_START_ANGLES[0] + BASE_ANGULAR_VELOCITY_DEG_PER_SEC * 10) % 360;
-      expect(npc.orbitAngleDeg).toBeCloseTo(expectedAngle, 5);
+      const pirate = ofArchetype(npcs, 'pirate')[0];
+      expect(pirate.orbitAngleDeg).toBeCloseTo(PIRATE.spawns[0].startAngleDeg + PIRATE.angularVelocityDegPerSec * 10);
+      expect(pirate.lastUpdateMs).toBe(MIDNIGHT + 10_000);
+    });
+
+    it('updateNpcPositions_negativeVelocity_movesClockwiseAndStaysInRange', () => {
+      freezeTime(MIDNIGHT);
+      const mgr = NPCManager.getInstance();
+      const marauder = ofArchetype(mgr.getNpcsForPlayer(1, 5), 'marauder')[0];
+
+      // 30° start, −1.5°/s for 40 s = −30° → wraps below 0
+      mgr.updateNpcPositions(1, MIDNIGHT + 40_000);
+
+      expect(MARAUDER.angularVelocityDegPerSec).toBeLessThan(0);
+      expect(marauder.orbitAngleDeg).toBeCloseTo(330);
     });
 
     it('updateNpcPositions_timeMultiplier_scalesAngleDelta', () => {
-      const baseTime = 1_000_000;
-      freezeTime(baseTime);
+      freezeTime(MIDNIGHT);
       const mgr = NPCManager.getInstance();
-      mgr.getNpcsForPlayer(1, 1);
+      const pirate = mgr.getNpcsForPlayer(1, 5)[0];
+      TimeMultiplierService.getInstance().setMultiplier(10, 5);
 
-      // Set time multiplier to 5x
-      TimeMultiplierService.getInstance().setMultiplier(5, 60);
+      mgr.updateNpcPositions(1, MIDNIGHT + 1000);
 
-      // Advance 10 seconds
-      const futureMs = baseTime + 10_000;
-      mgr.updateNpcPositions(1, futureMs);
-
-      const npc = mgr.getNpcById(npcUserId(1, 1))!; // player level=1, level=1=index 0
-      const expectedAngle = (NPC_START_ANGLES[0] + BASE_ANGULAR_VELOCITY_DEG_PER_SEC * 10 * 5) % 360;
-      expect(npc.orbitAngleDeg).toBeCloseTo(expectedAngle, 5);
+      expect(pirate.orbitAngleDeg).toBeCloseTo(PIRATE.angularVelocityDegPerSec * 10);
     });
 
     it('updateNpcPositions_defeatedNpc_doesNotAdvance', () => {
-      const baseTime = 1_000_000;
-      freezeTime(baseTime);
+      freezeTime(MIDNIGHT);
       const mgr = NPCManager.getInstance();
-      mgr.getNpcsForPlayer(1, 1);
+      const npc = mgr.getNpcsForPlayer(1, 5)[0];
+      mgr.markDefeated(npc.id);
 
-      mgr.markDefeated(npcUserId(1, 1)); // player level=1, level=1=index 0
-      const beforeAngle = mgr.getNpcById(npcUserId(1, 1))!.orbitAngleDeg;
+      mgr.updateNpcPositions(1, MIDNIGHT + 10_000);
 
-      mgr.updateNpcPositions(1, baseTime + 10_000);
-
-      expect(mgr.getNpcById(npcUserId(1, 1))!.orbitAngleDeg).toBe(beforeAngle);
+      expect(npc.orbitAngleDeg).toBe(PIRATE.spawns[0].startAngleDeg);
     });
 
     it('updateNpcPositions_inBattleNpc_doesNotAdvance', () => {
-      const baseTime = 1_000_000;
-      freezeTime(baseTime);
+      freezeTime(MIDNIGHT);
       const mgr = NPCManager.getInstance();
-      mgr.getNpcsForPlayer(1, 1);
+      const npc = mgr.getNpcsForPlayer(1, 5)[0];
+      mgr.setInBattle(npc.id, true);
 
-      mgr.setInBattle(npcUserId(1, 1), true);
-      const beforeAngle = mgr.getNpcById(npcUserId(1, 1))!.orbitAngleDeg;
+      mgr.updateNpcPositions(1, MIDNIGHT + 10_000);
 
-      mgr.updateNpcPositions(1, baseTime + 10_000);
-
-      expect(mgr.getNpcById(npcUserId(1, 1))!.orbitAngleDeg).toBe(beforeAngle);
+      expect(npc.orbitAngleDeg).toBe(PIRATE.spawns[0].startAngleDeg);
     });
 
     it('updateNpcPositions_noPlayerState_doesNotThrow', () => {
-      const mgr = NPCManager.getInstance();
-      expect(() => mgr.updateNpcPositions(999, Date.now())).not.toThrow();
+      expect(() => NPCManager.getInstance().updateNpcPositions(999, MIDNIGHT)).not.toThrow();
     });
 
     it('updateNpcPositions_wrapsAt360', () => {
-      const baseTime = 1_000_000;
-      freezeTime(baseTime);
+      freezeTime(MIDNIGHT);
       const mgr = NPCManager.getInstance();
-      mgr.getNpcsForPlayer(1, 1);
+      const npc = mgr.getNpcsForPlayer(1, 5)[0];
+      npc.orbitAngleDeg = 359;
 
-      // Advance enough to wrap past 360 (NPC at 270° + 200° = 470° → 110°)
-      const secondsFor200Deg = 200 / BASE_ANGULAR_VELOCITY_DEG_PER_SEC;
-      mgr.updateNpcPositions(1, baseTime + secondsFor200Deg * 1000);
+      mgr.updateNpcPositions(1, MIDNIGHT + 1000);
 
-      const npc = mgr.getNpcById(npcUserId(1, 4))!; // player level=1, index=3 => level=4, starts at 270°
-      expect(npc.orbitAngleDeg).toBeCloseTo(110, 1);
+      expect(npc.orbitAngleDeg).toBeCloseTo(359 + PIRATE.angularVelocityDegPerSec - 360);
     });
   });
 
@@ -440,21 +513,18 @@ describe('NPCManager', () => {
 
   describe('markDefeated', () => {
     it('markDefeated_existingNpc_setsDefeatedAndTime', () => {
-      const now = 5_000_000;
-      freezeTime(now);
+      freezeTime(MIDNIGHT);
       const mgr = NPCManager.getInstance();
-      mgr.getNpcsForPlayer(1, 1);
+      const npc = mgr.getNpcsForPlayer(1, 1)[0];
 
-      mgr.markDefeated(npcUserId(1, 2)); // player level=1, level=2 = index 1
+      mgr.markDefeated(npc.id);
 
-      const npc = mgr.getNpcById(npcUserId(1, 2))!;
       expect(npc.defeated).toBe(true);
-      expect(npc.defeatTime).toBe(now);
+      expect(npc.defeatTime).toBe(MIDNIGHT);
     });
 
     it('markDefeated_unknownNpc_doesNotThrow', () => {
-      const mgr = NPCManager.getInstance();
-      expect(() => mgr.markDefeated(npcUserId(999, 0))).not.toThrow();
+      expect(() => NPCManager.getInstance().markDefeated(npcUserId(999, 1))).not.toThrow();
     });
   });
 
@@ -462,27 +532,28 @@ describe('NPCManager', () => {
 
   describe('setInBattle', () => {
     it('setInBattle_true_setsFlag', () => {
-      freezeTime(1_000_000);
+      freezeTime(MIDNIGHT);
       const mgr = NPCManager.getInstance();
-      mgr.getNpcsForPlayer(1, 1);
+      const npc = mgr.getNpcsForPlayer(1, 1)[0];
 
-      mgr.setInBattle(npcUserId(1, 1), true); // player level=1, level=1 = index 0
-      expect(mgr.getNpcById(npcUserId(1, 1))!.inBattle).toBe(true);
+      mgr.setInBattle(npc.id, true);
+
+      expect(npc.inBattle).toBe(true);
     });
 
     it('setInBattle_false_clearsFlag', () => {
-      freezeTime(1_000_000);
+      freezeTime(MIDNIGHT);
       const mgr = NPCManager.getInstance();
-      mgr.getNpcsForPlayer(1, 1);
+      const npc = mgr.getNpcsForPlayer(1, 1)[0];
+      mgr.setInBattle(npc.id, true);
 
-      mgr.setInBattle(npcUserId(1, 1), true); // player level=1, level=1 = index 0
-      mgr.setInBattle(npcUserId(1, 1), false);
-      expect(mgr.getNpcById(npcUserId(1, 1))!.inBattle).toBe(false);
+      mgr.setInBattle(npc.id, false);
+
+      expect(npc.inBattle).toBe(false);
     });
 
     it('setInBattle_unknownNpc_doesNotThrow', () => {
-      const mgr = NPCManager.getInstance();
-      expect(() => mgr.setInBattle(npcUserId(999, 0), true)).not.toThrow();
+      expect(() => NPCManager.getInstance().setInBattle(npcUserId(999, 1), true)).not.toThrow();
     });
   });
 
@@ -490,64 +561,180 @@ describe('NPCManager', () => {
 
   describe('getNpcById', () => {
     it('getNpcById_existingNpc_returnsNpc', () => {
-      freezeTime(1_000_000);
+      freezeTime(MIDNIGHT);
       const mgr = NPCManager.getInstance();
-      mgr.getNpcsForPlayer(10, 2);
+      const npcs = mgr.getNpcsForPlayer(3, 5);
+      const drone = ofArchetype(npcs, 'drone')[1];
 
-      const npc = mgr.getNpcById(npcUserId(10, 5)); // player level=2, index=3 => level=5
-      expect(npc).not.toBeNull();
-      expect(npc!.ownerId).toBe(10);
-      expect(npc!.npcIndex).toBe(3);
+      expect(mgr.getNpcById(drone.id)).toBe(drone);
+    });
+
+    it('getNpcById_hiddenQuestBoundNpc_returnsNpc', () => {
+      freezeTime(MIDNIGHT);
+      const mgr = NPCManager.getInstance();
+      mgr.getNpcsForPlayer(3, 5);
+
+      const warlord = mgr.getNpcById(npcUserId(3, 5 + WARLORD.spawns[0].levelOffset, WARLORD.spawns[0].slot));
+      expect(warlord?.archetype).toBe('warlord');
     });
 
     it('getNpcById_noPlayerState_returnsNull', () => {
-      const mgr = NPCManager.getInstance();
-      expect(mgr.getNpcById(npcUserId(10, 0))).toBeNull();
+      expect(NPCManager.getInstance().getNpcById(npcUserId(1, 1))).toBeNull();
     });
 
     it('getNpcById_nonNpcId_returnsNull', () => {
-      freezeTime(1_000_000);
+      freezeTime(MIDNIGHT);
       const mgr = NPCManager.getInstance();
       mgr.getNpcsForPlayer(1, 1);
+
       expect(mgr.getNpcById(42)).toBeNull();
     });
   });
 
-  // ---------- positionForAngle ----------
+  // ---------- positionOf ----------
 
-  describe('positionForAngle', () => {
-    it('positionForAngle_0deg_returnsStarbaseXPlusRadius', () => {
-      const pos = NPCManager.positionForAngle(0);
-      expect(pos.x).toBeCloseTo(STARBASE_X + ORBIT_RADIUS, 5);
-      expect(pos.y).toBeCloseTo(STARBASE_Y, 5);
+  describe('positionOf', () => {
+    const station = getLocation('ironstrike_station');
+
+    it('positionOf_pirateAt0deg_isEastOfTheStation', () => {
+      const pos = NPCManager.positionOf({ archetype: 'pirate', orbitAngleDeg: 0 });
+      expect(pos.x).toBeCloseTo(station.x + PIRATE.orbitRadius);
+      expect(pos.y).toBeCloseTo(station.y);
     });
 
-    it('positionForAngle_90deg_returnsStarbaseYPlusRadius', () => {
-      const pos = NPCManager.positionForAngle(90);
-      expect(pos.x).toBeCloseTo(STARBASE_X, 5);
-      expect(pos.y).toBeCloseTo(STARBASE_Y + ORBIT_RADIUS, 5);
+    it('positionOf_pirateAt90deg_isSouthOfTheStation', () => {
+      const pos = NPCManager.positionOf({ archetype: 'pirate', orbitAngleDeg: 90 });
+      expect(pos.x).toBeCloseTo(station.x);
+      expect(pos.y).toBeCloseTo(station.y + PIRATE.orbitRadius);
     });
 
-    it('positionForAngle_180deg_returnsStarbaseXMinusRadius', () => {
-      const pos = NPCManager.positionForAngle(180);
-      expect(pos.x).toBeCloseTo(STARBASE_X - ORBIT_RADIUS, 5);
-      expect(pos.y).toBeCloseTo(STARBASE_Y, 5);
+    it('positionOf_marauder_orbitsItsLair', () => {
+      const lair = getLocation('hordes_reach');
+      const pos = NPCManager.positionOf({ archetype: 'marauder', orbitAngleDeg: 180 });
+      expect(pos.x).toBeCloseTo(lair.x - MARAUDER.orbitRadius);
+      expect(pos.y).toBeCloseTo(lair.y);
+    });
+  });
+
+  // ---------- ambush ----------
+
+  describe('findAmbusher', () => {
+    const lair = getLocation('hordes_reach');
+
+    /** Position at the given distance outside (positive) or inside the marauder's start position. */
+    function nearFirstMarauder(mgr: NPCManager, offset: number): { x: number; y: number } {
+      const marauder = mgr.getNpcById(npcUserId(1, 4, MARAUDER.spawns[0].slot))!;
+      const pos = NPCManager.positionOf(marauder);
+      // Move away from the lair centre, so no other marauder comes closer
+      const dx = (pos.x - lair.x) / MARAUDER.orbitRadius;
+      const dy = (pos.y - lair.y) / MARAUDER.orbitRadius;
+      return { x: pos.x + dx * offset, y: pos.y + dy * offset };
+    }
+
+    it('findAmbusher_playerInsideAggroRadius_returnsTheShip', () => {
+      freezeTime(MIDNIGHT);
+      const mgr = NPCManager.getInstance();
+      const npcs = mgr.getNpcsForPlayer(1, 5);
+
+      const ambusher = mgr.findAmbusher(1, nearFirstMarauder(mgr, MARAUDER.aggroRadius - 1), npcs, MIDNIGHT);
+
+      expect(ambusher?.archetype).toBe('marauder');
+      expect(ambusher?.spawn.slot).toBe(MARAUDER.spawns[0].slot);
     });
 
-    it('positionForAngle_270deg_returnsStarbaseYMinusRadius', () => {
-      const pos = NPCManager.positionForAngle(270);
-      expect(pos.x).toBeCloseTo(STARBASE_X, 5);
-      expect(pos.y).toBeCloseTo(STARBASE_Y - ORBIT_RADIUS, 5);
+    it('findAmbusher_playerOutsideAggroRadius_returnsNull', () => {
+      freezeTime(MIDNIGHT);
+      const mgr = NPCManager.getInstance();
+      const npcs = mgr.getNpcsForPlayer(1, 5);
+
+      expect(mgr.findAmbusher(1, nearFirstMarauder(mgr, MARAUDER.aggroRadius + 1), npcs, MIDNIGHT)).toBeNull();
+    });
+
+    it('findAmbusher_playerNextToPassivePirate_returnsNull', () => {
+      freezeTime(MIDNIGHT);
+      const mgr = NPCManager.getInstance();
+      const npcs = mgr.getNpcsForPlayer(1, 5);
+      const pirate = ofArchetype(npcs, 'pirate')[0];
+
+      expect(mgr.findAmbusher(1, NPCManager.positionOf(pirate), npcs, MIDNIGHT)).toBeNull();
+    });
+
+    it('findAmbusher_twoShipsInRange_returnsTheNearest', () => {
+      freezeTime(MIDNIGHT);
+      const mgr = NPCManager.getInstance();
+      const npcs = mgr.getNpcsForPlayer(1, 5);
+      const [first, second] = ofArchetype(npcs, 'marauder');
+      // Put the second marauder next to the first one
+      second.orbitAngleDeg = first.orbitAngleDeg + 5;
+      const closeToSecond = NPCManager.positionOf(second);
+
+      expect(mgr.findAmbusher(1, closeToSecond, npcs, MIDNIGHT)).toBe(second);
+    });
+
+    it('findAmbusher_defeatedShipNotInVisibleList_returnsNull', () => {
+      freezeTime(MIDNIGHT);
+      const mgr = NPCManager.getInstance();
+      const marauder = ofArchetype(mgr.getNpcsForPlayer(1, 5), 'marauder')[0];
+      const position = nearFirstMarauder(mgr, 0);
+      mgr.markDefeated(marauder.id);
+
+      expect(mgr.findAmbusher(1, position, mgr.getNpcsForPlayer(1, 5), MIDNIGHT)).toBeNull();
+    });
+
+    it('findAmbusher_duringGracePeriod_returnsNull', () => {
+      freezeTime(MIDNIGHT);
+      const mgr = NPCManager.getInstance();
+      const npcs = mgr.getNpcsForPlayer(1, 5);
+      const position = nearFirstMarauder(mgr, 0);
+      mgr.setAmbushGrace(1, MIDNIGHT + AMBUSH_GRACE_MS);
+
+      expect(mgr.findAmbusher(1, position, npcs, MIDNIGHT + AMBUSH_GRACE_MS - 1)).toBeNull();
+      expect(mgr.findAmbusher(1, position, npcs, MIDNIGHT + AMBUSH_GRACE_MS)).not.toBeNull();
+    });
+
+    it('findAmbusher_gracePeriod_survivesLevelChange', () => {
+      freezeTime(MIDNIGHT);
+      const mgr = NPCManager.getInstance();
+      mgr.getNpcsForPlayer(1, 5);
+      mgr.setAmbushGrace(1, MIDNIGHT + AMBUSH_GRACE_MS);
+
+      const npcs = mgr.getNpcsForPlayer(1, 6);
+      const marauder = ofArchetype(npcs, 'marauder')[0];
+
+      expect(mgr.findAmbusher(1, NPCManager.positionOf(marauder), npcs, MIDNIGHT + 1000)).toBeNull();
+    });
+
+    it('findAmbusher_unknownPlayer_returnsNull', () => {
+      expect(NPCManager.getInstance().findAmbusher(999, { x: lair.x, y: lair.y }, [], MIDNIGHT)).toBeNull();
+    });
+  });
+
+  // ---------- resetPlayer ----------
+
+  describe('resetPlayer', () => {
+    it('resetPlayer_defeatedNpcs_areAliveAgainOnNextAccess', () => {
+      freezeTime(MIDNIGHT);
+      const mgr = NPCManager.getInstance();
+      const npcs = mgr.getNpcsForPlayer(1, 5);
+      mgr.markDefeated(npcs[0].id);
+
+      expect(mgr.resetPlayer(1)).toBe(true);
+
+      expect(mgr.getNpcsForPlayer(1, 5)).toHaveLength(FREE_SHIP_COUNT);
+    });
+
+    it('resetPlayer_npcInBattle_isRefused', () => {
+      freezeTime(MIDNIGHT);
+      const mgr = NPCManager.getInstance();
+      const npcs = mgr.getNpcsForPlayer(1, 5);
+      mgr.setInBattle(npcs[0].id, true);
+
+      expect(mgr.resetPlayer(1)).toBe(false);
+      expect(mgr.getNpcById(npcs[0].id)).toBe(npcs[0]);
+    });
+
+    it('resetPlayer_unknownPlayer_returnsTrue', () => {
+      expect(NPCManager.getInstance().resetPlayer(999)).toBe(true);
     });
   });
 });
-
-// ---------------------------------------------------------------------------
-// Test helper
-// ---------------------------------------------------------------------------
-
-/** Return epoch-ms for today's 00:00:00 UTC. */
-function getMidnightUtcMs(): number {
-  const now = new Date();
-  return Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
-}

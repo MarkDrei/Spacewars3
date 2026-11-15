@@ -31,50 +31,50 @@ describe('generateNpcTechCounts', () => {
     vi.restoreAllMocks();
   });
 
-  it('npcIndex0_generates1WeaponType', () => {
+  it('oneWeaponType_generates1WeaponType', () => {
     // Run multiple times to account for randomness
     for (let i = 0; i < 20; i++) {
-      const tc = generateNpcTechCounts(0, 1);
+      const tc = generateNpcTechCounts(1, 1);
       expect(countNonZeroWeapons(tc)).toBe(1);
     }
   });
 
-  it('npcIndex1_generates2WeaponTypes', () => {
+  it('twoWeaponTypes_generates2WeaponTypes', () => {
     for (let i = 0; i < 20; i++) {
-      const tc = generateNpcTechCounts(1, 2);
+      const tc = generateNpcTechCounts(2, 2);
       expect(countNonZeroWeapons(tc)).toBe(2);
     }
   });
 
-  it('npcIndex2_generates3WeaponTypes', () => {
+  it('threeWeaponTypes_generates3WeaponTypes', () => {
     for (let i = 0; i < 20; i++) {
-      const tc = generateNpcTechCounts(2, 3);
+      const tc = generateNpcTechCounts(3, 3);
       expect(countNonZeroWeapons(tc)).toBe(3);
     }
   });
 
-  it('npcIndex3_generates4WeaponTypes', () => {
+  it('fourWeaponTypes_generates4WeaponTypes', () => {
     for (let i = 0; i < 20; i++) {
-      const tc = generateNpcTechCounts(3, 4);
+      const tc = generateNpcTechCounts(4, 4);
       expect(countNonZeroWeapons(tc)).toBe(4);
     }
   });
 
-  it('npcIndex5_generates6WeaponTypes_capped', () => {
+  it('sixWeaponTypes_generates6WeaponTypes', () => {
     // npcIndex 5 → min(6, 6) = 6 weapon types (all)
-    const tc = generateNpcTechCounts(5, 6);
+    const tc = generateNpcTechCounts(6, 6);
     expect(countNonZeroWeapons(tc)).toBe(6);
   });
 
-  it('npcIndex10_neverExceeds6Weapons', () => {
-    const tc = generateNpcTechCounts(10, 11);
+  it('elevenWeaponTypes_neverExceeds6Weapons', () => {
+    const tc = generateNpcTechCounts(11, 11);
     expect(countNonZeroWeapons(tc)).toBeLessThanOrEqual(6);
   });
 
   it('defenseValues_scaleWithLevel', () => {
     // level 1: defenseBase = 30, variance = base * uniform(0.6, 1.7) → range [18, 51]
     for (let i = 0; i < 50; i++) {
-      const tc = generateNpcTechCounts(0, 1);
+      const tc = generateNpcTechCounts(1, 1);
       expect(tc.ship_hull).toBeGreaterThanOrEqual(18);
       expect(tc.ship_hull).toBeLessThanOrEqual(51);
       expect(tc.kinetic_armor).toBeGreaterThanOrEqual(18);
@@ -87,7 +87,7 @@ describe('generateNpcTechCounts', () => {
   it('defenseValues_higherLevel_areHigher', () => {
     // level 4: defenseBase = 120, variance → range [72, 204]
     for (let i = 0; i < 50; i++) {
-      const tc = generateNpcTechCounts(0, 4);
+      const tc = generateNpcTechCounts(1, 4);
       expect(tc.ship_hull).toBeGreaterThanOrEqual(72);
       expect(tc.ship_hull).toBeLessThanOrEqual(204);
       expect(tc.kinetic_armor).toBeGreaterThanOrEqual(72);
@@ -99,7 +99,7 @@ describe('generateNpcTechCounts', () => {
 
   it('missileJammer_alwaysZero', () => {
     for (let i = 0; i < 20; i++) {
-      const tc = generateNpcTechCounts(i % 4, (i % 4) + 1);
+      const tc = generateNpcTechCounts((i % 4) + 1, (i % 4) + 1);
       expect(tc.missile_jammer).toBe(0);
     }
   });
@@ -107,7 +107,7 @@ describe('generateNpcTechCounts', () => {
   it('selectedWeapons_scaleWithLevel', () => {
     // level 1: weaponBase = 10, variance → [6, 17] (round(10*0.6)=6, round(10*1.7)=17)
     for (let i = 0; i < 50; i++) {
-      const tc = generateNpcTechCounts(3, 1); // 4 weapon types, level 1
+      const tc = generateNpcTechCounts(4, 1); // 4 weapon types, level 1
       for (const key of ALL_WEAPON_KEYS) {
         if (tc[key] > 0) {
           expect(tc[key]).toBeGreaterThanOrEqual(6);
@@ -120,7 +120,7 @@ describe('generateNpcTechCounts', () => {
   it('selectedWeapons_higherLevel_areHigher', () => {
     // level 4: weaponBase = 40, variance → [24, 68]
     for (let i = 0; i < 50; i++) {
-      const tc = generateNpcTechCounts(3, 4); // 4 weapon types, level 4
+      const tc = generateNpcTechCounts(4, 4); // 4 weapon types, level 4
       for (const key of ALL_WEAPON_KEYS) {
         if (tc[key] > 0) {
           expect(tc[key]).toBeGreaterThanOrEqual(24);
@@ -132,7 +132,7 @@ describe('generateNpcTechCounts', () => {
 
   it('unselectedWeapons_areZero', () => {
     for (let i = 0; i < 20; i++) {
-      const tc = generateNpcTechCounts(0, 1); // only 1 weapon type
+      const tc = generateNpcTechCounts(1, 1); // only 1 weapon type
       const zeroWeapons = ALL_WEAPON_KEYS.filter(k => tc[k] === 0);
       expect(zeroWeapons.length).toBe(5); // 5 of 6 weapons should be 0
     }
@@ -141,7 +141,7 @@ describe('generateNpcTechCounts', () => {
   it('deterministicRandom_sameValues_withMockedRandom', () => {
     // Mock Math.random to return a fixed value
     vi.spyOn(Math, 'random').mockReturnValue(0.5);
-    const tc = generateNpcTechCounts(0, 2); // level 2
+    const tc = generateNpcTechCounts(1, 2); // level 2
 
     // With Math.random() = 0.5: variance = 0.6 + 0.5 * 1.1 = 1.15
     // Defense: base=60 (30*2), Math.round(60 * 1.15) = 69
@@ -158,7 +158,7 @@ describe('generateNpcTechCounts', () => {
   it('defaultLevel_usesLevel1', () => {
     // When no level is passed, defaults to 1
     vi.spyOn(Math, 'random').mockReturnValue(0.5);
-    const tc = generateNpcTechCounts(0);
+    const tc = generateNpcTechCounts(1);
 
     // Defense: base=30 (30*1), Math.round(30 * 1.15) = 35 (round(34.5))
     expect(tc.ship_hull).toBe(35);
@@ -166,15 +166,26 @@ describe('generateNpcTechCounts', () => {
     expect(tc.energy_shield).toBe(35);
   });
 
+  it('strength_scalesDefenseAndWeapons', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.5);
+    const tc = generateNpcTechCounts(1, 2, 2);
+
+    // Defense: base=120 (30*2*2), Math.round(120 * 1.15) = 138
+    expect(tc.ship_hull).toBe(138);
+    // Weapon: base=40 (10*2*2), Math.round(40 * 1.15) = 46
+    const nonZero = ALL_WEAPON_KEYS.filter(k => tc[k] > 0);
+    expect(tc[nonZero[0]]).toBe(46);
+  });
+
   it('allDefenseKeysPresent', () => {
-    const tc = generateNpcTechCounts(0, 1);
+    const tc = generateNpcTechCounts(1, 1);
     for (const key of DEFENSE_KEYS) {
       expect(key in tc).toBe(true);
     }
   });
 
   it('allWeaponKeysPresent', () => {
-    const tc = generateNpcTechCounts(0, 1);
+    const tc = generateNpcTechCounts(1, 1);
     for (const key of ALL_WEAPON_KEYS) {
       expect(key in tc).toBe(true);
     }
@@ -210,5 +221,12 @@ describe('calculateNpcIronReward', () => {
     for (let level = 1; level <= 10; level++) {
       expect(calculateNpcIronReward(level)).toBe(5000 * level);
     }
+  });
+
+  it('archetype_usesItsIronPerLevel', () => {
+    expect(calculateNpcIronReward(3, 'pirate')).toBe(15000);
+    expect(calculateNpcIronReward(3, 'marauder')).toBe(18000);
+    expect(calculateNpcIronReward(3, 'drone')).toBe(9000);
+    expect(calculateNpcIronReward(3, 'warlord')).toBe(30000);
   });
 });

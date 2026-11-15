@@ -7,7 +7,6 @@
 
 import { getDatabase } from '../database';
 import type { NpcShip } from './npcTypes';
-import { npcUserId, npcDisplayName } from './npcConstants';
 import type { TechCounts } from '../techs/TechFactory';
 import { TechFactory } from '../techs/TechFactory';
 import { TechService } from '../techs/TechService';
@@ -19,6 +18,7 @@ import type { LockContext, LocksAtMostAndHas4 } from '@markdrei/ironguard-typesc
 import { WorldCache } from '../world/worldCache';
 import { WORLD_LOCK } from '../typedLocks';
 import type { SpaceObject } from '../world/world';
+import { HOSTILE_ARCHETYPES, hostileDisplayName, type HostileArchetypeId } from '@/shared/quests/npcArchetypes';
 
 /** Fixed bcrypt hash that is not loginable (invalid format placeholder). */
 const NPC_PASSWORD_HASH =
@@ -60,16 +60,19 @@ function pickRandom<T>(arr: readonly T[], count: number): T[] {
 /**
  * Generate randomised tech counts for an NPC.
  *
- * - Defense values: (DEFENSE_BASE_PER_LEVEL × level) × uniform(0.6, 1.7) for hull/armor/shield; jammer stays 0.
- * - Weapons: `numWeapons = min(npcIndex + 1, 6)` randomly chosen weapon types
- *   each receiving `(WEAPON_BASE_PER_LEVEL × level) × uniform(0.6, 1.7)`; others set to 0.
+ * - Defense values: (DEFENSE_BASE_PER_LEVEL × level × strength) × uniform(0.6, 1.7) for hull/armor/shield; jammer stays 0.
+ * - Weapons: `min(weaponTypes, 6)` randomly chosen weapon types
+ *   each receiving `(WEAPON_BASE_PER_LEVEL × level × strength) × uniform(0.6, 1.7)`; others set to 0.
+ *
+ * @param weaponTypes Number of different weapon types the ship carries
+ * @param strength Archetype multiplier on weapon and defense counts
  */
-export function generateNpcTechCounts(npcIndex: number, npcLevel: number = 1): TechCounts {
-  const numWeapons = Math.min(npcIndex + 1, ALL_WEAPON_KEYS.length);
+export function generateNpcTechCounts(weaponTypes: number, npcLevel: number = 1, strength: number = 1): TechCounts {
+  const numWeapons = Math.min(weaponTypes, ALL_WEAPON_KEYS.length);
   const selectedWeapons = new Set(pickRandom(ALL_WEAPON_KEYS, numWeapons));
 
-  const defenseBase = DEFENSE_BASE_PER_LEVEL * npcLevel;
-  const weaponBase = WEAPON_BASE_PER_LEVEL * npcLevel;
+  const defenseBase = DEFENSE_BASE_PER_LEVEL * npcLevel * strength;
+  const weaponBase = WEAPON_BASE_PER_LEVEL * npcLevel * strength;
 
   const techCounts: TechCounts = {
     pulse_laser: 0,
@@ -111,17 +114,20 @@ export interface NpcUserUpsertResult {
  *
  * @param npc The in-memory NPC ship descriptor.
  * @param context Lock context holding at least USER_LOCK (LOCK_4).
+ * @param position Where the NPC's ship is placed for the battle; default is its orbit position.
+ *   An ambushing NPC is placed at the position of its victim.
  */
 export async function upsertNpcUser(
   npc: NpcShip,
   context: LockContext<LocksAtMostAndHas4>,
+  position: { x: number; y: number } = NPCManager.positionOf(npc),
 ): Promise<NpcUserUpsertResult> {
-  const npcId = npcUserId(npc.ownerId, npc.level);
-  const username = npcDisplayName(npc.level);
+  const npcId = npc.id;
+  const username = hostileDisplayName(npc.archetype, npc.level);
   const now = Math.floor(Date.now() / 1000);
 
-  // 1. Generate randomised tech counts scaled to NPC level
-  const techCounts = generateNpcTechCounts(npc.npcIndex, npc.level);
+  // 1. Generate randomised tech counts scaled to NPC level and archetype strength
+  const techCounts = generateNpcTechCounts(npc.spawn.weaponTypes, npc.level, HOSTILE_ARCHETYPES[npc.archetype].strength);
 
   // 2. Create initial tech tree & compute max defense
   const techTree = createInitialTechTree();
@@ -215,7 +221,7 @@ export async function upsertNpcUser(
 
   // 7. Inject a temporary space object into WorldCache so the battle system
   //    can resolve the NPC's ship position and stop the ship.
-  await injectNpcSpaceObject(npc, context);
+  await injectNpcSpaceObject(npc, position, context);
 
   // 8. Mark the NPC as having a user row
   npc.npcUserCreated = true;
@@ -280,15 +286,14 @@ export async function rollbackNpcBattlePreparation(
  * Create (or update) an in-memory space object for the NPC in WorldCache.
  * This lets `getShipPosition` and `setShipSpeed` work normally.
  *
- * The NPC's orbit position is used as the ship location. We also update
- * the NPC user's `ship_id` in the cache so `initiateBattle` finds it.
+ * We also update the NPC user's `ship_id` in the cache so `initiateBattle` finds it.
  */
 async function injectNpcSpaceObject(
   npc: NpcShip,
+  pos: { x: number; y: number },
   context: LockContext<LocksAtMostAndHas4>,
 ): Promise<void> {
   const npcId = npc.id;
-  const pos = NPCManager.positionForAngle(npc.orbitAngleDeg);
 
   const npcSpaceObject: SpaceObject = {
     id: npcId,
@@ -298,7 +303,7 @@ async function injectNpcSpaceObject(
     speed: 0,
     angle: npc.orbitAngleDeg - 90,
     last_position_update_ms: Date.now(),
-    picture_id: npc.npcIndex + 1,
+    picture_id: npc.spawn.pictureId,
   };
 
   // Inject into WorldCache in-memory world
@@ -342,10 +347,8 @@ export async function removeNpcSpaceObject(
 
 /**
  * Calculate the iron reward for defeating an NPC of a given level.
- * Formula: `5000 × level`.
- *
- * L1=5 000, L2=10 000, L3=15 000, L4=20 000.
+ * Formula: `ironPerLevel × level` (pirates: 5000 × level, see HOSTILE_ARCHETYPES).
  */
-export function calculateNpcIronReward(npcLevel: number): number {
-  return 5000 * npcLevel;
+export function calculateNpcIronReward(npcLevel: number, archetype: HostileArchetypeId = 'pirate'): number {
+  return HOSTILE_ARCHETYPES[archetype].ironPerLevel * npcLevel;
 }

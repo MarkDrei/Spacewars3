@@ -50,6 +50,8 @@ beforeAll(async () => {
 // over between tests: requests without X-Forwarded-For all count for the same client address.
 beforeEach(() => {
   globalThis.authRateLimitsInstance = undefined;
+  // In-memory copy of mission states: would otherwise survive the rollback of the previous test
+  globalThis.questServiceInstance = undefined;
 });
 
 // Global cleanup after each test to prevent async operations from leaking

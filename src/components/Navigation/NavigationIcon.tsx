@@ -3,6 +3,7 @@ import Link from 'next/link';
 import {
   HomeIcon,
   MapIcon,
+  ScrollIcon,
   BuildingIcon,
   BeakerIcon,
   UserIcon,
@@ -21,6 +22,7 @@ interface NavigationIconProps {
 const iconMapping: Record<string, React.FC<{ className?: string; size?: number }>> = {
   '/home': HomeIcon,
   '/game': MapIcon,
+  '/missions': ScrollIcon,
   '/factory': BuildingIcon,
   '/research': BeakerIcon,
   '/profile': UserIcon,

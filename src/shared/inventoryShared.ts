@@ -36,7 +36,18 @@ export interface CommanderData {
   readonly statBonuses: CommanderStatBonus[];
 }
 
-export type InventoryItemData = CommanderData;
+/**
+ * Mission cargo: a stack of quest items of one kind. Handed out, found and consumed by the
+ * mission system; it cannot be sold, discarded or placed on the bridge.
+ */
+export interface CargoItemData {
+  readonly itemType: 'cargo';
+  /** Cargo definition id (see src/shared/quests/questDefinitions.ts). */
+  readonly cargoId: string;
+  readonly quantity: number;
+}
+
+export type InventoryItemData = CommanderData | CargoItemData;
 
 export interface SlotCoordinate {
   row: number; // 0-indexed
@@ -78,13 +89,15 @@ export type BridgeGrid = InventorySlot[][];
 export type SortStatKey = CommanderStatKey | 'total';
 export type SortDirection = 'asc' | 'desc';
 
-/** Returns the sum of all stat bonus values for a commander item. */
+/** Returns the sum of all stat bonus values of a commander (0 for items without stats). */
 export function getStatTotal(item: InventoryItemData): number {
+  if (item.itemType !== 'commander') return 0;
   return item.statBonuses.reduce((sum, b) => sum + b.value, 0);
 }
 
-/** Returns the value of a specific stat for a commander item (0 if absent). */
+/** Returns the value of a specific stat of a commander (0 if absent or for items without stats). */
 export function getStatValue(item: InventoryItemData, stat: CommanderStatKey): number {
+  if (item.itemType !== 'commander') return 0;
   return item.statBonuses.find((b) => b.stat === stat)?.value ?? 0;
 }
 

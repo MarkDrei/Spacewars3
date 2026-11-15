@@ -4,6 +4,10 @@ import { describe, it, expect, vi } from 'vitest';
 import InventoryGridComponent from '@/components/Inventory/InventoryGrid';
 import { InventoryItemData } from '@/shared/inventoryShared';
 
+vi.mock('next-intl', () => ({
+  useTranslations: () => (key: string) => key,
+}));
+
 class MockResizeObserver {
   private callback: ResizeObserverCallback;
 

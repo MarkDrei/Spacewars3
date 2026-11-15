@@ -8,6 +8,7 @@ import { TechService } from '@/lib/server/techs/TechService';
 import { TimeMultiplierService } from '@/lib/server/timeMultiplier';
 import { AfterburnerService } from '@/lib/server/afterburner/AfterburnerService';
 import { NPCManager } from '@/lib/server/npc/NPCManager';
+import { QuestService } from '@/lib/server/quests/QuestService';
 import { StarbaseShop } from '@/lib/server/starbase/StarbaseShop';
 import { StatisticsCache } from '@/lib/server/statistics/StatisticsCache';
 import { getTransactionContext, withTransaction } from './transactionHelper';
@@ -102,6 +103,7 @@ export async function initializeIntegrationTestServer(): Promise<void> {
   TimeMultiplierService.resetInstance();
   AfterburnerService.resetInstance();
   NPCManager.resetInstance();
+  QuestService.resetInstance();
   StarbaseShop.resetInstance();
   
   // Initialize server (this will reinitialize caches)
@@ -145,5 +147,6 @@ async function shutdownCaches(): Promise<void> {
   TimeMultiplierService.resetInstance();
   AfterburnerService.resetInstance();
   NPCManager.resetInstance();
+  QuestService.resetInstance();
   StarbaseShop.resetInstance();
 }

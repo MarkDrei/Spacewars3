@@ -20,6 +20,7 @@ import {
   isValidSlot,
   isValidBridgeSlot,
   isBridgeCompatible,
+  isRemovableByPlayer,
   DEFAULT_INVENTORY_SLOTS,
   DEFAULT_BRIDGE_SLOTS,
   INVENTORY_COLS,
@@ -96,6 +97,13 @@ export class InventoryReorderMismatchError extends Error {
   constructor() {
     super('Reordered grid must contain exactly the current items');
     this.name = 'InventoryReorderMismatchError';
+  }
+}
+
+export class InventoryItemProtectedError extends Error {
+  constructor() {
+    super('Mission cargo cannot be discarded or sold');
+    this.name = 'InventoryItemProtectedError';
   }
 }
 
@@ -225,8 +233,9 @@ export class InventoryService {
   }
 
   /**
-   * Remove (and return) the item at the given inventory slot.
-   * Throws InventorySlotEmptyError if the slot is already empty.
+   * Remove (and return) the item at the given inventory slot (discard / sell).
+   * Throws InventorySlotEmptyError if the slot is already empty and
+   * InventoryItemProtectedError for mission cargo.
    */
   async removeItem(
     userId: number,
@@ -240,10 +249,33 @@ export class InventoryService {
       const grid = await this.loadOrCreate(lockCtx, userId, maxSlots);
       const item = grid[slot.row][slot.col];
       if (item === null) throw new InventorySlotEmptyError(slot);
+      if (!isRemovableByPlayer(item)) throw new InventoryItemProtectedError();
       grid[slot.row][slot.col] = null;
       await this.repo.saveInventory(lockCtx, userId, grid);
       return item;
     });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Inventory – whole grid, for callers that change several slots at once (mission system)
+  // ---------------------------------------------------------------------------
+
+  /** Load the inventory grid (sized for `maxSlots`) under an existing USER_INVENTORY_LOCK. */
+  async loadGridWithLock<THeld extends IronLocks>(
+    lockCtx: HasLock5Context<THeld>,
+    userId: number,
+    maxSlots: number
+  ): Promise<InventoryGrid> {
+    return this.loadOrCreate(lockCtx, userId, maxSlots);
+  }
+
+  /** Persist a grid obtained from loadGridWithLock under the same lock. */
+  async saveGridWithLock<THeld extends IronLocks>(
+    lockCtx: HasLock5Context<THeld>,
+    userId: number,
+    grid: InventoryGrid
+  ): Promise<void> {
+    await this.repo.saveInventory(lockCtx, userId, grid);
   }
 
   // ---------------------------------------------------------------------------

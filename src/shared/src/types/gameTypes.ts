@@ -2,6 +2,8 @@
 // Shared types for game objects used by both client and server
 // ---
 
+import type { ContactId, HostileArchetypeId } from '../../quests/npcArchetypes';
+
 export interface SpaceObject {
   id: number;
   type: 'player_ship' | 'asteroid' | 'shipwreck' | 'escape_pod' | 'starbase' | 'npc_ship';
@@ -16,7 +18,18 @@ export interface SpaceObject {
   level?: number; // Optional: only present for player_ship type
   orbitAngleDeg?: number; // Optional: only present for npc_ship type
   angularVelocityDegPerSec?: number; // Optional: only present for npc_ship type
+  orbitCenterX?: number; // Optional: only present for npc_ship type
+  orbitCenterY?: number; // Optional: only present for npc_ship type
+  orbitRadius?: number; // Optional: only present for npc_ship type
+  /** npc_ship only: hostile ships can be attacked, aggressive ones also attack, friendly ones give missions. */
+  npcDisposition?: NpcDisposition;
+  /** Hostile and aggressive npc_ship only. */
+  npcArchetype?: HostileArchetypeId;
+  /** Friendly npc_ship only: the mission contact aboard. */
+  contactId?: ContactId;
 }
+
+export type NpcDisposition = 'hostile' | 'aggressive' | 'friendly';
 
 export interface WorldData {
   worldSize: {
@@ -25,6 +38,10 @@ export interface WorldData {
   };
   spaceObjects: SpaceObject[];
   currentTime: number; // Server timestamp for synchronization
+  /** Changes whenever the player's missions change; tells the client to reload them. */
+  questRevision?: number;
+  /** Present in the response in which an aggressive NPC ship attacked the player. */
+  ambush?: { enemyName: string };
 }
 
 export interface PlayerShip extends SpaceObject {
