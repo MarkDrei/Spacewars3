@@ -20,6 +20,7 @@
     "npc-cleanup": "tsx scripts/cleanup-npc-users.ts",
     "techtree-chart": "tsx scripts/generate-techtree-chart.ts",
     "balancing-charts": "tsx scripts/generate-balancing-charts.ts",
+    "quest-doc": "tsx scripts/generate-quest-doc.ts",
     "screenshots": "tsx scripts/screenshots/generate-screenshots.ts",
     "typecheck": "tsc --noEmit"
   },

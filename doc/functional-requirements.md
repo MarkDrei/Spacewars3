@@ -30,6 +30,8 @@ Spacewars Ironstrike is a browser-based multi-player 2D space exploration game. 
 - **[Factory & Manufacturing](#cap07-factory--manufacturing)**: Iron is spent to manufacture weapons and defensive systems.
 - **[Inventory Management](#cap08-inventory-management)**: Commanders are managed and assigned to bridge slots to provide ship stat bonuses.
 
+**Missions & NPC Ships**: Friendly contacts offer story missions, side missions and repeatable contracts; hostile NPC ships can be fought, and some attack on their own. Missions, discoveries and achievements pay XP, iron and commanders. See [Missions, Contacts & NPC Ships](#cap12-missions-contacts--npc-ships).
+
 **Administration**: Authorized administrators access [Admin Tools](#cap09-admin-tools) to adjust time multipliers, spawn space objects, and view game statistics.
 
 ---
@@ -85,6 +87,7 @@ Spacewars Ironstrike is a browser-based multi-player 2D space exploration game. 
     - [Cap09_Feat002: Time Multiplier Management](#cap09_feat002-time-multiplier-management)
     - [Cap09_Feat003: Space Object Spawning](#cap09_feat003-space-object-spawning)
     - [Cap09_Feat004: Database & Statistics Inspection](#cap09_feat004-database--statistics-inspection)
+    - [Cap09_Feat005: Mission Test Tools](#cap09_feat005-mission-test-tools)
   - [Cap10: Notifications](#cap10-notifications)
     - [Cap10_Feat001: Notification Sources](#cap10_feat001-notification-sources)
     - [Cap10_Feat002: Notification Display](#cap10_feat002-notification-display)
@@ -96,6 +99,14 @@ Spacewars Ironstrike is a browser-based multi-player 2D space exploration game. 
     - [Cap11_Feat003: Economy & Resource Scaling](#cap11_feat003-economy--resource-scaling)
     - [Cap11_Feat004: Ship Mobility & Special Abilities](#cap11_feat004-ship-mobility--special-abilities)
     - [Cap11_Feat005: Battle Progression & XP Requirements](#cap11_feat005-battle-progression--xp-requirements)
+  - [Cap12: Missions, Contacts & NPC Ships](#cap12-missions-contacts--npc-ships)
+    - [Cap12_Feat001: Stations & Locations](#cap12_feat001-stations--locations)
+    - [Cap12_Feat002: Hostile NPC Ships](#cap12_feat002-hostile-npc-ships)
+    - [Cap12_Feat003: Friendly Contacts](#cap12_feat003-friendly-contacts)
+    - [Cap12_Feat004: Missions](#cap12_feat004-missions)
+    - [Cap12_Feat005: Mission Cargo](#cap12_feat005-mission-cargo)
+    - [Cap12_Feat006: Achievements](#cap12_feat006-achievements)
+    - [Cap12_Feat007: Missions Page & Mission Tracker](#cap12_feat007-missions-page--mission-tracker)
 - [Document Format & Templates](#document-format--templates)
 
 ## Capabilities
@@ -304,7 +315,7 @@ The game world is a toroidal 5000×5000-unit space rendered on an HTML5 Canvas. 
 | Cap03_Feat002_Req001 | The game world is 5000×5000 world units (configurable via the `WORLD_SIZE` environment variable). Objects that move past a boundary wrap seamlessly to the opposite edge: `position = ((position % size) + size) % size`.                 |
 | Cap03_Feat002_Req002 | The canvas view is always centered on the player's ship. Other players' ships, collectible objects, and starbases are rendered relative to the player's position.                                                                         |
 | Cap03_Feat002_Req003 | Player can zoom the viewport in and out. Zoom ranges from 0.25× (maximum zoom-out, showing more world) to 4.0× (maximum zoom-in). The default zoom level is 1.33×. Zoom preference is persisted in `localStorage`.                        |
-| Cap03_Feat002_Req004 | The world state (`GET /api/world`) returns all space objects (player ships, asteroids, shipwrecks, escape pods, starbases) with their current positions, types, speeds, and angles. Other players' ships also include username and level. |
+| Cap03_Feat002_Req004 | The world state (`GET /api/world`) returns all space objects (player ships, asteroids, shipwrecks, escape pods, starbases, the player's hostile NPC ships and the friendly contacts) with their current positions, types, speeds, and angles. Other players' ships also include username and level. See [Cap12](#cap12-missions-contacts--npc-ships) for NPC ships. |
 | Cap03_Feat002_Req005 | Toroidal distance between two objects is calculated as `sqrt(min(                                                                                                                                                                         | dx  | , W− | dx  | )² + min( | dy  | , H− | dy  | )²)` to correctly account for wrapping. This distance is used for range checks (collection, combat, starbase docking) and for teleport cost. See [Cap04_Feat002](#cap04_feat002-collectible-harvesting) and [Cap05_Feat001](#cap05_feat001-battle-initiation--level-matching). |
 
 ---
@@ -340,7 +351,7 @@ The Teleport research (unlock gate, starts at level 0) grants rechargeable telep
 
 #### Cap03_Feat005: Starbase Interaction
 
-Starbases are stationary space stations. A player who docks within range can buy or sell Commanders via the Starbase shop.
+Starbases are stationary space stations; the world has three of them (see [Cap12_Feat001](#cap12_feat001-stations--locations)). A player who docks within range can buy or sell Commanders via the Starbase shop.
 
 | ID                   | Requirement                                                                                                                                                                                                                                                                      |
 | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -650,7 +661,7 @@ Players build defense layers (hull, armor, shield) and a specialized ECM jammer.
 
 ### Cap08: Inventory Management
 
-Manage items in the ship's inventory; assign compatible items to bridge slots to activate their stat bonuses and enhance ship capabilities. Currently, commanders are the only item type in inventory.
+Manage items in the ship's inventory; assign compatible items to bridge slots to activate their stat bonuses and enhance ship capabilities. The inventory holds commanders and mission cargo; see [Cap12_Feat005: Mission Cargo](#cap12_feat005-mission-cargo).
 
 #### Contained Features
 
@@ -670,7 +681,7 @@ Players manage a grid-based inventory of items. Items can be inspected, reordere
 | Cap08_Feat001_Req003 | The maximum number of inventory slots is determined by the InventorySlots research level. See [Cap06: Research & Technology Tree](#cap06-research--technology-tree).                                                                                                                                        |
 | Cap08_Feat001_Req004 | Player can move an item to a different slot within the inventory grid (`POST /api/inventory/move`).                                                                                                                                                                                                         |
 | Cap08_Feat001_Req005 | Player can sort the inventory by a chosen stat key or by total bonus value, in ascending or descending order. Empty slots are pushed to the end of the grid.                                                                                                                                                |
-| Cap08_Feat001_Req006 | Player can permanently delete an item from inventory (`DELETE /api/inventory`). Deletion requires no confirmation and awards no iron. To sell an item for iron, the player must visit the Starbase. See [Cap03: Exploration & Navigation](#cap03-exploration--navigation).                                  |
+| Cap08_Feat001_Req006 | Player can permanently delete an item from inventory (`DELETE /api/inventory`). Deletion requires no confirmation and awards no iron. Mission cargo cannot be deleted. To sell an item for iron, the player must visit the Starbase. See [Cap03: Exploration & Navigation](#cap03-exploration--navigation).                                  |
 | Cap08_Feat001_Req007 | Commander items display a name (three-part: first, middle initial, last) and a portrait image. Portrait gender is derived from the imageId.                                                                                                                                                                 |
 | Cap08_Feat001_Req008 | Commander items carry 1–3 stat bonuses. Each bonus targets one of seven stats: `shipSpeed`, `projectileWeaponDamage`, `projectileWeaponReloadRate`, `projectileWeaponAccuracy`, `energyWeaponDamage`, `energyWeaponReloadRate`, `energyWeaponAccuracy`. Bonus values range from 0.1 to 1.0 in steps of 0.1. |
 
@@ -701,6 +712,7 @@ Players assign inventory items to bridge slots to activate their stat bonuses. B
 - [Cap09_Feat002](#cap09_feat002-time-multiplier-management): Time Multiplier Management
 - [Cap09_Feat003](#cap09_feat003-space-object-spawning): Space Object Spawning
 - [Cap09_Feat004](#cap09_feat004-database--statistics-inspection): Database & Statistics Inspection
+- [Cap09_Feat005](#cap09_feat005-mission-test-tools): Mission Test Tools
 
 ---
 
@@ -754,6 +766,21 @@ Admins can view the full current state of the database (all users, space objects
 | Cap09_Feat004_Req004 | Any authenticated player can retrieve global and per-player statistics (`GET /api/statistics`). Statistics include combat totals (battles won/lost, damage dealt/received, iron transferred, XP awarded), collection totals (asteroids, shipwrecks, escape pods, iron from collection), and economy totals (iron spent on research, iron spent on builds, builds completed, research completions). |
 | Cap09_Feat004_Req005 | The statistics endpoint also returns global aggregates (totals and averages across all players) and top-5 rankings per metric, which power the leaderboard best-in-category highlights. See [Cap02_Feat004: Leaderboard](#cap02_feat004-leaderboard).                                                                                                                                              |
 
+---
+
+#### Cap09_Feat005: Mission Test Tools
+
+Developers can test a mission without playing the missions before it. The tools are on the Missions page; their use per mission is described in [doc/quests.md](./quests.md#2-test-tools).
+
+| ID                   | Requirement |
+| -------------------- | ----------- |
+| Cap09_Feat005_Req001 | The mission test tools are only shown to developer accounts and call `POST /api/admin/quests`, which answers `401` without a session and `403` for other accounts. |
+| Cap09_Feat005_Req002 | "Force accept" on a mission card marks all required missions as completed without paying their rewards and accepts the mission, regardless of level and distance to the giver (action `accept`). |
+| Cap09_Feat005_Req003 | "Fulfil step" on an active mission fulfils the objectives of the current step and puts missing mission cargo into the inventory (action `fulfil`). "Force report" additionally reports the step to its contact from any distance (action `report`). |
+| Cap09_Feat005_Req004 | "Reset all mission progress" deletes the missions, counters, achievements, discovered locations and mission cargo of the account. XP, iron and commanders already paid stay (action `reset`). |
+| Cap09_Feat005_Req005 | "Respawn hostile ships" brings back all defeated hostile ships of the account; it is rejected while one of them is in a battle (action `respawnNpcs`). |
+| Cap09_Feat005_Req006 | "Jump to" puts the ship next to a contact or into the centre of a location and stops it; it is rejected during a battle (action `jump`). |
+
 ### Cap10: Notifications
 
 **Purpose**: Players receive in-game notifications about game events. Notifications are displayed on the Home page and can be managed and summarized.
@@ -787,6 +814,7 @@ Players receive notifications automatically when specific game events occur. Eac
 | Cap10_Feat001_Req010 | Player receives a notification when a build queue item completes, naming the completed item. See [Cap07: Factory & Manufacturing](#cap07-factory--manufacturing).                                                    |
 | Cap10_Feat001_Req011 | Player receives a notification when a build queue is aborted due to insufficient iron, stating the item name and how many queued items were removed.                                                                 |
 | Cap10_Feat001_Req012 | Player receives a notification when a research item reaches a new level, stating the research name, new level reached, and score awarded. See [Cap06: Research & Technology Tree](#cap06-research--technology-tree). |
+| Cap10_Feat001_Req013 | Player receives a notification for every mission event: mission accepted, mission cargo found or lost because the inventory is full, step ready to report, step finished, mission completed with its reward, mission abandoned, location discovered, achievement unlocked, and an ambush by an aggressive NPC ship. See [Cap12: Missions, Contacts & NPC Ships](#cap12-missions-contacts--npc-ships). |
 
 ---
 
@@ -923,6 +951,133 @@ npm run techtree-chart -- --research <name> --min <n> --max <n>
 ```
 
 Comprehensive balancing analysis including battle progression requirements, XP scaling, and strategic implications is available in [doc/balancing-analysis.md](./balancing-analysis.md).
+
+---
+
+### Cap12: Missions, Contacts & NPC Ships
+
+**Purpose**: Computer-controlled ships populate the world. Friendly contacts offer missions that lead through a storyline in four chapters; hostile ships can be fought and, if aggressive, attack on their own. Missions, discoveries and achievements pay XP, iron and commanders.
+
+The complete list of missions with prerequisites, steps, rewards, expected notifications and a manual test procedure per mission is the generated document [doc/quests.md](./quests.md).
+
+#### Contained Features
+
+- [Cap12_Feat001](#cap12_feat001-stations--locations): Stations & Locations
+- [Cap12_Feat002](#cap12_feat002-hostile-npc-ships): Hostile NPC Ships
+- [Cap12_Feat003](#cap12_feat003-friendly-contacts): Friendly Contacts
+- [Cap12_Feat004](#cap12_feat004-missions): Missions
+- [Cap12_Feat005](#cap12_feat005-mission-cargo): Mission Cargo
+- [Cap12_Feat006](#cap12_feat006-achievements): Achievements
+- [Cap12_Feat007](#cap12_feat007-missions-page--mission-tracker): Missions Page & Mission Tracker
+
+---
+
+#### Cap12_Feat001: Stations & Locations
+
+The world has named places: three stations and five points of interest. They are the anchors for contacts, hostile ships and exploration objectives.
+
+| ID                   | Requirement |
+| -------------------- | ----------- |
+| Cap12_Feat001_Req001 | The world contains three stations: Ironstrike Station (4000, 4000), Meridian Observatory (900, 1100) and Bastion Outpost (1200, 3900). All three are starbases with the shop of [Cap03_Feat005](#cap03_feat005-starbase-interaction) (`STATION_DEFINITIONS` in `src/shared/starbases.ts`). All stations use the same picture. |
+| Cap12_Feat001_Req002 | The world contains eight named locations: the three stations plus Horde's Reach (lair), Anvil Graveyard (wreck field), Azure Drift, Listening Post Tau and Drifter's Rock (landmarks). Each location has a position and a radius (`LOCATIONS` in `src/shared/quests/locations.ts`). |
+| Cap12_Feat001_Req003 | The game map marks every location: points of interest with a dashed circle of their radius and their name, stations with their name (`LocationMarkerRenderer.ts`). |
+| Cap12_Feat001_Req004 | A player whose ship is inside the radius of a location for the first time discovers it and receives 25 XP and a notification. The check runs with the world update of the game page (`GET /api/world`), not while the player is in a battle (`QuestService.recordVisits`, `LOCATION_DISCOVERY_XP`). |
+
+---
+
+#### Cap12_Feat002: Hostile NPC Ships
+
+Every player has their own set of hostile ships. They circle a location, can be attacked like a player ship and return some time after their defeat.
+
+| ID                   | Requirement |
+| -------------------- | ----------- |
+| Cap12_Feat002_Req001 | Hostile ships exist once per player: other players neither see nor fight them (`NPCManager.getNpcsForPlayer`, owner check in `POST /api/attack`). |
+| Cap12_Feat002_Req002 | There are four kinds of hostile ships (`HOSTILE_ARCHETYPES` in `src/shared/quests/npcArchetypes.ts`): Iron Horde Pirates (4 ships around Ironstrike Station), Iron Horde Marauders (3 ships at Horde's Reach), Rogue Sentry Drones (2 ships at the Anvil Graveyard) and Warlord Krag (1 ship at Horde's Reach). Numbers, orbits, strength and iron values are listed in [doc/quests.md](./quests.md#hostile-ships). |
+| Cap12_Feat002_Req003 | The level of a hostile ship is the player's level plus a fixed offset per ship, at least 1 (`hostileLevel`). |
+| Cap12_Feat002_Req004 | Player can attack a hostile ship (`POST /api/attack`). The level range restriction of [Cap05_Feat001](#cap05_feat001-battle-initiation--level-matching) does not apply to NPC ships. A ship that is defeated or already in a battle cannot be attacked. |
+| Cap12_Feat002_Req005 | Marauders and drones are aggressive: when the player's ship comes within their attack range (marauder 300, drone 220 world units), they start a battle as the attacker. The check runs with the world update of the game page. The player receives a notification, and the game page announces the ambush (`NPCManager.findAmbusher`, `ambushPlayer` in `src/lib/server/npc/npcAmbush.ts`). |
+| Cap12_Feat002_Req006 | After every battle against an NPC ship the player is safe from ambushes for 90 seconds (`AMBUSH_GRACE_MS`). |
+| Cap12_Feat002_Req007 | A player who defeats a hostile ship receives iron: a fixed amount per kind multiplied by the level of the ship, limited by the iron storage capacity. A player who loses against an NPC ship loses all iron aboard (`resolveBattle` in `src/lib/server/battle/battleService.ts`). |
+| Cap12_Feat002_Req008 | A defeated ship returns after a time that depends on its kind: pirates at midnight (UTC), marauders after 20 minutes, drones after 15 minutes, Warlord Krag after 10 minutes. |
+| Cap12_Feat002_Req009 | Warlord Krag is only present while an active mission step asks for his defeat (`getWantedArchetypes`, `NPCManager.isPresent`). |
+| Cap12_Feat002_Req010 | The tooltip of a hostile ship shows its name and level; for an aggressive ship it also shows a warning (`TooltipRenderer.ts`). |
+
+---
+
+#### Cap12_Feat003: Friendly Contacts
+
+Contacts are friendly ships that circle a station or landmark. They offer missions and take reports.
+
+| ID                   | Requirement |
+| -------------------- | ----------- |
+| Cap12_Feat003_Req001 | There are four contacts, visible to all players (`CONTACTS` in `src/shared/quests/npcArchetypes.ts`): Quartermaster Vess (Ironstrike Station), Professor Quill (Meridian Observatory), Captain Halden (Bastion Outpost) and Old Tam (Drifter's Rock). |
+| Cap12_Feat003_Req002 | Contacts cannot be attacked. |
+| Cap12_Feat003_Req003 | Player can hail a contact while their ship is within 500 world units of the contact's ship (`HAIL_RANGE`). Clicking the contact on the map hails it when in range and sets a course to it otherwise; on touch devices the first tap shows the tooltip and the second tap acts. Hailing opens the Missions page with the conversation of that contact. |
+| Cap12_Feat003_Req004 | The tooltip of a contact shows the contact's name, the ship name and whether the contact is in hailing range. |
+| Cap12_Feat003_Req005 | The server checks the hailing range for every accept and report with the current ship positions (`QuestService`, error code `contactOutOfRange`). |
+
+---
+
+#### Cap12_Feat004: Missions
+
+A mission is offered by a contact and consists of one or more steps. There are story missions, side missions and repeatable contracts.
+
+| ID                   | Requirement |
+| -------------------- | ----------- |
+| Cap12_Feat004_Req001 | The game has 19 missions: 14 story missions in 4 chapters, 2 side missions and 3 repeatable contracts (`QUESTS` in `src/shared/quests/questDefinitions.ts`). |
+| Cap12_Feat004_Req002 | A mission is on offer when all missions it requires are completed and the player has reached its minimum level, if it has one. Until then it is shown as locked with its requirements. |
+| Cap12_Feat004_Req003 | Player can accept a mission on offer while its giver is in hailing range (`POST /api/quests`, action `accept`). Any number of missions can be active at the same time. |
+| Cap12_Feat004_Req004 | A step has objectives of these kinds: collect asteroids, shipwrecks or escape pods; defeat hostile ships of one kind or of any kind; fly to a location; have mission cargo aboard. Progress only counts while the step is active. |
+| Cap12_Feat004_Req005 | A step with a contact is finished by reporting to that contact in hailing range once the objectives are fulfilled (`POST /api/quests`, action `report`). The contact of a step is not always the giver. A step without a contact finishes by itself. The player receives a notification when a step is ready to report. |
+| Cap12_Feat004_Req006 | Completing the last step pays the reward of the mission: XP, iron (limited by the iron storage capacity) and, for some missions, a random commander. A commander reward needs a free inventory slot; without one the report is rejected. |
+| Cap12_Feat004_Req007 | Completed story and side missions cannot be played again. A completed contract is on offer again immediately. |
+| Cap12_Feat004_Req008 | Player can abandon an active mission (`POST /api/quests`, action `abandon`). Its progress and its cargo are deleted; the mission is on offer again. |
+| Cap12_Feat004_Req009 | A story chapter is completed when all its missions are completed. |
+| Cap12_Feat004_Req010 | Every mission event (accepted, cargo found, step ready to report, step finished, completed, abandoned, location discovered, achievement unlocked) is sent as a notification in the player's language. See [Cap10_Feat001](#cap10_feat001-notification-sources). |
+
+---
+
+#### Cap12_Feat005: Mission Cargo
+
+Missions use the ship inventory for items that are found, carried and handed over.
+
+| ID                   | Requirement |
+| -------------------- | ----------- |
+| Cap12_Feat005_Req001 | Mission cargo lies in the inventory grid of [Cap08_Feat001](#cap08_feat001-item-inventory). All units of one cargo type share one slot; the slot shows the quantity (`src/lib/server/inventory/cargo.ts`). |
+| Cap12_Feat005_Req002 | Cargo is either handed over by a contact when a step starts, found when collecting an object of a given type, or dropped by a defeated hostile ship. Finds have a chance per cargo type and only happen while a step asks for that cargo and the required quantity is not reached (`CARGO` in `questDefinitions.ts`). |
+| Cap12_Feat005_Req003 | If the inventory has no free slot for a new cargo type, the find is lost and the player is told to free a slot. A mission whose first step hands over cargo cannot be accepted without a free slot. |
+| Cap12_Feat005_Req004 | Mission cargo cannot be deleted, sold at a starbase or assigned to the bridge. It can be moved within the inventory. |
+| Cap12_Feat005_Req005 | Cargo of a step is removed from the inventory when the step is finished, and all cargo of a mission when the mission is abandoned. |
+
+---
+
+#### Cap12_Feat006: Achievements
+
+Achievements reward long-term activity independently of missions.
+
+| ID                   | Requirement |
+| -------------------- | ----------- |
+| Cap12_Feat006_Req001 | The game has 11 achievements with one to three tiers each (`ACHIEVEMENTS` in `questDefinitions.ts`). They count: asteroids, shipwrecks and escape pods collected, hostile ships defeated, aggressive ships defeated, victories over Warlord Krag, victories over players, locations discovered, missions completed, contracts completed and story chapters completed. |
+| Cap12_Feat006_Req002 | A tier unlocks when its counter reaches the threshold. Each tier pays its XP once and sends a notification. |
+| Cap12_Feat006_Req003 | Player can view all achievements with the current counter, the next threshold and the unlocked tiers on the Missions page. |
+
+---
+
+#### Cap12_Feat007: Missions Page & Mission Tracker
+
+The Missions page (`/missions`) is the mission log; the game page shows the active missions on the map.
+
+| ID                   | Requirement |
+| -------------------- | ----------- |
+| Cap12_Feat007_Req001 | The navigation has an entry "Missions" (`/missions`), on desktop and on mobile. The page requires login. |
+| Cap12_Feat007_Req002 | The Missions page shows a summary (player level, missions completed, locations discovered, achievement tiers unlocked) and five tabs: Active, Available, Story, Achievements and Sector (`MissionsPageClient.tsx`). |
+| Cap12_Feat007_Req003 | A mission card shows title, giver, briefing text, the steps with objectives and their progress, the contact to report to and the reward. Depending on the state it offers Accept, Report and Abandon (`QuestCard.tsx`). |
+| Cap12_Feat007_Req004 | When a contact is in hailing range, the page shows the contact's greeting, the missions the contact offers and the steps that can be reported to the contact (`HailPanel.tsx`). The page reloads the mission state including the contacts in range every 5 seconds (`GET /api/quests`). |
+| Cap12_Feat007_Req005 | The Story tab lists all chapters with their missions in order, including locked ones and their requirements. |
+| Cap12_Feat007_Req006 | The Sector tab lists all contacts and locations with their positions and marks the discovered locations (`SectorPanel.tsx`). |
+| Cap12_Feat007_Req007 | After an accept, report or abandon the page shows the resulting notifications, and after a completion the closing words of the contact. |
+| Cap12_Feat007_Req008 | The game page shows a collapsible mission tracker with the active missions and the progress of their current step, and a hail button for every contact in range (`QuestTracker.tsx`). The tracker reloads when the mission state changed on the server (`questRevision` in `GET /api/world`). |
+| Cap12_Feat007_Req009 | All mission texts (titles, briefings, step texts, contact lines, notifications) are available in English and German (`quests` namespace in `src/locales/en.json` and `src/locales/de.json`). |
 
 ---
 

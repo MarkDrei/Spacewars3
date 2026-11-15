@@ -1,5 +1,150 @@
 # Technical Debt
 
+## Quest Effects Are Not Atomic
+
+**Priority**: Medium
+**Added**: 2026-11-15
+**Component**: `src/lib/server/quests/QuestService.ts`
+
+### Context
+
+A mission action changes up to four things: the mission state (`quest_progress`), the inventory
+(`inventories`: cargo, commander reward), the user (XP, iron, through `UserCache`) and the notifications.
+`QuestService.run` stores mission state and inventory in two statements while it holds
+USER_INVENTORY_LOCK, then grants XP and iron under USER_LOCK (write-behind persistence), then sends
+the notifications. There is no database transaction around these steps.
+
+### Consequences
+
+If the server stops between the steps, a mission can be stored as completed while the cargo is still
+in the inventory, or while XP and iron were not persisted yet (the user cache flushes every 30 s).
+The window is short and the worst case is a lost reward for one player, but it cannot be repaired
+without the admin tools.
+
+### Proper Solution
+
+Store mission state and inventory in one transaction (one connection, `BEGIN … COMMIT`), and persist
+the user row in the same step instead of waiting for the background flush — or store pending rewards
+in the mission state and pay them idempotently.
+
+### Related Files
+
+- `src/lib/server/quests/QuestService.ts` — `run`, `grantRewards`
+- `src/lib/server/quests/QuestRepo.ts`, `src/lib/server/inventory/InventoryService.ts` — the two writes
+
+---
+
+## Hostile NPC State Lives in Memory Only
+
+**Priority**: Low
+**Added**: 2026-11-15
+**Component**: `src/lib/server/npc/NPCManager.ts`
+
+### Context
+
+Defeated hostile ships, their respawn times and the ambush grace period are kept in the `NPCManager`
+singleton. A server restart (every deploy) or a level-up of the player regenerates the ships.
+
+### Consequences
+
+After a restart all hostile ships are back at once, including the ones with long respawn times
+(pirates: midnight UTC). A player can collect the victory iron again earlier than intended.
+
+### Proper Solution
+
+Persist the defeat time per player and ship (for example in `quest_progress.data`) and restore it when
+the ships are generated.
+
+### Related Files
+
+- `src/lib/server/npc/NPCManager.ts` — `getNpcsForPlayer`, `markDefeated`
+
+---
+
+## Location Visits and Ambushes Depend on the World Poll
+
+**Priority**: Low
+**Added**: 2026-11-15
+**Component**: `src/app/api/world/route.ts` (`applyShipPosition`)
+
+### Context
+
+Whether a ship is inside a location or inside the attack range of an aggressive NPC is checked when
+the client polls `GET /api/world`. The server does not check positions on its own.
+
+### Consequences
+
+A ship that crosses a location or a patrol while no page polls the world (other page open, tab in the
+background, browser closed) neither discovers the location nor gets ambushed. A fast ship can cross a
+small radius between two polls.
+
+### Proper Solution
+
+Check positions in a server-side tick (for example together with the physics update), or test the
+path flown since the last check instead of the current position.
+
+### Related Files
+
+- `src/app/api/world/route.ts` — `applyShipPosition`
+- `src/lib/server/quests/QuestService.ts` — `recordVisits`
+- `src/lib/server/npc/NPCManager.ts` — `findAmbusher`
+
+---
+
+## All Stations Share One Picture
+
+**Priority**: Low
+**Added**: 2026-11-15
+**Component**: `src/shared/starbases.ts`
+
+### Context
+
+The world has three stations, but only one station image (`station1.png`) is in the repository. All
+stations use `picture_id: 1`.
+
+### Consequences
+
+The stations can only be told apart by their name label on the map.
+
+### Proper Solution
+
+Add the additional station images and give each entry of `STATION_DEFINITIONS` its own `picture_id`.
+
+### Related Files
+
+- `src/shared/starbases.ts` — `STATION_DEFINITIONS`, `STARBASES`
+
+---
+
+## Untranslated Status Texts in the Inventory UI
+
+**Priority**: Low
+**Added**: 2026-11-15
+**Component**: `src/components/Inventory/InventorySection.tsx`
+
+### Context
+
+The status line of the inventory builds its texts in code ("Move failed", "Transfer failed", "Delete
+failed", "Save failed", "Failed to load inventory") instead of reading them from the locale catalogues.
+The texts existed before the mission system; the rejection of deleting mission cargo is shown through
+the same line.
+
+### Consequences
+
+German players see English status texts on the Ship page.
+
+### Proper Solution
+
+Move the texts to `src/locales/en.json` / `de.json` and return translated errors from the inventory
+routes, as the mission routes do.
+
+### Related Files
+
+- `src/components/Inventory/InventorySection.tsx` — status texts
+- `src/app/api/inventory/route.ts` — error responses
+
+---
+
 ## TypeScript 6 Kept Alongside TypeScript 7 for Tooling API
 
 **Priority**: Low
