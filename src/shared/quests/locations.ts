@@ -38,8 +38,9 @@ export const LOCATIONS: readonly LocationDefinition[] = [
   station('bastion_outpost'),
   // Radius is larger than orbit + aggro radius of the marauders, so the lair can be scouted safely
   { id: 'hordes_reach', kind: 'lair', x: 2900, y: 1300, radius: 800 },
-  // Radius is larger than orbit + aggro radius of the sentry drones
-  { id: 'anvil_graveyard', kind: 'wreck_field', x: 2500, y: 2700, radius: 650 },
+  // Radius is larger than orbit + aggro radius of the sentry drones. The field lies south of the
+  // start position of new ships (world centre), which must stay outside of it.
+  { id: 'anvil_graveyard', kind: 'wreck_field', x: 2500, y: 3400, radius: 650 },
   { id: 'azure_drift', kind: 'landmark', x: 300, y: 2700, radius: 300 },
   { id: 'listening_post_tau', kind: 'landmark', x: 3500, y: 2300, radius: 300 },
   { id: 'drifters_rock', kind: 'landmark', x: 4500, y: 800, radius: 400 },

@@ -644,7 +644,7 @@
       },
       "anvil_graveyard": {
         "name": "Anvil Graveyard",
-        "description": "Wreck field of a forgotten battle in the heart of the sector, still guarded by rogue sentry drones."
+        "description": "Wreck field of a forgotten battle south of the sector's centre, still guarded by rogue sentry drones."
       },
       "azure_drift": {
         "name": "Azure Drift",
@@ -812,7 +812,7 @@
       },
       "c2_voices_of_the_dead": {
         "title": "Voices of the Dead",
-        "offer": "The relayed signals point to the Anvil Graveyard, the wreck field in the heart of the sector. Old sentry drones still guard it and they shoot at everything. Scout the field first, then pull three flight recorders out of shipwrecks.",
+        "offer": "The relayed signals point to the Anvil Graveyard, the wreck field south of the sector's centre. Old sentry drones still guard it and they shoot at everything. Scout the field first, then pull three flight recorders out of shipwrecks.",
         "stages": {
           "1": "Scout the Anvil Graveyard.",
           "2": "Salvage shipwrecks until you have 3 flight recorders, then bring them to Professor Quill."

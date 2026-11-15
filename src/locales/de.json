@@ -644,7 +644,7 @@
       },
       "anvil_graveyard": {
         "name": "Amboss-Friedhof",
-        "description": "Wrackfeld einer vergessenen Schlacht im Herzen des Sektors, noch immer von abtrünnigen Wachdrohnen bewacht."
+        "description": "Wrackfeld einer vergessenen Schlacht südlich der Sektormitte, noch immer von abtrünnigen Wachdrohnen bewacht."
       },
       "azure_drift": {
         "name": "Azurdrift",
@@ -812,7 +812,7 @@
       },
       "c2_voices_of_the_dead": {
         "title": "Stimmen der Toten",
-        "offer": "Die weitergeleiteten Signale zeigen auf den Amboss-Friedhof, das Wrackfeld im Herzen des Sektors. Alte Wachdrohnen bewachen es noch immer und schießen auf alles. Erkunde zuerst das Feld und hol dann drei Flugschreiber aus Schiffswracks.",
+        "offer": "Die weitergeleiteten Signale zeigen auf den Amboss-Friedhof, das Wrackfeld südlich der Sektormitte. Alte Wachdrohnen bewachen es noch immer und schießen auf alles. Erkunde zuerst das Feld und hol dann drei Flugschreiber aus Schiffswracks.",
         "stages": {
           "1": "Erkunde den Amboss-Friedhof.",
           "2": "Birg Schiffswracks, bis du 3 Flugschreiber hast, und bring sie zu Professor Quill."

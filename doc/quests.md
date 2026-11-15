@@ -155,7 +155,7 @@ Total of all missions completed once: 7650 XP and 37400 iron, plus 2 commanders.
 | Meridian Observatory (`meridian_observatory`) | station | (900, 1100) | 500 | Research station in the north-west that listens to everything that moves in the sector. |
 | Bastion Outpost (`bastion_outpost`) | station | (1200, 3900) | 500 | Fortified patrol base in the south-west, the last line against the Iron Horde. |
 | Horde’s Reach (`hordes_reach`) | lair | (2900, 1300) | 800 | Hideout of the Iron Horde. Marauders patrol it and attack every ship that comes too close. |
-| Anvil Graveyard (`anvil_graveyard`) | wreck field | (2500, 2700) | 650 | Wreck field of a forgotten battle in the heart of the sector, still guarded by rogue sentry drones. |
+| Anvil Graveyard (`anvil_graveyard`) | wreck field | (2500, 3400) | 650 | Wreck field of a forgotten battle south of the sector's centre, still guarded by rogue sentry drones. |
 | Azure Drift (`azure_drift`) | landmark | (300, 2700) | 300 | A cloud of cold blue ice crystals at the western edge. Beautiful and harmless. |
 | Listening Post Tau (`listening_post_tau`) | landmark | (3500, 2300) | 300 | An abandoned relay station that sometimes transmits although nobody lives there. |
 | Drifter’s Rock (`drifters_rock`) | landmark | (4500, 800) | 400 | A hollowed-out asteroid in the north-east, home of Old Tam. |
@@ -170,7 +170,7 @@ Each player has their own set. The level of a ship is the player level plus the 
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | Iron Horde Pirate (`pirate`) | Passive: never attacks first | Ironstrike Station (4000, 4000) | 750 | 4 (±0, +1, +2, +3) | ×1 | 5000 × ship level | at midnight (UTC) |
 | Iron Horde Marauder (`marauder`) | Aggressive: attacks a player ship within 300 of it | Horde’s Reach (2900, 1300) | 450 | 3 (−1, ±0, +1) | ×1 | 6000 × ship level | 20 min after its defeat |
-| Rogue Sentry Drone (`drone`) | Aggressive: attacks a player ship within 220 of it | Anvil Graveyard (2500, 2700) | 380 | 2 (−1, ±0) | ×0.7 | 3000 × ship level | 15 min after its defeat |
+| Rogue Sentry Drone (`drone`) | Aggressive: attacks a player ship within 220 of it | Anvil Graveyard (2500, 3400) | 380 | 2 (−1, ±0) | ×0.7 | 3000 × ship level | 15 min after its defeat |
 | Warlord Krag (`warlord`) | Passive: never attacks first. Only present while an active mission step asks for it | Horde’s Reach (2900, 1300) | 150 | 1 (+2) | ×1.5 | 10000 × ship level | 10 min after its defeat |
 
 ### Mission cargo
@@ -381,11 +381,11 @@ Completion: *They all tell the same story: ships with red prows, striking from t
 | Reward | 450 XP, 1500 iron |
 | Mission cargo | Flight Recorder: Found when salvaging shipwrecks (100% chance each). |
 
-Offer: *The relayed signals point to the Anvil Graveyard, the wreck field in the heart of the sector. Old sentry drones still guard it and they shoot at everything. Scout the field first, then pull three flight recorders out of shipwrecks.*
+Offer: *The relayed signals point to the Anvil Graveyard, the wreck field south of the sector's centre. Old sentry drones still guard it and they shoot at everything. Scout the field first, then pull three flight recorders out of shipwrecks.*
 
 | Step | Briefing | Objectives | Handed over at the start | Finished by |
 | --- | --- | --- | --- | --- |
-| 1 | Scout the Anvil Graveyard. | Fly to Anvil Graveyard (2500, 2700) | — | objectives fulfilled (no report) |
+| 1 | Scout the Anvil Graveyard. | Fly to Anvil Graveyard (2500, 3400) | — | objectives fulfilled (no report) |
 | 2 | Salvage shipwrecks until you have 3 flight recorders, then bring them to Professor Quill. | Have aboard: Flight Recorder ×3 | — | report to Professor Quill |
 
 Completion: *Listen to this… the last entries all mention one name: Krag. A warlord who is forging the pirate clans into a single Iron Horde. We have to find out where he sits.*
@@ -395,7 +395,7 @@ Completion: *Listen to this… the last entries all mention one name: Krag. A wa
 | # | Action | Shortcut | Expected |
 | --- | --- | --- | --- |
 | 1 | Fly within 500 of the RV Meridian Lantern, hail Professor Quill and accept the mission | Force accept | Message “📜 Mission accepted: **Voices of the Dead**” |
-| 2 | Step 1: Fly to Anvil Graveyard (2500, 2700) — counts within 650 of the centre, with the game page open | Fulfil step | Message “📜 **Voices of the Dead** — next step: Salvage shipwrecks until you have 3 flight recorders, then bring them to Professor Quill.” |
+| 2 | Step 1: Fly to Anvil Graveyard (2500, 3400) — counts within 650 of the centre, with the game page open | Fulfil step | Message “📜 **Voices of the Dead** — next step: Salvage shipwrecks until you have 3 flight recorders, then bring them to Professor Quill.” |
 | 3 | Step 2: Have aboard: Flight Recorder ×3 — Found when salvaging shipwrecks (100% chance each). | Fulfil step | Message “📜 **Voices of the Dead**: objectives fulfilled. Report to **Professor Quill**.” |
 | 4 | Step 2: fly within 500 of the RV Meridian Lantern and report to Professor Quill | Force report | Message “🏅 Mission completed: **Voices of the Dead**! Reward: 450 XP and 1500 iron.”<br/>Inventory: − 3× Flight Recorder<br/>Now on offer (if their other requirements are met): The Trail |
 

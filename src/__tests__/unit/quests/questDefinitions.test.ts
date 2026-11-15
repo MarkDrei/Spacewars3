@@ -4,6 +4,8 @@ import { LOCATIONS } from '@/shared/quests/locations';
 import { CONTACTS, HOSTILE_ARCHETYPES, HOSTILE_ARCHETYPE_IDS, contactOrbit, hostileOrbit } from '@/shared/quests/npcArchetypes';
 import { STARBASES } from '@/shared/starbases';
 import { DEFAULT_WORLD_BOUNDS } from '@shared/worldConstants';
+import { calculateToroidalDistance } from '@shared/physics';
+import { DEFAULT_SHIP_START_X, DEFAULT_SHIP_START_Y } from '@/lib/server/constants';
 import en from '@/locales/en.json';
 import de from '@/locales/de.json';
 
@@ -172,6 +174,18 @@ describe('world layout', () => {
       if (!archetype.aggressive) continue;
       const home = LOCATIONS.find((l) => l.id === archetype.home)!;
       expect(archetype.orbitRadius + archetype.aggroRadius, id).toBeLessThan(home.radius);
+    }
+  });
+
+  it('aggressiveShips_homeLocations_doNotContainTheStartPositionOfNewShips', () => {
+    // A new player must not be ambushed (and lose their iron) without leaving the start position
+    const start = { x: DEFAULT_SHIP_START_X, y: DEFAULT_SHIP_START_Y };
+    for (const id of HOSTILE_ARCHETYPE_IDS) {
+      const archetype = HOSTILE_ARCHETYPES[id];
+      if (!archetype.aggressive) continue;
+      const home = LOCATIONS.find((l) => l.id === archetype.home)!;
+      const distance = calculateToroidalDistance(start, home, DEFAULT_WORLD_BOUNDS);
+      expect(distance, id).toBeGreaterThan(home.radius);
     }
   });
 
