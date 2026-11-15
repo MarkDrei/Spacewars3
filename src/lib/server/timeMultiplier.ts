@@ -134,5 +134,3 @@ export class TimeMultiplierService {
   }
 }
 
-// Export singleton instance for convenient access
-export const timeMultiplierService = TimeMultiplierService.getInstance();

@@ -12,6 +12,7 @@ import { BattleStats } from '../../lib/server/battle/battleTypes';
 import { initializeIntegrationTestServer, shutdownIntegrationTestServer } from '../helpers/testServer';
 import { withTransaction } from '../helpers/transactionHelper';
 import { getDatabase } from '@/lib/server/database';
+import { HOSTILE_ARCHETYPES } from '@/shared/quests/npcArchetypes';
 
 // helper to patch user iron directly in cache
 async function setUserIron(ctx: ReturnType<typeof createLockContext>, userId: number, amount: number) {
@@ -351,7 +352,8 @@ describe('Battle iron transfer', () => {
       const mockNpc = {
         id: npcId,
         ownerId: playerId,
-        npcIndex: 0,
+        archetype: 'pirate' as const,
+        spawn: HOSTILE_ARCHETYPES.pirate.spawns[0],
         level: 1,
         orbitAngleDeg: 0,
         defeated: false,

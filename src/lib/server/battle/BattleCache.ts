@@ -76,7 +76,10 @@ export class BattleCache extends Cache {
    */
   static resetInstance(): void {
     if (BattleCache.instance) {
-      BattleCache.instance.shutdown();
+      // Synchronous reset: callers that need a completed flush await shutdown() first
+      void BattleCache.instance.shutdown().catch((error: unknown) => {
+        console.error('❌ BattleCache shutdown during reset failed:', error);
+      });
       BattleCache.instance = null;
     }
   }
@@ -98,8 +101,12 @@ export class BattleCache extends Cache {
       await BattleCache.instance.loadActiveBattlesFromDb();
     }
     
-    // Start background tasks
-    startBattleScheduler();
+    // Start background tasks. In test mode the scheduler stays off (like background persistence):
+    // its timer callbacks run outside the test transaction and would commit battle results.
+    // Tests drive battles explicitly via processActiveBattles() or startBattleScheduler().
+    if (process.env.NODE_ENV !== 'test') {
+      startBattleScheduler();
+    }
     BattleCache.instance.startBackgroundPersistence();
   }
 

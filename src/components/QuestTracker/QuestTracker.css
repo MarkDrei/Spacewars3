@@ -1,0 +1,139 @@
+/* Mission tracker overlay on the game map (top left of the canvas) */
+.quest-tracker {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 10;
+  width: 250px;
+  max-width: calc(100% - 16px);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.78rem;
+  color: #dfe7df;
+  pointer-events: none; /* only the controls take clicks; the map stays clickable around them */
+}
+
+.quest-tracker button {
+  pointer-events: auto;
+  font: inherit;
+  cursor: pointer;
+}
+
+.quest-tracker__header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  padding: 5px 10px;
+  color: #dfe7df;
+  background: rgba(5, 10, 8, 0.82);
+  border: 1px solid rgba(76, 175, 80, 0.45);
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+.quest-tracker__header:hover {
+  border-color: rgba(76, 175, 80, 0.9);
+}
+
+.quest-tracker__count {
+  min-width: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: rgba(76, 175, 80, 0.85);
+  color: #04130a;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.quest-tracker__chevron {
+  color: #81c784;
+}
+
+.quest-tracker__hail {
+  align-self: flex-start;
+  padding: 6px 12px;
+  color: #04202e;
+  background: #7fd6ff;
+  border: 1px solid #b9e9ff;
+  border-radius: 4px;
+  font-weight: 700;
+  box-shadow: 0 0 12px rgba(127, 214, 255, 0.45);
+}
+
+.quest-tracker__hail:hover {
+  background: #a5e3ff;
+}
+
+.quest-tracker__body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 45vh;
+  overflow-y: auto;
+  padding: 8px 10px;
+  background: rgba(5, 10, 8, 0.82);
+  border: 1px solid rgba(76, 175, 80, 0.3);
+  border-radius: 4px;
+  pointer-events: auto;
+}
+
+.quest-tracker__empty {
+  color: #8a968a;
+}
+
+.quest-tracker__title {
+  color: #ffd54f;
+  font-weight: 600;
+}
+
+.quest-tracker__objectives {
+  margin: 2px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.quest-tracker__objectives li {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 1px 0;
+}
+
+.quest-tracker__progress {
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+  color: #9fb09f;
+}
+
+.quest-tracker__objective--done,
+.quest-tracker__objective--done .quest-tracker__progress {
+  color: #81c784;
+}
+
+.quest-tracker__objective--report {
+  color: #7fd6ff;
+  font-weight: 600;
+}
+
+.quest-tracker__open {
+  align-self: flex-start;
+  padding: 0;
+  color: #81c784;
+  background: none;
+  border: none;
+  text-decoration: underline;
+}
+
+@media (max-width: 768px) {
+  .quest-tracker {
+    width: 200px;
+    font-size: 0.72rem;
+  }
+
+  .quest-tracker__body {
+    max-height: 30vh;
+  }
+}

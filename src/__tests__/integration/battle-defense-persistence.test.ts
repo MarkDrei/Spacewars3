@@ -127,11 +127,11 @@ describe('Battle Defense Persistence', () => {
           
           // Apply damage to attacker
           attackerInCache.hullCurrent = attackerDamagedHull;
-          userWorldCache.updateUserInCache(damageUserCtx, attackerInCache);
+          await userWorldCache.updateUserInCache(damageUserCtx, attackerInCache);
           
           // Set defender to 0 hull (they will lose)
           defenderInCache.hullCurrent = 0;
-          userWorldCache.updateUserInCache(damageUserCtx, defenderInCache);
+          await userWorldCache.updateUserInCache(damageUserCtx, defenderInCache);
           
           console.log(`💥 Simulated damage - Attacker hull: ${attackerDamagedHull}, Defender hull: 0`);
           return battle;

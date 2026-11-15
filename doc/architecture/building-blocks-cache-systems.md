@@ -145,7 +145,7 @@ try {
 
 **Database Operations:**
 
-- `persistUserToDb()`: Updates user fields (iron, tech_tree, defense values)
+- `persistUserToDb()` (`user/userRepo.ts`): the only UPDATE for a user's game state (iron, tech tree, defense values, build queue, preferred locale, …), used by the user cache and by `user.save()`. It does not write username, password hash, email, verification state or link tokens; the auth routes change those with their own statements.
 - `persistDirtyWorld()`: Calls `saveWorldToDb(world)`
 
 ---

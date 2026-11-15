@@ -1,5 +1,6 @@
 import { describe, expect, test, beforeEach, vi } from 'vitest';
 import { STARBASE_DOCK_RANGE, STARBASE_ID_OFFSET } from '@/shared/starbases';
+import { CONTACTS, HAIL_RANGE } from '@/shared/quests/npcArchetypes';
 
 // ── Mock all heavy dependencies before importing Game ─────────────────────────
 
@@ -41,6 +42,10 @@ vi.mock('@/lib/client/renderers/InterceptionLineRenderer', () => ({
 vi.mock('@/lib/client/services/navigationService', () => ({
   setShipDirection: vi.fn(),
   interceptTarget: vi.fn(),
+}));
+
+vi.mock('@/lib/client/services/attackService', () => ({
+  attackPlayer: vi.fn(),
 }));
 
 vi.mock('@/lib/client/services/shipStatsService', () => ({
@@ -101,6 +106,20 @@ function makeStarbaseObj(id = STARBASE_ID_OFFSET + 1, x = 2500, y = 2500) {
     getX: () => x,
     getY: () => y,
     getUserId: () => null,
+    getServerData: () => ({}),
+  };
+}
+
+/** Build a fake SpaceObjectOld for the ship of a friendly contact */
+function makeContactObj() {
+  const contact = CONTACTS[0];
+  return {
+    getType: () => 'npc_ship' as string,
+    getId: () => contact.objectId,
+    getX: () => 2500,
+    getY: () => 2500,
+    getUserId: () => null,
+    getServerData: () => ({ npcDisposition: 'friendly', contactId: contact.id }),
   };
 }
 
@@ -250,5 +269,59 @@ describe('Game – starbase entry callback', () => {
     canvas._fire('click', { clientX: 400, clientY: 300 });
 
     expect(cb).toHaveBeenCalledWith(9002);
+  });
+});
+
+describe('Game – hailing friendly contacts', () => {
+  let canvas: ReturnType<typeof makeCanvas>;
+  let game: InstanceType<typeof Game>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    canvas = makeCanvas();
+    mockGetShip.mockReturnValue(makeShip());
+    game = new Game(canvas as unknown as HTMLCanvasElement);
+  });
+
+  test('contactClick_withinHailRange_firesHailCallbackWithContactId', () => {
+    const cb = vi.fn();
+    game.setContactHailCallback(cb);
+    mockFindHoveredObject.mockReturnValue(makeContactObj());
+    mockCalculateToroidalDistance.mockReturnValue(HAIL_RANGE);
+
+    canvas._fire('click', { clientX: 400, clientY: 300 });
+
+    expect(cb).toHaveBeenCalledWith(CONTACTS[0].id);
+  });
+
+  test('contactClick_attackModeOn_hailsInsteadOfAttacking', async () => {
+    const { attackPlayer } = await import('@/lib/client/services/attackService');
+    const cb = vi.fn();
+    game.setContactHailCallback(cb);
+    game.setAttackClickMode(true);
+    mockFindHoveredObject.mockReturnValue(makeContactObj());
+    mockCalculateToroidalDistance.mockReturnValue(50);
+
+    canvas._fire('click', { clientX: 400, clientY: 300 });
+
+    await new Promise(r => setTimeout(r, 0));
+    expect(cb).toHaveBeenCalledWith(CONTACTS[0].id);
+    expect(attackPlayer).not.toHaveBeenCalled();
+  });
+
+  test('contactClick_outsideHailRange_fliesToTheContact', async () => {
+    const { interceptTarget } = await import('@/lib/client/services/navigationService');
+    const { getShipStats } = await import('@/lib/client/services/shipStatsService');
+    vi.mocked(getShipStats).mockResolvedValue({ maxSpeed: 10 } as never);
+    const cb = vi.fn();
+    game.setContactHailCallback(cb);
+    mockFindHoveredObject.mockReturnValue(makeContactObj());
+    mockCalculateToroidalDistance.mockReturnValue(HAIL_RANGE + 1);
+
+    canvas._fire('click', { clientX: 400, clientY: 300 });
+
+    await new Promise(r => setTimeout(r, 0));
+    expect(cb).not.toHaveBeenCalled();
+    expect(interceptTarget).toHaveBeenCalled();
   });
 });

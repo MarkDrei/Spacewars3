@@ -4,7 +4,7 @@ export async function register() {
         // Server-side initialization code here
         
         // need to dynamically import to avoid issues with sqlite3 in edge runtime
-        const { initializeServer } = await import("./lib/server/main");
-        await initializeServer();
+        const { startServer } = await import("./lib/server/main");
+        await startServer();
     }
 }

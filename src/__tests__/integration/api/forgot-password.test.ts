@@ -62,6 +62,23 @@ describe('Password reset repo helpers', () => {
     });
   });
 
+  test('setPasswordResetToken_storedValue_isNotTheTokenAndCannotBeUsedAsToken', async () => {
+    await withTransaction(async () => {
+      const db = await getDatabase();
+      const user = await makeUser('reset-hash@example.com');
+      const token = randomBytes(32).toString('hex');
+      await setPasswordResetToken(db, user.id, token, Date.now() + 60_000);
+
+      const stored = await db.query('SELECT password_reset_token FROM users WHERE id = $1', [user.id]);
+      const storedValue = (stored.rows[0] as { password_reset_token: string }).password_reset_token;
+
+      // Whoever reads the database (backup, dump) must not be able to reset a password with it
+      expect(storedValue).not.toBe(token);
+      expect(await consumePasswordResetToken(db, storedValue)).toBeNull();
+      expect(await consumePasswordResetToken(db, token)).toBe(user.id);
+    });
+  });
+
   test('consumePasswordResetToken returns null for unknown token', async () => {
     await withTransaction(async () => {
       const db = await getDatabase();

@@ -9,7 +9,8 @@ import { TargetingLineRenderer } from './TargetingLineRenderer';
 import type { TargetingLine } from '@shared/types/gameTypes';
 import { debugState } from '../debug/debugState';
 import { BASE_VIEWPORT_WORLD_H, DEFAULT_ZOOM } from '@shared/viewportConstants';
-import { CanvasStrings } from '../game/canvasStrings';
+import { CanvasStrings, defaultCanvasStrings } from '../game/canvasStrings';
+import { LocationMarkerRenderer } from './LocationMarkerRenderer';
 
 /** Describes what portion of the world is currently visible on screen, in world units. */
 export interface ViewportInfo {
@@ -31,6 +32,8 @@ export class GameRenderer {
     private tooltipRenderer: TooltipRenderer;
     private collectiblesRenderer: SpaceObjectsRenderer;
     private targetingLineRenderer: TargetingLineRenderer;
+    private locationMarkerRenderer: LocationMarkerRenderer;
+    private canvasStrings: CanvasStrings = defaultCanvasStrings;
     private zoom: number = DEFAULT_ZOOM;
 
     constructor(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, world: World) {
@@ -42,6 +45,7 @@ export class GameRenderer {
         this.tooltipRenderer = new TooltipRenderer(canvas);
         this.collectiblesRenderer = new SpaceObjectsRenderer(ctx, canvas);
         this.targetingLineRenderer = new TargetingLineRenderer(ctx);
+        this.locationMarkerRenderer = new LocationMarkerRenderer();
     }
 
     /** Notify the player ship renderer whether the afterburner is currently active. */
@@ -55,6 +59,7 @@ export class GameRenderer {
     }
 
     updateCanvasStrings(strings: CanvasStrings): void {
+        this.canvasStrings = strings;
         this.tooltipRenderer.updateCanvasStrings(strings);
     }
 
@@ -187,6 +192,10 @@ export class GameRenderer {
             .map(obj => obj.getServerData());
 
         this.radarRenderer.drawRadar(this.ctx, centerX, centerY, ship);
+
+        this.locationMarkerRenderer.draw(
+            this.ctx, viewportInfo, ship.getX(), ship.getY(), this.canvasStrings.locationNames
+        );
 
         this.collectiblesRenderer.drawSpaceObjects(
             ship, spaceObjects, this.world.getWidth(), this.world.getHeight(), viewportInfo, playerLevel

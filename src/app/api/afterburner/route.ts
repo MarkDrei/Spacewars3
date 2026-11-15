@@ -6,7 +6,7 @@ import { handleApiError, requireAuth, ApiError } from '@/lib/server/errors';
 import { USER_LOCK, WORLD_LOCK } from '@/lib/server/typedLocks';
 import { User } from '@/lib/server/user/user';
 import { World } from '@/lib/server/world/world';
-import { createLockContext, LockContext, LocksAtMostAndHas4, LocksAtMostAndHas6 } from '@markdrei/ironguard-typescript-locks';
+import { createLockContext, LockContext, LocksAtMostAndHas6 } from '@markdrei/ironguard-typescript-locks';
 import { WorldCache } from '@/lib/server/world/worldCache';
 import { AfterburnerService } from '@/lib/server/afterburner/AfterburnerService';
 import { getResearchEffectFromTree, ResearchType } from '@/lib/server/techs/techtree';
@@ -29,18 +29,17 @@ export async function POST(request: NextRequest) {
     const userWorldCache = UserCache.getInstance2();
     const worldCache = WorldCache.getInstance();
 
+    // USER_LOCK (4) → WORLD_LOCK (6): the user and bonuses are resolved before WORLD_LOCK
     return await emptyCtx.useLockWithAcquire(USER_LOCK, async (userContext) => {
+      const user = await userWorldCache.getUserByIdWithLock(userContext, session.userId!);
+      if (!user) {
+        throw new ApiError(404, 'User not found');
+      }
+      const bonuses = await userWorldCache.getBonusesByUserIdWithLock(userContext, user.id);
+
       return await userContext.useLockWithAcquire(WORLD_LOCK, async (worldContext) => {
-        const user = await userWorldCache.getUserByIdWithLock(userContext, session.userId!);
         const world = worldCache.getWorldFromCache(worldContext);
-
-        if (!user) {
-          throw new ApiError(404, 'User not found');
-        }
-
-        const bonuses = await userWorldCache.getBonusesByUserIdWithLock(userContext, user.id);
-
-        return await performAfterburnerAction(worldContext, userContext, world, user, bonuses, action);
+        return await performAfterburnerAction(worldContext, world, user, bonuses, action);
       });
     });
   } catch (error) {
@@ -50,14 +49,11 @@ export async function POST(request: NextRequest) {
 
 async function performAfterburnerAction(
   worldContext: LockContext<LocksAtMostAndHas6>,
-  userCtx: LockContext<LocksAtMostAndHas4>,
   world: World,
   user: User,
   bonuses: UserBonuses,
   action: 'activate' | 'deactivate',
 ): Promise<NextResponse> {
-  void userCtx;
-
   const worldCache = WorldCache.getInstance();
   const afterburnerService = AfterburnerService.getInstance();
   const timeMultiplier = TimeMultiplierService.getInstance().getMultiplier();
@@ -80,6 +76,10 @@ async function performAfterburnerAction(
   }
 
   if (action === 'activate') {
+    // Ships cannot move while in battle (speed is pinned to 0 at battle start)
+    if (user.inBattle) {
+      throw new ApiError(400, 'Cannot activate afterburner while in battle');
+    }
     if (status.isActive) {
       throw new ApiError(400, 'Afterburner already active');
     }
@@ -92,8 +92,8 @@ async function performAfterburnerAction(
     throw new ApiError(400, 'Afterburner not active');
   }
 
+  // getWorldFromCache already advanced physics to "now"
   const currentTime = Date.now();
-  world.updatePhysics(worldContext, currentTime);
 
   const playerShips = world.getSpaceObjectsByType(worldContext, 'player_ship');
   const playerShip = playerShips.find((ship) => ship.id === user.ship_id);

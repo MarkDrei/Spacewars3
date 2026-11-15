@@ -12,6 +12,7 @@
   "nav": {
     "home": "Startseite",
     "game": "Spiel",
+    "missions": "Missionen",
     "factory": "Fabrik",
     "research": "Forschung",
     "ship": "Schiff",
@@ -72,6 +73,7 @@
     "errorUnexpected": "Ein unerwarteter Fehler ist aufgetreten",
     "errorEnterEmail": "Bitte E-Mail-Adresse eingeben.",
     "errorUnexpectedRetry": "Ein unerwarteter Fehler ist aufgetreten. Bitte erneut versuchen.",
+    "errorTooManyAttempts": "Zu viele Versuche. Bitte später erneut versuchen.",
     "successAccountCreated": "Konto erstellt! Prüfe deine E-Mail zur Verifizierung. Weiterleitung…",
     "successResetLinkSent": "Falls diese E-Mail registriert ist, wurde ein Zurücksetzen-Link gesendet. Prüfe dein Postfach.",
     "bannerEmailVerified": "E-Mail bestätigt! Du kannst dich jetzt anmelden.",
@@ -247,6 +249,7 @@
     "errorFillPasswordFields": "Bitte alle Passwortfelder ausfüllen",
     "errorNewPasswordsNoMatch": "Neue Passwörter stimmen nicht überein",
     "errorChangePasswordFailed": "Passwort konnte nicht geändert werden",
+    "errorTooManyAttempts": "Zu viele Versuche. Bitte später erneut versuchen.",
     "successPasswordChanged": "Passwort erfolgreich geändert"
   },
   "ship": {
@@ -276,6 +279,10 @@
     "crewBonusesHeading": "Crew-Boni",
     "selectedItemHeading": "Ausgewähltes Element",
     "commanderType": "Kommandeur",
+    "cargoType": "Missionsfracht",
+    "cargoQuantity": "Anzahl",
+    "cargoMission": "Mission",
+    "cargoKeepHint": "Missionsfracht wird beim Bericht an den Kontakt übergeben. Sie kann nicht verworfen, verkauft oder der Brücke zugewiesen werden.",
     "sortLabel": "Sortieren:",
     "commanderStats": {
       "shipSpeed": "Schiffsgeschwindigkeit",
@@ -347,7 +354,18 @@
     "announcementAttackTooFar": "Das Ziel ist zu weit entfernt.",
     "announcementAttackNoWeapon": "Du brauchst mindestens eine Waffe, um anzugreifen.",
     "announcementAttackNpcDefeated": "Dieser NPC wurde bereits besiegt.",
-    "announcementAttackNpcInBattle": "Dieser NPC befindet sich bereits in einem Kampf."
+    "announcementAttackNpcInBattle": "Dieser NPC befindet sich bereits in einem Kampf.",
+    "tooltipFriendlyShip": "Befreundeter Kontakt",
+    "tooltipAggressiveShip": "Ziel deines Auftrags: greift sofort an",
+    "tooltipActionHail": "Aktion: erneut tippen zum Rufen",
+    "tooltipHailTooFar": "Näher heranfliegen zum Rufen",
+    "announcementAmbushed": "Hinterhalt! {enemy} greift dich an!",
+    "trackerHeading": "Missionen",
+    "trackerEmpty": "Keine aktiven Missionen",
+    "trackerOpen": "Missionslogbuch öffnen",
+    "trackerHail": "📡 {contact} rufen",
+    "trackerReady": "Melden bei {contact}",
+    "trackerToggle": "Missionen ein- oder ausblenden"
   },
   "statistics": {
     "playerStatsHeading": "Spielerstatistiken",
@@ -437,5 +455,471 @@
     "summaryIronCollected": "💎 **Gesammeltes Eisen:** {iron}",
     "summaryBuildsCompleted": "🏭 **Abgeschlossene Bauten:** {text}",
     "summaryBuildItem": "{n} {name}(s)"
+  },
+  "quests": {
+    "ui": {
+      "pageHeading": "📜 Missionen",
+      "loading": "Missionen werden geladen…",
+      "loadError": "Die Missionen konnten nicht geladen werden.",
+      "retry": "Erneut versuchen",
+      "returnToGame": "← Zurück zum Spiel",
+      "summaryLevel": "Stufe {level}",
+      "summaryMissions": "Missionen {done}/{total}",
+      "summaryLocations": "Orte {done}/{total}",
+      "summaryAchievements": "Erfolge {done}/{total}",
+      "tabActive": "Aktiv ({count})",
+      "tabAvailable": "Verfügbar ({count})",
+      "tabStory": "Geschichte",
+      "tabAchievements": "Erfolge",
+      "tabSector": "Sektor",
+      "noActive": "Keine aktiven Missionen. Fliege zu einem Kontaktschiff und rufe es, um eine anzunehmen.",
+      "noAvailable": "Im Moment werden keine Missionen angeboten. Schließe aktive Missionen ab oder steige im Level auf, um weitere freizuschalten.",
+      "chapterLabel": "Kapitel {number}",
+      "chapterProgress": "{done} von {total} abgeschlossen",
+      "sideQuests": "Nebenmissionen",
+      "sideQuestsSummary": "Der alte Tam von Drifter’s Rock hat Arbeit, die nichts mit dem Krieg zu tun hat.",
+      "contracts": "Aufträge",
+      "contractsSummary": "Wiederholbare Arbeit für Eisen und Erfahrung. Ein Auftrag kann erneut angenommen werden, sobald er abgeschlossen ist.",
+      "statusLocked": "Gesperrt",
+      "statusAvailable": "Verfügbar",
+      "statusActive": "Aktiv",
+      "statusReady": "Bereit zur Meldung",
+      "statusCompleted": "Abgeschlossen",
+      "tagStory": "Kapitel {number}",
+      "tagSide": "Nebenmission",
+      "tagContract": "Auftrag",
+      "offeredBy": "Angeboten von {contact}",
+      "reportTo": "Melden bei {contact}",
+      "contactWhere": "{ship}, bei {location} ({x}, {y})",
+      "stageOf": "Schritt {current} von {total}",
+      "rewards": "Belohnung",
+      "rewardXp": "{xp} EP",
+      "rewardIron": "{iron} Eisen",
+      "rewardCommander": "ein Kommandant",
+      "rewardCommanderHint": "Der Kommandant braucht beim Melden einen freien Inventarplatz.",
+      "accept": "Mission annehmen",
+      "report": "Meldung machen",
+      "abandon": "Abbrechen",
+      "abandonConfirm": "„{quest}“ abbrechen? Fortschritt und Missionsfracht dieser Mission gehen verloren.",
+      "acceptOutOfRange": "Fliege in Rufweite der {ship}, um die Mission anzunehmen.",
+      "reportOutOfRange": "Fliege in Rufweite der {ship}, um Meldung zu machen.",
+      "requires": "Voraussetzung:",
+      "requiresQuest": "Mission „{quest}“",
+      "requiresLevel": "Stufe {level}",
+      "completedTimes": "{count}× abgeschlossen",
+      "hailHeading": "📡 In Rufweite",
+      "hailNothing": "Im Moment gibt es nichts zu besprechen. Guten Flug, Pilot.",
+      "hailOffers": "Angebotene Missionen",
+      "hailReports": "Wartet auf deine Meldung",
+      "dialogueClose": "Schließen",
+      "tierLabel": "Rang {tier}",
+      "achievementProgress": "{value} / {target}",
+      "achievementMaxed": "Alle Ränge freigeschaltet ({value})",
+      "achievementTierXp": "{threshold}: +{xp} EP",
+      "sectorContacts": "Kontakte",
+      "sectorLocations": "Orte",
+      "sectorHostiles": "Feindliche Schiffe",
+      "sectorDiscovered": "Entdeckt",
+      "sectorUndiscovered": "Noch nicht besucht",
+      "sectorDiscoveryHint": "Der erste Besuch eines Ortes bringt {xp} EP.",
+      "sectorCoordinates": "({x}, {y})",
+      "sectorInRange": "In Rufweite",
+      "admin": {
+        "heading": "🛠 Testwerkzeuge (nur Entwickler)",
+        "hint": "Abkürzungen, um Missionen zu testen, ohne alles davor zu spielen. Siehe doc/quests.md.",
+        "reset": "Gesamten Missionsfortschritt zurücksetzen",
+        "resetConfirm": "Gesamten Missionsfortschritt, alle Erfolge und die Missionsfracht dieses Kontos löschen?",
+        "respawnNpcs": "Feindliche Schiffe zurückholen",
+        "jumpTo": "Springen zu:",
+        "forceAccept": "Annehmen erzwingen",
+        "fulfil": "Schritt erfüllen",
+        "forceReport": "Meldung erzwingen",
+        "done": "Erledigt."
+      }
+    },
+    "objectives": {
+      "collect": {
+        "asteroid": "Asteroiden einsammeln",
+        "shipwreck": "Schiffswracks bergen",
+        "escape_pod": "Rettungskapseln bergen"
+      },
+      "defeat": "Besiegen: {target}",
+      "defeatAny": "Beliebige feindliche Schiffe besiegen",
+      "visit": "Fliege zu: {location} ({x}, {y})",
+      "gather": "An Bord haben: {cargo}",
+      "reportOnly": "Melden bei {contact}"
+    },
+    "cargoSource": {
+      "granted": "Wird beim Start des Missionsschritts übergeben.",
+      "collect": {
+        "asteroid": "Wird beim Einsammeln von Asteroiden gefunden (je {chance} % Chance).",
+        "shipwreck": "Wird beim Bergen von Schiffswracks gefunden (je {chance} % Chance).",
+        "escape_pod": "Wird beim Bergen von Rettungskapseln gefunden (je {chance} % Chance)."
+      },
+      "defeat": "Beute von: {target} (je {chance} % Chance).",
+      "defeatAny": "Beute von beliebigen feindlichen Schiffen (je {chance} % Chance)."
+    },
+    "notifications": {
+      "questAccepted": "P: 📜 Mission angenommen: **{quest}**",
+      "questAbandoned": "N: 📜 Mission abgebrochen: **{quest}**",
+      "readyToReport": "P: 📜 **{quest}**: Ziele erfüllt. Melde dich bei **{contact}**.",
+      "stageAdvanced": "P: 📜 **{quest}** — nächster Schritt: {objective}",
+      "questCompleted": "P: 🏅 Mission abgeschlossen: **{quest}**! Belohnung: {xp} EP und {iron} Eisen.",
+      "questCompletedCommander": "P: 🏅 Mission abgeschlossen: **{quest}**! Belohnung: {xp} EP, {iron} Eisen und ein neuer Kommandant.",
+      "questCompletedNoIron": "P: 🏅 Mission abgeschlossen: **{quest}**! Belohnung: {xp} EP.",
+      "questCompletedCommanderNoIron": "P: 🏅 Mission abgeschlossen: **{quest}**! Belohnung: {xp} EP und ein neuer Kommandant.",
+      "cargoFound": "P: 📦 Missionsfracht gefunden: **{cargo}** ({current}/{required}).",
+      "cargoHoldFull": "A: 📦 Du hast **{cargo}** gefunden, aber dein Inventar ist voll. Mach einen Platz frei — der nächste Fund wird eingelagert.",
+      "locationDiscovered": "P: 🧭 Ort entdeckt: **{location}** (+{xp} EP).",
+      "achievementUnlocked": "P: 🏆 Erfolg freigeschaltet: **{achievement}**, Rang {tier} (+{xp} EP).",
+      "commanderJoined": "P: 👤 Kommandant **{commander}** ist deiner Crew beigetreten. Boni: {bonuses}.",
+      "ambushed": "A: ⚠️ Hinterhalt! **{enemy}** hat das Feuer auf dich eröffnet."
+    },
+    "errors": {
+      "unknownQuest": "Unbekannte Mission.",
+      "notAvailable": "Diese Mission ist nicht verfügbar.",
+      "alreadyActive": "Diese Mission ist bereits aktiv.",
+      "notActive": "Diese Mission ist nicht aktiv.",
+      "contactOutOfRange": "Der Kontakt ist außer Rufweite.",
+      "wrongContact": "Dieser Kontakt wartet nicht auf deine Meldung.",
+      "objectivesIncomplete": "Die Ziele sind noch nicht erfüllt.",
+      "cargoHoldFull": "Dein Inventar ist voll. Mach zuerst einen Platz frei."
+    },
+    "chapters": {
+      "1": {
+        "title": "Arbeit an den Docks",
+        "summary": "Verdiene dir deinen Platz im Dockbuch der Ironstrike-Station — und finde heraus, wer sie ständig umkreist."
+      },
+      "2": {
+        "title": "Augen im Dunkeln",
+        "summary": "Professor Quill vom Meridian-Observatorium folgt seltsamen Signalen bis zum Versteck der Eisernen Horde."
+      },
+      "3": {
+        "title": "Die Bastion-Linie",
+        "summary": "Captain Halden vom Außenposten Bastion trägt den Kampf zu den Plünderern, Marodeuren und gekaperten Drohnen der Horde."
+      },
+      "4": {
+        "title": "Das Ende der Horde",
+        "summary": "Eine den Sektor, jage Kriegsherr Krag und bringe Ruhe an den Himmel zurück."
+      }
+    },
+    "contacts": {
+      "vess": {
+        "name": "Quartiermeisterin Vess",
+        "role": "Dock-Quartiermeisterin der Ironstrike-Station",
+        "greeting": "Das Dockbuch ist offen, Pilot. Was können die Docks für dich tun?"
+      },
+      "quill": {
+        "name": "Professor Quill",
+        "role": "Forschungsleitung des Meridian-Observatoriums",
+        "greeting": "Ah, Besuch! Vorsicht mit den Antennen. Was hast du mir mitgebracht?"
+      },
+      "halden": {
+        "name": "Captain Halden",
+        "role": "Kommando der Patrouille des Außenpostens Bastion",
+        "greeting": "Hier Bastion Vigil. Fass dich kurz, Pilot — die Linie hält sich nicht von allein."
+      },
+      "tam": {
+        "name": "Der alte Tam",
+        "role": "Prospektor, Einsiedler und Besitzer von Drifter’s Rock",
+        "greeting": "Heh! Besuch! Mach mir keinen Kratzer in die Rustbucket, die ist älter als du."
+      }
+    },
+    "locations": {
+      "ironstrike_station": {
+        "name": "Ironstrike-Station",
+        "description": "Handelszentrum des Sektors. An den Docks werden Kommandanten gekauft und verkauft; Piraten der Eisernen Horde umkreisen die Station."
+      },
+      "meridian_observatory": {
+        "name": "Meridian-Observatorium",
+        "description": "Forschungsstation im Nordwesten, die alles abhört, was sich im Sektor bewegt."
+      },
+      "bastion_outpost": {
+        "name": "Außenposten Bastion",
+        "description": "Befestigte Patrouillenbasis im Südwesten, die letzte Linie gegen die Eiserne Horde."
+      },
+      "hordes_reach": {
+        "name": "Hordengrund",
+        "description": "Versteck der Eisernen Horde. Marodeure patrouillieren dort. Sie lassen Schiffe passieren, greifen aber jeden an, der einen Auftrag gegen sie hat."
+      },
+      "anvil_graveyard": {
+        "name": "Amboss-Friedhof",
+        "description": "Wrackfeld einer vergessenen Schlacht südlich der Sektormitte, noch immer von abtrünnigen Wachdrohnen bewacht."
+      },
+      "azure_drift": {
+        "name": "Azurdrift",
+        "description": "Eine Wolke aus kalten blauen Eiskristallen am westlichen Rand. Schön und harmlos."
+      },
+      "listening_post_tau": {
+        "name": "Horchposten Tau",
+        "description": "Eine verlassene Relaisstation, die manchmal sendet, obwohl dort niemand lebt."
+      },
+      "drifters_rock": {
+        "name": "Drifter’s Rock",
+        "description": "Ein ausgehöhlter Asteroid im Nordosten, das Zuhause des alten Tam."
+      }
+    },
+    "hostiles": {
+      "pirate": {
+        "name": "Pirat der Eisernen Horde",
+        "description": "Plünderer, die die Ironstrike-Station umkreisen. Sie schießen nie zuerst. Besiegte Piraten kehren um Mitternacht (UTC) zurück."
+      },
+      "marauder": {
+        "name": "Marodeur der Eisernen Horde",
+        "description": "Wächter des Hordengrunds. Sie lassen Schiffe passieren, greifen aber sofort an, solange du einen Auftrag gegen sie hast."
+      },
+      "drone": {
+        "name": "Abtrünnige Wachdrohne",
+        "description": "Automatische Wächter des Amboss-Friedhofs. Leicht bewaffnet. Sie ignorieren vorbeifliegende Schiffe, greifen aber sofort an, solange du einen Auftrag gegen sie hast."
+      },
+      "warlord": {
+        "name": "Kriegsherr Krag",
+        "description": "Anführer der Eisernen Horde. Sein Flaggschiff zeigt sich nur Piloten, die ihn jagen."
+      }
+    },
+    "cargo": {
+      "hull_plating": {
+        "name": "Rumpfplatten",
+        "description": "Wiederverwendbare Panzerplatten, aus einem Schiffswrack geschnitten."
+      },
+      "sealed_dispatch": {
+        "name": "Versiegelte Depesche",
+        "description": "Ein versiegelter Datenzylinder von Quartiermeisterin Vess, adressiert an Professor Quill."
+      },
+      "flight_recorder": {
+        "name": "Flugschreiber",
+        "description": "Die Blackbox eines zerstörten Schiffs."
+      },
+      "decoded_coordinates": {
+        "name": "Entschlüsselte Koordinaten",
+        "description": "Professor Quills Auswertung: die Position des Verstecks der Eisernen Horde."
+      },
+      "horde_insignia": {
+        "name": "Hordenabzeichen",
+        "description": "Das Emblem des Kriegsherrn, aus dem Rumpf eines Marodeurs geschnitten."
+      },
+      "drone_core": {
+        "name": "Drohnenkern",
+        "description": "Der Steuerkern einer abtrünnigen Wachdrohne."
+      },
+      "battle_plans": {
+        "name": "Schlachtpläne",
+        "description": "Captain Haldens Plan für den Schlag gegen den Hordengrund."
+      },
+      "warlord_cipher": {
+        "name": "Chiffre des Kriegsherrn",
+        "description": "Krags Kommandochiffre, der Schlüssel zum Funknetz der Horde."
+      },
+      "ore_sample": {
+        "name": "Erzprobe",
+        "description": "Ein Brocken bläuliches Eisenerz aus einem Asteroiden."
+      }
+    },
+    "achievements": {
+      "rock_breaker": {
+        "name": "Felsbrecher",
+        "description": "Sammle Asteroiden ein."
+      },
+      "wreck_diver": {
+        "name": "Wracktaucher",
+        "description": "Birg Schiffswracks."
+      },
+      "lifeline": {
+        "name": "Rettungsleine",
+        "description": "Birg Rettungskapseln."
+      },
+      "horde_hunter": {
+        "name": "Hordenjäger",
+        "description": "Besiege feindliche NPC-Schiffe."
+      },
+      "ambush_breaker": {
+        "name": "Hinterhaltbrecher",
+        "description": "Besiege Marodeure und Wachdrohnen, die Schiffe, die sich wehren, wenn man sie jagt."
+      },
+      "kingslayer": {
+        "name": "Königsmörder",
+        "description": "Besiege Kriegsherr Krag."
+      },
+      "duelist": {
+        "name": "Duellant",
+        "description": "Gewinne Kämpfe gegen andere Spieler."
+      },
+      "trusted_hand": {
+        "name": "Verlässliche Hand",
+        "description": "Schließe verschiedene Missionen ab."
+      },
+      "contractor": {
+        "name": "Auftragnehmer",
+        "description": "Schließe Aufträge ab."
+      },
+      "saga": {
+        "name": "Saga",
+        "description": "Schließe Kapitel der Geschichte ab."
+      },
+      "pathfinder": {
+        "name": "Pfadfinder",
+        "description": "Entdecke Orte."
+      }
+    },
+    "quest": {
+      "c1_first_haul": {
+        "title": "Die erste Fuhre",
+        "offer": "Neu im Sektor? Dann zeig mir, dass du fliegen kannst. Den Schmelzöfen der Station geht das Material aus — bring drei Asteroiden rein, und ich trage deinen Namen ins Dockbuch ein.",
+        "stages": {
+          "1": "Sammle 3 Asteroiden ein und melde dich dann bei Quartiermeisterin Vess."
+        },
+        "completion": "Drei Brocken und keine Delle im Rumpf. Du stehst im Dockbuch, Pilot. Wo das herkam, gibt es noch mehr Arbeit."
+      },
+      "c1_salvage_rights": {
+        "title": "Bergungsrechte",
+        "offer": "Die Wracks, die da draußen treiben, haben noch gute Panzerung. Schneide zwei Rumpfplatten aus Schiffswracks, und die Docks bezahlen dafür — ausnahmsweise ganz legal.",
+        "stages": {
+          "1": "Birg Schiffswracks, bis du 2 Rumpfplatten hast, und bring sie zu Quartiermeisterin Vess."
+        },
+        "completion": "Solide Platten, die Reparaturtrupps werden dich segnen. Die Bergungsrechte gehören dir — ab jetzt habe ich regelmäßig Schrottfahrten für dich."
+      },
+      "c1_pirate_trouble": {
+        "title": "Ärger mit Piraten",
+        "offer": "Siehst du die Schiffe, die um die Station kreisen? Eiserne Horde. Die schnappen sich jeden, der mit vollem Laderaum ablegt. Hol einen von ihnen runter und zeig ihnen, dass dieses Dock verteidigt wird.",
+        "stages": {
+          "1": "Besiege 1 Piraten der Eisernen Horde bei der Ironstrike-Station und melde dich dann bei Quartiermeisterin Vess."
+        },
+        "completion": "Ein Geier weniger über meinen Docks. Um Mitternacht sind sie wieder da, das sind sie immer — aber jetzt kennen sie deinen Namen."
+      },
+      "c1_dispatch_to_meridian": {
+        "title": "Depesche nach Meridian",
+        "offer": "So gut organisiert war die Horde noch nie, und ich will wissen, warum. Professor Quill im Meridian-Observatorium hört alles ab, was sich hier draußen bewegt. Bring diese versiegelte Depesche zur Meridian Lantern — und mach sie nicht auf.",
+        "stages": {
+          "1": "Bring die versiegelte Depesche zu Professor Quill am Meridian-Observatorium."
+        },
+        "completion": "Eine Depesche von Vess? Hm. Piratensichtungen, verlorene Konvois… das passt unangenehm gut zu meinen Messungen. Bleib eine Weile, Pilot. Für ein neugieriges Schiff habe ich Arbeit."
+      },
+      "c2_charting_the_dark": {
+        "title": "Karten für das Dunkel",
+        "offer": "Meine Instrumente zeigen zwei Anomalien, die ich von hier aus nicht erklären kann: eine kalte blaue Wolke im Westen und einen toten Sender, der gelegentlich überhaupt nicht tot ist. Flieg zur Azurdrift und zum Horchposten Tau und lass deine Sensoren den Rest erledigen.",
+        "stages": {
+          "1": "Fliege zur Azurdrift und zum Horchposten Tau und melde dich dann bei Professor Quill."
+        },
+        "completion": "Herrliche Daten! Die Drift ist harmlos — schön, aber harmlos. Tau dagegen hat für jemanden Signale weitergeleitet. Für jemanden, der den Posten nicht gebaut hat."
+      },
+      "c2_lost_and_found": {
+        "title": "Verloren und gefunden",
+        "offer": "Jede Woche landet eine weitere Crew in einer Rettungskapsel. Sie sind die einzigen Zeugen, die wir haben. Birg zwei Kapseln und bring mir, was die Überlebenden gesehen haben.",
+        "stages": {
+          "1": "Birg 2 Rettungskapseln und melde dich dann bei Professor Quill."
+        },
+        "completion": "Alle erzählen dieselbe Geschichte: Schiffe mit rotem Bug, die aus dem Nordosten zuschlagen. Danke — die Crews sind jetzt in guten Händen."
+      },
+      "c2_voices_of_the_dead": {
+        "title": "Stimmen der Toten",
+        "offer": "Die weitergeleiteten Signale zeigen auf den Amboss-Friedhof, das Wrackfeld südlich der Sektormitte. Alte Wachdrohnen bewachen es noch immer; sie ignorieren Schiffe, die sie in Ruhe lassen. Erkunde zuerst das Feld und hol dann drei Flugschreiber aus Schiffswracks.",
+        "stages": {
+          "1": "Erkunde den Amboss-Friedhof.",
+          "2": "Birg Schiffswracks, bis du 3 Flugschreiber hast, und bring sie zu Professor Quill."
+        },
+        "completion": "Hör dir das an… die letzten Einträge nennen alle einen Namen: Krag. Ein Kriegsherr, der die Piratenclans zu einer einzigen Eisernen Horde zusammenschmiedet. Wir müssen herausfinden, wo er sitzt."
+      },
+      "c2_the_trail": {
+        "title": "Die Spur",
+        "offer": "Die Flugschreiber geben mir eine Peilung, nordöstlich des Friedhofs. Wenn die Horde ein Versteck hat, dann dort. Flieg nah genug heran für einen Sensorscan. Ihre Marodeure lassen Schiffe passieren, solange niemand Jagd auf sie macht — fang also noch keinen Kampf an.",
+        "stages": {
+          "1": "Erkunde den Hordengrund und melde dich dann bei Professor Quill.",
+          "2": "Bring die entschlüsselten Koordinaten zu Captain Halden am Außenposten Bastion."
+        },
+        "completion": "Da haben sie sich also versteckt. Der Professor leistet gute Arbeit, und du auch. Bastion hat auf einen Piloten gewartet, der nicht wegläuft. Willkommen an der Linie."
+      },
+      "c3_thin_the_herd": {
+        "title": "Die Herde lichten",
+        "offer": "Bevor wir an ihr Versteck herankommen, müssen die Plünderer rund um Ironstrike das Fürchten lernen. Zerstöre drei Piraten der Eisernen Horde. Lass dir Zeit — sie kommen jede Mitternacht zurück, und du kannst das auch.",
+        "stages": {
+          "1": "Besiege 3 Piraten der Eisernen Horde und melde dich dann bei Captain Halden."
+        },
+        "completion": "Drei bestätigt. Die Überfälle auf die Station werden schon weniger. Jetzt holen wir uns die, auf die es ankommt."
+      },
+      "c3_colours_of_the_horde": {
+        "title": "Die Farben der Horde",
+        "offer": "Die Marodeure, die den Hordengrund bewachen, tragen das Abzeichen des Kriegsherrn. Bring mir zwei davon. Sobald du diesen Auftrag annimmst, greifen sie dich an, wenn du ihre Patrouillenlinie überquerst — sei also bereit.",
+        "stages": {
+          "1": "Besiege Marodeure der Eisernen Horde am Hordengrund, bis du 2 Hordenabzeichen hast, und bring sie zu Captain Halden."
+        },
+        "completion": "Krags eigene Farben. Jedes davon öffnet eine Tür in ihrem Funknetz. Gut gekämpft, Pilot."
+      },
+      "c3_rogue_signals": {
+        "title": "Abtrünnige Signale",
+        "offer": "Die Wachdrohnen des Amboss-Friedhofs leiten inzwischen Signale für die Horde weiter. Quill glaubt, dass sich ihre Kerne gegen sie verwenden lassen. Schalte Drohnen aus und bring dem Professor zwei Kerne. Sei vorsichtig: Sobald du Jagd auf sie machst, greifen sie sofort an.",
+        "stages": {
+          "1": "Besiege abtrünnige Wachdrohnen am Amboss-Friedhof, bis du 2 Drohnenkerne hast, und bring sie zu Professor Quill."
+        },
+        "completion": "Unbeschädigte Kerne! Damit lese ich den Patrouillenplan der Horde wie einen Fahrplan. Sag Halden, dass das Observatorium bereit ist."
+      },
+      "c4_war_council": {
+        "title": "Kriegsrat",
+        "offer": "Wir haben ihre Farben, ihren Patrouillenplan und ihr Versteck. Jetzt brauche ich den Sektor hinter mir. Bring diese Schlachtpläne zu Vess — die Station muss den Schlag versorgen — und dann zu Quill für den Zeitplan. Bring sie gegengezeichnet zurück.",
+        "stages": {
+          "1": "Bring die Schlachtpläne zu Quartiermeisterin Vess an der Ironstrike-Station.",
+          "2": "Bring die Schlachtpläne zu Professor Quill am Meridian-Observatorium.",
+          "3": "Bring die gegengezeichneten Schlachtpläne zurück zu Captain Halden am Außenposten Bastion."
+        },
+        "completion": "Station und Observatorium sind beide dabei. Dann ist es entschieden: Wir schlagen der Schlange den Kopf ab."
+      },
+      "c4_head_of_the_serpent": {
+        "title": "Der Kopf der Schlange",
+        "offer": "Kriegsherr Krag ist aus seinem Versteck gekommen. Sein Flaggschiff kreist im Zentrum des Hordengrunds, innerhalb der Marodeur-Patrouillen. Zerstöre es und bring mir seine Kommandochiffre — ohne sie zerfällt die Horde.",
+        "stages": {
+          "1": "Besiege Kriegsherr Krag am Hordengrund, nimm seine Chiffre an dich und bring sie zu Captain Halden."
+        },
+        "completion": "Krags Chiffre. Ohne sie können die Clans nicht miteinander reden, und eine Horde, die nicht reden kann, ist nur eine Handvoll Diebe. Einer meiner besten Offiziere hat darum gebeten, mit dir zu fliegen — so eine Crew hast du dir verdient."
+      },
+      "c4_a_quiet_sky": {
+        "title": "Ein ruhiger Himmel",
+        "offer": "Es ist vorbei, und so ruhig waren die Docks seit Jahren nicht. Tu mir einen letzten Gefallen: Flieg die Runde, Meridian und Bastion, und sag ihnen, dass Ironstrike das Dockbuch für sie offen hält. Dann komm nach Hause.",
+        "stages": {
+          "1": "Besuche das Meridian-Observatorium und den Außenposten Bastion und kehre dann zu Quartiermeisterin Vess zurück."
+        },
+        "completion": "Das ist er also, der Sektor, fürs Erste sicher. Angefangen hast du mit drei Brocken, Pilot. Laut Dockbuch hast du mit einem Krieg aufgehört. Für dich gibt es hier immer einen Auftrag."
+      },
+      "side_tams_ore": {
+        "title": "Tams Erz",
+        "offer": "Der alte Tam riecht blaues Eisen in diesen Asteroiden, aber sein Bohrarm ist nicht mehr, was er mal war. Knack Brocken für mich — ungefähr jeder zweite enthält eine Probe. Drei Proben, und ich zahle ehrlich.",
+        "stages": {
+          "1": "Sammle Asteroiden ein, bis du 3 Erzproben hast, und bring sie zum alten Tam bei Drifter’s Rock."
+        },
+        "completion": "Blaues Eisen! Ich hab es ihnen gesagt, allen hab ich es gesagt. Hier ist dein Anteil. Und vielleicht hat Tam noch etwas Besseres als Eisen für einen Piloten, der Wort hält."
+      },
+      "side_tams_stash": {
+        "title": "Tams Versteck",
+        "offer": "Vor Jahren bin ich mit einem Partner geflogen. Unseren besten Fund haben wir versteckt, wo kein Pirat je nachsieht: Folge erst dem kalten Licht, dann dem toten Ohr. Mehr Karte habe ich nie gebraucht. Sieh nach und erzähl dem alten Tam dann, was du gesehen hast.",
+        "stages": {
+          "1": "Folge dem kalten Licht: Fliege zur Azurdrift.",
+          "2": "Finde das tote Ohr: Fliege zum Horchposten Tau.",
+          "3": "Kehre zum alten Tam bei Drifter’s Rock zurück."
+        },
+        "completion": "Du hast die Kapsel gefunden? Noch versiegelt? Ha! Das ist kein Schatz, Pilot, das ist mein alter Partner im Kälteschlaf — der beste Navigator, den es je gab. Weck ihn vorsichtig. Er fliegt jetzt mit dir."
+      },
+      "contract_scrap_run": {
+        "title": "Auftrag: Schrottfahrt",
+        "offer": "Die Schmelzöfen stehen nie still. Fünf Asteroiden und zwei Schiffswracks, üblicher Tarif.",
+        "stages": {
+          "1": "Sammle 5 Asteroiden und 2 Schiffswracks ein und melde dich dann bei Quartiermeisterin Vess."
+        },
+        "completion": "Gewogen und bezahlt. Komm wieder, wann immer du Arbeit brauchst."
+      },
+      "contract_search_and_rescue": {
+        "title": "Auftrag: Suchen und Retten",
+        "offer": "Es gibt immer mehr Kapseln als Retter. Birg drei, und das Observatorium übernimmt deinen Treibstoff — und noch etwas mehr.",
+        "stages": {
+          "1": "Birg 3 Rettungskapseln und melde dich dann bei Professor Quill."
+        },
+        "completion": "Drei weitere Crews, die Stationsluft atmen. Danke, Pilot."
+      },
+      "contract_standing_bounty": {
+        "title": "Auftrag: Dauerkopfgeld",
+        "offer": "Bastion zahlt für jeden feindlichen Rumpf. Piraten, Marodeure, Drohnen — mir egal, welche. Drei Abschüsse, ein Kopfgeld.",
+        "stages": {
+          "1": "Besiege 3 beliebige feindliche Schiffe und melde dich dann bei Captain Halden."
+        },
+        "completion": "Bestätigt, das Kopfgeld ist überwiesen. Die Linie hält wegen Piloten wie dir."
+      }
+    }
   }
 }

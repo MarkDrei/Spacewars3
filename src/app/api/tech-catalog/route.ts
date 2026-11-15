@@ -13,8 +13,6 @@ export async function GET(request: NextRequest) {
     const session = await getIronSession<SessionData>(request, NextResponse.json({}), sessionOptions);
     requireAuth(session.userId);
     
-    console.log(`📋 Tech catalog requested by user: ${session.userId}`);
-    
     const weapons = TechFactory.getAllWeaponSpecs();
     const defenses = TechFactory.getAllDefenseSpecs();
     

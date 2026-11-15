@@ -4,7 +4,7 @@ import { getIronSession } from 'iron-session';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth, ApiError } from '@/lib/server/errors';
 import { UserCache } from '@/lib/server/user/userCache';
-import { InventoryService, InventorySlotEmptyError, InventorySlotInvalidError } from '@/lib/server/inventory/InventoryService';
+import { InventoryService, InventoryItemProtectedError, InventorySlotEmptyError, InventorySlotInvalidError } from '@/lib/server/inventory/InventoryService';
 import { USER_LOCK } from '@/lib/server/typedLocks';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 import { commanderSellPrice } from '@/lib/server/starbase/commanderPrice';
@@ -46,18 +46,22 @@ export async function POST(request: NextRequest) {
         throw new ApiError(400, 'Item is not a commander');
       }
 
-      const price = commanderSellPrice(item);
-
-      user.addIron(price);
+      // Same capacity as every other iron source: research capacity including the level bonus.
+      // Iron beyond the cap is discarded (Cap04_Feat003_Req002).
+      const bonuses = await userCache.getBonusesByUserIdWithLock(userContext, userId);
+      const ironEarned = user.addIron(commanderSellPrice(item), bonuses.ironStorageCapacity);
       await userCache.updateUserInCache(userContext, user);
 
-      return { newIron: user.iron, ironEarned: price };
+      return { newIron: user.iron, ironEarned };
     });
 
     return NextResponse.json({ success: true, newIron, ironEarned });
   } catch (error) {
     if (error instanceof InventorySlotEmptyError || error instanceof InventorySlotInvalidError) {
       return NextResponse.json({ error: 'Invalid or empty inventory slot' }, { status: 400 });
+    }
+    if (error instanceof InventoryItemProtectedError) {
+      return NextResponse.json({ error: 'Item is not a commander' }, { status: 400 });
     }
     return handleApiError(error);
   }

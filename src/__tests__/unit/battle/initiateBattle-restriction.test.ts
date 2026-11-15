@@ -36,8 +36,11 @@ import { getBattleCache } from '@/lib/server/battle/BattleCache';
 import { UserCache } from '@/lib/server/user/userCache';
 import { WorldCache } from '@/lib/server/world/worldCache';
 import type { User } from '@/lib/server/user/user';
+import { createInitialTechTree } from '@/lib/server/techs/techtree';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 import { BATTLE_LOCK, USER_LOCK } from '@/lib/server/typedLocks';
+
+const WORLD_SIZE = { width: 5000, height: 5000 };
 
 function makeUser(id: number, username: string, inBattle = false): Partial<User> {
   return {
@@ -85,7 +88,7 @@ describe('initiateBattle - attack restriction (recent victims)', () => {
     const mockShip = { id: 101, x: 0, y: 0, speed: 5 };
     const mockShip2 = { id: 102, x: 10, y: 10, speed: 5 };
     mockWorldCache = {
-      getWorldFromCache: vi.fn().mockReturnValue({ spaceObjects: [mockShip, mockShip2] }),
+      getWorldFromCache: vi.fn().mockReturnValue({ spaceObjects: [mockShip, mockShip2], worldSize: WORLD_SIZE }),
       updateWorldUnsafe: vi.fn().mockResolvedValue(undefined),
     };
 
@@ -199,3 +202,58 @@ describe('initiateBattle - attack restriction (recent victims)', () => {
     expect(mockBattleCache.getRecentAttackees).not.toHaveBeenCalled();
   });
 });
+
+describe('initiateBattle - range check on the wrapping world', () => {
+  const makeBattleReadyUser = (id: number) =>
+    ({
+      ...makeUser(id, `user${id}`),
+      techTree: createInitialTechTree(),
+      hullCurrent: 100,
+      armorCurrent: 100,
+      shieldCurrent: 100,
+      getLevel: () => 1,
+    }) as unknown as User;
+
+  const placeShips = (x1: number, x2: number) => {
+    vi.mocked(WorldCache.getInstance).mockReturnValue({
+      getWorldFromCache: vi.fn().mockReturnValue({
+        spaceObjects: [{ id: 101, x: x1, y: 100, speed: 5 }, { id: 102, x: x2, y: 100, speed: 5 }],
+        worldSize: WORLD_SIZE,
+      }),
+      updateWorldUnsafe: vi.fn().mockResolvedValue(undefined),
+    } as never);
+  };
+
+  const attack = () => {
+    const ctx = createLockContext();
+    return ctx.useLockWithAcquire(BATTLE_LOCK, async (battleCtx) =>
+      ctx.useLockWithAcquire(USER_LOCK, async (userCtx) =>
+        initiateBattle(battleCtx, userCtx, makeBattleReadyUser(1), makeBattleReadyUser(2))
+      )
+    );
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(getBattleCache).mockReturnValue({
+      getRecentAttackees: vi.fn().mockResolvedValue([]),
+      createBattle: vi.fn().mockResolvedValue({ id: 1 }),
+    } as never);
+    vi.mocked(UserCache.getInstance2).mockReturnValue({
+      getUserByIdFromCache: vi.fn(),
+      updateUserInCache: vi.fn().mockResolvedValue(undefined),
+    } as never);
+  });
+
+  it('initiateBattle_shipsCloseAcrossWorldEdge_isInRange', async () => {
+    // 10 units apart across the x wrap (5 and 4995), 4990 units apart in plain coordinates
+    placeShips(5, WORLD_SIZE.width - 5);
+    await expect(attack()).resolves.toEqual({ id: 1 });
+  });
+
+  it('initiateBattle_shipsHalfAWorldApart_isTooFar', async () => {
+    placeShips(0, WORLD_SIZE.width / 2);
+    await expect(attack()).rejects.toThrow('Target is too far away');
+  });
+});
+

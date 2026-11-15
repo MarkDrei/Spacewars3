@@ -15,6 +15,7 @@ import { handleApiError, requireAuth, ApiError } from '@/lib/server/errors';
 import { TimeMultiplierService } from '@/lib/server/timeMultiplier';
 import { UserCache } from '@/lib/server/user/userCache';
 import { createLockContext, LOCK_4 } from '@markdrei/ironguard-typescript-locks';
+import { isAdminUsername } from '@/shared/adminAccess';
 
 /**
  * GET /api/admin/time-multiplier
@@ -48,7 +49,7 @@ export async function GET(request: NextRequest) {
       }
 
       // Check admin privileges (developer-only access)
-      if (userData.username !== 'a' && userData.username !== 'q') {
+      if (!isAdminUsername(userData.username)) {
         throw new ApiError(403, 'Admin access restricted to developers');
       }
 
@@ -101,7 +102,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Check admin privileges (developer-only access)
-      if (userData.username !== 'a' && userData.username !== 'q') {
+      if (!isAdminUsername(userData.username)) {
         throw new ApiError(403, 'Admin access restricted to developers');
       }
 

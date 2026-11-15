@@ -137,8 +137,9 @@ export class SpaceObjectsRenderer {
         visibleTop: number, 
         visibleBottom: number
     ): boolean {
-        // Add a margin to account for large objects (e.g. Starbase rendered at 250px radius)
-        const margin = 250;
+        // Add a margin to account for large objects (e.g. Starbase rendered at 250px radius,
+        // aggro ring of aggressive NPC ships); each renderer does the exact visibility check.
+        const margin = 350;
         return (
             worldX >= visibleLeft - margin && 
             worldX <= visibleRight + margin &&

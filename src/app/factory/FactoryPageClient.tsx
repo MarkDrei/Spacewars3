@@ -22,6 +22,7 @@ import {
 import { LONG_PRESS_INITIAL_DELAY_MS, getLongPressRepeatDelayMs } from '@/lib/client/factory/buildControlPress';
 import { ServerAuthState } from '@/lib/server/serverSession';
 import './FactoryPage.css';
+import { isAdminUsername } from '@/shared/adminAccess';
 
 interface FactoryPageClientProps {
   auth: ServerAuthState;
@@ -79,14 +80,17 @@ const FactoryPageClient: React.FC<FactoryPageClientProps> = ({ auth }) => {
   }, []);
 
   const scheduleLongPressStep = useCallback((key: string, delta: number) => {
-    const startedAt = longPressStartedAtRef.current;
-    if (startedAt === null) return;
+    const step = () => {
+      const startedAt = longPressStartedAtRef.current;
+      if (startedAt === null) return;
 
-    const elapsedMs = Date.now() - startedAt;
-    longPressTimeoutRef.current = setTimeout(() => {
-      changeBuildCount(key, delta);
-      scheduleLongPressStep(key, delta);
-    }, getLongPressRepeatDelayMs(elapsedMs));
+      const elapsedMs = Date.now() - startedAt;
+      longPressTimeoutRef.current = setTimeout(() => {
+        changeBuildCount(key, delta);
+        step();
+      }, getLongPressRepeatDelayMs(elapsedMs));
+    };
+    step();
   }, [changeBuildCount]);
 
   const startLongPress = useCallback((key: string, delta: number) => {
@@ -317,7 +321,7 @@ const FactoryPageClient: React.FC<FactoryPageClientProps> = ({ auth }) => {
               </div>
 
               {/* Cheat Mode Button - Only for test users 'a' and 'q' */}
-              {(auth.username === 'a' || auth.username === 'q') && (
+              {isAdminUsername(auth.username) && (
                 <div className="cheat-section">
                   <button
                     className="cheat-button"

@@ -26,12 +26,15 @@ import { getBattleCache } from './BattleCache';
 import { HasLock2Context, IronLocks, LockContext, LocksAtMost4, LocksAtMostAndHas2, LocksAtMostAndHas4 } from '@markdrei/ironguard-typescript-locks';
 import { WORLD_LOCK, USER_LOCK } from '../typedLocks';
 import { WorldCache } from '../world/worldCache';
-import { DEFAULT_WORLD_WIDTH, DEFAULT_WORLD_HEIGHT } from '@shared/worldConstants';
+import { calculateToroidalDistance, type WorldBounds } from '@shared/physics';
 import { sendMessageToUser } from '../messages/MessageCache';
 import { getServerT } from '../i18n/serverTranslations';
 import { StatisticsCache } from '../statistics/StatisticsCache';
 import { isNpcId } from '../npc/npcConstants';
 import { NPCManager } from '../npc/NPCManager';
+import { QuestService } from '../quests/QuestService';
+import type { QuestEvent } from '@/shared/quests/questTypes';
+import { AMBUSH_GRACE_MS, hostileDisplayName } from '@/shared/quests/npcArchetypes';
 import { calculateNpcIronReward, removeNpcSpaceObject } from '../npc/npcCombat';
 
 /**
@@ -108,23 +111,22 @@ function createBattleStats(user: User): BattleStats {
 /**
  * Calculate distance between two positions
  */
-function calculateDistance(x1: number, y1: number, x2: number, y2: number): number {
-  const dx = x2 - x1;
-  const dy = y2 - y1;
-  return Math.sqrt(dx * dx + dy * dy);
-}
-
 /**
  * Get ship position from World cache
  * Helper function that delegates to TypeduserWorldCache
  */
-async function getShipPosition(context: LockContext<LocksAtMost4>, shipId: number): Promise<{ x: number; y: number } | null> {
+async function getShipPositions(
+  context: LockContext<LocksAtMost4>,
+  shipIds: number[]
+): Promise<{ positions: ({ x: number; y: number } | null)[]; worldSize: WorldBounds }> {
   const worldCache = WorldCache.getInstance();
   return await context.useLockWithAcquire(WORLD_LOCK, async (worldContext) => {
     const world = worldCache.getWorldFromCache(worldContext);
-    const ship = world.spaceObjects.find(obj => obj.id === shipId);
-    return ship ? { x: ship.x, y: ship.y } : null;
-
+    const positions = shipIds.map((shipId) => {
+      const ship = world.spaceObjects.find(obj => obj.id === shipId);
+      return ship ? { x: ship.x, y: ship.y } : null;
+    });
+    return { positions, worldSize: world.worldSize };
   });
 }
 
@@ -153,35 +155,32 @@ async function updateUserBattleState(context: LockContext<LocksAtMostAndHas4>, u
   if (user) {
     user.inBattle = inBattle;
     user.currentBattleId = battleId;
-    userWorldCache.updateUserInCache(context, user);
+    await userWorldCache.updateUserInCache(context, user);
   }
 }
 
 /**
- * Generate random position with minimum distance from a point
+ * Generate a random position at least `minDistance` away from a point (toroidal distance,
+ * the world wraps at its edges).
  */
-function generateTeleportPosition(
-  fromX: number,
-  fromY: number,
-  minDistance: number
+export function generateTeleportPosition(
+  from: { x: number; y: number },
+  minDistance: number,
+  worldSize: WorldBounds,
+  random: () => number = Math.random
 ): { x: number; y: number } {
-  let x: number, y: number, distance: number;
-
   // Try up to 100 times to find a valid position
   for (let i = 0; i < 100; i++) {
-    x = Math.random() * DEFAULT_WORLD_WIDTH;
-    y = Math.random() * DEFAULT_WORLD_HEIGHT;
-    distance = calculateDistance(fromX, fromY, x, y);
-
-    if (distance >= minDistance) {
-      return { x, y };
+    const candidate = { x: random() * worldSize.width, y: random() * worldSize.height };
+    if (calculateToroidalDistance(from, candidate, worldSize) >= minDistance) {
+      return candidate;
     }
   }
 
-  // Fallback: place at opposite corner
+  // Fallback: the point with the largest toroidal distance (half a world away on both axes)
   return {
-    x: fromX > DEFAULT_WORLD_WIDTH / 2 ? 0 : DEFAULT_WORLD_WIDTH,
-    y: fromY > DEFAULT_WORLD_HEIGHT / 2 ? 0 : DEFAULT_WORLD_HEIGHT
+    x: (from.x + worldSize.width / 2) % worldSize.width,
+    y: (from.y + worldSize.height / 2) % worldSize.height,
   };
 }
 
@@ -252,9 +251,10 @@ export async function initiateBattle<THeld extends IronLocks>(
   }
 
   // Validation: Check if target is one of the attacker's last 3 victims.
-  // NPCs are exempt: their IDs are reused across level-ups and they can always be attacked.
+  // NPCs are exempt: their IDs are reused across level-ups and they can always be attacked;
+  // an NPC that ambushes a player is not bound by the rule either.
   const battleCache = getBattleCache();
-  if (battleCache && !isNpcId(attackee.id)) {
+  if (battleCache && !isNpcId(attackee.id) && !isNpcId(attacker.id)) {
     const recentVictims = await battleCache.getRecentAttackees(attacker.id, 3);
     if (recentVictims.includes(attackee.id)) {
       throw new ApiError(400, 'You have attacked this player recently. Choose a different target.');
@@ -263,19 +263,15 @@ export async function initiateBattle<THeld extends IronLocks>(
 
   console.log(`⚔️ initiateBattle: Getting ship positions...`);
   // Validation: Check distance
-  const attackerPos = await getShipPosition(contextUser, attacker.ship_id);
-  const attackeePos = await getShipPosition(contextUser, attackee.ship_id);
+  const { positions: [attackerPos, attackeePos], worldSize } =
+    await getShipPositions(contextUser, [attacker.ship_id, attackee.ship_id]);
 
   if (!attackerPos || !attackeePos) {
     throw new ApiError(500, 'Could not determine ship positions');
   }
 
-  const distance = calculateDistance(
-    attackerPos.x,
-    attackerPos.y,
-    attackeePos.x,
-    attackeePos.y
-  );
+  // The world wraps at its edges, so ships close to opposite edges are close to each other
+  const distance = calculateToroidalDistance(attackerPos, attackeePos, worldSize);
 
   if (distance > BATTLE_RANGE) {
     throw new ApiError(400, `Target is too far away (${distance.toFixed(1)} units, max ${BATTLE_RANGE})`);
@@ -564,22 +560,21 @@ export async function resolveBattle(
   const winnerIsNpc = isNpcId(winnerId);
   const loserIsNpc = isNpcId(loserId);
   const npcInvolved = winnerIsNpc || loserIsNpc;
+  const npc = npcInvolved ? NPCManager.getInstance().getNpcById(loserIsNpc ? loserId : winnerId) : null;
+  const npcName = npc ? hostileDisplayName(npc.archetype, npc.level) : 'NPC';
 
   await context.useLockWithAcquire(USER_LOCK, async (userContext) => {
     // --- Iron transfer ---
     if (loserIsNpc) {
       // Player wins vs NPC: award fixed iron reward to player (not loser-to-winner transfer)
-      const npc = NPCManager.getInstance().getNpcById(loserId);
-      const npcLevel = npc?.level ?? 1;
-      const reward = calculateNpcIronReward(npcLevel);
+      const reward = calculateNpcIronReward(npc?.level ?? 1, npc?.archetype);
       const userWorldCache = UserCache.getInstance2();
       const winner = await userWorldCache.getUserByIdWithLock(userContext, winnerId);
-      const loser = userWorldCache.getUserByIdFromCache(userContext, loserId);
       if (winner) {
         const winnerBonuses = await userWorldCache.getBonusesByUserIdWithLock(userContext, winnerId);
         const added = winner.addIron(reward, winnerBonuses.ironStorageCapacity);
         await userWorldCache.updateUserInCache(userContext, winner);
-        ironResult = { amount: added, winnerName: winner.username, loserName: loser?.username ?? 'NPC' };
+        ironResult = { amount: added, winnerName: winner.username, loserName: npcName };
       }
     } else if (winnerIsNpc) {
       // NPC wins vs Player: the player loses all iron and it is destroyed.
@@ -617,15 +612,11 @@ export async function resolveBattle(
       const winnerShipId = await getUserShipId(userContext, winnerId);
       const loserShipId = await getUserShipId(userContext, loserId);
 
-      const winnerPos = await getShipPosition(userContext, winnerShipId);
+      const { positions: [winnerPos], worldSize } = await getShipPositions(userContext, [winnerShipId]);
 
       if (winnerPos) {
         // Teleport loser to random position (minimum distance away)
-        const teleportPos = generateTeleportPosition(
-          winnerPos.x,
-          winnerPos.y,
-          MIN_TELEPORT_DISTANCE
-        );
+        const teleportPos = generateTeleportPosition(winnerPos, MIN_TELEPORT_DISTANCE, worldSize);
 
         await teleportShip(userContext, loserShipId, teleportPos.x, teleportPos.y);
 
@@ -662,12 +653,12 @@ export async function resolveBattle(
   // send victory/defeat messages to users (skip NPCs — they don't receive messages)
   try {
     if (!winnerIsNpc) {
-      const npcLabel = loserIsNpc ? 'an Iron Horde Pirate' : ironResult.loserName;
+      const enemy = loserIsNpc ? npcName : ironResult.loserName;
       const tWinner = await getServerT(winnerLocale, 'messages');
       await sendMessageToUser(
         context,
         winnerId,
-        tWinner('battleVictory', { iron: ironResult.amount, xp: xpAwarded, score: scoreAwarded, enemy: npcLabel })
+        tWinner('battleVictory', { iron: ironResult.amount, xp: xpAwarded, score: scoreAwarded, enemy })
       );
 
       // Send level-up notification if winner leveled up
@@ -681,17 +672,38 @@ export async function resolveBattle(
     }
 
     if (!loserIsNpc) {
-      const npcLabel = winnerIsNpc ? 'an Iron Horde Pirate' : ironResult.winnerName;
+      const enemy = winnerIsNpc ? npcName : ironResult.winnerName;
       const tLoser = await getServerT(loserLocale, 'messages');
       await sendMessageToUser(
         context,
         loserId,
-        tLoser('battleDefeat', { enemy: npcLabel, iron: ironResult.amount })
+        tLoser('battleDefeat', { enemy, iron: ironResult.amount })
       );
     }
   } catch (msgErr) {
     // logging only; don't abort resolution if message sending fails
     console.error('⚠️ Failed to send battle outcome messages:', msgErr);
+  }
+
+  // Missions and achievements of the winner; aggressive ships leave the player alone for a while
+  try {
+    if (npcInvolved) {
+      NPCManager.getInstance().setAmbushGrace(loserIsNpc ? winnerId : loserId, Date.now() + AMBUSH_GRACE_MS);
+    }
+    if (!winnerIsNpc) {
+      // A defeated NPC ship that the manager no longer knows counts for nothing (and is no PvP win)
+      const event: QuestEvent | null = !loserIsNpc
+        ? { type: 'pvp_won' }
+        : npc
+          ? { type: 'npc_defeated', archetype: npc.archetype }
+          : null;
+      if (event) {
+        await QuestService.getInstance().recordEvent(context, winnerId, event);
+      }
+    }
+  } catch (questErr) {
+    // logging only; the battle is resolved
+    console.error('⚠️ Failed to record battle outcome for missions:', questErr);
   }
 
   // Emit statistics events (fire-and-forget, skip for NPC participants)
@@ -702,7 +714,7 @@ export async function resolveBattle(
       : 0;
     // Winner event (skip if winner is NPC)
     if (!winnerIsNpc) {
-      statisticsCache.recordEvent(winnerId, 'battle_completed', {
+      void statisticsCache.recordEvent(winnerId, 'battle_completed', {
         battleId: battle.id,
         opponentId: loserId,
         won: true,
@@ -715,7 +727,7 @@ export async function resolveBattle(
     }
     // Loser event (skip if loser is NPC)
     if (!loserIsNpc) {
-      statisticsCache.recordEvent(loserId, 'battle_completed', {
+      void statisticsCache.recordEvent(loserId, 'battle_completed', {
         battleId: battle.id,
         opponentId: winnerId,
         won: false,

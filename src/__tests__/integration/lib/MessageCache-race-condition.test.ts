@@ -13,9 +13,6 @@ describe('MessageCache - Race Condition Fix', () => {
   const testUserIds: number[] = [];
 
   beforeEach(async () => {
-    // Clear messages from previous tests
-    const { clearTestDatabase } = await import('../../helpers/testDatabase');
-    await clearTestDatabase();
     
     const ctx = createLockContext();
     MessageCache.resetInstance(ctx);

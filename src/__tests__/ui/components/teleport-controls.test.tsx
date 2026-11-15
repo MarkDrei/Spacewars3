@@ -15,7 +15,7 @@ vi.mock('@/components/DataAgeIndicator/DataAgeIndicator', () => ({
   default: () => null,
 }));
 
-// Mock Game + initGame — the canvas API is not available in jsdom
+// Mock Game + initGame — the canvas API is not available in the DOM test environment
 vi.mock('@/lib/client/game/Game', () => ({
   initGame: vi.fn(),
   Game: vi.fn(),

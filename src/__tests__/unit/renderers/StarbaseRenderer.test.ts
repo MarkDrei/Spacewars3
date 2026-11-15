@@ -1,7 +1,7 @@
 import { describe, expect, test, vi } from 'vitest';
 import { StarbaseRenderer } from '@/lib/client/renderers/StarbaseRenderer';
 
-// jsdom does not have HTMLImageElement.src side effects, so we mock the Image constructor
+// The DOM test environment does not have HTMLImageElement.src side effects, so we mock the Image constructor
 vi.stubGlobal('Image', class {
   onload: (() => void) | null = null;
   src: string = '';

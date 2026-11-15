@@ -12,9 +12,6 @@ describe('MessageCache - Summary Accumulation', () => {
   let messageCache: MessageCache;
 
   beforeEach(async () => {
-    // Clear messages from previous tests
-    const { clearTestDatabase } = await import('../../helpers/testDatabase');
-    await clearTestDatabase();
     
     const ctx = createLockContext();
     MessageCache.resetInstance(ctx);

@@ -188,7 +188,7 @@ The application will be available through the forwarded port (automatically dete
 
 ### Codespace Features
 
-- **Pre-installed**: Node.js 20, npm, git, bash
+- **Pre-installed**: Node.js 24, npm, git, bash
 - **VSCode Extensions**: ESLint, Prettier, Tailwind CSS, TypeScript
 - **Auto-configuration**: Port forwarding, environment variables
 - **Persistent**: Changes to database persist between sessions

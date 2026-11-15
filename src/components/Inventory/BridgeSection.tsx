@@ -14,6 +14,24 @@ const makeEmptyBridgeGrid = (maxSlots: number): BridgeGrid => {
   );
 };
 
+interface BridgeResponse {
+  maxBridgeSlots?: number;
+  grid?: BridgeGrid;
+  bonuses?: Partial<Record<CommanderStatKey, number>>;
+}
+
+const requestBridge = async (): Promise<BridgeResponse> => {
+  const response = await fetch('/api/bridge');
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.error || 'Failed to load bridge');
+  }
+  return data;
+};
+
+const toBridgeErrorMessage = (err: unknown): string =>
+  err instanceof Error ? err.message : 'Failed to load bridge';
+
 interface BridgeSectionProps {
   /** Bump this value to force a re-fetch of bridge data (e.g. after an inventory→bridge transfer). */
   refreshTrigger?: number;
@@ -45,43 +63,48 @@ const BridgeSection: React.FC<BridgeSectionProps> = ({ refreshTrigger, onCrossTr
     setTimeout(() => setStatusMessage(null), 3000);
   };
 
-  const fetchBridge = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      const response = await fetch('/api/bridge');
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to load bridge');
-      }
-      const data = await response.json();
-      setMaxBridgeSlots(data.maxBridgeSlots ?? 0);
-      setGrid(data.grid ?? []);
-      setBonuses(data.bonuses ?? {});
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load bridge');
-    } finally {
-      setIsLoading(false);
-    }
+  const applyBridge = useCallback((data: BridgeResponse) => {
+    setMaxBridgeSlots(data.maxBridgeSlots ?? 0);
+    setGrid(data.grid ?? []);
+    setBonuses(data.bonuses ?? {});
+    setError(null);
   }, []);
 
-  useEffect(() => {
-    fetchBridge();
-  }, [fetchBridge]);
-
-  // Re-fetch when the parent signals that inventory data changed
-  useEffect(() => {
-    if (refreshTrigger !== undefined && refreshTrigger > 0) {
-      fetchBridge();
+  /** Reloads bridge data in the background (grid stays visible), e.g. after a failed move. */
+  const fetchBridge = useCallback(async () => {
+    try {
+      applyBridge(await requestBridge());
+    } catch (err) {
+      setError(toBridgeErrorMessage(err));
     }
-  }, [refreshTrigger, fetchBridge]);
+  }, [applyBridge]);
 
-  // Clear sort when the parent requests it (e.g. before an auto-assign drop lands here)
+  // Load on mount and whenever the parent bumps refreshTrigger (e.g. after an inventory transfer)
   useEffect(() => {
+    let ignore = false;
+    requestBridge()
+      .then(data => {
+        if (!ignore) applyBridge(data);
+      })
+      .catch(err => {
+        if (!ignore) setError(toBridgeErrorMessage(err));
+      })
+      .finally(() => {
+        if (!ignore) setIsLoading(false);
+      });
+    return () => {
+      ignore = true;
+    };
+  }, [refreshTrigger, applyBridge]);
+
+  // Clear sort when the parent bumps clearSortTrigger (adjust state on prop change during render)
+  const [prevClearSortTrigger, setPrevClearSortTrigger] = useState(clearSortTrigger);
+  if (clearSortTrigger !== prevClearSortTrigger) {
+    setPrevClearSortTrigger(clearSortTrigger);
     if (clearSortTrigger !== undefined && clearSortTrigger > 0) {
       setSortBy(null);
     }
-  }, [clearSortTrigger]);
+  }
 
   const baseGrid = useMemo(
     () => (grid.length > 0 ? grid : makeEmptyBridgeGrid(maxBridgeSlots)),

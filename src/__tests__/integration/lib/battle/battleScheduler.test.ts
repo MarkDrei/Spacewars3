@@ -20,6 +20,7 @@ import type { BattleStats, WeaponCooldowns } from '../../../../lib/server/battle
 import { BATTLE_LOCK, USER_LOCK } from '../../../../lib/server/typedLocks';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 import { initializeIntegrationTestServer, shutdownIntegrationTestServer } from '../../../helpers/testServer';
+import { withTransaction } from '../../../helpers/transactionHelper';
 
 describe('BattleSchedulerUtils', () => {
   describe('realTimeProvider', () => {
@@ -121,125 +122,54 @@ describe('BattleScheduler Integration', () => {
   });
 
   it('processActiveBattles_noActiveBattles_completesWithoutError', async () => {
-    await emptyCtx.useLockWithAcquire(BATTLE_LOCK, async (battleContext) => {
-      // Should complete without error when there are no active battles
-      await expect(processActiveBattles(battleContext)).resolves.not.toThrow();
+    await withTransaction(async () => {
+      await emptyCtx.useLockWithAcquire(BATTLE_LOCK, async (battleContext) => {
+        // Should complete without error when there are no active battles
+        await expect(processActiveBattles(battleContext)).resolves.not.toThrow();
+      });
     });
   });
 
   it('processActiveBattles_withActiveBattle_processesRound', async () => {
-    const battleCache = getBattleCache();
-    const userWorldCache = UserCache.getInstance2();
-    
-    // Get test users
-    let attackerId: number;
-    let defenderId: number;
-    
-    await emptyCtx.useLockWithAcquire(USER_LOCK, async (userContext) => {
-      const attacker = await userWorldCache.getUserByUsername(userContext, 'a');
-      const defender = await userWorldCache.getUserByUsername(userContext, 'dummy');
-      
-      expect(attacker).not.toBeNull();
-      expect(defender).not.toBeNull();
-      
-      attackerId = attacker!.id;
-      defenderId = defender!.id;
-    });
-
-    // Create battle stats with a weapon
-    const attackerStats: BattleStats = {
-      hull: { current: 100, max: 100 },
-      armor: { current: 50, max: 50 },
-      shield: { current: 25, max: 25 },
-    };
-    
-    const defenderStats: BattleStats = {
-      hull: { current: 100, max: 100 },
-      armor: { current: 50, max: 50 },
-      shield: { current: 25, max: 25 },
-    };
-
-    const cooldowns: WeaponCooldowns = {
-      pulse_laser: 0  // Ready to fire immediately
-    };
-
-    await emptyCtx.useLockWithAcquire(BATTLE_LOCK, async (battleContext) => {
-      await battleContext.useLockWithAcquire(USER_LOCK, async (userContext) => {
-        // Create battle
-        const battle = await battleCache!.createBattle(
-          battleContext,
-          userContext,
-          attackerId!,
-          defenderId!,
-          attackerStats,
-          defenderStats,
-          cooldowns,
-          {}
-        );
-
-        expect(battle).toBeDefined();
-        expect(battle.id).toBeGreaterThan(0);
-
-        // Verify battle is active (at least our created battle)
-        const activeBattles = await battleCache!.getActiveBattles(battleContext);
-        expect(activeBattles.length).toBeGreaterThanOrEqual(1);
-      });
-
-      // Process battles - this should fire the weapon and create events
-      await processActiveBattles(battleContext);
-
-      // Check that battle log has events (weapons fired)
-      const activeBattles = await battleCache!.getActiveBattles(battleContext);
-      if (activeBattles.length > 0) {
-        const battle = activeBattles[0];
-        // Battle should have some events after processing
-        expect(battle.battleLog.length).toBeGreaterThanOrEqual(0);
-      }
-    });
-  });
-
-  describe('Weapon Cooldowns', () => {
-    it('weaponCooldown_withMockTime_respectsCooldown', async () => {
+    await withTransaction(async () => {
       const battleCache = getBattleCache();
       const userWorldCache = UserCache.getInstance2();
-      
+    
       // Get test users
       let attackerId: number;
       let defenderId: number;
-      
+    
       await emptyCtx.useLockWithAcquire(USER_LOCK, async (userContext) => {
         const attacker = await userWorldCache.getUserByUsername(userContext, 'a');
         const defender = await userWorldCache.getUserByUsername(userContext, 'dummy');
-        
+      
         expect(attacker).not.toBeNull();
         expect(defender).not.toBeNull();
-        
+      
         attackerId = attacker!.id;
         defenderId = defender!.id;
       });
 
-      // Create battle with weapon that has a 5 second cooldown
+      // Create battle stats with a weapon
       const attackerStats: BattleStats = {
-        hull: { current: 1000, max: 1000 },
-        armor: { current: 500, max: 500 },
-        shield: { current: 250, max: 250 },
+        hull: { current: 100, max: 100 },
+        armor: { current: 50, max: 50 },
+        shield: { current: 25, max: 25 },
       };
-      
+    
       const defenderStats: BattleStats = {
-        hull: { current: 1000, max: 1000 },
-        armor: { current: 500, max: 500 },
-        shield: { current: 250, max: 250 },
+        hull: { current: 100, max: 100 },
+        armor: { current: 50, max: 50 },
+        shield: { current: 25, max: 25 },
       };
 
-      // Initial cooldown set to 0 (ready to fire)
       const cooldowns: WeaponCooldowns = {
-        pulse_laser: 0
+        pulse_laser: 0  // Ready to fire immediately
       };
 
       await emptyCtx.useLockWithAcquire(BATTLE_LOCK, async (battleContext) => {
-        let battleId: number;
-        
         await battleContext.useLockWithAcquire(USER_LOCK, async (userContext) => {
+          // Create battle
           const battle = await battleCache!.createBattle(
             battleContext,
             userContext,
@@ -250,22 +180,99 @@ describe('BattleScheduler Integration', () => {
             cooldowns,
             {}
           );
-          battleId = battle.id;
+
+          expect(battle).toBeDefined();
+          expect(battle.id).toBeGreaterThan(0);
+
+          // Verify battle is active (at least our created battle)
+          const activeBattles = await battleCache!.getActiveBattles(battleContext);
+          expect(activeBattles.length).toBeGreaterThanOrEqual(1);
         });
 
-        // First round - weapon should fire (cooldown is 0, time is >= 0)
+        // Process battles - this should fire the weapon and create events
         await processActiveBattles(battleContext);
 
-        // Get the battle after first round
-        const battle = battleCache!.getBattleFromCache(battleId!);
-        expect(battle).toBeDefined();
+        // Check that battle log has events (weapons fired)
+        const activeBattles = await battleCache!.getActiveBattles(battleContext);
+        if (activeBattles.length > 0) {
+          const battle = activeBattles[0];
+          // Battle should have some events after processing
+          expect(battle.battleLog.length).toBeGreaterThanOrEqual(0);
+        }
+      });
+    });
+  });
+
+  describe('Weapon Cooldowns', () => {
+    it('weaponCooldown_withMockTime_respectsCooldown', async () => {
+      await withTransaction(async () => {
+        const battleCache = getBattleCache();
+        const userWorldCache = UserCache.getInstance2();
+      
+        // Get test users
+        let attackerId: number;
+        let defenderId: number;
+      
+        await emptyCtx.useLockWithAcquire(USER_LOCK, async (userContext) => {
+          const attacker = await userWorldCache.getUserByUsername(userContext, 'a');
+          const defender = await userWorldCache.getUserByUsername(userContext, 'dummy');
         
-        // After firing, cooldown should be set to current time + cooldown period
-        // The exact value depends on the time provider used
-        const firstCooldown = battle!.attackerWeaponCooldowns['pulse_laser'];
-        expect(firstCooldown).toBeDefined();
-        // Cooldown should have been set to a future time
-        expect(firstCooldown).toBeGreaterThan(0);
+          expect(attacker).not.toBeNull();
+          expect(defender).not.toBeNull();
+        
+          attackerId = attacker!.id;
+          defenderId = defender!.id;
+        });
+
+        // Create battle with weapon that has a 5 second cooldown
+        const attackerStats: BattleStats = {
+          hull: { current: 1000, max: 1000 },
+          armor: { current: 500, max: 500 },
+          shield: { current: 250, max: 250 },
+        };
+      
+        const defenderStats: BattleStats = {
+          hull: { current: 1000, max: 1000 },
+          armor: { current: 500, max: 500 },
+          shield: { current: 250, max: 250 },
+        };
+
+        // Initial cooldown set to 0 (ready to fire)
+        const cooldowns: WeaponCooldowns = {
+          pulse_laser: 0
+        };
+
+        await emptyCtx.useLockWithAcquire(BATTLE_LOCK, async (battleContext) => {
+          let battleId: number;
+        
+          await battleContext.useLockWithAcquire(USER_LOCK, async (userContext) => {
+            const battle = await battleCache!.createBattle(
+              battleContext,
+              userContext,
+              attackerId!,
+              defenderId!,
+              attackerStats,
+              defenderStats,
+              cooldowns,
+              {}
+            );
+            battleId = battle.id;
+          });
+
+          // First round - weapon should fire (cooldown is 0, time is >= 0)
+          await processActiveBattles(battleContext);
+
+          // Get the battle after first round
+          const battle = battleCache!.getBattleFromCache(battleId!);
+          expect(battle).toBeDefined();
+        
+          // After firing, cooldown should be set to current time + cooldown period
+          // The exact value depends on the time provider used
+          const firstCooldown = battle!.attackerWeaponCooldowns['pulse_laser'];
+          expect(firstCooldown).toBeDefined();
+          // Cooldown should have been set to a future time
+          expect(firstCooldown).toBeGreaterThan(0);
+        });
       });
     });
   });

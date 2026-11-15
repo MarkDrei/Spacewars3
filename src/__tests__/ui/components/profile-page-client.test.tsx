@@ -163,4 +163,26 @@ describe('ProfilePageClient change password dialog', () => {
     expect(await screen.findByText('New passwords do not match')).toBeInTheDocument();
     expect(global.fetch).not.toHaveBeenCalled();
   });
+
+  it('changePassword_rateLimited_showsTranslatedMessageInsteadOfServerText', async () => {
+    render(<ProfilePageClient auth={{ userId: 1, username: 'captain' }} />);
+    await screen.findByText('No battles yet. Start your first battle!');
+    vi.mocked(global.fetch).mockImplementation(() =>
+      Promise.resolve(
+        new Response(JSON.stringify({ error: 'server text', code: 'RATE_LIMITED' }), {
+          status: 429,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      )
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Change Password' }));
+    fireEvent.change(screen.getByLabelText('Current Password'), { target: { value: 'guess' } });
+    fireEvent.change(screen.getByLabelText('New Password'), { target: { value: 'new-password' } });
+    fireEvent.change(screen.getByLabelText('Confirm New Password'), { target: { value: 'new-password' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save Password' }));
+
+    expect(await screen.findByText('Too many attempts. Please try again later.')).toBeInTheDocument();
+    expect(screen.queryByText('server text')).not.toBeInTheDocument();
+  });
 });

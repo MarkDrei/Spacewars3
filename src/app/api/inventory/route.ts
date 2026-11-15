@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getIronSession } from 'iron-session';
 import { sessionOptions, SessionData } from '@/lib/server/session';
 import { handleApiError, requireAuth, ApiError } from '@/lib/server/errors';
-import { InventoryService, InventorySlotEmptyError, InventorySlotInvalidError } from '@/lib/server/inventory/InventoryService';
+import { InventoryService, InventoryItemProtectedError, InventorySlotEmptyError, InventorySlotInvalidError } from '@/lib/server/inventory/InventoryService';
 import { UserCache } from '@/lib/server/user/userCache';
 import { USER_LOCK } from '@/lib/server/typedLocks';
 import { createLockContext } from '@markdrei/ironguard-typescript-locks';
@@ -51,7 +51,11 @@ export async function DELETE(request: NextRequest) {
     const removed = await inventoryService.removeItem(session.userId!, { row, col }, maxSlots);
     return NextResponse.json({ removed });
   } catch (error) {
-    if (error instanceof InventorySlotEmptyError || error instanceof InventorySlotInvalidError) {
+    if (
+      error instanceof InventorySlotEmptyError ||
+      error instanceof InventorySlotInvalidError ||
+      error instanceof InventoryItemProtectedError
+    ) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
     return handleApiError(error);

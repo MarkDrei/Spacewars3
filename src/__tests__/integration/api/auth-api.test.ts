@@ -208,4 +208,74 @@ describe('Auth API', () => {
       expect(newPasswordLoginData.success).toBe(true);
     });
   });
+
+  /** Login attempt from its own address, so only the limit per username can apply. */
+  function loginFrom(addressIndex: number, username: string, password: string) {
+    return loginPOST(
+      createRequest('http://localhost:3000/api/login', 'POST', { username, password }, undefined, {
+        'x-forwarded-for': `198.51.100.${addressIndex}`,
+      })
+    );
+  }
+
+  test('login_hundredWrongPasswordsFromDifferentAddresses_locksTheUsernameEvenForTheRightPassword', async () => {
+    await withTransaction(async () => {
+      const username = randomUsername('locked');
+      await registerPOST(createRequest('http://localhost:3000/api/register', 'POST', { username, password: 'right' }));
+
+      for (let i = 0; i < 100; i++) {
+        const response = await loginFrom(i, username, 'wrong');
+        expect(response.status).toBe(400);
+      }
+
+      const response = await loginFrom(200, username, 'right');
+      const data = await response.json();
+      expect(response.status).toBe(429);
+      expect(data.code).toBe('RATE_LIMITED');
+      expect(Number(response.headers.get('Retry-After'))).toBeGreaterThan(0);
+    });
+  });
+
+  test('login_successfulLogin_clearsTheFailedAttemptsOfTheUsername', async () => {
+    await withTransaction(async () => {
+      const username = randomUsername('cleared');
+      await registerPOST(createRequest('http://localhost:3000/api/register', 'POST', { username, password: 'right' }));
+
+      for (let i = 0; i < 60; i++) {
+        expect((await loginFrom(i, username, 'wrong')).status).toBe(400);
+      }
+      expect((await loginFrom(60, username, 'right')).status).toBe(200);
+
+      // Without the reset, the 41st of these would exceed the limit of 100 failed attempts
+      for (let i = 61; i < 121; i++) {
+        expect((await loginFrom(i, username, 'wrong')).status).toBe(400);
+      }
+      expect((await loginFrom(121, username, 'right')).status).toBe(200);
+    });
+  });
+
+  test('changePassword_tenWrongCurrentPasswords_rejectsEvenTheRightOne', async () => {
+    await withTransaction(async () => {
+      const { sessionCookie } = await createAuthenticatedSessionWithUser('pw_guess');
+      const changePassword = (currentPassword: string) =>
+        changePasswordPOST(
+          createRequest(
+            'http://localhost:3000/api/change-password',
+            'POST',
+            { currentPassword, newPassword: 'new-password', confirmPassword: 'new-password' },
+            sessionCookie
+          )
+        );
+
+      for (let i = 0; i < 10; i++) {
+        const response = await changePassword(`guess-${i}`);
+        expect(response.status).toBe(400);
+      }
+
+      const response = await changePassword('testpass123');
+      const data = await response.json();
+      expect(response.status).toBe(429);
+      expect(data.code).toBe('RATE_LIMITED');
+    });
+  });
 });

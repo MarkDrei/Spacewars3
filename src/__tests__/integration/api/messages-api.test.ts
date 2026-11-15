@@ -39,9 +39,6 @@ describe('Messages API Route Handler', () => {
     // Create fresh test database (this also creates test users 3-10)
     await createTestDatabase();
     
-    // Clear messages from previous tests
-    const { clearTestDatabase } = await import('../../helpers/testDatabase');
-    await clearTestDatabase();
   });
 
   afterEach(async () => {

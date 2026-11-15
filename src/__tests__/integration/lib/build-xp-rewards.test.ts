@@ -74,7 +74,7 @@ describe('TechService - Build Completion Score Rewards', () => {
       if (user) {
         user.buildQueue = queue;
         user.buildStartSec = startSec;
-        cache.updateUserInCache(userContext, user);
+        await cache.updateUserInCache(userContext, user);
       }
     });
   }

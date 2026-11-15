@@ -176,3 +176,22 @@ Schema:
 - Output format is SVG.
 - If the output directory does not exist, it is created automatically.
 - If level 1 is not part of the chosen range in dual-axis mode, scaling still uses each line's first available point for robustness.
+
+## Quest Document Generator
+
+Script files:
+[scripts/generate-quest-doc.ts](scripts/generate-quest-doc.ts) (writes the file),
+[scripts/questDoc.ts](scripts/questDoc.ts) (renders the content)
+
+NPM command:
+
+- npm run quest-doc
+
+### What it does
+
+- Writes [doc/quests.md](../doc/quests.md): rules, test tools, dependency graph, contacts, locations, hostile ships,
+  mission cargo, every mission with a manual test table, and the achievements.
+- Reads the definitions in `src/shared/quests/` and the English texts in `src/locales/en.json` (namespace `quests`).
+- The expected messages of the manual test tables come from playing each mission with the quest engine.
+- Run it after every change to missions, contacts, locations, hostile ships, cargo, achievements or their texts.
+  The unit test `src/__tests__/unit/quests/questDoc.test.ts` fails while `doc/quests.md` is out of date.

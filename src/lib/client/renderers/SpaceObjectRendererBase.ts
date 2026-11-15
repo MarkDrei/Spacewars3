@@ -29,7 +29,7 @@ export abstract class SpaceObjectRendererBase {
         // Visible area in world units: [0, centerX*2] × [0, centerY*2]
         const canvasW = centerX * 2;
         const canvasH = centerY * 2;
-        const margin = 100;
+        const margin = this.getVisibilityMargin(spaceObject);
         if (screenX < -margin || screenX > canvasW + margin ||
             screenY < -margin || screenY > canvasH + margin) {
             // Try drawing wrapped versions
@@ -73,8 +73,8 @@ export abstract class SpaceObjectRendererBase {
         const canvasH = centerY * 2;
         
         // Helper function to check if a screen position is visible (in world units)
+        const margin = this.getVisibilityMargin(spaceObject);
         const isPositionVisible = (screenX: number, screenY: number): boolean => {
-            const margin = 100;
             return (
                 screenX > -margin && 
                 screenX < canvasW + margin && 
@@ -220,6 +220,15 @@ export abstract class SpaceObjectRendererBase {
         ctx.stroke();
     }
     
+    /**
+     * How far outside the visible area (world units) the object is still drawn.
+     * Override for objects with effects that reach further than the object itself.
+     */
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    protected getVisibilityMargin(_spaceObject: SpaceObject): number {
+        return 100;
+    }
+
     /**
      * Draw additional effects before the main object (e.g., dust trails)
      * Override in subclasses to add specific effects

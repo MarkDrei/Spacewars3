@@ -74,12 +74,6 @@ const RESEARCH_GROUPS = {
   },
 };
 
-interface ChartDefinition {
-  type: 'individual' | 'comparison';
-  researches: ResearchType[];
-  filename?: string;
-}
-
 async function runChartGeneration(researches: ResearchType[], outDir: string): Promise<void> {
   const researchArgs = researches
     .map((r) => `"${r}"`)
@@ -114,7 +108,7 @@ async function generateIndividualCharts(): Promise<void> {
 async function generateComparisonCharts(): Promise<void> {
   console.log('\n🔍 Generating comparison charts...');
   
-  for (const [key, group] of Object.entries(RESEARCH_GROUPS)) {
+  for (const group of Object.values(RESEARCH_GROUPS)) {
     const groupDir = path.join(OUTPUT_DIR, group.dir);
     await fs.mkdir(groupDir, { recursive: true });
     

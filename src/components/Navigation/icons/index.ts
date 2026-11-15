@@ -1,5 +1,6 @@
 export { default as HomeIcon } from './HomeIcon';
 export { default as MapIcon } from './MapIcon';
+export { default as ScrollIcon } from './ScrollIcon';
 export { default as BuildingIcon } from './BuildingIcon';
 export { default as BeakerIcon } from './BeakerIcon';
 export { default as UserIcon } from './UserIcon';

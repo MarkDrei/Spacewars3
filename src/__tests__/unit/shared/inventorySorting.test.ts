@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { sortGrid, getStatTotal, getStatValue } from '@/shared/inventoryShared';
-import type { InventoryItemData, InventorySlot } from '@/shared/inventoryShared';
+import type { CommanderData, CommanderStatBonus, InventorySlot } from '@/shared/inventoryShared';
 
-const makeCommander = (name: string, bonuses: { stat: InventoryItemData['statBonuses'][0]['stat'], value: number }[]): InventoryItemData => ({
+const makeCommander = (name: string, bonuses: CommanderStatBonus[]): CommanderData => ({
   itemType: 'commander',
   name,
   imageId: 0,
@@ -55,25 +55,25 @@ describe('sortGrid', () => {
 
   it('sortGrid_byTotal_descendingOrder', () => {
     const result = sortGrid(grid, cols, 'total', 'desc');
-    const items = result.flat().filter((s): s is InventoryItemData => s !== null);
+    const items = result.flat().filter((s): s is CommanderData => s?.itemType === 'commander');
     expect(items.map((i) => i.name)).toEqual(['Beta', 'Alpha', 'Gamma']);
   });
 
   it('sortGrid_byTotal_ascendingOrder', () => {
     const result = sortGrid(grid, cols, 'total', 'asc');
-    const items = result.flat().filter((s): s is InventoryItemData => s !== null);
+    const items = result.flat().filter((s): s is CommanderData => s?.itemType === 'commander');
     expect(items.map((i) => i.name)).toEqual(['Gamma', 'Alpha', 'Beta']);
   });
 
   it('sortGrid_bySingleStat_descendingOrder', () => {
     const result = sortGrid(grid, cols, 'shipSpeed', 'desc');
-    const items = result.flat().filter((s): s is InventoryItemData => s !== null);
+    const items = result.flat().filter((s): s is CommanderData => s?.itemType === 'commander');
     expect(items.map((i) => i.name)).toEqual(['Alpha', 'Beta', 'Gamma']);
   });
 
   it('sortGrid_bySingleStat_ascendingOrder', () => {
     const result = sortGrid(grid, cols, 'shipSpeed', 'asc');
-    const items = result.flat().filter((s): s is InventoryItemData => s !== null);
+    const items = result.flat().filter((s): s is CommanderData => s?.itemType === 'commander');
     // Gamma=0, Beta=3, Alpha=10
     expect(items.map((i) => i.name)).toEqual(['Gamma', 'Beta', 'Alpha']);
   });
@@ -104,7 +104,7 @@ describe('sortGrid', () => {
     ];
     const result = sortGrid(twoRow, 2, 'total', 'desc');
     expect(result.length).toBe(2);
-    const items = result.flat().filter((s): s is InventoryItemData => s !== null);
+    const items = result.flat().filter((s): s is CommanderData => s?.itemType === 'commander');
     expect(items.map((i) => i.name)).toEqual(['Beta', 'Alpha', 'Gamma']);
   });
 });

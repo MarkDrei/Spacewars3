@@ -167,11 +167,9 @@ export class WorldCache extends Cache {
     }
 
     await context.useLockWithAcquire(LOCK_11, async () => {
-      console.log('💾 Persisting world data to database...');
       const saveCallback = saveWorldToDb(this.db!);
       await saveCallback(this.world!);
       this.worldDirty = false;
-      console.log('✅ World data persisted to database');
     });
   }
 
@@ -218,7 +216,6 @@ export class WorldCache extends Cache {
    */
   private async backgroundPersist(context: LockContext<LocksAtMostAndHas6>): Promise<void> {
     if (this.worldDirty) {
-      console.log('💾 Background persisting world data...');
       await this.persistDirtyWorld(context);
     }
   }

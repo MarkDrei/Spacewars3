@@ -204,35 +204,48 @@ describe('updateTeleportCharges', () => {
   });
 });
 
+const WORLD = { width: 10000, height: 10000 };
+
 describe('calculateTeleportChargeCost', () => {
+  test('calculateTeleportChargeCost_jumpAcrossWorldEdge_costsShortestDistance', () => {
+    // 9900 -> 100 on x: 9800 units in plain coordinates, 200 units across the edge
+    expect(calculateTeleportChargeCost({ x: 9900, y: 0 }, { x: 100, y: 0 }, WORLD)).toBeCloseTo(0.1, 10);
+  });
+
+  test('calculateTeleportChargeCost_jumpAcrossCorner_wrapsBothAxes', () => {
+    // 300 units on x and 400 on y across both edges -> 500 units -> quarter charge
+    expect(calculateTeleportChargeCost({ x: 9850, y: 9800 }, { x: 150, y: 200 }, WORLD)).toBeCloseTo(0.25, 10);
+  });
+
+
   test('calculateTeleportChargeCost_zeroDistance_returnsZero', () => {
-    expect(calculateTeleportChargeCost(1000, 1000, 1000, 1000)).toBe(0);
+    expect(calculateTeleportChargeCost({ x: 1000, y: 1000 }, { x: 1000, y: 1000 }, WORLD)).toBe(0);
   });
 
   test('calculateTeleportChargeCost_500Units_returnsQuarterCharge', () => {
     // Horizontal jump of exactly 500 units → 500 / 2000 = 0.25
-    expect(calculateTeleportChargeCost(0, 0, 500, 0)).toBeCloseTo(0.25, 10);
+    expect(calculateTeleportChargeCost({ x: 0, y: 0 }, { x: 500, y: 0 }, WORLD)).toBeCloseTo(0.25, 10);
   });
 
   test('calculateTeleportChargeCost_exactThreshold_returnsOne', () => {
     // Horizontal jump of exactly 2000 units → 2000 / 2000 = 1.0
-    expect(calculateTeleportChargeCost(0, 0, 2000, 0)).toBeCloseTo(1.0, 10);
+    expect(calculateTeleportChargeCost({ x: 0, y: 0 }, { x: 2000, y: 0 }, WORLD)).toBeCloseTo(1.0, 10);
   });
 
   test('calculateTeleportChargeCost_longDistance_capsAtOne', () => {
     // Jump of 4000 units → capped at 1.0
-    expect(calculateTeleportChargeCost(0, 0, 4000, 0)).toBe(1.0);
+    expect(calculateTeleportChargeCost({ x: 0, y: 0 }, { x: 4000, y: 0 }, WORLD)).toBe(1.0);
   });
 
-  test('calculateTeleportChargeCost_diagonalDistance_usesEuclidean', () => {
+  test('calculateTeleportChargeCost_diagonalDistance_combinesBothAxes', () => {
     // 3-4-5 triangle: dx=300, dy=400 → distance=500 → cost=0.25
-    expect(calculateTeleportChargeCost(0, 0, 300, 400)).toBeCloseTo(0.25, 10);
+    expect(calculateTeleportChargeCost({ x: 0, y: 0 }, { x: 300, y: 400 }, WORLD)).toBeCloseTo(0.25, 10);
   });
 
   test('calculateTeleportChargeCost_arbitraryShortDistance_isProportional', () => {
     // Any distance < 2000 should scale linearly
     const dist = 1000;
-    const cost = calculateTeleportChargeCost(0, 0, dist, 0);
+    const cost = calculateTeleportChargeCost({ x: 0, y: 0 }, { x: dist, y: 0 }, WORLD);
     expect(cost).toBeCloseTo(dist / 2000, 10);
   });
 });

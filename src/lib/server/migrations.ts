@@ -3,7 +3,7 @@
 // ---
 
 import { DatabaseConnection } from './database';
-import { MIGRATE_ADD_PICTURE_ID, MIGRATE_ADD_TELEPORT_CHARGES, MIGRATE_ADD_EMAIL, MIGRATE_ADD_PASSWORD_RESET, MIGRATE_ADD_PREFERRED_LOCALE } from './schema';
+import { CREATE_QUEST_PROGRESS_TABLE, LOOKUP_INDEXES, createLookupIndexStatement, MIGRATE_ADD_PICTURE_ID, MIGRATE_ADD_TELEPORT_CHARGES, MIGRATE_ADD_EMAIL, MIGRATE_ADD_PASSWORD_RESET, MIGRATE_ADD_PREFERRED_LOCALE } from './schema';
 
 export interface Migration {
   version: number;
@@ -223,6 +223,16 @@ export const migrations: Migration[] = [
     down: [
       'ALTER TABLE users ADD CONSTRAINT users_username_key UNIQUE (username)'
     ]
+  },
+  {
+    version: 19,
+    name: 'add_quest_progress_table',
+    up: [
+      CREATE_QUEST_PROGRESS_TABLE
+    ],
+    down: [
+      'DROP TABLE IF EXISTS quest_progress'
+    ]
   }
 ];
 
@@ -356,6 +366,52 @@ export async function applyTechMigrations(db: DatabaseConnection): Promise<void>
   await applyPasswordResetMigration(db);
   // Apply preferred_locale column migration
   await applyPreferredLocaleMigration(db);
+  // Apply quest_progress table migration
+  await applyQuestProgressMigration(db);
+  // Create missing lookup indexes (after all tables and columns exist)
+  await applyLookupIndexMigration(db);
+}
+
+/**
+ * Creates the quest_progress table on databases that were set up before the mission system.
+ */
+export async function applyQuestProgressMigration(db: DatabaseConnection): Promise<void> {
+  try {
+    if (await tableExists(db, 'quest_progress')) return;
+
+    const migration = migrations.find(m => m.name === 'add_quest_progress_table');
+    if (!migration) {
+      console.error('❌ quest_progress migration not found');
+      return;
+    }
+    for (const statement of migration.up) {
+      await runMigrationStatement(db, statement);
+    }
+    console.log('✅ quest_progress table migration completed');
+  } catch (error) {
+    console.error('❌ Error applying quest_progress migration:', error);
+  }
+}
+
+/**
+ * Creates the lookup indexes on databases that were set up before they existed.
+ *
+ * Existing indexes are looked up in the catalog first: `CREATE INDEX IF NOT EXISTS` locks the
+ * table against writes before it notices that there is nothing to do, and would wait for (or
+ * deadlock with) every open transaction on it.
+ */
+export async function applyLookupIndexMigration(db: DatabaseConnection): Promise<void> {
+  const result = await db.query(
+    `SELECT indexname FROM pg_indexes WHERE schemaname = 'public' AND indexname = ANY($1)`,
+    [LOOKUP_INDEXES.map((index) => index.name)]
+  );
+  const existing = new Set((result.rows as { indexname: string }[]).map((row) => row.indexname));
+
+  for (const index of LOOKUP_INDEXES) {
+    if (!existing.has(index.name)) {
+      await runMigrationStatement(db, createLookupIndexStatement(index));
+    }
+  }
 }
 
 /**

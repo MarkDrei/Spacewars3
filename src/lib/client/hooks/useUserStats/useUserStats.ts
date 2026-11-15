@@ -1,10 +1,13 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { userStatsService } from '../../services/userStatsService';
-import { globalEvents, EVENTS } from '../../services/eventService';
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
+import type { UserStatsResponse } from '../../services/userStatsService';
 import { calculatePredictedIron, shouldUpdateDisplay, type IronData } from './ironCalculations';
-import { shouldRetryFetch, scheduleRetry, DEFAULT_RETRY_CONFIG } from './retryLogic';
-import { setupPolling, cancelPolling } from './pollingUtils';
-import { setTimeMultiplier, getTimeMultiplier } from '../../timeMultiplier';
+import { getTimeMultiplier } from '../../timeMultiplier';
+import {
+  subscribeUserStats,
+  getUserStatsSnapshot,
+  getUserStatsServerSnapshot,
+  refreshUserStats,
+} from './userStatsStore';
 
 const DEFAULT_DEFENSE_REGEN_RATE = 0.1;
 
@@ -57,176 +60,92 @@ interface UseUserStatsReturn {
   bonuses: BonusData;
 }
 
+/** Interval of the client-side iron prediction (display only, no requests). */
+const DISPLAY_TICK_MS = 100;
+
+const toBonusData = (result: UserStatsResponse): BonusData => ({
+  levelMultiplier: result.levelMultiplier ?? 1.0,
+  ironRechargeRate: result.ironPerSecond ?? 1.0,
+  ironStorageCapacity: result.maxIronCapacity ?? 5000,
+  maxShipSpeed: result.maxShipSpeed ?? 0,
+  currentMaxShipSpeed: result.currentMaxShipSpeed ?? 0,
+  repairRate: result.repairRate ?? DEFAULT_DEFENSE_REGEN_RATE,
+  shieldRechargeRate: result.shieldRechargeRate ?? DEFAULT_DEFENSE_REGEN_RATE,
+  projectileWeaponDamageFactor: result.projectileWeaponDamageFactor ?? 1.0,
+  projectileWeaponReloadFactor: result.projectileWeaponReloadFactor ?? 1.0,
+  projectileWeaponAccuracyFactor: result.projectileWeaponAccuracyFactor ?? 1.0,
+  energyWeaponDamageFactor: result.energyWeaponDamageFactor ?? 1.0,
+  energyWeaponReloadFactor: result.energyWeaponReloadFactor ?? 1.0,
+  energyWeaponAccuracyFactor: result.energyWeaponAccuracyFactor ?? 1.0,
+  constructionSpeedFactor: result.constructionSpeedFactor ?? 1.0,
+  researchSpeedFactor: result.researchSpeedFactor ?? 1.0,
+});
+
+/**
+ * User stats (iron, XP, bonuses) from the shared user-stats store.
+ * All components using this hook share one poll; `pollInterval` is the longest acceptable delay.
+ * The displayed iron amount is extrapolated client-side between server updates.
+ */
 export const useUserStats = (pollInterval: number = 5000): UseUserStatsReturn => {
-  const [ironData, setIronData] = useState<IronData>({
-    serverAmount: 0,
-    ironPerSecond: 0,
-    lastUpdateTime: Date.now(),
-    maxCapacity: 5000 // Default to base capacity
-  });
-  const [displayIronAmount, setDisplayIronAmount] = useState<number>(0);
-  const [xpData, setXpData] = useState({ xp: 0, level: 1, xpForNextLevel: 1000, score: 0 });
-  const [currentTimeMultiplier, setCurrentTimeMultiplier] = useState<number>(1);
-  const [bonusData, setBonusData] = useState<BonusData>(DEFAULT_BONUS_DATA);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
-  
-  // Use ref to track if component is mounted (for cleanup)
-  const isMountedRef = useRef<boolean>(true);
-  
-  // Use ref to track if display interval is already started
-  const displayIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const subscribe = useCallback((listener: () => void) => subscribeUserStats(listener, pollInterval), [pollInterval]);
+  const { result, receivedAt, error, isLoading } = useSyncExternalStore(
+    subscribe,
+    getUserStatsSnapshot,
+    getUserStatsServerSnapshot
+  );
 
-  const fetchUserStats = useCallback(async (retryCount: number = 0) => {
-    try {
-      setError(null);
-      const result = await userStatsService.getUserStats();
-      
-      if (!isMountedRef.current) return; // Component unmounted
-      
-      if ('error' in result) {
-        // Check if we should retry
-        const retryDecision = shouldRetryFetch(result.error, retryCount, DEFAULT_RETRY_CONFIG);
-        
-        if (retryDecision.shouldRetry) {
-          console.log(`Retrying user-stats fetch (attempt ${retryDecision.nextRetryCount}/${DEFAULT_RETRY_CONFIG.maxRetries})...`);
-          scheduleRetry(() => fetchUserStats(retryDecision.nextRetryCount), DEFAULT_RETRY_CONFIG.retryDelay);
-          return;
-        }
-        
-        setError(result.error);
-        setIsLoading(false);
-        return;
-      }
-      
-      // Update server data
-      const newData: IronData = {
-        serverAmount: result.iron,
-        ironPerSecond: result.ironPerSecond,
-        lastUpdateTime: Date.now(),
-        maxCapacity: result.maxIronCapacity
-      };
-      
-      // Store time multiplier in module-level state for other hooks to use
-      const multiplier = result.timeMultiplier ?? 1;
-      setTimeMultiplier(multiplier);
-      setCurrentTimeMultiplier(multiplier);
-      
-      setIronData(newData);
-      setDisplayIronAmount(Math.floor(result.iron));
-      setXpData({
-        xp: result.xp,
-        level: result.level,
-        xpForNextLevel: result.xpForNextLevel,
-        score: result.score ?? 0
-      });
-      const repairRate = result.repairRate ?? DEFAULT_DEFENSE_REGEN_RATE;
-      setBonusData({
-        levelMultiplier: result.levelMultiplier ?? 1.0,
-        ironRechargeRate: result.ironPerSecond ?? 1.0,
-        ironStorageCapacity: result.maxIronCapacity ?? 5000,
-        maxShipSpeed: result.maxShipSpeed ?? 0,
-        currentMaxShipSpeed: result.currentMaxShipSpeed ?? 0,
-        repairRate,
-        shieldRechargeRate: result.shieldRechargeRate ?? DEFAULT_DEFENSE_REGEN_RATE,
-        projectileWeaponDamageFactor: result.projectileWeaponDamageFactor ?? 1.0,
-        projectileWeaponReloadFactor: result.projectileWeaponReloadFactor ?? 1.0,
-        projectileWeaponAccuracyFactor: result.projectileWeaponAccuracyFactor ?? 1.0,
-        energyWeaponDamageFactor: result.energyWeaponDamageFactor ?? 1.0,
-        energyWeaponReloadFactor: result.energyWeaponReloadFactor ?? 1.0,
-        energyWeaponAccuracyFactor: result.energyWeaponAccuracyFactor ?? 1.0,
-        constructionSpeedFactor: result.constructionSpeedFactor ?? 1.0,
-        researchSpeedFactor: result.researchSpeedFactor ?? 1.0,
-      });
-      setIsLoading(false);
-    } catch (err) {
-      if (isMountedRef.current) {
-        // Check if we should retry on exception
-        const retryDecision = shouldRetryFetch('Network error', retryCount, DEFAULT_RETRY_CONFIG);
-        
-        if (retryDecision.shouldRetry) {
-          console.log(`Retrying user-stats fetch (attempt ${retryDecision.nextRetryCount}/${DEFAULT_RETRY_CONFIG.maxRetries})...`);
-          scheduleRetry(() => fetchUserStats(retryDecision.nextRetryCount), DEFAULT_RETRY_CONFIG.retryDelay);
-          return;
-        }
-        
-        setError('Failed to fetch iron amount: ' + (err as Error).message);
-        setIsLoading(false);
-      }
-    }
-  }, []); // Empty dependency array since fetchUserStats doesn't depend on any changing values
+  const ironData: IronData | null = useMemo(
+    () =>
+      result
+        ? {
+            serverAmount: result.iron,
+            ironPerSecond: result.ironPerSecond,
+            lastUpdateTime: receivedAt,
+            maxCapacity: result.maxIronCapacity,
+          }
+        : null,
+    [result, receivedAt]
+  );
 
-  // Update displayed iron amount based on time elapsed and iron per second
-  const updateDisplayIron = useCallback(() => {
-    // Only update if we have valid data and production rate
-    if (ironData.serverAmount >= 0 && ironData.ironPerSecond > 0 && !error) {
-      const predicted = calculatePredictedIron(ironData, Date.now(), getTimeMultiplier());
-      
-      if (shouldUpdateDisplay(displayIronAmount, predicted)) {
-        setDisplayIronAmount(predicted);
-      }
-    }
-  }, [ironData, displayIronAmount, error]);
+  // Predicted iron, re-rendering only when the displayed (whole) number changes
+  const predictIron = useCallback(
+    () => (ironData ? calculatePredictedIron(ironData, Date.now(), getTimeMultiplier()) : 0),
+    [ironData]
+  );
+  const [ironTick, setIronTick] = useState<{ source: IronData | null; amount: number }>({ source: null, amount: 0 });
+  const isTicking = !!ironData && ironData.ironPerSecond > 0 && !error;
 
   useEffect(() => {
-    isMountedRef.current = true;
-    
-    // Initial fetch (auth guaranteed by server component)
-    fetchUserStats();
-    
-    // Set up server polling
-    const serverInterval = setupPolling(fetchUserStats, pollInterval);
-    
-// Listen for user‑stats update events (e.g., after research trigger)
-    const handleUserStatsUpdate = () => {
-      fetchUserStats();
-    };
-    
-    globalEvents.on(EVENTS.IRON_UPDATED, handleUserStatsUpdate);
-    globalEvents.on(EVENTS.RESEARCH_TRIGGERED, handleUserStatsUpdate);
-    
-    // Cleanup
-    return () => {
-      isMountedRef.current = false;
-      cancelPolling(serverInterval);
-      if (displayIntervalRef.current) {
-        cancelPolling(displayIntervalRef.current);
-        displayIntervalRef.current = null;
-      }
-      globalEvents.off(EVENTS.IRON_UPDATED, handleUserStatsUpdate);
-      globalEvents.off(EVENTS.RESEARCH_TRIGGERED, handleUserStatsUpdate);
-    };
-  }, [pollInterval, fetchUserStats]);
+    if (!isTicking) return;
+    const tick = () =>
+      setIronTick(prev => {
+        const amount = predictIron();
+        return prev.source === ironData && !shouldUpdateDisplay(prev.amount, amount) ? prev : { source: ironData, amount };
+      });
+    const interval = setInterval(tick, DISPLAY_TICK_MS);
+    return () => clearInterval(interval);
+  }, [isTicking, predictIron, ironData]);
 
-  // Start display interval after data is loaded
-  useEffect(() => {
-    if (isLoading || error || ironData.ironPerSecond <= 0) {
-      return;
-    }
-    
-    // Only start interval if not already started
-    if (!displayIntervalRef.current) {
-      displayIntervalRef.current = setupPolling(updateDisplayIron, 100);
-    }
-    
-    return () => {
-      if (displayIntervalRef.current) {
-        cancelPolling(displayIntervalRef.current);
-        displayIntervalRef.current = null;
-      }
-    };
-  }, [isLoading, error, ironData.ironPerSecond, updateDisplayIron]);
+  // Until the first tick after new server data, show the server value
+  const ironAmount =
+    ironTick.source === ironData && isTicking ? ironTick.amount : Math.floor(ironData?.serverAmount ?? 0);
+
+  const refetch = useCallback(() => {
+    void refreshUserStats();
+  }, []);
+
+  const bonuses = useMemo(() => (result ? toBonusData(result) : DEFAULT_BONUS_DATA), [result]);
 
   return {
-    ironAmount: displayIronAmount,
+    ironAmount,
     isLoading,
     error,
-    refetch: fetchUserStats,
-    xp: xpData.xp,
-    level: xpData.level,
-    xpForNextLevel: xpData.xpForNextLevel,
-    score: xpData.score,
-    timeMultiplier: currentTimeMultiplier,
-    bonuses: bonusData,
+    refetch,
+    xp: result?.xp ?? 0,
+    level: result?.level ?? 1,
+    xpForNextLevel: result?.xpForNextLevel ?? 1000,
+    score: result?.score ?? 0,
+    timeMultiplier: result?.timeMultiplier ?? 1,
+    bonuses,
   };
 };

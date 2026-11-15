@@ -12,6 +12,23 @@ const makeEmptyGrid = (maxSlots: number): InventoryGridType =>
     Array.from({ length: INVENTORY_COLS }, () => null)
   );
 
+interface InventoryResponse {
+  maxSlots?: number;
+  grid: InventoryGridType;
+}
+
+const requestInventory = async (): Promise<InventoryResponse> => {
+  const response = await fetch('/api/inventory');
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.error || 'Failed to load inventory');
+  }
+  return data;
+};
+
+const toInventoryErrorMessage = (err: unknown): string =>
+  err instanceof Error ? err.message : 'Failed to load inventory';
+
 interface InventorySectionProps {
   /** Bump this value to force a re-fetch of inventory data (e.g. after a bridge→inventory transfer). */
   refreshTrigger?: number;
@@ -42,42 +59,47 @@ const InventorySection: React.FC<InventorySectionProps> = ({ refreshTrigger, onC
     setTimeout(() => setStatusMessage(null), 3000);
   };
 
-  const fetchInventory = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      const response = await fetch('/api/inventory');
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to load inventory');
-      }
-      const data = await response.json();
-      setMaxSlots(data.maxSlots ?? DEFAULT_INVENTORY_SLOTS);
-      setGrid(data.grid);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load inventory');
-    } finally {
-      setIsLoading(false);
-    }
+  const applyInventory = useCallback((data: InventoryResponse) => {
+    setMaxSlots(data.maxSlots ?? DEFAULT_INVENTORY_SLOTS);
+    setGrid(data.grid);
+    setError(null);
   }, []);
 
-  useEffect(() => {
-    fetchInventory();
-  }, [fetchInventory]);
-
-  // Re-fetch when the parent signals that bridge data changed
-  useEffect(() => {
-    if (refreshTrigger !== undefined && refreshTrigger > 0) {
-      fetchInventory();
+  /** Reloads inventory data in the background (grid stays visible), e.g. after a failed move. */
+  const fetchInventory = useCallback(async () => {
+    try {
+      applyInventory(await requestInventory());
+    } catch (err) {
+      setError(toInventoryErrorMessage(err));
     }
-  }, [refreshTrigger, fetchInventory]);
+  }, [applyInventory]);
 
-  // Clear sort when the parent requests it (e.g. before an auto-assign drop lands here)
+  // Load on mount and whenever the parent bumps refreshTrigger (e.g. after a bridge transfer)
   useEffect(() => {
+    let ignore = false;
+    requestInventory()
+      .then(data => {
+        if (!ignore) applyInventory(data);
+      })
+      .catch(err => {
+        if (!ignore) setError(toInventoryErrorMessage(err));
+      })
+      .finally(() => {
+        if (!ignore) setIsLoading(false);
+      });
+    return () => {
+      ignore = true;
+    };
+  }, [refreshTrigger, applyInventory]);
+
+  // Clear sort when the parent bumps clearSortTrigger (adjust state on prop change during render)
+  const [prevClearSortTrigger, setPrevClearSortTrigger] = useState(clearSortTrigger);
+  if (clearSortTrigger !== prevClearSortTrigger) {
+    setPrevClearSortTrigger(clearSortTrigger);
     if (clearSortTrigger !== undefined && clearSortTrigger > 0) {
       setSortBy(null);
     }
-  }, [clearSortTrigger]);
+  }
 
   const displayGrid = useMemo(
     () => (sortBy !== null ? sortGrid(grid, INVENTORY_COLS, sortBy, sortDir) : grid),

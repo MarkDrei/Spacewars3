@@ -72,7 +72,7 @@ const Leaderboard: React.FC = () => {
       }
     };
 
-    fetchLeaderboard();
+    void fetchLeaderboard();
   }, []);
 
   if (isLoading) {

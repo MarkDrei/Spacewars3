@@ -112,7 +112,7 @@ console.log('-'.repeat(160));
 // Create table rows
 for (let level = 1; level <= 10; level++) {
   const xpNeeded = calculateXpForAdvance(level);
-  let row = [
+  const row = [
     `${level} → ${level + 1}`.padEnd(columnWidths[0]),
     xpNeeded.toLocaleString().padEnd(columnWidths[1]),
   ];

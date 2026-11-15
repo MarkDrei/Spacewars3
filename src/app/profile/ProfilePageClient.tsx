@@ -11,6 +11,7 @@ import './ProfilePage.css';
 import StatisticsPanel from '@/components/Statistics/StatisticsPanel';
 import Leaderboard from '@/components/Statistics/Leaderboard';
 import LocaleSwitcher from '@/components/Navigation/LocaleSwitcher';
+import { RATE_LIMITED_CODE } from '@/shared/apiErrorCodes';
 
 interface ProfilePageClientProps {
   auth: ServerAuthState;
@@ -115,7 +116,9 @@ const ProfilePageClient: React.FC<ProfilePageClientProps> = ({ auth }) => {
       const data = await response.json();
 
       if (!response.ok) {
-        setChangePasswordError(data.error || t('errorChangePasswordFailed'));
+        setChangePasswordError(
+          data.code === RATE_LIMITED_CODE ? t('errorTooManyAttempts') : data.error || t('errorChangePasswordFailed')
+        );
         return;
       }
 
@@ -155,8 +158,8 @@ const ProfilePageClient: React.FC<ProfilePageClientProps> = ({ auth }) => {
       }
     };
     
-    fetchBattles();
-    fetchStats();
+    void fetchBattles();
+    void fetchStats();
   }, []);
 
   return (

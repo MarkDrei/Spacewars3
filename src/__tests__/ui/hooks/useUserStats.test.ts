@@ -1,10 +1,10 @@
-import { describe, expect, vi, test, beforeEach } from 'vitest';
+import { describe, expect, vi, test, beforeEach, afterEach } from 'vitest';
 import { Mocked } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { useUserStats } from '@/lib/client/hooks/useUserStats/useUserStats';
 import { userStatsService } from '@/lib/client/services/userStatsService';
 import * as retryLogic from '@/lib/client/hooks/useUserStats/retryLogic';
-import * as pollingUtils from '@/lib/client/hooks/useUserStats/pollingUtils';
+import { resetUserStatsStore } from '@/lib/client/hooks/useUserStats/userStatsStore';
 
 // Mock the userStatsService
 vi.mock('@/lib/client/services/userStatsService');
@@ -12,6 +12,7 @@ const mockUserStatsService = userStatsService as Mocked<typeof userStatsService>
 
 describe('useUserStats', () => {
   beforeEach(() => {
+    resetUserStatsStore();
     vi.clearAllMocks();
   });
   beforeEach(() => {
@@ -267,37 +268,70 @@ describe('useUserStats', () => {
     Date.now = originalDateNow;
   });
 
-  // Test that polling is set up correctly (not the timing!)
-  test('useUserStats_setsUpPolling_withCorrectInterval', async () => {
-    const setupPollingSpy = vi.spyOn(pollingUtils, 'setupPolling');
-    
-    mockUserStatsService.getUserStats.mockResolvedValue({
-      iron: 1000,
-      last_updated: 1674567890,
-      ironPerSecond: 1,
-      maxIronCapacity: 5000,
-      xp: 0,
-      level: 1,
-      xpForNextLevel: 1000,
-      timeMultiplier: 1,
-      teleportCharges: 0,
-      teleportMaxCharges: 0,
-      teleportRechargeTimeSec: 0,
-      teleportRechargeSpeed: 0
+  describe('shared polling', () => {
+    const stats = {
+      iron: 1000, last_updated: 1674567890, ironPerSecond: 1, maxIronCapacity: 5000, xp: 0, level: 1,
+      xpForNextLevel: 1000, timeMultiplier: 1, teleportCharges: 0, teleportMaxCharges: 0,
+      teleportRechargeTimeSec: 0, teleportRechargeSpeed: 0,
+    };
+
+    afterEach(() => {
+      vi.useRealTimers();
+      Object.defineProperty(document, 'hidden', { configurable: true, get: () => false });
     });
 
-    const customInterval = 3000;
-    renderHook(() => useUserStats(customInterval));
+    test('useUserStats_twoComponents_shareOneRequestPerInterval', async () => {
+      vi.useFakeTimers();
+      mockUserStatsService.getUserStats.mockResolvedValue(stats);
 
-    // Verify that polling was set up with the correct interval
-    await waitFor(() => {
-      expect(setupPollingSpy).toHaveBeenCalled();
+      renderHook(() => useUserStats(5000)); // e.g. layout header
+      renderHook(() => useUserStats(5000)); // e.g. page content
+      await vi.advanceTimersByTimeAsync(0);
+      expect(mockUserStatsService.getUserStats).toHaveBeenCalledTimes(1);
+
+      await vi.advanceTimersByTimeAsync(15_000);
+      expect(mockUserStatsService.getUserStats).toHaveBeenCalledTimes(4);
     });
 
-    // Check that the interval value passed is correct
-    const calls = setupPollingSpy.mock.calls;
-    const pollingCall = calls.find(call => call[1] === customInterval);
-    expect(pollingCall).toBeDefined();
+    test('useUserStats_differentIntervals_pollsAtShortest', async () => {
+      vi.useFakeTimers();
+      mockUserStatsService.getUserStats.mockResolvedValue(stats);
+
+      renderHook(() => useUserStats(5000));
+      const { unmount } = renderHook(() => useUserStats(1000));
+      await vi.advanceTimersByTimeAsync(3000);
+      expect(mockUserStatsService.getUserStats).toHaveBeenCalledTimes(4); // initial + 3
+
+      unmount();
+      mockUserStatsService.getUserStats.mockClear();
+      await vi.advanceTimersByTimeAsync(5000);
+      expect(mockUserStatsService.getUserStats).toHaveBeenCalledTimes(1);
+    });
+
+    test('useUserStats_hiddenPage_pausesPolling', async () => {
+      vi.useFakeTimers();
+      mockUserStatsService.getUserStats.mockResolvedValue(stats);
+      renderHook(() => useUserStats(5000));
+      await vi.advanceTimersByTimeAsync(0);
+
+      Object.defineProperty(document, 'hidden', { configurable: true, get: () => true });
+      document.dispatchEvent(new Event('visibilitychange'));
+      await vi.advanceTimersByTimeAsync(30_000);
+
+      expect(mockUserStatsService.getUserStats).toHaveBeenCalledTimes(1);
+    });
+
+    test('useUserStats_lastComponentUnmounts_stopsPolling', async () => {
+      vi.useFakeTimers();
+      mockUserStatsService.getUserStats.mockResolvedValue(stats);
+      const { unmount } = renderHook(() => useUserStats(5000));
+      await vi.advanceTimersByTimeAsync(0);
+
+      unmount();
+      await vi.advanceTimersByTimeAsync(30_000);
+
+      expect(mockUserStatsService.getUserStats).toHaveBeenCalledTimes(1);
+    });
   });
 
   test('useUserStats_withBonusData_exposesBonusesInReturnValue', async () => {

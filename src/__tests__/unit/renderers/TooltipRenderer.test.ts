@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { TooltipRenderer } from '@/lib/client/renderers/TooltipRenderer';
 import { World } from '@/lib/client/game/World';
+import { defaultCanvasStrings } from '@/lib/client/game/canvasStrings';
+import { HAIL_RANGE } from '@/shared/quests/npcArchetypes';
 
 const EXPECTED_TOOLTIP_WIDTH = 160;
 const EXPECTED_TOOLTIP_HEIGHT = 90;
@@ -22,6 +24,8 @@ const makeContext = () => ({
   })),
   fillRect: vi.fn(),
   fillText: vi.fn(),
+  // Narrow text: the box keeps its minimum width
+  measureText: vi.fn(() => ({ width: 10 })),
   fillStyle: '',
   strokeStyle: '',
   lineWidth: 0,
@@ -45,7 +49,24 @@ const makeHoveredObject = (x = 50, y = 100, speed = 5.4321, angle = 45.67) => ({
   getSpeed: () => speed,
   getType: () => 'asteroid',
   getLevel: () => undefined,
+  getServerData: () => ({}),
 });
+
+const makeNpcShip = (x: number, serverData: Record<string, unknown>, level?: number) => ({
+  isHoveredState: () => true,
+  getX: () => x,
+  getY: () => 100,
+  getAngleDegrees: () => 0,
+  getSpeed: () => 3,
+  getType: () => 'npc_ship',
+  getLevel: () => level,
+  getServerData: () => serverData,
+});
+
+const makeCanvas = (ctx: ReturnType<typeof makeContext>) =>
+  ({ width: 800, height: 400, getContext: () => ctx }) as unknown as HTMLCanvasElement;
+
+const drawnLines = (ctx: ReturnType<typeof makeContext>) => vi.mocked(ctx.fillText).mock.calls.map(call => call[0]);
 
 describe('TooltipRenderer', () => {
   beforeEach(() => {
@@ -142,6 +163,7 @@ describe('TooltipRenderer', () => {
       getSpeed: () => 12.34,
       getType: () => 'player_ship',
       getLevel: () => 7,
+      getServerData: () => ({}),
     };
     const ship = makeShip();
 
@@ -152,5 +174,57 @@ describe('TooltipRenderer', () => {
     expect(lines).toContain('Level: 7');
     expect(lines).toContain('Speed: 12.3');
     expect(lines).toContain('Distance: 40');
+  });
+
+  test('drawTooltip_friendlyContactInHailRange_showsContactNameShipNameAndHailAction', () => {
+    const ctx = makeContext();
+    const renderer = new TooltipRenderer(makeCanvas(ctx));
+    renderer.updateCanvasStrings({ ...defaultCanvasStrings, contactNames: { vess: 'Quartermaster Vess' } });
+    const contact = makeNpcShip(100 + HAIL_RANGE, { npcDisposition: 'friendly', contactId: 'vess', username: 'ISV Ledger' });
+
+    renderer.drawTooltip([contact] as never, makeShip() as never, 1);
+
+    const lines = drawnLines(ctx);
+    expect(lines).toContain('FRIENDLY CONTACT');
+    expect(lines).toContain('Quartermaster Vess');
+    expect(lines).toContain('ISV Ledger');
+    expect(lines).toContain(defaultCanvasStrings.actionTapToHail);
+    expect(lines).not.toContain(defaultCanvasStrings.hailTooFar);
+  });
+
+  test('drawTooltip_friendlyContactOutOfHailRange_asksToFlyCloser', () => {
+    const ctx = makeContext();
+    const renderer = new TooltipRenderer(makeCanvas(ctx));
+    const contact = makeNpcShip(100 + HAIL_RANGE + 1, { npcDisposition: 'friendly', contactId: 'vess' });
+
+    renderer.drawTooltip([contact] as never, makeShip() as never, 1);
+
+    const lines = drawnLines(ctx);
+    expect(lines).toContain(defaultCanvasStrings.hailTooFar);
+    expect(lines).not.toContain(defaultCanvasStrings.actionTapToHail);
+  });
+
+  test('drawTooltip_aggressiveNpcShip_showsNameLevelAndWarning', () => {
+    const ctx = makeContext();
+    const renderer = new TooltipRenderer(makeCanvas(ctx));
+    const marauder = makeNpcShip(160, { npcDisposition: 'aggressive', username: 'Horde Marauder Lv.4' }, 4);
+
+    renderer.drawTooltip([marauder] as never, makeShip() as never, 1);
+
+    const lines = drawnLines(ctx);
+    expect(lines).toContain('NPC SHIP');
+    expect(lines).toContain('Horde Marauder Lv.4');
+    expect(lines).toContain('Level: 4');
+    expect(lines).toContain(defaultCanvasStrings.aggressiveShip);
+  });
+
+  test('drawTooltip_passiveNpcShip_hasNoWarning', () => {
+    const ctx = makeContext();
+    const renderer = new TooltipRenderer(makeCanvas(ctx));
+    const pirate = makeNpcShip(160, { npcDisposition: 'hostile', username: 'Iron Horde Pirate Lv.2' }, 2);
+
+    renderer.drawTooltip([pirate] as never, makeShip() as never, 1);
+
+    expect(drawnLines(ctx)).not.toContain(defaultCanvasStrings.aggressiveShip);
   });
 });

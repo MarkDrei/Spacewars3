@@ -102,6 +102,7 @@ function makeStarbaseObj(id = STARBASE_ID_OFFSET + 1, x = 2500, y = 2500) {
     getX: () => x,
     getY: () => y,
     getUserId: () => null,
+    getServerData: () => ({}),
   };
   objectRegistry.set(id, obj);
   return obj;

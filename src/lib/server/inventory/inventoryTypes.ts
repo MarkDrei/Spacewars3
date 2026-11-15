@@ -3,12 +3,14 @@
 // ---
 
 import { CommanderData } from './Commander';
+import type { CargoItemData } from '@/shared/inventoryShared';
 
 // ---------------------------------------------------------------------------
 // Item union type – extend here when new item types are added
 // ---------------------------------------------------------------------------
 
-export type InventoryItemData = CommanderData;
+export type { CargoItemData };
+export type InventoryItemData = CommanderData | CargoItemData;
 
 // ---------------------------------------------------------------------------
 // Slot coordinates
@@ -125,13 +127,59 @@ export function isValidBridgeSlot(slot: SlotCoordinate, maxSlots: number): boole
   );
 }
 
+/** Only commanders can be assigned to the bridge; mission cargo stays in the inventory. */
+export function isBridgeCompatible(item: InventoryItemData): boolean {
+  return item.itemType === 'commander';
+}
+
+/** Mission cargo belongs to a mission: the player can neither discard nor sell it. */
+export function isRemovableByPlayer(item: InventoryItemData): boolean {
+  return item.itemType !== 'cargo';
+}
+
+// ---------------------------------------------------------------------------
+// Reorder validation
+// ---------------------------------------------------------------------------
+
+/** JSON with sorted object keys, so equal items compare equal regardless of key order. */
+function canonicalJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`;
+  if (value !== null && typeof value === 'object') {
+    const entries = Object.keys(value as Record<string, unknown>)
+      .sort()
+      .map(key => `${JSON.stringify(key)}:${canonicalJson((value as Record<string, unknown>)[key])}`);
+    return `{${entries.join(',')}}`;
+  }
+  return JSON.stringify(value) ?? 'undefined';
+}
+
 /**
- * Returns true if the given item is allowed on the bridge.
- * Currently all items are bridge-compatible, but this will be extended in the future
- * when new item types that cannot be assigned to the bridge are introduced.
+ * True when `candidate` has the same shape as `current` (rows × cols) and contains exactly the
+ * same items (as a multiset), only in different slots. Used to make reorder requests unable to
+ * create, duplicate, alter or drop items.
  */
-export function isBridgeCompatible(_item: InventoryItemData): boolean {
-  // parameter intentionally unused until new item types are added
-  void _item;
-  return true;
+export function isGridRearrangement(
+  current: InventorySlot[][],
+  candidate: unknown,
+  cols: number
+): candidate is InventorySlot[][] {
+  if (!Array.isArray(candidate) || candidate.length !== current.length) return false;
+  if (!candidate.every(row => Array.isArray(row) && row.length === cols)) return false;
+
+  const remaining = new Map<string, number>();
+  for (const item of current.flat()) {
+    if (item === null) continue;
+    const key = canonicalJson(item);
+    remaining.set(key, (remaining.get(key) ?? 0) + 1);
+  }
+
+  for (const item of (candidate as unknown[][]).flat()) {
+    if (item === null) continue;
+    const key = canonicalJson(item);
+    const count = remaining.get(key);
+    if (!count) return false;
+    remaining.set(key, count - 1);
+  }
+
+  return [...remaining.values()].every(count => count === 0);
 }

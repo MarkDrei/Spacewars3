@@ -38,7 +38,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "24"
           cache: "npm"
 
       - name: Install dependencies
@@ -55,7 +55,7 @@ jobs:
           POSTGRES_DB: spacewars
           POSTGRES_USER: spacewars
           POSTGRES_PASSWORD: spacewars
-          SESSION_SECRET: ci-screenshot-secret
+          SESSION_SECRET: ci-screenshot-secret-0123456789-abcdefghij
 
       - name: Start application
         run: |
@@ -67,7 +67,7 @@ jobs:
           POSTGRES_DB: spacewars
           POSTGRES_USER: spacewars
           POSTGRES_PASSWORD: spacewars
-          SESSION_SECRET: ci-screenshot-secret
+          SESSION_SECRET: ci-screenshot-secret-0123456789-abcdefghij
 
       - name: Wait for server to be ready
         run: |

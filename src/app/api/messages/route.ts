@@ -8,39 +8,20 @@ import { createLockContext } from '@markdrei/ironguard-typescript-locks';
 /**
  * GET /api/messages
  * Get all unread messages for the authenticated user
- * Using FIXED cached operations (deadlock resolved)
  */
 export async function GET(request: NextRequest) {
   try {
-    console.log('📬 Messages API: Starting request...');
-    
     const session = await getIronSession<SessionData>(request, NextResponse.json({}), sessionOptions);
-    console.log('📬 Messages API: Session obtained, userId:', session.userId);
-    
     requireAuth(session.userId);
-    console.log('📬 Messages API: Authentication passed');
-    
-    console.log(`📬 Messages requested by user: ${session.userId}`);
-    
-    // Get unread messages
-    const ctx = createLockContext();
-    const unreadMessages = await getUserMessages(ctx, session.userId!);
-    
-    console.log(`📨 Retrieved ${unreadMessages.length} unread message(s) for user ${session.userId}`);
-    console.log('📨 Messages data:', unreadMessages);
-    
-    const response = {
+
+    const unreadMessages = await getUserMessages(createLockContext(), session.userId!);
+
+    return NextResponse.json({
       success: true,
       messages: unreadMessages,
-      count: unreadMessages.length
-    };
-    
-    console.log('📬 Messages API: Sending response:', response);
-    
-    return NextResponse.json(response);
-    
+      count: unreadMessages.length,
+    });
   } catch (error) {
-    console.error('❌ Messages API error:', error);
     return handleApiError(error);
   }
 }

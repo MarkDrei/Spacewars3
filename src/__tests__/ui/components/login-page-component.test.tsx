@@ -5,7 +5,7 @@ import { render, screen, fireEvent, act } from '@testing-library/react';
 
 // ─────────── Module mocks ────────────────────────────────────────────────────
 
-// Mock CSS import so jsdom doesn't choke on it
+// Mock CSS import so the DOM test environment does not choke on it
 vi.mock('@/app/login/LoginPage.css', () => ({}));
 
 // Mock next-intl so components using useTranslations work without a provider
@@ -169,6 +169,46 @@ describe('LoginPageComponent — registration emailSent behaviour', () => {
     expect(screen.getByText('Username taken')).toBeDefined();
     expect(mockPush).not.toHaveBeenCalled();
   });
+
+  it('registration_rateLimited_showsTranslatedMessageInsteadOfServerText', async () => {
+    const onRegister = vi.fn().mockResolvedValue({ success: false, error: 'server text', code: 'RATE_LIMITED' });
+    renderSignUp(onRegister);
+    await fillAndSubmitSignUp();
+
+    expect(screen.getByText('Too many attempts. Please try again later.')).toBeDefined();
+    expect(screen.queryByText('server text')).toBeNull();
+    expect(mockPush).not.toHaveBeenCalled();
+  });
+});
+
+describe('LoginPageComponent — sign in errors', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  async function submitSignIn(onLogin: () => Promise<{ success: boolean; error?: string; code?: string }>) {
+    render(<LoginPageComponent onLogin={onLogin} onRegister={async () => ({ success: false })} />);
+    fireEvent.change(screen.getByLabelText(/username/i), { target: { value: 'pilot' } });
+    fireEvent.change(screen.getByLabelText(/^password$/i), { target: { value: 'secret' } });
+    await act(async () => {
+      fireEvent.submit(screen.getByLabelText(/username/i).closest('form')!);
+    });
+  }
+
+  it('login_wrongCredentials_showsServerMessage', async () => {
+    await submitSignIn(async () => ({ success: false, error: 'Invalid credentials' }));
+
+    expect(screen.getByText('Invalid credentials')).toBeDefined();
+    expect(mockPush).not.toHaveBeenCalled();
+  });
+
+  it('login_rateLimited_showsTranslatedMessageInsteadOfServerText', async () => {
+    await submitSignIn(async () => ({ success: false, error: 'server text', code: 'RATE_LIMITED' }));
+
+    expect(screen.getByText('Too many attempts. Please try again later.')).toBeDefined();
+    expect(screen.queryByText('server text')).toBeNull();
+    expect(mockPush).not.toHaveBeenCalled();
+  });
 });
 
 describe('LoginPageComponent — query-param banners', () => {
@@ -267,6 +307,27 @@ describe('LoginPageComponent — forgot-password flow', () => {
     });
     expect(onForgotPassword).toHaveBeenCalledWith('user@example.com');
     expect(screen.getByText(/if that email is registered/i)).toBeDefined();
+  });
+
+  it('forgotPassword_rateLimited_showsErrorInsteadOfSuccessMessage', async () => {
+    const onForgotPassword = vi.fn().mockResolvedValue({ success: false, error: 'server text', code: 'RATE_LIMITED' });
+    render(
+      <LoginPageComponent
+        onLogin={async () => ({ success: false })}
+        onRegister={async () => ({ success: false })}
+        onForgotPassword={onForgotPassword}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: /forgot password/i }));
+    fireEvent.change(screen.getByLabelText(/email address/i), {
+      target: { value: 'user@example.com' },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /send reset link/i }));
+    });
+
+    expect(screen.getByText('Too many attempts. Please try again later.')).toBeDefined();
+    expect(screen.queryByText(/if that email is registered/i)).toBeNull();
   });
 
   it('forgotPassword_backToSignIn_restoresLoginForm', () => {

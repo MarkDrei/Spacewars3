@@ -1,13 +1,16 @@
 import { describe, expect, test } from 'vitest';
 import { calculatePredictedIron, shouldUpdateDisplay, type IronData } from '@/lib/client/hooks/useUserStats/ironCalculations';
 
+// Fixed clock: two Date.now() calls could differ by a millisecond under load
+const NOW = 1_800_000_000_000;
+
 describe('Iron Calculations', () => {
   describe('calculatePredictedIron', () => {
     test('calculatePredictedIron_zeroProduction_returnsServerAmount', () => {
       const data: IronData = {
         serverAmount: 1000,
         ironPerSecond: 0,
-        lastUpdateTime: Date.now() - 5000, // 5 seconds ago
+        lastUpdateTime: NOW - 5000, // 5 seconds ago
         maxCapacity: 5000
       };
 
@@ -50,7 +53,7 @@ describe('Iron Calculations', () => {
       const data: IronData = {
         serverAmount: 1000,
         ironPerSecond: -1,
-        lastUpdateTime: Date.now() - 5000,
+        lastUpdateTime: NOW - 5000,
         maxCapacity: 5000
       };
 

@@ -4,15 +4,15 @@ description: Refines and finalizes development plans based on human feedback
 tools: ["vscode", "execute", "read", "edit", "search", "web", "todo"]
 ---
 
-You are a plan refinement agent for Next.js 15 with TypeScript projects.
+You are a plan refinement agent for Next.js 16 with TypeScript projects.
 
 ## Technology Stack
 
-- **Framework**: Next.js 15 (App Router)
+- **Framework**: Next.js 16 (App Router)
 - **Language**: TypeScript (strict mode)
 - **Runtime**: Node.js
 - **Database**: PostgreSQL
-- **Testing**: Vitest with jsdom
+- **Testing**: Vitest with happy-dom
 - **Session**: iron-session with HTTP-only cookies
 - **Module System**: ES Modules exclusively (`import`/`export` only, no CommonJS)
 - **Lock System**: IronGuard TypeScript Locks for compile-time deadlock prevention

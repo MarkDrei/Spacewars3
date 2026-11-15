@@ -72,18 +72,35 @@ export async function loadWorldFromDb(db: DatabaseConnection, saveCallback: Save
 }
 
 /**
- * Save world data to database
+ * Save world data to database.
+ *
+ * Uses a single batched UPDATE (UNNEST over parallel arrays) instead of one query per object:
+ * one round trip, atomic, and no concurrent queries on a single client (deprecated in pg 8.20+,
+ * removed in pg 9 — relevant for the shared transaction client in tests).
  */
 export function saveWorldToDb(db: DatabaseConnection): SaveWorldCallback {
   return async (world: World) => {
-    const updatePromises = world.spaceObjects.map(obj => 
-      db.query(
-        'UPDATE space_objects SET x = $1, y = $2, speed = $3, angle = $4, last_position_update_ms = $5 WHERE id = $6',
-        [obj.x, obj.y, obj.speed, obj.angle, obj.last_position_update_ms, obj.id]
-      )
-    );
+    const objects = world.spaceObjects;
+    if (objects.length === 0) {
+      return;
+    }
 
-    await Promise.all(updatePromises);
+    await db.query(
+      `UPDATE space_objects AS s
+          SET x = v.x, y = v.y, speed = v.speed, angle = v.angle,
+              last_position_update_ms = v.last_position_update_ms
+         FROM UNNEST($1::int[], $2::float8[], $3::float8[], $4::float8[], $5::float8[], $6::float8[])
+              AS v(id, x, y, speed, angle, last_position_update_ms)
+        WHERE s.id = v.id`,
+      [
+        objects.map(obj => obj.id),
+        objects.map(obj => obj.x),
+        objects.map(obj => obj.y),
+        objects.map(obj => obj.speed),
+        objects.map(obj => obj.angle),
+        objects.map(obj => obj.last_position_update_ms),
+      ]
+    );
   };
 }
 

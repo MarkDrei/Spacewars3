@@ -37,7 +37,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "24"
           cache: "npm"
 
       - name: Install dependencies
@@ -85,7 +85,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "24"
           cache: "npm"
 
       - name: Install dependencies
@@ -123,4 +123,4 @@ jobs:
           POSTGRES_DB: spacewars
           POSTGRES_USER: spacewars
           POSTGRES_PASSWORD: spacewars
-          SESSION_SECRET: test-secret-for-ci
+          SESSION_SECRET: test-secret-for-ci-0123456789-abcdefghijkl

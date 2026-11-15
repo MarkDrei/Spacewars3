@@ -7,6 +7,7 @@ import { useTranslations } from 'next-intl';
 import { useAuth } from '@/lib/client/hooks/useAuth';
 import NavigationIcon from './NavigationIcon';
 import './Navigation.css';
+import { isAdminUsername } from '@/shared/adminAccess';
 
 interface NavigationProps {
   onLogout: () => void;
@@ -43,7 +44,7 @@ const Navigation: React.FC<NavigationProps> = ({ onLogout }) => {
   };
 
   // Check if user has admin access
-  const hasAdminAccess = username === 'a' || username === 'q';
+  const hasAdminAccess = isAdminUsername(username);
 
   return (
     <nav className="navbar">
@@ -72,6 +73,13 @@ const Navigation: React.FC<NavigationProps> = ({ onLogout }) => {
             onClick={closeMenu}
           >
             {t('game')}
+          </Link>
+          <Link 
+            href="/missions" 
+            className={`navbar-item ${isActive('/missions') ? 'active' : ''}`}
+            onClick={closeMenu}
+          >
+            {t('missions')}
           </Link>
           <Link 
             href="/factory" 
@@ -125,6 +133,7 @@ const Navigation: React.FC<NavigationProps> = ({ onLogout }) => {
         <div className="navbar-menu navbar-menu-mobile">
           <NavigationIcon route="/home" label={t('home')} isActive={isActive('/home')} />
           <NavigationIcon route="/game" label={t('game')} isActive={isActive('/game')} />
+          <NavigationIcon route="/missions" label={t('missions')} isActive={isActive('/missions')} />
           <NavigationIcon route="/factory" label={t('factory')} isActive={isActive('/factory')} />
           <NavigationIcon route="/research" label={t('research')} isActive={isActive('/research')} />
           <NavigationIcon route="/ship" label={t('ship')} isActive={isActive('/ship')} />

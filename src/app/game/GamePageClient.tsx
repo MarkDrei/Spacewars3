@@ -16,7 +16,18 @@ import { ServerAuthState } from '@/lib/server/serverSession';
 import DataAgeIndicator from '@/components/DataAgeIndicator/DataAgeIndicator';
 import { formatNumber } from '@/shared/numberFormat';
 import { DEFAULT_ZOOM, MIN_ZOOM, MAX_ZOOM } from '@shared/viewportConstants';
+import { useGameUiPreferences, updateGameUiPreferences } from '@/lib/client/hooks/useGameUiPreferences';
+import { useMediaQuery } from '@/lib/client/hooks/useMediaQuery';
 import { CanvasStrings, defaultCanvasStrings } from '@/lib/client/game/canvasStrings';
+import { startVisibilityAwarePolling } from '@/lib/client/polling/visibilityPolling';
+import { useQuests } from '@/lib/client/hooks/useQuests';
+import { contactsInHailRange } from '@/lib/client/game/contactsInRange';
+import QuestTracker from '@/components/QuestTracker/QuestTracker';
+import { CONTACTS, type ContactId } from '@/shared/quests/npcArchetypes';
+import { LOCATIONS } from '@/shared/quests/locations';
+
+const AFTERBURNER_ACTIVE_POLL_MS = 1000;
+const AFTERBURNER_REFUEL_POLL_MS = 10_000;
 
 interface GamePageClientProps {
   auth: ServerAuthState;
@@ -27,59 +38,18 @@ const SPEED_SLIDER_SNAP_ZONE_PERCENT = 12;
 const SPEED_SLIDER_ACTIVE_TRACK_START = SPEED_SLIDER_SNAP_ZONE_PERCENT;
 const SPEED_SLIDER_ACTIVE_TRACK_END = SPEED_SLIDER_RANGE_MAX - SPEED_SLIDER_SNAP_ZONE_PERCENT;
 const MOBILE_GAME_MEDIA_QUERY = '(max-width: 768px), (hover: none) and (pointer: coarse)';
-const GAME_UI_PREFERENCES_STORAGE_KEY = 'game-ui-preferences';
-const LEGACY_GAME_UI_DEBUG_STORAGE_KEY = 'game-ui-debug-enabled';
-const LEGACY_GAME_UI_ZOOM_STORAGE_KEY = 'game-ui-zoom';
-
-type GameUiPreferences = {
-  debugDrawingsEnabled: boolean;
-  zoom: number;
-  navOpen: boolean;
-  teleportOpen: boolean;
-  afterburnerOpen: boolean;
-  mobileTapInfoMode: boolean;
-  teleportClickMode: boolean;
-  attackClickMode: boolean;
-};
-
-const parseStoredBoolean = (value: unknown) => typeof value === 'boolean' ? value : undefined;
-
-const parseStoredZoom = (value: unknown) => {
-  if (typeof value !== 'number' || !Number.isFinite(value)) {
-    return undefined;
-  }
-
-  return Math.min(Math.max(value, MIN_ZOOM), MAX_ZOOM);
-};
-
-const readLegacyStorageValue = (storageKey: string) => {
-  const rawValue = localStorage.getItem(storageKey);
-  if (rawValue === null) {
-    return undefined;
-  }
-
-  return JSON.parse(rawValue) as unknown;
-};
-
-const loadGameUiPreferences = (): Partial<GameUiPreferences> => {
-  const defaults: Partial<GameUiPreferences> = {};
-
-  const rawPreferences = localStorage.getItem(GAME_UI_PREFERENCES_STORAGE_KEY);
-  const parsedPreferences = rawPreferences ? JSON.parse(rawPreferences) as unknown : null;
-  const storedPreferences = parsedPreferences && typeof parsedPreferences === 'object' ? parsedPreferences as Record<string, unknown> : null;
-
-  return {
-    debugDrawingsEnabled: parseStoredBoolean(storedPreferences?.debugDrawingsEnabled) ?? parseStoredBoolean(readLegacyStorageValue(LEGACY_GAME_UI_DEBUG_STORAGE_KEY)),
-    zoom: parseStoredZoom(storedPreferences?.zoom) ?? parseStoredZoom(readLegacyStorageValue(LEGACY_GAME_UI_ZOOM_STORAGE_KEY)),
-    navOpen: parseStoredBoolean(storedPreferences?.navOpen),
-    teleportOpen: parseStoredBoolean(storedPreferences?.teleportOpen),
-    afterburnerOpen: parseStoredBoolean(storedPreferences?.afterburnerOpen),
-    mobileTapInfoMode: parseStoredBoolean(storedPreferences?.mobileTapInfoMode),
-    teleportClickMode: parseStoredBoolean(storedPreferences?.teleportClickMode),
-    attackClickMode: parseStoredBoolean(storedPreferences?.attackClickMode),
-    ...defaults,
-  };
-};
+// Preference setters write through to the localStorage-backed store (stable module-level functions)
+const setZoom = (zoom: number) => updateGameUiPreferences({ zoom });
+const setDebugDrawingsEnabled = (debugDrawingsEnabled: boolean) => updateGameUiPreferences({ debugDrawingsEnabled });
+const setNavOpen = (navOpen: boolean) => updateGameUiPreferences({ navOpen });
+const setTeleportOpen = (teleportOpen: boolean) => updateGameUiPreferences({ teleportOpen });
+const setAfterburnerOpen = (afterburnerOpen: boolean) => updateGameUiPreferences({ afterburnerOpen });
+const setMobileTapInfoMode = (mobileTapInfoMode: boolean) => updateGameUiPreferences({ mobileTapInfoMode });
+const setTeleportClickMode = (teleportClickMode: boolean) => updateGameUiPreferences({ teleportClickMode });
+const setAttackClickMode = (attackClickMode: boolean) => updateGameUiPreferences({ attackClickMode });
+const setQuestTrackerOpen = (questTrackerOpen: boolean) => updateGameUiPreferences({ questTrackerOpen });
+/** Time the ambush announcement stays on the map before the battle view opens. */
+const AMBUSH_REDIRECT_DELAY_MS = 2000;
 
 const clampSpeedValue = (value: number, speedLimit: number) => {
   if (Number.isNaN(value)) {
@@ -133,6 +103,7 @@ const speedToSliderPosition = (speed: number, speedLimit: number) => {
 const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
   const router = useRouter();
   const t = useTranslations('game');
+  const tQuests = useTranslations('quests');
   const gameInitializedRef = useRef(false);
   const gameInstanceRef = useRef<Game | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -146,7 +117,6 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
   const debugDrawingsEnabledRef = useRef(false);
   const zoomRef = useRef(DEFAULT_ZOOM);
   const canvasStringsRef = useRef<CanvasStrings>(defaultCanvasStrings);
-  const [debugDrawingsEnabled, setDebugDrawingsEnabled] = useState(false);
   const [angleInput, setAngleInput] = useState<string>('0');
   const [speedInput, setSpeedInput] = useState<string>('0');
   const [maxSpeed, setMaxSpeed] = useState<number>(100);
@@ -157,25 +127,25 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
   const [teleportX, setTeleportX] = useState<string>('0');
   const [teleportY, setTeleportY] = useState<string>('0');
   const [isTeleporting, setIsTeleporting] = useState(false);
-  const [teleportClickMode, setTeleportClickMode] = useState(false);
   const [showTeleportCoordModal, setShowTeleportCoordModal] = useState(false);
-  const [attackClickMode, setAttackClickMode] = useState(false);
-  const [isMobileMode, setIsMobileMode] = useState(false);
-  const [mobileTapInfoMode, setMobileTapInfoMode] = useState(false);
+  const isMobileMode = useMediaQuery(MOBILE_GAME_MEDIA_QUERY);
   const [teleportRechargeTimeSec, setTeleportRechargeTimeSec] = useState(0);
   const [timeMultiplier, setTimeMultiplier] = useState(1);
-  const [zoom, setZoom] = useState(DEFAULT_ZOOM);
-  const [navOpen, setNavOpen] = useState(false);
-  const [teleportOpen, setTeleportOpen] = useState(false);
-  const [afterburnerOpen, setAfterburnerOpen] = useState(false);
-  const [uiPreferencesLoaded, setUiPreferencesLoaded] = useState(false);
   const [afterburnerStatus, setAfterburnerStatus] = useState<AfterburnerStatus | null>(null);
   const [announcement, setAnnouncement] = useState<{ text: string; key: number; variant?: 'orange' } | null>(null);
   const announcementTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isUpdatingAfterburner, setIsUpdatingAfterburner] = useState(false);
   const [playerLevel, setPlayerLevel] = useState(1);
+  // UI preferences live in localStorage (external store); available once the client has hydrated
+  const { preferences: uiPreferences, isHydrated: uiPreferencesLoaded } = useGameUiPreferences();
+  const { zoom, navOpen, teleportOpen, afterburnerOpen, teleportClickMode, attackClickMode, debugDrawingsEnabled, questTrackerOpen } = uiPreferences;
+  // Tap-info mode only applies on mobile layouts; the stored preference is kept for mobile use
+  const mobileTapInfoMode = isMobileMode && uiPreferences.mobileTapInfoMode;
   // Auth is guaranteed by server, so pass true and use auth.shipId
   const { worldData, isLoading, error, refetch, lastUpdateTime } = useWorldData(3000);
+  // Missions for the tracker; reloaded whenever the world poll reports a change
+  const { overview: questOverview } = useQuests({ revision: worldData?.questRevision });
+  const contactsInRange = useMemo(() => contactsInHailRange(worldData, auth.shipId), [worldData, auth.shipId]);
   const currentSpeedLimit = afterburnerStatus?.isActive && afterburnerStatus.boostedSpeed > 0 ? afterburnerStatus.boostedSpeed : maxSpeed;
   const currentSpeedValue = parseFloat(speedInput) || 0;
   const speedSliderPosition = speedToSliderPosition(currentSpeedValue, currentSpeedLimit);
@@ -202,10 +172,16 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
       angle: extractLabel('tooltipAngle'),
       distance: extractLabel('tooltipDistance'),
       level: extractLabel('tooltipLevel'),
+      friendlyShip: t('tooltipFriendlyShip'),
       actionTapToDock: t('tooltipActionDock'),
+      actionTapToHail: t('tooltipActionHail'),
+      hailTooFar: t('tooltipHailTooFar'),
+      aggressiveShip: t('tooltipAggressiveShip'),
       levelTooFarToAttack: t('announcementLevelTooFarToAttack'),
+      contactNames: Object.fromEntries(CONTACTS.map(contact => [contact.id, tQuests(`contacts.${contact.id}.name`)])),
+      locationNames: Object.fromEntries(LOCATIONS.map(location => [location.id, tQuests(`locations.${location.id}.name`)])),
     };
-  }, [t]);
+  }, [t, tQuests]);
 
   // Prevent page scrolling while on the game page
   useEffect(() => {
@@ -223,31 +199,6 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
       }
     };
   }, []);
-
-  useEffect(() => {
-    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
-      return;
-    }
-
-    const mediaQuery = window.matchMedia(MOBILE_GAME_MEDIA_QUERY);
-    const updateMobileMode = () => setIsMobileMode(mediaQuery.matches);
-
-    updateMobileMode();
-
-    if (typeof mediaQuery.addEventListener === 'function') {
-      mediaQuery.addEventListener('change', updateMobileMode);
-      return () => mediaQuery.removeEventListener('change', updateMobileMode);
-    }
-
-    mediaQuery.addListener(updateMobileMode);
-    return () => mediaQuery.removeListener(updateMobileMode);
-  }, []);
-
-  useEffect(() => {
-    if (!isMobileMode) {
-      setMobileTapInfoMode(false);
-    }
-  }, [isMobileMode]);
 
   useEffect(() => {
     debugDrawingsEnabledRef.current = debugDrawingsEnabled;
@@ -272,79 +223,6 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
   useEffect(() => {
     attackClickModeRef.current = attackClickMode;
   }, [attackClickMode]);
-
-  // Load UI preferences from localStorage on mount.
-  // Keep legacy zoom/debug keys readable so existing players retain their settings.
-  useEffect(() => {
-    try {
-      const savedPreferences = loadGameUiPreferences();
-
-      if (typeof savedPreferences.debugDrawingsEnabled === 'boolean') {
-        setDebugDrawingsEnabled(savedPreferences.debugDrawingsEnabled);
-      }
-      if (typeof savedPreferences.zoom === 'number') {
-        setZoom(savedPreferences.zoom);
-      }
-      if (typeof savedPreferences.navOpen === 'boolean') {
-        setNavOpen(savedPreferences.navOpen);
-      }
-      if (typeof savedPreferences.teleportOpen === 'boolean') {
-        setTeleportOpen(savedPreferences.teleportOpen);
-      }
-      if (typeof savedPreferences.afterburnerOpen === 'boolean') {
-        setAfterburnerOpen(savedPreferences.afterburnerOpen);
-      }
-      if (typeof savedPreferences.mobileTapInfoMode === 'boolean') {
-        setMobileTapInfoMode(savedPreferences.mobileTapInfoMode);
-      }
-      if (typeof savedPreferences.teleportClickMode === 'boolean') {
-        setTeleportClickMode(savedPreferences.teleportClickMode);
-      }
-      if (typeof savedPreferences.attackClickMode === 'boolean') {
-        setAttackClickMode(savedPreferences.attackClickMode);
-      }
-    } catch (err) {
-      console.warn('Failed to load UI preferences from localStorage:', err);
-    } finally {
-      setUiPreferencesLoaded(true);
-    }
-  }, []);
-
-  // Persist UI preferences together so controls restore consistently between sessions.
-  useEffect(() => {
-    if (!uiPreferencesLoaded) {
-      return;
-    }
-
-    try {
-      const preferences: GameUiPreferences = {
-        debugDrawingsEnabled,
-        zoom,
-        navOpen,
-        teleportOpen,
-        afterburnerOpen,
-        mobileTapInfoMode,
-        teleportClickMode,
-        attackClickMode,
-      };
-
-      localStorage.setItem(GAME_UI_PREFERENCES_STORAGE_KEY, JSON.stringify(preferences));
-      localStorage.setItem(LEGACY_GAME_UI_DEBUG_STORAGE_KEY, JSON.stringify(debugDrawingsEnabled));
-      localStorage.setItem(LEGACY_GAME_UI_ZOOM_STORAGE_KEY, JSON.stringify(zoom));
-    } catch (err) {
-      console.warn('Failed to save UI preferences:', err);
-    }
-  }, [
-    afterburnerOpen,
-    attackClickMode,
-    debugDrawingsEnabled,
-    mobileTapInfoMode,
-    navOpen,
-    teleportClickMode,
-    teleportOpen,
-    uiPreferencesLoaded,
-    zoom,
-  ]);
 
   // Resize canvas buffer to match physical pixel count: reads rendered CSS dimensions,
   // multiplies by devicePixelRatio to get the buffer size, and re-runs when isLoading
@@ -410,7 +288,7 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
         console.warn('Failed to fetch max speed:', err);
       }
     };
-    fetchMaxSpeed();
+    void fetchMaxSpeed();
   }, []);
 
   const handleDebugToggle = (enabled: boolean) => {
@@ -462,6 +340,23 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
   const handleStarbaseEntry = useCallback(() => {
     router.push('/starbase');
   }, [router]);
+
+  // Opens the mission log; with a contact, their conversation is shown first
+  const openMissions = useCallback((contactId?: ContactId) => {
+    router.push(contactId ? `/missions?contact=${contactId}` : '/missions');
+  }, [router]);
+
+  // An aggressive NPC ship opened fire: tell the player, then show the battle (home page)
+  const ambushEnemy = worldData?.ambush?.enemyName;
+  useEffect(() => {
+    if (!ambushEnemy) return;
+    const redirectTimer = setTimeout(() => router.push('/'), AMBUSH_REDIRECT_DELAY_MS);
+    return () => clearTimeout(redirectTimer);
+  }, [ambushEnemy, router]);
+  // The ambush warning takes precedence over any other announcement
+  const visibleAnnouncement = ambushEnemy
+    ? { text: t('announcementAmbushed', { enemy: ambushEnemy }), key: 'ambush', variant: 'orange' as const }
+    : announcement;
 
   // Memoize canvas teleport callback - called from Game when click-to-teleport mode is active
   const handleCanvasTeleport = useCallback(async (worldX: number, worldY: number) => {
@@ -551,38 +446,6 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
     }
   }, [afterburnerStatus?.isActive]);
 
-  // Update game world when server data changes
-  useEffect(() => {
-    if (worldData && gameInstanceRef.current && auth.shipId) {
-      gameInstanceRef.current.updateWorldData?.(worldData, auth.shipId);
-      // Set the refetch function so the game can trigger updates
-      gameInstanceRef.current.setRefetchFunction?.(refetch);
-      // Set the navigation callback to update input fields when user clicks on canvas
-      gameInstanceRef.current.setNavigationCallback?.(updateInputFieldsFromShip);
-      // Set the attack success callback to redirect to home page
-      gameInstanceRef.current.setAttackSuccessCallback?.(handleAttackSuccess);
-      // Set the attack failed callback to display feedback on canvas
-      gameInstanceRef.current.setAttackFailedCallback?.(handleAttackFailed);
-      // Set the harvest result callback to display feedback on canvas
-      gameInstanceRef.current.setHarvestCallback?.(handleHarvestResult);
-      // Set the teleport click callback for canvas click-to-teleport mode
-      gameInstanceRef.current.setTeleportClickCallback?.(handleCanvasTeleport);
-      // Set the starbase entry callback to redirect to starbase page
-      gameInstanceRef.current.setStarbaseEntryCallback(handleStarbaseEntry);
-    }
-  }, [worldData, auth.shipId, refetch, handleAttackSuccess, handleAttackFailed, handleHarvestResult, handleCanvasTeleport, handleStarbaseEntry]);
-
-  // Initialize input fields with current ship state only once when game starts
-  useEffect(() => {
-    if (worldData && gameInstanceRef.current && auth.shipId && angleInput === '0' && speedInput === '0') {
-      const ship = gameInstanceRef.current.getWorld().getShip();
-      if (ship) {
-        setAngleInput(ship.getAngleDegrees().toFixed(1));
-        setSpeedInput(ship.getSpeed().toFixed(1));
-      }
-    }
-  }, [worldData, auth.shipId, angleInput, speedInput]);
-
   const updateInputFieldsFromShip = (navigation?: Pick<NavigateResponse, 'angle' | 'speed'>) => {
     if (navigation) {
       if (typeof navigation.angle === 'number') {
@@ -602,6 +465,41 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
       }
     }
   };
+
+  // Update game world when server data changes
+  useEffect(() => {
+    if (worldData && gameInstanceRef.current && auth.shipId) {
+      gameInstanceRef.current.updateWorldData?.(worldData, auth.shipId);
+      // Set the refetch function so the game can trigger updates
+      gameInstanceRef.current.setRefetchFunction?.(refetch);
+      // Set the navigation callback to update input fields when user clicks on canvas
+      gameInstanceRef.current.setNavigationCallback?.(updateInputFieldsFromShip);
+      // Set the attack success callback to redirect to home page
+      gameInstanceRef.current.setAttackSuccessCallback?.(handleAttackSuccess);
+      // Set the attack failed callback to display feedback on canvas
+      gameInstanceRef.current.setAttackFailedCallback?.(handleAttackFailed);
+      // Set the harvest result callback to display feedback on canvas
+      gameInstanceRef.current.setHarvestCallback?.(handleHarvestResult);
+      // Set the teleport click callback for canvas click-to-teleport mode
+      gameInstanceRef.current.setTeleportClickCallback?.(handleCanvasTeleport);
+      // Set the starbase entry callback to redirect to starbase page
+      gameInstanceRef.current.setStarbaseEntryCallback(handleStarbaseEntry);
+      // Set the hail callback to open the conversation with a mission contact
+      gameInstanceRef.current.setContactHailCallback(openMissions);
+    }
+  }, [worldData, auth.shipId, refetch, handleAttackSuccess, handleAttackFailed, handleHarvestResult, handleCanvasTeleport, handleStarbaseEntry, openMissions]);
+
+  // Initialize input fields with current ship state only once when game starts
+  useEffect(() => {
+    if (worldData && gameInstanceRef.current && auth.shipId && angleInput === '0' && speedInput === '0') {
+      const ship = gameInstanceRef.current.getWorld().getShip();
+      if (ship) {
+        setAngleInput(ship.getAngleDegrees().toFixed(1));
+        setSpeedInput(ship.getSpeed().toFixed(1));
+      }
+    }
+  }, [worldData, auth.shipId, angleInput, speedInput]);
+
 
   const handleSpeedSliderChange = (rawValue: string) => {
     const parsedPosition = parseFloat(rawValue);
@@ -692,25 +590,25 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
 
   const handleAngleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
-      handleSetAngle();
+      void handleSetAngle();
     }
   };
 
-  const fetchTeleportData = useCallback(async () => {
-    const stats = await userStatsService.getUserStats();
-    if (!('error' in stats)) {
+  // Load teleport data (and level/time multiplier) on mount; applied in a callback
+  useEffect(() => {
+    let ignore = false;
+    void userStatsService.getUserStats().then(stats => {
+      if (ignore || 'error' in stats) return;
       setTeleportCharges(stats.teleportCharges);
       setTeleportMaxCharges(stats.teleportMaxCharges);
       setTeleportRechargeTimeSec(stats.teleportRechargeTimeSec);
       setTimeMultiplier(stats.timeMultiplier);
       setPlayerLevel(stats.level);
-    }
+    });
+    return () => {
+      ignore = true;
+    };
   }, []);
-
-  // Load teleport data on mount
-  useEffect(() => {
-    fetchTeleportData();
-  }, [fetchTeleportData]);
 
   // Sync teleportClickMode with game instance
   useEffect(() => {
@@ -817,9 +715,12 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
     // start of the current polling period, not a stale value from a prior period.
     const wasActive = afterburnerStatus?.isActive ?? false;
 
-    const interval = setInterval(async () => {
-      try {
-        const stats = await getShipStats();
+    // While burning, fuel and speed change quickly: refresh every second. While refuelling (up to an
+    // hour) the rounded fuel percentage changes slowly, so a slower refresh is enough.
+    const intervalMs = wasActive ? AFTERBURNER_ACTIVE_POLL_MS : AFTERBURNER_REFUEL_POLL_MS;
+
+    return startVisibilityAwarePolling(() => {
+      void getShipStats().then(stats => {
         if (stats && !('error' in stats) && stats.afterburner) {
           setAfterburnerStatus(stats.afterburner);
           setMaxSpeed(stats.maxSpeed);
@@ -827,10 +728,8 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
             setSpeedInput(stats.speed.toFixed(1));
           }
         }
-      } catch { /* ignore polling errors */ }
-    }, 1000);
-
-    return () => clearInterval(interval);
+      }, () => { /* ignore polling errors */ });
+    }, intervalMs);
   }, [afterburnerStatus]);
 
   const handleActivateAfterburner = async () => {
@@ -943,10 +842,18 @@ const GamePageClient: React.FC<GamePageClientProps> = ({ auth }) => {
             </div>
           )}
 
+          <QuestTracker
+            overview={questOverview}
+            contactsInRange={contactsInRange}
+            open={questTrackerOpen}
+            onToggle={() => setQuestTrackerOpen(!questTrackerOpen)}
+            onOpenMissions={openMissions}
+          />
+
           {/* Announcement overlay — fades out after display */}
-          {announcement && (
-            <div key={announcement.key} className={`announcement-overlay${announcement.variant ? ` announcement-overlay--${announcement.variant}` : ''}`}>
-              {announcement.text}
+          {visibleAnnouncement && (
+            <div key={visibleAnnouncement.key} className={`announcement-overlay${visibleAnnouncement.variant ? ` announcement-overlay--${visibleAnnouncement.variant}` : ''}`}>
+              {visibleAnnouncement.text}
             </div>
           )}
 
