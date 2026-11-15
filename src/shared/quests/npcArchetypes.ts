@@ -34,7 +34,10 @@ export interface HostileArchetype {
   id: HostileArchetypeId;
   /** English name, used as user name of the NPC (battle log, battle status). */
   displayName: string;
-  /** Aggressive ships attack a player who comes within `aggroRadius`. */
+  /**
+   * Aggressive ships attack a player who comes within `aggroRadius`, but only while the current
+   * step of an active mission of that player targets their kind (`getWantedArchetypes`).
+   */
   aggressive: boolean;
   aggroRadius: number;
   home: LocationId;

@@ -25,7 +25,7 @@ with multi-step missions, and a document that lists every mission for manual tes
 
 - [x] Three stations (Ironstrike Station, Meridian Observatory, Bastion Outpost), all with the starbase shop; same picture for all
 - [x] Eight named locations, marked on the map; discovery pays XP
-- [x] Hostile ships per player in four kinds: passive pirates, aggressive marauders and drones (ambush with grace period), mission-bound Warlord Krag
+- [x] Hostile ships per player in four kinds: passive pirates, marauders and drones that attack only while a mission of the player targets them (ambush with grace period), mission-bound Warlord Krag
 - [x] Four friendly contacts that circle stations/landmarks; hail by clicking the ship or from the mission tracker
 - [x] Mission rules as a pure engine (`questEngine.ts`): accept, steps, objectives (collect, defeat, visit, cargo), report, abandon, rewards, repeatable contracts
 - [x] 19 missions: 14 story missions in 4 chapters, 2 side missions, 3 contracts
@@ -49,11 +49,11 @@ with multi-step missions, and a document that lists every mission for manual tes
 
 Numbers are first proposals. Totals: all missions once pay 7650 XP and 37400 iron plus 2 commanders; all achievement tiers pay 9300 XP (level 6 needs 15000 XP).
 
-1. **Defeat against an NPC ship**: the player loses all iron aboard (rule of the existing NPC battles). With aggressive ships this can now happen without the player attacking. Keep, reduce to a share, or no loss after an ambush?
+1. **Defeat against an NPC ship**: the player loses all iron aboard (rule of the existing NPC battles). Marauders and drones attack on their own only while a mission against them is active (decided 2026-11-15: no attacks without a related mission, because ships keep flying while their owner is offline). Keep the loss, reduce it to a share, or no loss after an ambush?
 2. **Iron rewards and storage capacity**: mission iron above the storage capacity is lost (same as for selling and battle loot). The 10000 iron of "Head of the Serpent" can exceed a small storage. Keep, or hold back the rest?
 3. **Victory iron of hostile ships**: 3000–10000 iron × ship level per victory, as before for the pirates. Marauders return after 20 minutes, drones after 15, the warlord after 10 while his mission is active — this can be farmed.
 4. **Level-up brings back all hostile ships** (they are regenerated at the new level), a restart of the server as well.
 5. **Level requirements**: chapter 3 needs level 2, chapter 4 level 3. The story XP before these chapters is enough to reach them without other XP sources.
-6. **Ambush**: attack range 300 (marauder) / 220 (drone), 90 seconds grace after every NPC battle.
+6. **Ambush** (only during a mission against that ship kind): attack range 300 (marauder) / 220 (drone), 90 seconds grace after every NPC battle.
 7. **Cargo finds**: 100 % for story cargo, 50 % for Tam's ore samples.
 8. **Counting rule**: objectives only count while their step is active (a pirate defeated before accepting does not count).

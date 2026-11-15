@@ -356,7 +356,7 @@
     "announcementAttackNpcDefeated": "Dieser NPC wurde bereits besiegt.",
     "announcementAttackNpcInBattle": "Dieser NPC befindet sich bereits in einem Kampf.",
     "tooltipFriendlyShip": "Befreundeter Kontakt",
-    "tooltipAggressiveShip": "Greift sofort an",
+    "tooltipAggressiveShip": "Ziel deines Auftrags: greift sofort an",
     "tooltipActionHail": "Aktion: erneut tippen zum Rufen",
     "tooltipHailTooFar": "Näher heranfliegen zum Rufen",
     "announcementAmbushed": "Hinterhalt! {enemy} greift dich an!",
@@ -640,7 +640,7 @@
       },
       "hordes_reach": {
         "name": "Hordengrund",
-        "description": "Versteck der Eisernen Horde. Marodeure patrouillieren dort und greifen jedes Schiff an, das zu nahe kommt."
+        "description": "Versteck der Eisernen Horde. Marodeure patrouillieren dort. Sie lassen Schiffe passieren, greifen aber jeden an, der einen Auftrag gegen sie hat."
       },
       "anvil_graveyard": {
         "name": "Amboss-Friedhof",
@@ -666,11 +666,11 @@
       },
       "marauder": {
         "name": "Marodeur der Eisernen Horde",
-        "description": "Wächter des Hordengrunds. Sie greifen jedes Schiff an, das ihre Patrouillenlinie überquert."
+        "description": "Wächter des Hordengrunds. Sie lassen Schiffe passieren, greifen aber sofort an, solange du einen Auftrag gegen sie hast."
       },
       "drone": {
         "name": "Abtrünnige Wachdrohne",
-        "description": "Automatische Wächter des Amboss-Friedhofs. Leicht bewaffnet, aber sie greifen sofort an."
+        "description": "Automatische Wächter des Amboss-Friedhofs. Leicht bewaffnet. Sie ignorieren vorbeifliegende Schiffe, greifen aber sofort an, solange du einen Auftrag gegen sie hast."
       },
       "warlord": {
         "name": "Kriegsherr Krag",
@@ -734,7 +734,7 @@
       },
       "ambush_breaker": {
         "name": "Hinterhaltbrecher",
-        "description": "Besiege Schiffe, die sofort angreifen (Marodeure und Wachdrohnen)."
+        "description": "Besiege Marodeure und Wachdrohnen, die Schiffe, die sich wehren, wenn man sie jagt."
       },
       "kingslayer": {
         "name": "Königsmörder",
@@ -812,7 +812,7 @@
       },
       "c2_voices_of_the_dead": {
         "title": "Stimmen der Toten",
-        "offer": "Die weitergeleiteten Signale zeigen auf den Amboss-Friedhof, das Wrackfeld südlich der Sektormitte. Alte Wachdrohnen bewachen es noch immer und schießen auf alles. Erkunde zuerst das Feld und hol dann drei Flugschreiber aus Schiffswracks.",
+        "offer": "Die weitergeleiteten Signale zeigen auf den Amboss-Friedhof, das Wrackfeld südlich der Sektormitte. Alte Wachdrohnen bewachen es noch immer; sie ignorieren Schiffe, die sie in Ruhe lassen. Erkunde zuerst das Feld und hol dann drei Flugschreiber aus Schiffswracks.",
         "stages": {
           "1": "Erkunde den Amboss-Friedhof.",
           "2": "Birg Schiffswracks, bis du 3 Flugschreiber hast, und bring sie zu Professor Quill."
@@ -821,7 +821,7 @@
       },
       "c2_the_trail": {
         "title": "Die Spur",
-        "offer": "Die Flugschreiber geben mir eine Peilung, nordöstlich des Friedhofs. Wenn die Horde ein Versteck hat, dann dort. Flieg nah genug heran für einen Sensorscan — und keinen Meter näher. Ihre Marodeure greifen sofort an.",
+        "offer": "Die Flugschreiber geben mir eine Peilung, nordöstlich des Friedhofs. Wenn die Horde ein Versteck hat, dann dort. Flieg nah genug heran für einen Sensorscan. Ihre Marodeure lassen Schiffe passieren, solange niemand Jagd auf sie macht — fang also noch keinen Kampf an.",
         "stages": {
           "1": "Erkunde den Hordengrund und melde dich dann bei Professor Quill.",
           "2": "Bring die entschlüsselten Koordinaten zu Captain Halden am Außenposten Bastion."
@@ -838,7 +838,7 @@
       },
       "c3_colours_of_the_horde": {
         "title": "Die Farben der Horde",
-        "offer": "Die Marodeure, die den Hordengrund bewachen, tragen das Abzeichen des Kriegsherrn. Bring mir zwei davon. Sie greifen dich an, sobald du ihre Patrouillenlinie überquerst — sei also bereit.",
+        "offer": "Die Marodeure, die den Hordengrund bewachen, tragen das Abzeichen des Kriegsherrn. Bring mir zwei davon. Sobald du diesen Auftrag annimmst, greifen sie dich an, wenn du ihre Patrouillenlinie überquerst — sei also bereit.",
         "stages": {
           "1": "Besiege Marodeure der Eisernen Horde am Hordengrund, bis du 2 Hordenabzeichen hast, und bring sie zu Captain Halden."
         },
@@ -846,7 +846,7 @@
       },
       "c3_rogue_signals": {
         "title": "Abtrünnige Signale",
-        "offer": "Die Wachdrohnen des Amboss-Friedhofs leiten inzwischen Signale für die Horde weiter. Quill glaubt, dass sich ihre Kerne gegen sie verwenden lassen. Schalte Drohnen aus und bring dem Professor zwei Kerne.",
+        "offer": "Die Wachdrohnen des Amboss-Friedhofs leiten inzwischen Signale für die Horde weiter. Quill glaubt, dass sich ihre Kerne gegen sie verwenden lassen. Schalte Drohnen aus und bring dem Professor zwei Kerne. Sei vorsichtig: Sobald du Jagd auf sie machst, greifen sie sofort an.",
         "stages": {
           "1": "Besiege abtrünnige Wachdrohnen am Amboss-Friedhof, bis du 2 Drohnenkerne hast, und bring sie zu Professor Quill."
         },

@@ -21,7 +21,7 @@ export interface SpaceObject {
   orbitCenterX?: number; // Optional: only present for npc_ship type
   orbitCenterY?: number; // Optional: only present for npc_ship type
   orbitRadius?: number; // Optional: only present for npc_ship type
-  /** npc_ship only: hostile ships can be attacked, aggressive ones also attack, friendly ones give missions. */
+  /** npc_ship only: hostile ships can be attacked, aggressive ones also attack (kinds hunted by an active mission), friendly ones give missions. */
   npcDisposition?: NpcDisposition;
   /** Hostile and aggressive npc_ship only. */
   npcArchetype?: HostileArchetypeId;

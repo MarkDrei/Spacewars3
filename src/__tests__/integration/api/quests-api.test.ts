@@ -319,15 +319,18 @@ describe('Missions (API with database)', () => {
     });
   });
 
-  it('world_shipComesCloseToAnAggressiveShip_isAttackedOnce', async () => {
+  it('world_shipComesCloseToAMarauder_isAttackedOnceAfterAcceptingTheMissionAgainstThem', async () => {
     await withTransaction(async () => {
       const { cookie, userId } = await loginAsDeveloper();
       const marauder = HOSTILE_ARCHETYPES.marauder;
       await placeShip(userId, positionOnOrbit(hostileOrbit(marauder), marauder.spawns[0].startAngleDeg));
 
+      const withoutMission = await (await worldGET(createRequest(`${BASE}/world`, 'GET', undefined, cookie))).json();
+      await adminAction(cookie, { action: 'accept', questId: 'c3_colours_of_the_horde' });
       const first = await (await worldGET(createRequest(`${BASE}/world`, 'GET', undefined, cookie))).json();
       const second = await (await worldGET(createRequest(`${BASE}/world`, 'GET', undefined, cookie))).json();
 
+      expect(withoutMission.ambush).toBeUndefined();
       expect(first.ambush?.enemyName).toContain(marauder.displayName);
       expect(second.ambush).toBeUndefined();
       const user = await UserCache.getInstance2().getUserById(createLockContext(), userId);

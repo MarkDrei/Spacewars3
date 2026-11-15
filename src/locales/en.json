@@ -356,7 +356,7 @@
     "announcementAttackNpcDefeated": "This NPC has already been defeated.",
     "announcementAttackNpcInBattle": "This NPC is already in battle.",
     "tooltipFriendlyShip": "Friendly contact",
-    "tooltipAggressiveShip": "Attacks on sight",
+    "tooltipAggressiveShip": "Hunted by your mission: attacks on sight",
     "tooltipActionHail": "Action: tap again to hail",
     "tooltipHailTooFar": "Fly closer to hail",
     "announcementAmbushed": "Ambush! {enemy} attacks you!",
@@ -640,7 +640,7 @@
       },
       "hordes_reach": {
         "name": "Horde’s Reach",
-        "description": "Hideout of the Iron Horde. Marauders patrol it and attack every ship that comes too close."
+        "description": "Hideout of the Iron Horde. Marauders patrol it. They let ships pass, but attack everyone who is on a mission against them."
       },
       "anvil_graveyard": {
         "name": "Anvil Graveyard",
@@ -666,11 +666,11 @@
       },
       "marauder": {
         "name": "Iron Horde Marauder",
-        "description": "Guards of Horde’s Reach. They attack every ship that enters their patrol line."
+        "description": "Guards of Horde’s Reach. They let ships pass, but attack on sight while you are on a mission against them."
       },
       "drone": {
         "name": "Rogue Sentry Drone",
-        "description": "Automated guards of the Anvil Graveyard. Lightly armed, but they attack on sight."
+        "description": "Automated guards of the Anvil Graveyard. Lightly armed. They ignore passing ships, but attack on sight while you are on a mission against them."
       },
       "warlord": {
         "name": "Warlord Krag",
@@ -734,7 +734,7 @@
       },
       "ambush_breaker": {
         "name": "Ambush Breaker",
-        "description": "Defeat ships that attack on sight (marauders and sentry drones)."
+        "description": "Defeat marauders and sentry drones, the ships that fight back when hunted."
       },
       "kingslayer": {
         "name": "Kingslayer",
@@ -812,7 +812,7 @@
       },
       "c2_voices_of_the_dead": {
         "title": "Voices of the Dead",
-        "offer": "The relayed signals point to the Anvil Graveyard, the wreck field south of the sector's centre. Old sentry drones still guard it and they shoot at everything. Scout the field first, then pull three flight recorders out of shipwrecks.",
+        "offer": "The relayed signals point to the Anvil Graveyard, the wreck field south of the sector's centre. Old sentry drones still guard it; they ignore ships that leave them alone. Scout the field first, then pull three flight recorders out of shipwrecks.",
         "stages": {
           "1": "Scout the Anvil Graveyard.",
           "2": "Salvage shipwrecks until you have 3 flight recorders, then bring them to Professor Quill."
@@ -821,7 +821,7 @@
       },
       "c2_the_trail": {
         "title": "The Trail",
-        "offer": "The recorders give me a bearing, north-east of the Graveyard. If the Horde has a hideout, it is there. Get close enough for a sensor sweep — and no closer. Their marauders attack on sight.",
+        "offer": "The recorders give me a bearing, north-east of the Graveyard. If the Horde has a hideout, it is there. Get close enough for a sensor sweep. Their marauders let ships pass as long as nobody hunts them, so do not start a fight yet.",
         "stages": {
           "1": "Scout Horde’s Reach, then report to Professor Quill.",
           "2": "Carry the decoded coordinates to Captain Halden at Bastion Outpost."
@@ -838,7 +838,7 @@
       },
       "c3_colours_of_the_horde": {
         "title": "Colours of the Horde",
-        "offer": "The marauders guarding Horde’s Reach wear the insignia of the warlord. Bring me two of them. They will come for you the moment you cross their patrol line, so be ready when you do.",
+        "offer": "The marauders guarding Horde’s Reach wear the insignia of the warlord. Bring me two of them. Once you take this job, they will come for you the moment you cross their patrol line, so be ready when you do.",
         "stages": {
           "1": "Defeat Iron Horde Marauders at Horde’s Reach until you have 2 Horde insignia, then bring them to Captain Halden."
         },
@@ -846,7 +846,7 @@
       },
       "c3_rogue_signals": {
         "title": "Rogue Signals",
-        "offer": "The sentry drones of the Anvil Graveyard have started relaying for the Horde. Quill believes their cores can be turned against them. Take down drones and bring two cores to the professor.",
+        "offer": "The sentry drones of the Anvil Graveyard have started relaying for the Horde. Quill believes their cores can be turned against them. Take down drones and bring two cores to the professor. Be careful: as soon as you hunt them, they attack on sight.",
         "stages": {
           "1": "Defeat Rogue Sentry Drones at the Anvil Graveyard until you have 2 drone cores, then bring them to Professor Quill."
         },

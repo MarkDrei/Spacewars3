@@ -75,7 +75,8 @@ the client polls `GET /api/world`. The server does not check positions on its ow
 ### Consequences
 
 A ship that crosses a location or a patrol while no page polls the world (other page open, tab in the
-background, browser closed) neither discovers the location nor gets ambushed. A fast ship can cross a
+background, browser closed) neither discovers the location nor gets ambushed (ambushes only concern
+players with an active mission against that ship kind). A fast ship can cross a
 small radius between two polls.
 
 ### Proper Solution

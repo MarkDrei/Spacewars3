@@ -956,7 +956,7 @@ Comprehensive balancing analysis including battle progression requirements, XP s
 
 ### Cap12: Missions, Contacts & NPC Ships
 
-**Purpose**: Computer-controlled ships populate the world. Friendly contacts offer missions that lead through a storyline in four chapters; hostile ships can be fought and, if aggressive, attack on their own. Missions, discoveries and achievements pay XP, iron and commanders.
+**Purpose**: Computer-controlled ships populate the world. Friendly contacts offer missions that lead through a storyline in four chapters; hostile ships can be fought; some kinds attack on their own while a mission of the player targets them. Missions, discoveries and achievements pay XP, iron and commanders.
 
 The complete list of missions with prerequisites, steps, rewards, expected notifications and a manual test procedure per mission is the generated document [doc/quests.md](./quests.md).
 
@@ -995,12 +995,12 @@ Every player has their own set of hostile ships. They circle a location, can be 
 | Cap12_Feat002_Req002 | There are four kinds of hostile ships (`HOSTILE_ARCHETYPES` in `src/shared/quests/npcArchetypes.ts`): Iron Horde Pirates (4 ships around Ironstrike Station), Iron Horde Marauders (3 ships at Horde's Reach), Rogue Sentry Drones (2 ships at the Anvil Graveyard) and Warlord Krag (1 ship at Horde's Reach). Numbers, orbits, strength and iron values are listed in [doc/quests.md](./quests.md#hostile-ships). |
 | Cap12_Feat002_Req003 | The level of a hostile ship is the player's level plus a fixed offset per ship, at least 1 (`hostileLevel`). |
 | Cap12_Feat002_Req004 | Player can attack a hostile ship (`POST /api/attack`). The level range restriction of [Cap05_Feat001](#cap05_feat001-battle-initiation--level-matching) does not apply to NPC ships. A ship that is defeated or already in a battle cannot be attacked. |
-| Cap12_Feat002_Req005 | Marauders and drones are aggressive: when the player's ship comes within their attack range (marauder 300, drone 220 world units), they start a battle as the attacker. The check runs with the world update of the game page. The player receives a notification, and the game page announces the ambush (`NPCManager.findAmbusher`, `ambushPlayer` in `src/lib/server/npc/npcAmbush.ts`). |
+| Cap12_Feat002_Req005 | Marauders and drones are aggressive, but only towards a player whose active mission targets their kind: the current step has a defeat objective for that kind or asks for cargo that this kind drops (`getWantedArchetypes` in `src/shared/quests/questEngine.ts`). When such a player's ship comes within their attack range (marauder 300, drone 220 world units), they start a battle as the attacker. Towards all other players they never attack first, so a ship that drifts through the world while its owner is offline is not drawn into battles. The check runs with the world update of the game page. The player receives a notification, and the game page announces the ambush (`NPCManager.findAmbusher`, `ambushPlayer` in `src/lib/server/npc/npcAmbush.ts`). |
 | Cap12_Feat002_Req006 | After every battle against an NPC ship the player is safe from ambushes for 90 seconds (`AMBUSH_GRACE_MS`). |
 | Cap12_Feat002_Req007 | A player who defeats a hostile ship receives iron: a fixed amount per kind multiplied by the level of the ship, limited by the iron storage capacity. A player who loses against an NPC ship loses all iron aboard (`resolveBattle` in `src/lib/server/battle/battleService.ts`). |
 | Cap12_Feat002_Req008 | A defeated ship returns after a time that depends on its kind: pirates at midnight (UTC), marauders after 20 minutes, drones after 15 minutes, Warlord Krag after 10 minutes. |
 | Cap12_Feat002_Req009 | Warlord Krag is only present while an active mission step asks for his defeat (`getWantedArchetypes`, `NPCManager.isPresent`). |
-| Cap12_Feat002_Req010 | The tooltip of a hostile ship shows its name and level; for an aggressive ship it also shows a warning (`TooltipRenderer.ts`). |
+| Cap12_Feat002_Req010 | The tooltip of a hostile ship shows its name and level; for a ship that currently attacks the player on sight (aggressive kind targeted by an active mission) it also shows a warning, and the map shows its attack range as a ring (`TooltipRenderer.ts`, `NPCShipRenderer.ts`). |
 
 ---
 

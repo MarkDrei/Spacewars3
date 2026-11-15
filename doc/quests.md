@@ -27,7 +27,7 @@ The game has 19 missions: 14 story missions in 4 chapters, 2 side missions and 3
 - **Rewards** are paid when the last step is reported: XP, iron (limited by the iron storage capacity — iron above the capacity is lost) and sometimes a random commander, which needs a free inventory slot at that moment.
 - **Abandoning** an active mission deletes its progress and its cargo. It can be accepted again from its giver.
 - **Contracts** are repeatable: after completion they are on offer again.
-- **Hostile ships** exist once per player; other players do not see or fight them. Aggressive ships open fire on a player ship that comes within their attack range. After every battle against an NPC ship the player is safe from ambushes for 90 seconds. A player who loses against an NPC ship loses all iron aboard.
+- **Hostile ships** exist once per player; other players do not see or fight them. Aggressive ships open fire on a player ship that comes within their attack range, but only while the current step of one of the player's active missions targets their kind (a defeat objective for that kind, or cargo that this kind drops). Without such a mission they never attack first. Attacks only happen while the player has the game page open. After every battle against an NPC ship the player is safe from ambushes for 90 seconds. A player who loses against an NPC ship loses all iron aboard.
 - Every change (accepted, step finished, cargo found, location discovered, achievement unlocked, ambush) is sent to the player as a message. The Missions page also shows the answer to an action directly, and the contact's closing words when a mission is completed.
 
 ## 2. Test tools
@@ -154,7 +154,7 @@ Total of all missions completed once: 7650 XP and 37400 iron, plus 2 commanders.
 | Ironstrike Station (`ironstrike_station`) | station | (4000, 4000) | 500 | Trade hub of the sector. Its docks buy and sell commanders; Iron Horde pirates circle it. |
 | Meridian Observatory (`meridian_observatory`) | station | (900, 1100) | 500 | Research station in the north-west that listens to everything that moves in the sector. |
 | Bastion Outpost (`bastion_outpost`) | station | (1200, 3900) | 500 | Fortified patrol base in the south-west, the last line against the Iron Horde. |
-| Horde’s Reach (`hordes_reach`) | lair | (2900, 1300) | 800 | Hideout of the Iron Horde. Marauders patrol it and attack every ship that comes too close. |
+| Horde’s Reach (`hordes_reach`) | lair | (2900, 1300) | 800 | Hideout of the Iron Horde. Marauders patrol it. They let ships pass, but attack everyone who is on a mission against them. |
 | Anvil Graveyard (`anvil_graveyard`) | wreck field | (2500, 3400) | 650 | Wreck field of a forgotten battle south of the sector's centre, still guarded by rogue sentry drones. |
 | Azure Drift (`azure_drift`) | landmark | (300, 2700) | 300 | A cloud of cold blue ice crystals at the western edge. Beautiful and harmless. |
 | Listening Post Tau (`listening_post_tau`) | landmark | (3500, 2300) | 300 | An abandoned relay station that sometimes transmits although nobody lives there. |
@@ -169,8 +169,8 @@ Each player has their own set. The level of a ship is the player level plus the 
 | Ship | Behaviour | Circles | Orbit radius | Ships (level offset) | Strength | Iron for a victory | Returns |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | Iron Horde Pirate (`pirate`) | Passive: never attacks first | Ironstrike Station (4000, 4000) | 750 | 4 (±0, +1, +2, +3) | ×1 | 5000 × ship level | at midnight (UTC) |
-| Iron Horde Marauder (`marauder`) | Aggressive: attacks a player ship within 300 of it | Horde’s Reach (2900, 1300) | 450 | 3 (−1, ±0, +1) | ×1 | 6000 × ship level | 20 min after its defeat |
-| Rogue Sentry Drone (`drone`) | Aggressive: attacks a player ship within 220 of it | Anvil Graveyard (2500, 3400) | 380 | 2 (−1, ±0) | ×0.7 | 3000 × ship level | 15 min after its defeat |
+| Iron Horde Marauder (`marauder`) | Aggressive: attacks a player ship within 300 of it while a mission of that player hunts this kind | Horde’s Reach (2900, 1300) | 450 | 3 (−1, ±0, +1) | ×1 | 6000 × ship level | 20 min after its defeat |
+| Rogue Sentry Drone (`drone`) | Aggressive: attacks a player ship within 220 of it while a mission of that player hunts this kind | Anvil Graveyard (2500, 3400) | 380 | 2 (−1, ±0) | ×0.7 | 3000 × ship level | 15 min after its defeat |
 | Warlord Krag (`warlord`) | Passive: never attacks first. Only present while an active mission step asks for it | Horde’s Reach (2900, 1300) | 150 | 1 (+2) | ×1.5 | 10000 × ship level | 10 min after its defeat |
 
 ### Mission cargo
@@ -381,7 +381,7 @@ Completion: *They all tell the same story: ships with red prows, striking from t
 | Reward | 450 XP, 1500 iron |
 | Mission cargo | Flight Recorder: Found when salvaging shipwrecks (100% chance each). |
 
-Offer: *The relayed signals point to the Anvil Graveyard, the wreck field south of the sector's centre. Old sentry drones still guard it and they shoot at everything. Scout the field first, then pull three flight recorders out of shipwrecks.*
+Offer: *The relayed signals point to the Anvil Graveyard, the wreck field south of the sector's centre. Old sentry drones still guard it; they ignore ships that leave them alone. Scout the field first, then pull three flight recorders out of shipwrecks.*
 
 | Step | Briefing | Objectives | Handed over at the start | Finished by |
 | --- | --- | --- | --- | --- |
@@ -412,7 +412,7 @@ Completion: *Listen to this… the last entries all mention one name: Krag. A wa
 | Reward | 500 XP, 1500 iron |
 | Mission cargo | Decoded Coordinates: Handed over when the mission step starts. |
 
-Offer: *The recorders give me a bearing, north-east of the Graveyard. If the Horde has a hideout, it is there. Get close enough for a sensor sweep — and no closer. Their marauders attack on sight.*
+Offer: *The recorders give me a bearing, north-east of the Graveyard. If the Horde has a hideout, it is there. Get close enough for a sensor sweep. Their marauders let ships pass as long as nobody hunts them, so do not start a fight yet.*
 
 | Step | Briefing | Objectives | Handed over at the start | Finished by |
 | --- | --- | --- | --- | --- |
@@ -475,7 +475,7 @@ Completion: *Three confirmed. The raids on the station are getting thinner alrea
 | Reward | 600 XP, 4000 iron |
 | Mission cargo | Horde Insignia: Dropped by: Iron Horde Marauder (100% chance each). |
 
-Offer: *The marauders guarding Horde’s Reach wear the insignia of the warlord. Bring me two of them. They will come for you the moment you cross their patrol line, so be ready when you do.*
+Offer: *The marauders guarding Horde’s Reach wear the insignia of the warlord. Bring me two of them. Once you take this job, they will come for you the moment you cross their patrol line, so be ready when you do.*
 
 | Step | Briefing | Objectives | Handed over at the start | Finished by |
 | --- | --- | --- | --- | --- |
@@ -504,7 +504,7 @@ Completion: *Krag’s own colours. Each of these opens a door in their comm netw
 | Reward | 500 XP, 2500 iron |
 | Mission cargo | Drone Core: Dropped by: Rogue Sentry Drone (100% chance each). |
 
-Offer: *The sentry drones of the Anvil Graveyard have started relaying for the Horde. Quill believes their cores can be turned against them. Take down drones and bring two cores to the professor.*
+Offer: *The sentry drones of the Anvil Graveyard have started relaying for the Horde. Quill believes their cores can be turned against them. Take down drones and bring two cores to the professor. Be careful: as soon as you hunt them, they attack on sight.*
 
 | Step | Briefing | Objectives | Handed over at the start | Finished by |
 | --- | --- | --- | --- | --- |

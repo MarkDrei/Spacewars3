@@ -125,7 +125,8 @@ function matchesDefeatTarget(target: DefeatTarget, archetype: HostileArchetypeId
 
 /**
  * Hostile archetypes that the current stage of an active quest names explicitly (as target to
- * defeat or as source of cargo to gather). Quest-bound ships exist only while they are wanted.
+ * defeat or as source of cargo to gather). Quest-bound ships exist only while they are wanted,
+ * and aggressive ships attack only while they are wanted.
  */
 export function getWantedArchetypes(state: PlayerQuestState): HostileArchetypeId[] {
   const wanted = new Set<HostileArchetypeId>();

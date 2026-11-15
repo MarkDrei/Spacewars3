@@ -2,8 +2,8 @@
  * NPCManager — in-memory singleton managing the hostile NPC ships of each player.
  *
  * Every player has their own set of hostile ships (see HOSTILE_ARCHETYPES): passive pirates
- * around Ironstrike Station, aggressive marauders and drones around their lairs, and quest-bound
- * ships that only appear while a mission asks for them.
+ * around Ironstrike Station, marauders and drones around their lairs that attack while a mission
+ * of the player hunts them, and quest-bound ships that only appear while a mission asks for them.
  *
  * Uses the globalThis singleton pattern (consistent with TimeMultiplierService,
  * WorldCache, UserCache, etc.). NPC orbit state is ephemeral; it is regenerated
@@ -146,13 +146,17 @@ export class NPCManager {
   /**
    * The aggressive NPC that attacks a player at the given position, or null.
    * `visibleNpcs` is the result of `getNpcsForPlayer` after `updateNpcPositions`.
-   * Returns the nearest ship whose aggro radius the player is in, unless the player is in the
-   * grace period after a battle.
+   * `huntedArchetypes` are the ship kinds an active mission of the player targets
+   * (`getWantedArchetypes`): only these attack. A ship moves on while its owner is offline, so
+   * ships that attack everyone would put every returning player into a battle.
+   * Returns the nearest hunted ship whose aggro radius the player is in, unless the player is in
+   * the grace period after a battle.
    */
   findAmbusher(
     userId: number,
     playerPosition: { x: number; y: number },
     visibleNpcs: readonly NpcShip[],
+    huntedArchetypes: readonly HostileArchetypeId[],
     nowMs: number,
   ): NpcShip | null {
     const state = this.playerNpcs.get(userId);
@@ -162,7 +166,7 @@ export class NPCManager {
     let nearestDistance = Infinity;
     for (const npc of visibleNpcs) {
       const archetype = HOSTILE_ARCHETYPES[npc.archetype];
-      if (!archetype.aggressive) continue;
+      if (!archetype.aggressive || !huntedArchetypes.includes(npc.archetype)) continue;
       const distance = calculateToroidalDistance(playerPosition, NPCManager.positionOf(npc), DEFAULT_WORLD_BOUNDS);
       if (distance <= archetype.aggroRadius && distance < nearestDistance) {
         nearest = npc;

@@ -106,7 +106,7 @@ function unlockedBy(questId: string): QuestDefinition[] {
 
 function behaviour(archetype: HostileArchetype): string {
   return archetype.aggressive
-    ? `attacks a player ship within ${archetype.aggroRadius} of it`
+    ? `attacks a player ship within ${archetype.aggroRadius} of it while a mission of that player hunts this kind`
     : 'never attacks first';
 }
 
@@ -308,7 +308,7 @@ function rules(): string[] {
     '- **Rewards** are paid when the last step is reported: XP, iron (limited by the iron storage capacity — iron above the capacity is lost) and sometimes a random commander, which needs a free inventory slot at that moment.',
     '- **Abandoning** an active mission deletes its progress and its cargo. It can be accepted again from its giver.',
     '- **Contracts** are repeatable: after completion they are on offer again.',
-    `- **Hostile ships** exist once per player; other players do not see or fight them. Aggressive ships open fire on a player ship that comes within their attack range. After every battle against an NPC ship the player is safe from ambushes for ${AMBUSH_GRACE_MS / 1000} seconds. A player who loses against an NPC ship loses all iron aboard.`,
+    `- **Hostile ships** exist once per player; other players do not see or fight them. Aggressive ships open fire on a player ship that comes within their attack range, but only while the current step of one of the player's active missions targets their kind (a defeat objective for that kind, or cargo that this kind drops). Without such a mission they never attack first. Attacks only happen while the player has the game page open. After every battle against an NPC ship the player is safe from ambushes for ${AMBUSH_GRACE_MS / 1000} seconds. A player who loses against an NPC ship loses all iron aboard.`,
     '- Every change (accepted, step finished, cargo found, location discovered, achievement unlocked, ambush) is sent to the player as a message. The Missions page also shows the answer to an action directly, and the contact\'s closing words when a mission is completed.',
     '',
   ];

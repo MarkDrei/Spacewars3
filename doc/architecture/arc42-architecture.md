@@ -440,7 +440,7 @@ Functional view: [Cap12: Missions, Contacts & NPC Ships](../functional-requireme
 
 - `POST /api/harvest` → `object_collected`
 - Battle resolution (`resolveBattle` in `battleService.ts`) → `npc_defeated` or `pvp_won`
-- `GET /api/world` → `recordVisits` with the ship position (location discovery and visit objectives), followed by the ambush check. Both are skipped while the player is in a battle; a failure is logged and the world is delivered regardless.
+- `GET /api/world` → `recordVisits` with the ship position (location discovery and visit objectives), followed by the ambush check (`NPCManager.findAmbusher`), which only considers ship kinds returned by `getWantedArchetypes` for the player's mission state. Both are skipped while the player is in a battle; a failure is logged and the world is delivered regardless.
 
 **World response**: `GET /api/world` appends the starbases, the player's visible hostile ships and the contacts to the cached space objects. Orbiting ships carry orbit centre, radius, angle and angular velocity, so the client continues the orbit between polls. Contact positions are a pure function of time (`contactPosition`), so server and client agree without stored state. The response also carries `questRevision` (the client reloads the mission state when it changes) and `ambush` when a battle was just started by an NPC.
 
@@ -1092,7 +1092,7 @@ See [TechnicalDebt.md](../TechnicalDebt.md) for current issues.
 | **Notifications**         | System alerts for game events (formerly called "Messages" — use "Notifications" in new documentation) |
 | **Mission**               | A task offered by a contact, with one or more steps, objectives and a reward. Called "quest" in code (`src/shared/quests/`, table `quest_progress`, `/api/quests`); the player-facing term is "Mission" |
 | **Contact**               | A friendly NPC ship that offers missions and takes reports; visible to all players                |
-| **Hostile ship**          | An NPC ship that can be fought. Exists once per player (`NPCManager`); aggressive kinds attack on their own |
+| **Hostile ship**          | An NPC ship that can be fought. Exists once per player (`NPCManager`); aggressive kinds attack on their own while an active mission of the player targets them |
 | **Archetype**             | A kind of hostile ship with orbit, strength, behaviour and respawn rule (`HOSTILE_ARCHETYPES`)    |
 | **Location**              | A named place of the world with position and radius; can be discovered and be a mission objective |
 | **Mission cargo**         | Inventory item of type `cargo` that belongs to a mission; stacked, not removable by the player    |

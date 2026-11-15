@@ -55,7 +55,7 @@ export const defaultCanvasStrings: CanvasStrings = {
   actionTapToDock: 'Action: tap again to dock',
   actionTapToHail: 'Action: tap again to hail',
   hailTooFar: 'Fly closer to hail',
-  aggressiveShip: 'Attacks on sight',
+  aggressiveShip: 'Hunted by your mission: attacks on sight',
   levelTooFarToAttack: 'Level difference too large to attack this target.',
   contactNames: {},
   locationNames: {},

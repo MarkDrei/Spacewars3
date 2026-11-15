@@ -22,6 +22,7 @@ import {
   hostileOrbit,
   positionOnOrbit,
   type ContactDefinition,
+  type HostileArchetypeId,
   type OrbitDefinition,
 } from '@/shared/quests/npcArchetypes';
 import { getWantedArchetypes } from '@/shared/quests/questEngine';
@@ -66,7 +67,12 @@ function orbitingShip(
 }
 
 /** Convert a hostile NpcShip to a SpaceObject for the world response. */
-function hostileToSpaceObject(npc: NpcShip, timeMultiplier: number, nowMs: number): SpaceObject {
+function hostileToSpaceObject(
+  npc: NpcShip,
+  huntedArchetypes: readonly HostileArchetypeId[],
+  timeMultiplier: number,
+  nowMs: number
+): SpaceObject {
   const archetype = HOSTILE_ARCHETYPES[npc.archetype];
   return {
     ...orbitingShip(hostileOrbit(archetype), npc.orbitAngleDeg, archetype.angularVelocityDegPerSec * timeMultiplier, nowMs),
@@ -75,7 +81,8 @@ function hostileToSpaceObject(npc: NpcShip, timeMultiplier: number, nowMs: numbe
     username: hostileDisplayName(npc.archetype, npc.level),
     userId: npc.id,
     level: npc.level,
-    npcDisposition: archetype.aggressive ? 'aggressive' : 'hostile',
+    // Aggressive kinds attack only while a mission of the player hunts them
+    npcDisposition: archetype.aggressive && huntedArchetypes.includes(npc.archetype) ? 'aggressive' : 'hostile',
     npcArchetype: npc.archetype,
   };
 }
@@ -99,17 +106,19 @@ function contactToSpaceObject(contact: ContactDefinition, timeMultiplier: number
 
 /**
  * What happens to a ship at its position: locations are discovered / visited for missions, and
- * an aggressive NPC in range attacks. Failures are logged; the world is delivered regardless.
+ * an aggressive NPC in range attacks if a mission of the player hunts its kind. Failures are
+ * logged; the world is delivered regardless.
  */
 async function applyShipPosition(
   userId: number,
   position: Position,
   visibleNpcs: readonly NpcShip[],
+  huntedArchetypes: readonly HostileArchetypeId[],
   nowMs: number
 ): Promise<AmbushResult | null> {
   try {
     await QuestService.getInstance().recordVisits(createLockContext(), userId, position);
-    const ambusher = NPCManager.getInstance().findAmbusher(userId, position, visibleNpcs, nowMs);
+    const ambusher = NPCManager.getInstance().findAmbusher(userId, position, visibleNpcs, huntedArchetypes, nowMs);
     return ambusher ? await ambushPlayer(userId, ambusher, position) : null;
   } catch (error) {
     console.error('❌ Failed to apply ship position (visits / ambush):', error);
@@ -159,7 +168,7 @@ export async function GET(request: NextRequest) {
 
     const ambush =
       user && !user.inBattle && shipPosition
-        ? await applyShipPosition(userId, shipPosition, activeNpcs, nowMs)
+        ? await applyShipPosition(userId, shipPosition, activeNpcs, wantedArchetypes, nowMs)
         : null;
 
     // The ambusher is in battle now; like an attacked NPC it is no longer shown on the map
@@ -171,7 +180,7 @@ export async function GET(request: NextRequest) {
       spaceObjects: [
         ...worldData.spaceObjects,
         ...STARBASES,
-        ...visibleNpcs.map((npc) => hostileToSpaceObject(npc, timeMultiplier, nowMs)),
+        ...visibleNpcs.map((npc) => hostileToSpaceObject(npc, wantedArchetypes, timeMultiplier, nowMs)),
         ...CONTACTS.map((contact) => contactToSpaceObject(contact, timeMultiplier, nowMs)),
       ],
       questRevision: questState.revision,

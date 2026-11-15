@@ -47,6 +47,13 @@ function initializeWorld(spaceObjects: ServerSpaceObject[]): void {
   WorldCache.initializeWithWorld(world, db, { enableAutoPersistence: false });
 }
 
+/** Puts the player on a mission whose current step targets a ship kind (cargo dropped by marauders). */
+function huntMarauders(): void {
+  questState.quests.c3_colours_of_the_horde = {
+    status: 'active', stage: 0, progress: [0], acceptedAt: 0, completedAt: null, completions: 0,
+  };
+}
+
 const playerShipAt = (x: number, y: number): ServerSpaceObject => ({
   id: SHIP_ID, type: 'player_ship', x, y, speed: 0, angle: 0, last_position_update_ms: Date.now(), picture_id: 1,
 });
@@ -136,19 +143,30 @@ describe('World API', () => {
       }
     });
 
-    test('world_newPlayer_showsPassivePiratesAsHostileAndRaidersAsAggressive', async () => {
+    const dispositionOf = (objects: SpaceObject[], archetype: string): string[] => [
+      ...new Set(
+        npcShips(objects)
+          .filter((object) => object.npcArchetype === archetype)
+          .map((object) => object.npcDisposition as string)
+      ),
+    ];
+
+    test('world_playerWithoutMission_showsNoShipAsAggressive', async () => {
       const { data } = await getWorld();
 
-      const dispositionOf = (archetype: string): string[] => [
-        ...new Set(
-          npcShips(data.spaceObjects)
-            .filter((object) => object.npcArchetype === archetype)
-            .map((object) => object.npcDisposition as string)
-        ),
-      ];
-      expect(dispositionOf('pirate')).toEqual(['hostile']);
-      expect(dispositionOf('marauder')).toEqual(['aggressive']);
-      expect(dispositionOf('drone')).toEqual(['aggressive']);
+      expect(dispositionOf(data.spaceObjects, 'pirate')).toEqual(['hostile']);
+      expect(dispositionOf(data.spaceObjects, 'marauder')).toEqual(['hostile']);
+      expect(dispositionOf(data.spaceObjects, 'drone')).toEqual(['hostile']);
+    });
+
+    test('world_missionHuntsMarauders_showsOnlyMaraudersAsAggressive', async () => {
+      huntMarauders();
+
+      const { data } = await getWorld();
+
+      expect(dispositionOf(data.spaceObjects, 'pirate')).toEqual(['hostile']);
+      expect(dispositionOf(data.spaceObjects, 'marauder')).toEqual(['aggressive']);
+      expect(dispositionOf(data.spaceObjects, 'drone')).toEqual(['hostile']);
     });
 
     test('world_hostileShip_carriesNameLevelAndUserIdForTheAttack', async () => {
@@ -213,10 +231,22 @@ describe('World API', () => {
       expect(data.ambush).toBeUndefined();
     });
 
-    test('world_shipNextToAnAggressiveShip_isAmbushedAndTheResponseSaysSo', async () => {
+    test('world_shipNextToAMarauderWithoutMissionAgainstThem_startsNoAmbush', async () => {
       const marauder = HOSTILE_ARCHETYPES.marauder;
       const position = positionOnOrbit(hostileOrbit(marauder), marauder.spawns[0].startAngleDeg);
       initializeWorld([playerShipAt(position.x, position.y)]);
+
+      const { data } = await getWorld();
+
+      expect(ambushPlayer).not.toHaveBeenCalled();
+      expect(data.ambush).toBeUndefined();
+    });
+
+    test('world_shipNextToAHuntedMarauder_isAmbushedAndTheResponseSaysSo', async () => {
+      const marauder = HOSTILE_ARCHETYPES.marauder;
+      const position = positionOnOrbit(hostileOrbit(marauder), marauder.spawns[0].startAngleDeg);
+      initializeWorld([playerShipAt(position.x, position.y)]);
+      huntMarauders();
       vi.mocked(ambushPlayer).mockResolvedValue({ enemyName: 'Iron Horde Marauder' });
 
       const { data } = await getWorld();
@@ -232,6 +262,7 @@ describe('World API', () => {
       const marauder = HOSTILE_ARCHETYPES.marauder;
       const position = positionOnOrbit(hostileOrbit(marauder), marauder.spawns[0].startAngleDeg);
       initializeWorld([playerShipAt(position.x, position.y)]);
+      huntMarauders();
       mockUser.inBattle = true;
 
       await getWorld();
@@ -257,6 +288,7 @@ describe('World API', () => {
       const marauder = HOSTILE_ARCHETYPES.marauder;
       const position = positionOnOrbit(hostileOrbit(marauder), marauder.spawns[0].startAngleDeg);
       initializeWorld([playerShipAt(position.x, position.y)]);
+      huntMarauders();
       vi.mocked(ambushPlayer).mockRejectedValue(new Error('battle could not be created'));
 
       const { status, data } = await getWorld();

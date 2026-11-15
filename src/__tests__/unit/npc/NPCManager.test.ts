@@ -620,6 +620,8 @@ describe('NPCManager', () => {
 
   describe('findAmbusher', () => {
     const lair = getLocation('hordes_reach');
+    /** Ship kinds that an active mission of the player targets. */
+    const HUNTED: readonly HostileArchetypeId[] = ['marauder'];
 
     /** Position at the given distance outside (positive) or inside the marauder's start position. */
     function nearFirstMarauder(mgr: NPCManager, offset: number): { x: number; y: number } {
@@ -636,10 +638,20 @@ describe('NPCManager', () => {
       const mgr = NPCManager.getInstance();
       const npcs = mgr.getNpcsForPlayer(1, 5);
 
-      const ambusher = mgr.findAmbusher(1, nearFirstMarauder(mgr, MARAUDER.aggroRadius - 1), npcs, MIDNIGHT);
+      const ambusher = mgr.findAmbusher(1, nearFirstMarauder(mgr, MARAUDER.aggroRadius - 1), npcs, HUNTED, MIDNIGHT);
 
       expect(ambusher?.archetype).toBe('marauder');
       expect(ambusher?.spawn.slot).toBe(MARAUDER.spawns[0].slot);
+    });
+
+    it('findAmbusher_noMissionHuntsTheKind_returnsNull', () => {
+      freezeTime(MIDNIGHT);
+      const mgr = NPCManager.getInstance();
+      const npcs = mgr.getNpcsForPlayer(1, 5);
+      const position = nearFirstMarauder(mgr, 0);
+
+      expect(mgr.findAmbusher(1, position, npcs, [], MIDNIGHT)).toBeNull();
+      expect(mgr.findAmbusher(1, position, npcs, ['drone', 'pirate'], MIDNIGHT)).toBeNull();
     });
 
     it('findAmbusher_playerOutsideAggroRadius_returnsNull', () => {
@@ -647,7 +659,7 @@ describe('NPCManager', () => {
       const mgr = NPCManager.getInstance();
       const npcs = mgr.getNpcsForPlayer(1, 5);
 
-      expect(mgr.findAmbusher(1, nearFirstMarauder(mgr, MARAUDER.aggroRadius + 1), npcs, MIDNIGHT)).toBeNull();
+      expect(mgr.findAmbusher(1, nearFirstMarauder(mgr, MARAUDER.aggroRadius + 1), npcs, HUNTED, MIDNIGHT)).toBeNull();
     });
 
     it('findAmbusher_playerNextToPassivePirate_returnsNull', () => {
@@ -656,7 +668,7 @@ describe('NPCManager', () => {
       const npcs = mgr.getNpcsForPlayer(1, 5);
       const pirate = ofArchetype(npcs, 'pirate')[0];
 
-      expect(mgr.findAmbusher(1, NPCManager.positionOf(pirate), npcs, MIDNIGHT)).toBeNull();
+      expect(mgr.findAmbusher(1, NPCManager.positionOf(pirate), npcs, ['pirate'], MIDNIGHT)).toBeNull();
     });
 
     it('findAmbusher_twoShipsInRange_returnsTheNearest', () => {
@@ -668,7 +680,7 @@ describe('NPCManager', () => {
       second.orbitAngleDeg = first.orbitAngleDeg + 5;
       const closeToSecond = NPCManager.positionOf(second);
 
-      expect(mgr.findAmbusher(1, closeToSecond, npcs, MIDNIGHT)).toBe(second);
+      expect(mgr.findAmbusher(1, closeToSecond, npcs, HUNTED, MIDNIGHT)).toBe(second);
     });
 
     it('findAmbusher_defeatedShipNotInVisibleList_returnsNull', () => {
@@ -678,7 +690,7 @@ describe('NPCManager', () => {
       const position = nearFirstMarauder(mgr, 0);
       mgr.markDefeated(marauder.id);
 
-      expect(mgr.findAmbusher(1, position, mgr.getNpcsForPlayer(1, 5), MIDNIGHT)).toBeNull();
+      expect(mgr.findAmbusher(1, position, mgr.getNpcsForPlayer(1, 5), HUNTED, MIDNIGHT)).toBeNull();
     });
 
     it('findAmbusher_duringGracePeriod_returnsNull', () => {
@@ -688,8 +700,8 @@ describe('NPCManager', () => {
       const position = nearFirstMarauder(mgr, 0);
       mgr.setAmbushGrace(1, MIDNIGHT + AMBUSH_GRACE_MS);
 
-      expect(mgr.findAmbusher(1, position, npcs, MIDNIGHT + AMBUSH_GRACE_MS - 1)).toBeNull();
-      expect(mgr.findAmbusher(1, position, npcs, MIDNIGHT + AMBUSH_GRACE_MS)).not.toBeNull();
+      expect(mgr.findAmbusher(1, position, npcs, HUNTED, MIDNIGHT + AMBUSH_GRACE_MS - 1)).toBeNull();
+      expect(mgr.findAmbusher(1, position, npcs, HUNTED, MIDNIGHT + AMBUSH_GRACE_MS)).not.toBeNull();
     });
 
     it('findAmbusher_gracePeriod_survivesLevelChange', () => {
@@ -701,11 +713,11 @@ describe('NPCManager', () => {
       const npcs = mgr.getNpcsForPlayer(1, 6);
       const marauder = ofArchetype(npcs, 'marauder')[0];
 
-      expect(mgr.findAmbusher(1, NPCManager.positionOf(marauder), npcs, MIDNIGHT + 1000)).toBeNull();
+      expect(mgr.findAmbusher(1, NPCManager.positionOf(marauder), npcs, HUNTED, MIDNIGHT + 1000)).toBeNull();
     });
 
     it('findAmbusher_unknownPlayer_returnsNull', () => {
-      expect(NPCManager.getInstance().findAmbusher(999, { x: lair.x, y: lair.y }, [], MIDNIGHT)).toBeNull();
+      expect(NPCManager.getInstance().findAmbusher(999, { x: lair.x, y: lair.y }, [], HUNTED, MIDNIGHT)).toBeNull();
     });
   });
 
